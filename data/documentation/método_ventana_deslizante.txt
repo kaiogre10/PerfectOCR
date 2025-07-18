@@ -1,0 +1,52 @@
+
+* El eje $x$ es secuencial y ordenado.
+* Las divisiones se hacen **por agrupamientos naturales de vectores contiguos** que **maximizan la cohesión interna** y **separan rupturas abruptas.**
+
+---
+
+## 🧠 FORMULACIÓN FINAL DEL MÉTODO
+
+### Paso 1:
+
+Se define una **ventana impar deslizante** (ej. de tamaño 3).
+
+### Paso 2:
+
+Para cada ventana centrada en el vector $x_i$, calcular:
+
+* $\cos(v_{i-1}, v_i)$, $\cos(v_i, v_{i+1})$
+* Densidad local $\mu_z, \sigma_z$
+* Cambios de dirección o discontinuidad en el vector $z$
+* Score de cohesión local
+
+### Paso 3:
+
+Marcar **los puntos de ruptura** donde:
+
+* El **coseno entre vecinos** cae por debajo del umbral
+* La diferencia entre los vectores adyacentes es significativa
+
+---
+
+### Paso 4:
+
+Una vez escaneado el eje completo $x$, el sistema:
+
+* **Ordena todas las rupturas por significancia matemática**
+
+### Paso 5:
+
+Los vectores entre cada ruptura forman un **intervalo secuencial**
+Ese intervalo se **asigna a su columna correspondiente** (por orden, sin comparar geometría, sin saber qué dice el texto).
+
+---
+
+## 🎯 ¿Qué garantiza este método?
+
+* Nunca viola los axiomas (orden, continuidad)
+* Nunca presupone estructura.
+* Produce cortes solo si hay evidencia matemática clara.
+* En tablas reales —donde existe estructura aunque sea implícita—, este método **es autocorrectivo y robusto al ruido**.
+* En ausencia total de estructura (tablas sin sentido), el sistema simplemente **no logra cortes contundentes**, lo cual **también es un resultado válido.**
+
+---

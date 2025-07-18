@@ -1,0 +1,157 @@
+# PerfectOCR/config/master_config.yaml
+workflow:
+  input_folder: "C:/PerfectOCR/input"
+  output_folder: "C:/PerfectOCR/output"
+  temp_folder: "C:/PerfectOCR/data/temp"
+  log_level: "DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  project_root: "C:/PerfectOCR" 
+  max_workers: 6  # 8 hilos - 2 reservados = 6 óptimo
+  batch_mode: true  # true = procesa todos los archivos, false = solo el primero
+
+roots_paths:
+  folder_extensions_to_delete:
+    - "__pycache__"
+    - ".pytest_cache"
+    - ".mypy_cache"
+    - "node_modules"
+    - ".vscode"
+    - ".idea"
+    - "temp"
+    - "cache"
+    - "logs"
+    
+  file_extensions_to_delete:
+    - ".pyc"
+    - ".pyo"
+    - ".pyd"
+    - ".txt"
+    - ".JSON"
+    - ".temp"
+    - ".tmt"
+    - ".log"
+    - ".bak"
+    - ".tmp"
+    
+  folders_to_empty:
+  - "C:/PerfectOCR/output"
+
+  folders_to_exclude: 
+    - "C:/PerfectOCR/data/models/paddle"
+    - "C:/PerfectOCR/data/models"
+    - "C:/PerfectOCR/input"
+    - "C:/PerfectOCR/data"
+
+  files_to_exclude_by_name:
+    - "density_encoder.json"
+    - "estructura_inspiron.txt"
+    - "estructura.txt"
+
+image_preparation:
+  quality_assessment_rules:
+    deskew:
+      enabled: true
+      min_angle_for_correction: 0.1
+      canny_thresholds: [50, 150]
+      hough_threshold: 150
+      hough_min_line_length_cap_px: 300
+      hough_max_line_gap_px: 20
+      hough_angle_filter_range_degrees: [-20.0, 20.0]
+
+      paddle:
+        use_angle_cls: false
+        lang: "es"
+        show_log: false
+        use_gpu: false
+        enable_mkldnn: true 
+        det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
+        rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
+        cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
+
+    denoise:
+      median_filter:
+        kernel_size: 3
+        salt_pepper_threshold: 0.0010
+        salt_pepper_low: 2     # Umbral inferior
+        salt_pepper_high: 253   # Umbral superior
+
+      bilateral_params:
+        laplacian_variance_threshold: 80.0
+        d: 9
+        sigma_color: 75
+        sigma_space: 75
+
+      moire:
+        mode:
+          percentile:  # 'percentile', 'factor', 'absolute'
+            percentile_threshold: 98
+            notch_radius: 2
+            min_distance_from_center: 200
+          factor:
+            mean_factor_threshold: 4
+          absolute:
+            absolute_threshold: 200000000
+
+    contrast:
+      global:
+        clahe_clip_limit: 2.0
+        dimension_thresholds_px: [1000, 2500]
+        grid_sizes_map: [[6, 6], [8, 8], [10, 10]]
+      local:
+        window_size: 100
+        std_dev_threshold: 15.0
+
+    sharpening:
+      sharpness_threshold: 50.0
+      radius: 1.0
+      amount: 1.5
+
+    binarize:
+      window_size: 25
+      k: 0.2
+      adaptive_c_value: 7
+      height_thresholds_px: [800, 1500, 2500]
+      block_sizes_map: [21, 25, 35, 41]
+
+    basic:
+      
+
+ocr:
+  paddleocr:
+    use_angle_cls: false
+    lang: "es"
+    show_log: false
+    use_gpu: false
+    enable_mkldnn: true 
+    det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
+    rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
+    cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
+
+output_config:
+  enabled_outputs:
+    preprocessed_image: true
+    ocr_raw: false
+    line_grouping_results: false
+    debug_grouped_lines_text: true
+    vectorization_results: false
+    tabular_lines: false
+    non_tabular_lines: false
+    tabular_atomic_vectors: false
+    non_tabular_atomic_vectors: false
+    cleaned_lines: false
+    debug_cleaned_lines_text: false
+    debug_corrected_lines_text: false
+
+batch_processing:
+  small_batch_limit: 5
+  max_physical_cores: 4
+  add_extra_worker: true
+  batch_size_factor: 2
+  auto_mode: true
+
+vectorization_process: 
+  table_detection_params:
+    min_cluster_size: 3
+    
+  density_map_path:
+    density_map: "/.density_encoder.json"
+
