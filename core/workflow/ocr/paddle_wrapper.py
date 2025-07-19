@@ -37,27 +37,28 @@ class PaddleOCRWrapper:
             self.engine = None
 
     def _parse_paddle_result_to_spec(self, paddle_ocr_result_raw: Optional[List[Any]]) -> List[Dict[str, Any]]:
-        output_lines: List[Dict[str, Any]] = []
+        output_lines: List[Dict[str, Any]] = []  # Inicializa la lista de resultados finales.
         if not paddle_ocr_result_raw or not paddle_ocr_result_raw[0]:
-            return output_lines
-        items_for_first_image = paddle_ocr_result_raw[0]
-        if items_for_first_image is None: return output_lines
+            return output_lines  # Si no hay resultados o el primer elemento está vacío, retorna lista vacía.
+        items_for_first_image = paddle_ocr_result_raw[0]  # Obtiene los resultados del primer (y único) procesamiento de imagen.
+        if items_for_first_image is None: return output_lines  # Si no hay datos, retorna vacío.
 
-        for line_counter, item_tuple in enumerate(items_for_first_image):
-            if not (isinstance(item_tuple, (list, tuple)) and len(item_tuple) == 2): continue
-            bbox_polygon_raw, text_and_confidence = item_tuple[0], item_tuple[1]
-            if not (isinstance(text_and_confidence, (list, tuple)) and len(text_and_confidence) == 2): continue
-            text, confidence_raw = text_and_confidence
+        for line_counter, item_tuple in enumerate(items_for_first_image):  # Itera sobre cada línea detectada por PaddleOCR.
+            if not (isinstance(item_tuple, (list, tuple)) and len(item_tuple) == 2): continue  # Verifica formato esperado.
+            bbox_polygon_raw, text_and_confidence = item_tuple[0], item_tuple[1]  # Extrae el polígono y el texto+confianza.
+            if not (isinstance(text_and_confidence, (list, tuple)) and len(text_and_confidence) == 2): continue  # Verifica formato.
+            text, confidence_raw = text_and_confidence  # Separa el texto y la confianza.
             try:
-                polygon_coords_formatted = [[float(p[0]), float(p[1])] for p in bbox_polygon_raw]
-                if len(polygon_coords_formatted) < 3: continue
-            except (TypeError, ValueError, IndexError): continue
+                polygon_coords_formatted = [[float(p[0]), float(p[1])] for p in bbox_polygon_raw]  # Convierte coordenadas a float.
+                if len(polygon_coords_formatted) < 3: continue  # Ignora polígonos inválidos.
+            except (TypeError, ValueError, IndexError): continue  # Si hay error en conversión, ignora.
             output_lines.append({
-                "line_number": line_counter + 1, "text": str(text).strip(),
-                "polygon_coords": polygon_coords_formatted,
-                "confidence": round(float(confidence_raw) * 100.0, 2) if isinstance(confidence_raw, (float, int)) else 0.0
+                "line_number": line_counter + 1,  # Número de línea (empezando en 1).
+                "text": str(text).strip(),  # Texto reconocido, limpiado.
+                "polygon_coords": polygon_coords_formatted,  # Coordenadas del polígono delimitador.
+                "confidence": round(float(confidence_raw) * 100.0, 2) if isinstance(confidence_raw, (float, int)) else 0.0  # Confianza en porcentaje.
             })
-        return output_lines
+        return output_lines  # Devuelve la lista de líneas procesadas.
 
     def _segment_line_into_words(self, line_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         text, polygon_coords = line_data.get('text', ''), line_data.get('polygon_coords', [])

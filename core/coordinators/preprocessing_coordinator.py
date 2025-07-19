@@ -69,22 +69,22 @@ class PreprocessingCoordinator:
             
             # 0 Detección geométrica
             step_start = time.time()
-            logger.info("0 Iniciando corrección de inclinación...")
-            clean_img = self._clean._quick_enhance(gray_image)
+            logger.info("0 Iniciando limpiez rapida")
+            dpi_img, clean_img = self._clean._quick_enhance(gray_image, input_path)
             step_duration = time.time() - step_start
             logger.info(f"0 Limpieza completada en {step_duration:.4f}s")
 
             # 1. Detección geométrica
             step_start = time.time()
             logger.info("1 Iniciando corrección de inclinación...")
-            deskewed_img, polygons_coords, img_dims = self._deskewer._get_polygons(clean_img)
+            deskewed_img, polygons_coords, img_dims, dpi_img = self._deskewer._get_polygons(clean_img, dpi_img)
             step_duration = time.time() - step_start
             logger.info(f"1 Corrección de inclinación completada en {step_duration:.4f}s")
 
             # 2. Remoción de moiré
             step_start = time.time()
             logger.info("[2/8] Iniciando detección y corrección de moiré...")
-            moire_img = self._moire._detect_moire_patterns(deskewed_img, polygons_coords, img_dims)
+            moire_img, poly_moire, img_dims = self._moire._detect_moire_patterns(deskewed_img, polygons_coords, img_dims)
             step_duration = time.time() - step_start
             logger.info(f"[2/8] Corrección de moiré completada en {step_duration:.4f}s")
 

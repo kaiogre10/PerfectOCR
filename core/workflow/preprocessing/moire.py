@@ -103,4 +103,4 @@ class MoireDenoiser:
         else:
             moire_img = deskewed_img
 
-        return moire_img
+        return moire_img, img_dims, poly_moire

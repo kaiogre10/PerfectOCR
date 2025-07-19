@@ -1,9 +1,12 @@
 # PerfectOCR/core/workflow/preprocessing/binarization.py
+from sklearnex import patch_sklearn
+patch_sklearn
 import cv2
 import numpy as np
 import logging
 from scipy import ndimage
-from skimage import filters, morphology 
+from skimage import filters, morphology
+from skimage.filters import threshold_local
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)

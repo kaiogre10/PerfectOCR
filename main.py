@@ -122,7 +122,7 @@ class PerfectOCRWorkflow:
         base_name = os.path.splitext(original_file_name)[0]
 
         # CREAR ProcessingJob
-        job = ProcessingJob(source_uri=input_path)
+        # job = ProcessingJob(source_uri=input_path)
 
         ocr_images_dict = None
         ocr_results_payload = None
@@ -131,7 +131,7 @@ class PerfectOCRWorkflow:
         image_array = cv2.imread(input_path)
         if image_array is None:
             return self._build_error_response("error_loading_image", original_file_name, "No se pudo cargar la imagen", "load")
-        job.image_data = image_array
+        # job.image_data = image_array
 
         # FASE 1: PREPROCESAMIENTO (ya incluye evaluación interna)
         phase1_start = time.perf_counter()
@@ -178,8 +178,8 @@ class PerfectOCRWorkflow:
         logger.info(f"Fase de vectorización tomó: {phase4_time:.3f}s.")
 
         # Main recibe alerta: "Vectorización completada"
-        job.status = "COMPLETED"
-        job.final_result = vectorization_payload
+        #job.status = "COMPLETED"
+        #job.final_result = vectorization_payload
 
         final_payload = vectorization_payload
 

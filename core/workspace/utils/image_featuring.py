@@ -1,4 +1,6 @@
 # PerfectOCR/core/workspace/utils/image_featuring.py
+from sklearnex import patch_sklearn
+patch_sklearn
 import numpy as np
 from skimage.feature import graycomatrix, graycoprops, local_binary_pattern
 from skimage.measure import shannon_entropy

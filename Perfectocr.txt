@@ -1,46 +1,54 @@
-2025-07-18 04:44:44 - INFO - managment.cache_manager:37 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
-2025-07-18 04:44:44 - INFO - core.coordinators.ocr_coordinator:29 - ocr_coordinator - Inicializando PaddleOCR...
-2025-07-18 04:44:44 - DEBUG - core.workflow.ocr.paddle_wrapper:16 - paddle_wrapper - PaddleOCRWrapper inicializando con config: {'use_angle_cls': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es', 'rec_model_dir': 'C:/PerfectOCR/data/models/paddle/rec/es', 'cls_model_dir': 'C:/PerfectOCR/data/models/paddle/cls'}
-2025-07-18 04:44:45 - INFO - core.coordinators.ocr_coordinator:32 - ocr_coordinator - PaddleOCR inicializado: 0.662s
-2025-07-18 04:44:45 - INFO - core.coordinators.preprocessing_coordinator:68 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
-2025-07-18 04:44:45 - INFO - core.coordinators.preprocessing_coordinator:72 - preprocessing_coordinator - 0 Iniciando corrección de inclinación...
-2025-07-18 04:44:46 - INFO - core.workflow.preprocessing.cleanner:51 - cleanner - Quick enhance aplicado: Varianza=3726.4, Desv. Est.=57.8, Intensidad Media=225.9
-2025-07-18 04:44:46 - INFO - core.coordinators.preprocessing_coordinator:75 - preprocessing_coordinator - 0 Limpieza completada en 0.2263s
-2025-07-18 04:44:46 - INFO - core.coordinators.preprocessing_coordinator:79 - preprocessing_coordinator - 1 Iniciando corrección de inclinación...
-2025-07-18 04:44:46 - INFO - core.workflow.preprocessing.deskew:68 - deskew - -> Aplicando corrección de inclinación: -0.94 grados.
-2025-07-18 04:44:46 - INFO - core.workflow.preprocessing.deskew:98 - deskew - Detectados 213 polígonos de texto
-2025-07-18 04:44:46 - DEBUG - core.workflow.preprocessing.deskew:114 - deskew - Detectados 213 polígonos en imagen corregida
-2025-07-18 04:44:46 - INFO - core.coordinators.preprocessing_coordinator:82 - preprocessing_coordinator - 1 Corrección de inclinación completada en 0.9542s
-2025-07-18 04:44:46 - INFO - core.coordinators.preprocessing_coordinator:86 - preprocessing_coordinator - [2/8] Iniciando detección y corrección de moiré...
-2025-07-18 04:44:46 - ERROR - core.coordinators.preprocessing_coordinator:163 - preprocessing_coordinator - Preprocessing: Falló el pipeline del worker: MoireDenoiser._detect_moire_patterns() takes 2 positional arguments but 4 were given
+2025-07-18 16:24:31 - INFO - managment.cache_manager:37 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
+2025-07-18 16:24:31 - INFO - core.coordinators.ocr_coordinator:29 - ocr_coordinator - Inicializando PaddleOCR...
+2025-07-18 16:24:31 - DEBUG - core.workflow.ocr.paddle_wrapper:16 - paddle_wrapper - PaddleOCRWrapper inicializando con config: {'use_angle_cls': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es', 'rec_model_dir': 'C:/PerfectOCR/data/models/paddle/rec/es', 'cls_model_dir': 'C:/PerfectOCR/data/models/paddle/cls'}
+2025-07-18 16:24:32 - INFO - core.coordinators.ocr_coordinator:32 - ocr_coordinator - PaddleOCR inicializado: 0.606s
+2025-07-18 16:24:32 - INFO - core.coordinators.preprocessing_coordinator:68 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-18 16:24:32 - INFO - core.coordinators.preprocessing_coordinator:72 - preprocessing_coordinator - 0 Iniciando limpiez rapida
+2025-07-18 16:24:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-07-18 16:24:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 41 9
+2025-07-18 16:24:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'iTXt' 62 1232
+2025-07-18 16:24:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 1306 8192
+2025-07-18 16:24:32 - INFO - core.coordinators.preprocessing_coordinator:75 - preprocessing_coordinator - 0 Limpieza completada en 0.2779s
+2025-07-18 16:24:32 - INFO - core.coordinators.preprocessing_coordinator:79 - preprocessing_coordinator - 1 Iniciando corrección de inclinación...
+2025-07-18 16:24:32 - ERROR - core.coordinators.preprocessing_coordinator:163 - preprocessing_coordinator - Preprocessing: Falló el pipeline del worker: 'int' object has no attribute 'shape'
 Traceback (most recent call last):
-  File "C:\perfectocr\core\coordinators\preprocessing_coordinator.py", line 87, in apply_preprocessing_pipelines
-    moire_img = self._moire._detect_moire_patterns(deskewed_img, polygons_coords, img_dims)
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: MoireDenoiser._detect_moire_patterns() takes 2 positional arguments but 4 were given
-2025-07-18 04:44:46 - INFO - __main__:144 - main - Preprocesamiento: 1.759s
-2025-07-18 04:44:46 - DEBUG - core.coordinators.ocr_coordinator:57 - ocr_coordinator - OCR recibió imágenes para: []
-2025-07-18 04:44:46 - ERROR - core.coordinators.ocr_coordinator:72 - ocr_coordinator - PaddleOCR habilitado pero imagen faltante
-2025-07-18 04:44:46 - INFO - __main__:163 - main - OCR: 0.000s
-2025-07-18 04:44:47 - INFO - core.coordinators.preprocessing_coordinator:68 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
-2025-07-18 04:44:47 - INFO - core.coordinators.preprocessing_coordinator:72 - preprocessing_coordinator - 0 Iniciando corrección de inclinación...
-2025-07-18 04:44:47 - INFO - core.workflow.preprocessing.cleanner:51 - cleanner - Quick enhance aplicado: Varianza=2584.4, Desv. Est.=48.0, Intensidad Media=229.5
-2025-07-18 04:44:47 - INFO - core.coordinators.preprocessing_coordinator:75 - preprocessing_coordinator - 0 Limpieza completada en 0.2393s
-2025-07-18 04:44:47 - INFO - core.coordinators.preprocessing_coordinator:79 - preprocessing_coordinator - 1 Iniciando corrección de inclinación...
-2025-07-18 04:44:47 - INFO - core.workflow.preprocessing.deskew:68 - deskew - -> Aplicando corrección de inclinación: -0.98 grados.
-2025-07-18 04:44:47 - INFO - core.workflow.preprocessing.deskew:98 - deskew - Detectados 194 polígonos de texto
-2025-07-18 04:44:47 - DEBUG - core.workflow.preprocessing.deskew:114 - deskew - Detectados 194 polígonos en imagen corregida
-2025-07-18 04:44:47 - INFO - core.coordinators.preprocessing_coordinator:82 - preprocessing_coordinator - 1 Corrección de inclinación completada en 0.3905s
-2025-07-18 04:44:47 - INFO - core.coordinators.preprocessing_coordinator:86 - preprocessing_coordinator - [2/8] Iniciando detección y corrección de moiré...
-2025-07-18 04:44:47 - ERROR - core.coordinators.preprocessing_coordinator:163 - preprocessing_coordinator - Preprocessing: Falló el pipeline del worker: MoireDenoiser._detect_moire_patterns() takes 2 positional arguments but 4 were given
+  File "C:\PerfectOCR\core\coordinators\preprocessing_coordinator.py", line 80, in apply_preprocessing_pipelines
+    deskewed_img, polygons_coords, img_dims, dpi_img = self._deskewer._get_polygons(clean_img, dpi_img)
+                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PerfectOCR\core\workflow\preprocessing\deskew.py", line 117, in _get_polygons
+    deskewed_img, img_dims = self._detect_angle(clean_img, dpi_img)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PerfectOCR\core\workflow\preprocessing\deskew.py", line 52, in _detect_angle
+    h, w = clean_img.shape[:2]
+           ^^^^^^^^^^^^^^^
+AttributeError: 'int' object has no attribute 'shape'
+2025-07-18 16:24:32 - INFO - __main__:144 - main - Preprocesamiento: 0.294s
+2025-07-18 16:24:32 - DEBUG - core.coordinators.ocr_coordinator:57 - ocr_coordinator - OCR recibió imágenes para: []
+2025-07-18 16:24:32 - ERROR - core.coordinators.ocr_coordinator:72 - ocr_coordinator - PaddleOCR habilitado pero imagen faltante
+2025-07-18 16:24:32 - INFO - __main__:163 - main - OCR: 0.000s
+2025-07-18 16:24:32 - INFO - core.coordinators.preprocessing_coordinator:68 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-18 16:24:32 - INFO - core.coordinators.preprocessing_coordinator:72 - preprocessing_coordinator - 0 Iniciando limpiez rapida
+2025-07-18 16:24:33 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-07-18 16:24:33 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 41 9
+2025-07-18 16:24:33 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'iTXt' 62 1232
+2025-07-18 16:24:33 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 1306 8192
+2025-07-18 16:24:33 - INFO - core.coordinators.preprocessing_coordinator:75 - preprocessing_coordinator - 0 Limpieza completada en 0.2540s
+2025-07-18 16:24:33 - INFO - core.coordinators.preprocessing_coordinator:79 - preprocessing_coordinator - 1 Iniciando corrección de inclinación...
+2025-07-18 16:24:33 - ERROR - core.coordinators.preprocessing_coordinator:163 - preprocessing_coordinator - Preprocessing: Falló el pipeline del worker: 'int' object has no attribute 'shape'
 Traceback (most recent call last):
-  File "C:\perfectocr\core\coordinators\preprocessing_coordinator.py", line 87, in apply_preprocessing_pipelines
-    moire_img = self._moire._detect_moire_patterns(deskewed_img, polygons_coords, img_dims)
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: MoireDenoiser._detect_moire_patterns() takes 2 positional arguments but 4 were given
-2025-07-18 04:44:47 - INFO - __main__:144 - main - Preprocesamiento: 0.636s
-2025-07-18 04:44:47 - DEBUG - core.coordinators.ocr_coordinator:57 - ocr_coordinator - OCR recibió imágenes para: []
-2025-07-18 04:44:47 - ERROR - core.coordinators.ocr_coordinator:72 - ocr_coordinator - PaddleOCR habilitado pero imagen faltante
-2025-07-18 04:44:47 - INFO - __main__:163 - main - OCR: 0.000s
-2025-07-18 04:44:47 - INFO - __main__:279 - main - Procesamiento finalizado, iniciando limpieza de caché.
-2025-07-18 04:44:47 - INFO - managment.cache_manager:49 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
+  File "C:\PerfectOCR\core\coordinators\preprocessing_coordinator.py", line 80, in apply_preprocessing_pipelines
+    deskewed_img, polygons_coords, img_dims, dpi_img = self._deskewer._get_polygons(clean_img, dpi_img)
+                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PerfectOCR\core\workflow\preprocessing\deskew.py", line 117, in _get_polygons
+    deskewed_img, img_dims = self._detect_angle(clean_img, dpi_img)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PerfectOCR\core\workflow\preprocessing\deskew.py", line 52, in _detect_angle
+    h, w = clean_img.shape[:2]
+           ^^^^^^^^^^^^^^^
+AttributeError: 'int' object has no attribute 'shape'
+2025-07-18 16:24:33 - INFO - __main__:144 - main - Preprocesamiento: 0.260s
+2025-07-18 16:24:33 - DEBUG - core.coordinators.ocr_coordinator:57 - ocr_coordinator - OCR recibió imágenes para: []
+2025-07-18 16:24:33 - ERROR - core.coordinators.ocr_coordinator:72 - ocr_coordinator - PaddleOCR habilitado pero imagen faltante
+2025-07-18 16:24:33 - INFO - __main__:163 - main - OCR: 0.000s
+2025-07-18 16:24:33 - INFO - __main__:279 - main - Procesamiento finalizado, iniciando limpieza de caché.
+2025-07-18 16:24:33 - INFO - managment.cache_manager:49 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
