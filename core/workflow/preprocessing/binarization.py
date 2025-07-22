@@ -84,11 +84,6 @@ class Binarizator:
                     binarized_img = image_to_binarize
         
         return binarized_img
-    
-    
-        
-
-
 
         # Post-procesamiento para mejorar calidad
         

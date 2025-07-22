@@ -5,7 +5,7 @@ workflow:
   temp_folder: "C:/PerfectOCR/data/temp"
   log_level: "DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
   project_root: "C:/PerfectOCR" 
-  max_workers: 6  # 8 hilos - 2 reservados = 6 óptimo
+  max_workers: 4   # 8 hilos - 2 reservados = 6 óptimo
   batch_mode: true  # true = procesa todos los archivos, false = solo el primero
 
 roots_paths:
@@ -46,8 +46,8 @@ roots_paths:
     - "estructura_inspiron.txt"
     - "estructura.txt"
 
-image_preparation:
-  quality_assessment_rules:
+polygonal:
+  polygon_config:
     deskew:
       enabled: true
       min_angle_for_correction: 0.1
@@ -57,16 +57,21 @@ image_preparation:
       hough_max_line_gap_px: 20
       hough_angle_filter_range_degrees: [-20.0, 20.0]
 
-      paddle:
-        use_angle_cls: false
-        lang: "es"
-        show_log: false
-        use_gpu: false
-        enable_mkldnn: true 
-        det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
-        rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
-        cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
+    paddle:
+      use_angle_cls: false
+      lang: "es"
+      show_log: false
+      use_gpu: false
+      enable_mkldnn: true 
+      det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
+      rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
+      cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
+      
+    basic:
+    
 
+image_preparation:
+  quality_assessment_rules:
     denoise:
       median_filter:
         kernel_size: 3
@@ -154,4 +159,3 @@ vectorization_process:
     
   density_map_path:
     density_map: "/.density_encoder.json"
-

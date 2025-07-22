@@ -79,10 +79,7 @@ class WorkflowManager:
             result = self._process_batch_mode(image_paths, output_dir, workers_override)
         else:
             result = self._process_interactive_mode(image_paths, output_dir)
-        
-        # Generar el único y final archivo Excel consolidado
-        self._generate_final_results_excel(result, output_dir)
-        
+                    
         return result
     
     def _process_interactive_mode(self, image_paths: List[Path], output_dir: str) -> Dict[str, Any]:

@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import time
 from typing import Dict, Optional, Any, Tuple, List
+from core.coordinators.polygon_coordinator import PolygonCoordinator
 from core.coordinators.preprocessing_coordinator import PreprocessingCoordinator
 from core.coordinators.ocr_coordinator import OCREngineCoordinator
 from core.coordinators.tensor_coordinator import TensorCoordinator
@@ -65,6 +66,7 @@ class PerfectOCRWorkflow:
         self.config_loader = ConfigManager(master_config_path)
         self.config = self.config_loader.config
         self.project_root = PROJECT_ROOT
+        self._poly_coordinator: Optional[PolygonCoordinator] = None
         self._preprocessing_coordinator: Optional[PreprocessingCoordinator] = None
         self._ocr_coordinator: Optional[OCREngineCoordinator] = None
         self._tensor_coordinator: Optional[TensorCoordinator] = None
@@ -80,6 +82,17 @@ class PerfectOCRWorkflow:
             output_flags=self.output_flags,
             workflow_config=self.workflow_config
         )
+        
+    @property
+    def polygon_coordinator(self) -> PolygonCoordinator:
+        if self._poly_coordinator is None:
+            self._poly_coordinator = PolygonCoordinator(
+                config=self.config_loader.get_polygonal_config(), 
+                project_root=self.project_root,
+                output_flags=self.output_flags
+            )
+        return self._poly_coordinator
+
         
     @property
     def preprocessing_coordinator(self) -> PreprocessingCoordinator:
@@ -135,7 +148,7 @@ class PerfectOCRWorkflow:
 
         # FASE 1: PREPROCESAMIENTO (ya incluye evaluación interna)
         phase1_start = time.perf_counter()
-        preproc_results, time_prep = self.preprocessing_coordinator.apply_preprocessing_pipelines(
+        preproc_results, time_prep = self.polygon_coordinator._generate_polygons(
             image_array,
             input_path
         )

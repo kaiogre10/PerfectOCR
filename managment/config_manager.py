@@ -48,13 +48,21 @@ class ConfigManager:
         batch_config = self.config.get('batch_processing', {})
         cpu_count = os.cpu_count() or 4
         max_cores = batch_config.get('max_physical_cores', 4)
-        add_extra = batch_config.get('add_extra_worker', True)        
+        add_extra = batch_config.get('add_extra_worker', True)  
         workers = min(max_cores, cpu_count - 1)
         if add_extra and workers < cpu_count:
             workers += 1
         return max(1, workers)
     
     # --- MÉTODOS ESPECÍFICOS PARA CADA COORDINADOR ---
+    
+    def get_polygonal_config(self) -> Dict[str, Any]:
+        """Obtiene configuración de extracción de los polígonos"""
+        output_config = self.config.get('output_config', {})
+        return {
+            'geometry': self.config.get('polygonal', {}),
+            'output_flags': output_config.get('enabled_outputs', {})
+        }
     
     def get_preprocessing_coordinator_config(self) -> Dict[str, Any]:
         """Proporciona la configuración completa para PreprocessingCoordinator."""

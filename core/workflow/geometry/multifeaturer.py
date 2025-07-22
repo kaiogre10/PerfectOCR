@@ -15,9 +15,6 @@ class MultiFeacturer:
         img_area = binary_image.shape[0] * binary_image.shape[1]
         
         for region in regions:
-            # Filtrar regiones demasiado pequeñas (ruido) o demasiado grandes (fondo)
-            if region.area < 10 or region.area > 0.9 * img_area:
-                continue
                 
             features = {
                 'area': region.area,
@@ -33,3 +30,5 @@ class MultiFeacturer:
             features_list.append(features)
         
         return features_list
+
+        

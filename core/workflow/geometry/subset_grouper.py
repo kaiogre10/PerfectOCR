@@ -1,4 +1,4 @@
-# PerfectOCR/core/vectorization/subset_grouper.py
+# PerfectOCR/core/workflow/geometry/subset_grouper.py
 import logging
 import numpy as np
 from typing import List, Dict, Any

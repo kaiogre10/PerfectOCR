@@ -14,7 +14,7 @@ class MoireDenoiser:
         self.corrections = config
         self.denoise_corrections = config.get('denoise', {})
 
-    def _detect_moire_patterns(self, deskewed_img: np.ndarray) -> tuple[np.ndarray, List[List[List[float]]], tuple[int, int]]:
+    def _detect_moire_patterns(self, deskewed_img: np.ndarray) -> np.ndarray:
 
         try:
             from mkl import set_num_threads
@@ -103,4 +103,4 @@ class MoireDenoiser:
         else:
             moire_img = deskewed_img
 
-        return moire_img, img_dims, poly_moire
+        return moire_img
