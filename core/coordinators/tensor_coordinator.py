@@ -3,7 +3,6 @@ import logging
 import time
 import os
 from typing import List, Dict, Any, Tuple, Optional
-from core.workflow.vectorial_transformation.subset_grouper import SubsetConstructor
 #from core.workflow.vectorization.density_scanner import DensityScanner
 from core.workflow.vectorial_transformation.tensorizer import VectorTensorizer
 from core.workspace.utils.output_handlers import OutputHandler, TextOutputHandler
@@ -34,7 +33,6 @@ class TensorCoordinator:
         self.tensor_config = config.get('vectorization_process', {})
         self.density_map = config.get('density_map_path', {})
 
-        self._subset_grouper = SubsetConstructor()
         self._vector_tensorizer = VectorTensorizer(config=self.config, project_root=self.project_root, density_map=self.density_map)
         
         

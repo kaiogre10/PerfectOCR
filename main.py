@@ -9,8 +9,8 @@ from typing import Dict, Optional, Any, Tuple, List
 from core.coordinators.polygon_coordinator import PolygonCoordinator
 from core.coordinators.preprocessing_coordinator import PreprocessingCoordinator
 from core.coordinators.ocr_coordinator import OCREngineCoordinator
-from core.coordinators.tensor_coordinator import TensorCoordinator
-#from coordinators.text_cleaning_coordinator import TextCleaningCoordinator
+# from core.coordinators.tensor_coordinator import TensorCoordinator
+# from coordinators.text_cleaning_coordinator import TextCleaningCoordinator
 from core.workspace.utils.output_handlers import OutputHandler
 from managment.cache_manager import CacheManager
 from core.workspace.utils.encoders import NumpyEncoder
@@ -69,7 +69,7 @@ class PerfectOCRWorkflow:
         self._poly_coordinator: Optional[PolygonCoordinator] = None
         self._preprocessing_coordinator: Optional[PreprocessingCoordinator] = None
         self._ocr_coordinator: Optional[OCREngineCoordinator] = None
-        self._tensor_coordinator: Optional[TensorCoordinator] = None
+        # self._tensor_coordinator: Optional[TensorCoordinator] = None
         #self._text_cleaning_coordinator: Optional[TextCleaningCoordinator] = None
         output_config = self.config.get('output_config', {})
         self.output_handler = OutputHandler(config=output_config)
@@ -89,7 +89,6 @@ class PerfectOCRWorkflow:
             self._poly_coordinator = PolygonCoordinator(
                 config=self.config_loader.get_polygonal_config(), 
                 project_root=self.project_root,
-                output_flags=self.output_flags
             )
         return self._poly_coordinator
 
@@ -108,15 +107,15 @@ class PerfectOCRWorkflow:
         """Acceso al coordinador OCR ya inicializado."""
         return self._ocr_coordinator
 
-    @property
-    def tensor_coordinator(self) -> TensorCoordinator:
-        if self._tensor_coordinator is None:
-            self._tensor_coordinator = TensorCoordinator(
-                config=self.config_loader.get_tensor_coordinator_config(), 
-                project_root=self.project_root,
-                output_flags=self.output_flags
-            )
-        return self._tensor_coordinator
+    # @property
+    # def tensor_coordinator(self) -> TensorCoordinator:
+    #     if self._tensor_coordinator is None:
+    #         self._tensor_coordinator = TensorCoordinator(
+    #             config=self.config_loader.get_tensor_coordinator_config(), 
+    #             project_root=self.project_root,
+    #             output_flags=self.output_flags
+    #         )
+    #     return self._tensor_coordinator
     
 #    @property
 #    def text_cleaning_coordinator(self) -> TextCleaningCoordinator:
@@ -181,20 +180,21 @@ class PerfectOCRWorkflow:
         ocr_results_json_path = ocr_results_payload.get("ocr_raw_json_path")
 
         # FASE 4: Vectorización y agrupación de líneas
-        phase4_start = time.perf_counter()
-        vectorization_payload = self.tensor_coordinator.orchestrate_vectorization_and_detection(
-            ocr_results_payload=ocr_results_payload,
-            doc_id=base_name
-        )
-        phase4_time = time.perf_counter() - phase4_start
-        processing_times_summary["3_vectorization"] = round(phase4_time, 4)
-        logger.info(f"Fase de vectorización tomó: {phase4_time:.3f}s.")
+        # phase4_start = time.perf_counter()
+        # vectorization_payload = self.tensor_coordinator.orchestrate_vectorization_and_detection(
+        #     ocr_results_payload=ocr_results_payload,
+        #     doc_id=base_name
+        # )
+        # phase4_time = time.perf_counter() - phase4_start
+        # processing_times_summary["3_vectorization"] = round(phase4_time, 4)
+        # logger.info(f"Fase de vectorización tomó: {phase4_time:.3f}s.")
 
         # Main recibe alerta: "Vectorización completada"
         #job.status = "COMPLETED"
         #job.final_result = vectorization_payload
 
-        final_payload = vectorization_payload
+        # final_payload = vectorization_payload
+        final_payload = ocr_results_payload  # Usar el payload de OCR como resultado final si tensor_coordinator está desactivado
 
         # RESPUESTA FINAL
         final_response = self._build_final_response(

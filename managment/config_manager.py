@@ -60,7 +60,8 @@ class ConfigManager:
         """Obtiene configuración de extracción de los polígonos"""
         output_config = self.config.get('output_config', {})
         return {
-            'geometry': self.config.get('polygonal', {}),
+            'polygon_config': self.config.get('polygonal', {}).get('polygon_config', {}),
+            'output_config': output_config,  # Incluir toda la configuración de output
             'output_flags': output_config.get('enabled_outputs', {})
         }
     

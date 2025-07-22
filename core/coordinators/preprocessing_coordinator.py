@@ -62,97 +62,63 @@ class PreprocessingCoordinator:
             pipeline_start = time.time()
             logger.info("=== INICIANDO PIPELINE DE PREPROCESAMIENTO ===")
             
-            # Extracción de polígonos
+            # 3. Remoción de moiré
             step_start = time.time()
-            logger.info("Iniciando extracción de polígonos imagen")
-            list_of_polygon_images = self._poly.extract_all_polygons(deskewed_img, polygons_coords)
-            
-            if not list_of_polygon_images:
-                logger.warning("No se extrajeron imágenes de polígonos. Finalizando preprocesamiento.")
-                return {"ocr_images": {}}, 0.0
-
+            logger.info("[2/8] Iniciando detección y corrección de moiré...")
+            # La firma de _detect_moire_patterns necesita ser ajustada
+            moire_img = self._moire._detect_moire_patterns(polygon_img)
             step_duration = time.time() - step_start
-            logger.info(f"Extracción de {len(list_of_polygon_images)} polígonos completada en: {step_duration:.4f}s")
-    
-            processed_ocr_images = {}
-            # Iterar sobre cada imagen de polígono recortada
-            for i, polygon_img in enumerate(list_of_polygon_images):
-                logger.info(f"Procesando Polígono {i+1}/{len(list_of_polygon_images)}")
-            
-            # 2. Extracción de polígonos
+            logger.info(f"[2/8] Corrección de moiré completada en {step_duration:.4f}s")
+
+            # 4. Filtro de ruido sal y pimienta
             step_start = time.time()
-            logger.info("Iniciando extracción de polígonos")
-            list_of_polygon_images = self._poly.extract_all_polygons(deskewed_img, polygons_coords)
-            
-            if not list_of_polygon_images:
-                logger.warning("No se extrajeron imágenes de polígonos. Finalizando preprocesamiento.")
-                return {"ocr_images": {}}, 0.0
-
+            logger.info("[3/8] Iniciando filtrado de ruido sal y pimienta...")
+            sp_img = self._sp._estimate_salt_pepper_noise(moire_img)
             step_duration = time.time() - step_start
-            logger.info(f"Extracción de {len(list_of_polygon_images)} polígonos completada en: {step_duration:.4f}s")
-    
-            processed_ocr_images = {}
-            # Iterar sobre cada imagen de polígono recortada
-            for i, polygon_img in enumerate(list_of_polygon_images):
-                logger.info(f"Procesando Polígono {i+1}/{len(list_of_polygon_images)}")
+            logger.info(f"[3/8] Filtrado de ruido sal y pimienta completado en {step_duration:.4f}s")
 
-                # 3. Remoción de moiré
-                step_start = time.time()
-                logger.info("[2/8] Iniciando detección y corrección de moiré...")
-                # La firma de _detect_moire_patterns necesita ser ajustada
-                moire_img = self._moire._detect_moire_patterns(polygon_img)
-                step_duration = time.time() - step_start
-                logger.info(f"[2/8] Corrección de moiré completada en {step_duration:.4f}s")
+            # 5. Filtro de ruido general
+            step_start = time.time()
+            logger.info("[4/8] Iniciando filtrado de ruido general...")
+            gauss_img = self._gauss._estimate_gaussian_noise(sp_img)
+            step_duration = time.time() - step_start
+            logger.info(f"[4/8] Filtrado de ruido general completado en {step_duration:.4f}s")
 
-                # 4. Filtro de ruido sal y pimienta
-                step_start = time.time()
-                logger.info("[3/8] Iniciando filtrado de ruido sal y pimienta...")
-                sp_img = self._sp._estimate_salt_pepper_noise(moire_img)
-                step_duration = time.time() - step_start
-                logger.info(f"[3/8] Filtrado de ruido sal y pimienta completado en {step_duration:.4f}s")
+            # 5. Corrección de sobreiluminación (comentado)
+            #if self._detect_overexposure(image):
+            #   image = self._apply_overexposure_correction(image)
 
-                # 5. Filtro de ruido general
-                step_start = time.time()
-                logger.info("[4/8] Iniciando filtrado de ruido general...")
-                gauss_img = self._gauss._estimate_gaussian_noise(sp_img)
-                step_duration = time.time() - step_start
-                logger.info(f"[4/8] Filtrado de ruido general completado en {step_duration:.4f}s")
+            # 6. Mejora de contraste
+            step_start = time.time()
+            logger.info("[5/8] Iniciando mejora de contraste...")
+            clahed_img = self._claher._estimate_contrast(gauss_img)
+            step_duration = time.time() - step_start
+            logger.info(f"[5/8] Mejora de contraste completada en {step_duration:.4f}s")
 
-                # 5. Corrección de sobreiluminación (comentado)
-                #if self._detect_overexposure(image):
-                #   image = self._apply_overexposure_correction(image)
+            # 7. Mejora de nitidez
+            step_start = time.time()
+            logger.info("[6/8] Iniciando mejora de nitidez...")
+            corrected_image = self._sharp._estimate_sharpness(clahed_img)
+            step_duration = time.time() - step_start
+            logger.info(f"[6/8] Mejora de nitidez completada en {step_duration:.4f}s")
 
-                # 6. Mejora de contraste
-                step_start = time.time()
-                logger.info("[5/8] Iniciando mejora de contraste...")
-                clahed_img = self._claher._estimate_contrast(gauss_img)
-                step_duration = time.time() - step_start
-                logger.info(f"[5/8] Mejora de contraste completada en {step_duration:.4f}s")
+            image_to_binarize = corrected_image.copy()
+            # 8. Binarización por separado (solo para las features)
+            step_start = time.time()
+            logger.info("[7/8] Iniciando binarización...")
+            binarized_img = self._bin._estimate_binarization(image_to_binarize)
+            step_duration = time.time() - step_start
+            logger.info(f"[7/8] Binarización completada en {step_duration:.4f}s")
 
-                # 7. Mejora de nitidez
-                step_start = time.time()
-                logger.info("[6/8] Iniciando mejora de nitidez...")
-                corrected_image = self._sharp._estimate_sharpness(clahed_img)
-                step_duration = time.time() - step_start
-                logger.info(f"[6/8] Mejora de nitidez completada en {step_duration:.4f}s")
+            # 9. Generación de Features
+            step_start = time.time()
+            logger.info("[8/8] Generando features...")
+            features = self._features._extract_region_features(binarized_img)
+            step_duration = time.time() - step_start
+            logger.info(f"[8/8] Features generadas en {step_duration:.4f}s")
 
-                image_to_binarize = corrected_image.copy()
-                # 8. Binarización por separado (solo para las features)
-                step_start = time.time()
-                logger.info("[7/8] Iniciando binarización...")
-                binarized_img = self._bin._estimate_binarization(image_to_binarize)
-                step_duration = time.time() - step_start
-                logger.info(f"[7/8] Binarización completada en {step_duration:.4f}s")
-
-                # 9. Generación de Features
-                step_start = time.time()
-                logger.info("[8/8] Generando features...")
-                features = self._features._extract_region_features(binarized_img)
-                step_duration = time.time() - step_start
-                logger.info(f"[8/8] Features generadas en {step_duration:.4f}s")
-
-                # Guardar la imagen final del polígono procesado
-                processed_ocr_images[f"polygon_{i}"] = corrected_image
+            # Guardar la imagen final del polígono procesado
+            processed_ocr_images[f"polygon_{i}"] = corrected_image
 
             total_duration = time.time() - pipeline_start
             logger.info(f"PIPELINE COMPLETADO - Tiempo total: {total_duration:.3f}s")

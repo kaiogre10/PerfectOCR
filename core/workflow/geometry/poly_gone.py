@@ -1,81 +1,96 @@
 # PerfectOCR/core/workflow/preprocessing/poly_gone.py
 import cv2
 import numpy as np
+import logging
+import os
 from typing import Tuple, List, Dict, Any
+from core.workspace.utils.output_handlers import ImageOutputHandler
 
+logger = logging.getLogger(__name__)
 
 class PolygonExtractor:
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config = config
+        self.image_saver = ImageOutputHandler()
 
-    def extract_all_polygons(self, deskewed_img: np.ndarray, all_polygons_coords: List[List[List[float]]]) -> List[np.ndarray]:
+    def _add_cropped_images_to_lines(self, deskewed_img: np.ndarray, reconstructed_lines: List[Dict], metadata: Dict, input_filename: str = "", output_config: Dict = None) -> Dict:
         """
-        Extrae cada polígono de la lista de coordenadas y devuelve una lista de imágenes recortadas.
+        Añade las imágenes recortadas de cada línea al diccionario correspondiente y opcionalmente las guarda.
         """
-        if not all_polygons_coords:
-            return []
+        if not reconstructed_lines:
+            return {"lines": [], "metadata": metadata}
 
-        cropped_images = []
-        padding = 5  # Padding para evitar cortar bordes
-
-        for single_polygon_coords in all_polygons_coords:
-            if not single_polygon_coords or len(single_polygon_coords) < 3:
-                continue
-
-            try:
-                arr = np.array(single_polygon_coords, dtype=np.int32)
-                rect = cv2.boundingRect(arr)
-                x, y, w, h = rect
-
-                # Aplicar padding
-                x_pad, y_pad = max(0, x - padding), max(0, y - padding)
-                w_pad, h_pad = w + (2 * padding), h + (2 * padding)
-
-                # Asegurar que el recorte no se salga de los límites de la imagen
-                img_h, img_w = deskewed_img.shape[:2]
-                x_end = min(x_pad + w_pad, img_w)
-                y_end = min(y_pad + h_pad, img_h)
-
-                # Recortar y añadir a la lista
-                polygon_img = deskewed_img[y_pad:y_end, x_pad:x_end]
-                if polygon_img.size > 0:
-                    cropped_images.append(polygon_img)
-            except Exception as e:
-                print(f"Error recortando polígono: {e}")
-                continue
-
-        return cropped_images
-
-    def _extract_polygon_image(self, deskewed_img: np.ndarray, polygons_coords: List[List[float]], metadata: Tuple[int, int]) -> Tuple[np.ndarray, Tuple[int, int, int, int], Tuple[int, int]]:
-        """Extrae la imagen de un único polígono y devuelve su ROI (Region of Interest) con un pequeño padding."""
-        # Esta función ahora puede considerarse obsoleta o para uso de un solo polígono.
-        # Por simplicidad, la dejaremos como está pero no la usaremos en el flujo principal.
-        if not polygons_coords or len(polygons_coords) == 0:
-            raise ValueError("polygons_coords está vacío o None")
-        
-        all_points = []
-        for poly in polygons_coords:
-            all_points.extend(poly)
-
-        if not all_points:
-             raise ValueError("polygons_coords no contiene puntos válidos")
-        
-        arr = np.array(all_points, dtype=np.int32)
-
-        rect = cv2.boundingRect(arr)
-        x, y, w, h = rect
-
-        # Padding para evitar cortar bordes al procesar
-        padding = 5
-        x_pad, y_pad = max(0, x - padding), max(0, y - padding)
-        w_pad, h_pad = w + (2 * padding), h + (2 * padding)
-
-        # Asegurar que el polígono no se salga de los límites de la imagen
         img_h, img_w = deskewed_img.shape[:2]
-        x_end = min(x_pad + w_pad, img_w)
-        y_end = min(y_pad + h_pad, img_h)
+        padding = self.config.get('cropping_padding', 5)
+        
+        logger.info(f"Recortando {len(reconstructed_lines)} líneas de imagen de {img_w}x{img_h}")
 
-        polygon_img = deskewed_img[y_pad:y_end, x_pad:x_end]
+        # Verificar si el guardado de imágenes está habilitado
+        should_save_images = False
+        if output_config:
+            enabled_outputs = output_config.get('enabled_outputs', {})
+            should_save_images = enabled_outputs.get('cropped_line_images', False)
 
-        return polygon_img, (x_pad, y_pad, x_end - x_pad, y_end - y_pad), metadata
+        output_folder = None
+        base_name = "imagen"
+        
+        if should_save_images:
+            # Crear directorio para las imágenes recortadas
+            output_folder = os.path.join(self.project_root, "output", "cropped_lines")
+            os.makedirs(output_folder, exist_ok=True)
+            
+            # Obtener nombre base del archivo
+            if input_filename:
+                base_name = os.path.splitext(os.path.basename(input_filename))[0]
+
+        for line_idx, line in enumerate(reconstructed_lines):
+            try:
+                # Obtener el bounding box de la línea
+                min_x, min_y, max_x, max_y = map(int, line["line_bbox"])
+                
+                # Aplicar padding y asegurar límites de la imagen
+                x1 = max(0, min_x - padding)
+                y1 = max(0, min_y - padding)
+                x2 = min(img_w, max_x + padding)
+                y2 = min(img_h, max_y + padding)
+                
+                # Verificar que las coordenadas sean válidas
+                if x2 > x1 and y2 > y1:
+                    # Recortar la imagen de la línea
+                    cropped_img = deskewed_img[y1:y2, x1:x2]
+                    
+                    if cropped_img.size > 0:
+                        line["cropped_img"] = cropped_img
+                        
+                        # Guardar la imagen recortada solo si está habilitado
+                        if should_save_images:
+                            line_number = line_idx + 1  # Empezar desde 1
+                            output_filename = f"{base_name}_linea_{line_number:03d}.png"
+                            saved_path = self.image_saver.save(cropped_img, output_folder, output_filename)
+                            
+                            if saved_path:
+                                logger.info(f"Línea {line_number} guardada: {saved_path}")
+                                line["saved_image_path"] = saved_path
+                        
+                        logger.debug(f"Línea {line['line_id']} recortada: {cropped_img.shape}")
+                    else:
+                        logger.warning(f"Imagen vacía para línea {line['line_id']}")
+                        line["cropped_img"] = None
+                else:
+                    logger.warning(f"Coordenadas inválidas para línea {line['line_id']}: bbox={line['line_bbox']}")
+                    line["cropped_img"] = None
+                    
+            except Exception as e:
+                logger.error(f"Error recortando línea {line.get('line_id', 'desconocida')}: {e}")
+                line["cropped_img"] = None
+
+        if should_save_images:
+            logger.info(f"Guardado de imágenes recortadas habilitado: {len(reconstructed_lines)} imágenes procesadas")
+        else:
+            logger.debug("Guardado de imágenes recortadas deshabilitado")
+
+        return {
+            "lines": reconstructed_lines,
+            "metadata": metadata
+        }

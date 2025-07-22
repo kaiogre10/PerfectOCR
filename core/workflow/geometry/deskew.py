@@ -80,28 +80,82 @@ class Deskewer:
         
     def _detect_geometry(self, img_to_poly: np.ndarray, metadata: list[tuple]) -> List[List[List[float]]]:
         """Detecta geometría usando solo el detector de PaddleOCR."""
+        # Cambiar temporalmente el nivel de log para debug
+        old_level = logger.level
+        logger.setLevel(logging.DEBUG)
+        
         if not self.engine:
             logger.error("PaddleOCR engine no está inicializado")
-            return []
+            logger.setLevel(old_level)
+            return [], metadata
+        
+        # Log información de la imagen de entrada
+        img_shape = img_to_poly.shape
+        img_dtype = img_to_poly.dtype
+        img_min = img_to_poly.min()
+        img_max = img_to_poly.max()
+        logger.info(f"-> Imagen para detección: shape={img_shape}, dtype={img_dtype}, min={img_min}, max={img_max}")
+        
+        try:
+            results = self.engine.ocr(img_to_poly, cls=False, rec=False)
+            logger.info(f"-> PaddleOCR results type: {type(results)}")
+            logger.info(f"-> PaddleOCR results length: {len(results) if results else 'None'}")
             
-        results = self.engine.ocr(img_to_poly, cls=False, rec=False)
-        if not results or not results[0]:
-            logger.warning("No se detectaron regiones de texto")
-            return []
+            if results and len(results) > 0:
+                logger.info(f"-> results[0] type: {type(results[0])}")
+                logger.info(f"-> results[0] length: {len(results[0]) if results[0] else 'None'}")
+                if results[0]:
+                    logger.info(f"-> Primeros elementos de results[0]: {results[0][:2] if len(results[0]) >= 2 else results[0]}")
             
+            if not results or not results[0]:
+                logger.warning("No se detectaron regiones de texto")
+                logger.setLevel(old_level)
+                return [], metadata
+                
+        except Exception as e:
+            logger.error(f"Error en PaddleOCR.ocr(): {e}", exc_info=True)
+            logger.setLevel(old_level)
+            return [], metadata
+                
         polygons = []
         for line_counter, item_tuple in enumerate(results[0]):
-            if not isinstance(item_tuple, (list, tuple)) or len(item_tuple) < 2:
+            # Solo mostrar logs detallados para los primeros 3
+            if line_counter < 3:
+                logger.info(f"DEBUG: Procesando item {line_counter}: {type(item_tuple)}, len={len(item_tuple) if hasattr(item_tuple, '__len__') else 'N/A'}")
+            
+            # Con rec=False, item_tuple son directamente las coordenadas del polígono
+            if not isinstance(item_tuple, list) or len(item_tuple) < 3:
+                if line_counter < 3:
+                    logger.info(f"DEBUG: Item {line_counter} descartado: no es lista o menos de 3 puntos")
                 continue
-            bbox_polygon_raw = item_tuple[0]
+                
+            bbox_polygon_raw = item_tuple
+            if line_counter < 3:
+                logger.info(f"DEBUG: bbox_polygon_raw para item {line_counter}: {bbox_polygon_raw}")
+            
             try:
                 bbox_polygon = [[float(p[0]), float(p[1])] for p in bbox_polygon_raw]
                 if len(bbox_polygon) < 3:
+                    if line_counter < 3:
+                        logger.info(f"DEBUG: Polígono {line_counter} descartado: menos de 3 puntos ({len(bbox_polygon)})")
                     continue
                 polygons.append(bbox_polygon)
-            except (TypeError, ValueError, IndexError):
+                if line_counter < 3:
+                    logger.info(f"DEBUG: Polígono {line_counter} añadido: {bbox_polygon}")
+            except (TypeError, ValueError, IndexError) as e:
+                if line_counter < 3:
+                    logger.info(f"DEBUG: Error procesando polígono {line_counter}: {e}")
                 continue
+
+        # Solo mostrar resumen si hay muchos polígonos
+        if len(results[0]) > 3:
+            logger.info(f"DEBUG: Procesados {len(results[0]) - 3} polígonos adicionales...")
                 
+        cantidad_poligonos = len(polygons)
+        logger.info(f"-> Cantidad de polígonos encontrados: {cantidad_poligonos}")
+
+        # Restaurar el nivel de log original
+        logger.setLevel(old_level)
         return polygons, metadata
 
     
