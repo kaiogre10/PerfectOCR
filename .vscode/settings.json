@@ -18,9 +18,7 @@
     "editor.hover.sticky": false,
     "editor.overtypeCursorStyle": "block",
     "editor.roundedSelection": false,
-    "editor.rulers": [
-        
-    ],
+    "editor.rulers": [],
     "editor.scrollbar.vertical": "visible",
     "editor.scrollbar.horizontal": "visible",
     "editor.scrollbar.verticalScrollbarSize": 14,
@@ -29,9 +27,7 @@
     "notebook.lineNumbers": "on",
     "comments.visible": true,
     "terminal.integrated.altClickMovesCursor": true,
-    "notebook.editorOptionsCustomizations": {
-        
-    },
+    "notebook.editorOptionsCustomizations": {},
     "workbench.layoutControl.type": "toggles",
     "zenMode.centerLayout": false,
     "zenMode.fullScreen": false,
@@ -51,7 +47,6 @@
     "editor.formatOnSave": true,
     "files.exclude": {
         "**/__pycache__": true,
-        "**/.git": false,
         "**/.ini": true,
         "**/.pyc": true
     }
