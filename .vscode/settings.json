@@ -48,7 +48,11 @@
     },
     "workbench.editor.restoreViewState": false,
     "editor.definitionLinkOpensInPeek": true,
+    "editor.formatOnSave": true,
     "files.exclude": {
-        "**/.vscode": true
+        "**/__pycache__": true,
+        "**/.git": false,
+        "**/.ini": true,
+        "**/.pyc": true
     }
 }

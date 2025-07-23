@@ -1,103 +1,102 @@
-2025-07-22 07:46:28 - INFO - managment.cache_manager:37 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
-2025-07-22 07:46:28 - INFO - core.coordinators.ocr_coordinator:29 - ocr_coordinator - Inicializando PaddleOCR...
-2025-07-22 07:46:28 - DEBUG - core.workflow.ocr.paddle_wrapper:16 - paddle_wrapper - PaddleOCRWrapper inicializando con config: {'use_angle_cls': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es', 'rec_model_dir': 'C:/PerfectOCR/data/models/paddle/rec/es', 'cls_model_dir': 'C:/PerfectOCR/data/models/paddle/cls'}
-2025-07-22 07:46:29 - INFO - core.coordinators.ocr_coordinator:32 - ocr_coordinator - PaddleOCR inicializado: 0.604s
-2025-07-22 07:46:29 - INFO - core.coordinators.polygon_coordinator:45 - polygon_coordinator - === INICIANDO GENERACIÓN DE POLIGONAL ===
-2025-07-22 07:46:29 - INFO - core.coordinators.polygon_coordinator:49 - polygon_coordinator - Iniciando limpieza rapida
-2025-07-22 07:46:30 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
-2025-07-22 07:46:30 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
-2025-07-22 07:46:30 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
-2025-07-22 07:46:30 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
-2025-07-22 07:46:30 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
-2025-07-22 07:46:30 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:52 - polygon_coordinator - Limpieza completada en 0.1990s
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:56 - polygon_coordinator - Iniciando corrección de inclinación
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:70 - deskew - -> Aplicando corrección de inclinación: -1.01 grados.
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:97 - deskew - -> Imagen para detección: shape=(2954, 2056), dtype=uint8, min=0, max=255
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:101 - deskew - -> PaddleOCR results type: <class 'list'>
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:102 - deskew - -> PaddleOCR results length: 1
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:105 - deskew - -> results[0] type: <class 'list'>
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:106 - deskew - -> results[0] length: 56
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:108 - deskew - -> Primeros elementos de results[0]: [[[964.0, 2917.0], [1117.0, 2917.0], [1117.0, 2948.0], [964.0, 2948.0]], [[646.0, 2754.0], [1389.0, 2754.0], [1389.0, 2816.0], [646.0, 2816.0]]]
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:124 - deskew - DEBUG: Procesando item 0: <class 'list'>, len=4
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:134 - deskew - DEBUG: bbox_polygon_raw para item 0: [[964.0, 2917.0], [1117.0, 2917.0], [1117.0, 2948.0], [964.0, 2948.0]]
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:144 - deskew - DEBUG: Polígono 0 añadido: [[964.0, 2917.0], [1117.0, 2917.0], [1117.0, 2948.0], [964.0, 2948.0]]
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:124 - deskew - DEBUG: Procesando item 1: <class 'list'>, len=4
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:134 - deskew - DEBUG: bbox_polygon_raw para item 1: [[646.0, 2754.0], [1389.0, 2754.0], [1389.0, 2816.0], [646.0, 2816.0]]
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:144 - deskew - DEBUG: Polígono 1 añadido: [[646.0, 2754.0], [1389.0, 2754.0], [1389.0, 2816.0], [646.0, 2816.0]]
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:124 - deskew - DEBUG: Procesando item 2: <class 'list'>, len=4
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:134 - deskew - DEBUG: bbox_polygon_raw para item 2: [[750.0, 2671.0], [1282.0, 2671.0], [1282.0, 2723.0], [750.0, 2723.0]]
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:144 - deskew - DEBUG: Polígono 2 añadido: [[750.0, 2671.0], [1282.0, 2671.0], [1282.0, 2723.0], [750.0, 2723.0]]
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:152 - deskew - DEBUG: Procesados 53 polígonos adicionales...
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.deskew:155 - deskew - -> Cantidad de polígonos encontrados: 56
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.deskew:171 - deskew - Detectados 56 polígonos en imagen corregida
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:59 - polygon_coordinator - Corrección de inclinación completada en 0.6762s
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:63 - polygon_coordinator - Agrupando líneas
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.lineal_reconstructor:22 - lineal_reconstructor - Iniciando reconstrucción de líneas con 56 polígonos
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.lineal_reconstructor:64 - lineal_reconstructor - Polígonos válidos preparados: 56/56
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.lineal_reconstructor:148 - lineal_reconstructor - Reconstrucción completada: 27 líneas generadas
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:66 - polygon_coordinator - Agrupamiento completado en 0.0020s - 27 líneas detectadas
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0000: 2 polígonos, bbox=[321.0, 331.0, 1125.0, 402.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0001: 1 polígonos, bbox=[159.0, 421.0, 1643.0, 483.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0002: 1 polígonos, bbox=[180.0, 504.0, 1521.0, 576.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0003: 1 polígonos, bbox=[220.0, 594.0, 1380.0, 662.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0004: 1 polígonos, bbox=[196.0, 680.0, 1460.0, 751.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0005: 1 polígonos, bbox=[673.0, 806.0, 1322.0, 865.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0006: 1 polígonos, bbox=[425.0, 895.0, 945.0, 957.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0007: 1 polígonos, bbox=[66.0, 1009.0, 264.0, 1084.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0008: 2 polígonos, bbox=[73.0, 1166.0, 1224.0, 1234.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0009: 2 polígonos, bbox=[76.0, 1242.0, 1271.0, 1321.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0010: 2 polígonos, bbox=[76.0, 1403.0, 1512.0, 1474.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0011: 1 polígonos, bbox=[1658.0, 1517.0, 1732.0, 1539.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0012: 3 polígonos, bbox=[80.0, 1585.0, 1570.0, 1655.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0013: 4 polígonos, bbox=[80.0, 1671.0, 1475.0, 1742.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0014: 4 polígonos, bbox=[76.0, 1754.0, 1536.0, 1831.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0015: 4 polígonos, bbox=[80.0, 1840.0, 1435.0, 1917.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0016: 3 polígonos, bbox=[76.0, 1907.0, 1589.0, 2013.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0017: 4 polígonos, bbox=[83.0, 2009.0, 1500.0, 2086.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0018: 4 polígonos, bbox=[80.0, 2101.0, 1542.0, 2179.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0019: 4 polígonos, bbox=[83.0, 2181.0, 1586.0, 2266.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0020: 4 polígonos, bbox=[80.0, 2283.0, 1493.0, 2360.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0021: 1 polígonos, bbox=[373.0, 2409.0, 1059.0, 2471.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0022: 1 polígonos, bbox=[783.0, 2496.0, 1267.0, 2557.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0023: 1 polígonos, bbox=[722.0, 2575.0, 1331.0, 2643.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0024: 1 polígonos, bbox=[750.0, 2671.0, 1282.0, 2723.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0025: 1 polígonos, bbox=[646.0, 2754.0, 1389.0, 2816.0]
-2025-07-22 07:46:30 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0026: 1 polígonos, bbox=[964.0, 2917.0, 1117.0, 2948.0]
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:74 - polygon_coordinator - Iniciando recorte de líneas de imagen
-2025-07-22 07:46:30 - INFO - core.workflow.geometry.poly_gone:27 - poly_gone - Recortando 27 líneas de imagen de 2056x2954
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0000 recortada: (81, 814)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0001 recortada: (72, 1494)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0002 recortada: (82, 1351)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0003 recortada: (78, 1170)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0004 recortada: (81, 1274)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0005 recortada: (69, 659)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0006 recortada: (72, 530)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0007 recortada: (85, 208)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0008 recortada: (78, 1161)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0009 recortada: (89, 1205)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0010 recortada: (81, 1446)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0011 recortada: (32, 84)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0012 recortada: (80, 1500)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0013 recortada: (81, 1405)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0014 recortada: (87, 1470)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0015 recortada: (87, 1365)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0016 recortada: (116, 1523)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0017 recortada: (87, 1427)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0018 recortada: (88, 1472)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0019 recortada: (95, 1513)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0020 recortada: (87, 1423)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0021 recortada: (72, 696)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0022 recortada: (71, 494)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0023 recortada: (78, 619)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0024 recortada: (62, 542)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0025 recortada: (72, 753)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0026 recortada: (41, 163)
-2025-07-22 07:46:30 - DEBUG - core.workflow.geometry.poly_gone:91 - poly_gone - Guardado de imágenes recortadas deshabilitado
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:77 - polygon_coordinator - Recorte completado en 0.0020s
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:81 - polygon_coordinator - Imágenes recortadas exitosamente: 27/27
-2025-07-22 07:46:30 - INFO - core.coordinators.polygon_coordinator:84 - polygon_coordinator - === GENERACIÓN DE POLIGONAL COMPLETADA en 0.8792s ===
-2025-07-22 07:46:30 - INFO - __main__:156 - main - Preprocesamiento: 1.459s
-2025-07-22 07:46:30 - CRITICAL - __main__:159 - main - No hay imágenes pre-procesadas para OCR. Abortando.
-2025-07-22 07:46:30 - INFO - __main__:292 - main - Procesamiento finalizado, iniciando limpieza de caché.
-2025-07-22 07:46:30 - INFO - managment.cache_manager:49 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
+2025-07-22 18:51:23 - INFO - managment.cache_manager:37 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
+2025-07-22 18:51:23 - INFO - core.coordinators.ocr_coordinator:29 - ocr_coordinator - Inicializando PaddleOCR...
+2025-07-22 18:51:23 - DEBUG - core.workflow.ocr.paddle_wrapper:16 - paddle_wrapper - PaddleOCRWrapper inicializando con config: {'use_angle_cls': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es', 'rec_model_dir': 'C:/PerfectOCR/data/models/paddle/rec/es', 'cls_model_dir': 'C:/PerfectOCR/data/models/paddle/cls'}
+2025-07-22 18:51:24 - INFO - core.coordinators.ocr_coordinator:32 - ocr_coordinator - PaddleOCR inicializado: 1.418s
+2025-07-22 18:51:26 - INFO - core.coordinators.polygon_coordinator:45 - polygon_coordinator - === INICIANDO GENERACIÓN DE POLIGONAL ===
+2025-07-22 18:51:26 - INFO - core.coordinators.polygon_coordinator:49 - polygon_coordinator - Iniciando limpieza rapida
+2025-07-22 18:51:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-07-22 18:51:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
+2025-07-22 18:51:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
+2025-07-22 18:51:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
+2025-07-22 18:51:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
+2025-07-22 18:51:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
+2025-07-22 18:51:26 - INFO - core.coordinators.polygon_coordinator:52 - polygon_coordinator - Limpieza completada en 0.2431s
+2025-07-22 18:51:26 - INFO - core.coordinators.polygon_coordinator:56 - polygon_coordinator - Iniciando corrección de inclinación
+2025-07-22 18:51:26 - INFO - core.workflow.geometry.deskew:70 - deskew - -> Aplicando corrección de inclinación: -1.01 grados.
+2025-07-22 18:51:26 - INFO - core.workflow.geometry.deskew:97 - deskew - -> Imagen para detección: shape=(2954, 2056), dtype=uint8, min=0, max=255
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:101 - deskew - -> PaddleOCR results type: <class 'list'>
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:102 - deskew - -> PaddleOCR results length: 1
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:105 - deskew - -> results[0] type: <class 'list'>
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:106 - deskew - -> results[0] length: 56
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:108 - deskew - -> Primeros elementos de results[0]: [[[964.0, 2917.0], [1117.0, 2917.0], [1117.0, 2948.0], [964.0, 2948.0]], [[646.0, 2754.0], [1389.0, 2754.0], [1389.0, 2816.0], [646.0, 2816.0]]]
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:124 - deskew - DEBUG: Procesando item 0: <class 'list'>, len=4
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:134 - deskew - DEBUG: bbox_polygon_raw para item 0: [[964.0, 2917.0], [1117.0, 2917.0], [1117.0, 2948.0], [964.0, 2948.0]]
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:144 - deskew - DEBUG: Polígono 0 añadido: [[964.0, 2917.0], [1117.0, 2917.0], [1117.0, 2948.0], [964.0, 2948.0]]
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:124 - deskew - DEBUG: Procesando item 1: <class 'list'>, len=4
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:134 - deskew - DEBUG: bbox_polygon_raw para item 1: [[646.0, 2754.0], [1389.0, 2754.0], [1389.0, 2816.0], [646.0, 2816.0]]
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:144 - deskew - DEBUG: Polígono 1 añadido: [[646.0, 2754.0], [1389.0, 2754.0], [1389.0, 2816.0], [646.0, 2816.0]]
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:124 - deskew - DEBUG: Procesando item 2: <class 'list'>, len=4
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:134 - deskew - DEBUG: bbox_polygon_raw para item 2: [[750.0, 2671.0], [1282.0, 2671.0], [1282.0, 2723.0], [750.0, 2723.0]]
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:144 - deskew - DEBUG: Polígono 2 añadido: [[750.0, 2671.0], [1282.0, 2671.0], [1282.0, 2723.0], [750.0, 2723.0]]
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:152 - deskew - DEBUG: Procesados 53 polígonos adicionales...
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.deskew:155 - deskew - -> Cantidad de polígonos encontrados: 56
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.deskew:171 - deskew - Detectados 56 polígonos en imagen corregida
+2025-07-22 18:51:27 - INFO - core.coordinators.polygon_coordinator:59 - polygon_coordinator - Corrección de inclinación completada en 1.3481s
+2025-07-22 18:51:27 - INFO - core.coordinators.polygon_coordinator:63 - polygon_coordinator - Agrupando líneas
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.lineal_reconstructor:22 - lineal_reconstructor - Iniciando reconstrucción de líneas con 56 polígonos
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.lineal_reconstructor:64 - lineal_reconstructor - Polígonos válidos preparados: 56/56
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.lineal_reconstructor:148 - lineal_reconstructor - Reconstrucción completada: 27 líneas generadas
+2025-07-22 18:51:27 - INFO - core.coordinators.polygon_coordinator:66 - polygon_coordinator - Agrupamiento completado en 0.0038s - 27 líneas detectadas
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0000: 2 polígonos, bbox=[321.0, 331.0, 1125.0, 402.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0001: 1 polígonos, bbox=[159.0, 421.0, 1643.0, 483.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0002: 1 polígonos, bbox=[180.0, 504.0, 1521.0, 576.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0003: 1 polígonos, bbox=[220.0, 594.0, 1380.0, 662.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0004: 1 polígonos, bbox=[196.0, 680.0, 1460.0, 751.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0005: 1 polígonos, bbox=[673.0, 806.0, 1322.0, 865.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0006: 1 polígonos, bbox=[425.0, 895.0, 945.0, 957.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0007: 1 polígonos, bbox=[66.0, 1009.0, 264.0, 1084.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0008: 2 polígonos, bbox=[73.0, 1166.0, 1224.0, 1234.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0009: 2 polígonos, bbox=[76.0, 1242.0, 1271.0, 1321.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0010: 2 polígonos, bbox=[76.0, 1403.0, 1512.0, 1474.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0011: 1 polígonos, bbox=[1658.0, 1517.0, 1732.0, 1539.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0012: 3 polígonos, bbox=[80.0, 1585.0, 1570.0, 1655.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0013: 4 polígonos, bbox=[80.0, 1671.0, 1475.0, 1742.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0014: 4 polígonos, bbox=[76.0, 1754.0, 1536.0, 1831.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0015: 4 polígonos, bbox=[80.0, 1840.0, 1435.0, 1917.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0016: 3 polígonos, bbox=[76.0, 1907.0, 1589.0, 2013.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0017: 4 polígonos, bbox=[83.0, 2009.0, 1500.0, 2086.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0018: 4 polígonos, bbox=[80.0, 2101.0, 1542.0, 2179.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0019: 4 polígonos, bbox=[83.0, 2181.0, 1586.0, 2266.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0020: 4 polígonos, bbox=[80.0, 2283.0, 1493.0, 2360.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0021: 1 polígonos, bbox=[373.0, 2409.0, 1059.0, 2471.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0022: 1 polígonos, bbox=[783.0, 2496.0, 1267.0, 2557.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0023: 1 polígonos, bbox=[722.0, 2575.0, 1331.0, 2643.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0024: 1 polígonos, bbox=[750.0, 2671.0, 1282.0, 2723.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0025: 1 polígonos, bbox=[646.0, 2754.0, 1389.0, 2816.0]
+2025-07-22 18:51:27 - DEBUG - core.coordinators.polygon_coordinator:70 - polygon_coordinator - Línea line_0026: 1 polígonos, bbox=[964.0, 2917.0, 1117.0, 2948.0]
+2025-07-22 18:51:27 - INFO - core.coordinators.polygon_coordinator:74 - polygon_coordinator - Iniciando recorte de líneas de imagen
+2025-07-22 18:51:27 - INFO - core.workflow.geometry.poly_gone:27 - poly_gone - Recortando 27 líneas de imagen de 2056x2954
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0000 recortada: (81, 814)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0001 recortada: (72, 1494)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0002 recortada: (82, 1351)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0003 recortada: (78, 1170)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0004 recortada: (81, 1274)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0005 recortada: (69, 659)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0006 recortada: (72, 530)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0007 recortada: (85, 208)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0008 recortada: (78, 1161)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0009 recortada: (89, 1205)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0010 recortada: (81, 1446)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0011 recortada: (32, 84)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0012 recortada: (80, 1500)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0013 recortada: (81, 1405)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0014 recortada: (87, 1470)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0015 recortada: (87, 1365)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0016 recortada: (116, 1523)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0017 recortada: (87, 1427)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0018 recortada: (88, 1472)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0019 recortada: (95, 1513)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0020 recortada: (87, 1423)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0021 recortada: (72, 696)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0022 recortada: (71, 494)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0023 recortada: (78, 619)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0024 recortada: (62, 542)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0025 recortada: (72, 753)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:76 - poly_gone - Línea line_0026 recortada: (41, 163)
+2025-07-22 18:51:27 - DEBUG - core.workflow.geometry.poly_gone:91 - poly_gone - Guardado de imágenes recortadas deshabilitado
+2025-07-22 18:51:27 - INFO - core.coordinators.polygon_coordinator:77 - polygon_coordinator - Recorte completado en 0.0000s
+2025-07-22 18:51:27 - INFO - core.coordinators.polygon_coordinator:81 - polygon_coordinator - Imágenes recortadas exitosamente: 27/27
+2025-07-22 18:51:27 - INFO - core.coordinators.polygon_coordinator:84 - polygon_coordinator - === GENERACIÓN DE POLIGONAL COMPLETADA en 1.6030s ===
+2025-07-22 18:51:27 - INFO - __main__:156 - main - Polygonos: 2.942s
+2025-07-22 18:51:27 - INFO - __main__:303 - main - Procesamiento finalizado, iniciando limpieza de caché.
+2025-07-22 18:51:27 - INFO - managment.cache_manager:49 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---

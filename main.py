@@ -145,15 +145,26 @@ class PerfectOCRWorkflow:
             return self._build_error_response("error_loading_image", original_file_name, "No se pudo cargar la imagen", "load")
         # job.image_data = image_array
 
-        # FASE 1: PREPROCESAMIENTO (ya incluye evaluación interna)
+        # FASE: Obtención de polígonos
         phase1_start = time.perf_counter()
-        preproc_results, time_prep = self.polygon_coordinator._generate_polygons(
+        cropped_line, time_poly = self.polygon_coordinator._generate_polygons(
             image_array,
             input_path
         )
         phase1_time = time.perf_counter() - phase1_start
-        processing_times_summary["1_preprocessing"] = round(time_prep, 4)
-        logger.info(f"Preprocesamiento: {phase1_time:.3f}s")
+        processing_times_summary["1_polygons"] = round(time_poly, 4)
+        logger.info(f"Polygonos: {phase1_time:.3f}s")
+        
+        
+        # FASE: PREPROCESAMIENTO (ya incluye evaluación interna)
+        phase2_start = time.perf_counter()
+        image2_preproc, time_prep = cropped_line['cropped_img']
+        preproc_results = self.preprocessing_coordinator._apply_preprocessing_pipelines(
+            image2_preproc
+        )
+        phase2_time = time.perf_counter() - phase2_start
+        processing_times_summary["2_preprocesamiento"] = round(time_prep, 4)
+        logger.info(f"Preprocesamiento: {phase2_time:.3f}s")
         
         if not preproc_results or "ocr_images" not in preproc_results:
             logger.critical("No hay imágenes pre-procesadas para OCR. Abortando.")

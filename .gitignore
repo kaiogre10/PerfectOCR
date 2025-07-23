@@ -1,0 +1,24 @@
+# Ignorar la carpeta .vscode
+.vscode/
+
+# Ignorar carpetas de caché
+__pycache__/
+.pytest_cache/
+.cache/
+
+# Ignorar extensiones de archivos
+.ini/
+.pyc/
+.png/
+.json/
+.txt/
+
+# Ignorar carpeta
+data/models/
+input/
+output/
+
+# Excepción
+!density_encoder.json
+!especificaciones_inspiron.txt
+!especificaciones_latitude.txt

@@ -14,7 +14,7 @@ class PolygonExtractor:
         self.config = config
         self.image_saver = ImageOutputHandler()
 
-    def _add_cropped_images_to_lines(self, deskewed_img: np.ndarray, reconstructed_lines: List[Dict], metadata: Dict, input_filename: str = "", output_config: Dict = None) -> Dict:
+    def _add_cropped_images_to_lines(self, deskewed_img: np.ndarray, reconstructed_lines: List[Dict], metadata: Dict, input_filename: str = "", output_config: Dict = None) -> Dict: # type: ignore
         """
         Añade las imágenes recortadas de cada línea al diccionario correspondiente y opcionalmente las guarda.
         """
@@ -90,7 +90,8 @@ class PolygonExtractor:
         else:
             logger.debug("Guardado de imágenes recortadas deshabilitado")
 
-        return {
+        result = {
             "lines": reconstructed_lines,
             "metadata": metadata
         }
+        return result

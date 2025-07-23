@@ -41,7 +41,7 @@ class PreprocessingCoordinator:
 
         self.image_saver = ImageOutputHandler()
         
-    def apply_preprocessing_pipelines(
+    def _apply_preprocessing_pipelines(
         self,
         image_array: np.ndarray,
         input_path: str = ""
@@ -58,7 +58,7 @@ class PreprocessingCoordinator:
         9. Generación de Features
         """
         try:
-            gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array
+            cropped_line = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array
             pipeline_start = time.time()
             logger.info("=== INICIANDO PIPELINE DE PREPROCESAMIENTO ===")
             
