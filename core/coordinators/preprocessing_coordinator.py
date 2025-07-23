@@ -66,7 +66,7 @@ class PreprocessingCoordinator:
             step_start = time.time()
             logger.info("[2/8] Iniciando detección y corrección de moiré...")
             # La firma de _detect_moire_patterns necesita ser ajustada
-            moire_img = self._moire._detect_moire_patterns(polygon_img)
+            moire_img = self._moire._detect_moire_patterns(cropped_line)
             step_duration = time.time() - step_start
             logger.info(f"[2/8] Corrección de moiré completada en {step_duration:.4f}s")
 
@@ -118,7 +118,7 @@ class PreprocessingCoordinator:
             logger.info(f"[8/8] Features generadas en {step_duration:.4f}s")
 
             # Guardar la imagen final del polígono procesado
-            processed_ocr_images[f"polygon_{i}"] = corrected_image
+            # processed_ocr_images[f"polygon_{i}"] = corrected_image
 
             total_duration = time.time() - pipeline_start
             logger.info(f"PIPELINE COMPLETADO - Tiempo total: {total_duration:.3f}s")
@@ -143,9 +143,8 @@ class PreprocessingCoordinator:
             # Ahora es un diccionario de imágenes de polígonos
             logger.info("Preprocessing: Pipeline completado exitosamente por el worker.")
 
-            return {"ocr_images": processed_ocr_images}, total_duration
+            return {"processed_image": corrected_image}, total_duration
 
         except Exception as e:
             logger.error(f"Preprocessing: Falló el pipeline del worker: {e}", exc_info=True)
-            ocr_images = {}
-            return {"ocr_images": ocr_images}, 0.0
+            return {"processed_image": None}, 0.0

@@ -24,8 +24,6 @@ class PolygonExtractor:
         img_h, img_w = deskewed_img.shape[:2]
         padding = self.config.get('cropping_padding', 5)
         
-        logger.info(f"Recortando {len(reconstructed_lines)} líneas de imagen de {img_w}x{img_h}")
-
         # Verificar si el guardado de imágenes está habilitado
         should_save_images = False
         if output_config:
@@ -64,16 +62,14 @@ class PolygonExtractor:
                         line["cropped_img"] = cropped_img
                         
                         # Guardar la imagen recortada solo si está habilitado
-                        if should_save_images:
+                        if should_save_images and output_folder:
                             line_number = line_idx + 1  # Empezar desde 1
                             output_filename = f"{base_name}_linea_{line_number:03d}.png"
                             saved_path = self.image_saver.save(cropped_img, output_folder, output_filename)
                             
                             if saved_path:
-                                logger.info(f"Línea {line_number} guardada: {saved_path}")
                                 line["saved_image_path"] = saved_path
                         
-                        logger.debug(f"Línea {line['line_id']} recortada: {cropped_img.shape}")
                     else:
                         logger.warning(f"Imagen vacía para línea {line['line_id']}")
                         line["cropped_img"] = None

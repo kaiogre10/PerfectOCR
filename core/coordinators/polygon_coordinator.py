@@ -77,8 +77,9 @@ class PolygonCoordinator:
         logger.info(f"Recorte completado en {step_duration:.4f}s")
         
         # Verificar que se añadieron las imágenes recortadas
-        lines_with_images = sum(1 for line in result["lines"] if line.get("cropped_img") is not None)
-        logger.info(f"Imágenes recortadas exitosamente: {lines_with_images}/{len(result['lines'])}")
+        if result and result.get("lines"):
+            lines_with_images = sum(1 for line in result["lines"] if line.get("cropped_img") is not None)
+            logger.info(f"Imágenes recortadas exitosamente: {lines_with_images}/{len(result['lines'])}")
 
         pipeline_end = time.time() - pipeline_start
         logger.info(f"=== GENERACIÓN DE POLIGONAL COMPLETADA en {pipeline_end:.4f}s ===")

@@ -147,7 +147,7 @@ class PerfectOCRWorkflow:
 
         # FASE: Obtención de polígonos
         phase1_start = time.perf_counter()
-        cropped_line, time_poly = self.polygon_coordinator._generate_polygons(
+        polygon_data, time_poly = self.polygon_coordinator._generate_polygons(
             image_array,
             input_path
         )
@@ -158,20 +158,33 @@ class PerfectOCRWorkflow:
         
         # FASE: PREPROCESAMIENTO (ya incluye evaluación interna)
         phase2_start = time.perf_counter()
-        image2_preproc, time_prep = cropped_line['cropped_img']
-        preproc_results = self.preprocessing_coordinator._apply_preprocessing_pipelines(
-            image2_preproc
-        )
+        
+        processed_ocr_images = {}
+        total_preprocessing_time = 0.0
+
+        if polygon_data and "lines" in polygon_data:
+            for i, line_data in enumerate(polygon_data["lines"]):
+                if line_data.get("cropped_img") is not None:
+                    logger.info(f"Procesando línea {i+1}/{len(polygon_data['lines'])}")
+                    preproc_result, prep_time = self.preprocessing_coordinator._apply_preprocessing_pipelines(
+                        line_data["cropped_img"], input_path=input_path
+                    )
+                    total_preprocessing_time += prep_time
+                    if preproc_result and preproc_result.get("processed_image") is not None:
+                        processed_ocr_images[f"line_{line_data.get('line_id', i)}"] = preproc_result["processed_image"]
+                else:
+                    logger.warning(f"Línea {i+1} no tiene imagen recortada. Saltando.")
+
         phase2_time = time.perf_counter() - phase2_start
-        processing_times_summary["2_preprocesamiento"] = round(time_prep, 4)
+        processing_times_summary["2_preprocesamiento"] = round(total_preprocessing_time, 4)
         logger.info(f"Preprocesamiento: {phase2_time:.3f}s")
         
-        if not preproc_results or "ocr_images" not in preproc_results:
+        if not processed_ocr_images:
             logger.critical("No hay imágenes pre-procesadas para OCR. Abortando.")
             return self._build_error_response("error_preprocessing", original_file_name,
                                                 "No hay imágenes para OCR", "preprocessing")
         
-        ocr_images_dict = preproc_results["ocr_images"]
+        ocr_images_dict = processed_ocr_images
 
         workflow_config = self.config_loader.get_workflow_config()
         current_output_dir = output_dir_override if output_dir_override else workflow_config.get('output_folder')

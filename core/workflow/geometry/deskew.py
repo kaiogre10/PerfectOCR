@@ -94,18 +94,13 @@ class Deskewer:
         img_dtype = img_to_poly.dtype
         img_min = img_to_poly.min()
         img_max = img_to_poly.max()
-        logger.info(f"-> Imagen para detección: shape={img_shape}, dtype={img_dtype}, min={img_min}, max={img_max}")
+        logger.info(f"-> Imagen para detección: shape={img_shape}, min={img_min}, max={img_max}")
         
         try:
             results = self.engine.ocr(img_to_poly, cls=False, rec=False)
-            logger.info(f"-> PaddleOCR results type: {type(results)}")
-            logger.info(f"-> PaddleOCR results length: {len(results) if results else 'None'}")
-            
+                        
             if results and len(results) > 0:
-                logger.info(f"-> results[0] type: {type(results[0])}")
-                logger.info(f"-> results[0] length: {len(results[0]) if results[0] else 'None'}")
-                if results[0]:
-                    logger.info(f"-> Primeros elementos de results[0]: {results[0][:2] if len(results[0]) >= 2 else results[0]}")
+                logger.info(f"-> polígonos: {len(results[0]) if results[0] else 'None'}")
             
             if not results or not results[0]:
                 logger.warning("No se detectaron regiones de texto")
@@ -119,9 +114,6 @@ class Deskewer:
                 
         polygons = []
         for line_counter, item_tuple in enumerate(results[0]):
-            # Solo mostrar logs detallados para los primeros 3
-            if line_counter < 3:
-                logger.info(f"DEBUG: Procesando item {line_counter}: {type(item_tuple)}, len={len(item_tuple) if hasattr(item_tuple, '__len__') else 'N/A'}")
             
             # Con rec=False, item_tuple son directamente las coordenadas del polígono
             if not isinstance(item_tuple, list) or len(item_tuple) < 3:
@@ -130,8 +122,6 @@ class Deskewer:
                 continue
                 
             bbox_polygon_raw = item_tuple
-            if line_counter < 3:
-                logger.info(f"DEBUG: bbox_polygon_raw para item {line_counter}: {bbox_polygon_raw}")
             
             try:
                 bbox_polygon = [[float(p[0]), float(p[1])] for p in bbox_polygon_raw]
@@ -140,16 +130,10 @@ class Deskewer:
                         logger.info(f"DEBUG: Polígono {line_counter} descartado: menos de 3 puntos ({len(bbox_polygon)})")
                     continue
                 polygons.append(bbox_polygon)
-                if line_counter < 3:
-                    logger.info(f"DEBUG: Polígono {line_counter} añadido: {bbox_polygon}")
             except (TypeError, ValueError, IndexError) as e:
                 if line_counter < 3:
                     logger.info(f"DEBUG: Error procesando polígono {line_counter}: {e}")
                 continue
-
-        # Solo mostrar resumen si hay muchos polígonos
-        if len(results[0]) > 3:
-            logger.info(f"DEBUG: Procesados {len(results[0]) - 3} polígonos adicionales...")
                 
         cantidad_poligonos = len(polygons)
         logger.info(f"-> Cantidad de polígonos encontrados: {cantidad_poligonos}")
