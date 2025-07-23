@@ -12,6 +12,7 @@ __pycache__/
 .png/
 .json/
 .txt/
+.log/
 
 # Ignorar carpeta
 data/models/
