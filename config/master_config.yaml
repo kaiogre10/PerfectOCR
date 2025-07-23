@@ -135,17 +135,8 @@ output_config:
   enabled_outputs:
     preprocessed_image: false
     ocr_raw: false
-    line_grouping_results: false
-    debug_grouped_lines_text: true
-    vectorization_results: false
-    tabular_lines: false
-    non_tabular_lines: false
-    tabular_atomic_vectors: false
-    non_tabular_atomic_vectors: false
-    cleaned_lines: false
-    debug_cleaned_lines_text: false
-    debug_corrected_lines_text: false
     cropped_line_images: false
+    croped_words: false
 
 batch_processing:
   small_batch_limit: 5

@@ -10,8 +10,6 @@ from core.workflow.preprocessing.sp import DoctorSaltPepper
 from core.workflow.preprocessing.gauss import GaussianDenoiser
 from core.workflow.preprocessing.clahe import ClaherEnhancer
 from core.workflow.preprocessing.sharp import SharpeningEnhancer
-from core.workflow.preprocessing.binarization import Binarizator
-from core.workflow.geometry.multifeaturer import MultiFeacturer
 
 from core.workspace.utils.output_handlers import ImageOutputHandler
 
@@ -37,7 +35,6 @@ class PreprocessingCoordinator:
         self._claher = ClaherEnhancer(config=quality_rules.get('contrast', {}), project_root=self.project_root)
         self._sharp = SharpeningEnhancer(config=quality_rules.get('sharpening', {}), project_root=self.project_root)
         self._bin = Binarizator(config=quality_rules.get('binarize', {}), project_root=self.project_root)
-        self._features = MultiFeacturer()
 
         self.image_saver = ImageOutputHandler()
         
@@ -48,67 +45,63 @@ class PreprocessingCoordinator:
     ) -> Tuple[Optional[Dict[str, Any]], float]:
         """
         Procesa la imagen de forma secuencial:
-        2. Moiré
-        3. Ruido sal y pimienta
-        4. Ruido general
-        5. Contraste
-        6. Nitidez
-        7. Sobreiluminación
-        8. Binarización
-        9. Generación de Features
+        1. Moiré
+        2. Ruido sal y pimienta
+        3. Ruido general
+        4. Contraste
+        5. Nitidez
         """
         try:
             cropped_line = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array
             pipeline_start = time.time()
             logger.info("=== INICIANDO PIPELINE DE PREPROCESAMIENTO ===")
             
-            # 3. Remoción de moiré
+            # 1. Remoción de moiré
             step_start = time.time()
-            logger.info("[2/8] Iniciando detección y corrección de moiré...")
-            # La firma de _detect_moire_patterns necesita ser ajustada
+            logger.info("Iniciando detección y corrección de moiré...")
             moire_img = self._moire._detect_moire_patterns(cropped_line)
             step_duration = time.time() - step_start
-            logger.info(f"[2/8] Corrección de moiré completada en {step_duration:.4f}s")
+            logger.info(f"Corrección de moiré completada en {step_duration:.4f}s")
 
-            # 4. Filtro de ruido sal y pimienta
+            # 2. Filtro de ruido sal y pimienta
             step_start = time.time()
-            logger.info("[3/8] Iniciando filtrado de ruido sal y pimienta...")
+            logger.info("Iniciando filtrado de ruido sal y pimienta")
             sp_img = self._sp._estimate_salt_pepper_noise(moire_img)
             step_duration = time.time() - step_start
-            logger.info(f"[3/8] Filtrado de ruido sal y pimienta completado en {step_duration:.4f}s")
+            logger.info(f"Filtrado de ruido sal y pimienta completado en {step_duration:.4f}s")
 
-            # 5. Filtro de ruido general
+            # 3. Filtro de ruido general
             step_start = time.time()
-            logger.info("[4/8] Iniciando filtrado de ruido general...")
+            logger.info("Iniciando filtrado de ruido general")
             gauss_img = self._gauss._estimate_gaussian_noise(sp_img)
             step_duration = time.time() - step_start
-            logger.info(f"[4/8] Filtrado de ruido general completado en {step_duration:.4f}s")
+            logger.info(f"Filtrado de ruido general completado en {step_duration:.4f}s")
 
-            # 5. Corrección de sobreiluminación (comentado)
+            # . Corrección de sobreiluminación (comentado)
             #if self._detect_overexposure(image):
             #   image = self._apply_overexposure_correction(image)
 
-            # 6. Mejora de contraste
+            # 4. Mejora de contraste
             step_start = time.time()
-            logger.info("[5/8] Iniciando mejora de contraste...")
+            logger.info("Iniciando mejora de contraste")
             clahed_img = self._claher._estimate_contrast(gauss_img)
             step_duration = time.time() - step_start
-            logger.info(f"[5/8] Mejora de contraste completada en {step_duration:.4f}s")
+            logger.info(f"Mejora de contraste completada en {step_duration:.4f}s")
 
-            # 7. Mejora de nitidez
+            # 5. Mejora de nitidez
             step_start = time.time()
-            logger.info("[6/8] Iniciando mejora de nitidez...")
+            logger.info("Iniciando mejora de nitidez...")
             corrected_image = self._sharp._estimate_sharpness(clahed_img)
             step_duration = time.time() - step_start
-            logger.info(f"[6/8] Mejora de nitidez completada en {step_duration:.4f}s")
+            logger.info(f"Mejora de nitidez completada en {step_duration:.4f}s")
 
             image_to_binarize = corrected_image.copy()
             # 8. Binarización por separado (solo para las features)
             step_start = time.time()
-            logger.info("[7/8] Iniciando binarización...")
+            logger.info("Iniciando binarización...")
             binarized_img = self._bin._estimate_binarization(image_to_binarize)
             step_duration = time.time() - step_start
-            logger.info(f"[7/8] Binarización completada en {step_duration:.4f}s")
+            logger.info(f"Binarización completada en {step_duration:.4f}s")
 
             # 9. Generación de Features
             step_start = time.time()

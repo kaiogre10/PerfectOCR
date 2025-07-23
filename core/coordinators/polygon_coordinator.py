@@ -9,7 +9,6 @@ from core.workflow.preprocessing.cleanner import ImageCleaner
 from core.workflow.geometry.deskew import Deskewer
 from core.workflow.geometry.lineal_reconstructor import LineReconstructor
 from core.workflow.geometry.poly_gone import PolygonExtractor
-from core.workflow.geometry.multifeaturer import MultiFeacturer
 from core.workspace.utils.output_handlers import ImageOutputHandler
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,6 @@ class PolygonCoordinator:
         self._deskewer = Deskewer(config=quality_rules.get('deskew', {}), project_root=self.project_root)
         self._lineal = LineReconstructor(config=quality_rules.get('basic', {}), project_root=self.project_root)
         self._poly = PolygonExtractor(config=quality_rules.get('basic', {}), project_root=self.project_root)
-        self._features = MultiFeacturer()
 
         self.image_saver = ImageOutputHandler()
         
