@@ -1,0 +1,58 @@
+{
+    "editor.wordWrap": "off",
+    "editor.experimentalWhitespaceRendering": "off",
+    "editor.renderWhitespace": "none",
+    "editor.smartSelect.selectLeadingAndTrailingWhitespace": false,
+    "editor.trimAutoWhitespace": false,
+    "diffEditor.ignoreTrimWhitespace": false,
+    "files.trimTrailingWhitespaceInRegexAndStrings": false,
+    "editor.allowVariableFonts": false,
+    "editor.accessibilitySupport": "off",
+    "editor.comments.ignoreEmptyLines": false,
+    "editor.experimentalGpuAcceleration": "off",
+    "editor.codeLens": false,
+    "editor.hideCursorInOverviewRuler": false,
+    "editor.hover.above": false,
+    "editor.guides.indentation": true,
+    "editor.hover.enabled": false,
+    "editor.hover.sticky": false,
+    "editor.overtypeCursorStyle": "block",
+    "editor.roundedSelection": false,
+    "editor.rulers": [
+        
+    ],
+    "editor.scrollbar.vertical": "visible",
+    "editor.scrollbar.horizontal": "visible",
+    "editor.scrollbar.verticalScrollbarSize": 14,
+    "editor.scrollbar.horizontalScrollbarSize": 14,
+    "notebook.globalToolbar": false,
+    "notebook.lineNumbers": "on",
+    "comments.visible": true,
+    "terminal.integrated.altClickMovesCursor": true,
+    "notebook.editorOptionsCustomizations": {
+        
+    },
+    "workbench.layoutControl.type": "toggles",
+    "zenMode.centerLayout": false,
+    "zenMode.fullScreen": false,
+    "zenMode.hideActivityBar": false,
+    "zenMode.hideLineNumbers": false,
+    "zenMode.restore": false,
+    "zenMode.hideStatusBar": false,
+    "workbench.editor.centeredLayoutAutoResize": false,
+    "chat.commandCenter.enabled": true,
+    "workbench.layoutControl.enabled": true,
+    "workbench.editor.autoLockGroups": {
+        "default": true,
+        "terminalEditor": false
+    },
+    "workbench.editor.restoreViewState": false,
+    "editor.definitionLinkOpensInPeek": true,
+    "editor.formatOnSave": true,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.git": false,
+        "**/.ini": true,
+        "**/.pyc": true
+    }
+}
