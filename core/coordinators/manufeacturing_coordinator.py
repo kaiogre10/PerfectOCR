@@ -19,3 +19,19 @@ class ManufeactureCoordinator:
         self.project_root = project_root
         self.workflow_config = config.get('workflow', {})
         self.output_config = config.get('output_config', {})
+
+
+image_to_binarize = corrected_image.copy()
+            # 8. Binarización por separado (solo para las features)
+            step_start = time.time()
+            logger.info("Iniciando binarización...")
+            binarized_img = self._bin._estimate_binarization(image_to_binarize)
+            step_duration = time.time() - step_start
+            logger.info(f"Binarización completada en {step_duration:.4f}s")
+
+            # 9. Generación de Features
+            step_start = time.time()
+            logger.info("[8/8] Generando features...")
+            features = self._features._extract_region_features(binarized_img)
+            step_duration = time.time() - step_start
+            logger.info(f"[8/8] Features generadas en {step_duration:.4f}s")

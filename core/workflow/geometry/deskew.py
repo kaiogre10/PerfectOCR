@@ -1,4 +1,4 @@
-# PerfectOCR/core/workflow/preprocessing/deskew.py
+# PerfectOCR/core/workflow/geometry/deskew.py
 import os
 import cv2
 import numpy as np
@@ -17,7 +17,6 @@ class Deskewer:
         self.paddle_config = config.get('paddle', {})
         
         try:
-            # Configuración directa y simple
             init_params = {
                 "use_angle_cls": False,
                 "lang": "es",
@@ -48,7 +47,6 @@ class Deskewer:
         min_len_cap = deskew_corrections.get('hough_min_line_length_cap_px', 300)
         min_angle = deskew_corrections.get('min_angle_for_correction', 0.1)
 
-        # Detección del ángulo usando OpenCV (método original)
         h, w = clean_img.shape[:2]
         img_dims = h, w
         metadata = img_dims, dpi_img
@@ -89,19 +87,15 @@ class Deskewer:
             logger.setLevel(old_level)
             return [], metadata
         
-        # Log información de la imagen de entrada
         img_shape = img_to_poly.shape
-        img_dtype = img_to_poly.dtype
         img_min = img_to_poly.min()
         img_max = img_to_poly.max()
         logger.info(f"-> Imagen para detección: shape={img_shape}, min={img_min}, max={img_max}")
         
         try:
             results = self.engine.ocr(img_to_poly, cls=False, rec=False)
-                        
             if results and len(results) > 0:
                 logger.info(f"-> polígonos: {len(results[0]) if results[0] else 'None'}")
-            
             if not results or not results[0]:
                 logger.warning("No se detectaron regiones de texto")
                 logger.setLevel(old_level)
@@ -114,7 +108,6 @@ class Deskewer:
                 
         polygons = []
         for line_counter, item_tuple in enumerate(results[0]):
-            
             # Con rec=False, item_tuple son directamente las coordenadas del polígono
             if not isinstance(item_tuple, list) or len(item_tuple) < 3:
                 if line_counter < 3:
@@ -142,7 +135,6 @@ class Deskewer:
         logger.setLevel(old_level)
         return polygons, metadata
 
-    
     def _get_polygons(self, clean_img: np.ndarray, dpi_img: int) -> tuple[np.ndarray, List[List[List[float]]], tuple[int, int], int]:
         """Retorna la imagen deskewed, coordenadas de polígonos, dimensiones y DPI."""
         # Primero aplicar deskew usando OpenCV
@@ -156,3 +148,4 @@ class Deskewer:
                 
         # Retornar la imagen corregida, coordenadas de polígonos, dimensiones y DPI
         return deskewed_img, polygons, metadata
+        

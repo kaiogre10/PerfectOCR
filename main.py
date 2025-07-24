@@ -8,7 +8,7 @@ import time
 from typing import Dict, Optional, Any, Tuple, List
 from core.coordinators.polygon_coordinator import PolygonCoordinator
 from core.coordinators.preprocessing_coordinator import PreprocessingCoordinator
-from core.coordinators.manufeacturing_coordinator import ManufeactureCoordinator
+#from core.coordinators.manufeacturing_coordinator import ManufeactureCoordinator
 from core.coordinators.ocr_coordinator import OCREngineCoordinator
 # from core.coordinators.tensor_coordinator import TensorCoordinator
 # from coordinators.text_cleaning_coordinator import TextCleaningCoordinator
@@ -69,7 +69,7 @@ class PerfectOCRWorkflow:
         self.project_root = PROJECT_ROOT
         self._poly_coordinator: Optional[PolygonCoordinator] = None
         self._preprocessing_coordinator: Optional[PreprocessingCoordinator] = None
-        self._manufeacturing_coordinator: Optional[ManufeactureCoordinator] = None
+ #       self._manufeacturing_coordinator: Optional[ManufeactureCoordinator] = None
         self._ocr_coordinator: Optional[OCREngineCoordinator] = None
         # self._tensor_coordinator: Optional[TensorCoordinator] = None
         #self._text_cleaning_coordinator: Optional[TextCleaningCoordinator] = None

@@ -135,7 +135,7 @@ output_config:
   enabled_outputs:
     preprocessed_image: false
     ocr_raw: false
-    cropped_line_images: false
+    cropped_line_images: true
     croped_words: false
 
 batch_processing:

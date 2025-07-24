@@ -34,8 +34,6 @@ class PreprocessingCoordinator:
         self._gauss = GaussianDenoiser(config=quality_rules.get('denoise', {}), project_root=self.project_root)
         self._claher = ClaherEnhancer(config=quality_rules.get('contrast', {}), project_root=self.project_root)
         self._sharp = SharpeningEnhancer(config=quality_rules.get('sharpening', {}), project_root=self.project_root)
-        self._bin = Binarizator(config=quality_rules.get('binarize', {}), project_root=self.project_root)
-
         self.image_saver = ImageOutputHandler()
         
     def _apply_preprocessing_pipelines(
@@ -94,21 +92,6 @@ class PreprocessingCoordinator:
             corrected_image = self._sharp._estimate_sharpness(clahed_img)
             step_duration = time.time() - step_start
             logger.info(f"Mejora de nitidez completada en {step_duration:.4f}s")
-
-            image_to_binarize = corrected_image.copy()
-            # 8. Binarización por separado (solo para las features)
-            step_start = time.time()
-            logger.info("Iniciando binarización...")
-            binarized_img = self._bin._estimate_binarization(image_to_binarize)
-            step_duration = time.time() - step_start
-            logger.info(f"Binarización completada en {step_duration:.4f}s")
-
-            # 9. Generación de Features
-            step_start = time.time()
-            logger.info("[8/8] Generando features...")
-            features = self._features._extract_region_features(binarized_img)
-            step_duration = time.time() - step_start
-            logger.info(f"[8/8] Features generadas en {step_duration:.4f}s")
 
             # Guardar la imagen final del polígono procesado
             # processed_ocr_images[f"polygon_{i}"] = corrected_image
