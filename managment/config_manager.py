@@ -2,20 +2,18 @@
 import yaml
 import os
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 class ConfigManager:
     """Cargador centralizado que lee YAML y proporciona configuraciones específicas para cada coordinador."""
-    
     def __init__(self, config_path: str):
         self.config_path = config_path
         self.config = self._load_yaml_config()
         
     def _load_yaml_config(self) -> Dict[str, Any]:
-        """Carga el archivo YAML principal."""
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f) or {}
@@ -26,11 +24,7 @@ class ConfigManager:
 
     def get_output_config(self) -> Dict[str, Any]:
         return self.config.get('output_config', {})
-    
-    def get_quality_assessment_rules(self) -> Dict[str, Any]:
-        """Obtiene reglas de evaluación de calidad directamente del YAML."""
-        return self.config.get('image_preparation', {}).get('quality_assessment_rules', {})
-    
+        
     def get_workflow_config(self) -> Dict[str, Any]:
         """Obtiene configuración del flujo de trabajo."""
         return self.config.get('workflow', {})
@@ -55,32 +49,29 @@ class ConfigManager:
         return max(1, workers)
     
     # --- MÉTODOS ESPECÍFICOS PARA CADA COORDINADOR ---
-    
+
     def get_polygonal_config(self) -> Dict[str, Any]:
         """Obtiene configuración de extracción de los polígonos"""
         output_config = self.config.get('output_config', {})
         return {
-            'polygon_config': self.config.get('polygonal', {}).get('polygon_config', {}),
-            'output_config': output_config,  # Incluir toda la configuración de output
+            'polygon_config': self.config.get('polygonal', {}),
             'output_flags': output_config.get('enabled_outputs', {})
         }
     
     def get_preprocessing_coordinator_config(self) -> Dict[str, Any]:
         """Proporciona la configuración completa para PreprocessingCoordinator."""
+        output_config = self.config.get('output_config', {})
         return {
             'max_workers': self.get_max_workers(),
             'workflow': self.get_workflow_config(),
-            'quality_assessment_rules': self.get_quality_assessment_rules(),
-            'output_config': self.config.get('output_config', {})
+            'preprocessing_config': self.config.get('image_preparation', {}),
+            'output_flags': output_config.get('enabled_outputs', {})
         }
     
     def get_ocr_coordinator_config(self) -> Dict[str, Any]:
         """Proporciona la configuración completa para OCRCoordinator."""
-        ocr_config = self.get_ocr_config()
-        output_config = self.get_output_config('output_config', {})
-        
+        output_config = self.config.get('output_config', {})
         return {
-            'ocr_config': ocr_config,
             'output_flags': output_config.get('enabled_outputs', {})
         }
     

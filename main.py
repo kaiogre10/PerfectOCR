@@ -9,7 +9,7 @@ from typing import Dict, Optional, Any, Tuple, List
 from core.coordinators.polygon_coordinator import PolygonCoordinator
 from core.coordinators.preprocessing_coordinator import PreprocessingCoordinator
 from core.coordinators.ocr_coordinator import OCREngineCoordinator
-# from core.coordinators.tensor_coordinator import TensorCoordinator
+#from core.coordinators.tensor_coordinator import TensorCoordinator
 # from coordinators.text_cleaning_coordinator import TextCleaningCoordinator
 from core.workspace.utils.output_handlers import OutputHandler
 from managment.cache_manager import CacheManager
@@ -69,7 +69,7 @@ class PerfectOCRWorkflow:
         self._poly_coordinator: Optional[PolygonCoordinator] = None
         self._preprocessing_coordinator: Optional[PreprocessingCoordinator] = None
         self._ocr_coordinator: Optional[OCREngineCoordinator] = None
-        # self._tensor_coordinator: Optional[TensorCoordinator] = None
+ #       self._tensor_coordinator: Optional[TensorCoordinator] = None
         #self._text_cleaning_coordinator: Optional[TextCleaningCoordinator] = None
         output_config = self.config.get('output_config', {})
         self.output_handler = OutputHandler(config=output_config)
@@ -92,7 +92,6 @@ class PerfectOCRWorkflow:
             )
         return self._poly_coordinator
 
-        
     @property
     def preprocessing_coordinator(self) -> PreprocessingCoordinator:
         if self._preprocessing_coordinator is None:
@@ -105,17 +104,16 @@ class PerfectOCRWorkflow:
     @property
     def ocr_coordinator(self) -> OCREngineCoordinator:
         """Acceso al coordinador OCR ya inicializado."""
-        return self._ocr_coordinator
+        return self._ocr_coordinator # type: ignore
 
-    # @property
-    # def tensor_coordinator(self) -> TensorCoordinator:
-    #     if self._tensor_coordinator is None:
-    #         self._tensor_coordinator = TensorCoordinator(
-    #             config=self.config_loader.get_tensor_coordinator_config(), 
-    #             project_root=self.project_root,
-    #             output_flags=self.output_flags
-    #         )
-    #     return self._tensor_coordinator
+  #  @property
+   # def tensor_coordinator(self) -> TensorCoordinator:
+    #    if self._tensor_coordinator is None:
+     #       self._tensor_coordinator = TensorCoordinator(
+      #         config=self.config_loader.get_tensor_coordinator_config(), 
+       #         project_root=self.project_root,
+        #    )
+        #return self._tensor_coordinator
     
 #    @property
 #    def text_cleaning_coordinator(self) -> TextCleaningCoordinator:

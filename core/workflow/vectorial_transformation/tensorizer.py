@@ -10,7 +10,7 @@ from core.workspace.domain.vector_models import AtomicVector, ElementalVector, D
 
 class VectorTensorizer:
 
-    def __init__(self, config: Dict, project_root: str, density_map: str):
+    def __init__(self, config: Dict, project_root: str):
         self.config = config
         self.project_root = project_root
         self.density_map = config.get('density_map', {})

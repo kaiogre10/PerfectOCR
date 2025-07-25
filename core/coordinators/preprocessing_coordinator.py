@@ -24,9 +24,7 @@ class PreprocessingCoordinator:
         self.project_root = project_root
         self.workflow_config = config.get('workflow', {})
         self.output_config = config.get('output_config', {})
-
-        # Acceso correcto a quality_assessment_rules
-        quality_rules = config.get('quality_assessment_rules', {})
+        quality_rules = config.get('corrections', {})
         
         # Instanciar workers con sus configuraciones específicas
         self._moire = MoireDenoiser(config=quality_rules.get('denoise', {}), project_root=self.project_root)

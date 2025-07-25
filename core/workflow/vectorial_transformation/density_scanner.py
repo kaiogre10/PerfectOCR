@@ -1,4 +1,4 @@
-# PerfectOCR/core/workflow/preprocessing/density_scanner.py
+# PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
 from sklearnex import patch_sklearn
 patch_sklearn()
 import math
@@ -10,13 +10,54 @@ from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 
 class DensityScanner:
-    
-    def __init__(self, config: Dict[str, Any], project_root: str):
+    def __init__(self, config: dict, project_root: str): 
+        self.config = config
         self.project_root = project_root
-        self.corrections = config
+        density_map = self.config.get('density_map', {})
+        # Cargar el mapa de caracteres desde el JSON
+        
+    def get_char_value(self, desnsity_map: str, char: int):
+        """Mapea caracteres a valores según la tabla proporcionada"""
+        with open('density_encoder.json', 'r', encoding='utf-8') as f:
+            char_map = json.load(f)
+            
+        return char_map.get(char, 0)
+
+    def convert_line_to_values(line):
+        """Convierte línea de texto a valores numéricos (sin espacios ni indentaciones)"""
+        # Eliminar todos los espacios en blanco de la línea
+        line = ''.join(line.split())
+        return [get_char_value(char) for char in line]
     
-    def calculate_values(self, config: Dict, ):
-    
+    def load_lines_from_json(json_file_path):
+        """Carga líneas desde un archivo JSON"""
+        try:
+            with open(json_file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Extraer líneas del JSON con estructura grouped_lines
+            if isinstance(data, dict) and 'grouped_lines' in data:
+                lines = []
+                for line_group in data['grouped_lines']:
+                    if isinstance(line_group, list):
+                        # Extraer texto de cada palabra en la línea
+                        line_text = ' '.join([word.get('text', '') for word in line_group if isinstance(word, dict)])
+                        if line_text.strip():  # Solo agregar líneas no vacías
+                            lines.append(line_text)
+                return lines
+            elif isinstance(data, list):
+                return data
+            elif isinstance(data, dict):
+                # Buscar la clave que contenga las líneas
+                for key in ['lines', 'text', 'content', 'data']:
+                    if key in data and isinstance(data[key], list):
+                        return data[key]
+            return []
+        except Exception as e:
+            print(f"Error al cargar {json_file_path}: {e}")
+            return []
+
+
     def calculate_mean(values):
     """Calcula la media"""
     return sum(values) / len(values)
@@ -118,8 +159,6 @@ class DensityScanner:
                 result['p50']         # Mediana
             ])
     return np.array(features)
-
-
 
     def cluster_lines(lines):
         """Aplica DBSCAN a las líneas"""
@@ -246,35 +285,7 @@ class DensityScanner:
         
         return dbscan_consecutive
 
-    def load_lines_from_json(json_file_path):
-        """Carga líneas desde un archivo JSON"""
-        try:
-            with open(json_file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            # Extraer líneas del JSON con estructura grouped_lines
-            if isinstance(data, dict) and 'grouped_lines' in data:
-                lines = []
-                for line_group in data['grouped_lines']:
-                    if isinstance(line_group, list):
-                        # Extraer texto de cada palabra en la línea
-                        line_text = ' '.join([word.get('text', '') for word in line_group if isinstance(word, dict)])
-                        if line_text.strip():  # Solo agregar líneas no vacías
-                            lines.append(line_text)
-                return lines
-            elif isinstance(data, list):
-                return data
-            elif isinstance(data, dict):
-                # Buscar la clave que contenga las líneas
-                for key in ['lines', 'text', 'content', 'data']:
-                    if key in data and isinstance(data[key], list):
-                        return data[key]
-            return []
-        except Exception as e:
-            print(f"Error al cargar {json_file_path}: {e}")
-            return []
-
-    def process_json_files():
+    def _identify_table():
         """Procesa todos los archivos JSON en la carpeta input/"""
         input_dir = "input"
         
@@ -300,6 +311,5 @@ class DensityScanner:
             # Procesar las líneas con DBSCAN
             process_lines_with_dbscan(lines, output_filename)
 
-    # Ejemplo de uso:
     if __name__ == "__main__":
         process_json_files()

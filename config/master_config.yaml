@@ -82,7 +82,7 @@ polygonal:
     
 
 image_preparation:
-  quality_assessment_rules:
+  corrections:
     denoise:
       median_filter:
         kernel_size: 3
@@ -151,7 +151,8 @@ batch_processing:
 
 vectorization_process: 
   table_detection_params:
-    min_cluster_size: 3
+    min_cluster_size: 2
     
   density_map_path:
-    density_map: "/.density_encoder.json"
+    density_map: "C:/PerfectOCR/core/workflow/vectorial_transformation/vectorizers/density_encoder.json"
+
