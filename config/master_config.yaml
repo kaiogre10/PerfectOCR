@@ -67,6 +67,11 @@ polygonal:
       rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
       cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
       
+    binarize:
+      c_value: 7
+      height_thresholds_px: [100, 800, 1500, 2500]
+      block_sizes_map: [15, 21, 25, 35, 41]
+      quality_threshold: [0.1, 0.9]
     basic:
     
 
@@ -96,28 +101,21 @@ image_preparation:
           absolute:
             absolute_threshold: 200000000
 
-    contrast:
-      global:
-        clahe_clip_limit: 2.0
-        dimension_thresholds_px: [1000, 2500]
-        grid_sizes_map: [[6, 6], [8, 8], [10, 10]]
-      local:
-        window_size: 100
-        std_dev_threshold: 15.0
+      contrast:
+        global:
+          clahe_clip_limit: 2.0
+          dimension_thresholds_px: [1000, 2500, 4000]
+          grid_sizes_map: [[6, 6], [8, 8], [10, 10]]
+        local:
+          window_size: 100
+          std_dev_threshold: 15.0
 
-    sharpening:
-      sharpness_threshold: 50.0
-      radius: 1.0
-      amount: 1.5
-
-    binarize:
-      window_size: 25
-      k: 0.2
-      adaptive_c_value: 7
-      height_thresholds_px: [800, 1500, 2500]
-      block_sizes_map: [21, 25, 35, 41]
-
-    basic:
+      sharpening:
+        sharpness_threshold: 50.0
+        radius: 1.0
+        amount: 1.5
+        
+      basic:
       
 
 ocr:
@@ -135,8 +133,8 @@ output_config:
   enabled_outputs:
     preprocessed_image: false
     ocr_raw: false
-    cropped_line_images: true
-    croped_words: false
+    cropped_line_images: false
+    cropped_words: true
 
 batch_processing:
   small_batch_limit: 5

@@ -14,7 +14,7 @@ class MoireDenoiser:
         self.corrections = config
         self.denoise_corrections = config.get('denoise', {})
 
-    def _detect_moire_patterns(self, deskewed_img: np.ndarray) -> np.ndarray:
+    def _detect_moire_patterns(self, cropped_line: np.ndarray) -> np.ndarray:
 
         try:
             from mkl import set_num_threads
@@ -34,15 +34,15 @@ class MoireDenoiser:
         abs_threshold = abs_corrections.get('absolute_threshold', 200000000)
 
         # Ajustes adaptativos
-        img_dims = deskewed_img.shape
+        img_dims = cropped_line.shape
         h, w = img_dims
         max_dim = max(h, w)
-        spectrum_var = np.var(deskewed_img)
+        spectrum_var = np.var(cropped_line)
         adaptive_notch = max(2, min(6, int(notch_radius * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
         adaptive_min_dist = max(50, min(300, int(min_dist * (max_dim / 2000.0))))
 
         # Transformada Fourier
-        f_transform = fft2(deskewed_img)
+        f_transform = fft2(cropped_line)
         f_shifted = fftshift(f_transform)
         magnitude_spectrum = 20 * np.log(np.abs(f_shifted) + 1)
                 
@@ -101,6 +101,6 @@ class MoireDenoiser:
             logger.info(f"Corrección de moiré aplicada - Radio: {adaptive_notch}, Distancia: {adaptive_min_dist}")
             return moire_img
         else:
-            moire_img = deskewed_img
+            moire_img = cropped_line
 
         return moire_img

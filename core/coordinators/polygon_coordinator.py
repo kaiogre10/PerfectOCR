@@ -5,10 +5,11 @@ import logging
 import time
 import os
 from typing import Any, Optional, Dict, Tuple, List
-from core.workflow.preprocessing.cleanner import ImageCleaner
+from core.workflow.geometry.cleanner import ImageCleaner
 from core.workflow.geometry.deskew import Deskewer
 from core.workflow.geometry.lineal_reconstructor import LineReconstructor
 from core.workflow.geometry.poly_gone import PolygonExtractor
+from core.workflow.geometry.binarization import Binarizator
 from core.workspace.utils.output_handlers import ImageOutputHandler
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class PolygonCoordinator:
         self._deskewer = Deskewer(config=quality_rules.get('deskew', {}), project_root=self.project_root)
         self._lineal = LineReconstructor(config=quality_rules.get('basic', {}), project_root=self.project_root)
         self._poly = PolygonExtractor(config=quality_rules.get('basic', {}), project_root=self.project_root)
+        self._bin = Binarizator(config=quality_rules.get('binarize', {}), project_root=self.project_root)
 
         self.image_saver = ImageOutputHandler()
         
@@ -70,9 +72,18 @@ class PolygonCoordinator:
         # Recorte de líneas y añadir imágenes recortadas
         step_start = time.time()
         logger.info("Iniciando recorte de líneas de imagen")
-        result = self._poly._add_cropped_images_to_lines(deskewed_img, reconstructed_lines, metadata, input_path, self.output_config)
+        result, individual_polygons = self._poly._add_cropped_images_to_lines(deskewed_img, reconstructed_lines, metadata, input_path, self.output_config)
         step_duration = time.time() - step_start
         logger.info(f"Recorte completado en {step_duration:.4f}s")
+        
+        polygons_to_binarize = individual_polygons.copy()
+        # 8. Binarización por separado (solo para las features)
+        step_start = time.time()
+        logger.info("Iniciando binarización...")
+        binarized_poly = self._bin._process_individual_polygons(polygons_to_binarize)
+        step_duration = time.time() - step_start
+        logger.info(f"Binarización completada en {step_duration:.4f}s")
+
         
         # Verificar que se añadieron las imágenes recortadas
         if result and result.get("lines"):

@@ -4,7 +4,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from core.workflow.text_cleaning.text_cleaner import TextCleaner
 from core.workflow.text_cleaning.text_corrector import TextCorrector
 import os
-from core.workspace.utils.output_handlers import JsonOutputHandler
+from core.workspace.utils.output_handlers import OutputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class TextCleaningCoordinator:
         self.output_flags = output_flags
         self.text_cleaner = None
         self.text_corrector = None
-        self.json_handler = JsonOutputHandler() 
+        self.json_handler = OutputHandler() 
         if self.config.get('enabled', True):
             self.text_cleaner = TextCleaner(config=self.config)
             logger.info("TextCleaningCoordinator inicializado con TextCleaner")

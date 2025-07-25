@@ -1,6 +1,713 @@
-2025-07-23 18:08:41 - INFO - managment.cache_manager:37 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
-2025-07-23 18:08:41 - INFO - managment.cache_manager:28 - cache_manager - Eliminada carpeta de caché: C:/PerfectOCR/output\cropped_lines
-2025-07-23 18:08:41 - INFO - core.coordinators.ocr_coordinator:29 - ocr_coordinator - Inicializando PaddleOCR...
-2025-07-23 18:08:41 - DEBUG - core.workflow.ocr.paddle_wrapper:16 - paddle_wrapper - PaddleOCRWrapper inicializando con config: {'use_angle_cls': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es', 'rec_model_dir': 'C:/PerfectOCR/data/models/paddle/rec/es', 'cls_model_dir': 'C:/PerfectOCR/data/models/paddle/cls'}
-2025-07-23 18:08:42 - INFO - __main__:318 - main - Procesamiento finalizado, iniciando limpieza de caché.
-2025-07-23 18:08:42 - INFO - managment.cache_manager:49 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
+2025-07-23 23:22:04 - INFO - managment.cache_manager:37 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
+2025-07-23 23:22:04 - INFO - managment.cache_manager:28 - cache_manager - Eliminada carpeta de caché: C:/PerfectOCR/output\cropped_lines
+2025-07-23 23:22:04 - INFO - core.coordinators.ocr_coordinator:29 - ocr_coordinator - Inicializando PaddleOCR...
+2025-07-23 23:22:04 - DEBUG - core.workflow.ocr.paddle_wrapper:16 - paddle_wrapper - PaddleOCRWrapper inicializando con config: {'use_angle_cls': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es', 'rec_model_dir': 'C:/PerfectOCR/data/models/paddle/rec/es', 'cls_model_dir': 'C:/PerfectOCR/data/models/paddle/cls'}
+2025-07-23 23:22:05 - INFO - core.coordinators.ocr_coordinator:32 - ocr_coordinator - PaddleOCR inicializado: 0.933s
+2025-07-23 23:22:06 - INFO - core.coordinators.polygon_coordinator:45 - polygon_coordinator - === INICIANDO GENERACIÓN DE POLIGONAL ===
+2025-07-23 23:22:06 - INFO - core.coordinators.polygon_coordinator:49 - polygon_coordinator - Iniciando limpieza rapida
+2025-07-23 23:22:06 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-07-23 23:22:06 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
+2025-07-23 23:22:06 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
+2025-07-23 23:22:06 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
+2025-07-23 23:22:06 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
+2025-07-23 23:22:06 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
+2025-07-23 23:22:06 - INFO - core.coordinators.polygon_coordinator:52 - polygon_coordinator - Limpieza completada en 0.3292s
+2025-07-23 23:22:06 - INFO - core.coordinators.polygon_coordinator:56 - polygon_coordinator - Iniciando corrección de inclinación
+2025-07-23 23:22:06 - INFO - core.workflow.geometry.deskew:68 - deskew - -> Aplicando corrección de inclinación: -1.01 grados.
+2025-07-23 23:22:06 - INFO - core.workflow.geometry.deskew:93 - deskew - -> Imagen para detección: shape=(2954, 2056), min=0, max=255
+2025-07-23 23:22:07 - INFO - core.workflow.geometry.deskew:98 - deskew - -> polígonos: 56
+2025-07-23 23:22:07 - INFO - core.workflow.geometry.deskew:132 - deskew - -> Cantidad de polígonos encontrados: 56
+2025-07-23 23:22:07 - DEBUG - core.workflow.geometry.deskew:147 - deskew - Detectados 56 polígonos en imagen corregida
+2025-07-23 23:22:07 - INFO - core.coordinators.polygon_coordinator:59 - polygon_coordinator - Corrección de inclinación completada en 1.0044s
+2025-07-23 23:22:07 - INFO - core.coordinators.polygon_coordinator:71 - polygon_coordinator - Agrupando líneas
+2025-07-23 23:22:07 - INFO - core.workflow.geometry.lineal_reconstructor:22 - lineal_reconstructor - Iniciando reconstrucción de líneas con 56 polígonos
+2025-07-23 23:22:07 - INFO - core.workflow.geometry.lineal_reconstructor:64 - lineal_reconstructor - Polígonos válidos preparados: 56/56
+2025-07-23 23:22:07 - INFO - core.workflow.geometry.lineal_reconstructor:148 - lineal_reconstructor - Reconstrucción completada: 27 líneas generadas
+2025-07-23 23:22:07 - INFO - core.coordinators.polygon_coordinator:74 - polygon_coordinator - Agrupamiento completado en 0.0000s - 27 líneas detectadas
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0000: 2 polígonos, bbox=[321.0, 331.0, 1125.0, 402.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0001: 1 polígonos, bbox=[159.0, 421.0, 1643.0, 483.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0002: 1 polígonos, bbox=[180.0, 504.0, 1521.0, 576.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0003: 1 polígonos, bbox=[220.0, 594.0, 1380.0, 662.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0004: 1 polígonos, bbox=[196.0, 680.0, 1460.0, 751.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0005: 1 polígonos, bbox=[673.0, 806.0, 1322.0, 865.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0006: 1 polígonos, bbox=[425.0, 895.0, 945.0, 957.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0007: 1 polígonos, bbox=[66.0, 1009.0, 264.0, 1084.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0008: 2 polígonos, bbox=[73.0, 1166.0, 1224.0, 1234.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0009: 2 polígonos, bbox=[76.0, 1242.0, 1271.0, 1321.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0010: 2 polígonos, bbox=[76.0, 1403.0, 1512.0, 1474.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0011: 1 polígonos, bbox=[1658.0, 1517.0, 1732.0, 1539.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0012: 3 polígonos, bbox=[80.0, 1585.0, 1570.0, 1655.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0013: 4 polígonos, bbox=[80.0, 1671.0, 1475.0, 1742.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0014: 4 polígonos, bbox=[76.0, 1754.0, 1536.0, 1831.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0015: 4 polígonos, bbox=[80.0, 1840.0, 1435.0, 1917.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0016: 3 polígonos, bbox=[76.0, 1907.0, 1589.0, 2013.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0017: 4 polígonos, bbox=[83.0, 2009.0, 1500.0, 2086.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0018: 4 polígonos, bbox=[80.0, 2101.0, 1542.0, 2179.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0019: 4 polígonos, bbox=[83.0, 2181.0, 1586.0, 2266.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0020: 4 polígonos, bbox=[80.0, 2283.0, 1493.0, 2360.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0021: 1 polígonos, bbox=[373.0, 2409.0, 1059.0, 2471.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0022: 1 polígonos, bbox=[783.0, 2496.0, 1267.0, 2557.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0023: 1 polígonos, bbox=[722.0, 2575.0, 1331.0, 2643.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0024: 1 polígonos, bbox=[750.0, 2671.0, 1282.0, 2723.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0025: 1 polígonos, bbox=[646.0, 2754.0, 1389.0, 2816.0]
+2025-07-23 23:22:07 - DEBUG - core.coordinators.polygon_coordinator:78 - polygon_coordinator - Línea line_0026: 1 polígonos, bbox=[964.0, 2917.0, 1117.0, 2948.0]
+2025-07-23 23:22:07 - INFO - core.coordinators.polygon_coordinator:82 - polygon_coordinator - Iniciando recorte de líneas de imagen
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_001.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_002.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_003.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_004.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_005.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_006.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_007.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_008.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_009.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_010.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_011.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_012.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_013.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_014.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_015.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_016.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_017.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_018.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_019.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_020.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_021.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_022.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_023.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_024.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_025.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_026.png
+2025-07-23 23:22:07 - INFO - core.workspace.utils.output_handlers:72 - output_handlers - Imagen preprocesada guardada en: C:\PerfectOCR\output\cropped_lines\prueba12_linea_027.png
+2025-07-23 23:22:07 - INFO - core.workflow.geometry.poly_gone:85 - poly_gone - Guardado de imágenes recortadas habilitado: 27 imágenes procesadas
+2025-07-23 23:22:07 - INFO - core.coordinators.polygon_coordinator:85 - polygon_coordinator - Recorte completado en 0.0855s
+2025-07-23 23:22:07 - INFO - core.coordinators.polygon_coordinator:90 - polygon_coordinator - Imágenes recortadas exitosamente: 27/27
+2025-07-23 23:22:07 - INFO - core.coordinators.polygon_coordinator:93 - polygon_coordinator - === GENERACIÓN DE POLIGONAL COMPLETADA en 1.4262s ===
+2025-07-23 23:22:07 - INFO - __main__:158 - main - Polygonos: 2.320s
+2025-07-23 23:22:07 - INFO - __main__:170 - main - Procesando línea 1/27
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 6253.722
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0138s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 87.19%
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8719
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0014s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 3917.334
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0050s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 11.686, Umbral Adaptativo: 2533.813
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0064s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.026s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:07 - INFO - __main__:170 - main - Procesando línea 2/27
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 7713.296
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0198s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 84.56%
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8456
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0033s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 6712.635
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0020s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0046s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 20.103, Umbral Adaptativo: 3025.697
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0047s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.034s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:07 - INFO - __main__:170 - main - Procesando línea 3/27
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 7047.455
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0265s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 86.22%
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8622
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0023s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 5030.041
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0025s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0041s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 15.418, Umbral Adaptativo: 2801.210
+2025-07-23 23:22:07 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0045s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.040s
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:07 - INFO - __main__:170 - main - Procesando línea 4/27
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:07 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 7946.409
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0160s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 83.40%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8340
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0019s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 5990.766
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0041s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 17.564, Umbral Adaptativo: 3108.515
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0094s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.031s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 5/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 7519.030
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0139s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 84.86%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8486
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 5242.368
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0090s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0031s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 16.307, Umbral Adaptativo: 2986.734
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0050s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.031s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 6/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 8972.486
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0078s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 80.22%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8022
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0049s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 6395.884
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0023s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 21.020, Umbral Adaptativo: 3508.356
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0055s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.020s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 7/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 8393.287
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0089s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 82.17%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8217
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 5533.607
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0052s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 17.478, Umbral Adaptativo: 3337.135
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0017s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.018s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 8/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 5996.094
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0042s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 88.71%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8871
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 3860.066
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 13.334, Umbral Adaptativo: 2492.853
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0071s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.013s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 9/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 2664.882
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0154s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 95.48%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.9548
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 1728.680
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0075s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 5.316, Umbral Adaptativo: 1103.380
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0031s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.031s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 10/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 3094.473
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0265s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 94.53%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.9453
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 1868.903
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0064s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 5.963, Umbral Adaptativo: 1288.068
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0046s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.041s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 11/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 6164.080
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0264s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 88.05%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8805
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 4134.733
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0063s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 13.077, Umbral Adaptativo: 2485.511
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0084s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.043s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 12/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 8335.924
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 81.40%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8140
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0034s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 9317.934
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0017s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 30.706, Umbral Adaptativo: 3199.623
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0020s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.007s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 13/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 6602.962
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0169s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 86.82%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8682
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 4373.323
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0059s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 14.144, Umbral Adaptativo: 2676.121
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0097s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.035s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 14/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 5953.664
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0189s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 88.49%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8849
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0017s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 3985.854
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0020s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 12.690, Umbral Adaptativo: 2429.002
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0065s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.029s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 15/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 5952.061
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0167s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 88.39%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8839
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 3854.906
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0039s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0050s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 13.020, Umbral Adaptativo: 2423.779
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0010s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.028s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 16/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 5278.409
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0454s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 89.98%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8998
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0185s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 3470.715
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0007s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 10.869, Umbral Adaptativo: 2170.430
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0226s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.093s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 17/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 4343.367
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0391s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 91.86%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.9186
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0007s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 2916.629
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0071s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0057s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 9.600, Umbral Adaptativo: 1792.828
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0123s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.065s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 18/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 5705.977
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0190s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 89.01%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8901
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 3736.756
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0050s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0021s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 12.375, Umbral Adaptativo: 2334.023
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0090s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.035s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 19/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 5911.448
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0128s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 88.53%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8853
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 3962.738
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0011s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0035s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 12.437, Umbral Adaptativo: 2414.262
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0049s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.028s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 20/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 5391.661
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0206s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 89.63%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8963
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0014s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 3436.237
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0050s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 11.479, Umbral Adaptativo: 2218.330
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0142s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.044s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 21/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 6047.622
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0176s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 88.20%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8820
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 4120.881
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[8, 8]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0046s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 12.470, Umbral Adaptativo: 2477.521
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0069s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.029s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 22/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 7607.286
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 84.35%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8435
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0089s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 5389.860
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 16.208, Umbral Adaptativo: 3038.251
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0070s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.017s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 23/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 7874.649
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0081s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 83.26%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8326
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0005s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 5065.624
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 17.468, Umbral Adaptativo: 3153.412
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0062s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.016s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 24/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 7654.946
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0108s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 83.79%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8379
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0022s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 5279.940
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0032s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 17.313, Umbral Adaptativo: 3068.978
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0014s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.018s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 25/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 9466.916
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0068s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 78.15%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.7815
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0038s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 6858.629
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0008s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0025s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 22.710, Umbral Adaptativo: 3755.600
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0029s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.018s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 26/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 8438.605
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0054s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 81.84%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.8184
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0069s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 5840.446
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0015s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0014s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 18.918, Umbral Adaptativo: 3329.729
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0042s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.022s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:170 - main - Procesando línea 27/27
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:55 - preprocessing_coordinator - === INICIANDO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:59 - preprocessing_coordinator - Iniciando detección y corrección de moiré...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.moire:73 - moire - Inferencia automática - Método: Absoluto, Umbral adaptativo: 5000000.000, Varianza: 10881.795
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:62 - preprocessing_coordinator - Corrección de moiré completada en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:66 - preprocessing_coordinator - Iniciando filtrado de ruido sal y pimienta
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:37 - sp - Ruido S&P medido: 73.20%
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sp:40 - sp - APLICANDO FILTRO MEDIANA: 0.7320
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:69 - preprocessing_coordinator - Filtrado de ruido sal y pimienta completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:73 - preprocessing_coordinator - Iniciando filtrado de ruido general
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.gauss:26 - gauss - Ruido general (varianza laplaciana): 9355.517
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:76 - preprocessing_coordinator - Filtrado de ruido general completado en 0.0000s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:84 - preprocessing_coordinator - Iniciando mejora de contraste
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.clahe:43 - clahe - -> Aplicando mejora de contraste: CLAHE (clip_limit=2.5500000000000003, grid_size=[6, 6]).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:87 - preprocessing_coordinator - Mejora de contraste completada en 0.0054s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:91 - preprocessing_coordinator - Iniciando mejora de nitidez...
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:32 - sharp - Nintedez(Sobel): 25.360, Umbral Adaptativo: 4249.053
+2025-07-23 23:22:08 - INFO - core.workflow.preprocessing.sharp:37 - sharp - -> Aplicando mejora de nitidez: Unsharp Masking (radius=2.0, amount=2.0).
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:94 - preprocessing_coordinator - Mejora de nitidez completada en 0.0010s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:100 - preprocessing_coordinator - PIPELINE COMPLETADO - Tiempo total: 0.008s
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - === FINALIZADO PIPELINE DE PREPROCESAMIENTO ===
+2025-07-23 23:22:08 - INFO - core.coordinators.preprocessing_coordinator:120 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
+2025-07-23 23:22:08 - INFO - __main__:182 - main - Preprocesamiento: 0.884s
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:57 - ocr_coordinator - OCR recibió imágenes para: ['line_line_0000', 'line_line_0001', 'line_line_0002', 'line_line_0003', 'line_line_0004', 'line_line_0005', 'line_line_0006', 'line_line_0007', 'line_line_0008', 'line_line_0009', 'line_line_0010', 'line_line_0011', 'line_line_0012', 'line_line_0013', 'line_line_0014', 'line_line_0015', 'line_line_0016', 'line_line_0017', 'line_line_0018', 'line_line_0019', 'line_line_0020', 'line_line_0021', 'line_line_0022', 'line_line_0023', 'line_line_0024', 'line_line_0025', 'line_line_0026']
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0000: imagen (81, 814) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0001: imagen (72, 1494) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0002: imagen (82, 1351) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0003: imagen (78, 1170) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0004: imagen (81, 1274) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0005: imagen (69, 659) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0006: imagen (72, 530) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0007: imagen (85, 208) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0008: imagen (78, 1161) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0009: imagen (89, 1205) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0010: imagen (81, 1446) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0011: imagen (32, 84) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0012: imagen (80, 1500) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0013: imagen (81, 1405) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0014: imagen (87, 1470) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0015: imagen (87, 1365) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0016: imagen (116, 1523) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0017: imagen (87, 1427) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0018: imagen (88, 1472) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0019: imagen (95, 1513) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0020: imagen (87, 1423) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0021: imagen (72, 696) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0022: imagen (71, 494) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0023: imagen (78, 619) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0024: imagen (62, 542) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0025: imagen (72, 753) dtype=uint8
+2025-07-23 23:22:08 - DEBUG - core.coordinators.ocr_coordinator:60 - ocr_coordinator - line_line_0026: imagen (41, 163) dtype=uint8
+2025-07-23 23:22:08 - ERROR - core.coordinators.ocr_coordinator:72 - ocr_coordinator - PaddleOCR habilitado pero imagen faltante
+2025-07-23 23:22:08 - INFO - __main__:201 - main - OCR: 0.002s
+2025-07-23 23:22:08 - INFO - __main__:318 - main - Procesamiento finalizado, iniciando limpieza de caché.
+2025-07-23 23:22:08 - INFO - managment.cache_manager:49 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
