@@ -12,14 +12,11 @@ class LineReconstructor:
         self.project_root = project_root
         self.corrections = config
 
-    @staticmethod
-    def _reconstruct_lines(polygons: List[List[List[float]]], metadata: dict):
+    def _reconstruct_lines(self, polygons: List[List[List[float]]], metadata: dict):
         """
-        Agrupa polígonos en líneas si el centroide cae en el intervalo vertical de la línea
-        y además hay suficiente solapamiento vertical (>30% del menor alto).
-        Devuelve una lista de líneas (con geometría y polígonos) y la metadata.
+        Asigna un 'line_id' a cada polígono agrupándolos lógicamente en líneas, pero solo retorna la lista de polígonos con toda su metadata.
         """
-        logger.info(f"Iniciando reconstrucción de líneas con {len(polygons)} polígonos")
+        logger.info(f"Iniciando asignación de line_id a {len(polygons)} polígonos")
 
         def _get_geometry(polygon_coords):
             xs = [p[0] for p in polygon_coords]
@@ -63,88 +60,45 @@ class LineReconstructor:
 
         logger.info(f"Polígonos válidos preparados: {len(prepared)}/{len(polygons)}")
 
-        # Ordenar por Y del centroide
         prepared_sorted = sorted(prepared, key=lambda p: p["centroid"][1])
 
-        reconstructed_lines = []
-        current_line = []
+        final_polygons = []
+        current_line_polys = []
         current_line_bbox = None
         line_counter = 0
+
         for poly in prepared_sorted:
             poly_centroid_y = poly["centroid"][1]
             poly_bbox = poly["bbox"]
-            if not current_line:
-                # Iniciar nueva línea
-                current_line = [poly]
+            if not current_line_polys:
+                current_line_polys = [poly]
                 current_line_bbox = poly_bbox.copy()
             else:
-                # Verificar si el centroide cae en el intervalo vertical de la línea
                 line_ymin, line_ymax = current_line_bbox[1], current_line_bbox[3]
                 drops_intervall = (line_ymin <= poly_centroid_y <= line_ymax)
-                # Verificar solapamiento vertical
                 overlap = _vertical_overlap(current_line_bbox, poly_bbox)
                 if drops_intervall and overlap > 0.3:
-                    current_line.append(poly)
-                    # Actualizar bbox de la línea
-                    xs = [p for poly2 in current_line for p in [poly2["bbox"][0], poly2["bbox"][2]]]
-                    ys = [p for poly2 in current_line for p in [poly2["bbox"][1], poly2["bbox"][3]]]
+                    current_line_polys.append(poly)
+                    xs = [p for poly2 in current_line_polys for p in [poly2["bbox"][0], poly2["bbox"][2]]]
+                    ys = [p for poly2 in current_line_polys for p in [poly2["bbox"][1], poly2["bbox"][3]]]
                     current_line_bbox = [min(xs), min(ys), max(xs), max(ys)]
                 else:
-                    # Guardar línea anterior
-                    xs = [p for poly2 in current_line for p in [poly2["bbox"][0], poly2["bbox"][2]]]
-                    ys = [p for poly2 in current_line for p in [poly2["bbox"][1], poly2["bbox"][3]]]
-                    min_x, max_x = min(xs), max(xs)
-                    min_y, max_y = min(ys), max(ys)
-                    cx = sum([poly2["centroid"][0] for poly2 in current_line]) / len(current_line)
-                    cy = sum([poly2["centroid"][1] for poly2 in current_line]) / len(current_line)
-                    reconstructed_lines.append({
-                        "line_id": f"line_{line_counter:04d}",
-                        "line_bbox": [min_x, min_y, max_x, max_y],
-                        "line_centroid": [cx, cy],
-                        "line_height": max_y - min_y,
-                        "line_width": max_x - min_x,
-                        "polygons": [
-                            {
-                                "polygon_id": poly2["polygon_id"],
-                                "bbox": poly2["bbox"],
-                                "centroid": poly2["centroid"],
-                                "height": poly2["height"],
-                                "width": poly2["width"],
-                                "coords": poly2["coords"]
-                            }
-                            for poly2 in current_line
-                        ]
-                    })
+                    # Finalizar la línea anterior y asignar line_id
+                    line_id = f"line_{line_counter:04d}"
+                    for p in current_line_polys:
+                        p['line_id'] = line_id
+                        final_polygons.append(p)
                     line_counter += 1
-                    # Iniciar nueva línea
-                    current_line = [poly]
+                    current_line_polys = [poly]
                     current_line_bbox = poly_bbox.copy()
-        if current_line:
-            xs = [p for poly2 in current_line for p in [poly2["bbox"][0], poly2["bbox"][2]]]
-            ys = [p for poly2 in current_line for p in [poly2["bbox"][1], poly2["bbox"][3]]]
-            min_x, max_x = min(xs), max(xs)
-            min_y, max_y = min(ys), max(ys)
-            cx = sum([poly2["centroid"][0] for poly2 in current_line]) / len(current_line)
-            cy = sum([poly2["centroid"][1] for poly2 in current_line]) / len(current_line)
-            reconstructed_lines.append({
-                "line_id": f"line_{line_counter:04d}",
-                "line_bbox": [min_x, min_y, max_x, max_y],
-                "line_centroid": [cx, cy],
-                "line_height": max_y - min_y,
-                "line_width": max_x - min_x,
-                "polygons": [
-                    {
-                        "polygon_id": poly2["polygon_id"],
-                        "bbox": poly2["bbox"],
-                        "centroid": poly2["centroid"],
-                        "height": poly2["height"],
-                        "width": poly2["width"],
-                        "coords": poly2["coords"]
-                    }
-                    for poly2 in current_line
-                ]
-            })
 
-        logger.info(f"Reconstrucción completada: {len(reconstructed_lines)} líneas generadas")
-
+        # Guardar la última línea si existe
+        if current_line_polys:
+            line_id = f"line_{line_counter:04d}"
+            for p in current_line_polys:
+                p['line_id'] = line_id
+                final_polygons.append(p)
+        
+        reconstructed_lines = final_polygons  # Para compatibilidad con el pipeline
+        logger.info(f"Asignación completada: {len(final_polygons)} polígonos asignados a {line_counter + 1} líneas lógicas.")
         return reconstructed_lines, metadata

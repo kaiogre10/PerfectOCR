@@ -15,7 +15,7 @@ class MoireDenoiser:
         self.denoise_corrections = config.get('denoise', {})
 
     def _detect_moire_patterns(self, cropped_line: np.ndarray) -> np.ndarray:
-
+            
         try:
             from mkl import set_num_threads
             set_num_threads(4)
@@ -70,7 +70,7 @@ class MoireDenoiser:
             adaptive_threshold = max(1000, min(5000000, adaptive_threshold * (spectrum_var / 100.0)))
             method = "Absoluto"
 
-        logger.info(f"Inferencia automática - Método: {method}, Umbral adaptativo: {adaptive_threshold:.3f}, Varianza: {spectrum_var:.3f}")
+
 
         # Detectar picos
         peaks_coords = np.argwhere(magnitude_spectrum > adaptive_threshold)
@@ -78,7 +78,6 @@ class MoireDenoiser:
 
         # Corrección solo si hay moiré
         if len(filtered_peaks) > 0:
-            logger.info(f"Detección de moiré - Picos: {len(filtered_peaks)}")
             center_y, center_x = h // 2, w // 2
             mask = np.ones((h, w), np.float32)
 
@@ -97,8 +96,6 @@ class MoireDenoiser:
             moire_img = np.clip(moire_img, 0, 255).astype(np.uint8)
             if spectrum_var > 1000:
                 moire_img = cv2.bilateralFilter(moire_img, d=5, sigmaColor=50, sigmaSpace=50)
-                logger.info("Aplicando BilateralFilter por alta varianza.")
-            logger.info(f"Corrección de moiré aplicada - Radio: {adaptive_notch}, Distancia: {adaptive_min_dist}")
             return moire_img
         else:
             moire_img = cropped_line

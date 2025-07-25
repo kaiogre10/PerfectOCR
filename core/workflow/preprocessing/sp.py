@@ -34,10 +34,8 @@ class DoctorSaltPepper:
         # Sumar píxeles en extremos
         sp_pixels = np.sum(hist[:low_thresh]) + np.sum(hist[high_thresh:])
         sp_ratio = sp_pixels / total_pixels
-        logger.info(f"Ruido S&P medido: {sp_ratio:.2%}")
 
         if sp_ratio > sp_threshold:
-            logger.info(f"APLICANDO FILTRO MEDIANA: {sp_ratio:.4f}")
             # Si el kernel_size es par, lo ajustamos a impar
             if kernel_size % 2 == 0:
                 kernel_size += 1

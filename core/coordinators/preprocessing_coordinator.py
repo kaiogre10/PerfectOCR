@@ -38,9 +38,9 @@ class PreprocessingCoordinator:
         
     def _apply_preprocessing_pipelines(
         self,
-        image_array: np.ndarray,
+        polygons_dict: dict,
         input_path: str = ""
-    ) -> Tuple[Optional[Dict[str, Any]], float]:
+    ) -> Tuple[dict, float]:
         """
         Procesa la imagen de forma secuencial:
         1. Moiré
@@ -49,78 +49,68 @@ class PreprocessingCoordinator:
         4. Contraste
         5. Nitidez
         """
-        try:
-            cropped_line = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array
-            pipeline_start = time.time()
-            logger.info("=== INICIANDO PIPELINE DE PREPROCESAMIENTO ===")
-            
-            # 1. Remoción de moiré
-            step_start = time.time()
-            logger.info("Iniciando detección y corrección de moiré...")
-            moire_img = self._moire._detect_moire_patterns(cropped_line)
-            step_duration = time.time() - step_start
-            logger.info(f"Corrección de moiré completada en {step_duration:.4f}s")
+        if isinstance(polygons_dict, dict):
+            polygons_list = polygons_dict.get("polygons", [])
+        else:
+            polygons_list = polygons_dict
 
-            # 2. Filtro de ruido sal y pimienta
-            step_start = time.time()
-            logger.info("Iniciando filtrado de ruido sal y pimienta")
-            sp_img = self._sp._estimate_salt_pepper_noise(moire_img)
-            step_duration = time.time() - step_start
-            logger.info(f"Filtrado de ruido sal y pimienta completado en {step_duration:.4f}s")
-
-            # 3. Filtro de ruido general
-            step_start = time.time()
-            logger.info("Iniciando filtrado de ruido general")
-            gauss_img = self._gauss._estimate_gaussian_noise(sp_img)
-            step_duration = time.time() - step_start
-            logger.info(f"Filtrado de ruido general completado en {step_duration:.4f}s")
-
-            # . Corrección de sobreiluminación (comentado)
-            #if self._detect_overexposure(image):
-            #   image = self._apply_overexposure_correction(image)
-
-            # 4. Mejora de contraste
-            step_start = time.time()
-            logger.info("Iniciando mejora de contraste")
-            clahed_img = self._claher._estimate_contrast(gauss_img)
-            step_duration = time.time() - step_start
-            logger.info(f"Mejora de contraste completada en {step_duration:.4f}s")
-
-            # 5. Mejora de nitidez
-            step_start = time.time()
-            logger.info("Iniciando mejora de nitidez...")
-            corrected_image = self._sharp._estimate_sharpness(clahed_img)
-            step_duration = time.time() - step_start
-            logger.info(f"Mejora de nitidez completada en {step_duration:.4f}s")
-
-            # Guardar la imagen final del polígono procesado
-            # processed_ocr_images[f"polygon_{i}"] = corrected_image
-
-            total_duration = time.time() - pipeline_start
-            logger.info(f"PIPELINE COMPLETADO - Tiempo total: {total_duration:.3f}s")
-            logger.info("=== FINALIZADO PIPELINE DE PREPROCESAMIENTO ===")
+        polygons_received = len(polygons_list)
+        polygons_corrected = 0
         
-            # Guardar imagen si está habilitado (NOTA: Esto guardará la última imagen procesada, se podría ajustar)
-            if self.output_config.get('enabled_outputs', {}).get('preprocessed_image', False):
-                if not input_path:
-                    logger.warning("No se proporcionó 'input_path', no se puede guardar la imagen preprocesada con un nombre de archivo único.")
+        pipeline_start = time.time()
+        
+        for i, polygon in enumerate(polygons_list):
+            cropped_img = polygon.get("cropped_img")
+            if cropped_img is not None:
+        
+                # 1. Remoción de moiré
+                moire_img = self._moire._detect_moire_patterns(cropped_img)
+                
+                # 2. Filtro de ruido sal y pimienta
+                sp_img = self._sp._estimate_salt_pepper_noise(moire_img)
+                
+                # 3. Filtro de ruido general
+                gauss_img = self._gauss._estimate_gaussian_noise(sp_img)
+                
+                # . Corrección de sobreiluminación (comentado)
+                #if self._detect_overexposure(image):
+                #   image = self._apply_overexposure_correction(image)
+
+                # 4. Mejora de contraste
+                clahed_img = self._claher._estimate_contrast(gauss_img)
+            
+                # 5. Mejora de nitidez
+                corrected_image = self._sharp._estimate_sharpness(clahed_img)
+
+        # Guardar la imagen final del polígono procesado
+        # processed_ocr_images[f"polygon_{i}"] = corrected_image
+
+        total_duration = time.time() - pipeline_start
+        
+        # Log simplificado: solo información esencial
+        logger.info(f"Worker Preprocessing - Polígonos recibidos: {polygons_received}, Polígonos corregidos: {polygons_corrected}")
+    
+        # Guardar imagen si está habilitado (NOTA: Esto guardará la última imagen procesada, se podría ajustar)
+        if self.output_config.get('enabled_outputs', {}).get('preprocessed_image', False):
+            if not input_path:
+                logger.warning("No se proporcionó 'input_path', no se puede guardar la imagen preprocesada con un nombre de archivo único.")
+            else:
+                output_folder = self.workflow_config.get('output_folder')
+                if not output_folder:
+                    logger.error("La 'output_folder' no está definida en la configuración del workflow.")
                 else:
-                    output_folder = self.workflow_config.get('output_folder')
-                    if not output_folder:
-                        logger.error("La 'output_folder' no está definida en la configuración del workflow.")
-                    else:
-                        base_name = os.path.basename(input_path)
-                        file_name, _ = os.path.splitext(base_name)
-                        # Guardamos la última imagen como referencia
-                        output_filename = f"{file_name}_preprocessed_last_poly.png"
-                        self.image_saver.save(corrected_image, output_folder, output_filename)
+                    base_name = os.path.basename(input_path)
+                    file_name, _ = os.path.splitext(base_name)
+                    # Guardamos la última imagen como referencia
+                    output_filename = f"{file_name}_preprocessed_last_poly.png"
+                    self.image_saver.save(corrected_image, output_folder, output_filename)
 
             # Empaquetar el resultado para el siguiente coordinador (OCR).
             # Ahora es un diccionario de imágenes de polígonos
             logger.info("Preprocessing: Pipeline completado exitosamente por el worker.")
 
+        try:
             return {"processed_image": corrected_image}, total_duration
-
         except Exception as e:
             logger.error(f"Preprocessing: Falló el pipeline del worker: {e}", exc_info=True)
             return {"processed_image": None}, 0.0
