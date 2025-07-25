@@ -4,7 +4,7 @@ patch_sklearn()
 import cv2
 import logging
 import numpy as np
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -94,17 +94,16 @@ class PolygonFragmentator:
 
             # --- Lógica de Fragmentación para polígonos problemáticos ---
             logger.info(f"Polígono problemático detectado ({poly_id}). Aplicando fragmentación.")
-            binarized_poly: Optional[Dict] = binarized_poly_map.get(poly_id)
-            if binarized_poly is None or binarized_poly.get("binarized_img") is None:
+            binarized_polygon = binarized_poly_map.get(poly_id)
+            if binarized_polygon is None or binarized_polygon.get("binarized_img") is None:
                 refined_polygons.append(original_poly)
                 continue
                 
-            bin_img_to_split = binarized_poly["binarized_img"]
+            bin_img_to_split = binarized_polygon["binarized_img"]
             
             # Encontrar contornos de los componentes internos
             internal_contours, _ = cv2.findContours(bin_img_to_split, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
-            # --- CAMBIO CLAVE: El área mínima ahora es adaptativa ---
             poly_area = bin_img_to_split.shape[0] * bin_img_to_split.shape[1]
             adaptive_min_area = poly_area * self.min_area_factor
             valid_contours = [c for c in internal_contours if cv2.contourArea(c) > adaptive_min_area]

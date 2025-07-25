@@ -50,5 +50,10 @@
         "**/.ini": true,
         "**/.pyc": true
     },
-    "git.enabled": false
+    "git.enabled": false,
+    "typescript.disableAutomaticTypeAcquisition": true,
+    "python.analysis.typeEvaluation.deprecateTypingAliases": true,
+    "search.searchEditor.singleClickBehaviour": "peekDefinition",
+    "typescript.implementationsCodeLens.showOnInterfaceMethods": true,
+    "python.analysis.typeEvaluation.strictDictionaryInference": true
 }
