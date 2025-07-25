@@ -72,6 +72,12 @@ polygonal:
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]
       quality_threshold: [0.1, 0.9]
+      
+    fragmentation:
+      min_contour_area: 0.001
+      density_std_factor: 2.0
+      approx_poly_epsilon: 0.005
+      
     basic:
     
 
@@ -134,7 +140,7 @@ output_config:
     preprocessed_image: false
     ocr_raw: false
     cropped_line_images: false
-    cropped_words: true
+    cropped_words: false
 
 batch_processing:
   small_batch_limit: 5

@@ -1,12 +1,14 @@
 # PerfectOCR/core/workflow/geometry/binarization.py
 from sklearnex import patch_sklearn
-patch_sklearn
+patch_sklearn()
 import cv2
 import numpy as np
 import logging
 from typing import Dict, Any, List, Tuple
 from skimage.filters import threshold_sauvola
 from skimage.util import img_as_ubyte
+from scipy import ndimage
+from skimage import morphology
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,6 @@ class Binarizator:
         self.project_root = project_root
         self.geometric = config
         self.geometric_bin = config.get('polygon_config', {})
-        
         # Configuraciones de binarización
         binarize_config = self.geometric_bin.get('binarize', {})
         self.c_value = binarize_config.get('c_value', 7)
@@ -81,14 +82,14 @@ class Binarizator:
         final_block_size = self.block_sizes_map[-1]
         return max(3, final_block_size if final_block_size % 2 != 0 else final_block_size + 1)
    
-    def _binarize_single_polygon(self, polygon_img: np.ndarray, polygon_height: float) -> Tuple[np.ndarray, str]:
+    def _binarize_single_polygon(self, polygon_img: np.ndarray, polygon_height: float) -> np.ndarray:
         """
         Binarización robusta y adaptativa para un polígono individual.
         Prueba una cascada de métodos desde el más rápido al más robusto.
         """
         if polygon_img.size == 0:
             logger.warning("Polígono vacío recibido para binarización")
-            return polygon_img, "empty"
+            return polygon_img
             
         gray_img = cv2.cvtColor(polygon_img, cv2.COLOR_BGR2GRAY) if len(polygon_img.shape) == 3 else polygon_img.copy()
         
@@ -101,7 +102,7 @@ class Binarizator:
                 otsu_result = self._otsu_binarize(gray_img)
                 if self._check_quality(otsu_result):
                     logger.debug("Binarización exitosa con método Otsu")
-                    return otsu_result, "otsu"
+                    return otsu_result
             except Exception as e:
                 logger.warning(f"Error en binarización Otsu: {e}")
        
@@ -110,7 +111,7 @@ class Binarizator:
             adaptive_result = self._adaptive_binarize(gray_img, adaptive_block_size)
             if self._check_quality(adaptive_result):
                 logger.debug("Binarización exitosa con método Adaptive Gaussian")
-                return adaptive_result, "adaptive_gaussian"
+                return adaptive_result
         except Exception as e:
             logger.warning(f"Error en binarización Adaptive Gaussian: {e}")
 
@@ -119,7 +120,7 @@ class Binarizator:
             sauvola_result = self._sauvola_binarize(gray_img, adaptive_block_size)
             if self._check_quality(sauvola_result):
                 logger.debug("Binarización exitosa con método Sauvola (skimage)")
-                return sauvola_result, "sauvola"
+                return sauvola_result
         except Exception as e:
             logger.warning(f"Error en binarización Sauvola: {e}")
        
@@ -127,22 +128,16 @@ class Binarizator:
         try:
             fallback_result = self._adaptive_mean_fallback(gray_img, adaptive_block_size)
             logger.debug("Usando método fallback Adaptive Mean")
-            return fallback_result, "adaptive_mean_fallback"
+            return fallback_result
         except Exception as e:
             logger.error(f"Error en método fallback final: {e}")
-            return gray_img, "failed"
+            return gray_img
 
     def _process_individual_polygons(self, individual_polygons: List[Dict]) -> List[Dict]:
         """
         Procesa una lista de polígonos individuales aplicando binarización adaptativa a cada uno.
         Reemplaza la imagen original con la versión binarizada.
         Utiliza la metadata existente sin modificarla.
-        
-        Args:
-            individual_polygons: Lista de polígonos con sus imágenes recortadas y metadata
-            
-        Returns:
-            binarized_poly: Los polígonos con sus imágenes binarizadas
         """
         if not individual_polygons:
             logger.warning("Lista de polígonos vacía recibida")
@@ -150,62 +145,105 @@ class Binarizator:
         
         logger.info(f"Iniciando binarización de {len(individual_polygons)} polígonos individuales")
         
-        binarized_poly = []
+        binarized_polygons = []
         binarized_count = 0
         failed_count = 0
         
         for idx, polygon in enumerate(individual_polygons):
             try:
-                # Obtener la imagen recortada del polígono
                 cropped_img = polygon.get("cropped_img")
                 if cropped_img is None:
                     logger.warning(f"Polígono {polygon.get('polygon_id', idx)} sin imagen, omitiendo")
                     failed_count += 1
                     continue
-                    
-                # Usar la altura directamente de la metadata, sin valores por defecto
-                height = polygon["height"] 
                 
-                # Binarizar la imagen y reemplazar la original
-                binarized_poly, _ = self._binarize_single_polygon(cropped_img, height)
-                
+                height = polygon["height"]
+                bin_img = self._binarize_single_polygon(cropped_img, height)
+                polygon["binarized_img"] = bin_img
+                binarized_polygons.append(polygon)
+                binarized_count += 1
             except Exception as e:
                 logger.error(f"Error procesando polígono {polygon.get('polygon_id', idx)}: {e}")
                 failed_count += 1
-                
+        
         logger.info(f"Binarización completada: {binarized_count}/{len(individual_polygons)} polígonos procesados exitosamente")
         
-        return binarized_poly
+        return binarized_polygons
+    
+    def _clean_binarizated_polys(self, binarized_polygons: List[Dict]) -> List[Dict]:
+        """
+        Limpia cada imagen binarizada de los polígonos individuales y actualiza el diccionario.
+        """
+        correction_applied = False
         
-        # 1. Análisis de componentes y ruido
-        # labeled_regions, num_regions = ndimage.label(binary)
-        # if num_regions > 0:
-        #     region_sizes = np.bincount(labeled_regions.ravel())[1:]
-        #     small_regions = np.sum(region_sizes < 20)  # 20 píxeles como umbral mínimo
-        #     noise_ratio = small_regions / (num_regions + 1e-8)
-        #     
-        #     # 2. Reducción de ruido adaptativa
-        #     if noise_ratio > 0.3:
-        #         binary = morphology.remove_small_objects(
-        #             binary.astype(bool), 
-        #             min_size=20
-        #         ).astype(np.uint8) * 255
-        #     
-        #     # 3. Ajuste morfológico adaptativo
-        #     kernel_size = max(2, int(min(gray.shape) * 0.005) // 2 * 2 + 1)
-        #     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-        #     
-        #     # Si hay muchos componentes pequeños, aplicar closing
-        #     # Si hay componentes fragmentados, aplicar opening
-        #     if noise_ratio > 0.2:
-        #         binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-        #     else:
-        #         # Verificar fragmentación basada en estadísticas simples
-        #         avg_size = np.mean(region_sizes)
-        #         if avg_size < 100:  # Umbral arbitrario para texto fragmentado
-        #             binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-        #         
-        # if abs(props["dominant_angle"]) > 2:
-        #     # Corregir rotación si es significativa
-        #     angle = props["dominant_angle"]
-        #     binary = ndimage.rotate(binary, angle, reshape=False, mode='constant')
+        for polygon in binarized_polygons:
+            binary_img = polygon.get("binarized_img")
+            
+            # Verificación robusta de la imagen de entrada
+            if binary_img is None or binary_img.size == 0:
+                continue
+            # Convertir la imagen binarizada a tipo booleano para análisis de componentes
+            binary_img_bool = binary_img.astype(bool)
+
+            try:
+                label_output = ndimage.label(binary_img_bool)
+                
+                # Se comprueba si la salida es una tupla de 2 elementos antes de desempaquetar
+                if isinstance(label_output, tuple) and len(label_output) == 2:
+                    labeled_regions, num_regions = label_output
+                else:
+                    # Si no es una tupla, se registra y se salta este polígono para evitar el crash.
+                    logger.warning(
+                        f"ndimage.label devolvió un valor inesperado para el polígono. Omitiendo limpieza. Valor: {label_output}"
+                    )
+                    continue
+            except Exception as e:
+                # Captura cualquier otra excepción que pueda lanzar ndimage.label
+                logger.error(
+                    f"Ocurrió una excepción en ndimage.label durante la limpieza del polígono: {e}"
+                )
+                continue
+
+            if num_regions > 0:
+                region_sizes = np.bincount(labeled_regions.ravel())[1:]
+                small_regions = np.sum(region_sizes < 20)
+                noise_ratio = small_regions / (num_regions + 1e-8)
+
+                # 2. APLICACIÓN QUIRÚRGICA solo si es necesario
+                if noise_ratio > 0.3:  # Ruido alto
+                    correction_applied = True
+                    # Se usa la imagen original uint8 para las operaciones morfológicas
+                    binary = binary_img.copy()
+                    
+                    # Corrección agresiva
+                    binary_cleaned = morphology.remove_small_objects(
+                        binary.astype(bool), 
+                        min_size=20
+                    ).astype(np.uint8) * 255
+                    
+                    kernel_size = max(2, int(min(binary_cleaned.shape) * 0.005) // 2 * 2 + 1)
+                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
+                    binary_cleaned = cv2.morphologyEx(binary_cleaned, cv2.MORPH_CLOSE, kernel)
+                    
+                    polygon["binarized_img"] = binary_cleaned
+                    
+                elif noise_ratio > 0.2:  # Ruido moderado
+                    correction_applied = True
+                    binary = binary_img.copy()
+                    
+                    # Corrección suave
+                    kernel_size = max(2, int(min(binary.shape) * 0.005) // 2 * 2 + 1)
+                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
+                    avg_size = np.mean(region_sizes)
+                    if avg_size < 100:
+                        binary_cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+                        polygon["binarized_img"] = binary_cleaned
+                # Si noise_ratio <= 0.2, no se aplica corrección
+
+        # La lógica de retorno original se mantiene, ya que no era la fuente del error.
+        if correction_applied:
+            binarized_poly = binarized_polygons
+        else:
+            binarized_poly = binarized_polygons
+            
+        return binarized_poly

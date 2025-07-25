@@ -1,6 +1,6 @@
 # PerfectOCR/core/workflow/preprocessing/density_scanner.py
 from sklearnex import patch_sklearn
-patch_sklearn
+patch_sklearn()
 import math
 import json
 import os

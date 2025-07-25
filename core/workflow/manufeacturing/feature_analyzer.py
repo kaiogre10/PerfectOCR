@@ -1,6 +1,6 @@
 # PerfectOCR/core/workflow/preprocessing/feature_analyzer.py
 from sklearnex import patch_sklearn
-patch_sklearn
+patch_sklearn()
 from skimage.feature import graycomatrix, graycoprops, local_binary_pattern
 from skimage.measure import shannon_entropy
 from skimage.filters import rank

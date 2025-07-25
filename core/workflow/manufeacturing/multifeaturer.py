@@ -1,6 +1,6 @@
 # PerfectOCR/core/workflow/preprocessing/manufacturer.py
 from sklearnex import patch_sklearn
-patch_sklearn
+patch_sklearn()
 from skimage.measure import label, regionprops
 import cv2
 from typing import List, Dict 

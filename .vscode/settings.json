@@ -49,5 +49,6 @@
         "**/__pycache__": true,
         "**/.ini": true,
         "**/.pyc": true
-    }
+    },
+    "git.enabled": false
 }

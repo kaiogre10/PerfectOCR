@@ -1,6 +1,6 @@
 # core/workflow/geometry/segmenter.py
 from sklearnex import patch_sklearn
-patch_sklearn
+patch_sklearn()
 import numpy as np
 from skimage.measure import label, regionprops
 from typing import Dict, List, Any, Tuple

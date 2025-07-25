@@ -10,6 +10,7 @@ from core.workflow.geometry.deskew import Deskewer
 from core.workflow.geometry.lineal_reconstructor import LineReconstructor
 from core.workflow.geometry.poly_gone import PolygonExtractor
 from core.workflow.geometry.binarization import Binarizator
+from core.workflow.geometry.fragmentator import PolygonFragmentator
 from core.workspace.utils.output_handlers import ImageOutputHandler
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class PolygonCoordinator:
         self._lineal = LineReconstructor(config=quality_rules.get('basic', {}), project_root=self.project_root)
         self._poly = PolygonExtractor(config=quality_rules.get('basic', {}), project_root=self.project_root)
         self._bin = Binarizator(config=quality_rules.get('binarize', {}), project_root=self.project_root)
+        self._fragment = PolygonFragmentator(config=quality_rules.get('basic', {}), project_root=self.project_root)
 
         self.image_saver = ImageOutputHandler()
         
@@ -80,11 +82,17 @@ class PolygonCoordinator:
         # 8. Binarización por separado (solo para las features)
         step_start = time.time()
         logger.info("Iniciando binarización...")
-        binarized_poly = self._bin._process_individual_polygons(polygons_to_binarize)
+        binarized_poly = self._bin._clean_binarizated_polys(polygons_to_binarize)
         step_duration = time.time() - step_start
         logger.info(f"Binarización completada en {step_duration:.4f}s")
-
         
+        # Preparación de polígonos para corrección pre-OCR
+        step_start = time.time()
+        logger.info("Preparando polígonos")
+        refined_polygons = self._fragment._intercept_polygons(binarized_poly, individual_polygons)
+        step_duration = time.time() - step_start
+        logger.info(f"Polígonos preparados en {step_duration:.4f}s")
+
         # Verificar que se añadieron las imágenes recortadas
         if result and result.get("lines"):
             lines_with_images = sum(1 for line in result["lines"] if line.get("cropped_img") is not None)
