@@ -23,12 +23,10 @@ class GaussianDenoiser:
 
         # Medición 
         laplacian_var = cv2.Laplacian(sp_img, cv2.CV_64F).var()
-        logger.info(f"Ruido general (varianza laplaciana): {laplacian_var:.3f}")
         if laplacian_var > gauss_threshold:
             return sp_img
         
         if laplacian_var < gauss_threshold:
-            logger.info(f"-> Aplicando filtro de ruido general: Bilateral (d={d}, sigmaColor={sigma_color}).")
             gauss_img = cv2.bilateralFilter(sp_img, d, sigmaColor=sigma_color, sigmaSpace=sigma_space)
         else:
             gauss_img = sp_img

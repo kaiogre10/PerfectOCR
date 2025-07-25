@@ -101,4 +101,6 @@ class PolygonCoordinator:
         pipeline_end = time.time() - pipeline_start
         logger.info(f"=== GENERACIÓN DE POLIGONAL COMPLETADA en {pipeline_end:.4f}s ===")
         
-        return result, pipeline_end
+        time_poly = pipeline_start 
+        
+        return refined_polygons, time_poly

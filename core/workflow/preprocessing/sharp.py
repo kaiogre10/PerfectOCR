@@ -29,12 +29,10 @@ class SharpeningEnhancer:
         global_sharp_var = np.var(clahed_img)
         adaptative_sharp_threshold = max(30, global_sharp_var * 0.5)
         
-        logger.info(f"Nintedez(Sobel): {sharpness:.3f}, Umbral Adaptativo: {adaptative_sharp_threshold:.3f}")
         if sharpness < adaptative_sharp_threshold:
             radius = min(2.0, max(0.5, global_sharp_var - 0.02))
             amount = min(2.0, max(1.0, global_sharp_var - 0.03))
 
-            logger.info(f"-> Aplicando mejora de nitidez: Unsharp Masking (radius={radius}, amount={amount}).")
             sharpened = unsharp_mask(clahed_img, radius=radius, amount=amount)
             corrected_image = (sharpened * 255).astype(np.uint8)
         else:

@@ -104,60 +104,43 @@ FEATURE_FUNCTIONS = {
 def _collect_feature_for_all(objs, func, n_jobs):
     """
     Calcula una feature específica para todos los objetos en paralelo.
-    Esta es la función que hace el trabajo pesado de cálculo.
-    
-    Args:
-        objs (list): Lista de objetos (imágenes o regiones).
-        func (callable): Función lambda que calcula la feature.
-        n_jobs (int): Número de núcleos a usar.
-    
-    Returns:
-        list: Lista con los resultados de la feature para cada objeto.
     """
     return Parallel(n_jobs=n_jobs)(
         delayed(func)(obj) for obj in objs
     )
 
 # ------------------------------------------------------------------------------
-# FUNCIÓN PÚBLICA: RECIBE EL PEDIDO Y COORDINA LA RECOLECCIÓN
+# FUNCIÓN PÚBLICA: PUNTO DE ACCESO ÚNICO PARA PEDIDOS DE FEATURES
 # ------------------------------------------------------------------------------
-def request_features(objs, features, n_jobs=-1):
+def request_features(objs, requests, n_jobs=-1):
     """
-    Función pública que recibe el pedido de features, valida, y coordina
-    el cálculo usando el patrón de rondas.
+    Función pública que recibe el pedido de features y entrega los resultados.
     
     Args:
-        objs (list): Lista de imágenes (np.ndarray) o regiones (regionprops).
-        features (list): Lista de nombres de las features a calcular.
-        n_jobs (int): Número de núcleos a usar (-1 = todos los disponibles).
+        objs (list): Lista de objetos (polígonos, imágenes, regiones).
+        requests (set, list, o tuple): Conjunto de nombres de features solicitadas.
+        n_jobs (int): Número de núcleos a usar.
     
     Returns:
-        dict: Diccionario donde cada clave es una feature y el valor es una
-              lista con los resultados para cada objeto.
-    
-    Raises:
-        ValueError: Si alguna feature solicitada no está implementada.
-        TypeError: Si los objetos o features no son del tipo correcto.
+        dict: {feature_name: [resultados]}
     """
-    # Validaciones de entrada
-    if not isinstance(objs, list) or not objs:
-        raise TypeError("objs debe ser una lista no vacía.")
-    if not isinstance(features, list) or not features:
-        raise TypeError("features debe ser una lista no vacía.")
+    # Convertir requests a lista si viene como set u otro tipo
+    feature_list = list(requests) if not isinstance(requests, list) else requests
+    
+    # Validaciones
+    if not objs:
+        raise ValueError("La lista de objetos está vacía.")
+    if not feature_list:
+        raise ValueError("No se solicitaron features.")
     
     results = {}
-    for feat in features:
+    for feat in feature_list:
         func = FEATURE_FUNCTIONS.get(feat)
         if func is None:
-            raise ValueError(f"Feature '{feat}' no está implementada. "
-                           f"Features disponibles: {list(FEATURE_FUNCTIONS.keys())}")
+            raise ValueError(f"Feature '{feat}' no está implementada.")
         
-        # Delega el cálculo a la función recolectora
-        try:
-            results[feat] = _collect_feature_for_all(objs, func, n_jobs)
-        except Exception as e:
-            # Manejo de errores en el cálculo
-            raise RuntimeError(f"Error calculando feature '{feat}': {str(e)}")
+        # Delega el cálculo a la recolectora
+        results[feat] = _collect_feature_for_all(objs, func, n_jobs)
     
     return results
 
@@ -168,6 +151,7 @@ def request_single_feature(objs, feature, n_jobs=-1):
     """
     Función de conveniencia para calcular una sola feature.
     
+    areas = request_single_feature(regions, 'area')
     Args:
         objs (list): Lista de objetos.
         feature (str): Nombre de la feature a calcular.

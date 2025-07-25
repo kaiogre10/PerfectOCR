@@ -40,7 +40,6 @@ class ClaherEnhancer:
                 grid_size = grid_maps[2]
             clip_limit = min(3.0, max(1.0, dynamic_range * 0.01))
 
-            logger.info(f"-> Aplicando mejora de contraste: CLAHE (clip_limit={clip_limit}, grid_size={grid_size}).")
             clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
             clahed_img = clahe.apply(gauss_img)
         else: 
