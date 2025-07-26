@@ -14,7 +14,8 @@ class LineReconstructor:
 
     def _reconstruct_lines(self, polygons: List[List[List[float]]], metadata: dict):
         """
-        Asigna un 'line_id' a cada polígono agrupándolos lógicamente en líneas, pero solo retorna la lista de polígonos con toda su metadata.
+        Asigna un 'line_id' a cada polígono agrupándolos lógicamente en líneas,
+        y retorna una lista de polígonos, cada uno con su metadata individual.
         """
         logger.info(f"Iniciando asignación de line_id a {len(polygons)} polígonos")
 
@@ -62,7 +63,7 @@ class LineReconstructor:
 
         prepared_sorted = sorted(prepared, key=lambda p: p["centroid"][1])
 
-        final_polygons = []
+        lineal_polygons = []
         current_line_polys = []
         current_line_bbox = None
         line_counter = 0
@@ -83,22 +84,45 @@ class LineReconstructor:
                     ys = [p for poly2 in current_line_polys for p in [poly2["bbox"][1], poly2["bbox"][3]]]
                     current_line_bbox = [min(xs), min(ys), max(xs), max(ys)]
                 else:
-                    # Finalizar la línea anterior y asignar line_id
                     line_id = f"line_{line_counter:04d}"
                     for p in current_line_polys:
-                        p['line_id'] = line_id
-                        final_polygons.append(p)
+                        lineal_polygons.append({
+                            "polygon_id": p["polygon_id"],
+                            "coords": p["coords"],
+                            "bbox": p["bbox"],
+                            "centroid": p["centroid"],
+                            "height": p["height"],
+                            "width": p["width"],
+                            "line_id": line_id,
+                            "metadata": {
+                                "line_id": line_id,
+                                "polygon_id": p["polygon_id"],
+                                "processing_info": metadata
+                            }
+                        })
                     line_counter += 1
                     current_line_polys = [poly]
                     current_line_bbox = poly_bbox.copy()
 
-        # Guardar la última línea si existe
         if current_line_polys:
             line_id = f"line_{line_counter:04d}"
             for p in current_line_polys:
-                p['line_id'] = line_id
-                final_polygons.append(p)
-        
-        reconstructed_lines = final_polygons  # Para compatibilidad con el pipeline
-        logger.info(f"Asignación completada: {len(final_polygons)} polígonos asignados a {line_counter + 1} líneas lógicas.")
-        return reconstructed_lines, metadata
+                lineal_polygons.append({
+                    "polygon_id": p["polygon_id"],
+                    "coords": p["coords"],
+                    "bbox": p["bbox"],
+                    "centroid": p["centroid"],
+                    "height": p["height"],
+                    "width": p["width"],
+                    "line_id": line_id,
+                    "metadata": {
+                        "line_id": line_id,
+                        "polygon_id": p["polygon_id"],
+                        "processing_info": metadata
+                    }
+                })
+
+        logger.info(f"Asignación completada: {len(lineal_polygons)} polígonos asignados a {line_counter + 1} líneas lógicas.")
+
+        # La salida es una lista de polígonos, cada uno con su metadata individual
+        return lineal_polygons

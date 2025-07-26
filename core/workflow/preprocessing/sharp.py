@@ -1,4 +1,4 @@
-# PerfectOCR/core/workflow/preprocessing/
+# PerfectOCR/core/workflow/preprocessing/sharp.py
 from sklearnex import patch_sklearn
 patch_sklearn()
 import cv2

@@ -59,22 +59,18 @@ class PolygonCoordinator:
         deskewed_img, polygons, metadata = self._deskewer._get_polygons(clean_img, dpi_img)
         step_duration = time.time() - step_start
         logger.info(f"Corrección de inclinación completada en {step_duration:.4f}s")
-        
+            
         # Agrupamiento de líneas
         step_start = time.time()
         logger.info("Agrupando líneas")
-        reconstructed_lines, metadata = self._lineal._reconstruct_lines(polygons, metadata)
+        lineal_polygons = self._lineal._reconstruct_lines(polygons, metadata)
         step_duration = time.time() - step_start
-        logger.info(f"Agrupamiento completado en {step_duration:.4f}s - {len(reconstructed_lines)} líneas detectadas")
-        
-        # Añadir logs detallados por línea
-        for line in reconstructed_lines:
-            logger.debug(f"Línea {line['line_id']}: {len(line['polygons'])} polígonos, bbox={line['line_bbox']}")
-        
+        logger.info(f"Agrupamiento completado en {step_duration:.4f}s - {len(lineal_polygons)} líneas detectadas")
+                
         # Recorte de líneas y añadir imágenes recortadas
         step_start = time.time()
-        logger.info("Iniciando recorte de líneas de imagen")
-        result, individual_polygons = self._poly._add_cropped_images_to_lines(deskewed_img, reconstructed_lines, metadata, input_path, self.output_config)
+        logger.info("Iniciando recorte de polígonos de imagen")
+        result, individual_polygons = self._poly._add_cropped_images_to_lines(deskewed_img, lineal_polygons)
         step_duration = time.time() - step_start
         logger.info(f"Recorte completado en {step_duration:.4f}s")
         

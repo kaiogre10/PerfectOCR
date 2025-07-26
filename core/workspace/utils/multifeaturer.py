@@ -1,7 +1,8 @@
 # PerfectOCR/core/workspace/utils/multifeaturer.py
+import logging
+logging.getLogger("sklearnex").setLevel(logging.ERROR)
 from sklearnex import patch_sklearn
 patch_sklearn()
-
 from skimage.feature import graycomatrix, graycoprops, local_binary_pattern
 from skimage.measure import shannon_entropy, label, regionprops
 from skimage.filters import rank
@@ -9,9 +10,9 @@ from skimage.morphology import disk
 from joblib import Parallel, delayed
 import numpy as np
 import warnings
-import mkl
+from mkl import set_num_threads()
 
-mkl.set_num_threads(4)
+set_num_threads()
 
 # ------------------------------------------------------------------------------
 # DICCIONARIO GLOBAL DE FUNCIONES DE FEATURES

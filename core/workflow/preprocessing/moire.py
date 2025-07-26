@@ -15,7 +15,7 @@ class MoireDenoiser:
         self.denoise_corrections = config.get('denoise', {})
 
     def _detect_moire_patterns(self, cropped_line: np.ndarray) -> np.ndarray:
-            
+
         try:
             from mkl import set_num_threads
             set_num_threads(4)

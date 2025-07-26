@@ -1,0 +1,28 @@
+2025-07-25 19:48:50 - INFO - managment.cache_manager:37 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
+2025-07-25 19:48:50 - INFO - core.coordinators.ocr_coordinator:29 - ocr_coordinator - Inicializando PaddleOCR...
+2025-07-25 19:48:50 - DEBUG - core.workflow.ocr.paddle_wrapper:16 - paddle_wrapper - PaddleOCRWrapper inicializando con config: {'use_angle_cls': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es', 'rec_model_dir': 'C:/PerfectOCR/data/models/paddle/rec/es', 'cls_model_dir': 'C:/PerfectOCR/data/models/paddle/cls'}
+2025-07-25 19:48:52 - INFO - core.coordinators.ocr_coordinator:32 - ocr_coordinator - PaddleOCR inicializado: 1.475s
+2025-07-25 19:48:53 - INFO - core.coordinators.polygon_coordinator:47 - polygon_coordinator - === INICIANDO GENERACIÓN DE POLIGONAL ===
+2025-07-25 19:48:53 - INFO - core.coordinators.polygon_coordinator:51 - polygon_coordinator - Iniciando limpieza rapida
+2025-07-25 19:48:53 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-07-25 19:48:53 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
+2025-07-25 19:48:53 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
+2025-07-25 19:48:53 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
+2025-07-25 19:48:53 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
+2025-07-25 19:48:53 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
+2025-07-25 19:48:53 - INFO - core.coordinators.polygon_coordinator:54 - polygon_coordinator - Limpieza completada en 0.3381s
+2025-07-25 19:48:53 - INFO - core.coordinators.polygon_coordinator:58 - polygon_coordinator - Iniciando corrección de inclinación
+2025-07-25 19:48:53 - INFO - core.workflow.geometry.deskew:68 - deskew - -> Aplicando corrección de inclinación: -1.01 grados.
+2025-07-25 19:48:53 - INFO - core.workflow.geometry.deskew:93 - deskew - -> Imagen para detección: shape=(2954, 2056), min=0, max=255
+2025-07-25 19:48:54 - INFO - core.workflow.geometry.deskew:98 - deskew - -> polígonos: 56
+2025-07-25 19:48:54 - INFO - core.workflow.geometry.deskew:132 - deskew - -> Cantidad de polígonos encontrados: 56
+2025-07-25 19:48:54 - DEBUG - core.workflow.geometry.deskew:147 - deskew - Detectados 56 polígonos en imagen corregida
+2025-07-25 19:48:54 - INFO - core.coordinators.polygon_coordinator:61 - polygon_coordinator - Corrección de inclinación completada en 1.1573s
+2025-07-25 19:48:54 - INFO - core.coordinators.polygon_coordinator:65 - polygon_coordinator - Agrupando líneas
+2025-07-25 19:48:54 - INFO - core.workflow.geometry.lineal_reconstructor:20 - lineal_reconstructor - Iniciando asignación de line_id a 56 polígonos
+2025-07-25 19:48:54 - INFO - core.workflow.geometry.lineal_reconstructor:62 - lineal_reconstructor - Polígonos válidos preparados: 56/56
+2025-07-25 19:48:54 - INFO - core.workflow.geometry.lineal_reconstructor:125 - lineal_reconstructor - Asignación completada: 56 polígonos asignados a 27 líneas lógicas.
+2025-07-25 19:48:54 - INFO - core.coordinators.polygon_coordinator:68 - polygon_coordinator - Agrupamiento completado en 0.0020s - 56 líneas detectadas
+2025-07-25 19:48:54 - INFO - core.coordinators.polygon_coordinator:72 - polygon_coordinator - Iniciando recorte de polígonos de imagen
+2025-07-25 19:48:54 - INFO - __main__:301 - main - Procesamiento finalizado, iniciando limpieza de caché.
+2025-07-25 19:48:54 - INFO - managment.cache_manager:49 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
