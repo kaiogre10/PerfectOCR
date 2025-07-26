@@ -56,13 +56,13 @@ class PolygonExtractor:
                     cropped_poly = deskewed_img[poly_y1:poly_y2, poly_x1:poly_x2]
                     if cropped_poly.size > 0:
                         poly_dict = {
+                            "line_id": poly["line_id"],
                             "polygon_id": poly["polygon_id"],
                             "coords": poly["coords"],
                             "bbox": poly["bbox"],
                             "centroid": poly["centroid"],
                             "height": poly["height"],
                             "width": poly["width"],
-                            "line_id": poly["line_id"],
                             "cropped_img": cropped_poly,
                             "metadata": poly.get("metadata", {})
                         }
@@ -83,5 +83,9 @@ class PolygonExtractor:
             logger.info(f"Total de: {len(individual_polygons)} imágenes de polígonos procesadas")
         else:
             logger.debug("Guardado de imágenes de polígonos deshabilitado")
+
+        if isinstance(individual_polygons, list):
+            lines_with_images = sum(1 for line in individual_polygons if line.get("cropped_img") is not None)
+            logger.info(f"Imágenes recortadas exitosamente: {lines_with_images}/{len(individual_polygons)}")
 
         return individual_polygons

@@ -267,8 +267,6 @@ class PerfectOCRWorkflow:
             logger.info("Proceso terminado. Iniciando limpieza de caché.")
             cache_manager.cleanup_project_cache()
 
-
-
 __all__ = ["PerfectOCRWorkflow"]
 
 if __name__ == "__main__":
