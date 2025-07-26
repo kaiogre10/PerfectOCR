@@ -100,22 +100,15 @@ class PolygonCoordinator:
         
         # Preparación final de polígonos
         step_start = time.time()
-        logger.info("Preparando polígonos finales")
         refined_polygons = self._fragment._intercept_polygons(binarized_poly, individual_polygons)
         step_duration = time.time() - step_start
-        logger.info(f"Polígonos preparados en {step_duration:.4f}s")
         
         if input_path:
             base_name = os.path.basename(input_path)
             file_name, _ = os.path.splitext(base_name)
             output_folder = self.workflow_config.get('output_folder')
             output_flags = self.output_config.get('enabled_outputs', {})
-            
-            # LOGS DE DIAGNÓSTICO
-            logger.info(f"Configuración de guardado - Output folder: '{output_folder}'")
-            logger.info(f"Flags de salida: {output_flags}")
-            logger.info(f"Polígonos refinados disponibles: {len(refined_polygons) if refined_polygons else 0}")
-            
+                        
             # Guardar refined_polygons si está habilitado
             if output_flags.get('refined_polygons') and output_folder:
                 logger.info(f"Intentando guardar {len(refined_polygons)} refined_polygons en '{output_folder}'")

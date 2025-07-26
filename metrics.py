@@ -22,14 +22,12 @@ def count_lines_in_file(filepath: Path) -> dict:
     return stats
 
 def analyze_project(root_dir: Path):
-    """
-    Analiza el proyecto, ignorando directorios y archivos no relevantes.
-    """
+    """Analiza el proyecto, ignorando directorios y archivos no relevantes."""
     ignored_docs = {'metrics.py'}
     
     # Directorios a ignorar
     ignore_dirs = {
-        '__pycache__', 'output', 'input', 'models', '.git', '.vscode', 'data', '.txt'
+        '__pycache__', 'output', 'input', 'models', '.git', '.vscode', 'data', '.txt', 'data'
     }
     # Extensiones de archivo a incluir
     include_exts = {'.py', '.yaml', '.yml'}

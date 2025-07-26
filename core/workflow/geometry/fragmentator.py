@@ -1,6 +1,4 @@
 # PerfectOCR/core/workflow/preprocessing/fragmentator.py
-from sklearnex import patch_sklearn
-patch_sklearn()
 import cv2
 import logging
 import numpy as np
@@ -21,8 +19,7 @@ class PolygonFragmentator:
 
     def _intercept_polygons(self, binarized_poly: List[Dict], individual_polygons: List[Dict]) -> List[Dict]:
         """
-        Primero, identifica polígonos problemáticos mediante un análisis estadístico de la
-        densidad de texto. Luego, fragmenta únicamente los polígonos problemáticos.
+        Primero, identifica polígonos problemáticos mediante un análisis estadístico de ladensidad de texto. Luego, fragmenta únicamente los polígonos problemáticos.
         Args:
             binarized_polygons (List[Dict]): Usados para el ANÁLISIS de densidad.
             individual_polygons (List[Dict]): Fuente de las imágenes para el RESULTADO FINAL.
@@ -136,3 +133,58 @@ class PolygonFragmentator:
     def _get_problematic_ids(self) -> set:
         """Retorna los IDs de polígonos problemáticos del último procesamiento."""
         return self.problematic_ids
+    
+    def es_poligono_problematico(bin_img: np.ndarray) -> bool:
+        """
+        Analiza una imagen binarizada para determinar si contiene múltiples palabras
+        basándose en el espaciado entre componentes.
+
+        Args:
+            bin_img: La imagen del polígono, binarizada y limpia.
+
+        Returns:
+            True si se detectan espacios grandes (probablemente entre palabras), False en caso contrario.
+        """
+        # 1. Encuentra todos los componentes (caracteres)
+        # stats contiene [x, y, width, height, area] para cada componente
+        # el componente 0 es siempre el fondo, por lo que lo ignoramos.
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, 4, cv2.CV_32S)
+
+        # Si hay menos de 2 componentes (ej. una sola letra o nada), no puede ser problemático.
+        if num_labels <= 2:
+            return False
+
+        # 2. Ordena los componentes de izquierda a derecha basándote en su coordenada X.
+        # Ignoramos el componente 0 (fondo)
+        componentes_ordenados = sorted(stats[1:], key=lambda s: s[0])
+
+        # 3. Mide los espacios horizontales entre el final de un componente y el inicio del siguiente.
+        gaps = []
+        for i in range(len(componentes_ordenados) - 1):
+            # Final del componente actual (x + width)
+            fin_actual = componentes_ordenados[i][0] + componentes_ordenados[i][2]
+            # Inicio del siguiente componente
+            inicio_siguiente = componentes_ordenados[i+1][0]
+            
+            gap = inicio_siguiente - fin_actual
+            if gap > 0: # Solo consideramos espacios positivos
+                gaps.append(gap)
+
+        if not gaps:
+            return False # No hay espacios entre componentes
+
+        # 4. Usa el método del Rango Intercuartílico (IQR) para encontrar outliers.
+        # Un espacio anormalmente grande es un indicador de un espacio entre palabras.
+        q1 = np.percentile(gaps, 25)
+        q3 = np.percentile(gaps, 75)
+        iqr = q3 - q1
+        
+        # El umbral para considerar un espacio como un outlier (anormalmente grande)
+        # Este es un umbral estadístico estándar.
+        umbral_outlier = q3 + 1.5 * iqr
+
+        # Si CUALQUIER espacio es más grande que nuestro umbral, es un polígono problemático.
+        if any(g > umbral_outlier for g in gaps):
+            return True
+
+        return False

@@ -2,9 +2,11 @@
 from sklearnex import patch_sklearn
 patch_sklearn()
 import cv2
+
 import numpy as np
 import logging
 from typing import Dict, Any, List, Tuple
+from skimage.measure import label, regionprops
 from skimage.filters import threshold_sauvola
 from skimage.util import img_as_ubyte
 from scipy import ndimage
@@ -18,20 +20,23 @@ class Binarizator:
         self.project_root = project_root
         self.geometric = config
         self.geometric_bin = config.get('polygon_config', {})
-        # Configuraciones de binarización
-        binarize_config = self.geometric_bin.get('binarize', {})
-        self.c_value = binarize_config.get('c_value', 7)
-        self.height_thresholds = binarize_config.get('height_thresholds_px', [100, 800, 1500, 2500])
-        self.block_sizes_map = binarize_config.get('block_sizes_map', [15, 21, 25, 35, 41])
-        self.quality_threshold = binarize_config.get('quality_threshold', [0.1, 0.9])
-        self.quality_min, self.quality_max = self.quality_threshold
-           
+        self.binarize_config = config.get('binarize', {})
+        
+        self.c_value = self.binarize_config.get('c_value', 7)
+        self.height_thresholds = self.binarize_config.get('height_thresholds_px', [100, 800, 1500, 2500])
+        self.block_sizes_map = self.binarize_config.get('block_sizes_map', [15, 21, 25, 35, 41])
+                           
     def _check_quality(self, binary_img: np.ndarray) -> bool:
         """Verifica calidad basada en ratio de píxeles blancos."""
+        qa_params = self.binarize_config.get('quality', {})
+        quality_min = qa_params.get('quality_min', {})  
+        quality_max = qa_params.get('quality_max', {})   
+    
         if binary_img is None or binary_img.size == 0:
             return False
+        
         white_ratio = np.sum(binary_img == 255) / binary_img.size
-        return self.quality_min < white_ratio < self.quality_max
+        return quality_min < white_ratio < quality_max
 
     def _is_histogram_bimodal(self, gray_img: np.ndarray) -> bool:
         """Estima si el histograma es bimodal, bueno para Otsu."""
@@ -133,15 +138,17 @@ class Binarizator:
             logger.error(f"Error en método fallback final: {e}")
             return gray_img
 
-    def _process_individual_polygons(self, individual_polygons: List[Dict]) -> List[Dict]:
+    def _process_individual_polygons(self, individual_polygons: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
         """
         Procesa una lista de polígonos individuales aplicando binarización adaptativa a cada uno.
         Reemplaza la imagen original con la versión binarizada.
         Utiliza la metadata existente sin modificarla.
+        Returns:
+            Tuple[List[Dict], List[Dict]]: (polígonos_binarizados, polígonos_originales)
         """
         if not individual_polygons:
             logger.warning("Lista de polígonos vacía recibida")
-            return []
+            return [], []
         
         logger.info(f"Iniciando binarización de {len(individual_polygons)} polígonos individuales")
         
@@ -168,7 +175,7 @@ class Binarizator:
         
         logger.info(f"Binarización completada: {binarized_count}/{len(individual_polygons)} polígonos procesados exitosamente")
         
-        binarized_poly = self._clean_binarizated_polys(binarized_polygons )
+        binarized_poly = self._clean_binarizated_polys(binarized_polygons)
         return binarized_poly, individual_polygons
     
     def _clean_binarizated_polys(self, binarized_polygons: List[Dict]) -> List[Dict]:
@@ -198,6 +205,9 @@ class Binarizator:
                         f"ndimage.label devolvió un valor inesperado para el polígono. Omitiendo limpieza. Valor: {label_output}"
                     )
                     continue
+                if labeled_regions.max() == 0:
+                    return binary_img
+                
             except Exception as e:
                 # Captura cualquier otra excepción que pueda lanzar ndimage.label
                 logger.error(
@@ -205,41 +215,39 @@ class Binarizator:
                 )
                 continue
 
-            if num_regions > 0:
-                region_sizes = np.bincount(labeled_regions.ravel())[1:]
-                small_regions = np.sum(region_sizes < 20)
-                noise_ratio = small_regions / (num_regions + 1e-8)
+            labeled_img = label(binary_img > 0)
 
-                # 2. APLICACIÓN QUIRÚRGICA solo si es necesario
-                if noise_ratio > 0.3:  # Ruido alto
-                    correction_applied = True
-                    # Se usa la imagen original uint8 para las operaciones morfológicas
-                    binary = binary_img.copy()
-                    
-                    # Corrección agresiva
-                    binary_cleaned = morphology.remove_small_objects(
-                        binary.astype(bool), 
-                        min_size=20
-                    ).astype(np.uint8) * 255
-                    
-                    kernel_size = max(2, int(min(binary_cleaned.shape) * 0.005) // 2 * 2 + 1)
-                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-                    binary_cleaned = cv2.morphologyEx(binary_cleaned, cv2.MORPH_CLOSE, kernel)
-                    
-                    polygon["binarized_img"] = binary_cleaned
-                    
-                elif noise_ratio > 0.2:  # Ruido moderado
-                    correction_applied = True
-                    binary = binary_img.copy()
-                    
-                    # Corrección suave
-                    kernel_size = max(2, int(min(binary.shape) * 0.005) // 2 * 2 + 1)
-                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-                    avg_size = np.mean(region_sizes)
-                    if avg_size < 100:
-                        binary_cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-                        polygon["binarized_img"] = binary_cleaned
-                # Si noise_ratio <= 0.2, no se aplica corrección
+            # Si no hay objetos, regresa la imagen original.
+            if isinstance(labeled_img, np.ndarray):
+                if labeled_img.max() == 0:
+                    return binary_img
+                else:
+                    logger.warning("label() devolvió un valor inesperado. Omitiendo limpieza.")
+                continue
+            
+            # Calcular propiedades de todas las regiones (componentes).
+            props = regionprops(labeled_img)
+
+            # Cálculo de umbrales adaptativos
+            areas = [prop.area for prop in props]
+            median_area = np.median(areas)
+            adaptive_min_area = median_area * 0.1  # Ajusta este factor si lo necesitas
+
+            umbral_excentricidad = 0.99
+            umbral_solidez = 0.5
+
+            # Reconstrucción de la imagen limpia
+            img_limpia = np.zeros_like(binary_img)
+
+            for prop in props:
+                condicion_area = prop.area >= adaptive_min_area
+                condicion_forma = prop.eccentricity < umbral_excentricidad
+                condicion_solidez = prop.solidity > umbral_solidez
+
+                # Conserva solo componentes que pasan todos los filtros
+                if condicion_area and condicion_forma and condicion_solidez:
+                    for y, x in prop.coords:
+                        img_limpia[y, x] = 255
 
         # La lógica de retorno original se mantiene, ya que no era la fuente del error.
         if correction_applied:
@@ -248,3 +256,4 @@ class Binarizator:
             binarized_poly = binarized_polygons
             
         return binarized_poly
+    

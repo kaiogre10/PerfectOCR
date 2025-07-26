@@ -28,7 +28,6 @@ class CacheManager:
                 logger.info(f"Eliminada carpeta de caché: {path}")
             else:
                 os.remove(path)
-                logger.info(f"Eliminado archivo de caché: {path}")
         except OSError as e:
             logger.error(f"Error al eliminar {path}: {e}")
 

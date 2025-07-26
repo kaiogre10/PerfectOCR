@@ -70,7 +70,10 @@ polygonal:
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]
-      quality_threshold: [0.1, 0.9]
+      
+      quality:
+        quality_min: 0.005  # Valor mínimo permitido (5%)
+        quality_max: 0.95   # Valor máximo permitido (95%)
       
     fragmentation:
       min_contour_area: 0.001
