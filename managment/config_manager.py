@@ -51,11 +51,12 @@ class ConfigManager:
     # --- MÉTODOS ESPECÍFICOS PARA CADA COORDINADOR ---
 
     def get_polygonal_config(self) -> Dict[str, Any]:
-        """Obtiene configuración de extracción de los polígonos"""
+        """Obtiene configuración completa para PolygonCoordinator."""
         output_config = self.config.get('output_config', {})
         return {
-            'polygon_config': self.config.get('polygonal', {}),
-            'output_flags': output_config.get('enabled_outputs', {})
+            'polygonal': self.config.get('polygonal', {}),
+            'workflow': self.get_workflow_config(),
+            'output_config': output_config
         }
     
     def get_preprocessing_coordinator_config(self) -> Dict[str, Any]:
@@ -65,7 +66,7 @@ class ConfigManager:
             'max_workers': self.get_max_workers(),
             'workflow': self.get_workflow_config(),
             'preprocessing_config': self.config.get('image_preparation', {}),
-            'output_flags': output_config.get('enabled_outputs', {})
+            'output_config': output_config
         }
     
     def get_ocr_coordinator_config(self) -> Dict[str, Any]:
@@ -80,7 +81,8 @@ class ConfigManager:
         output_config = self.config.get('output_config', {})
         return {
             'vectorization_process': self.config.get('vectorization_process', {}),
-            'output_flags': output_config.get('enabled_outputs', {})
+            'workflow': self.get_workflow_config(),
+            'output_config': output_config
         }
             
     def get_text_cleaning_config(self) -> Dict[str, Any]:

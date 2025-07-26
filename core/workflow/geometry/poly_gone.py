@@ -4,7 +4,6 @@ import numpy as np
 import logging
 import os
 from typing import Tuple, List, Dict, Any
-from core.workspace.utils.output_handlers import ImageOutputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -12,19 +11,21 @@ class PolygonExtractor:
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config = config
-        self.image_saver = ImageOutputHandler()
-    
+        cutter_params = self.config.get('cutting', {})
+        self.padding = cutter_params.get('cropping_padding', {})
+        
     def _extract_individual_polygons(self, deskewed_img: np.ndarray, lineal_polygons: List[Dict], input_filename: str = "", output_config: Dict = None): # type: ignore
         """
         Extrae y recorta solo los polígonos individuales, asignando el line_id correspondiente.
         Devuelve una lista de polígonos, cada uno con su imagen recortada y metadata individual.
         """
+        padding = self.config.get('cropping_padding', 5)
         if not lineal_polygons:
             return []
 
         img_h, img_w = deskewed_img.shape[:2]
         img_dims = img_h, img_w
-        padding = self.config.get('cropping_padding', 5)
+        
 
         # Configuración de guardado de imágenes
         should_save_polygon_images = False

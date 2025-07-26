@@ -168,7 +168,8 @@ class Binarizator:
         
         logger.info(f"Binarización completada: {binarized_count}/{len(individual_polygons)} polígonos procesados exitosamente")
         
-        return binarized_polygons
+        binarized_poly = self._clean_binarizated_polys(binarized_polygons )
+        return binarized_poly, individual_polygons
     
     def _clean_binarizated_polys(self, binarized_polygons: List[Dict]) -> List[Dict]:
         """

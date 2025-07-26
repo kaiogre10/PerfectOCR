@@ -1,4 +1,5 @@
 # Ignorar la carpeta .vscode
+.vscode/
 
 # Ignorar carpetas de caché
 __pycache__/
@@ -6,7 +7,6 @@ __pycache__/
 .cache/
 
 # Ignorar extensiones de archivos
-.ini/
 .pyc/
 .png/
 .json/
@@ -22,3 +22,9 @@ output/
 !density_encoder.json
 !especificaciones_inspiron.txt
 !especificaciones_latitude.txt
+
+# Ignorar cualquier archivo .ini
+*.ini
+
+# Ignorar perfectocr.txt
+perfectocr.txt

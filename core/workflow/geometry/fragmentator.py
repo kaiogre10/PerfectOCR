@@ -12,12 +12,12 @@ class PolygonFragmentator:
     
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.fragmentator_config = config.get('polygon_config', {})
-        
-        fragmentator_params = self.fragmentator_config.get('fragmentation', {})
+        self.config = config
+        fragmentator_params = self.config.get('fragmentation', {})
         self.min_area_factor = fragmentator_params.get('min_area_factor', 0.01)
         self.density_std_factor = fragmentator_params.get('density_std_factor', 1.0)
         self.approx_poly_epsilon = fragmentator_params.get('approx_poly_epsilon', 0.02)
+        self.problematic_ids = set()
 
     def _intercept_polygons(self, binarized_poly: List[Dict], individual_polygons: List[Dict]) -> List[Dict]:
         """
@@ -74,11 +74,11 @@ class PolygonFragmentator:
         mean_density = np.mean(densities)
         std_density = np.std(densities)
         
-        # Un polígono es problemático si su densidad es muy baja (mucho espacio en blanco)
         # Usamos la media MENOS la desviación, ya que buscamos los que tienen menos "relleno"
         density_threshold = mean_density - self.density_std_factor * std_density
         problematic_ids = {d['id'] for d in poly_densities if d['density'] < density_threshold}
-        
+        self.problematic_ids = problematic_ids  # Guardar para acceso posterior
+
         logger.info(f"Análisis de densidad: media={mean_density:.3f}, std={std_density:.3f}. Se identificaron {len(problematic_ids)} polígonos problemáticos.")
 
         # --- PASO 3: CORRECCIÓN QUIRÚRGICA - Procesar y fragmentar solo los problemáticos ---
@@ -109,7 +109,7 @@ class PolygonFragmentator:
             valid_contours = [c for c in internal_contours if cv2.contourArea(c) > adaptive_min_area]
             
             if len(valid_contours) <= 1:
-                refined_polygons.append(original_poly) # No se pudo fragmentar, mantener original
+                refined_polygons.append(original_poly) # No se pudo fragmentar
                 continue
 
             sorted_contours = sorted(valid_contours, key=lambda c: cv2.boundingRect(c)[0])
@@ -132,4 +132,7 @@ class PolygonFragmentator:
 
         logger.info(f"Análisis completado. Total de polígonos refinados: {len(refined_polygons)}")
         return refined_polygons
-
+    
+    def _get_problematic_ids(self) -> set:
+        """Retorna los IDs de polígonos problemáticos del último procesamiento."""
+        return self.problematic_ids
