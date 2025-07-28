@@ -2,7 +2,6 @@
 from sklearnex import patch_sklearn
 patch_sklearn()
 import cv2
-
 import numpy as np
 import logging
 from typing import Dict, Any, List, Tuple
@@ -206,7 +205,8 @@ class Binarizator:
                     )
                     continue
                 if labeled_regions.max() == 0:
-                    return binary_img
+                    # No se encontraron componentes, se omite limpieza para este polígono
+                    continue
                 
             except Exception as e:
                 # Captura cualquier otra excepción que pueda lanzar ndimage.label
@@ -215,14 +215,17 @@ class Binarizator:
                 )
                 continue
 
-            labeled_img = label(binary_img > 0)
+            # `skimage.measure.label` puede devolver una tupla (labeled_img, num) si `return_num=True`.
+            # Para que el checker de tipos no infiera una unión, pasamos `return_num=True` y desempaquetamos.
+            labeled_img, _ = label(binary_img > 0, return_num=True)
 
-            # Si no hay objetos, regresa la imagen original.
-            if isinstance(labeled_img, np.ndarray):
-                if labeled_img.max() == 0:
-                    return binary_img
-                else:
-                    logger.warning("label() devolvió un valor inesperado. Omitiendo limpieza.")
+            # Si no hay objetos encontrados por skimage.label, omite la limpieza de este polígono
+            if labeled_img.max() == 0:
+                continue
+            # En condiciones normales, skimage.label devuelve un ndarray; no es necesario el chequeo isinstance
+            # Si por alguna razón no se cumple, se registra advertencia y se continúa.
+            if not isinstance(labeled_img, np.ndarray):
+                logger.warning("label() devolvió un valor inesperado. Omitiendo limpieza.")
                 continue
             
             # Calcular propiedades de todas las regiones (componentes).

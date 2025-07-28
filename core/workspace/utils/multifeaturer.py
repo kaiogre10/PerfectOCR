@@ -1,6 +1,4 @@
 # PerfectOCR/core/workspace/utils/multifeaturer.py
-import logging
-logging.getLogger("sklearnex").setLevel(logging.ERROR)
 from sklearnex import patch_sklearn
 patch_sklearn()
 from skimage.feature import graycomatrix, graycoprops, local_binary_pattern
@@ -10,14 +8,17 @@ from skimage.morphology import disk
 from joblib import Parallel, delayed
 import numpy as np
 import warnings
-from mkl import set_num_threads()
+import os
+from mkl import set_num_threads
 
-set_num_threads()
 
-# ------------------------------------------------------------------------------
+num_threads = os.cpu_count()
+set_num_threads(num_threads)
+print(f"cpu_count(): {num_threads}")
+
 # DICCIONARIO GLOBAL DE FUNCIONES DE FEATURES
 # Todas las features en formato lambda uniforme para facilitar mantenimiento
-# ------------------------------------------------------------------------------
+
 FEATURE_FUNCTIONS = {
     # --- Propiedades básicas de área y forma ---
     'area': lambda region: region.area,
@@ -125,6 +126,7 @@ def request_features(objs, requests, n_jobs=-1):
     Returns:
         dict: {feature_name: [resultados]}
     """
+    
     # Convertir requests a lista si viene como set u otro tipo
     feature_list = list(requests) if not isinstance(requests, list) else requests
     
