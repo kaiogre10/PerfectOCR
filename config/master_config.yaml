@@ -143,10 +143,11 @@ ocr:
 output_config:
   enabled_outputs:
     preprocessed_image: false
-    ocr_raw: false
+    ocr_raw: true
+    ocr_debug: true
     cropped_words: false
-    refined_polygons: true
-    problematic_ids: true
+    refined_polygons: false
+    problematic_ids: false
     
 batch_processing:
   small_batch_limit: 5

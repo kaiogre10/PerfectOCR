@@ -46,15 +46,19 @@ class PreprocessingCoordinator:
         3. Ruido general
         4. Contraste
         5. Nitidez
+        Y guarda la imagen de cada polígono si está habilitado en la configuración.
         """
-        # refined_polygons ya es una lista de polígonos
         polygons_list = refined_polygons
-
         polygons_received = len(polygons_list)
         polygons_corrected = 0
+        images_saved_count = 0
         
         pipeline_start = time.time()
         
+        base_name = os.path.splitext(os.path.basename(input_path))[0] if input_path else "unknown_doc"
+        should_save_images = self.output_config.get('enabled_outputs', {}).get('preprocessed_image', False)
+        output_folder = self.workflow_config.get('output_folder')
+
         for i, polygon in enumerate(polygons_list):
             cropped_img = polygon.get("cropped_img")
             if cropped_img is not None:
@@ -68,10 +72,6 @@ class PreprocessingCoordinator:
                 # 3. Filtro de ruido general
                 gauss_img = self._gauss._estimate_gaussian_noise(sp_img)
                 
-                # . Corrección de sobreiluminación (comentado)
-                #if self._detect_overexposure(image):
-                #   image = self._apply_overexposure_correction(image)
-
                 # 4. Mejora de contraste
                 clahed_img = self._claher._estimate_contrast(gauss_img)
             
@@ -82,32 +82,23 @@ class PreprocessingCoordinator:
                 polygon["processed_img"] = corrected_image
                 polygons_corrected += 1
 
-        # Guardar la imagen final del polígono procesado
-        # processed_ocr_images[f"polygon_{i}"] = corrected_image
+                # Guardar la imagen preprocesada de este polígono si está habilitado
+                if should_save_images:
+                    if output_folder:
+                        polygon_id = polygon.get('polygon_id', f'poly_{i}')
+                        output_filename = f"{base_name}_preprocessed_{polygon_id}.png"
+                        if self.image_saver.save(corrected_image, output_folder, output_filename):
+                            images_saved_count += 1
+                    elif i == 0:  # Loguear el error solo una vez
+                        logger.error("La 'output_folder' no está definida, no se guardarán imágenes preprocesadas.")
 
         total_duration = time.time() - pipeline_start
         
-        # Log simplificado: solo información esencial
         logger.info(f"Worker Preprocessing - Polígonos recibidos: {polygons_received}, Polígonos corregidos: {polygons_corrected}")
-    
-        # Guardar imagen si está habilitado (NOTA: Esto guardará la última imagen procesada, se podría ajustar)
-        if self.output_config.get('enabled_outputs', {}).get('preprocessed_image', False):
-            if not input_path:
-                logger.warning("No se proporcionó 'input_path', no se puede guardar la imagen preprocesada con un nombre de archivo único.")
-            else:
-                output_folder = self.workflow_config.get('output_folder')
-                if not output_folder:
-                    logger.error("La 'output_folder' no está definida en la configuración del workflow.")
-                else:
-                    base_name = os.path.basename(input_path)
-                    file_name, _ = os.path.splitext(base_name)
-                    # Guardamos la última imagen como referencia
-                    output_filename = f"{file_name}_preprocessed_last_poly.png"
-                    self.image_saver.save(corrected_image, output_folder, output_filename)
+        if images_saved_count > 0:
+            logger.info(f"Guardadas {images_saved_count} imágenes preprocesadas en '{output_folder}'.")
 
-            # Empaquetar el resultado para el siguiente coordinador (OCR).
-            # Ahora es un diccionario de imágenes de polígonos
-            logger.info("Preprocessing: Pipeline completado exitosamente por el worker.")
+        logger.info("Preprocessing: Pipeline completado exitosamente por el worker.")
 
         try:
             return {"polygons": polygons_list}, total_duration

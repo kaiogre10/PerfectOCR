@@ -7,157 +7,190 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 from core.workflow.ocr.paddle_wrapper import PaddleOCRWrapper
 from core.workspace.utils.output_handlers import OutputHandler
+import cv2
 
 logger = logging.getLogger(__name__)
 
 class OCREngineCoordinator:
-    def __init__(self, config: Dict, project_root: str, output_flags: Dict[str, bool], workflow_config: Dict[str, Any] = None):
+    def __init__(self, config: Dict, project_root: str, output_flags: Dict[str, bool], workflow_config: Optional[Dict[str, Any]] = None):
         self.ocr_config_from_workflow = config
         self.project_root = project_root
         self.output_flags = output_flags
         self.workflow_config = workflow_config or {}
         self.json_output_handler = OutputHandler(config={"enabled_outputs": self.output_flags})
         
-        # Calcular workers óptimos dinámicamente para PaddleOCR
-        cpu_count = os.cpu_count() or 4
-        self.num_workers = min(6, cpu_count)
-
-        # Inicialización directa de PaddleOCR
+        # --- Inicialización del motor de RECONOCIMIENTO ---
         paddle_specific_config = self.ocr_config_from_workflow.get('paddleocr')
         if paddle_specific_config:
-            singleton_start = time.perf_counter()
-            logger.info("Inicializando PaddleOCR...")
             self.paddle = PaddleOCRWrapper(paddle_specific_config, self.project_root)
-            singleton_time = time.perf_counter() - singleton_start
-            logger.info(f"PaddleOCR inicializado: {singleton_time:.3f}s")
         else:
             self.paddle = None
+            raise ValueError("PaddleOCR engine not enabled or configured for recognition.")
+
+        # Configuración conservadora para PaddleOCR (sensible a paralelización)
+        self.num_workers = 1  # Procesamiento secuencial para estabilidad
+        logger.info(f"OCREngineCoordinator using sequential processing for PaddleOCR stability.")
+
+    def _save_paddle_raw_output(self, batch_results: List, polygon_ids: List[str], image_file_name: str) -> None:
+        """
+        Guarda la salida raw completa de PaddleOCR para cada polígono.
+        Incluye toda la información que devuelve PaddleOCR, no solo el texto final.
+        """
+        if not self.output_flags.get('ocr_debug', False):
+            return
+            
+        output_folder = self.workflow_config.get('output_folder')
+        if not output_folder:
+            logger.error("No se puede guardar debug de OCR porque 'output_folder' no está definido.")
+            return
+            
+        base_name = os.path.splitext(image_file_name)[0]
+        debug_folder = os.path.join(output_folder, f"{base_name}_paddle_debug")
+        os.makedirs(debug_folder, exist_ok=True)
         
-        if not self.paddle:
-            raise ValueError("PaddleOCR engine not enabled or configured")
+        # Guardar información general del batch
+        batch_info = {
+            "timestamp": datetime.now().isoformat(),
+            "total_polygons": len(polygon_ids),
+            "batch_results_count": len(batch_results),
+            "image_file_name": image_file_name
+        }
+        
+        batch_info_path = os.path.join(debug_folder, "batch_info.txt")
+        with open(batch_info_path, 'w', encoding='utf-8') as f:
+            f.write("=== INFORMACIÓN DEL BATCH ===\n")
+            for key, value in batch_info.items():
+                f.write(f"{key}: {value}\n")
+            f.write("\n")
+        
+        # Guardar resultado detallado para cada polígono
+        for i, (polygon_id, result) in enumerate(zip(polygon_ids, batch_results)):
+            debug_filename = f"polygon_{polygon_id}_paddle_raw.txt"
+            debug_path = os.path.join(debug_folder, debug_filename)
+            
+            with open(debug_path, 'w', encoding='utf-8') as f:
+                f.write(f"=== POLÍGONO {polygon_id} ===\n")
+                f.write(f"Índice en batch: {i}\n")
+                f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+                f.write(f"Resultado raw de PaddleOCR:\n")
+                f.write(f"{result}\n")
+                f.write(f"Tipo de resultado: {type(result)}\n")
+                f.write(f"Longitud del resultado: {len(str(result))}\n")
+                f.write("\n")
+                
+                # Si el resultado no es None, mostrar más detalles
+                if result is not None:
+                    f.write("=== ANÁLISIS DETALLADO ===\n")
+                    f.write(f"¿Es lista?: {isinstance(result, list)}\n")
+                    f.write(f"¿Es diccionario?: {isinstance(result, dict)}\n")
+                    if isinstance(result, list):
+                        f.write(f"Longitud de la lista: {len(result)}\n")
+                        for j, item in enumerate(result):
+                            f.write(f"  Item {j}: {item} (tipo: {type(item)})\n")
+                    elif isinstance(result, dict):
+                        for key, value in result.items():
+                            f.write(f"  {key}: {value} (tipo: {type(value)})\n")
+                else:
+                    f.write("RESULTADO: None (PaddleOCR no devolvió nada)\n")
+        
+        logger.info(f"Debug de PaddleOCR guardado en: {debug_folder}")
 
-    def _run_paddle_task(self, img, fname=None):
-        if self.paddle:
-            return self.paddle.extract_detailed_line_data(img, fname)
-        else:
-            return {
-                "ocr_engine": "paddleocr",
-                "processing_time_seconds": 0.0,
-                "recognized_text": {"lines": [], "words": []},
-                "error": "PaddleOCR not enabled"
-            }
-
-    def run_ocr_parallel(self, preprocessed_images: Dict[str, np.ndarray], 
-                        image_file_name: Optional[str] = None, folder_origin: Optional[str] = "unknown_folder", 
-                        image_pil_mode: Optional[str] = "unknown_mode") -> Tuple[Dict[str, Any], float]:
+    def run_ocr_on_polygons(
+        self, 
+        polygons: List[Dict[str, Any]],
+        image_file_name: str
+    ) -> Tuple[Dict[str, Any], float]:
         
         start_time = time.perf_counter()
         
-        # DEPURACIÓN CORREGIDA: Verificar qué imágenes llegan
-        logger.debug(f"OCR recibió imágenes para: {list(preprocessed_images.keys())}")
-        for engine, img in preprocessed_images.items():
-            if img is not None and hasattr(img, 'shape'):
-                logger.debug(f"{engine}: imagen {img.shape} dtype={img.dtype}")
-            elif img is not None:
-                logger.warning(f"{engine}: objeto recibido es {type(img)} (esperaba numpy array)")
+        if not self.paddle or self.paddle.engine is None:
+            logger.error("PaddleOCR recognition engine not available.")
+            return {"error": "PaddleOCR engine not available"}, 0.0
+
+        if not polygons:
+            logger.warning("No polygons were provided to OCREngineCoordinator.")
+            return {"polygon_results": {}, "full_text": ""}, 0.0
+
+        total_polygons = len(polygons)
+        logger.info(f"=== INICIANDO OCR POR LOTES (BATCH) ===")
+        logger.info(f"Agrupando {total_polygons} polígonos para procesamiento en lote...")
+
+        # --- Preparación del Lote ---
+        # 1. Filtrar polígonos que tienen una imagen válida.
+        # 2. Mantener el ID para re-asociar los resultados después.
+        valid_polygons = [p for p in polygons if p.get("processed_img") is not None and isinstance(p.get("processed_img"), np.ndarray)]
+        if not valid_polygons:
+            logger.warning("No se encontraron polígonos con imágenes válidas para procesar.")
+            return {"polygon_results": {}, "full_text": ""}, 0.0
+            
+        images_batch = [p["processed_img"] for p in valid_polygons]
+        polygon_ids = [p["polygon_id"] for p in valid_polygons]
+        
+        logger.info(f"Enviando lote de {len(images_batch)} imágenes a PaddleOCR...")
+
+        images_batch_3d = []
+        for image_2d in images_batch:
+            image_3d = cv2.cvtColor(image_2d, cv2.COLOR_GRAY2BGR) 
+            images_batch_3d.append(image_3d)
+
+        # Y luego llamamos al OCR con el lote formateado correctamente
+        batch_results = self.paddle.recognize_text_from_batch(images_batch_3d)
+        self._save_paddle_raw_output(batch_results, polygon_ids, image_file_name)
+        
+        polygon_results = {}
+        processed_count = 0
+        for i, result in enumerate(batch_results):
+            poly_id = polygon_ids[i]
+            if result:
+                polygon_results[poly_id] = result
+                processed_count += 1
             else:
-                logger.warning(f"{engine}: imagen es None!")
-        
-        folder_origin = self.ocr_config_from_workflow.get('default_folder_origin', "unknown_folder")
-        image_pil_mode = self.ocr_config_from_workflow.get('default_image_pil_mode', "unknown_mode")
-        
-        paddle_image = preprocessed_images.get('paddleocr') if self.paddle else None
-                    
-        if self.paddle and paddle_image is None:
-            logger.error("PaddleOCR habilitado pero imagen faltante") 
-            return {"error": "Missing PaddleOCR preprocessed image"}, time.perf_counter() - start_time
+                logger.debug(f"El polígono {poly_id} no arrojó resultado en el lote.")
 
-        elif paddle_image is not None:
-            page_dims = {"width": paddle_image.shape[1], "height": paddle_image.shape[0]}
-        else:
-            page_dims = {"width": 0, "height": 0}
+        logger.info(f"Lote procesado. Se obtuvieron resultados para {processed_count}/{len(valid_polygons)} polígonos.")
 
-        # Ejecutar solo PaddleOCR
-        execution_start = time.perf_counter()
-        padd_result_payload = None
-        
-        if self.paddle:
-            padd_result_payload = self._run_paddle_task(paddle_image, image_file_name)
+        # Consolidar el texto completo en el orden correcto si es necesario
+        full_text = self._consolidate_full_text(polygons, polygon_results)
 
-        execution_time = time.perf_counter() - execution_start
-
-        # Consolidar resultados
-        output_data = self._consolidate_ocr_results(
-            padd_result_payload, 
-            image_file_name, folder_origin, image_pil_mode, page_dims
-        )
+        # Empaquetar el resultado final
+        output_data = {
+            "metadata": {
+                "image_file_name": image_file_name,
+                "timestamp": datetime.now().isoformat(),
+                "ocr_engine": "paddleocr_recognition_only",
+                "polygons_processed": processed_count,
+                "polygons_total": total_polygons
+            },
+            "polygon_results": polygon_results,
+            "full_text": full_text
+        }
 
         total_time = time.perf_counter() - start_time
+        logger.info(f"Tiempo total del flujo OCR por lotes: {total_time:.3f}s")
         
         return output_data, total_time
 
-    def _consolidate_ocr_results(self, padd_result_payload: Optional[Dict],
-                               image_file_name: str, folder_origin: str, image_pil_mode: str, 
-                               page_dims: Dict) -> Dict[str, Any]:
+    def _consolidate_full_text(self, original_polygons: List[Dict], ocr_results: Dict) -> str:
+        """Reconstruye el texto completo del documento respetando el orden original de los polígonos."""
+        # Esta es una implementación simple; podría mejorarse para agrupar por 'line_id'
+        # y luego ordenar por la coordenada 'x' para un orden de lectura más natural.
+        text_fragments = []
+        for poly in original_polygons:
+            poly_id = poly.get("polygon_id")
+            result = ocr_results.get(poly_id)
+            if result and result.get("text"):
+                text_fragments.append(result["text"])
         
-        output_data = {
-            "metadata": {
-                "image": image_file_name,
-                "folder_origin": folder_origin,
-                "image_pil_mode": image_pil_mode,
-                "timestamp": datetime.now().isoformat(),
-                "page_dimensions": page_dims,
-                "enabled_engines": {
-                    "paddleocr": self.paddle is not None
-                },
-                "processing_time_seconds": {
-                    "paddleocr": padd_result_payload.get("processing_time_seconds", 0.0) if padd_result_payload else 0.0
-                },
-                "overall_confidence": {}
-            },
-            "ocr_raw_results": {},
-            "visual_output": {"paddleocr_text": ""}
-        }
-        
-        # PaddleOCR
-        if padd_result_payload and "error" not in padd_result_payload:
-            output_data["ocr_raw_results"]["paddleocr"] = {
-                "lines": padd_result_payload.get("recognized_text", {}).get("lines", []),
-                "full_text": padd_result_payload.get("recognized_text", {}).get("full_text", ""),
-                "words": padd_result_payload.get("recognized_text", {}).get("words", [])
-            }
-            output_data["metadata"]["overall_confidence"]["paddleocr_lines_avg"] = padd_result_payload.get("overall_confidence_avg_lines")
-            output_data["visual_output"]["paddleocr_text"] = output_data["ocr_raw_results"]["paddleocr"]["full_text"]
-        elif padd_result_payload and "error" in padd_result_payload:
-            output_data["ocr_raw_results"]["paddleocr"] = {"error": padd_result_payload.get("error")}
-        
-        # Guardar JSON
-        ocr_json_path = None
-        if self.output_flags.get('ocr_raw', False) and image_file_name:
-            output_dir = self.workflow_config.get('output_folder', os.path.join(self.project_root, "output"))
-            base_name = os.path.splitext(os.path.basename(image_file_name))[0]
-            ocr_json_path = self.json_output_handler.save(
-                data=output_data,
-                output_dir=output_dir,
-                file_name_with_extension=f"{base_name}_ocr_raw_results.json"
-            )
-            
-        output_data["ocr_raw_json_path"] = ocr_json_path
-        return output_data
+        return "\n".join(text_fragments)
 
-    def validate_ocr_results(self, ocr_results: Optional[dict], filename: str) -> bool:
-        """Valida resultados OCR"""
+    def validate_ocr_results(self, ocr_results: Optional[dict]) -> bool:
+        """Valida si el resultado del OCR es aceptable."""
         if not isinstance(ocr_results, dict): 
             return False
         
-        ocr_raw_results = ocr_results.get("ocr_raw_results", {})
-        enabled_engines = ocr_results.get("metadata", {}).get("enabled_engines", {})
-        
-        has_valid_text = False
-        
-        if enabled_engines.get("paddleocr", False):
-            paddle_data = ocr_raw_results.get("paddleocr", {})
-            if "error" not in paddle_data and len(paddle_data.get("lines", [])) > 0:
-                has_valid_text = True
-        
-        return has_valid_text
+        # El criterio de validación es simplemente si se reconoció texto en al menos un polígono.
+        polygon_results = ocr_results.get("polygon_results", {})
+        if not polygon_results:
+            return False
+
+        return any(res.get("text") for res in polygon_results.values())

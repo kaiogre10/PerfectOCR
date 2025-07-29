@@ -99,19 +99,10 @@ class MoireDenoiser:
                 sym_y = center_y - (peak_y - center_y)
                 cv2.circle(mask, (int(sym_x), int(sym_y)), adaptive_notch, (0.0,), -1)
 
-            # Aplicar máscara al espectro
-            f_filtered = f_shifted * mask[:,:,np.newaxis]  # Expandir dimensión para complejo
-            
-            # Shift inverso
+            f_filtered = f_shifted * mask[:,:,np.newaxis] 
             f_ishifted = np.fft.ifftshift(f_filtered)
-            
-            # Transformada inversa usando OpenCV - CORRECCIÓN: usar np.asarray
             moire_complex = cv2.idft(np.asarray(f_ishifted), flags=cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT)
-            
-            # Extraer parte real (OpenCV ya retorna solo la parte real)
             moire_img = np.real(moire_complex)
-
-            # Corrección final con filtro adaptativo
             moire_img = np.clip(moire_img, 0, 255).astype(np.uint8)
             if spectrum_var > 1000:
                 moire_img = cv2.bilateralFilter(moire_img, d=5, sigmaColor=50, sigmaSpace=50)

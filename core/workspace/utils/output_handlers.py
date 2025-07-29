@@ -69,7 +69,6 @@ class ImageOutputHandler:
             os.makedirs(output_dir, exist_ok=True)
             output_path = os.path.join(output_dir, file_name_with_extension)
             cv2.imwrite(output_path, image_array)
-            logger.info(f"Imagen preprocesada guardada en: {output_path}")
             return output_path
         except Exception as e:
             logger.error(f"Error guardando imagen en {output_path}: {e}", exc_info=True)
