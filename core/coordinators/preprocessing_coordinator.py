@@ -36,9 +36,9 @@ class PreprocessingCoordinator:
         
     def _apply_preprocessing_pipelines(
         self,
-        polygons_dict: dict,
+        refined_polygons: List[Dict[str, Any]],
         input_path: str = ""
-    ) -> Tuple[dict, float]:
+    ) -> Tuple[Dict[str, Any], float]:
         """
         Procesa la imagen de forma secuencial:
         1. Moiré
@@ -47,10 +47,8 @@ class PreprocessingCoordinator:
         4. Contraste
         5. Nitidez
         """
-        if isinstance(polygons_dict, dict):
-            polygons_list = polygons_dict.get("polygons", [])
-        else:
-            polygons_list = polygons_dict
+        # refined_polygons ya es una lista de polígonos
+        polygons_list = refined_polygons
 
         polygons_received = len(polygons_list)
         polygons_corrected = 0
@@ -79,6 +77,10 @@ class PreprocessingCoordinator:
             
                 # 5. Mejora de nitidez
                 corrected_image = self._sharp._estimate_sharpness(clahed_img)
+                
+                # Actualizar el polígono con la imagen procesada
+                polygon["processed_img"] = corrected_image
+                polygons_corrected += 1
 
         # Guardar la imagen final del polígono procesado
         # processed_ocr_images[f"polygon_{i}"] = corrected_image
@@ -108,7 +110,7 @@ class PreprocessingCoordinator:
             logger.info("Preprocessing: Pipeline completado exitosamente por el worker.")
 
         try:
-            return {"processed_image": corrected_image}, total_duration
+            return {"polygons": polygons_list}, total_duration
         except Exception as e:
             logger.error(f"Preprocessing: Falló el pipeline del worker: {e}", exc_info=True)
-            return {"processed_image": None}, 0.0
+            return {"polygons": []}, 0.0

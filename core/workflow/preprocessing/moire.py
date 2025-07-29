@@ -3,24 +3,26 @@ import cv2
 import numpy as np
 import logging
 from typing import Dict, Any, List
-from scipy.fft import fft2, fftshift, ifftshift, ifft2
 
 logger = logging.getLogger(__name__)
 
 class MoireDenoiser:
-    """Detecta inclinación con Hough."""
+    """Detecta y corrige patrones de moiré usando FFT de OpenCV."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.corrections = config
         self.denoise_corrections = config.get('denoise', {})
 
-    def _detect_moire_patterns(self, cropped_line: np.ndarray) -> np.ndarray:
-
-        try:
-            from mkl import set_num_threads
-            set_num_threads(4)
-        except ImportError:
-            logger.warning("MKL no está disponible, no se puede establecer el número de hilos.")
+    def _detect_moire_patterns(self, cropped_polygon: np.ndarray) -> np.ndarray:
+        """
+        Detecta y corrige patrones de moiré en una imagen individual de polígono.
+        
+        Args:
+            cropped_polygon: Imagen individual del polígono a procesar
+            
+        Returns:
+            Imagen del polígono con moiré corregido
+        """
 
         moire_corrections = self.denoise_corrections.get('moire', {})
         mode = moire_corrections.get('mode', {})
@@ -34,21 +36,31 @@ class MoireDenoiser:
         abs_threshold = abs_corrections.get('absolute_threshold', 200000000)
 
         # Ajustes adaptativos
-        img_dims = cropped_line.shape
+        img_dims = cropped_polygon.shape
         h, w = img_dims
         max_dim = max(h, w)
-        spectrum_var = np.var(cropped_line)
+        spectrum_var = np.var(cropped_polygon)
         adaptive_notch = max(2, min(6, int(notch_radius * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
         adaptive_min_dist = max(50, min(300, int(min_dist * (max_dim / 2000.0))))
 
-        # Transformada Fourier
-        f_transform = fft2(cropped_line)
-        f_shifted = fftshift(f_transform)
-        magnitude_spectrum = 20 * np.log(np.abs(f_shifted) + 1)
+        # Transformada Fourier usando OpenCV (más estable y compatible)
+        # Convertir a float32 para mejor precisión y compatibilidad con OpenCV
+        img_float = np.float32(cropped_polygon)
+        
+        # Aplicar FFT de OpenCV - CORRECCIÓN: usar np.asarray para compatibilidad
+        f_transform = cv2.dft(np.asarray(img_float), flags=cv2.DFT_COMPLEX_OUTPUT)
+        
+        # Shift del espectro para centrar las frecuencias bajas
+        f_shifted = np.fft.fftshift(f_transform)
+        
+        # Calcular magnitud del espectro
+        magnitude_spectrum = cv2.magnitude(f_shifted[:,:,0], f_shifted[:,:,1])
+        magnitude_spectrum = 20 * np.log(magnitude_spectrum + 1)
                 
-        # Excluir centro
+        # Excluir centro - CORRECCIÓN: usar tupla para color
         temp_spectrum = magnitude_spectrum.copy()
-        cv2.circle(temp_spectrum, (h // 2, w // 2), adaptive_min_dist, 0, -1)
+        center_point = (w // 2, h // 2)
+        cv2.circle(temp_spectrum, center_point, adaptive_min_dist, (0.0,), -1)
 
         # Estadísticas del espectro para inferencia automática
         valid_spectrum = temp_spectrum[temp_spectrum > 0]
@@ -70,8 +82,6 @@ class MoireDenoiser:
             adaptive_threshold = max(1000, min(5000000, adaptive_threshold * (spectrum_var / 100.0)))
             method = "Absoluto"
 
-
-
         # Detectar picos
         peaks_coords = np.argwhere(magnitude_spectrum > adaptive_threshold)
         filtered_peaks = [(y, x) for y, x in peaks_coords if np.sqrt((y - h//2)**2 + (x - w//2)**2) > adaptive_min_dist]
@@ -82,15 +92,24 @@ class MoireDenoiser:
             mask = np.ones((h, w), np.float32)
 
             for peak_y, peak_x in filtered_peaks:
-                cv2.circle(mask, (peak_x, peak_y), adaptive_notch, 0, -1)
-                dist_to_center = np.sqrt((peak_y - center_y)**2 + (peak_x - center_x)**2)
-                sym_x = center_x - (peak_x - center_x) * (dist_to_center / max(dist_to_center, 1.0))
-                sym_y = center_y - (peak_y - center_y) * (dist_to_center / max(dist_to_center, 1.0))
-                cv2.circle(mask, (int(sym_x), int(sym_y)), adaptive_notch, 0, -1)
+                # CORRECCIÓN: usar tupla para color en cv2.circle
+                cv2.circle(mask, (peak_x, peak_y), adaptive_notch, (0.0,), -1)
+                # Punto simétrico
+                sym_x = center_x - (peak_x - center_x)
+                sym_y = center_y - (peak_y - center_y)
+                cv2.circle(mask, (int(sym_x), int(sym_y)), adaptive_notch, (0.0,), -1)
 
-            f_filtered = f_shifted * mask
-            f_ishifted = ifftshift(f_filtered)
-            moire_img = np.real(ifft2(f_ishifted))
+            # Aplicar máscara al espectro
+            f_filtered = f_shifted * mask[:,:,np.newaxis]  # Expandir dimensión para complejo
+            
+            # Shift inverso
+            f_ishifted = np.fft.ifftshift(f_filtered)
+            
+            # Transformada inversa usando OpenCV - CORRECCIÓN: usar np.asarray
+            moire_complex = cv2.idft(np.asarray(f_ishifted), flags=cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT)
+            
+            # Extraer parte real (OpenCV ya retorna solo la parte real)
+            moire_img = np.real(moire_complex)
 
             # Corrección final con filtro adaptativo
             moire_img = np.clip(moire_img, 0, 255).astype(np.uint8)
@@ -98,6 +117,6 @@ class MoireDenoiser:
                 moire_img = cv2.bilateralFilter(moire_img, d=5, sigmaColor=50, sigmaSpace=50)
             return moire_img
         else:
-            moire_img = cropped_line
+            moire_img = cropped_polygon
 
         return moire_img

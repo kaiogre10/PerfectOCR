@@ -28,4 +28,5 @@ output/
 *.ini
 
 # Ignorar perfectocr.txt
-perfectocr.txt
+perfectocr.txt/
+*perfectocr.txt

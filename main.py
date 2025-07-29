@@ -153,6 +153,12 @@ class PerfectOCRWorkflow:
         processing_times_summary["1_polygons"] = round(time_poly, 4)
         logger.info(f"Polygonos: {phase1_time:.3f}s")
         
+        # Validar que se obtuvieron polígonos válidos
+        if refined_polygons is None:
+            logger.critical("No se pudieron generar polígonos válidos. Abortando procesamiento.")
+            return self._build_error_response("error_polygon_generation", original_file_name,
+                                              "No se pudieron generar polígonos", "polygon_generation")
+        
         # FASE: PREPROCESAMIENTO (ya incluye evaluación interna)
         phase2_start = time.perf_counter()
         

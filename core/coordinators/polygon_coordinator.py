@@ -40,7 +40,7 @@ class PolygonCoordinator:
         self,
         image_array: np.ndarray,
         input_path: str
-    ) -> Tuple[Optional[Dict[str, Any]], float]:
+    ) -> Tuple[Optional[List[Dict[str, Any]]], float]:
     
         gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array
         pipeline_start = time.time()

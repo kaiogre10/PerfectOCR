@@ -137,13 +137,13 @@ class Binarizator:
             logger.error(f"Error en método fallback final: {e}")
             return gray_img
 
-    def _process_individual_polygons(self, individual_polygons: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
+    def _process_individual_polygons(self, individual_polygons: List[Dict]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
         Procesa una lista de polígonos individuales aplicando binarización adaptativa a cada uno.
         Reemplaza la imagen original con la versión binarizada.
         Utiliza la metadata existente sin modificarla.
         Returns:
-            Tuple[List[Dict], List[Dict]]: (polígonos_binarizados, polígonos_originales)
+            Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]: (polígonos_binarizados, polígonos_originales)
         """
         if not individual_polygons:
             logger.warning("Lista de polígonos vacía recibida")
@@ -177,7 +177,7 @@ class Binarizator:
         binarized_poly = self._clean_binarizated_polys(binarized_polygons)
         return binarized_poly, individual_polygons
     
-    def _clean_binarizated_polys(self, binarized_polygons: List[Dict]) -> List[Dict]:
+    def _clean_binarizated_polys(self, binarized_polygons: List[Dict]) -> List[Dict[str, Any]]:
         """
         Limpia cada imagen binarizada de los polígonos individuales y actualiza el diccionario.
         """

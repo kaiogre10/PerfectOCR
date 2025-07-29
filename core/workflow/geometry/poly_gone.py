@@ -14,7 +14,7 @@ class PolygonExtractor:
         cutter_params = self.config.get('cutting', {})
         self.padding = cutter_params.get('cropping_padding', {})
         
-    def _extract_individual_polygons(self, deskewed_img: np.ndarray, lineal_polygons: List[Dict], input_filename: str = "", output_config: Dict = None): # type: ignore
+    def _extract_individual_polygons(self, deskewed_img: np.ndarray, lineal_polygons: List[Dict], input_filename: str = "", output_config: Dict = None) -> List[Dict[str, Any]]:
         """
         Extrae y recorta solo los polígonos individuales, asignando el line_id correspondiente.
         Devuelve una lista de polígonos, cada uno con su imagen recortada y metadata individual.
