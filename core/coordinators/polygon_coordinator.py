@@ -87,7 +87,7 @@ class PolygonCoordinator:
         step_start = time.time()
         logger.info("Iniciando binarización...")
         # El binarizador devuelve una copia binarizada para análisis y la lista original intacta
-        binarized_poly, individual_polygons = self._bin._binarize_polygons(extracted_polygons)
+        cleaned_binarized_polygons, individual_polygons = self._bin._binarize_polygons(extracted_polygons)
         step_duration = time.time() - step_start
         logger.info(f"Binarización completada en {step_duration:.4f}s")
         
@@ -96,14 +96,14 @@ class PolygonCoordinator:
             return None, time.time() - pipeline_start
         
         # Verificar binarización
-        binarized_count = sum(1 for poly in binarized_poly if poly.get("binarized_img") is not None)
+        binarized_count = sum(1 for poly in cleaned_binarized_polygons if poly.get("binarized_img") is not None)
         if binarized_count is None:
             return binarized_count
         
         # Preparación final de polígonos (Fragmentación)
         step_start = time.time()
         # El fragmentador usa los binarizados para medir y los originales para actuar
-        refined_polygons = self._fragment._intercept_polygons(binarized_poly, individual_polygons)
+        refined_polygons = self._fragment._intercept_polygons(cleaned_binarized_polygons, individual_polygons)
         step_duration = time.time() - step_start
         
         if input_path:
@@ -132,7 +132,9 @@ class PolygonCoordinator:
         pipeline_end = time.time() - pipeline_start
         logger.info(f"=== GENERACIÓN DE POLIGONAL COMPLETADA en {pipeline_end:.4f}s ===")
         
-        return refined_polygons, pipeline_end
+        time_poly = pipeline_end
+        
+        return refined_polygons, time_poly
 
     def _save_polygon_images(self, polygons: List[Dict], output_folder: str, base_filename: str):
         """Guarda solo las imágenes de los polígonos, no metadata."""

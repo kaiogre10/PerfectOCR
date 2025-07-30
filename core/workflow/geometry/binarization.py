@@ -9,6 +9,7 @@ from skimage.measure import regionprops, label
 from skimage.filters import threshold_sauvola
 from skimage.util import img_as_ubyte
 from skimage import morphology
+from core.workspace.utils import multifeaturer
 
 logger = logging.getLogger(__name__)
 
@@ -141,9 +142,8 @@ class Binarizator:
             if binary_img is None or not isinstance(binary_img, np.ndarray) or binary_img.size == 0:
                 continue
 
-            try:
+            try: # Asegurar que labeled_img sea un numpy array
                 labeled_img = label(binary_img.astype(bool))
-                # Asegurar que labeled_img sea un numpy array
                 if isinstance(labeled_img, tuple):
                     labeled_img = labeled_img[0]
                 elif isinstance(labeled_img, list):
@@ -220,5 +220,7 @@ class Binarizator:
         # Limpiar las imágenes binarizadas antes de retornarlas
         cleaned_binarized_polygons = self._clean_binarizated_polys(binarized_polygons)
         
+        individual_polygons = extracted_polygons
+        
         # Se retorna la lista binarizada Y la lista original intacta
-        return cleaned_binarized_polygons, extracted_polygons
+        return cleaned_binarized_polygons, individual_polygons

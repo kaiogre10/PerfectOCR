@@ -9,12 +9,6 @@ from joblib import Parallel, delayed
 import numpy as np
 import warnings
 import os
-from mkl import set_num_threads
-
-
-num_threads = os.cpu_count()
-set_num_threads(num_threads)
-print(f"cpu_count(): {num_threads}")
 
 # DICCIONARIO GLOBAL DE FUNCIONES DE FEATURES
 # Todas las features en formato lambda uniforme para facilitar mantenimiento
@@ -100,9 +94,8 @@ FEATURE_FUNCTIONS = {
     'region_labels': lambda binary: [r.label for r in regionprops(label(binary))] if binary.max() > 0 else [],
 }
 
-# ------------------------------------------------------------------------------
 # FUNCIÓN INTERNA: RECOLECTA UNA FEATURE PARA TODOS LOS OBJETOS
-# ------------------------------------------------------------------------------
+
 def _collect_feature_for_all(objs, func, n_jobs):
     """
     Calcula una feature específica para todos los objetos en paralelo.
@@ -111,9 +104,8 @@ def _collect_feature_for_all(objs, func, n_jobs):
         delayed(func)(obj) for obj in objs
     )
 
-# ------------------------------------------------------------------------------
 # FUNCIÓN PÚBLICA: PUNTO DE ACCESO ÚNICO PARA PEDIDOS DE FEATURES
-# ------------------------------------------------------------------------------
+
 def request_features(objs, requests, n_jobs=-1):
     """
     Función pública que recibe el pedido de features y entrega los resultados.
@@ -147,9 +139,8 @@ def request_features(objs, requests, n_jobs=-1):
     
     return results
 
-# ------------------------------------------------------------------------------
 # FUNCIÓN DE CONVENIENCIA: PARA UNA SOLA FEATURE
-# ------------------------------------------------------------------------------
+
 def request_single_feature(objs, feature, n_jobs=-1):
     """
     Función de conveniencia para calcular una sola feature.

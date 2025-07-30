@@ -34,11 +34,7 @@ class PreprocessingCoordinator:
         self._sharp = SharpeningEnhancer(config=quality_rules.get('sharpening', {}), project_root=self.project_root)
         self.image_saver = ImageOutputHandler()
         
-    def _apply_preprocessing_pipelines(
-        self,
-        refined_polygons: List[Dict[str, Any]],
-        input_path: str = ""
-    ) -> Tuple[Dict[str, Any], float]:
+    def _apply_preprocessing_pipelines(self, refined_polygons: List[Dict[str, Any]], input_path: str = "") -> Tuple[Dict[str, Any], float]:
         """
         Procesa la imagen de forma secuencial:
         1. Moiré
@@ -77,10 +73,6 @@ class PreprocessingCoordinator:
             
                 # 5. Mejora de nitidez
                 corrected_image = self._sharp._estimate_sharpness(clahed_img)
-                
-                # Actualizar el polígono con la imagen procesada
-                polygon["processed_img"] = corrected_image
-                polygons_corrected += 1
 
                 # Guardar la imagen preprocesada de este polígono si está habilitado
                 if should_save_images:

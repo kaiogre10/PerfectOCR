@@ -142,9 +142,9 @@ ocr:
 
 output_config:
   enabled_outputs:
-    preprocessed_image: false
+    preprocessed_image: true
     ocr_raw: true
-    ocr_debug: true
+    ocr_debug: false
     cropped_words: false
     refined_polygons: false
     problematic_ids: false

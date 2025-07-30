@@ -17,7 +17,7 @@ class PolygonFragmentator:
         self.approx_poly_epsilon = fragmentator_params.get('approx_poly_epsilon', 0.02)
         self.problematic_ids = set()
 
-    def _intercept_polygons(self, binarized_poly: List[Dict], individual_polygons: List[Dict]) -> List[Dict[str, Any]]:
+    def _intercept_polygons(self, cleaned_binarized_polygons: List[Dict], individual_polygons: List[Dict]) -> List[Dict[str, Any]]:
         """
         Primero, identifica polígonos problemáticos mediante un análisis estadístico de ladensidad de texto. Luego, fragmenta únicamente los polígonos problemáticos.
         Args:
@@ -26,13 +26,13 @@ class PolygonFragmentator:
         Returns:
             List[Dict[str, Any]]: Una lista unificada de polígonos originales y fragmentos nuevos.
         """
-        if not individual_polygons or not binarized_poly:
+        if not individual_polygons or not cleaned_binarized_polygons:
             logger.warning("Se recibieron listas de polígonos vacías. No se puede procesar.")
             return individual_polygons
 
         # --- PASO 1: ANÁLISIS RÁPIDO - Medir densidad de texto en todos los polígonos ---
         poly_densities = []
-        for poly in binarized_poly:
+        for poly in cleaned_binarized_polygons:
             poly_id = poly.get('polygon_id')
             bin_img = poly.get("binarized_img")
             if poly_id is None or bin_img is None or bin_img.size == 0:
@@ -81,7 +81,7 @@ class PolygonFragmentator:
         # --- PASO 3: CORRECCIÓN QUIRÚRGICA - Procesar y fragmentar solo los problemáticos ---
         temp_refined_polygons = []
         original_poly_map = {p['polygon_id']: p for p in individual_polygons}
-        binarized_poly_map = {p['polygon_id']: p for p in binarized_poly}
+        binarized_poly_map = {p['polygon_id']: p for p in cleaned_binarized_polygons}
 
         for poly_id, original_poly in sorted(original_poly_map.items(), key=lambda item: int(item[0].split('_')[-1])):
             if poly_id not in problematic_ids:
@@ -139,18 +139,17 @@ class PolygonFragmentator:
                     'width': w,
                     'height': h,
                     'centroid': new_centroid
-                }
-                
+                }                
                 temp_refined_polygons.append(new_poly_dict)
 
         # --- PASO 4: REASIGNACIÓN DE IDs ---
-        final_polygons = []
+        refined_polygons = []
         for i, poly in enumerate(temp_refined_polygons):
             poly['polygon_id'] = f"poly_{i:04d}"
-            final_polygons.append(poly)
+            refined_polygons.append(poly)
 
-        logger.info(f"Análisis completado. Total de polígonos refinados: {len(final_polygons)}")
-        return final_polygons
+        logger.info(f"Análisis completado. Total de polígonos refinados: {len(refined_polygons)}")
+        return refined_polygons
     
     def _get_problematic_ids(self) -> set:
         """Retorna los IDs de polígonos problemáticos del último procesamiento."""

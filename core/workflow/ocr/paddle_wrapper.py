@@ -19,8 +19,6 @@ class PaddleOCRWrapper:
         self.paddle_config = config_dict
         self.project_root = project_root
         logger.info("=== INICIALIZACIÓN PADDLEOCR ===")
-        logger.info(f"Initializing PaddleOCR for RECOGNITION (text transcription)...")
-        logger.debug(f"Config for PaddleOCR (rec-only): {self.paddle_config}")
 
         try:
             # --- PARÁMETROS PARA RECONOCIMIENTO PURO Y POR LOTES ---
@@ -34,10 +32,7 @@ class PaddleOCRWrapper:
                 'rec_batch_num': 64,  # Procesar hasta 64 imágenes en un lote
             }
             
-            logger.info(f"Parámetros de inicialización: {init_params}")
-        
             model_load_start = time.perf_counter()
-            logger.info("Cargando modelo de reconocimiento...")
             
             rec_model_path = self.paddle_config.get('rec_model_dir')
             if rec_model_path and os.path.exists(rec_model_path):
@@ -49,10 +44,7 @@ class PaddleOCRWrapper:
             model_load_time = time.perf_counter() - model_load_start
             total_init_time = time.perf_counter() - start_time
             
-            logger.info(f"Modelo cargado en: {model_load_time:.3f}s")
             logger.info(f"Total inicialización: {total_init_time:.3f}s")
-            logger.info("PaddleOCR instance for RECOGNITION initialized successfully.")
-            logger.info("=== FIN INICIALIZACIÓN PADDLEOCR ===")
 
         except Exception as e:
             logger.error(f"Critical error initializing PaddleOCR for recognition: {e}", exc_info=True)

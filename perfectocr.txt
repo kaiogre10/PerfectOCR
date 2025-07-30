@@ -1,183 +1,162 @@
-2025-07-29 20:19:28 - INFO - managment.cache_manager:36 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
-2025-07-29 20:19:28 - INFO - managment.cache_manager:28 - cache_manager - Eliminada carpeta de caché: C:/PerfectOCR/output\prueba12_paddle_debug
-2025-07-29 20:19:29 - INFO - core.workflow.geometry.deskew:23 - deskew - Inicializando instancia de PaddleOCR para GEOMETRÍA (solo detección)...
-2025-07-29 20:19:29 - DEBUG - core.workflow.geometry.deskew:35 - deskew - Buscando modelo de detección local de PaddleOCR...
-2025-07-29 20:19:29 - INFO - core.workflow.geometry.deskew:39 - deskew - Detector local encontrado y añadido: C:/PerfectOCR/data/models/paddle/det/es
-2025-07-29 20:19:29 - DEBUG - core.workflow.geometry.deskew:43 - deskew - Parámetros finales para inicializar PaddleOCR (geometría): {'use_angle_cls': False, 'rec': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es'}
-2025-07-29 20:19:30 - INFO - core.workflow.geometry.deskew:45 - deskew - Instancia de PaddleOCR para GEOMETRÍA inicializada exitosamente.
-2025-07-29 20:19:30 - INFO - core.coordinators.polygon_coordinator:45 - polygon_coordinator - === INICIANDO GENERACIÓN DE POLIGONAL ===
-2025-07-29 20:19:30 - INFO - core.coordinators.polygon_coordinator:49 - polygon_coordinator - Iniciando limpieza rapida
-2025-07-29 20:19:31 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
-2025-07-29 20:19:31 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
-2025-07-29 20:19:31 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
-2025-07-29 20:19:31 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
-2025-07-29 20:19:31 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
-2025-07-29 20:19:31 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
-2025-07-29 20:19:31 - INFO - core.coordinators.polygon_coordinator:52 - polygon_coordinator - Limpieza completada en 0.2785s
-2025-07-29 20:19:31 - INFO - core.coordinators.polygon_coordinator:56 - polygon_coordinator - Iniciando corrección de inclinación
-2025-07-29 20:19:31 - INFO - core.workflow.geometry.deskew:76 - deskew - -> Aplicando corrección de inclinación: -1.01 grados.
-2025-07-29 20:19:31 - INFO - core.workflow.geometry.deskew:93 - deskew - -> Ejecutando detección geométrica en imagen de (2954, 2056)...
-2025-07-29 20:19:32 - INFO - core.workflow.geometry.deskew:99 - deskew - -> Detección geométrica exitosa. Polígonos crudos encontrados: 56
-2025-07-29 20:19:32 - INFO - core.workflow.geometry.deskew:165 - deskew - -> Polígonos válidos procesados: 56
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.deskew:179 - deskew - Detectados 56 polígonos en la fase de geometría.
-2025-07-29 20:19:32 - INFO - core.coordinators.polygon_coordinator:59 - polygon_coordinator - Corrección de inclinación completada en 1.4629s
-2025-07-29 20:19:32 - INFO - core.coordinators.polygon_coordinator:63 - polygon_coordinator - Agrupando líneas
-2025-07-29 20:19:32 - INFO - core.workflow.geometry.lineal_reconstructor:17 - lineal_reconstructor - Iniciando asignación de line_id a 56 polígonos
-2025-07-29 20:19:32 - INFO - core.workflow.geometry.lineal_reconstructor:82 - lineal_reconstructor - Asignación completada: 56 polígonos asignados a 27 líneas lógicas.
-2025-07-29 20:19:32 - INFO - core.coordinators.polygon_coordinator:67 - polygon_coordinator - Agrupamiento completado en 0.0020s - 56 polígonos detectados
-2025-07-29 20:19:32 - INFO - core.coordinators.polygon_coordinator:71 - polygon_coordinator - Iniciando recorte de polígonos de imagen
-2025-07-29 20:19:32 - INFO - core.workflow.geometry.poly_gone:61 - poly_gone - Imágenes recortadas exitosamente: 56/56
-2025-07-29 20:19:32 - INFO - core.coordinators.polygon_coordinator:75 - polygon_coordinator - Recorte completado en 0.002011s
-2025-07-29 20:19:32 - INFO - core.coordinators.polygon_coordinator:82 - polygon_coordinator - Polígonos con imágenes recortadas: 56/56
-2025-07-29 20:19:32 - INFO - core.coordinators.polygon_coordinator:86 - polygon_coordinator - Iniciando binarización...
-2025-07-29 20:19:32 - INFO - core.workflow.geometry.binarization:193 - binarization - Iniciando binarización de 56 polígonos individuales
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 41
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 62
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 71
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 69
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 95
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 77
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 85
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 68
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 65
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 74
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 85
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 71
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 21 para polígono de altura 116
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 69
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 65
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 74
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 74
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 71
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 74
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 32
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 71
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 89
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 85
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 69
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 82
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:99 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
-2025-07-29 20:19:32 - DEBUG - core.workflow.geometry.binarization:105 - binarization - Binarización exitosa con método Otsu
-2025-07-29 20:19:32 - INFO - core.workflow.geometry.binarization:220 - binarization - Binarización completada: 56/56 polígonos procesados exitosamente
-2025-07-29 20:19:34 - INFO - core.coordinators.polygon_coordinator:90 - polygon_coordinator - Binarización completada en 2.0281s
-2025-07-29 20:19:34 - INFO - core.coordinators.polygon_coordinator:98 - polygon_coordinator - Polígonos con imagen binarizada: 56/56
-2025-07-29 20:19:34 - INFO - core.workflow.geometry.fragmentator:79 - fragmentator - Análisis de densidad: media=0.896, std=0.076. Se identificaron 0 polígonos problemáticos.
-2025-07-29 20:19:34 - INFO - core.workflow.geometry.fragmentator:152 - fragmentator - Análisis completado. Total de polígonos refinados: 56
-2025-07-29 20:19:34 - WARNING - core.coordinators.polygon_coordinator:117 - polygon_coordinator - No se guardaron refined_polygons - Habilitado: False, Carpeta válida: True
-2025-07-29 20:19:34 - WARNING - core.coordinators.polygon_coordinator:130 - polygon_coordinator - No se guardaron problematic_ids - Habilitado: False, Carpeta válida: True
-2025-07-29 20:19:34 - INFO - core.coordinators.polygon_coordinator:133 - polygon_coordinator - === GENERACIÓN DE POLIGONAL COMPLETADA en 3.8036s ===
-2025-07-29 20:19:34 - INFO - __main__:157 - main - Polygonos: 5.614s
-2025-07-29 20:19:35 - INFO - core.coordinators.preprocessing_coordinator:97 - preprocessing_coordinator - Worker Preprocessing - Polígonos recibidos: 56, Polígonos corregidos: 56
-2025-07-29 20:19:35 - INFO - core.coordinators.preprocessing_coordinator:101 - preprocessing_coordinator - Preprocessing: Pipeline completado exitosamente por el worker.
-2025-07-29 20:19:35 - INFO - __main__:174 - main - Preprocesamiento: 0.492s
-2025-07-29 20:19:35 - INFO - __main__:103 - main - Inicializando OCREngineCoordinator bajo demanda para transcripción...
-2025-07-29 20:19:35 - INFO - core.workflow.ocr.paddle_wrapper:21 - paddle_wrapper - === INICIALIZACIÓN PADDLEOCR ===
-2025-07-29 20:19:35 - INFO - core.workflow.ocr.paddle_wrapper:22 - paddle_wrapper - Initializing PaddleOCR for RECOGNITION (text transcription)...
-2025-07-29 20:19:35 - DEBUG - core.workflow.ocr.paddle_wrapper:23 - paddle_wrapper - Config for PaddleOCR (rec-only): {'use_angle_cls': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'det_model_dir': 'C:/PerfectOCR/data/models/paddle/det/es', 'rec_model_dir': 'C:/PerfectOCR/data/models/paddle/rec/es', 'cls_model_dir': 'C:/PerfectOCR/data/models/paddle/cls'}
-2025-07-29 20:19:35 - INFO - core.workflow.ocr.paddle_wrapper:37 - paddle_wrapper - Parámetros de inicialización: {'use_angle_cls': False, 'det': False, 'lang': 'es', 'show_log': False, 'use_gpu': False, 'enable_mkldnn': True, 'rec_batch_num': 64}
-2025-07-29 20:19:35 - INFO - core.workflow.ocr.paddle_wrapper:40 - paddle_wrapper - Cargando modelo de reconocimiento...
-2025-07-29 20:19:35 - INFO - core.workflow.ocr.paddle_wrapper:45 - paddle_wrapper - Recognition-only model loaded from local path: C:/PerfectOCR/data/models/paddle/rec/es
-2025-07-29 20:19:36 - INFO - core.workflow.ocr.paddle_wrapper:52 - paddle_wrapper - Modelo cargado en: 1.343s
-2025-07-29 20:19:36 - INFO - core.workflow.ocr.paddle_wrapper:53 - paddle_wrapper - Total inicialización: 1.344s
-2025-07-29 20:19:36 - INFO - core.workflow.ocr.paddle_wrapper:54 - paddle_wrapper - PaddleOCR instance for RECOGNITION initialized successfully.
-2025-07-29 20:19:36 - INFO - core.workflow.ocr.paddle_wrapper:55 - paddle_wrapper - === FIN INICIALIZACIÓN PADDLEOCR ===
-2025-07-29 20:19:36 - INFO - core.coordinators.ocr_coordinator:33 - ocr_coordinator - OCREngineCoordinator using sequential processing for PaddleOCR stability.
-2025-07-29 20:19:36 - INFO - core.coordinators.ocr_coordinator:116 - ocr_coordinator - === INICIANDO OCR POR LOTES (BATCH) ===
-2025-07-29 20:19:36 - INFO - core.coordinators.ocr_coordinator:117 - ocr_coordinator - Agrupando 56 polígonos para procesamiento en lote...
-2025-07-29 20:19:36 - INFO - core.coordinators.ocr_coordinator:130 - ocr_coordinator - Enviando lote de 56 imágenes a PaddleOCR...
-2025-07-29 20:19:41 - INFO - core.workflow.ocr.paddle_wrapper:117 - paddle_wrapper - Batch OCR para 56 polígonos completado en: 4.441s
-2025-07-29 20:19:41 - INFO - core.workflow.ocr.paddle_wrapper:126 - paddle_wrapper - Resultado consolidado detectado. Mapeando 56 textos a 56 imágenes por orden.
-2025-07-29 20:19:41 - INFO - core.workflow.ocr.paddle_wrapper:135 - paddle_wrapper - Total de resultados finales procesados: 56
-2025-07-29 20:19:41 - INFO - core.coordinators.ocr_coordinator:97 - ocr_coordinator - Debug de PaddleOCR guardado en: C:/PerfectOCR/output\prueba12_paddle_debug
-2025-07-29 20:19:41 - INFO - core.coordinators.ocr_coordinator:151 - ocr_coordinator - Lote procesado. Se obtuvieron resultados para 56/56 polígonos.
-2025-07-29 20:19:41 - INFO - core.coordinators.ocr_coordinator:170 - ocr_coordinator - Tiempo total del flujo OCR por lotes: 4.489s
-2025-07-29 20:19:41 - INFO - __main__:190 - main - OCR: 4.489s
-2025-07-29 20:19:41 - INFO - __main__:236 - main - Resultados crudos de OCR guardados en: C:/PerfectOCR/output\prueba12_ocr_raw_results.json
-2025-07-29 20:19:41 - INFO - __main__:215 - main - Total: 12.081s
-2025-07-29 20:19:41 - INFO - __main__:319 - main - Procesamiento finalizado, iniciando limpieza de caché.
-2025-07-29 20:19:41 - INFO - managment.cache_manager:48 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
+2025-07-29 21:30:24 - INFO - managment.cache_manager:36 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
+2025-07-29 21:30:24 - INFO - core.workflow.geometry.deskew:23 - deskew - Inicializando instancia de PaddleOCR para GEOMETRÍA (solo detección)...
+2025-07-29 21:30:25 - INFO - core.workflow.geometry.deskew:41 - deskew - Instancia de PaddleOCR para GEOMETRÍA inicializada exitosamente.
+2025-07-29 21:30:25 - INFO - core.coordinators.polygon_coordinator:45 - polygon_coordinator - === INICIANDO GENERACIÓN DE POLIGONAL ===
+2025-07-29 21:30:25 - INFO - core.coordinators.polygon_coordinator:49 - polygon_coordinator - Iniciando limpieza rapida
+2025-07-29 21:30:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-07-29 21:30:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
+2025-07-29 21:30:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
+2025-07-29 21:30:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
+2025-07-29 21:30:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
+2025-07-29 21:30:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
+2025-07-29 21:30:25 - INFO - core.coordinators.polygon_coordinator:52 - polygon_coordinator - Limpieza completada en 0.2219s
+2025-07-29 21:30:25 - INFO - core.coordinators.polygon_coordinator:56 - polygon_coordinator - Iniciando corrección de inclinación
+2025-07-29 21:30:25 - INFO - core.workflow.geometry.deskew:72 - deskew - -> Aplicando corrección de inclinación: -1.01 grados.
+2025-07-29 21:30:25 - INFO - core.workflow.geometry.deskew:89 - deskew - -> Ejecutando detección geométrica en imagen de (2954, 2056)...
+2025-07-29 21:30:26 - INFO - core.workflow.geometry.deskew:95 - deskew - -> Detección geométrica exitosa. Polígonos crudos encontrados: 56
+2025-07-29 21:30:26 - INFO - core.workflow.geometry.deskew:161 - deskew - -> Polígonos válidos procesados: 56
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.deskew:175 - deskew - Detectados 56 polígonos en la fase de geometría.
+2025-07-29 21:30:26 - INFO - core.coordinators.polygon_coordinator:59 - polygon_coordinator - Corrección de inclinación completada en 0.9587s
+2025-07-29 21:30:26 - INFO - core.coordinators.polygon_coordinator:63 - polygon_coordinator - Agrupando líneas
+2025-07-29 21:30:26 - INFO - core.workflow.geometry.lineal_reconstructor:75 - lineal_reconstructor - Asignación completada: 56 polígonos asignados a 27 líneas lógicas.
+2025-07-29 21:30:26 - INFO - core.coordinators.polygon_coordinator:67 - polygon_coordinator - Agrupamiento completado en 0.0000s - 56 polígonos detectados
+2025-07-29 21:30:26 - INFO - core.coordinators.polygon_coordinator:71 - polygon_coordinator - Iniciando recorte de polígonos de imagen
+2025-07-29 21:30:26 - INFO - core.workflow.geometry.poly_gone:61 - poly_gone - Imágenes recortadas exitosamente: 56/56
+2025-07-29 21:30:26 - INFO - core.coordinators.polygon_coordinator:75 - polygon_coordinator - Recorte completado en 0.002008s
+2025-07-29 21:30:26 - INFO - core.coordinators.polygon_coordinator:88 - polygon_coordinator - Iniciando binarización...
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 41
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 62
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 71
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 69
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 95
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 77
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 85
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 68
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 65
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 74
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 85
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 71
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 21 para polígono de altura 116
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 69
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 65
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 74
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 74
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 71
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 74
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 32
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 71
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 89
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 75
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 85
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 69
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 78
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 82
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 72
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:100 - binarization - Usando block_size adaptativo 15 para polígono de altura 81
+2025-07-29 21:30:26 - DEBUG - core.workflow.geometry.binarization:106 - binarization - Binarización exitosa con método Otsu
+2025-07-29 21:30:26 - INFO - core.workflow.geometry.binarization:218 - binarization - Binarización completada: 56/56 polígonos procesados exitosamente
+2025-07-29 21:30:27 - INFO - core.coordinators.polygon_coordinator:92 - polygon_coordinator - Binarización completada en 1.3105s
+2025-07-29 21:30:27 - INFO - core.workflow.geometry.fragmentator:79 - fragmentator - Análisis de densidad: media=0.896, std=0.076. Se identificaron 0 polígonos problemáticos.
+2025-07-29 21:30:27 - INFO - core.workflow.geometry.fragmentator:152 - fragmentator - Análisis completado. Total de polígonos refinados: 56
+2025-07-29 21:30:27 - WARNING - core.coordinators.polygon_coordinator:130 - polygon_coordinator - No se guardaron problematic_ids - Habilitado: False, Carpeta válida: True
+2025-07-29 21:30:27 - INFO - core.coordinators.polygon_coordinator:133 - polygon_coordinator - === GENERACIÓN DE POLIGONAL COMPLETADA en 2.5002s ===
+2025-07-29 21:30:27 - INFO - __main__:157 - main - Polygonos: 3.404s
+2025-07-29 21:30:27 - INFO - core.coordinators.preprocessing_coordinator:97 - preprocessing_coordinator - Preprocesamiento - Polígonos recibidos: 56, Polígonos corregidos: 56
+2025-07-29 21:30:27 - INFO - core.coordinators.preprocessing_coordinator:99 - preprocessing_coordinator - Guardadas 56 imágenes preprocesadas en 'C:/PerfectOCR/output'.
+2025-07-29 21:30:27 - INFO - __main__:174 - main - Preprocesamiento: 0.288s
+2025-07-29 21:30:27 - INFO - __main__:103 - main - Inicializando OCREngineCoordinator bajo demanda para transcripción...
+2025-07-29 21:30:27 - INFO - core.workflow.ocr.paddle_wrapper:21 - paddle_wrapper - === INICIALIZACIÓN PADDLEOCR ===
+2025-07-29 21:30:27 - INFO - core.workflow.ocr.paddle_wrapper:40 - paddle_wrapper - Recognition-only model loaded from local path: C:/PerfectOCR/data/models/paddle/rec/es
+2025-07-29 21:30:28 - INFO - core.workflow.ocr.paddle_wrapper:47 - paddle_wrapper - Total inicialización: 0.843s
+2025-07-29 21:30:32 - INFO - core.workflow.ocr.paddle_wrapper:109 - paddle_wrapper - Batch OCR para 56 polígonos completado en: 3.433s
+2025-07-29 21:30:32 - INFO - core.workflow.ocr.paddle_wrapper:118 - paddle_wrapper - Resultado consolidado detectado. Mapeando 56 textos a 56 imágenes por orden.
+2025-07-29 21:30:32 - INFO - core.workflow.ocr.paddle_wrapper:127 - paddle_wrapper - Total de resultados finales procesados: 56
+2025-07-29 21:30:32 - INFO - core.coordinators.ocr_coordinator:138 - ocr_coordinator - Lote procesado. Se obtuvieron resultados para 56/56 polígonos.
+2025-07-29 21:30:32 - INFO - core.coordinators.ocr_coordinator:155 - ocr_coordinator - Tiempo total del flujo OCR por lotes: 3.436s
+2025-07-29 21:30:32 - INFO - __main__:190 - main - OCR: 3.436s
+2025-07-29 21:30:32 - INFO - __main__:236 - main - Resultados crudos de OCR guardados en: C:/PerfectOCR/output\prueba12_ocr_raw_results.json
+2025-07-29 21:30:32 - INFO - __main__:215 - main - Total: 8.007s
+2025-07-29 21:30:32 - INFO - __main__:319 - main - Procesamiento finalizado, iniciando limpieza de caché.
+2025-07-29 21:30:32 - INFO - managment.cache_manager:48 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
