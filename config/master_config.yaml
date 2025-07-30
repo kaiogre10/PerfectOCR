@@ -142,8 +142,8 @@ ocr:
 
 output_config:
   enabled_outputs:
-    preprocessed_image: true
-    ocr_raw: true
+    preprocessed_image: false
+    ocr_raw: false
     ocr_debug: false
     cropped_words: false
     refined_polygons: false
@@ -159,7 +159,5 @@ batch_processing:
 vectorization_process: 
   table_detection_params:
     min_cluster_size: 2
-    
-  density_map_path:
-    density_map: "C:/PerfectOCR/core/workflow/vectorial_transformation/vectorizers/density_encoder.json"
+
 

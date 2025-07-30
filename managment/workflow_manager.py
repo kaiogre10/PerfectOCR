@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from core.workspace.utils.batch_tools import chunked, get_optimal_workers, estimate_processing_time
+from core.utils.batch_tools import chunked, get_optimal_workers, estimate_processing_time
 from main import PerfectOCRWorkflow
 from managment.config_manager import ConfigManager
 

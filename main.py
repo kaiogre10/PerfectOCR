@@ -6,17 +6,17 @@ import cv2
 import numpy as np
 import time
 from typing import Dict, Optional, Any, Tuple, List
-from core.coordinators.polygon_coordinator import PolygonCoordinator
-from core.coordinators.preprocessing_coordinator import PreprocessingCoordinator
-from core.coordinators.ocr_coordinator import OCREngineCoordinator
-#from core.coordinators.tensor_coordinator import TensorCoordinator
-# from coordinators.text_cleaning_coordinator import TextCleaningCoordinator
-from core.workspace.utils.output_handlers import OutputHandler
+from managment.polygon_manager import PolygonCoordinator
+from managment.preprocessing_manager import PreprocessingCoordinator
+from managment.ocr_manager import OCREngineCoordinator
+#managment.tensor_manager import TensorCoordinator
+# managment.text_manager import TextCleaningCoordinator
+from core.utils.output_handlers import OutputHandler
 from managment.cache_manager import CacheManager
-from core.workspace.utils.encoders import NumpyEncoder
+from core.utils.encoders import NumpyEncoder
 from managment.config_manager import ConfigManager
-from core.workspace.domain.main_job import ProcessingJob
-from core.workspace.utils.batch_tools import get_optimal_workers
+from domain.main_job import ProcessingJob
+from core.utils.batch_tools import get_optimal_workers
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 os.environ.update({
