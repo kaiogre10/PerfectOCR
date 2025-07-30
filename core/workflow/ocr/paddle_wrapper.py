@@ -100,14 +100,8 @@ class PaddleOCRWrapper:
     def recognize_text_from_batch(self, images: List[np.ndarray]) -> List[Optional[Dict[str, Any]]]:
         """
         Ejecuta OCR en un lote (batch) de imágenes pre-recortadas.
-        Espera que el motor se haya inicializado con det=False.
-
-        Args:
-            images: Una lista de imágenes numpy.
-
-        Returns:
-            Una lista de diccionarios con 'text' y 'confidence', uno por cada imagen.
-            El orden de la lista de resultados corresponde al orden de las imágenes de entrada.
+        Está adaptado para manejar el caso en que PaddleOCR devuelve una única
+        lista consolidada de resultados.
         """
         if self.engine is None:
             logger.error("PaddleOCR recognition engine not initialized. Cannot recognize text.")
@@ -118,22 +112,37 @@ class PaddleOCRWrapper:
 
         try:
             start_time = time.perf_counter()
-            # PaddleOCR procesará la lista de imágenes en un solo lote.
             batch_results = self.engine.ocr(images, cls=False, det=False)
             total_time = time.perf_counter() - start_time
             logger.info(f"Batch OCR para {len(images)} polígonos completado en: {total_time:.3f}s")
             
-            # DEBUG: Información detallada sobre lo que devolvió PaddleOCR
-            logger.info(f"PaddleOCR devolvió {len(batch_results)} resultados (esperados: {len(images)})")
-            logger.info(f"Tipo de batch_results: {type(batch_results)}")
-            logger.info(f"Primer resultado: {batch_results[0] if batch_results else 'None'}")
-            logger.info(f"Estructura del primer resultado: {type(batch_results[0]) if batch_results else 'None'}")
-
-            # Procesar cada resultado en el lote
+            # --- LÓGICA DE CORRECCIÓN ---
+            # Escenario problemático: PaddleOCR devuelve 1 resultado en lugar de len(images)
+            if len(batch_results) == 1 and isinstance(batch_results[0], list):
+                consolidated_results = batch_results[0]
+                
+                # Verificación crítica: ¿coincide el número de textos con el de imágenes?
+                if len(consolidated_results) == len(images):
+                    logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(images)} imágenes por orden.")
+                    final_results = []
+                    for text, confidence in consolidated_results:
+                        processed_result = {
+                            "text": str(text).strip(),
+                            "confidence": round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
+                        }
+                        final_results.append(processed_result)
+                    
+                    logger.info(f"Total de resultados finales procesados: {len(final_results)}")
+                    return final_results
+                else:
+                    logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(images)} imágenes. No se puede garantizar la correspondencia.")
+                    return [None] * len(images)
+            
+            # Escenario ideal (si PaddleOCR se comportara como se espera en el futuro)
+            logger.info("Procesando resultados con la estructura esperada (un resultado por imagen).")
             final_results = []
             for i, result_for_image in enumerate(batch_results):
                 logger.debug(f"Procesando resultado {i}: {result_for_image}")
-                # El resultado para una imagen de línea es como: [[('texto reconocido', 0.99)]]
                 if not result_for_image or not result_for_image[0] or not result_for_image[0][0]:
                     logger.debug(f"Resultado {i} vacío o inválido: {result_for_image}")
                     final_results.append(None)
@@ -153,5 +162,5 @@ class PaddleOCRWrapper:
             return final_results
 
         except Exception as e:
-            logger.error(f"Error durante el reconocimiento de texto en lote: {e}", exc_info=True)
+            logger.error(f"Error crítico durante el reconocimiento de texto en lote: {e}", exc_info=True)
             return [None] * len(images)

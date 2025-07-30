@@ -94,11 +94,9 @@ class PreprocessingCoordinator:
 
         total_duration = time.time() - pipeline_start
         
-        logger.info(f"Worker Preprocessing - Polígonos recibidos: {polygons_received}, Polígonos corregidos: {polygons_corrected}")
+        logger.info(f"Preprocesamiento - Polígonos recibidos: {polygons_received}, Polígonos corregidos: {polygons_corrected}")
         if images_saved_count > 0:
             logger.info(f"Guardadas {images_saved_count} imágenes preprocesadas en '{output_folder}'.")
-
-        logger.info("Preprocessing: Pipeline completado exitosamente por el worker.")
 
         try:
             return {"polygons": polygons_list}, total_duration

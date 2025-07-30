@@ -79,34 +79,35 @@ class PolygonFragmentator:
         logger.info(f"Análisis de densidad: media={mean_density:.3f}, std={std_density:.3f}. Se identificaron {len(problematic_ids)} polígonos problemáticos.")
 
         # --- PASO 3: CORRECCIÓN QUIRÚRGICA - Procesar y fragmentar solo los problemáticos ---
-        refined_polygons = []
+        temp_refined_polygons = []
         original_poly_map = {p['polygon_id']: p for p in individual_polygons}
         binarized_poly_map = {p['polygon_id']: p for p in binarized_poly}
 
-        for poly_id, original_poly in original_poly_map.items():
+        for poly_id, original_poly in sorted(original_poly_map.items(), key=lambda item: int(item[0].split('_')[-1])):
             if poly_id not in problematic_ids:
-                # Polígono bueno, añadirlo a la lista final y continuar
-                refined_polygons.append(original_poly)
+                # Polígono bueno, añadirlo a la lista final y marcar
+                original_poly['was_fragmented'] = False
+                temp_refined_polygons.append(original_poly)
                 continue
 
             # --- Lógica de Fragmentación para polígonos problemáticos ---
             logger.info(f"Polígono problemático detectado ({poly_id}). Aplicando fragmentación.")
             binarized_polygon = binarized_poly_map.get(poly_id)
             if binarized_polygon is None or binarized_polygon.get("binarized_img") is None:
-                refined_polygons.append(original_poly)
+                original_poly['was_fragmented'] = False
+                temp_refined_polygons.append(original_poly)
                 continue
                 
             bin_img_to_split = binarized_polygon["binarized_img"]
             
-            # Encontrar contornos de los componentes internos
             internal_contours, _ = cv2.findContours(bin_img_to_split, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            
             poly_area = bin_img_to_split.shape[0] * bin_img_to_split.shape[1]
             adaptive_min_area = poly_area * self.min_area_factor
             valid_contours = [c for c in internal_contours if cv2.contourArea(c) > adaptive_min_area]
             
             if len(valid_contours) <= 1:
-                refined_polygons.append(original_poly) # No se pudo fragmentar
+                original_poly['was_fragmented'] = False
+                temp_refined_polygons.append(original_poly)
                 continue
 
             sorted_contours = sorted(valid_contours, key=lambda c: cv2.boundingRect(c)[0])
@@ -114,21 +115,42 @@ class PolygonFragmentator:
             for i, contour_fragment in enumerate(sorted_contours):
                 x, y, w, h = cv2.boundingRect(contour_fragment)
                 fragment_img = original_poly['cropped_img'][y:y+h, x:x+w]
-                
                 if fragment_img.size == 0: continue
 
-                new_poly_id = f"{poly_id}_frag{i+1}"
-                new_polygon = {
-                    "polygon_id": new_poly_id, "cropped_img": fragment_img,
-                    "x_min": original_poly['x_min'] + x, "y_min": original_poly['y_min'] + y,
-                    "width": w, "height": h, "parent_id": poly_id,
-                    **{k: v for k, v in original_poly.items() if k not in 
-                       ['polygon_id', 'cropped_img', 'x_min', 'y_min', 'width', 'height']}
+                # Heredar todas las claves del padre para mantener la consistencia
+                new_poly_dict = original_poly.copy()
+                
+                # Actualizar las claves específicas del fragmento
+                new_poly_dict['was_fragmented'] = True
+                new_poly_dict['cropped_img'] = fragment_img
+                
+                # Calcular y actualizar la nueva geometría absoluta del fragmento
+                original_bbox = original_poly.get("geometry", {}).get("bounding_box", [0, 0, 0, 0])
+                new_bbox = [
+                    original_bbox[0] + x,
+                    original_bbox[1] + y,
+                    original_bbox[0] + x + w,
+                    original_bbox[1] + y + h
+                ]
+                new_centroid = [new_bbox[0] + w / 2, new_bbox[1] + h / 2]
+                
+                new_poly_dict['geometry'] = {
+                    'bounding_box': new_bbox,
+                    'width': w,
+                    'height': h,
+                    'centroid': new_centroid
                 }
-                refined_polygons.append(new_polygon)
+                
+                temp_refined_polygons.append(new_poly_dict)
 
-        logger.info(f"Análisis completado. Total de polígonos refinados: {len(refined_polygons)}")
-        return refined_polygons
+        # --- PASO 4: REASIGNACIÓN DE IDs ---
+        final_polygons = []
+        for i, poly in enumerate(temp_refined_polygons):
+            poly['polygon_id'] = f"poly_{i:04d}"
+            final_polygons.append(poly)
+
+        logger.info(f"Análisis completado. Total de polígonos refinados: {len(final_polygons)}")
+        return final_polygons
     
     def _get_problematic_ids(self) -> set:
         """Retorna los IDs de polígonos problemáticos del último procesamiento."""

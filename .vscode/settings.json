@@ -39,8 +39,8 @@
     "chat.commandCenter.enabled": true,
     "workbench.layoutControl.enabled": true,
     "workbench.editor.autoLockGroups": {
-        "default": true,
-        "terminalEditor": false
+        "terminalEditor": false,
+        "mainThreadWebview-browserPreview": false
     },
     "workbench.editor.restoreViewState": false,
     "editor.definitionLinkOpensInPeek": true,
@@ -55,5 +55,6 @@
     "python.analysis.typeEvaluation.deprecateTypingAliases": true,
     "search.searchEditor.singleClickBehaviour": "peekDefinition",
     "typescript.implementationsCodeLens.showOnInterfaceMethods": true,
-    "python.analysis.typeEvaluation.strictDictionaryInference": true
+    "python.analysis.typeEvaluation.strictDictionaryInference": true,
+    "workbench.editor.enablePreview": false
 }

@@ -5,7 +5,6 @@ import numpy as np
 import logging
 import math
 from typing import Dict, Any, List, Tuple, Union
-
 from paddleocr import PaddleOCR
 
 logger = logging.getLogger(__name__)
@@ -24,26 +23,20 @@ class Deskewer:
         logger.info("Inicializando instancia de PaddleOCR para GEOMETRÍA (solo detección)...")
         
         try:
-            # Forzamos rec=False y use_angle_cls=False para cargar solo el detector.
             init_params = {
                 "use_angle_cls": False,
-                "rec": False,  # <- ¡CLAVE! No carga el modelo de reconocimiento.
+                "rec": False, 
                 "lang": self.paddle_config.get('lang', 'es'),
                 "show_log": self.paddle_config.get('show_log', False),
                 "use_gpu": self.paddle_config.get('use_gpu', False),
                 "enable_mkldnn": self.paddle_config.get('enable_mkldnn', True)
             }
             
-            # Carga de modelos locales, priorizando el de detección.
-            logger.debug("Buscando modelo de detección local de PaddleOCR...")
             det_model_path = self.paddle_config.get('det_model_dir')
             if det_model_path and os.path.exists(det_model_path):
                 init_params['det_model_dir'] = det_model_path
-                logger.info(f"Detector local encontrado y añadido: {det_model_path}")
             else:
                 logger.warning("No se encontró un directorio de modelo de detección local. PaddleOCR intentará descargarlo.")
-
-            logger.debug(f"Parámetros finales para inicializar PaddleOCR (geometría): {init_params}")
             self.engine = PaddleOCR(**init_params)
             logger.info("Instancia de PaddleOCR para GEOMETRÍA inicializada exitosamente.")
 
@@ -67,8 +60,9 @@ class Deskewer:
                                 minLineLength=min_len, maxLineGap=max_gap)
 
         if lines is None or len(lines) == 0:
-            metadata = ({'height': h, 'width': w}, dpi_img)
-            return clean_img, metadata
+            dpi_img = dpi_img
+            doc_metadata = ({'height': h, 'width': w}, dpi_img)
+            return clean_img, doc_metadata
 
         angles = [math.degrees(math.atan2(l[0][3]-l[0][1], l[0][2]-l[0][0])) for l in lines]
         filtered = [a for a in angles if angle_range[0] < a < angle_range[1]]
@@ -82,68 +76,104 @@ class Deskewer:
             deskewed_img = clean_img
         
         final_h, final_w = deskewed_img.shape[:2]
-        metadata = ({'height': final_h, 'width': final_w}, dpi_img)
-        return deskewed_img, metadata
+        doc_metadata = ({'height': final_h, 'width': final_w}, dpi_img)
+        return deskewed_img, doc_metadata
         
-    def _detect_geometry(self, img_to_poly: np.ndarray, metadata: Tuple) -> Tuple[List[List[List[float]]], Tuple]:
+    def _detect_geometry(self, img_to_poly: np.ndarray, doc_metadata: Tuple) -> List[Dict[str, Any]]:
         """Detecta geometría usando solo el detector de PaddleOCR."""
-        # Cambiar temporalmente el nivel de log para debug
-        old_level = logger.level
-        logger.setLevel(logging.DEBUG)
         
         if not self.engine:
             logger.error("El motor de geometría de PaddleOCR no está inicializado.")
-            logger.setLevel(old_level)
-            return [], metadata
+            return []
         
         logger.info(f"-> Ejecutando detección geométrica en imagen de {img_to_poly.shape}...")
         
         try:
-            # Llamada explícita para solo detección (rec=False)
             results = self.engine.ocr(img_to_poly, cls=False, rec=False)
             
             if results and len(results) > 0 and results[0] is not None:
                 logger.info(f"-> Detección geométrica exitosa. Polígonos crudos encontrados: {len(results[0])}")
             else:
                 logger.warning("La detección geométrica no encontró polígonos de texto.")
-                logger.setLevel(old_level)
-                return [], metadata
+                return []
                 
         except Exception as e:
             logger.error(f"Error durante la detección geométrica con PaddleOCR: {e}", exc_info=True)
-            logger.setLevel(old_level)
-            return [], metadata
-                
+            return []
+
         polygons = []
-        for bbox_polygon_raw in results[0]:
+        for idx, bbox_polygon_raw in enumerate(results[0]):
             if not isinstance(bbox_polygon_raw, list) or len(bbox_polygon_raw) < 3:
                 continue
             
             try:
+                # Metada del documento presentada como 'doc_metadata'
+                if isinstance(doc_metadata, tuple) and len(doc_metadata) == 2:
+                    dimensiones, dpi_img = doc_metadata
+                    if isinstance(dimensiones, tuple) and len(dimensiones) == 2:
+                        final_h, final_w = dimensiones
+
+                    else:
+                        final_h = 0
+                        final_w = 0
+                else:
+                    final_h = 0
+                    final_w = 0
+                    dpi_img = 0
+                    
+                final_h = int(final_h)
+                final_w = int(final_w)
+                dpi_img = int(dpi_img)
                 # Asegurar que las coordenadas son flotantes
                 polygon_coords = [[float(p[0]), float(p[1])] for p in bbox_polygon_raw]
-                polygons.append(polygon_coords)
+                xs = [pt[0] for pt in polygon_coords]
+                ys = [pt[1] for pt in polygon_coords]
+                xmin, xmax = min(xs), max(xs)
+                ymin, ymax = min(ys), max(ys)
+                bbox = [xmin, ymin, xmax, ymax]
+                cx = float(sum(xs)) / len(xs)
+                cy = float(sum(ys)) / len(ys)
+                # Cálculo de área usando la fórmula del polígono simple
+                area = 0.5 * abs(sum(xs[i] * ys[(i+1)%len(xs)] - xs[(i+1)%len(xs)] * ys[i] for i in range(len(xs))))
+                
+                poly_dict = {
+                    'polygon_id': f'poly_{idx:04d}',
+                    'geometry': {
+                        'polygon_coords': polygon_coords,
+                        'bounding_box': bbox,
+                        'centroid': [cx, cy],
+                        'area': area
+                    },
+                    'doc_metadata': {
+                        'doc_dimensions': {
+                            'height': final_h,
+                            'width': final_w
+                        },
+                        'dpi_img': dpi_img
+                    }
+                }
+                
+                polygons.append(poly_dict)
+                
             except (TypeError, ValueError, IndexError):
                 continue
                 
         logger.info(f"-> Polígonos válidos procesados: {len(polygons)}")
+        
+        return polygons
 
-        # Restaurar el nivel de log original
-        logger.setLevel(old_level)
-        return polygons, metadata
-
-    def _get_polygons(self, clean_img: np.ndarray, dpi_img: int) -> Tuple[np.ndarray, List[List[List[float]]], Tuple]:
-        """Retorna la imagen deskewed, coordenadas de polígonos y la metadata original."""
+    def _get_polygons(self, clean_img: np.ndarray, dpi_img: int) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
+        """Retorna la imagen deskewed y una lista de diccionarios de polígonos."""
         # Primero aplicar deskew usando OpenCV
-        deskewed_img, metadata = self._detect_angle(clean_img, dpi_img)
+        deskewed_img, doc_metadata = self._detect_angle(clean_img, dpi_img)
         
         # Copiamos para no modificar la imagen original que podría ser usada en otro lugar
         img_for_geometry = deskewed_img.copy()
 
         # Detectar geometría para obtener las coordenadas de los polígonos
-        polygons, metadata = self._detect_geometry(img_for_geometry, metadata)
+        polygons = self._detect_geometry(img_for_geometry, doc_metadata)
         logger.debug(f"Detectados {len(polygons)} polígonos en la fase de geometría.")
                 
-        # Retornar la imagen corregida, coordenadas de polígonos y la metadata
-        return deskewed_img, polygons, metadata
+        # Retornar la imagen corregida y la lista de polígonos
+        return deskewed_img, polygons
         

@@ -25,8 +25,7 @@ class PolygonCoordinator:
         self.workflow_config = config.get('workflow', {})
         self.output_config = config.get('output_config', {})
         polygonal_params = config.get('polygonal', {})
-        
-        # Instanciar workers con sus configuraciones específicas
+
         self._clean = ImageCleaner(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self._deskewer = Deskewer(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self._lineal = LineReconstructor(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
@@ -34,7 +33,6 @@ class PolygonCoordinator:
         self._bin = Binarizator(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self._fragment = PolygonFragmentator(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self.image_saver = ImageOutputHandler()
-
                 
     def _generate_polygons(
         self,
@@ -56,50 +54,55 @@ class PolygonCoordinator:
         # Detección geométrica
         step_start = time.time()
         logger.info("Iniciando corrección de inclinación")
-        deskewed_img, polygons, metadata = self._deskewer._get_polygons(clean_img, dpi_img)
+        deskewed_img, polygons = self._deskewer._get_polygons(clean_img, dpi_img)
         step_duration = time.time() - step_start
         logger.info(f"Corrección de inclinación completada en {step_duration:.4f}s")
             
         # Agrupamiento de líneas
         step_start = time.time()
         logger.info("Agrupando líneas")
-        lineal_polygons = self._lineal._reconstruct_lines(polygons, metadata)
+        # Esta función ahora enriquece los polígonos existentes con 'line_id'
+        lineal_polygons = self._lineal._reconstruct_lines(polygons)
         step_duration = time.time() - step_start
-        logger.info(f"Agrupamiento completado en {step_duration:.4f}s - {len(lineal_polygons)} polígonos detectados")
+        logger.info(f"Agrupamiento completado en {step_duration:.4f}s - {len(polygons)} polígonos detectados")
                 
         # Procesar polígonos individuales directamente
         step_start = time.time()
         logger.info("Iniciando recorte de polígonos de imagen")
-        individual_polygons = self._poly._extract_individual_polygons(deskewed_img, lineal_polygons)
+        # Esta función añade 'cropped_img' a cada polígono
+        extracted_polygons = self._poly._extract_individual_polygons(deskewed_img, lineal_polygons)
         step_duration = time.time() - step_start
         logger.info(f"Recorte completado en {step_duration:.6f}s")
         
-        if not individual_polygons:
+        if not polygons:
             logger.warning("No se encontraron polígonos para procesar")
             return None, time.time() - pipeline_start
         
-        if isinstance(individual_polygons, list):
-            poly_with_images = sum(1 for poly in individual_polygons if poly.get("cropped_img") is not None)
-            logger.info(f"Polígonos con imágenes recortadas: {poly_with_images}/{len(individual_polygons)}")
+        poly_with_images = sum(1 for poly in extracted_polygons if poly.get("cropped_img") is not None)
+        if poly_with_images is None:
+            
+            return poly_with_images
         
         # Binarización de polígonos individuales
         step_start = time.time()
         logger.info("Iniciando binarización...")
-        binarized_poly, individual_polygons = self._bin._process_individual_polygons(individual_polygons.copy())
+        # El binarizador devuelve una copia binarizada para análisis y la lista original intacta
+        binarized_poly, individual_polygons = self._bin._binarize_polygons(extracted_polygons)
         step_duration = time.time() - step_start
         logger.info(f"Binarización completada en {step_duration:.4f}s")
         
         if not individual_polygons:
-            logger.warning("No se devolvieron polígonos originales")
+            logger.warning("No se devolvieron polígonos originales tras la binarización")
             return None, time.time() - pipeline_start
         
         # Verificar binarización
-        if isinstance(binarized_poly, list):
-            binarized_count = sum(1 for poly in binarized_poly if poly.get("binarized_img") is not None)
-            logger.info(f"Polígonos con imagen binarizada: {binarized_count}/{len(binarized_poly)}")
+        binarized_count = sum(1 for poly in binarized_poly if poly.get("binarized_img") is not None)
+        if binarized_count is None:
+            return binarized_count
         
-        # Preparación final de polígonos
+        # Preparación final de polígonos (Fragmentación)
         step_start = time.time()
+        # El fragmentador usa los binarizados para medir y los originales para actuar
         refined_polygons = self._fragment._intercept_polygons(binarized_poly, individual_polygons)
         step_duration = time.time() - step_start
         
@@ -111,10 +114,7 @@ class PolygonCoordinator:
                         
             # Guardar refined_polygons si está habilitado
             if output_flags.get('refined_polygons') and output_folder:
-                logger.info(f"Intentando guardar {len(refined_polygons)} refined_polygons en '{output_folder}'")
                 self._save_polygon_images(refined_polygons, output_folder, f"{file_name}_refined_polygons")
-            else:
-                logger.warning(f"No se guardaron refined_polygons - Habilitado: {output_flags.get('refined_polygons')}, Carpeta válida: {bool(output_folder)}")
             
             # Guardar problematic_ids si está habilitado  
             if output_flags.get('problematic_ids', False) and output_folder:
