@@ -1,4 +1,4 @@
-# PerfectOCR/core/workflow/geometry/binarization.py
+# PerfectOCR/core/polygonal/binarization.py
 from sklearnex import patch_sklearn
 patch_sklearn()
 import cv2
@@ -9,7 +9,6 @@ from skimage.measure import regionprops, label
 from skimage.filters import threshold_sauvola
 from skimage.util import img_as_ubyte
 from skimage import morphology
-#from core.utils import 
 
 logger = logging.getLogger(__name__)
 
@@ -86,14 +85,9 @@ class Binarizator:
             cv2.THRESH_BINARY, block_size, max(1, self.c_value - 2)
         )
    
-    def _process_individual_polygons(self, polygon_img: np.ndarray, height: float) -> np.ndarray:
+    def _process_individual_polygons(self, gray_img: np.ndarray, height: float) -> np.ndarray:
         """Binarización robusta y adaptativa para un polígono individual."""
-        if polygon_img.size == 0:
-            logger.warning("Polígono vacío recibido para binarización")
-            return polygon_img
             
-        gray_img = cv2.cvtColor(polygon_img, cv2.COLOR_BGR2GRAY) if len(polygon_img.shape) == 3 else polygon_img.copy()
-        
         adaptive_block_size = self._get_adaptive_block_size(height)
         logger.debug(f"Usando block_size adaptativo {adaptive_block_size} para polígono de altura {height}")
         
@@ -130,17 +124,18 @@ class Binarizator:
             logger.error(f"Error en método fallback final: {e}")
             return gray_img
     
-    def _clean_binarizated_polys(self, binarized_polygons: List[Dict]) -> List[Dict[str, Any]]:
+    def _clean_binarizated_polys(self, binarized_polygons: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
         """
-        Limpia cada imagen binarizada de los polígonos individuales y actualiza el diccionario.
+        Limpia cada imagen binarizada de los polígonos individuales.
+        Versión adaptada para diccionario.
         """
-        for polygon in binarized_polygons:
-            binary_img = polygon.get("binarized_img")
-            
+        cleaned_polygons = {}
+        
+        for polygon_id, binary_img in binarized_polygons.items():
             if binary_img is None or not isinstance(binary_img, np.ndarray) or binary_img.size == 0:
                 continue
 
-            try: # Asegurar que labeled_img sea un numpy array
+            try:
                 labeled_img = label(binary_img.astype(bool))
                 if isinstance(labeled_img, tuple):
                     labeled_img = labeled_img[0]
@@ -153,9 +148,9 @@ class Binarizator:
                 if num_regions == 0:
                     continue
             except Exception as e:
-                logger.error(f"Ocurrio una excepción en label: {e}")
+                logger.error(f"Ocurrió una excepción en label para polígono {polygon_id}: {e}")
                 continue
-            
+        
             props = regionprops(labeled_img)
             if not props:
                 continue
@@ -173,46 +168,54 @@ class Binarizator:
                     prop.solidity > umbral_solidez):
                     for y, x in prop.coords:
                         img_limpia[y, x] = 255
-        
-            polygon["binarized_img"] = img_limpia
-
-        return binarized_polygons
     
-    def _binarize_polygons(self, extracted_polygons: List[Dict]) -> Tuple[Optional[List[Dict[str, Any]]], Optional[List[Dict[str, Any]]]]:
-        """
-        Procesa una lista de polígonos individuales aplicando binarización adaptativa a cada uno.
-        """
-        if not extracted_polygons:
-            logger.warning("Lista de polígonos vacía recibida")
-            return None, None
+            cleaned_polygons[polygon_id] = img_limpia
 
-        binarized_polygons = []
+        return cleaned_polygons
+    
+    def _binarize_polygons(self, polygons_to_bin: Dict[str, Any]) -> Dict[str, np.ndarray]:
+        """
+        Procesa un diccionario de polígonos individuales aplicando binarización adaptativa a cada uno.
+        Devuelve un diccionario con polygon_id -> binarized_img
+        """
+        if not polygons_to_bin:
+            logger.warning("Diccionario de polígonos vacío recibido")
+            return {}
+
+        binarized_polygons = {}
         binarized_count = 0
         failed_count = 0
 
-        for idx, polygon in enumerate(extracted_polygons):
+        for polygon_id, polygon_data in polygons_to_bin.items():
             try:
-                cropped_img = polygon.get("cropped_img")
+                cropped_img = polygon_data.get("cropped_img")
                 if cropped_img is None:
-                    logger.warning(f"Polígono {polygon.get('polygon_id', idx)} sin imagen, omitiendo")
+                    logger.warning(f"Polígono {polygon_id} sin imagen, omitiendo")
                     failed_count += 1
                     continue
 
-                height = polygon.get("geometry", {}).get("height", 0)
-                bin_img = self._process_individual_polygons(cropped_img, height)
+                padding_coords = polygon_data.get("padding_coords")
+                if padding_coords is not None and len(padding_coords) == 4:
+                    height = padding_coords[3] - padding_coords[1]
+                else:
+                    logger.info("No padding_coords válidas")
+                    height = cropped_img.shape[0]
+                    
+                gray_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY) if len(cropped_img.shape) == 3 else cropped_img
+                bin_img = self._process_individual_polygons(gray_img, height)
                 
-                binarized_poly_dict = polygon.copy()
-                binarized_poly_dict["binarized_img"] = bin_img 
+                # Guardar solo el polygon_id y la imagen binarizada
+                binarized_polygons[polygon_id] = bin_img
+                binarized_count += 0
                 
-                binarized_polygons.append(binarized_poly_dict)
-                binarized_count += 1
             except Exception as e:
-                logger.error(f"Error procesando polígono {polygon.get('polygon_id', idx)}: {e}")
+                logger.error(f"Error procesando polígono {polygon_id}: {e}")
                 failed_count += 1
 
-        logger.info(f"Binarización completada: {binarized_count}/{len(extracted_polygons)} polígonos procesados exitosamente")
-
         cleaned_binarized_polygons = self._clean_binarizated_polys(binarized_polygons)
-        individual_polygons = extracted_polygons
+        cleaned_count = len(cleaned_binarized_polygons)
 
-        return cleaned_binarized_polygons, individual_polygons
+        logger.info(f"Binarización completada: {binarized_count}/{len(polygons_to_bin)} polígonos binarizados exitosamente")
+        logger.info(f"Polígonos limpios tras post-procesamiento: {cleaned_count}/{binarized_count}")
+
+        return cleaned_binarized_polygons

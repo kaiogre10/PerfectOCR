@@ -34,7 +34,8 @@ class PolygonManager:
         self._bin = Binarizator(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self._fragment = PolygonFragmentator(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self.image_saver = ImageOutputHandler()
-        self.lines_geometry: Optional[Dict[str, Any]] = None
+        self._lines_geometry: Optional[Dict[str, Any]] = None
+        self._binarization: Optional[Dict[str, Any]] = None
                 
     def _generate_polygons(
         self,
@@ -56,30 +57,31 @@ class PolygonManager:
         # Detección geométrica
         step_start = time.time()
         logger.info("Iniciando corrección de inclinación")
-        deskewed_img, polygons = self._deskewer._get_polygons(clean_img, doc_data)
+        deskewed_img, enriched_doc = self._deskewer._get_polygons(clean_img, doc_data)
         step_duration = time.time() - step_start
         logger.info(f"Corrección de inclinación completada en {step_duration:.4f}s")
             
         # Paralelización de lineal y poly
         step_start_parallel = time.time()
         with ThreadPoolExecutor(max_workers=2) as executor:
-            future_lineal = executor.submit(self._lineal._reconstruct_lines, polygons)
-            future_poly = executor.submit(self._poly._extract_individual_polygons, deskewed_img, polygons)
+            future_lineal = executor.submit(self._lineal._reconstruct_lines, enriched_doc)
+            future_poly = executor.submit(self._poly._extract_individual_polygons, deskewed_img, enriched_doc)
             lineal_result = future_lineal.result()
             extracted_polygons = future_poly.result()
-        
-        # Obtenemos la geometría de líneas mediante un método separado
-        self.lines_geometry = self._lineal.get_lines_geometry()
+               
+        # Obtenemos ls outputs copiados mediante métodos separados
+        self._lines_geometry = self._lineal._get_lines_geometry()
+        polygons_to_bin = self._poly._get_polygons_copy()
         
         step_duration_parallel = time.time() - step_start_parallel
         logger.info(f"Paralelización lineal/poly completada en {step_duration_parallel:.4f}s")
-        logger.info(f"Lineal devolvió {len(lineal_result)} IDs y {len(self.lines_geometry)} geometrías de línea. Poly devolvió {len(extracted_polygons)} polígonos.")
+        logger.info(f"Lineal devolvió {len(lineal_result)} IDs y {len(self._lines_geometry)} geometrías de línea. Poly devolvió {len(extracted_polygons)} polígonos.")
 
-        # Fusión de resultados
+        # Fusión de resultados - manejar el caso donde lineal_result podría ser None
         fusionados = 0
         for poly in extracted_polygons:
             pid = poly.get("polygon_id")
-            if pid in lineal_result:
+            if pid and pid in lineal_result:  # Verificar que pid no sea None
                 poly["line_id"] = lineal_result[pid]
                 fusionados += 1
         logger.info(f"Fusión de line_id completada: {fusionados} polígonos enriquecidos.")
@@ -87,18 +89,17 @@ class PolygonManager:
         # Binarización de polígonos individuales
         step_start = time.time()
         logger.info("Iniciando binarización")
-        cleaned_binarized_polygons, individual_polygons = self._bin._binarize_polygons(extracted_polygons)
+        cleaned_binarized_polygons = self._bin._binarize_polygons(polygons_to_bin)
         step_duration = time.time() - step_start
         logger.info(f"Binarización completada en {step_duration:.4f}s")
         
-        if not individual_polygons:
-            logger.warning("No se devolvieron polígonos originales tras la binarización")
+        # Verificar binarización
+        if cleaned_binarized_polygons is None:
+            logger.warning("La binarización no devolvió resultados.")
             return None, time.time() - pipeline_start
         
-        # Verificar binarización
-        binarized_count = sum(1 for poly in (cleaned_binarized_polygons or []) if poly.get("binarized_img") is not None)
-        if binarized_count is None:
-            return None, time.time() - pipeline_start
+        binarized_count = len(cleaned_binarized_polygons)
+        logger.info(f"Se binarizaron {binarized_count} polígonos.")
         
         # Preparación final de polígonos (Fragmentación)
         step_start = time.time()
@@ -106,7 +107,7 @@ class PolygonManager:
         if cleaned_binarized_polygons is None:
             logger.warning("cleaned_binarized_polygons es None, no se puede fragmentar")
             return None, time.time() - pipeline_start
-        refined_polygons = self._fragment._intercept_polygons(cleaned_binarized_polygons, individual_polygons)
+        refined_polygons = self._fragment._intercept_polygons(cleaned_binarized_polygons, extracted_polygons)
         step_duration = time.time() - step_start
         
         if input_path:

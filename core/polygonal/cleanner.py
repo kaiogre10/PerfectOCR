@@ -107,7 +107,7 @@ class ImageCleaner:
         height = img_dims.get("height", 0)
 
         doc_data = {
-            "doc_metadata": {
+            "metadata": {
                 "doc_name": meta["doc_name"],          # nombre del documento
                 "formato": meta["formato"],            # formato de la imagen (JPEG, PNG, etc)
                 "img_dims": {                          # dimensiones de la imagen

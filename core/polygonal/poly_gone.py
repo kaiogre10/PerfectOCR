@@ -13,19 +13,27 @@ class PolygonExtractor:
         self.config = config
         cutter_params = self.config.get('cutting', {})
         self.padding = cutter_params.get('cropping_padding', {})
+        self.polygons_info: Dict[str, Any] = {}
         
-    def _extract_individual_polygons(self, deskewed_img: np.ndarray, lineal_polygons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Extrae y recorta los polígonos individuales, añadiendo la 'cropped_img' a cada
-        diccionario de polígono en la lista de entrada.
-        """
-        padding = self.config.get('cropping_padding', 5)
-        if not lineal_polygons:
+    def _extract_individual_polygons(self, deskewed_img: np.ndarray, enriched_doc: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extrae y recorta los polígonos individuales."""
+        polygons = enriched_doc.get("polygons", [])
+        if not polygons:
+            logger.warning("No se encontraron polígonos en el documento enriquecido")
             return []
-
-        img_h, img_w = deskewed_img.shape[:2]
         
-        for poly in lineal_polygons:
+        padding = self.config.get('cropping_padding', 5)
+        if not polygons:
+            return []
+        metadata = enriched_doc.get("metadata", {})
+        img_dims = metadata.get("img_dims", {})
+        img_h = int(img_dims.get("height", 0) or 0)
+        img_w = int(img_dims.get("width", 0) or 0)
+
+        # Inicializar el diccionario de información de polígonos
+        self.polygons_info = {}
+        
+        for poly in polygons:
             try:
                 # La geometría ahora está anidada
                 bbox = poly.get("geometry", {}).get("bounding_box")
@@ -42,11 +50,17 @@ class PolygonExtractor:
                 if poly_x2 > poly_x1 and poly_y2 > poly_y1:
                     cropped_poly = deskewed_img[poly_y1:poly_y2, poly_x1:poly_x2]
                     if cropped_poly.size > 0:
+
                         poly["cropped_img"] = cropped_poly
-                        # Añadir dimensiones reales del polígono a geometry
-                        poly_height, poly_width = cropped_poly.shape[:2]
-                        poly.setdefault("geometry", {})["height"] = poly_height
-                        poly.setdefault("geometry", {})["width"] = poly_width
+                        poly["padding_coords"] = [poly_x1, poly_y1, poly_x2, poly_y2]
+
+                        polygon_id = poly.get("polygon_id")
+                        if polygon_id:
+                            self.polygons_info[polygon_id] = {
+                                "polygon_coords": bbox.copy(),  # Copia de las coordenadas
+                                "cropped_img": cropped_poly.copy(),  # Copia de la imagen
+                                "polygon_id": polygon_id  # Copia del ID
+                            }
                     else:
                         logger.warning(f"Imagen vacía para polígono {poly.get('polygon_id')}")
                         poly["cropped_img"] = None
@@ -57,9 +71,17 @@ class PolygonExtractor:
                 logger.error(f"Error recortando polígono {poly.get('polygon_id', 'desconocido')}: {e}")
                 poly["cropped_img"] = None
 
-        cropped_count = sum(1 for p in lineal_polygons if p.get("cropped_img") is not None)
-        logger.info(f"Imágenes recortadas exitosamente: {cropped_count}/{len(lineal_polygons)}")
+        cropped_count = sum(1 for p in polygons if p.get("cropped_img") is not None)
+        logger.info(f"Imágenes recortadas exitosamente: {cropped_count}/{len(polygons)}")
 
-        extracted_polygons = lineal_polygons
+        extracted_polygons = polygons
     
         return extracted_polygons
+    
+    def _get_polygons_copy(self) -> Dict[str, Any]:
+        """
+        Método separado para obtener la información específica de los polígonos.
+        Debe ser llamado después de _extract_individual_polygons.
+        """
+        polygons_to_bin =  self.polygons_info.copy() if hasattr(self, 'polygons_info') else {}
+        return polygons_to_bin

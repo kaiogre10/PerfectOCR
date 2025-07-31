@@ -2,7 +2,7 @@
 import cv2
 import logging
 import numpy as np
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 
 logger = logging.getLogger(__name__)
 
@@ -15,27 +15,25 @@ class PolygonFragmentator:
         self.min_area_factor = fragmentator_params.get('min_area_factor', 0.01)
         self.density_std_factor = fragmentator_params.get('density_std_factor', 1.0)
         self.approx_poly_epsilon = fragmentator_params.get('approx_poly_epsilon', 0.02)
-        self.problematic_ids = set()
+        self.problematic_ids: Set[str] = set()
 
-    def _intercept_polygons(self, cleaned_binarized_polygons: List[Dict], individual_polygons: List[Dict]) -> List[Dict[str, Any]]:
+    def _intercept_polygons(self, cleaned_binarized_polygons: Dict[str, np.ndarray], extracted_polygons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Primero, identifica polígonos problemáticos mediante un análisis estadístico de ladensidad de texto. Luego, fragmenta únicamente los polígonos problemáticos.
+        Primero, identifica polígonos problemáticos mediante un análisis estadístico de la densidad de texto. Luego, fragmenta únicamente los polígonos problemáticos.
         Args:
-            binarized_polygons (List[Dict]): Usados para el ANÁLISIS de densidad.
-            individual_polygons (List[Dict]): Fuente de las imágenes para el RESULTADO FINAL.
+            cleaned_binarized_polygons (Dict[str, np.ndarray]): Usados para el ANÁLISIS de densidad. Clave: poly_id, Valor: imagen binarizada.
+            extracted_polygons (List[Dict]): Fuente de las imágenes para el RESULTADO FINAL y polígonos no problemáticos.
         Returns:
             List[Dict[str, Any]]: Una lista unificada de polígonos originales y fragmentos nuevos.
         """
-        if not individual_polygons or not cleaned_binarized_polygons:
-            logger.warning("Se recibieron listas de polígonos vacías. No se puede procesar.")
-            return individual_polygons
+        if not extracted_polygons or not cleaned_binarized_polygons:
+            logger.warning("Se recibieron diccionarios de polígonos vacías. No se puede procesar.")
+            return extracted_polygons if extracted_polygons is not None else []
 
         # --- PASO 1: ANÁLISIS RÁPIDO - Medir densidad de texto en todos los polígonos ---
         poly_densities = []
-        for poly in cleaned_binarized_polygons:
-            poly_id = poly.get('polygon_id')
-            bin_img = poly.get("binarized_img")
-            if poly_id is None or bin_img is None or bin_img.size == 0:
+        for poly_id, bin_img in cleaned_binarized_polygons.items():
+            if bin_img is None or bin_img.size == 0:
                 continue
             
             # Encontrar el contorno más grande para aproximarlo
@@ -64,7 +62,7 @@ class PolygonFragmentator:
 
         if not poly_densities:
             logger.warning("No se pudo calcular la densidad de ningún polígono.")
-            return individual_polygons
+            return extracted_polygons
 
         # --- PASO 2: VERIFICACIÓN ESTADÍSTICA - Identificar outliers ---
         densities = [d['density'] for d in poly_densities]
@@ -80,8 +78,7 @@ class PolygonFragmentator:
 
         # --- PASO 3: CORRECCIÓN QUIRÚRGICA - Procesar y fragmentar solo los problemáticos ---
         temp_refined_polygons = []
-        original_poly_map = {p['polygon_id']: p for p in individual_polygons}
-        binarized_poly_map = {p['polygon_id']: p for p in cleaned_binarized_polygons}
+        original_poly_map = {p['polygon_id']: p for p in extracted_polygons if 'polygon_id' in p}
 
         for poly_id, original_poly in sorted(original_poly_map.items(), key=lambda item: int(item[0].split('_')[-1])):
             if poly_id not in problematic_ids:
@@ -92,14 +89,12 @@ class PolygonFragmentator:
 
             # --- Lógica de Fragmentación para polígonos problemáticos ---
             logger.info(f"Polígono problemático detectado ({poly_id}). Aplicando fragmentación.")
-            binarized_polygon = binarized_poly_map.get(poly_id)
-            if binarized_polygon is None or binarized_polygon.get("binarized_img") is None:
+            bin_img_to_split = cleaned_binarized_polygons.get(poly_id)
+            if bin_img_to_split is None:
                 original_poly['was_fragmented'] = False
                 temp_refined_polygons.append(original_poly)
                 continue
                 
-            bin_img_to_split = binarized_polygon["binarized_img"]
-            
             internal_contours, _ = cv2.findContours(bin_img_to_split, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             poly_area = bin_img_to_split.shape[0] * bin_img_to_split.shape[1]
             adaptive_min_area = poly_area * self.min_area_factor
@@ -114,17 +109,18 @@ class PolygonFragmentator:
             
             for i, contour_fragment in enumerate(sorted_contours):
                 x, y, w, h = cv2.boundingRect(contour_fragment)
+                
+                if 'cropped_img' not in original_poly or not isinstance(original_poly['cropped_img'], np.ndarray):
+                    continue
+                
                 fragment_img = original_poly['cropped_img'][y:y+h, x:x+w]
                 if fragment_img.size == 0: continue
 
-                # Heredar todas las claves del padre para mantener la consistencia
                 new_poly_dict = original_poly.copy()
                 
-                # Actualizar las claves específicas del fragmento
                 new_poly_dict['was_fragmented'] = True
                 new_poly_dict['cropped_img'] = fragment_img
                 
-                # Calcular y actualizar la nueva geometría absoluta del fragmento
                 original_bbox = original_poly.get("geometry", {}).get("bounding_box", [0, 0, 0, 0])
                 new_bbox = [
                     original_bbox[0] + x,
@@ -151,6 +147,6 @@ class PolygonFragmentator:
         logger.info(f"Análisis completado. Total de polígonos refinados: {len(refined_polygons)}")
         return refined_polygons
     
-    def _get_problematic_ids(self) -> set:
+    def _get_problematic_ids(self) -> Set[str]:
         """Retorna los IDs de polígonos problemáticos del último procesamiento."""
         return self.problematic_ids
