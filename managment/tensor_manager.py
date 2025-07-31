@@ -9,7 +9,7 @@ from core.utils.output_handlers import OutputHandler
 
 logger = logging.getLogger(__name__)
 
-class TensorCoordinator:
+class TensorManager:
     """Inicializa el coordinador y sus workers. """
 
     def __init__(self, config: Dict, project_root: str):

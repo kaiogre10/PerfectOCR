@@ -4,7 +4,7 @@ patch_sklearn()
 import cv2
 import numpy as np
 import logging
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from skimage.measure import regionprops, label
 from skimage.filters import threshold_sauvola
 from skimage.util import img_as_ubyte
@@ -87,9 +87,7 @@ class Binarizator:
         )
    
     def _process_individual_polygons(self, polygon_img: np.ndarray, height: float) -> np.ndarray:
-        """
-        Binarización robusta y adaptativa para un polígono individual.
-        """
+        """Binarización robusta y adaptativa para un polígono individual."""
         if polygon_img.size == 0:
             logger.warning("Polígono vacío recibido para binarización")
             return polygon_img
@@ -180,20 +178,25 @@ class Binarizator:
 
         return binarized_polygons
     
-    def _binarize_polygons(self, extracted_polygons: List[Dict]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    def _binarize_polygons(self, extracted_polygons: List[Dict]) -> Tuple[Optional[List[Dict[str, Any]]], Optional[List[Dict[str, Any]]]]:
         """
         Procesa una lista de polígonos individuales aplicando binarización adaptativa a cada uno.
-        Returns:
-            Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]: (polígonos_binarizados, polígonos_originales)
+        Si falta 'line_id' en algún polígono, detiene el proceso y retorna None.
         """
         if not extracted_polygons:
             logger.warning("Lista de polígonos vacía recibida")
-            return [], []
-        
+            return None, None
+
+        # Verificación temprana de 'line_id'
+        for idx, polygon in enumerate(extracted_polygons):
+            if "line_id" not in polygon:
+                logger.error(f"Falta 'line_id' en el polígono {polygon.get('polygon_id', idx)}. Abortando binarización.")
+                return None, None
+
         binarized_polygons = []
         binarized_count = 0
         failed_count = 0
-        
+
         for idx, polygon in enumerate(extracted_polygons):
             try:
                 cropped_img = polygon.get("cropped_img")
@@ -201,11 +204,10 @@ class Binarizator:
                     logger.warning(f"Polígono {polygon.get('polygon_id', idx)} sin imagen, omitiendo")
                     failed_count += 1
                     continue
-                
+
                 height = polygon.get("geometry", {}).get("height", 0)
                 bin_img = self._process_individual_polygons(cropped_img, height)
                 
-                # Crear una copia para la lista binarizada para no afectar la original
                 binarized_poly_dict = polygon.copy()
                 binarized_poly_dict["binarized_img"] = bin_img 
                 
@@ -214,13 +216,10 @@ class Binarizator:
             except Exception as e:
                 logger.error(f"Error procesando polígono {polygon.get('polygon_id', idx)}: {e}")
                 failed_count += 1
-        
+
         logger.info(f"Binarización completada: {binarized_count}/{len(extracted_polygons)} polígonos procesados exitosamente")
-        
-        # Limpiar las imágenes binarizadas antes de retornarlas
+
         cleaned_binarized_polygons = self._clean_binarizated_polys(binarized_polygons)
-        
         individual_polygons = extracted_polygons
-        
-        # Se retorna la lista binarizada Y la lista original intacta
+
         return cleaned_binarized_polygons, individual_polygons

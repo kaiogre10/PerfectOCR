@@ -6,16 +6,16 @@ import cv2
 import numpy as np
 import time
 from typing import Dict, Optional, Any, Tuple, List
-from managment.polygon_manager import PolygonCoordinator
-from managment.preprocessing_manager import PreprocessingCoordinator
-from managment.ocr_manager import OCREngineCoordinator
-#managment.tensor_manager import TensorCoordinator
-# managment.text_manager import TextCleaningCoordinator
+from managment.polygon_manager import PolygonManager
+from managment.preprocessing_manager import PreprocessingManager
+from managment.ocr_manager import OCREngineManager
+#managment.tensor_manager import TensorManager
+# managment.text_manager import TextualManager
 from core.utils.output_handlers import OutputHandler
 from managment.cache_manager import CacheManager
 from core.utils.encoders import NumpyEncoder
 from managment.config_manager import ConfigManager
-from domain.main_job import ProcessingJob
+#from domain.workflow_job import WorkflowJob
 from core.utils.batch_tools import get_optimal_workers
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -66,9 +66,9 @@ class PerfectOCRWorkflow:
         self.config_loader = ConfigManager(master_config_path)
         self.config = self.config_loader.config
         self.project_root = PROJECT_ROOT
-        self._poly_coordinator: Optional[PolygonCoordinator] = None
-        self._preprocessing_coordinator: Optional[PreprocessingCoordinator] = None
-        self._ocr_coordinator: Optional[OCREngineCoordinator] = None
+        self._poly_coordinator: Optional[PolygonManager] = None
+        self._preprocessing_coordinator: Optional[PreprocessingManager] = None
+        self._ocr_coordinator: Optional[OCREngineManager] = None
  #       self._tensor_coordinator: Optional[TensorCoordinator] = None
         #self._text_cleaning_coordinator: Optional[TextCleaningCoordinator] = None
         output_config = self.config.get('output_config', {})
@@ -79,29 +79,29 @@ class PerfectOCRWorkflow:
         # en la propiedad 'ocr_coordinator' para mejorar la eficiencia.
         
     @property
-    def polygon_coordinator(self) -> PolygonCoordinator:
+    def polygon_coordinator(self) -> PolygonManager:
         if self._poly_coordinator is None:
-            self._poly_coordinator = PolygonCoordinator(
+            self._poly_coordinator = PolygonManager(
                 config=self.config_loader.get_polygonal_config(), 
                 project_root=self.project_root,
             )
         return self._poly_coordinator
 
     @property
-    def preprocessing_coordinator(self) -> PreprocessingCoordinator:
+    def preprocessing_coordinator(self) -> PreprocessingManager:
         if self._preprocessing_coordinator is None:
-            self._preprocessing_coordinator = PreprocessingCoordinator(
+            self._preprocessing_coordinator = PreprocessingManager(
                 config=self.config_loader.get_preprocessing_coordinator_config(),
                 project_root=self.project_root
             )
         return self._preprocessing_coordinator
 
     @property
-    def ocr_coordinator(self) -> OCREngineCoordinator:
+    def ocr_coordinator(self) -> OCREngineManager:
         """Inicializa perezosamente y devuelve el coordinador de OCR."""
         if self._ocr_coordinator is None:
             logger.info("Inicializando OCREngineCoordinator bajo demanda para transcripción...")
-            self._ocr_coordinator = OCREngineCoordinator(
+            self._ocr_coordinator = OCREngineManager(
                 config=self.config_loader.get_ocr_config(),
                 project_root=self.project_root,
                 output_flags=self.output_flags,
@@ -165,22 +165,22 @@ class PerfectOCRWorkflow:
         # FASE: PREPROCESAMIENTO (ya incluye evaluación interna)
         phase2_start = time.perf_counter()
         
-        preprocessed_data, total_preprocessing_time = self.preprocessing_coordinator._apply_preprocessing_pipelines(
+        polygons_list, total_duration = self.preprocessing_coordinator._apply_preprocessing_pipelines(
             refined_polygons, input_path=input_path
         )
 
         phase2_time = time.perf_counter() - phase2_start
-        processing_times_summary["2_preprocesamiento"] = round(total_preprocessing_time, 4)
+        processing_times_summary["2_preprocesamiento"] = round(total_duration, 4)
         logger.info(f"Preprocesamiento: {phase2_time:.3f}s")
 
-        if not preprocessed_data.get("polygons"):
+        if not polygons_list.get("polygons"):
             logger.critical("No hay polígonos pre-procesados para OCR. Abortando.")
             return self._build_error_response("error_preprocessing", original_file_name,
                                                 "No hay polígonos para OCR", "preprocessing")
 
         # FASE 3: OCR
         phase3_start = time.perf_counter()
-        ocr_results_payload, time_ocr = self.ocr_coordinator.run_ocr_on_polygons(
+        ocr_results_payload, time_ocr = self.ocr_coordinator._run_ocr_on_polygons(
             polygons=preprocessed_data["polygons"],
             image_file_name=original_file_name
         )

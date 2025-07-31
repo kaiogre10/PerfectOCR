@@ -5,6 +5,7 @@ import logging
 import time
 import os
 from typing import Any, Optional, Dict, Tuple, List
+from concurrent.futures import ThreadPoolExecutor
 from core.polygonal.cleanner import ImageCleaner
 from core.polygonal.deskew import Deskewer
 from core.polygonal.lineal_reconstructor import LineReconstructor
@@ -15,7 +16,7 @@ from core.utils.output_handlers import ImageOutputHandler
 
 logger = logging.getLogger(__name__)
 
-class PolygonCoordinator:
+class PolygonManager:
     """
     Coordina la fase de extracción de polígonos, delegando todo el trabajo
     a un único worker autosuficiente.
@@ -58,35 +59,29 @@ class PolygonCoordinator:
         step_duration = time.time() - step_start
         logger.info(f"Corrección de inclinación completada en {step_duration:.4f}s")
             
-        # Agrupamiento de líneas
-        step_start = time.time()
-        logger.info("Agrupando líneas")
-        # Esta función ahora enriquece los polígonos existentes con 'line_id'
-        lineal_polygons = self._lineal._reconstruct_lines(polygons)
-        step_duration = time.time() - step_start
-        logger.info(f"Agrupamiento completado en {step_duration:.4f}s - {len(polygons)} polígonos detectados")
-                
-        # Procesar polígonos individuales directamente
-        step_start = time.time()
-        logger.info("Iniciando recorte de polígonos de imagen")
-        # Esta función añade 'cropped_img' a cada polígono
-        extracted_polygons = self._poly._extract_individual_polygons(deskewed_img, lineal_polygons)
-        step_duration = time.time() - step_start
-        logger.info(f"Recorte completado en {step_duration:.6f}s")
-        
-        if not polygons:
-            logger.warning("No se encontraron polígonos para procesar")
-            return None, time.time() - pipeline_start
-        
-        poly_with_images = sum(1 for poly in extracted_polygons if poly.get("cropped_img") is not None)
-        if poly_with_images is None:
-            
-            return poly_with_images
-        
+        # Paralelización de lineal y poly
+        step_start_parallel = time.time()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_lineal = executor.submit(self._lineal._reconstruct_lines, polygons)
+            future_poly = executor.submit(self._poly._extract_individual_polygons, deskewed_img, polygons)
+            lineal_result = future_lineal.result()
+            extracted_polygons = future_poly.result()
+        step_duration_parallel = time.time() - step_start_parallel
+        logger.info(f"Paralelización lineal/poly completada en {step_duration_parallel:.4f}s")
+        logger.info(f"Lineal devolvió {len(lineal_result)} IDs, Poly devolvió {len(extracted_polygons)} polígonos.")
+
+        # Fusión de resultados
+        fusionados = 0
+        for poly in extracted_polygons:
+            pid = poly.get("polygon_id")
+            if pid in lineal_result:
+                poly["line_id"] = lineal_result[pid]
+                fusionados += 1
+        logger.info(f"Fusión de line_id completada: {fusionados} polígonos enriquecidos.")
+
         # Binarización de polígonos individuales
         step_start = time.time()
         logger.info("Iniciando binarización...")
-        # El binarizador devuelve una copia binarizada para análisis y la lista original intacta
         cleaned_binarized_polygons, individual_polygons = self._bin._binarize_polygons(extracted_polygons)
         step_duration = time.time() - step_start
         logger.info(f"Binarización completada en {step_duration:.4f}s")

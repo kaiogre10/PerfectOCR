@@ -34,8 +34,8 @@ class SharpeningEnhancer:
             amount = min(2.0, max(1.0, global_sharp_var - 0.03))
 
             sharpened = unsharp_mask(clahed_img, radius=radius, amount=amount)
-            corrected_image = (sharpened * 255).astype(np.uint8)
+            corrected_imag = (sharpened * 255).astype(np.uint8)
         else:
-            corrected_image = clahed_img
+            corrected_imag = clahed_img
 
-        return corrected_image
+        return corrected_imag

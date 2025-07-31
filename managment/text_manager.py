@@ -8,7 +8,7 @@ from core.utils.output_handlers import OutputHandler
 
 logger = logging.getLogger(__name__)
 
-class TextCleaningCoordinator:
+class TextualManager:
     """
     Coordinador para limpieza de texto OCR.
     Maneja la limpieza automática y la interfaz batch para correcciones manuales.

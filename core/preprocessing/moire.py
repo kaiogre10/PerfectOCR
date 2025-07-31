@@ -13,7 +13,7 @@ class MoireDenoiser:
         self.corrections = config
         self.denoise_corrections = config.get('denoise', {})
 
-    def _detect_moire_patterns(self, cropped_polygon: np.ndarray) -> np.ndarray:
+    def _detect_moire_patterns(self, cropped_img: np.ndarray) -> np.ndarray:
         """
         Detecta y corrige patrones de moiré en una imagen individual de polígono.
         
@@ -36,16 +36,16 @@ class MoireDenoiser:
         abs_threshold = abs_corrections.get('absolute_threshold', 200000000)
 
         # Ajustes adaptativos
-        img_dims = cropped_polygon.shape
+        img_dims = cropped_img.shape
         h, w = img_dims
         max_dim = max(h, w)
-        spectrum_var = np.var(cropped_polygon)
+        spectrum_var = np.var(cropped_img)
         adaptive_notch = max(2, min(6, int(notch_radius * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
         adaptive_min_dist = max(50, min(300, int(min_dist * (max_dim / 2000.0))))
 
         # Transformada Fourier usando OpenCV (más estable y compatible)
         # Convertir a float32 para mejor precisión y compatibilidad con OpenCV
-        img_float = np.float32(cropped_polygon)
+        img_float = np.float32(cropped_img)
         
         # Aplicar FFT de OpenCV - CORRECCIÓN: usar np.asarray para compatibilidad
         f_transform = cv2.dft(np.asarray(img_float), flags=cv2.DFT_COMPLEX_OUTPUT)
@@ -108,6 +108,6 @@ class MoireDenoiser:
                 moire_img = cv2.bilateralFilter(moire_img, d=5, sigmaColor=50, sigmaSpace=50)
             return moire_img
         else:
-            moire_img = cropped_polygon
+            moire_img = cropped_img
 
         return moire_img

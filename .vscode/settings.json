@@ -56,5 +56,8 @@
     "search.searchEditor.singleClickBehaviour": "peekDefinition",
     "typescript.implementationsCodeLens.showOnInterfaceMethods": true,
     "python.analysis.typeEvaluation.strictDictionaryInference": true,
-    "workbench.editor.enablePreview": false
+    "workbench.editor.enablePreview": false,
+    "github.copilot.enable": {
+        "python": true
+    }
 }

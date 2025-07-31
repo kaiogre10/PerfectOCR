@@ -12,7 +12,7 @@ import cv2
 
 logger = logging.getLogger(__name__)
 
-class OCREngineCoordinator:
+class OCREngineManager:
     def __init__(self, config: Dict, project_root: str, output_flags: Dict[str, bool], workflow_config: Optional[Dict[str, Any]] = None):
         self.ocr_config_from_workflow = config
         self.project_root = project_root
@@ -91,7 +91,7 @@ class OCREngineCoordinator:
         
         logger.info(f"Debug de PaddleOCR guardado en: {debug_folder}")
 
-    def run_ocr_on_polygons(
+    def _run_ocr_on_polygons(
         self, 
         polygons: List[Dict[str, Any]],
         image_file_name: str
