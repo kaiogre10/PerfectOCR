@@ -34,6 +34,7 @@ class PolygonManager:
         self._bin = Binarizator(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self._fragment = PolygonFragmentator(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self.image_saver = ImageOutputHandler()
+        self.lines_geometry: Optional[Dict[str, Any]] = None
                 
     def _generate_polygons(
         self,
@@ -43,19 +44,19 @@ class PolygonManager:
     
         gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array
         pipeline_start = time.time()
-        logger.info("=== INICIANDO GENERACIÓN DE POLIGONAL ===")
+        logger.info("INICIANDO GENERACIÓN DE POLIGONAL")
         
         # Limpieza rápida
         step_start = time.time()
         logger.info("Iniciando limpieza rapida")
-        clean_img, dpi_img = self._clean._quick_enhance(gray_image, input_path)
+        clean_img, doc_data = self._clean._quick_enhance(gray_image, input_path)
         step_duration = time.time() - step_start
         logger.info(f"Limpieza completada en {step_duration:.4f}s")
 
         # Detección geométrica
         step_start = time.time()
         logger.info("Iniciando corrección de inclinación")
-        deskewed_img, polygons = self._deskewer._get_polygons(clean_img, dpi_img)
+        deskewed_img, polygons = self._deskewer._get_polygons(clean_img, doc_data)
         step_duration = time.time() - step_start
         logger.info(f"Corrección de inclinación completada en {step_duration:.4f}s")
             
@@ -66,9 +67,13 @@ class PolygonManager:
             future_poly = executor.submit(self._poly._extract_individual_polygons, deskewed_img, polygons)
             lineal_result = future_lineal.result()
             extracted_polygons = future_poly.result()
+        
+        # Obtenemos la geometría de líneas mediante un método separado
+        self.lines_geometry = self._lineal.get_lines_geometry()
+        
         step_duration_parallel = time.time() - step_start_parallel
         logger.info(f"Paralelización lineal/poly completada en {step_duration_parallel:.4f}s")
-        logger.info(f"Lineal devolvió {len(lineal_result)} IDs, Poly devolvió {len(extracted_polygons)} polígonos.")
+        logger.info(f"Lineal devolvió {len(lineal_result)} IDs y {len(self.lines_geometry)} geometrías de línea. Poly devolvió {len(extracted_polygons)} polígonos.")
 
         # Fusión de resultados
         fusionados = 0
@@ -81,7 +86,7 @@ class PolygonManager:
 
         # Binarización de polígonos individuales
         step_start = time.time()
-        logger.info("Iniciando binarización...")
+        logger.info("Iniciando binarización")
         cleaned_binarized_polygons, individual_polygons = self._bin._binarize_polygons(extracted_polygons)
         step_duration = time.time() - step_start
         logger.info(f"Binarización completada en {step_duration:.4f}s")
@@ -91,13 +96,16 @@ class PolygonManager:
             return None, time.time() - pipeline_start
         
         # Verificar binarización
-        binarized_count = sum(1 for poly in cleaned_binarized_polygons if poly.get("binarized_img") is not None)
+        binarized_count = sum(1 for poly in (cleaned_binarized_polygons or []) if poly.get("binarized_img") is not None)
         if binarized_count is None:
-            return binarized_count
+            return None, time.time() - pipeline_start
         
         # Preparación final de polígonos (Fragmentación)
         step_start = time.time()
         # El fragmentador usa los binarizados para medir y los originales para actuar
+        if cleaned_binarized_polygons is None:
+            logger.warning("cleaned_binarized_polygons es None, no se puede fragmentar")
+            return None, time.time() - pipeline_start
         refined_polygons = self._fragment._intercept_polygons(cleaned_binarized_polygons, individual_polygons)
         step_duration = time.time() - step_start
         
@@ -121,11 +129,9 @@ class PolygonManager:
                     self._save_polygon_images(problematic_polygons, output_folder, f"{file_name}_problematic_ids")
                 else:
                     logger.warning("No se encontraron IDs problemáticos para guardar")
-            else:
-                logger.warning(f"No se guardaron problematic_ids - Habilitado: {output_flags.get('problematic_ids')}, Carpeta válida: {bool(output_folder)}")
-
+                    
         pipeline_end = time.time() - pipeline_start
-        logger.info(f"=== GENERACIÓN DE POLIGONAL COMPLETADA en {pipeline_end:.4f}s ===")
+        logger.info(f"GENERACIÓN DE POLIGONAL COMPLETADA en {pipeline_end:.4f}s")
         
         time_poly = pipeline_end
         

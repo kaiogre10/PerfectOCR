@@ -75,8 +75,6 @@ class PerfectOCRWorkflow:
         self.output_handler = OutputHandler(config=output_config)
         self.workflow_config = self.config_loader.get_workflow_config()
         self.output_flags = self.config.get('output_config', {}).get('enabled_outputs', {})
-        # La inicialización de OCREngineCoordinator se ha movido a una carga perezosa
-        # en la propiedad 'ocr_coordinator' para mejorar la eficiencia.
         
     @property
     def polygon_coordinator(self) -> PolygonManager:
@@ -135,16 +133,13 @@ class PerfectOCRWorkflow:
         base_name = os.path.splitext(original_file_name)[0]
 
         # CREAR ProcessingJob
-        # job = ProcessingJob(source_uri=input_path)
-
-        ocr_images_dict = None
-        ocr_results_payload = None
+        #job = WorkflowJob(job_id=input_path)
 
         # --- Cargar imagen ---
         image_array = cv2.imread(input_path)
         if image_array is None:
             return self._build_error_response("error_loading_image", original_file_name, "No se pudo cargar la imagen", "load")
-        # job.image_data = image_array
+        #job.full_img = image_array
 
         # FASE: Obtención de polígonos
         phase1_start = time.perf_counter()

@@ -181,17 +181,10 @@ class Binarizator:
     def _binarize_polygons(self, extracted_polygons: List[Dict]) -> Tuple[Optional[List[Dict[str, Any]]], Optional[List[Dict[str, Any]]]]:
         """
         Procesa una lista de polígonos individuales aplicando binarización adaptativa a cada uno.
-        Si falta 'line_id' en algún polígono, detiene el proceso y retorna None.
         """
         if not extracted_polygons:
             logger.warning("Lista de polígonos vacía recibida")
             return None, None
-
-        # Verificación temprana de 'line_id'
-        for idx, polygon in enumerate(extracted_polygons):
-            if "line_id" not in polygon:
-                logger.error(f"Falta 'line_id' en el polígono {polygon.get('polygon_id', idx)}. Abortando binarización.")
-                return None, None
 
         binarized_polygons = []
         binarized_count = 0

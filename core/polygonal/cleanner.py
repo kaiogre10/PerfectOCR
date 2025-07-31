@@ -1,9 +1,11 @@
 # PerfectOCR/core/workflow/preprocessing/cleanner.py
 import cv2
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 import numpy as np
 from PIL import Image
+import os
+import datetime  # Añadir al inicio del archivo con los otros imports
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +19,43 @@ class ImageCleaner:
         self.input_path = input_path
         try:
             with Image.open(input_path) as img:
+                formato = img.format
+                # Convertir dimensiones a diccionario con width y height
+                img_dims = {
+                    "width": int(img.size[0]),
+                    "height": int(img.size[1])
+                }
                 dpi = img.info.get('dpi')
-            return int(dpi[0])
+                if dpi is not None:
+                    dpi_val = int(dpi[0])
+                else:
+                    dpi_val = None
+            fecha_creacion = None
+            try:
+                stat = os.stat(input_path)
+                fecha_creacion = datetime.datetime.fromtimestamp(
+                    stat.st_ctime
+                ).strftime('%Y-%m-%d %H:%M:%S')
+            except Exception:
+                pass
+            return {
+                "formato": formato,
+                "img_dims": img_dims,
+                "dpi": dpi_val,
+                "fecha_creacion": fecha_creacion,
+                "doc_name": os.path.basename(input_path)
+            }
         except Exception:
-            dpi = 600
-            dpi_img = dpi  
-            return dpi_img
-        
+            return {
+                "formato": None,
+                "img_dims": {"width": None, "height": None},
+                "dpi": None,
+                "fecha_creacion": None,
+                "doc_name": None
+            }
+                
     def _geometric_enhance(self, gray_image: np.ndarray) -> np.ndarray:
-        """
-        Aplica una secuencia de mejoras rápidas y adaptativas a una imagen en escala de grises.
-        """
+        """Aplica una secuencia de mejoras rápidas y adaptativas a una imagen en escala de grises."""
         # --- 1. Denoising Adaptativo (Bilateral Filter) ---
         img_var = np.var(gray_image)
         if img_var < 100:
@@ -62,8 +90,35 @@ class ImageCleaner:
         
         return clean_img
     
-    def _quick_enhance(self, gray_image: np.ndarray, input_path: str) -> tuple[np.ndarray, int]:
+    def _quick_enhance(self, gray_image: np.ndarray, input_path: str) -> Tuple[np.ndarray, Dict[str, Any]]:
+        """
+        Limpia la imagen y crea el diccionario de metadatos inicial del documento.
+        """
         clean_img = self._geometric_enhance(gray_image)
-        dpi_img = self._resolutor(input_path)
+        meta = self._resolutor(input_path)
 
-        return clean_img, dpi_img
+        # Validaciones de seguridad para evitar errores de tipo
+        img_dims = meta.get("img_dims") or {}
+        if not isinstance(img_dims, dict):
+            img_dims = {"width": 0, "height": 0}
+        
+        # Asegurar que width y height existen
+        width = img_dims.get("width", 0)
+        height = img_dims.get("height", 0)
+
+        doc_data = {
+            "doc_metadata": {
+                "doc_name": meta["doc_name"],          # nombre del documento
+                "formato": meta["formato"],            # formato de la imagen (JPEG, PNG, etc)
+                "img_dims": {                          # dimensiones de la imagen
+                    "width": width,                    # ancho en píxeles
+                    "height": height                   # alto en píxeles
+                },
+                "dpi": meta["dpi"],                    # resolución en DPI
+                "fecha_creacion": meta["fecha_creacion"] # fecha de creación del archivo
+            }
+        }
+        
+        logger.info(f"Metadatos encontrados -> "f"Nombre: {meta['doc_name']}, "f"Formato: {meta['formato']}, "f"Dimensiones: {height}x{width}, "f"DPI: {meta['dpi']}, "f"Fecha creación: {meta['fecha_creacion']}")
+        
+        return clean_img, doc_data

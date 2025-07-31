@@ -86,8 +86,6 @@ class Deskewer:
             logger.error("El motor de geometría de PaddleOCR no está inicializado.")
             return []
         
-        logger.info(f"-> Ejecutando detección geométrica en imagen de {img_to_poly.shape}...")
-        
         try:
             results = self.engine.ocr(img_to_poly, cls=False, rec=False)
             

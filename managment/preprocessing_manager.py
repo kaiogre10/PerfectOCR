@@ -16,8 +16,7 @@ logger = logging.getLogger(__name__)
 
 class PreprocessingManager:
     """
-    Coordina la fase de preprocesamiento, delegando todo el trabajo
-    a un único worker autosuficiente.
+    Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
     """
     def __init__(self, config: Dict, project_root: str):
         self.project_root = project_root
