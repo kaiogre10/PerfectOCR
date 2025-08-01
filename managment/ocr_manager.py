@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 from core.ocr.paddle_wrapper import PaddleOCRWrapper
-from core.utils.output_handlers import OutputHandler
+#from core.utils.output_handlers import OutputHandler
 import cv2
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class OCREngineManager:
         self.project_root = project_root
         self.output_flags = output_flags
         self.workflow_config = workflow_config or {}
-        self.json_output_handler = OutputHandler(config={"enabled_outputs": self.output_flags})
+ #       self.json_output_handler = OutputHandler(config={"enabled_outputs": self.output_flags})
         paddle_specific_config = self.ocr_config_from_workflow.get('paddleocr')
         if paddle_specific_config:
             self.paddle = PaddleOCRWrapper(paddle_specific_config, self.project_root)

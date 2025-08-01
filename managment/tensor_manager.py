@@ -5,7 +5,7 @@ import os
 from typing import List, Dict, Any, Tuple, Optional
 from core.vectorial_transformation.density_scanner import DensityScanner
 from core.vectorial_transformation.tensorizer import VectorTensorizer
-from core.utils.output_handlers import OutputHandler
+#from core.utils.output_handlers import OutputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class TensorManager:
         self._tensorizer = VectorTensorizer(config=tensor_config.get(), project_root=self.project_root)
         self._scanner = DensityScanner(config=tensor_config.get(), project_root=self.project_root)
         
-        self.json_handler = OutputHandler()
+ #       self.json_handler = OutputHandler()
         logger.debug("Tensor inicializado con sus workers.")
 
     def orchestrate_vectorization_and_detection(

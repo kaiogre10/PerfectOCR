@@ -1,3 +1,5 @@
+# PerfectOCR/test/metrics.py
+
 import os
 from pathlib import Path
 
@@ -51,23 +53,16 @@ def analyze_project(root_dir: Path):
                     total_summary[key] += file_stats[key]
                 total_summary['files'] += 1
 
-    # Imprimir resultados con mejor formato
-    print("ANÁLISIS DE LÍNEAS DE CÓDIGO -  PerfectOCR")
-    print("="*100)
-    
-    # Encabezado de tabla mejorado
-    header = f"{'ARCHIVO':<60} {'CÓDIGO':>8} {'COMENTARIOS':>12} {'BLANCOS':>8} {'TOTAL':>8}"
+    print("="*100)    
+    header = f"{'ANÁLISIS DE LÍNEAS DE CÓDIGO':<60} {'CÓDIGO':>8} {'COMENTARIOS':>12} {'BLANCOS':>8} {'TOTAL':>8}"
     print(header)
     print("="*100)
 
-    # Ordenar por líneas de código descendente
     sorted_stats = sorted(all_stats.items(), key=lambda item: item[1]['code'], reverse=True)
-
     for filepath, stats in sorted_stats:
         display_path = filepath if len(filepath) <= 60 else f"...{filepath[-57:]}"
         print(f"{display_path:<60} {stats['code']:>8} {stats['comment']:>12} {stats['blank']:>8} {stats['total']:>8}")
 
-    print("="*100)
     print("RESUMEN DEL PROYECTO:")
     print(f"Archivos analizados: {total_summary['files']:,}")
     print(f"Líneas de código (SLOC): {total_summary['code']:,}")
@@ -76,5 +71,5 @@ def analyze_project(root_dir: Path):
     print(f"Total de líneas: {total_summary['total']:,}")
 
 if __name__ == "__main__":
-    project_root = Path(__file__).parent
+    project_root = Path(__file__).parent.parent 
     analyze_project(project_root)

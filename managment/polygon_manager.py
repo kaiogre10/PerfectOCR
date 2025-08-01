@@ -12,7 +12,7 @@ from core.polygonal.lineal_reconstructor import LineReconstructor
 from core.polygonal.poly_gone import PolygonExtractor
 from core.polygonal.binarization import Binarizator
 from core.polygonal.fragmentator import PolygonFragmentator
-from core.utils.output_handlers import ImageOutputHandler
+#from core.utils.output_handlers import ImageOutputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class PolygonManager:
         self._poly = PolygonExtractor(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self._bin = Binarizator(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
         self._fragment = PolygonFragmentator(config=polygonal_params.get('polygon_config', {}), project_root=self.project_root)
-        self.image_saver = ImageOutputHandler()
+        #self.image_saver = ImageOutputHandler()
         self._lines_geometry: Optional[Dict[str, Any]] = None
         self._binarization: Optional[Dict[str, Any]] = None
                 
@@ -41,7 +41,7 @@ class PolygonManager:
         self,
         image_array: np.ndarray,
         input_path: str
-    ) -> Tuple[Optional[List[Dict[str, Any]]], float]:
+    ) -> Tuple[Optional[Dict[str, Any]], float]:
     
         gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array
         pipeline_start = time.time()
@@ -69,7 +69,6 @@ class PolygonManager:
             lineal_result = future_lineal.result()
             extracted_polygons = future_poly.result()
                
-        # Obtenemos ls outputs copiados mediante métodos separados
         self._lines_geometry = self._lineal._get_lines_geometry()
         polygons_to_bin = self._poly._get_polygons_copy()
         
@@ -77,11 +76,11 @@ class PolygonManager:
         logger.info(f"Paralelización lineal/poly completada en {step_duration_parallel:.4f}s")
         logger.info(f"Lineal devolvió {len(lineal_result)} IDs y {len(self._lines_geometry)} geometrías de línea. Poly devolvió {len(extracted_polygons)} polígonos.")
 
-        # Fusión de resultados - manejar el caso donde lineal_result podría ser None
         fusionados = 0
-        for poly in extracted_polygons:
+        for poly_id, poly in extracted_polygons.items(): # <--- CAMBIO 1
+            # pid ahora es poly_id directamente, pero mantenemos la lógica por seguridad
             pid = poly.get("polygon_id")
-            if pid and pid in lineal_result:  # Verificar que pid no sea None
+            if pid and pid in lineal_result:
                 poly["line_id"] = lineal_result[pid]
                 fusionados += 1
         logger.info(f"Fusión de line_id completada: {fusionados} polígonos enriquecidos.")
@@ -89,25 +88,22 @@ class PolygonManager:
         # Binarización de polígonos individuales
         step_start = time.time()
         logger.info("Iniciando binarización")
-        cleaned_binarized_polygons = self._bin._binarize_polygons(polygons_to_bin)
+        binarized_polygons = self._bin._binarize_polygons(polygons_to_bin)
         step_duration = time.time() - step_start
         logger.info(f"Binarización completada en {step_duration:.4f}s")
         
         # Verificar binarización
-        if cleaned_binarized_polygons is None:
+        if binarized_polygons is None:
             logger.warning("La binarización no devolvió resultados.")
             return None, time.time() - pipeline_start
         
-        binarized_count = len(cleaned_binarized_polygons)
+        binarized_count = len(binarized_polygons)
         logger.info(f"Se binarizaron {binarized_count} polígonos.")
         
         # Preparación final de polígonos (Fragmentación)
         step_start = time.time()
         # El fragmentador usa los binarizados para medir y los originales para actuar
-        if cleaned_binarized_polygons is None:
-            logger.warning("cleaned_binarized_polygons es None, no se puede fragmentar")
-            return None, time.time() - pipeline_start
-        refined_polygons = self._fragment._intercept_polygons(cleaned_binarized_polygons, extracted_polygons)
+        refined_polygons = self._fragment._intercept_polygons(binarized_polygons, extracted_polygons)
         step_duration = time.time() - step_start
         
         if input_path:
@@ -118,16 +114,16 @@ class PolygonManager:
                         
             # Guardar refined_polygons si está habilitado
             if output_flags.get('refined_polygons') and output_folder:
-                self._save_polygon_images(refined_polygons, output_folder, f"{file_name}_refined_polygons")
+                self._save_polygon_images(list(refined_polygons.values()), output_folder, f"{file_name}_refined_polygons")
             
             # Guardar problematic_ids si está habilitado  
             if output_flags.get('problematic_ids', False) and output_folder:
                 problematic_ids = self._fragment._get_problematic_ids()
                 logger.info(f"IDs problemáticos encontrados: {len(problematic_ids) if problematic_ids else 0}")
                 if problematic_ids:
-                    problematic_polygons = [poly for poly in refined_polygons if poly.get('polygon_id') in problematic_ids]
+                    problematic_polygons = {pid: poly for pid, poly in refined_polygons.items() if pid in problematic_ids}
                     logger.info(f"Intentando guardar {len(problematic_polygons)} problematic_polygons en '{output_folder}'")
-                    self._save_polygon_images(problematic_polygons, output_folder, f"{file_name}_problematic_ids")
+                    self._save_polygon_images(list(problematic_polygons.values()), output_folder, f"{file_name}_problematic_ids")
                 else:
                     logger.warning("No se encontraron IDs problemáticos para guardar")
                     

@@ -11,7 +11,6 @@ from managment.preprocessing_manager import PreprocessingManager
 from managment.ocr_manager import OCREngineManager
 #managment.tensor_manager import TensorManager
 # managment.text_manager import TextualManager
-from core.utils.output_handlers import OutputHandler
 from managment.cache_manager import CacheManager
 from core.utils.encoders import NumpyEncoder
 from managment.config_manager import ConfigManager
@@ -72,7 +71,6 @@ class PerfectOCRWorkflow:
  #       self._tensor_coordinator: Optional[TensorCoordinator] = None
         #self._text_cleaning_coordinator: Optional[TextCleaningCoordinator] = None
         output_config = self.config.get('output_config', {})
-        self.output_handler = OutputHandler(config=output_config)
         self.workflow_config = self.config_loader.get_workflow_config()
         self.output_flags = self.config.get('output_config', {}).get('enabled_outputs', {})
         
@@ -161,14 +159,14 @@ class PerfectOCRWorkflow:
         phase2_start = time.perf_counter()
         
         polygons_list, total_duration = self.preprocessing_coordinator._apply_preprocessing_pipelines(
-            refined_polygons, input_path=input_path
+            refined_polygons  # Convertir dict a lista
         )
 
         phase2_time = time.perf_counter() - phase2_start
         processing_times_summary["2_preprocesamiento"] = round(total_duration, 4)
         logger.info(f"Preprocesamiento: {phase2_time:.3f}s")
 
-        if not polygons_list.get("polygons"):
+        if not polygons_list:  # Verificar si la lista está vacía
             logger.critical("No hay polígonos pre-procesados para OCR. Abortando.")
             return self._build_error_response("error_preprocessing", original_file_name,
                                                 "No hay polígonos para OCR", "preprocessing")
@@ -176,7 +174,7 @@ class PerfectOCRWorkflow:
         # FASE 3: OCR
         phase3_start = time.perf_counter()
         ocr_results_payload, time_ocr = self.ocr_coordinator._run_ocr_on_polygons(
-            polygons=preprocessed_data["polygons"],
+            polygons=polygons_list,  # Usar la lista directamente
             image_file_name=original_file_name
         )
         phase3_time = time.perf_counter() - phase3_start
@@ -187,16 +185,13 @@ class PerfectOCRWorkflow:
         if not self.ocr_coordinator.validate_ocr_results(ocr_results_payload):
             return self._build_error_response("error_ocr", original_file_name, "OCR sin resultados válidos", "ocr_validation")
 
-        # Guardar resultados JSON crudos del OCR si está habilitado
-        ocr_results_json_path = self._save_raw_ocr_json(ocr_results_payload, base_name)
-
         # FASE 4: Vectorización (actualmente desactivada, se usa el payload de OCR)
         final_payload = ocr_results_payload
 
         # RESPUESTA FINAL
         final_response = self._build_final_response(
             original_file_name,
-            ocr_results_json_path,
+            None, # ocr_results_json_path, # Eliminado
             final_payload
         )
         
@@ -210,30 +205,6 @@ class PerfectOCRWorkflow:
         logger.info(f"Total: {total_workflow_time:.3f}s")
         return final_response
     
-    def _save_raw_ocr_json(self, ocr_payload: Dict, base_filename: str) -> Optional[str]:
-        """Guarda los resultados crudos del OCR en un archivo JSON si está habilitado."""
-        if self.output_flags.get('ocr_raw', False):
-            output_dir = self.workflow_config.get('output_folder')
-            if not output_dir:
-                logger.error("No se puede guardar el JSON de OCR porque 'output_folder' no está definido.")
-                return None
-            
-            # Asegurarse de que el directorio de salida exista
-            os.makedirs(output_dir, exist_ok=True)
-
-            file_path = os.path.join(output_dir, f"{base_filename}_ocr_raw_results.json")
-            try:
-                self.output_handler.save(
-                    data=ocr_payload,
-                    output_dir=output_dir,
-                    file_name_with_extension=os.path.basename(file_path)
-                )
-                logger.info(f"Resultados crudos de OCR guardados en: {file_path}")
-                return file_path
-            except Exception as e:
-                logger.error(f"Fallo al guardar el JSON de OCR en {file_path}: {e}")
-        return None
-
     def _build_error_response(self, status: str, filename: str, message: str, stage: Optional[str] = None) -> dict:
         error_details = {"message": message}
         if stage: error_details["stage"] = stage
@@ -242,18 +213,7 @@ class PerfectOCRWorkflow:
     def _build_final_response(self, filename: str, ocr_path: Optional[str], processing_payload: dict) -> dict:
         status = processing_payload.get("status", "error_unknown")
         final_status = "success" if status.startswith("success") else status
-        output_config = self.config_loader.config.get('output_config', {})
-        output_flags = output_config.get('enabled_outputs', {})
         
-        if output_flags.get('line_grouping_results', False):
-            output_dir = output_config.get('output_folder', './output')
-            base_name = os.path.splitext(os.path.basename(filename))[0]
-            self.output_handler.save( # Changed from json_output_handler to output_handler
-                data=processing_payload,
-                output_dir=output_dir,
-                file_name_with_extension=f"{base_name}_line_grouping_results.json"
-            )
-
         summary_payload = processing_payload.copy()
         if 'lines' in summary_payload:
             del summary_payload['lines']

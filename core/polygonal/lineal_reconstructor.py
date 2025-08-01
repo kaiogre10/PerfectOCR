@@ -18,12 +18,12 @@ class LineReconstructor:
         Asigna un 'line_id' a cada polígono.
         Devuelve un mapeo polygon_id -> line_id.
         """
-        polygons = enriched_doc.get("polygons", [])
+        polygons = enriched_doc.get("polygons", {})
         if not polygons:
             logger.warning("No hay polígonos en el diccionario")
             return {}
         
-        prepared_sorted = sorted(polygons, key=lambda p: p.get("geometry", {}).get("centroid", [0, 0])[1])
+        prepared_sorted = sorted(polygons.values(), key=lambda p: p.get("geometry", {}).get("centroid", [0, 0])[1])
         id_map: Dict[str, str] = {}
         self.lines_info: Dict[str, Any] = {} 
         current_line_polys: List[Dict[str, Any]] = []

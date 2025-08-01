@@ -15,16 +15,16 @@ class PolygonExtractor:
         self.padding = cutter_params.get('cropping_padding', {})
         self.polygons_info: Dict[str, Any] = {}
         
-    def _extract_individual_polygons(self, deskewed_img: np.ndarray, enriched_doc: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _extract_individual_polygons(self, deskewed_img: np.ndarray, enriched_doc: Dict[str, Any]) -> Dict[str, Any]:
         """Extrae y recorta los polígonos individuales."""
-        polygons = enriched_doc.get("polygons", [])
+        polygons = enriched_doc.get("polygons", {})
         if not polygons:
             logger.warning("No se encontraron polígonos en el documento enriquecido")
-            return []
+            return {}
         
         padding = self.config.get('cropping_padding', 5)
         if not polygons:
-            return []
+            return {}
         metadata = enriched_doc.get("metadata", {})
         img_dims = metadata.get("img_dims", {})
         img_h = int(img_dims.get("height", 0) or 0)
@@ -33,7 +33,7 @@ class PolygonExtractor:
         # Inicializar el diccionario de información de polígonos
         self.polygons_info = {}
         
-        for poly in polygons:
+        for poly in polygons.values():
             try:
                 # La geometría ahora está anidada
                 bbox = poly.get("geometry", {}).get("bounding_box")
@@ -71,7 +71,7 @@ class PolygonExtractor:
                 logger.error(f"Error recortando polígono {poly.get('polygon_id', 'desconocido')}: {e}")
                 poly["cropped_img"] = None
 
-        cropped_count = sum(1 for p in polygons if p.get("cropped_img") is not None)
+        cropped_count = sum(1 for p in polygons.values() if p.get("cropped_img") is not None)
         logger.info(f"Imágenes recortadas exitosamente: {cropped_count}/{len(polygons)}")
 
         extracted_polygons = polygons

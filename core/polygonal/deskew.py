@@ -102,7 +102,7 @@ class Deskewer:
             doc_data['polygons'] = []
             return doc_data
 
-        polygons_list = []
+        polygons_dict = {}
         for idx, bbox_polygon_raw in enumerate(results[0]):
             if not isinstance(bbox_polygon_raw, list) or len(bbox_polygon_raw) < 3:
                 continue
@@ -112,24 +112,25 @@ class Deskewer:
                 xs = [pt[0] for pt in polygon_coords]
                 ys = [pt[1] for pt in polygon_coords]
                 
+                poly_id = f'poly_{idx:04d}'
                 poly_entry = {
-                    'polygon_id': f'poly_{idx:04d}',
-                    'geometry': {
+                        'polygon_id': poly_id,
+                        'geometry': {
                         'polygon_coords': polygon_coords,
                         'bounding_box': [min(xs), min(ys), max(xs), max(ys)],
                         'centroid': [float(sum(xs)) / len(xs), float(sum(ys)) / len(ys)],
                     }
                 }
-                polygons_list.append(poly_entry)
+                polygons_dict[poly_id] = poly_entry
 
             except (TypeError, ValueError, IndexError) as e:
                 logger.warning(f"Omitiendo polígono inválido en el índice {idx}: {e}")
                 continue
                 
-        logger.info(f"-> Polígonos válidos procesados: {len(polygons_list)}")
+        logger.info(f"-> Polígonos válidos procesados: {len(polygons_dict)}")
         
         # Añadir la lista de polígonos al diccionario original (modificándolo en el lugar).
-        doc_data["polygons"] = polygons_list
+        doc_data["polygons"] = polygons_dict
         
         return doc_data
 
@@ -137,7 +138,6 @@ class Deskewer:
         """Retorna la imagen deskewed y el diccionario de datos enriquecido con polígonos."""
         metadata = doc_data.get("metadata", {})
         img_dims = metadata.get("img_dims", {})
-        
         h = img_dims.get("height")
         w = img_dims.get("width")
 

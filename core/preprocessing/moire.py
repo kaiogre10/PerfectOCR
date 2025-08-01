@@ -16,10 +16,8 @@ class MoireDenoiser:
     def _detect_moire_patterns(self, cropped_img: np.ndarray) -> np.ndarray:
         """
         Detecta y corrige patrones de moiré en una imagen individual de polígono.
-        
         Args:
             cropped_polygon: Imagen individual del polígono a procesar
-            
         Returns:
             Imagen del polígono con moiré corregido
         """
@@ -43,21 +41,15 @@ class MoireDenoiser:
         adaptive_notch = max(2, min(6, int(notch_radius * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
         adaptive_min_dist = max(50, min(300, int(min_dist * (max_dim / 2000.0))))
 
-        # Transformada Fourier usando OpenCV (más estable y compatible)
         # Convertir a float32 para mejor precisión y compatibilidad con OpenCV
         img_float = np.float32(cropped_img)
-        
-        # Aplicar FFT de OpenCV - CORRECCIÓN: usar np.asarray para compatibilidad
         f_transform = cv2.dft(np.asarray(img_float), flags=cv2.DFT_COMPLEX_OUTPUT)
-        
-        # Shift del espectro para centrar las frecuencias bajas
         f_shifted = np.fft.fftshift(f_transform)
         
         # Calcular magnitud del espectro
         magnitude_spectrum = cv2.magnitude(f_shifted[:,:,0], f_shifted[:,:,1])
         magnitude_spectrum = 20 * np.log(magnitude_spectrum + 1)
                 
-        # Excluir centro - CORRECCIÓN: usar tupla para color
         temp_spectrum = magnitude_spectrum.copy()
         center_point = (w // 2, h // 2)
         cv2.circle(temp_spectrum, center_point, adaptive_min_dist, (0.0,), -1)
@@ -72,15 +64,15 @@ class MoireDenoiser:
         if std_energy / mean_energy > 0.5 and skewness > 1.0:  # Alta variabilidad y asimetría
             adaptive_threshold = np.percentile(valid_spectrum, 98)
             adaptive_threshold = max(1000, min(5000000, adaptive_threshold * (spectrum_var / 100.0)))
-            method = "Percentil"
+            mode = "percentile"
         elif std_energy / mean_energy > 0.3 and skewness < 0.5:  # Variabilidad moderada, distribución uniforme
             adaptive_threshold = mean_energy * 4.0
             adaptive_threshold = max(1000, min(5000000, adaptive_threshold * (spectrum_var / 50.0)))
-            method = "Factor"
+            mode = "factor"
         else:  # Baja variabilidad o picos fuertes
             adaptive_threshold = 2000000.0
             adaptive_threshold = max(1000, min(5000000, adaptive_threshold * (spectrum_var / 100.0)))
-            method = "Absoluto"
+            mode = "absolute"
 
         # Detectar picos
         peaks_coords = np.argwhere(magnitude_spectrum > adaptive_threshold)
@@ -92,7 +84,6 @@ class MoireDenoiser:
             mask = np.ones((h, w), np.float32)
 
             for peak_y, peak_x in filtered_peaks:
-                # CORRECCIÓN: usar tupla para color en cv2.circle
                 cv2.circle(mask, (peak_x, peak_y), adaptive_notch, (0.0,), -1)
                 # Punto simétrico
                 sym_x = center_x - (peak_x - center_x)

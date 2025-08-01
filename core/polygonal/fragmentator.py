@@ -2,7 +2,7 @@
 import cv2
 import logging
 import numpy as np
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, Set
 
 logger = logging.getLogger(__name__)
 
@@ -17,110 +17,158 @@ class PolygonFragmentator:
         self.approx_poly_epsilon = fragmentator_params.get('approx_poly_epsilon', 0.02)
         self.problematic_ids: Set[str] = set()
 
-    def _intercept_polygons(self, cleaned_binarized_polygons: Dict[str, np.ndarray], extracted_polygons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _intercept_polygons(self, binarized_polygons: Dict[str, np.ndarray], extracted_polygons: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Primero, identifica polígonos problemáticos mediante un análisis estadístico de la densidad de texto. Luego, fragmenta únicamente los polígonos problemáticos.
+        Analiza polígonos binarizados para detectar problemas y fragmenta los polígonos originales correspondientes.
+        
         Args:
-            cleaned_binarized_polygons (Dict[str, np.ndarray]): Usados para el ANÁLISIS de densidad. Clave: poly_id, Valor: imagen binarizada.
-            extracted_polygons (List[Dict]): Fuente de las imágenes para el RESULTADO FINAL y polígonos no problemáticos.
+            binarized_polygons: Diccionario polygon_id -> imagen binarizada (para ANÁLISIS)
+            extracted_polygons: Diccionario polygon_id -> datos del polígono (para ACCIÓN)
+            
         Returns:
-            List[Dict[str, Any]]: Una lista unificada de polígonos originales y fragmentos nuevos.
+            Dict[str, Any]: Diccionario de polígonos modificado con was_fragmented y perimeter
         """
-        if not extracted_polygons or not cleaned_binarized_polygons:
-            logger.warning("Se recibieron diccionarios de polígonos vacías. No se puede procesar.")
-            return extracted_polygons if extracted_polygons is not None else []
+        if not extracted_polygons or not binarized_polygons:
+            logger.warning("Se recibieron diccionarios de polígonos vacíos. No se puede procesar.")
+            return extracted_polygons if extracted_polygons is not None else {}
 
-        # --- PASO 1: ANÁLISIS RÁPIDO - Medir densidad de texto en todos los polígonos ---
-        poly_densities = []
-        for poly_id, bin_img in cleaned_binarized_polygons.items():
+        # --- PASO 1: ANÁLISIS RÁPIDO - Medir perímetros de todos los contornos en cada polígono ---
+        poly_perimeters = []
+        for poly_id, bin_img in binarized_polygons.items():
             if bin_img is None or bin_img.size == 0:
                 continue
-            
-            # Encontrar el contorno más grande para aproximarlo
+
             contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if not contours:
                 continue
-            
-            main_contour = max(contours, key=cv2.contourArea)
-            
-            # Aproximar el polígono para que se ajuste mejor al texto
-            perimeter = cv2.arcLength(main_contour, True)
-            approximated_contour = cv2.approxPolyDP(main_contour, self.approx_poly_epsilon * perimeter, True)
-            
-            # Crear una máscara con el polígono ajustado
-            mask = np.zeros_like(bin_img, dtype=np.uint8)
-            cv2.drawContours(mask, [approximated_contour], -1, (255,), thickness=cv2.FILLED)
-            
-            # Calcular densidad dentro de la máscara
-            mask_area = np.sum(mask == 255)
-            if mask_area == 0:
-                continue
-                
-            text_pixels_in_mask = np.sum(cv2.bitwise_and(bin_img, mask) == 255)
-            density = text_pixels_in_mask / mask_area
-            poly_densities.append({'id': poly_id, 'density': density})
 
-        if not poly_densities:
-            logger.warning("No se pudo calcular la densidad de ningún polígono.")
+            # Calcula perímetro de todos los contornos
+            perimeters = [cv2.arcLength(c, True) for c in contours]
+            mean_perim = np.mean(perimeters)
+            std_perim = np.std(perimeters)
+
+            # Filtra contornos cuyo perímetro esté dentro de 2 desviaciones estándar del promedio
+            valid_contours = [
+                c for c, p in zip(contours, perimeters)
+                if abs(p - mean_perim) <= 2 * std_perim
+            ]
+
+            num_valid = len(valid_contours)
+            sum_valid_perim = sum([cv2.arcLength(c, True) for c in valid_contours])
+
+            # Guarda el perímetro principal (el mayor) para polígonos no problemáticos
+            main_perimeter = 0.0
+            if valid_contours:
+                main_perimeter = cv2.arcLength(max(valid_contours, key=cv2.contourArea), True)
+
+            poly_perimeters.append({
+                'id': poly_id,
+                'num_valid_contours': num_valid,
+                'sum_valid_perimeter': sum_valid_perim,
+                'main_perimeter': main_perimeter
+            })
+
+        if not poly_perimeters:
+            logger.warning("No se pudo calcular perímetros de ningún polígono.")
             return extracted_polygons
 
         # --- PASO 2: VERIFICACIÓN ESTADÍSTICA - Identificar outliers ---
-        densities = [d['density'] for d in poly_densities]
-        mean_density = np.mean(densities)
-        std_density = np.std(densities)
-        
-        # Usamos la media MENOS la desviación, ya que buscamos los que tienen menos "relleno"
-        density_threshold = mean_density - self.density_std_factor * std_density
-        problematic_ids = {d['id'] for d in poly_densities if d['density'] < density_threshold}
+        num_contours_list = [d['num_valid_contours'] for d in poly_perimeters]
+        sum_perimeters_list = [d['sum_valid_perimeter'] for d in poly_perimeters]
+
+        mean_num_contours = np.mean(num_contours_list)
+        std_num_contours = np.std(num_contours_list)
+        mean_sum_perim = np.mean(sum_perimeters_list)
+        std_sum_perim = np.std(sum_perimeters_list)
+
+        # Considera problemáticos los polígonos con muchos contornos (agrupamiento incorrecto) o perímetro total muy bajo (ruido)
+        problematic_ids = {
+            d['id'] for d in poly_perimeters
+            if (d['num_valid_contours'] > mean_num_contours + self.density_std_factor * std_num_contours)
+            or (d['sum_valid_perimeter'] < mean_sum_perim - self.density_std_factor * std_sum_perim)
+        }
         self.problematic_ids = problematic_ids  # Guardar para acceso posterior
 
-        logger.info(f"Análisis de densidad: media={mean_density:.3f}, std={std_density:.3f}. Se identificaron {len(problematic_ids)} polígonos problemáticos.")
+        logger.info(
+            f"Análisis de contornos: media_n={mean_num_contours:.2f}, std_n={std_num_contours:.2f}, "
+            f"media_perim={mean_sum_perim:.2f}, std_perim={std_sum_perim:.2f}. "
+            f"Se identificaron {len(problematic_ids)} polígonos problemáticos."
+        )
 
-        # --- PASO 3: CORRECCIÓN QUIRÚRGICA - Procesar y fragmentar solo los problemáticos ---
-        temp_refined_polygons = []
-        original_poly_map = {p['polygon_id']: p for p in extracted_polygons if 'polygon_id' in p}
-
-        for poly_id, original_poly in sorted(original_poly_map.items(), key=lambda item: int(item[0].split('_')[-1])):
+        refined_polygons = {}        
+        sorted_polygons = sorted(extracted_polygons.items(), key=lambda item: int(item[0].split('_')[-1]))
+        current_position = 0
+        
+        for poly_id, original_poly in sorted_polygons:
             if poly_id not in problematic_ids:
-                # Polígono bueno, añadirlo a la lista final y marcar
+                # Polígono bueno, añadirlo al diccionario final y marcar
                 original_poly['was_fragmented'] = False
-                temp_refined_polygons.append(original_poly)
+                # Agrega el perímetro principal (de la palabra)
+                perim_entry = next((d for d in poly_perimeters if d['id'] == poly_id), None)
+                if perim_entry:
+                    original_poly['perimeter'] = perim_entry['main_perimeter']
+                else:
+                    original_poly['perimeter'] = 0.0
+                
+                # Asignar ID en la posición actual
+                new_poly_id = f"poly_{current_position:04d}"
+                refined_polygons[new_poly_id] = original_poly
+                current_position += 1
                 continue
 
             # --- Lógica de Fragmentación para polígonos problemáticos ---
             logger.info(f"Polígono problemático detectado ({poly_id}). Aplicando fragmentación.")
-            bin_img_to_split = cleaned_binarized_polygons.get(poly_id)
+            bin_img_to_split = binarized_polygons.get(poly_id)
             if bin_img_to_split is None:
                 original_poly['was_fragmented'] = False
-                temp_refined_polygons.append(original_poly)
-                continue
+                perim_entry = next((d for d in poly_perimeters if d['id'] == poly_id), None)
+                if perim_entry:
+                    original_poly['perimeter'] = perim_entry['main_perimeter']
+                else:
+                    original_poly['perimeter'] = 0.0
                 
+                new_poly_id = f"poly_{current_position:04d}"
+                refined_polygons[new_poly_id] = original_poly
+                current_position += 1
+                continue
+
             internal_contours, _ = cv2.findContours(bin_img_to_split, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             poly_area = bin_img_to_split.shape[0] * bin_img_to_split.shape[1]
             adaptive_min_area = poly_area * self.min_area_factor
             valid_contours = [c for c in internal_contours if cv2.contourArea(c) > adaptive_min_area]
-            
+
             if len(valid_contours) <= 1:
                 original_poly['was_fragmented'] = False
-                temp_refined_polygons.append(original_poly)
+                perim_entry = next((d for d in poly_perimeters if d['id'] == poly_id), None)
+                if perim_entry:
+                    original_poly['perimeter'] = perim_entry['main_perimeter']
+                else:
+                    original_poly['perimeter'] = 0.0
+                
+                new_poly_id = f"poly_{current_position:04d}"
+                refined_polygons[new_poly_id] = original_poly
+                current_position += 1
                 continue
 
+            # Fragmentar el polígono problemático
             sorted_contours = sorted(valid_contours, key=lambda c: cv2.boundingRect(c)[0])
+            num_fragments = len(sorted_contours)
             
             for i, contour_fragment in enumerate(sorted_contours):
                 x, y, w, h = cv2.boundingRect(contour_fragment)
-                
+
                 if 'cropped_img' not in original_poly or not isinstance(original_poly['cropped_img'], np.ndarray):
                     continue
-                
+
                 fragment_img = original_poly['cropped_img'][y:y+h, x:x+w]
-                if fragment_img.size == 0: continue
+                if fragment_img.size == 0:
+                    continue
 
                 new_poly_dict = original_poly.copy()
-                
+
                 new_poly_dict['was_fragmented'] = True
                 new_poly_dict['cropped_img'] = fragment_img
-                
+
                 original_bbox = original_poly.get("geometry", {}).get("bounding_box", [0, 0, 0, 0])
                 new_bbox = [
                     original_bbox[0] + x,
@@ -129,20 +177,21 @@ class PolygonFragmentator:
                     original_bbox[1] + y + h
                 ]
                 new_centroid = [new_bbox[0] + w / 2, new_bbox[1] + h / 2]
-                
+
                 new_poly_dict['geometry'] = {
                     'bounding_box': new_bbox,
                     'width': w,
                     'height': h,
                     'centroid': new_centroid
-                }                
-                temp_refined_polygons.append(new_poly_dict)
+                }
+                # Calcula el perímetro del fragmento (palabra)
+                fragment_perimeter = cv2.arcLength(contour_fragment, True)
+                new_poly_dict['perimeter'] = fragment_perimeter
 
-        # --- PASO 4: REASIGNACIÓN DE IDs ---
-        refined_polygons = []
-        for i, poly in enumerate(temp_refined_polygons):
-            poly['polygon_id'] = f"poly_{i:04d}"
-            refined_polygons.append(poly)
+                # Asignar ID en la posición actual
+                new_poly_id = f"poly_{current_position:04d}"
+                refined_polygons[new_poly_id] = new_poly_dict
+                current_position += 1
 
         logger.info(f"Análisis completado. Total de polígonos refinados: {len(refined_polygons)}")
         return refined_polygons

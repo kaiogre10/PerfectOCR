@@ -141,13 +141,14 @@ ocr:
     cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
 
 output_config:
+  output_path: "C:/PerfectOCR/output"
   enabled_outputs:
     preprocessed_image: false
     ocr_raw: false
     ocr_debug: false
     cropped_words: false
-    refined_polygons: false
-    problematic_ids: false
+    refined_polygons: true
+    problematic_ids: true
     
 batch_processing:
   small_batch_limit: 5

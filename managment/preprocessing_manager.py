@@ -10,7 +10,7 @@ from core.preprocessing.sp import DoctorSaltPepper
 from core.preprocessing.gauss import GaussianDenoiser
 from core.preprocessing.clahe import ClaherEnhancer
 from core.preprocessing.sharp import SharpeningEnhancer
-from core.utils.output_handlers import ImageOutputHandler
+#from core.utils.output_handlers import ImageOutputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +30,9 @@ class PreprocessingManager:
         self._gauss = GaussianDenoiser(config=quality_rules.get('denoise', {}), project_root=self.project_root)
         self._claher = ClaherEnhancer(config=quality_rules.get('contrast', {}), project_root=self.project_root)
         self._sharp = SharpeningEnhancer(config=quality_rules.get('sharpening', {}), project_root=self.project_root)
-        self.image_saver = ImageOutputHandler()
+#        self.image_saver = ImageOutputHandler()
         
-    def _apply_preprocessing_pipelines(self, refined_polygons: List[Dict[str, Any]], input_path: str = "") -> Tuple[List[Dict[str, Any]], float]:
+    def _apply_preprocessing_pipelines(self, refined_polygons: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], float]:         
         """
         Procesa la imagen de forma secuencial:
         1. Moiré
@@ -41,24 +41,20 @@ class PreprocessingManager:
         4. Contraste
         5. Nitidez
         """
-        polygons_list = refined_polygons
         pipeline_start = time.time()
 
-        for i, polygon in enumerate(polygons_list):
-            cropped_img = polygon.get("cropped_img")
-            if cropped_img is not None:
-                # 1. Remoción de moiré
-                moire_img = self._moire._detect_moire_patterns(cropped_img)
-                # 2. Filtro de ruido sal y pimienta
-                sp_img = self._sp._estimate_salt_pepper_noise(moire_img)
-                # 3. Filtro de ruido general
-                gauss_img = self._gauss._estimate_gaussian_noise(sp_img)
-                # 4. Mejora de contraste
-                clahed_img = self._claher._estimate_contrast(gauss_img)
-                # 5. Mejora de nitidez
-                corrected_imag = self._sharp._estimate_sharpness(clahed_img)
-                polygon["cropped_img"] = corrected_imag
-
+        # 1. Remoción de moiré
+        moire_img = self._moire._detect_moire_patterns(refined_polygons)
+        # 2. Filtro de ruido sal y pimienta
+        sp_img = self._sp._estimate_salt_pepper_noise(moire_img)
+        # 3. Filtro de ruido general
+        gauss_img = self._gauss._estimate_gaussian_noise(sp_img)
+        # 4. Mejora de contraste
+        clahed_img = self._claher._estimate_contrast(gauss_img)
+        # 5. Mejora de nitidez
+        corrected_imag = self._sharp._estimate_sharpness(clahed_img)
+            
+        preprocessed_polygons = corrected_imag
         total_duration = time.time() - pipeline_start
-        return polygons_list, total_duration
- 
+        return preprocessed_polygons, total_duration
+
