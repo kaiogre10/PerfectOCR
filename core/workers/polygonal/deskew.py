@@ -6,7 +6,10 @@ import logging
 import math
 from typing import Dict, Any, Tuple
 
+# --- Log de importación ---
+logging.info("DEBUG: Importando Deskewer y sus dependencias (incluyendo PaddleOCR)...")
 from paddleocr import PaddleOCR
+logging.info("DEBUG: PaddleOCR importado en deskew.py.")
 
 logger = logging.getLogger(__name__)
 
@@ -16,33 +19,45 @@ class Deskewer:
     del texto usando una instancia LIGERA de PaddleOCR (solo detección).
     """
     def __init__(self, config: Dict[str, Any], project_root: str):
+        logger.info("DEBUG: Deskewer.__init__ - INICIO")
         self.project_root = project_root
         self.corrections = config
         self.paddle_config = config.get('paddle', {})
-        self.engine = None
+        self._engine = None  # Inicialización perezosa
+        logger.info("DEBUG: Deskewer.__init__ - FIN (Motor no inicializado todavía)")
 
-        logger.info("Inicializando instancia de PaddleOCR para GEOMETRÍA (solo detección)...")
-        
-        try:
-            init_params = {
-                "use_angle_cls": False,
-                "rec": False, 
-                "lang": self.paddle_config.get('lang', 'es'),
-                "show_log": self.paddle_config.get('show_log', False),
-                "use_gpu": self.paddle_config.get('use_gpu', False),
-                "enable_mkldnn": self.paddle_config.get('enable_mkldnn', True)
-            }
-            
-            det_model_path = self.paddle_config.get('det_model_dir')
-            if det_model_path and os.path.exists(det_model_path):
-                init_params['det_model_dir'] = det_model_path
-            else:
-                logger.warning("No se encontró un directorio de modelo de detección local. PaddleOCR intentará descargarlo.")
-            self.engine = PaddleOCR(**init_params)
-            logger.info("Instancia de PaddleOCR para GEOMETRÍA inicializada exitosamente.")
+    @property
+    def engine(self):
+        """
+        Propiedad para inicializar PaddleOCR de forma perezosa.
+        El motor solo se crea la primera vez que se accede a esta propiedad.
+        """
+        if self._engine is None:
+            logger.info("MOTOR GEOMÉTRICO: Primera llamada, inicializando instancia de PaddleOCR (solo detección)...")
+            try:
+                init_params = {
+                    "use_angle_cls": False,
+                    "rec": False,
+                    "lang": self.paddle_config.get('lang', 'es'),
+                    "show_log": self.paddle_config.get('show_log', False),
+                    "use_gpu": self.paddle_config.get('use_gpu', False),
+                    "enable_mkldnn": self.paddle_config.get('enable_mkldnn', True)
+                }
 
-        except Exception as e:
-            logger.error(f"Error crítico al inicializar la instancia geométrica de PaddleOCR: {e}", exc_info=True)
+                det_model_path = self.paddle_config.get('det_model_dir')
+                if det_model_path and os.path.exists(det_model_path):
+                    init_params['det_model_dir'] = det_model_path
+                else:
+                    logger.warning("No se encontró un directorio de modelo de detección local. PaddleOCR intentará descargarlo.")
+
+                logger.info("DEBUG: Creando instancia de PaddleOCR en Deskewer...")
+                self._engine = PaddleOCR(**init_params)
+                logger.info("Instancia de PaddleOCR para GEOMETRÍA inicializada exitosamente.")
+
+            except Exception as e:
+                logger.error(f"Error crítico al inicializar la instancia geométrica de PaddleOCR: {e}", exc_info=True)
+                self._engine = None  # Asegurarse de que siga siendo None si falla
+        return self._engine
         
     def _detect_angle(self, clean_img: np.ndarray, img_dims: dict) -> Tuple[np.ndarray, dict]:
         """

@@ -3,8 +3,8 @@ import logging
 import time
 import os
 from typing import List, Dict, Any, Tuple, Optional
-from core.vectorial_transformation.density_scanner import DensityScanner
-from core.vectorial_transformation.tensorizer import VectorTensorizer
+from core.workers.vectorial_transformation.density_scanner import DensityScanner
+from core.workers.vectorial_transformation.tensorizer import VectorTensorizer
 #from core.utils.output_handlers import OutputHandler
 
 logger = logging.getLogger(__name__)

@@ -1,1 +1,24 @@
 # Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+# Para ignorar directorios completos, simplemente agrega el nombre del directorio seguido de una barra inclinada (/) en una línea nueva.
+*data
+*.vscode
+*input
+*.cursorignore
+*tests
+*output
+# Para ignorar un archivo específico, simplemente escribe su nombre o ruta relativa, por ejemplo:
+# ejemplo.txt
+# Para ignorar todos los archivos de un tipo específico, usa el comodín, por ejemplo:
+# *.csv
+*.ini
+desktop.ini
+.gitignore
+
+# Si quieres ignorar varias carpetas, agrégalas una por línea:
+# logs/
+# resultados/
+# Si el directorio está en un subdirectorio, usa la ruta relativa:
+# src/temp/
+# También puedes usar comodines para ignorar todos los directorios que coincidan con un patrón:
+# */temp/
+# Recuerda: las rutas son relativas a la ubicación de este archivo .cursorignore

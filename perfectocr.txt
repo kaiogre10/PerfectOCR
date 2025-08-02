@@ -1,4 +1,117 @@
-2025-07-31 23:48:56 - INFO - managment.cache_manager:36 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
-2025-07-31 23:48:56 - INFO - core.polygonal.deskew:24 - deskew - Inicializando instancia de PaddleOCR para GEOMETRÍA (solo detección)...
-2025-07-31 23:48:57 - INFO - __main__:274 - main - Procesamiento finalizado, iniciando limpieza de caché.
-2025-07-31 23:48:57 - INFO - managment.cache_manager:48 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---
+2025-08-02 00:04:40 - INFO - management.cache_manager:36 - cache_manager - --- Limpieza Inicial: Vaciando carpetas de salida ---
+2025-08-02 00:04:40 - INFO - core.polygonal.deskew:22 - deskew - DEBUG: Deskewer.__init__ - INICIO
+2025-08-02 00:04:40 - INFO - core.polygonal.deskew:27 - deskew - DEBUG: Deskewer.__init__ - FIN (Motor no inicializado todavía)
+2025-08-02 00:04:40 - INFO - management.polygon_manager:46 - polygon_manager - INICIANDO GENERACIÓN DE POLIGONAL
+2025-08-02 00:04:40 - INFO - management.polygon_manager:50 - polygon_manager - Iniciando limpieza rapida
+2025-08-02 00:04:40 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-08-02 00:04:40 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
+2025-08-02 00:04:40 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
+2025-08-02 00:04:40 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
+2025-08-02 00:04:40 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
+2025-08-02 00:04:40 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
+2025-08-02 00:04:40 - INFO - core.polygonal.cleanner:122 - cleanner - Metadatos encontrados -> Nombre: prueba12.png, Formato: PNG, Dimensiones: 2954x2056, DPI: 599, Fecha creación: 2025-07-22 07:53:22
+2025-08-02 00:04:40 - INFO - management.polygon_manager:53 - polygon_manager - Limpieza completada en 0.1670s
+2025-08-02 00:04:40 - INFO - management.polygon_manager:57 - polygon_manager - Iniciando corrección de inclinación
+2025-08-02 00:04:40 - INFO - core.polygonal.deskew:91 - deskew - -> Aplicando corrección de inclinación: -1.01 grados.
+2025-08-02 00:04:40 - INFO - core.polygonal.deskew:36 - deskew - MOTOR GEOMÉTRICO: Primera llamada, inicializando instancia de PaddleOCR (solo detección)...
+2025-08-02 00:04:40 - INFO - core.polygonal.deskew:53 - deskew - DEBUG: Creando instancia de PaddleOCR en Deskewer...
+2025-08-02 00:04:41 - INFO - core.polygonal.deskew:55 - deskew - Instancia de PaddleOCR para GEOMETRÍA inicializada exitosamente.
+2025-08-02 00:04:42 - INFO - core.polygonal.deskew:114 - deskew - -> Detección geométrica exitosa. Polígonos crudos encontrados: 56
+2025-08-02 00:04:42 - INFO - core.polygonal.deskew:145 - deskew - -> Polígonos válidos procesados: 56
+2025-08-02 00:04:42 - DEBUG - core.polygonal.deskew:175 - deskew - Detectados 56 polígonos en la fase de geometría.
+2025-08-02 00:04:42 - INFO - management.polygon_manager:60 - polygon_manager - Corrección de inclinación completada en 1.6493s
+2025-08-02 00:04:42 - INFO - core.polygonal.poly_gone:75 - poly_gone - Imágenes recortadas exitosamente: 56/56
+2025-08-02 00:04:42 - INFO - management.polygon_manager:74 - polygon_manager - Paralelización lineal/poly completada en 0.0040s
+2025-08-02 00:04:42 - INFO - management.polygon_manager:75 - polygon_manager - Lineal devolvió 56 IDs y 27 geometrías de línea. Poly devolvió 56 polígonos.
+2025-08-02 00:04:42 - INFO - management.polygon_manager:84 - polygon_manager - Fusión de line_id completada: 56 polígonos enriquecidos.
+2025-08-02 00:04:42 - INFO - management.polygon_manager:88 - polygon_manager - Iniciando binarización
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 41
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 72
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 62
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 71
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 72
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 81
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 69
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 95
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 72
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 77
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 85
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 68
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 65
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 74
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 85
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 71
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 116
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 69
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 72
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 81
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 65
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 81
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 74
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 74
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 71
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 74
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 32
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 71
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 89
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 75
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 85
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 72
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 69
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 81
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 78
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 82
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 72
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 72
+2025-08-02 00:04:42 - DEBUG - core.polygonal.binarization:86 - binarization - Selección de método 'otsu' para polígono de altura 81
+2025-08-02 00:04:42 - INFO - core.polygonal.binarization:130 - binarization - Binarización completada: 56/56 polígonos procesados.
+2025-08-02 00:04:42 - INFO - management.polygon_manager:91 - polygon_manager - Binarización completada en 0.0402s
+2025-08-02 00:04:42 - INFO - management.polygon_manager:99 - polygon_manager - Se binarizaron 56 polígonos.
+2025-08-02 00:04:42 - INFO - core.polygonal.fragmentator:92 - fragmentator - Análisis de contornos: media_n=1.23, std_n=0.98, media_perim=1009.25, std_perim=699.40. Se identificaron 1 polígonos problemáticos.
+2025-08-02 00:04:42 - INFO - core.polygonal.fragmentator:120 - fragmentator - Polígono problemático detectado (poly_0000). Aplicando fragmentación.
+2025-08-02 00:04:42 - INFO - core.polygonal.fragmentator:196 - fragmentator - Análisis completado. Total de polígonos refinados: 59
+2025-08-02 00:04:42 - INFO - management.polygon_manager:148 - polygon_manager - Guardadas 1 imágenes en C:/PerfectOCR/output
+2025-08-02 00:04:42 - INFO - management.polygon_manager:120 - polygon_manager - IDs problemáticos encontrados: 1
+2025-08-02 00:04:42 - INFO - management.polygon_manager:123 - polygon_manager - Intentando guardar 0 problematic_polygons en 'C:/PerfectOCR/output'
+2025-08-02 00:04:42 - INFO - management.polygon_manager:129 - polygon_manager - GENERACIÓN DE POLIGONAL COMPLETADA en 1.8716s
+2025-08-02 00:04:42 - INFO - __main__:148 - main - Polygonos: 1.878s
+2025-08-02 00:04:42 - INFO - __main__:158 - main - DEBUG: process_document - Iniciando fase de preprocesamiento...
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:46 - preprocessing_manager - Iniciando pipeline de preprocesamiento
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:54 - preprocessing_manager - Procesando 59 polígonos
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:58 - preprocessing_manager - Iniciando detección de patrones Moiré
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:61 - preprocessing_manager - Detección de patrones Moiré completada en 0.081 segundos
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:65 - preprocessing_manager - Iniciando estimación de ruido sal y pimienta
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:68 - preprocessing_manager - Estimación de ruido sal y pimienta completada en 0.009 segundos
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:72 - preprocessing_manager - Iniciando estimación de ruido gaussiano
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:75 - preprocessing_manager - Estimación de ruido gaussiano completada en 0.010 segundos
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:79 - preprocessing_manager - Iniciando estimación de contraste
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:82 - preprocessing_manager - Estimación de contraste completada en 0.039 segundos
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:86 - preprocessing_manager - Iniciando estimación de nitidez
+2025-08-02 00:04:42 - INFO - management.preprocessing_manager:89 - preprocessing_manager - Estimación de nitidez completada en 0.070 segundos
+2025-08-02 00:04:42 - INFO - __main__:166 - main - Preprocesamiento: 0.212s
+2025-08-02 00:04:42 - INFO - core.ocr.paddle_wrapper:23 - paddle_wrapper - DEBUG: PaddleOCRWrapper.__init__ - INICIO (Motor no inicializado todavía)
+2025-08-02 00:04:42 - INFO - core.ocr.paddle_wrapper:27 - paddle_wrapper - DEBUG: PaddleOCRWrapper.__init__ - FIN
+2025-08-02 00:04:42 - INFO - core.ocr.paddle_wrapper:36 - paddle_wrapper - MOTOR DE RECONOCIMIENTO: Primera llamada, inicializando instancia de PaddleOCR...
+2025-08-02 00:04:42 - INFO - core.ocr.paddle_wrapper:53 - paddle_wrapper - DEBUG: Creando instancia de PaddleOCR en PaddleOCRWrapper...
+2025-08-02 00:04:43 - INFO - core.ocr.paddle_wrapper:58 - paddle_wrapper - Total inicialización PaddleOCRWrapper: 0.765s (carga de modelo: 0.765s)
+2025-08-02 00:04:43 - WARNING - management.ocr_manager:127 - ocr_manager - No se encontraron polígonos con imágenes válidas para procesar.
+2025-08-02 00:04:43 - INFO - __main__:176 - main - OCR: 0.000s
+2025-08-02 00:04:43 - INFO - __main__:264 - main - Procesamiento finalizado, iniciando limpieza de caché.
+2025-08-02 00:04:43 - INFO - management.cache_manager:48 - cache_manager - --- Limpieza Final: Eliminando caché del proyecto ---

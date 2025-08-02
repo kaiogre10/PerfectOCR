@@ -1,4 +1,4 @@
-# PerfectOCR/core/workflow/preprocessing/poly_gone.py
+# PerfectOCR/core/preprocessing/poly_gone.py
 import cv2
 import numpy as np
 import logging

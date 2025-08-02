@@ -60,5 +60,8 @@
     "github.copilot.enable": {
         "python": false
     },
-    "git.autorefresh": false
+    "git.autorefresh": false,
+    "cursor.composer.shouldAllowCustomModes": true,
+    "cursor.composer.shouldAutoAcceptDiffs": false,
+    "cursor.composer.shouldChimeAfterChatFinishes": true
 }

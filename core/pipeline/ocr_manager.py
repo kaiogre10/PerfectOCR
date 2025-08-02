@@ -6,8 +6,7 @@ import time
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
-from core.ocr.paddle_wrapper import PaddleOCRWrapper
-#from core.utils.output_handlers import OutputHandler
+from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 import cv2
 
 logger = logging.getLogger(__name__)
@@ -18,7 +17,6 @@ class OCREngineManager:
         self.project_root = project_root
         self.output_flags = output_flags
         self.workflow_config = workflow_config or {}
- #       self.json_output_handler = OutputHandler(config={"enabled_outputs": self.output_flags})
         paddle_specific_config = self.ocr_config_from_workflow.get('paddleocr')
         if paddle_specific_config:
             self.paddle = PaddleOCRWrapper(paddle_specific_config, self.project_root)
@@ -27,7 +25,7 @@ class OCREngineManager:
             self.paddle = None
             raise ValueError("PaddleOCR engine not enabled or configured for recognition.")
 
-        self.num_workers = 1  # Procesamiento secuencial para estabilidad
+        self.num_workers = 1
 
     def _save_paddle_raw_output(self, batch_results: List, polygon_ids: List[str], image_file_name: str) -> None:
         """
@@ -93,9 +91,8 @@ class OCREngineManager:
 
     def _run_ocr_on_polygons(
         self, 
-        polygons: List[Dict[str, Any]],
-        image_file_name: str
-    ) -> Tuple[Dict[str, Any], float]:
+        preprocess_dict: Dict[str, Any]
+    ) -> Tuple[Optional[Dict[str, Any]], float]:
         
         start_time = time.perf_counter()
         
@@ -103,28 +100,37 @@ class OCREngineManager:
             logger.error("PaddleOCR recognition engine not available.")
             return {"error": "PaddleOCR engine not available"}, 0.0
 
+        # Extraer polígonos del diccionario
+        polygons = preprocess_dict.get("polygons", {})
         if not polygons:
             logger.warning("No polygons were provided to OCREngineCoordinator.")
             return {"polygon_results": {}, "full_text": ""}, 0.0
 
-        total_polygons = len(polygons)
-    
-        valid_polygons = [p for p in polygons if p.get("processed_img") is not None and isinstance(p.get("processed_img"), np.ndarray)]
-        if not valid_polygons:
+        # Extraer solo las imágenes procesadas con sus IDs
+        valid_polygons = []
+        polygon_ids = []
+        images_batch = []
+        
+        for polygon_id, polygon_data in polygons.items():
+            processed_img = polygon_data.get("processed_img")
+            if processed_img is not None and isinstance(processed_img, np.ndarray):
+                valid_polygons.append(polygon_data)
+                polygon_ids.append(polygon_id)
+                # Convertir a BGR si es necesario
+                if len(processed_img.shape) == 2:  # Grayscale
+                    image_3d = cv2.cvtColor(processed_img, cv2.COLOR_GRAY2BGR)
+                else:
+                    image_3d = processed_img
+                images_batch.append(image_3d)
+
+        if not images_batch:
             logger.warning("No se encontraron polígonos con imágenes válidas para procesar.")
             return {"polygon_results": {}, "full_text": ""}, 0.0
-            
-        images_batch = [p["processed_img"] for p in valid_polygons]
-        polygon_ids = [p["polygon_id"] for p in valid_polygons]
-        
-        images_batch_3d = []
-        for image_2d in images_batch:
-            image_3d = cv2.cvtColor(image_2d, cv2.COLOR_GRAY2BGR) 
-            images_batch_3d.append(image_3d)
 
-        batch_results = self.paddle.recognize_text_from_batch(images_batch_3d)
-        self._save_paddle_raw_output(batch_results, polygon_ids, image_file_name)
+        # Procesar lote con PaddleOCR
+        batch_results = self.paddle.recognize_text_from_batch(images_batch)
         
+        # Mapear resultados a IDs
         polygon_results = {}
         processed_count = 0
         for i, result in enumerate(batch_results):
@@ -132,64 +138,27 @@ class OCREngineManager:
             if result:
                 polygon_results[poly_id] = result
                 processed_count += 1
+                # Actualizar el diccionario original: añadir texto y limpiar imagen
+                polygons[poly_id]["text"] = result.get("text", "")
+                polygons[poly_id]["confidence"] = result.get("confidence", 0.0)
+                # Limpiar la imagen ya procesada
+                polygons[poly_id]["processed_img"] = None
             else:
                 logger.debug(f"El polígono {poly_id} no arrojó resultado en el lote.")
 
         logger.info(f"Lote procesado. Se obtuvieron resultados para {processed_count}/{len(valid_polygons)} polígonos.")
 
-        full_text = self._consolidate_full_text(polygons, polygon_results)
-
         output_data = {
             "metadata": {
-                "image_file_name": image_file_name,
                 "timestamp": datetime.now().isoformat(),
                 "ocr_engine": "paddleocr_recognition_only",
                 "polygons_processed": processed_count,
-                "polygons_total": total_polygons
+                "polygons_total": len(polygons)
             },
             "polygon_results": polygon_results,
-            "full_text": full_text
         }
 
         total_time = time.perf_counter() - start_time
         logger.info(f"Tiempo total del flujo OCR por lotes: {total_time:.3f}s")
         
         return output_data, total_time
-
-    def _consolidate_full_text(self, original_polygons: List[Dict], ocr_results: Dict) -> str:
-        """
-        Reconstruye el texto completo del documento agrupando por línea y ordenando por la coordenada X.
-        """
-        lines = defaultdict(list)
-        
-        for poly in original_polygons:
-            poly_id = poly.get("polygon_id")
-            line_id = poly.get("line_id")
-            result = ocr_results.get(poly_id)
-            
-            if result and result.get("text") and line_id is not None:
-                try:
-                    x_coordinate = poly['geometry']['bounding_box'][0]
-                    lines[line_id].append((x_coordinate, result["text"]))
-                except (KeyError, IndexError):
-    
-                    lines[line_id].append((float('inf'), result["text"]))
-
-        reconstructed_lines = []
-        for line_id in sorted(lines.keys()):
-            sorted_fragments = sorted(lines[line_id], key=lambda item: item[0])
-            line_text = " ".join([text for x, text in sorted_fragments if text.strip()])
-            reconstructed_lines.append(line_text)
-        
-        return "\n".join(reconstructed_lines)
-
-    def validate_ocr_results(self, ocr_results: Optional[dict]) -> bool:
-        """Valida si el resultado del OCR es aceptable."""
-        if not isinstance(ocr_results, dict): 
-            return False
-    
-        polygon_results = ocr_results.get("polygon_results", {})
-        if not polygon_results:
-            return False
-
-        return any(res.get("text") for res in polygon_results.values())

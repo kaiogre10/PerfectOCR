@@ -1,7 +1,4 @@
-# Diccionario final.py
-# Estructura detallada del diccionario antes de llegar al fragmentador
 document_dict = {
-    # --- METADATOS DEL DOCUMENTO (creados por ImageCleaner._resolutor y _quick_enhance) ---
     "metadata": {
         "doc_name": "ejemplo.pdf",          # Nombre del archivo original
         "formato": "PDF",                   # Formato del documento (JPEG, PNG, PDF, etc.)
@@ -12,9 +9,6 @@ document_dict = {
         "dpi": 300,                         # Resolución del documento en DPI (None si no disponible)
         "fecha_creacion": "2023-04-15 10:30:45"  # Fecha de creación del archivo (None si no disponible)
     },
-    
-    # --- POLÍGONOS DETECTADOS (creados por Deskewer._detect_geometry) ---
-    # Diccionario donde la clave es el polygon_id y el valor contiene toda la información del polígono
     "polygons": {
         "poly_0000": {
             "polygon_id": "poly_0000",      # Identificador único del polígono
@@ -43,11 +37,8 @@ document_dict = {
         },
     },    
 }
-    # --- GEOMETRÍA DE LÍNEAS (creada por LineReconstructor._reconstruct_lines) ---
-    
-    
+
 # --- GEOMETRÍA DE LÍNEAS (creada por LineReconstructor._reconstruct_lines) ---
-# Este diccionario no está en el diccionario principal, sino que se obtiene por separado
 lines_geometry = {
     "line_0001": {
         "bounding_box": [120.0, 230.0, 1080.0, 260.0],  # Bbox de toda la línea

@@ -7,7 +7,6 @@ import logging
 from typing import Dict, Any
 from skimage.filters import threshold_sauvola, unsharp_mask
 
-
 logger = logging.getLogger(__name__)
 
 class SharpeningEnhancer:
@@ -16,7 +15,24 @@ class SharpeningEnhancer:
         self.project_root = project_root
         self.corrections = config
 
-    def _estimate_sharpness(self, clahed_img: np.ndarray) -> np.ndarray:
+    def _estimate_sharpness(self, clahe_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Detecta y corrige patrones de moiré en cada polígono del diccionario.
+        Args:
+            refined_polygons: Diccionario principal con los polígonos
+        Returns:
+            El mismo diccionario (moire_img), con los 'cropped_img' corregidos si aplica"""
+        polygons = clahe_dict.get("polygons", {})
+        for poly in polygons.values():
+            cropped_img = poly.get("clahe_poly")  # Ya está correcto
+            if cropped_img is not None:
+                sharp_poly = self._estimate_sharpness_single(cropped_img)
+                poly["sharp_poly"] = sharp_poly  # Cambiar de clahe_poly a sharp_poly
+                
+        sharp_dict = clahe_dict
+        return sharp_dict
+
+
+    def _estimate_sharpness_single(self, clahed_img: np.ndarray) -> np.ndarray:
         """Estima nitidez con Sobel."""
         sharpen_corrections = self.corrections.get('sharpening', {})
         radius = sharpen_corrections.get('radius', 1.0)
@@ -33,9 +49,9 @@ class SharpeningEnhancer:
             radius = min(2.0, max(0.5, global_sharp_var - 0.02))
             amount = min(2.0, max(1.0, global_sharp_var - 0.03))
 
-            sharpened = unsharp_mask(clahed_img, radius=radius, amount=amount)
-            corrected_imag = (sharpened * 255).astype(np.uint8)
+            sharpened = unsharp_mask(clahed_img, radius=float(radius), amount=float(amount))
+            sharp_poly = (sharpened * 255).astype(np.uint8)
         else:
-            corrected_imag = clahed_img
+            sharp_poly = clahed_img
 
-        return corrected_imag
+        return sharp_poly
