@@ -4,7 +4,7 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from core.utils.batch_tools import chunked, get_optimal_workers, estimate_processing_time
+from utils.batch_tools import chunked, get_optimal_workers, estimate_processing_time
 from management.config_manager import ConfigManager
 from app.process_builder import ProcessingBuilder
 # Se necesitan estos imports para la reconstrucción en el worker

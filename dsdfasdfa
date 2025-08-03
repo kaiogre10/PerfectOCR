@@ -1,0 +1,36 @@
+[33mcba2a97[m[33m ([m[1;36mHEAD[m[33m)[m inyecciones
+[33m960994a[m empezamos con los jobs
+[33m22c6750[m DIciionario completo
+[33m17f99c0[m corrección del diccionario
+[33mf69390e[m optimización 1
+[33m11f81b4[m reestrucutración
+[33me81e245[m listo para vectorizar
+[33m45c5a66[m problemas de tipado resuletos
+[33m9469db7[m segundos cambios paddle
+[33m28c1701[m arrglar paddle
+[33mabff626[m preprocesamiento correjido
+[33m3496d16[m latitude
+[33mfd09fe5[m arreglar el binarizador
+[33mad22af9[m Polígonos generados con éxito
+[33m9ce0643[m Polígonos recortados 2
+[33m17d0059[m Reestructuración
+[33m9bb9604[m cambios latitude
+[33m9216933[m cambios latitude
+[33md5eb6fd[m Corregir el lineal
+[33m4810867[m features agrupadas
+[33m57d6612[m listo
+[33mb7271f5[m 3
+[33m5d7ccd3[m Separación y filtrado de polígonos
+[33mb2968c7[m manufeacturing comienza
+[33m8d3f4d7[m listo para los features 2
+[33m552521b[m Listo para los features
+[33me280297[m Pre-Features
+[33m31ebcf4[m Polígonos procesados
+[33md088c43[m Restauración
+[33m239a4af[m Eliminados
+[33mf07a0b7[m Segunda revisión de polígonos
+[33m3a29557[m Líneas recortadas perfectamente
+[33mb4d73b1[m Polígonos recortados
+[33mc35c013[m 	modified:   core/coordinators/preprocessing_coordinator.py 	modified:   core/workflow/ocr/paddle_wrapper.py 	modified:   core/workflow/preprocessing/binarization.py 	modified:   core/workflow/preprocessing/cleanner.py 	modified:   core/workflow/preprocessing/deskew.py 	new file:   core/workflow/preprocessing/erosioner.py 	modified:   core/workflow/preprocessing/moire.py 	modified:   core/workflow/preprocessing/multifeaturer.py 	modified:   core/workflow/preprocessing/sharp.py 	modified:   core/workflow/preprocessing/sp.py 	modified:   core/workspace/utils/image_featuring.py 	modified:   main.py
+[33mfa4049d[m 	modified:   core/coordinators/preprocessing_coordinator.py 	modified:   core/workflow/ocr/paddle_wrapper.py 	modified:   core/workflow/preprocessing/binarization.py 	modified:   core/workflow/preprocessing/cleanner.py 	modified:   core/workflow/preprocessing/deskew.py 	new file:   core/workflow/preprocessing/erosioner.py 	modified:   core/workflow/preprocessing/moire.py 	modified:   core/workflow/preprocessing/multifeaturer.py 	modified:   core/workflow/preprocessing/sharp.py 	modified:   core/workflow/preprocessing/sp.py 	modified:   core/workspace/utils/image_featuring.py 	modified:   main.py
+[33mf818af7[m Primer commit
