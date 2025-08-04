@@ -104,7 +104,7 @@ modules:
       block_sizes_map: [15, 21, 25, 35, 41]
       
       quality:
-        quality_min: 0.005
+        quality_min: 0.05
         quality_max: 0.95
     
     fragmentation:
@@ -161,4 +161,3 @@ cleanup:
   files_to_exclude_by_name:
     - "density_encoder.json"
     - "estructura_inspiron.txt"
-    - "estructura.txt"

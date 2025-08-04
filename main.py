@@ -1,11 +1,14 @@
 # PerfectOCR/main.py
 import os
 import sys
+import typer
 import logging
-from management.cache_manager import CacheManager
-from management.config_manager import ConfigManager
+from pathlib import Path
+from typing import Optional, List
+from services.cache_service import CacheService
+from services.config_service import ConfigService
 from app.process_builder import ProcessingBuilder
-from app.workflow_manager import WorkflowManager
+from app.workflow_builder import WorkBuilder
 from core.pipeline.input_manager import InputManager
 from core.pipeline.preprocessing_manager import PreprocessingManager
 from core.pipeline.ocr_manager import OCREngineManager
@@ -51,65 +54,195 @@ def setup_logging():
 
 logger = setup_logging()
 
-def main():
-    """
-    Punto de entrada: Ensambla la aplicación y delega la ejecución.
-    """
+app = typer.Typer(help="PerfectOCR - Sistema de OCR optimizado")
+
+def _get_input_paths() -> List[str]:
+    """Obtiene rutas de entrada: CLI o por defecto."""
+    if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
+        # Rutas desde argumentos directos: python main.py /input /input2
+        return sys.argv[1:]
+    else:
+        # Rutas por defecto desde ConfigManager
+        temp_config = ConfigService(MASTER_CONFIG_FILE)
+        default_input = temp_config._paths_config.get('input_folder')
+        return [default_input]
+
+@app.command()
+def run(
+    input_paths: Optional[List[str]] = typer.Argument(None, help="Rutas de entrada (opcional, usa rutas por defecto)"),
+    output_dir: str = typer.Option(None, "--output", "-o", help="Directorio de salida"),
+    config: str = typer.Option(MASTER_CONFIG_FILE, "--config", "-c", help="Archivo de configuración"),
+    mode: Optional[str] = typer.Option(None, "--mode", "-m", help="Forzar modo: 'interactive' o 'batch'"),
+    workers: Optional[int] = typer.Option(None, "--workers", "-w", help="Número de procesos"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Solo mostrar estimación"),
+):
+    """Ejecuta PerfectOCR con rutas por defecto o personalizadas."""
+    
+    # Si no se proporcionan rutas, usar las del YAML
+    if not input_paths:
+        input_paths = _get_input_paths()
+    
+    # Ejecutar procesamiento
+    results = _activate_main(input_paths, output_dir, config, mode, workers, dry_run)
+    
+    if not dry_run:
+        typer.echo(f"Procesamiento completado: {results['processed']} imágenes")
+    
+    return results
+
+@app.command() 
+def benchmark(
+    input_dir: str = typer.Argument(..., help="Carpeta con imágenes de prueba"),
+    config: str = typer.Option(MASTER_CONFIG_FILE, "--config", "-c"),
+):
+    """Compara rendimiento entre modo interactivo y lote."""
+    import time
+    
+    input_path = Path(input_dir)
+    image_paths = list(input_path.glob("*.png"))[:10]  # Máximo 10 para benchmark
+    
+    if len(image_paths) < 2:
+        typer.echo("Se necesitan al menos 2 imágenes para benchmark", err=True)
+        return
+    
+    # Convertir a strings para compatibilidad
+    input_paths = [str(p) for p in image_paths]
+    
+    # Benchmark modo interactivo
+    typer.echo("🔄 Benchmarking modo interactivo...")
+    start_time = time.time()
+    results_interactive = _activate_main(input_paths, "./output", config, 'interactive', None, False)
+    time_interactive = time.time() - start_time
+    
+    # Benchmark modo lote
+    typer.echo("Benchmarking modo lote...")
+    start_time = time.time()
+    results_batch = _activate_main(input_paths, "./output", config, 'batch', None, False)
+    time_batch = time.time() - start_time
+    
+    # Mostrar resultados
+    typer.echo("\nResultados del benchmark:")
+    typer.echo(f"Modo interactivo: {time_interactive:.1f}s ({time_interactive/len(input_paths):.1f}s por imagen)")
+    typer.echo(f"Modo lote: {time_batch:.1f}s ({time_batch/len(input_paths):.1f}s por imagen)")
+    typer.echo(f"Aceleración real: {time_interactive/time_batch:.2f}x")
+
+# ========== FUNCIÓN PRINCIPAL DE PROCESAMIENTO ==========
+def _activate_main(input_paths: List[str], output_dir: Optional[str], config_file: str, 
+                  mode: Optional[str], workers: Optional[int], dry_run: bool):
+    """Función principal de procesamiento - fusiona la lógica original."""
     try:
-        # 1. Main activa al Contralor (ConfigManager), como siempre.
+        # 1. Main activa al Contralor (ConfigManager)
         logging.info("Activando ConfigManager...")
-        config_manager = ConfigManager(MASTER_CONFIG_FILE)
-        project_root = config_manager.get_system_config().get('project_root', PROJECT_ROOT)
+        config_manager = ConfigService(config_file)
+        project_root = PROJECT_ROOT
 
-        # 2. Main ahora CONTRATA y ENTRENA a los Jefes de Área (Managers)
-        logging.info("Creando Jefes de Área (Managers)...")
-        input_manager = InputManager(
-            config=config_manager.get_input_config(),
-            paddle_config=config_manager.get_paddle_detection_config(),
-            project_root=project_root
-        )
-        
-        preprocessing_manager = PreprocessingManager(
-            config=config_manager.get_preprocessing_config(),
-            project_root=project_root
-        )
-        
-        ocr_manager = OCREngineManager(
-            config=config_manager.get_ocr_config_with_paths(),
-            project_root=project_root,
-            output_flags=config_manager.get_enabled_outputs(),
-            workflow_config=config_manager.get_processing_config()
-        )
-
-        # 3. Main contrata al Director de Operaciones (ProcessingBuilder)
-        processing_builder = ProcessingBuilder(
-            input_manager=input_manager,
-            preprocessing_manager=preprocessing_manager,
-            ocr_manager=ocr_manager,
-            output_flags=config_manager.get_enabled_outputs(),
-        )
-        
-        # 4. Main contrata al Director de Logística (WorkflowManager)
-        workflow_manager = WorkflowManager(
+        # 2. Main crea WorkflowManager con rutas dinámicas
+        logging.info("Creando WorkflowManager...")
+        workflow_manager = WorkBuilder(
             config_manager=config_manager,
-            builder=processing_builder,
-            project_root=project_root
+            project_root=project_root,
+            input_paths=input_paths
         )
         
-        # 5. Dar orden de inicio al Director de Logística.
-        logging.info("Iniciando procesamiento...")
-        result = workflow_manager.run() # Ya no se le pasa el builder aquí
+        # 3. WorkflowManager analiza y reporta
+        logging.info("Analizando imágenes disponibles...")
+        workflow_report = workflow_manager.count_and_plan()
         
-        return result
+        if dry_run:
+            return _show_estimation(workflow_report)
+        
+        # 4. Main crea builders según el reporte
+        logging.info("Creando builders según análisis...")
+        builders = _create_builders(config_manager, project_root, workflow_report)
+        
+        # 5. Main ejecuta procesamiento
+        logging.info("Iniciando procesamiento...")
+        results = _execute_processing(builders, workflow_report)
+        
+        return results
         
     except Exception as e:
         logging.error(f"Error fatal en main: {e}", exc_info=True)
         return {"error": str(e)}
     finally:
-        # La limpieza de caché se mantiene igual.
         logging.info("Procesamiento finalizado, iniciando limpieza de caché.")
-        cache_manager = CacheManager(MASTER_CONFIG_FILE)
+        cache_manager = CacheService(config_file)
         cache_manager.cleanup_project_cache()
+
+def _show_estimation(workflow_report: dict):
+    """Muestra estimación sin procesar."""
+    from utils.batch_tools import estimate_processing_time
+    
+    total_images = len(workflow_report['assignments'])
+    estimation = estimate_processing_time(total_images)
+    
+    typer.echo(f"Estimación:")
+    typer.echo(f"Imágenes encontradas: {total_images}")
+    typer.echo(f"Modo: {workflow_report['mode']}")
+    typer.echo(f"Tiempo estimado: {estimation['parallel_minutes']:.1f} minutos")
+    typer.echo(f"Workers: {estimation['workers']}")
+    
+    return {"mode": "estimation", "total_images": total_images}
+
+def _create_builders(config_manager, project_root, workflow_report):
+    """Crea builders según el reporte del WorkflowManager."""
+    builders = []
+    num_builders = workflow_report['total_builders_needed']
+    
+    for i in range(num_builders):
+        builder = ProcessingBuilder(
+            input_manager=InputManager(
+                config=config_manager._image_loader_config,
+                stage_config=config_manager._manager_config,
+                project_root=project_root
+            ),
+            preprocessing_manager=PreprocessingManager(
+                config=config_manager._preprocessing_config,
+                stage_config=config_manager._manager_config,
+                project_root=project_root
+            ),
+            ocr_manager=OCREngineManager(
+                config=config_manager._ocr_config,
+                stage_config=config_manager._manager_config,
+                project_root=project_root
+            )
+        )
+        builders.append(builder)
+    
+    return builders
+
+def _execute_processing(builders, workflow_report):
+    """Ejecuta el procesamiento según las asignaciones."""
+    assignments = workflow_report['assignments']
+    results = {}
+    
+    for i, assignment in enumerate(assignments):
+        builder = builders[i]
+        result = builder.process_single_image(assignment)
+        results[assignment['image_name']] = result
+    
+    return {
+        "mode": workflow_report['mode'],
+        "processed": len(results),
+        "results": results
+    }
+
+def main():
+    """
+    Función main original para compatibilidad con ejecución directa.
+    """
+    # Detectar si hay argumentos CLI
+    if len(sys.argv) == 1:
+        # Sin argumentos: usar rutas por defecto
+        input_paths = _get_input_paths()
+        return _activate_main(input_paths, None, MASTER_CONFIG_FILE, None, None, False)
+    elif len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
+        # Argumentos directos: python main.py /input /input2
+        input_paths = sys.argv[1:]
+        return _activate_main(input_paths, None, MASTER_CONFIG_FILE, None, None, False)
+    else:
+        # Argumentos Typer: python main.py run --help
+        app()
 
 if __name__ == "__main__":
     main()

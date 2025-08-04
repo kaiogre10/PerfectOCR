@@ -19,7 +19,7 @@ class PreprocessingManager:
     """
     Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
     """
-    def __init__(self, config: Dict, project_root: str):
+    def __init__(self, config: Dict, stage_config: Dict, project_root: str):
         self.project_root = project_root
         self.preprocessing_config = config
         

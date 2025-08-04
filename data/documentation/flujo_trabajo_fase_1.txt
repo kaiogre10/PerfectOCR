@@ -1,0 +1,19 @@
+SISTEMA DE INYECCIÓN DE DEPENDECIAS EN CASCADA
+
+Main → Con cli ahora generalizado para todas las entradas, se específica "input_path" (se conserva la funcionalidad de escribir varias rutas o determinadas archivos), unica ruta dinámica.
+  ↓ 
+Main → ConfigManager (carga YAML completo)
+  ↓
+Main → WorkflowManager (recibe config_manager para contar imágenes, solo cuenta los archivos con extensiones válidas, y por cada archivo válido genera una entrada con su ruta y nombre)
+  ↓
+WorkflowManager → Reporta a Main: lista de carpetas con sus imagenes (se asigna una imagen por builder sin importar procedencia)
+  ↓
+Main → Crea ProcessingBuilder (recibe config_manager y el reporte de cuantas imágenes hay para procesar para crear managers) basado en el numéro de imágenes determinadas por workflow (ahora el batch se determina si hay más de 5 imágenes, pero este paramétro se especifica en el yalm como ya se especifica actualmente).
+  ↓
+Main → Crea N builders (cada uno con su propia inyección de dependencias y su input_path único)
+  ↓
+Cada builder → Crea sus managers con configs específicas
+  ↓
+Cada manager → Crea sus workers con configs específicas
+  ↓
+El ImageLoader es el encargado de cargar la imagen directamente de la ruta, extrae metadata

@@ -23,6 +23,8 @@ class InputManager:
     def __init__(self, config: Dict, stage_config: Dict, project_root: str):
         self.project_root = project_root
         self.image_loader = config
+        self.manager_config = stage_config
+        output_flags = stage_config.get('output_flag', {})
         paddle_config = self.image_loader.get('paddle_config', {})
         self._image_load = ImageLoader(config=self.image_loader.get('extensions', {}), project_root=self.project_root)
         self._cleaner = ImageCleaner(config=self.image_loader.get('cleaning', {}), project_root=self.project_root)
@@ -34,8 +36,8 @@ class InputManager:
         self._binarization: Optional[Dict[str, Any]] = None
                 
     def _generate_polygons(
-        self, config: Dict[str, Any],
-        output_flags: Dict[str, bool]
+        self, config: Dict,
+        stage_config: Dict
     ) -> Tuple[Optional[Dict[str, Any]], float]:
         
         pipeline_start = time.time()

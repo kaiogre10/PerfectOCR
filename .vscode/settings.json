@@ -63,5 +63,6 @@
     "git.autorefresh": false,
     "cursor.composer.shouldAllowCustomModes": true,
     "cursor.composer.shouldAutoAcceptDiffs": false,
-    "cursor.composer.shouldChimeAfterChatFinishes": true
+    "cursor.composer.shouldChimeAfterChatFinishes": true,
+    "cursor.composer.shouldAutoSaveNonAgent": false
 }

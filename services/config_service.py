@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-class ConfigManager:
+class ConfigService:
     """Fragmentador centralizado que carga YAML una sola vez y proporciona configuraciones específicas para cada módulo."""
     
     def __init__(self, config_path: str):
@@ -23,7 +23,6 @@ class ConfigManager:
             logger.error(f"Error cargando configuración desde {self.config_path}: {e}")
             raise
     
-    @property
     def _system_config(self) -> Dict[str, Any]:
         """Obtiene configuración del sistema."""
         system_config = self.config.get('system', {})
@@ -80,7 +79,7 @@ class ConfigManager:
         return output_path 
 
     @property
-    def _manager_output_config(self) -> Dict[str, Any]:
+    def _manager_config(self) -> Dict[str, Any]:
         """ Devuelve el paquete estándar de configuraciones de los managers"""
         output_path = self._paths_config.get('output_folder', "")
         output_flags = self._enabled_outputs.get('output_flag', {})

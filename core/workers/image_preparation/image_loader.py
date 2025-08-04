@@ -33,10 +33,10 @@ class ImageLoader:
                 metadata = self._resolutor(input_path)
                 
                 # Convertir a numpy array
-                image_array = np.array(img)
-                if len(image_array.shape) == 3:
+            image_array = np.array(img)
+            if len(image_array.shape) == 3:
                 
-            gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array                
+                gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array                
                 
             return gray_image, metadata
                 

@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class CacheManager:
+class CacheService:
     def __init__(self, config_path: str):
         self.config = self._load_yaml_config(config_path)
         self.workflow_config = self.config.get('workflow', {})

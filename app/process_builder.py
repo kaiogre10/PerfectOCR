@@ -15,18 +15,13 @@ class ProcessingBuilder:
     Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y
     coordina el procesamiento técnico de una sola imagen.
     """
-
-    def __init__(
-        self,
-        input_manager: InputManager,
-        preprocessing_manager: PreprocessingManager,
-        ocr_manager: OCREngineManager,
-        output_flags: Dict[str, bool],
-    ):
+    def __init__(self, input_manager, preprocessing_manager, ocr_manager, input_path: str):
+        # RECIBE input_path específico en constructor
         self.input_manager = input_manager
         self.preprocessing_manager = preprocessing_manager
         self.ocr_manager = ocr_manager
-        self.output_flags = output_flags
+        self.input_path = input_path  # RUTA ESPECÍFICA de esta imagen
+        self.output_flags = config_manager._enabled_outputs
 
     def _save_polygon_images(self, polygons: List[Dict], output_folder: str, base_filename: str):
         """Guarda solo las imágenes de los polígonos, no metadata."""
