@@ -83,5 +83,5 @@ class PolygonExtractor:
         Método separado para obtener la información específica de los polígonos.
         Debe ser llamado después de _extract_individual_polygons.
         """
-        polygons_to_bin =  self.polygons_info.copy() if hasattr(self, 'polygons_info') else {}
-        return polygons_to_bin
+        polygons_to_binarize =  self.polygons_info.copy() if hasattr(self, 'polygons_info') else {}
+        return polygons_to_binarize

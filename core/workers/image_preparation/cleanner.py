@@ -1,11 +1,11 @@
-# PerfectOCR/core/workflow/preprocessing/cleanner.py
+# PerfectOCR/core/workers/image_preparation/cleanner.py
 import cv2
 import logging
 from typing import Any, Dict, Tuple
 import numpy as np
 from PIL import Image
 import os
-import datetime  # Añadir al inicio del archivo con los otros imports
+import datetime  # Añadir al inicio 
 
 logger = logging.getLogger(__name__)
 
@@ -14,45 +14,6 @@ class ImageCleaner:
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.corrections = config
-
-    def _resolutor(self, input_path: str):
-        self.input_path = input_path
-        try:
-            with Image.open(input_path) as img:
-                formato = img.format
-                # Convertir dimensiones a diccionario con width y height
-                img_dims = {
-                    "width": int(img.size[0]),
-                    "height": int(img.size[1])
-                }
-                dpi = img.info.get('dpi')
-                if dpi is not None:
-                    dpi_val = int(dpi[0])
-                else:
-                    dpi_val = None
-            fecha_creacion = None
-            try:
-                stat = os.stat(input_path)
-                fecha_creacion = datetime.datetime.fromtimestamp(
-                    stat.st_ctime
-                ).strftime('%Y-%m-%d %H:%M:%S')
-            except Exception:
-                pass
-            return {
-                "formato": formato,
-                "img_dims": img_dims,
-                "dpi": dpi_val,
-                "fecha_creacion": fecha_creacion,
-                "doc_name": os.path.basename(input_path)
-            }
-        except Exception:
-            return {
-                "formato": None,
-                "img_dims": {"width": None, "height": None},
-                "dpi": None,
-                "fecha_creacion": None,
-                "doc_name": None
-            }
                 
     def _geometric_enhance(self, gray_image: np.ndarray) -> np.ndarray:
         """Aplica una secuencia de mejoras rápidas y adaptativas a una imagen en escala de grises."""
@@ -118,7 +79,5 @@ class ImageCleaner:
                 "fecha_creacion": meta["fecha_creacion"] # fecha de creación del archivo
             }
         }
-        
-        logger.info(f"Metadatos encontrados -> "f"Nombre: {meta['doc_name']}, "f"Formato: {meta['formato']}, "f"Dimensiones: {height}x{width}, "f"DPI: {meta['dpi']}, "f"Fecha creación: {meta['fecha_creacion']}")
-        
+                
         return clean_img, doc_data

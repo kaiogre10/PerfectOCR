@@ -6,7 +6,7 @@ from management.cache_manager import CacheManager
 from management.config_manager import ConfigManager
 from app.process_builder import ProcessingBuilder
 from app.workflow_manager import WorkflowManager
-from core.pipeline.polygon_manager import PolygonManager
+from core.pipeline.input_manager import InputManager
 from core.pipeline.preprocessing_manager import PreprocessingManager
 from core.pipeline.ocr_manager import OCREngineManager
 
@@ -59,15 +59,13 @@ def main():
         # 1. Main activa al Contralor (ConfigManager), como siempre.
         logging.info("Activando ConfigManager...")
         config_manager = ConfigManager(MASTER_CONFIG_FILE)
-        # Se añade fallback a PROJECT_ROOT para robustez y satisfacer al linter.
         project_root = config_manager.get_system_config().get('project_root', PROJECT_ROOT)
 
         # 2. Main ahora CONTRATA y ENTRENA a los Jefes de Área (Managers)
-        #    Usa al Contralor para darles su configuración específica.
         logging.info("Creando Jefes de Área (Managers)...")
-        
-        polygon_manager = PolygonManager(
-            config=config_manager.get_polygonal_config(),
+        input_manager = InputManager(
+            config=config_manager.get_input_config(),
+            paddle_config=config_manager.get_paddle_detection_config(),
             project_root=project_root
         )
         
@@ -83,20 +81,15 @@ def main():
             workflow_config=config_manager.get_processing_config()
         )
 
-        # 3. Main contrata al Director de Operaciones (ProcessingBuilder) y le
-        #    INYECTA el equipo que acaba de formar y las configs que necesita.
-        logging.info("Activando ProcessingBuilder con equipo asignado...")
+        # 3. Main contrata al Director de Operaciones (ProcessingBuilder)
         processing_builder = ProcessingBuilder(
-            polygon_manager=polygon_manager,
+            input_manager=input_manager,
             preprocessing_manager=preprocessing_manager,
             ocr_manager=ocr_manager,
             output_flags=config_manager.get_enabled_outputs(),
-            paths_config=config_manager.get_paths_config()
         )
         
-        # 4. Main contrata al Director de Logística (WorkflowManager) y le
-        #    presenta a su par colaborador, el Director de Operaciones.
-        logging.info("Activando WorkflowManager...")
+        # 4. Main contrata al Director de Logística (WorkflowManager)
         workflow_manager = WorkflowManager(
             config_manager=config_manager,
             builder=processing_builder,

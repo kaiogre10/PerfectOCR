@@ -4,13 +4,14 @@ import numpy as np
 import logging
 import time
 import os
-from typing import Any, Optional, Dict, Tuple, List
+from typing import Any, Optional, Dict, Tuple, List, Set
 from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
 from core.workers.preprocessing.clahe import ClaherEnhancer
 from core.workers.preprocessing.sharp import SharpeningEnhancer
-#from core.utils.output_handlers import ImageOutputHandler
+from core.workers.preprocessing.binarization import Binarizator
+from core.workers.preprocessing.fragmentator import PolygonFragmentator
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,6 @@ class PreprocessingManager:
     """
     def __init__(self, config: Dict, project_root: str):
         self.project_root = project_root
-        # El manager ahora recibe directamente su sección del config.
         self.preprocessing_config = config
         
         # Inyección en cascada a los workers de preprocesamiento:
@@ -30,8 +30,10 @@ class PreprocessingManager:
         self._gauss = GaussianDenoiser(config=denoise_config.get('bilateral_params', {}), project_root=self.project_root)
         self._claher = ClaherEnhancer(config=self.preprocessing_config.get('contrast', {}), project_root=self.project_root)
         self._sharp = SharpeningEnhancer(config=self.preprocessing_config.get('sharpening', {}), project_root=self.project_root)
+        self._fragment = PolygonFragmentator(config=self.preprocessing_config.get('fragmentation', {}), project_root=self.project_root)
+        self._bin = Binarizator(config=self.preprocessing_config.get('binarize', {}), project_root=self.project_root)
         
-    def _apply_preprocessing_pipelines(self, refined_polygons: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], float]:
+    def _apply_preprocessing_pipelines(self, extracted_polygons: Dict[str, Any], polygons_to_bin: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], float]:
         """
         Procesa el diccionario general de forma secuencial:
         1. Moiré
@@ -45,17 +47,17 @@ class PreprocessingManager:
         logger.info("Iniciando pipeline de preprocesamiento")
 
         # Verificar que hay polígonos para procesar
-        polygons = refined_polygons.get("polygons", {})
+        polygons = extracted_polygons.get("polygons", {})
         if not polygons:
             logger.warning("No se encontraron polígonos para preprocesar")
-            return refined_polygons, 0.0
+            return extracted_polygons, 0.0
         
         logger.info(f"Procesando {len(polygons)} polígonos")
 
         # Etapa 1: Detección de patrones Moiré
         moire_start = time.time()
         logger.info("Iniciando detección de patrones Moiré")
-        moire_dict = self._moire._detect_moire_patterns(refined_polygons)
+        moire_dict = self._moire._detect_moire_patterns(extracted_polygons)
         moire_duration = time.time() - moire_start
         logger.info(f"Detección de patrones Moiré completada en {moire_duration:.3f} segundos")
 
@@ -86,9 +88,34 @@ class PreprocessingManager:
         sharp_dict = self._sharp._estimate_sharpness(clahe_dict)
         sharp_duration = time.time() - sharp_start
         logger.info(f"Estimación de nitidez completada en {sharp_duration:.3f} segundos")
-
-        total_duration = time.time() - pipeline_start
+        
+        polygons_to_bin = polygons_to_bin
+        
+        step_start = time.time()
+        logger.info("Iniciando binarización")
+        binarized_polygons = self._bin._binarize_polygons(polygons_to_bin)
+        step_duration = time.time() - step_start
+        logger.info(f"Binarización completada en {step_duration:.4f}s")
+        
+        if binarized_polygons is None:
+            logger.warning("La binarización no devolvió resultados.")
+            return None, time.time() - pipeline_start
+        
+        binarized_count = len(binarized_polygons)
+        logger.info(f"Se binarizaron {binarized_count} polígonos.")
+        
+        step_start = time.time()
+        refined_polygons = self._fragment._intercept_polygons(binarized_polygons, sharp_dict)
+        step_duration = time.time() - step_start
                 
-        preprocess_dict = sharp_dict
-        return preprocess_dict, total_duration
+        pipeline_end = time.time() - pipeline_start
+        logger.info(f"GENERACIÓN DE POLIGONAL COMPLETADA en {pipeline_end:.4f}s")
+        
+        time_poly = pipeline_end
+        
+        return refined_polygons, time_poly
+
+    def get_problematic_ids(self) -> Set[str]:
+        """Expone los IDs problemáticos para que el builder pueda usarlos."""
+        return self._fragment._get_problematic_ids()
 

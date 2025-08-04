@@ -5,11 +5,7 @@ import logging
 import time
 import numpy as np
 from typing import Dict, Any, List, Optional
-
-# --- Log de importación ---
-logging.info("DEBUG: Importando PaddleOCRWrapper y sus dependencias (incluyendo PaddleOCR)...")
 from paddleocr import PaddleOCR
-logging.info("DEBUG: PaddleOCR importado en paddle_wrapper.py.")
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +16,9 @@ class PaddleOCRWrapper:
     Utiliza carga perezosa para el motor de PaddleOCR.
     """
     def __init__(self, config_dict: Dict, project_root: str):
-        logger.info("DEBUG: PaddleOCRWrapper.__init__ - INICIO (Motor no inicializado todavía)")
         self.paddle_config = config_dict
         self.project_root = project_root
         self._engine = None  # Inicialización perezosa
-        logger.info("DEBUG: PaddleOCRWrapper.__init__ - FIN")
 
     @property
     def engine(self):
@@ -33,7 +27,6 @@ class PaddleOCRWrapper:
         El motor solo se crea la primera vez que se accede a esta propiedad.
         """
         if self._engine is None:
-            logger.info("MOTOR DE RECONOCIMIENTO: Primera llamada, inicializando instancia de PaddleOCR...")
             start_time = time.perf_counter()
             try:
                 init_params = {
@@ -50,7 +43,6 @@ class PaddleOCRWrapper:
                 if rec_model_path and os.path.exists(rec_model_path):
                     init_params['rec_model_dir'] = rec_model_path
 
-                logger.info("DEBUG: Creando instancia de PaddleOCR en PaddleOCRWrapper...")
                 model_load_start = time.perf_counter()
                 self._engine = PaddleOCR(**init_params)
                 model_load_time = time.perf_counter() - model_load_start
@@ -59,7 +51,7 @@ class PaddleOCRWrapper:
 
             except Exception as e:
                 logger.error(f"Critical error initializing PaddleOCR for recognition: {e}", exc_info=True)
-                self._engine = None # Asegurarse de que siga siendo None si falla
+                self._engine = None
         return self._engine
 
     def recognize_text_from_image(self, image: np.ndarray) -> Optional[Dict[str, Any]]:

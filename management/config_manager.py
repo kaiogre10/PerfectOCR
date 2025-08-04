@@ -2,7 +2,7 @@
 import yaml
 import os
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,80 +22,143 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"Error cargando configuración desde {self.config_path}: {e}")
             raise
-
-    # --- CONFIGURACIONES BASE ---
     
-    def get_system_config(self) -> Dict[str, Any]:
+    @property
+    def _system_config(self) -> Dict[str, Any]:
         """Obtiene configuración del sistema."""
-        return self.config.get('system', {})
-    
-    def get_paths_config(self) -> Dict[str, Any]:
-        """Obtiene todas las rutas del sistema."""
-        return self.config.get('paths', {})
-    
-    def get_logging_config(self) -> Dict[str, Any]:
+        system_config = self.config.get('system', {})
+        return system_config
+        
+    @property
+    def _logging_config(self) -> Dict[str, Any]:
         """Obtiene configuración de logging."""
-        return self.config.get('logging', {})
+        logging_config = self.config.get('logging', {})
+        return logging_config
     
-    def get_enabled_outputs(self) -> Dict[str, bool]:
-        """Obtiene flags de salida habilitados."""
-        return self.config.get('enabled_outputs', {})
-    
-    def get_processing_config(self) -> Dict[str, Any]:
-        """Obtiene configuración de procesamiento."""
-        return self.config.get('processing', {})
-    
-    def get_cleanup_config(self) -> Dict[str, Any]:
-        """Obtiene configuración de limpieza."""
-        return self.config.get('cleanup', {})
+    @property
+    def _paths_config(self) -> Dict[str, Any]:
+        """Obtiene todas las rutas del sistema."""
+        paths_config = self.config.get('paths', {})
+        return paths_config
 
-    # --- CONFIGURACIONES DE MÓDULOS ---
+    @property
+    def _enabled_outputs(self) -> Dict[str, Any]:
+        """Obtiene flags de salida habilitados."""
+        enabled_outputs = self.config.get('enabled_outputs', {})
+        return enabled_outputs
+
+    @property
+    def _processing_config(self) -> Dict[str, Any]:
+        """Obtiene configuración de procesamiento."""
+        processing_config = self.config.get('processing', {})
+        return processing_config
     
-    def get_image_loader_config(self) -> Dict[str, Any]:
-        """Obtiene configuración específica del cargador de imágenes."""
-        return self.config.get('modules', {}).get('image_loader', {})
+    @property
+    def _modules_config(self) -> Dict[str, Any]:
+        """Obtiene configuración de módulos."""
+        modules_config = self.config.get('modules', {})
+        return modules_config
+
+    @property
+    def _cleanup_config(self) -> Dict[str, Any]:
+        """Obtiene configuración de limpieza."""
+        cleanup_config = self.config.get('cleanup', {})
+        return cleanup_config
     
-    def get_polygonal_config(self) -> Dict[str, Any]:
-        """Obtiene configuración específica del módulo poligonal."""
-        return self.config.get('modules', {}).get('polygonal', {})
+# FUNCIONES MÁS ESPECÍFICAS:
     
-    def get_preprocessing_config(self) -> Dict[str, Any]:
+    @property
+    def _input_path(self) -> str:
+        """Devuelve la ruta de la carpeta de entrada."""
+        input_path = self._paths_config.get('input_folder', "")
+        return input_path
+
+    @property
+    def _output_path(self) -> str:
+        """Devuelve la ruta de la carpeta de salida."""
+        output_path = self._paths_config.get('output_folder', "")
+        return output_path 
+
+    @property
+    def _manager_output_config(self) -> Dict[str, Any]:
+        """ Devuelve el paquete estándar de configuraciones de los managers"""
+        output_path = self._paths_config.get('output_folder', "")
+        output_flags = self._enabled_outputs.get('output_flag', {})
+        
+        manager_stage_config = {
+            "output_folder": output_path,
+            "output_flag": output_flags
+        }
+        return manager_stage_config
+
+    @property
+    def _image_loader_config(self) -> Dict[str, Any]:
+        """Devuelve la configuración del image_loader con la ruta de entrada."""
+        image_loader_params = self._modules_config.get('image_loader', {})
+        input_path = self._paths_config.get('input_folder', "")
+        paddle_config = self._paddle_detection_config
+        image_loader_config = {
+            "image_loader": image_loader_params,
+            "input_folder": input_path,
+            "paddle_det": paddle_config
+        }
+        return image_loader_config
+        
+    @property
+    def _preprocessing_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica del preprocesamiento."""
-        return self.config.get('modules', {}).get('preprocessing', {})
+        preprocessing_config = self._modules_config.get('preprocessing', {})
+        return preprocessing_config
     
-    def get_ocr_config(self) -> Dict[str, Any]:
+    @property
+    def _ocr_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica del OCR (sin rutas)."""
-        return self.config.get('modules', {}).get('ocr', {})
+        ocr_config = self._modules_config.get('ocr', {})
+        return ocr_config 
     
-    def get_vectorization_config(self) -> Dict[str, Any]:
+    @property
+    def _vectorization_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica de vectorización."""
-        return self.config.get('modules', {}).get('vectorization', {})
-    
-    # --- CONFIGURACIONES ESPECIALES ---
-    
-    def get_ocr_config_with_paths(self) -> Dict[str, Any]:
-        """Obtiene configuración de OCR con rutas de modelos (para PaddleOCR)."""
-        ocr_config = self.get_ocr_config()
-        paths_config = self.get_paths_config()
+        vectorization_config =  self._modules_config.get('vectorization', {})
+        return vectorization_config
         
-        # Combinar configuración de OCR con rutas de modelos
-        if 'paddleocr' in ocr_config and 'models' in paths_config:
-            ocr_config['paddleocr'].update(paths_config['models']['paddle'])
-        
-        return ocr_config
+    @property
+    def _paddle_models(self) -> Dict[str, Any]:
+        """Devuelve los modelos básivos de  PaddleOCR"""
+        paddle_models = self._paths_config.get('paddlepaddle', {})
+        return paddle_models 
     
-    def get_max_workers(self) -> int:
+    @property
+    def _paddle_rec(self) -> Dict[str, Any]:
+        """Devuelve la configuración de PaddleOCR para reconocimiento (PaddleWrapper)."""
+        paddle_rec = self._ocr_config.get('paddleocr', {}).copy()
+        rec_model_dir = self._paddle_models.get('rec_model_dir', "")
+        if rec_model_dir:
+            paddle_rec['rec_model_dir'] = rec_model_dir
+        return paddle_rec
+                        
+    @property
+    def _paddle_detection_config(self) -> Dict[str, Any]:
+        """Devuelve la configuración de PaddleOCR para detección (GeometryDetector)."""
+        paddle_det = self._ocr_config.get('paddleocr', {}).copy()
+        det_model_dir = self._paddle_models.get('det_model_dir', "")
+        if det_model_dir:
+            paddle_det['det_model_dir'] = det_model_dir
+        return paddle_det
+    
+    @property
+    def max_workers(self) -> int:
         """Obtiene número de workers desde configuración de procesamiento."""
-        return self.get_processing_config().get('max_workers', 4)
+        return self._processing_config.get('max_workers', {})
     
-    def get_max_workers_for_cpu(self) -> int:
+    @property
+    def _max_workers_for_cpu(self) -> int:
         """Obtiene el número óptimo de workers basado en CPU."""
-        batch_config = self.get_processing_config().get('batch_processing', {})
+        batch_config = self._processing_config.get('batch_processing', {})
         cpu_count = os.cpu_count() or 4
-        max_cores = batch_config.get('max_physical_cores', 4)
+        max_cores = batch_config.get('max_physical_cores', {})
         add_extra = batch_config.get('add_extra_worker', True)
         workers = min(max_cores, cpu_count - 1)
         if add_extra and workers < cpu_count:
             workers += 1
         return max(1, workers)
-    

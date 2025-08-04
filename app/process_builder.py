@@ -1,9 +1,10 @@
+# PerfectOCR/app/process_builder.py
 import os
 import logging
 import cv2
 import time
 from typing import Dict, Optional, Any, List
-from core.pipeline.polygon_manager import PolygonManager
+from core.pipeline.input_manager import InputManager
 from core.pipeline.preprocessing_manager import PreprocessingManager
 from core.pipeline.ocr_manager import OCREngineManager
 
@@ -14,21 +15,18 @@ class ProcessingBuilder:
     Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y
     coordina el procesamiento técnico de una sola imagen.
     """
-    
+
     def __init__(
         self,
-        polygon_manager: PolygonManager,
+        input_manager: InputManager,
         preprocessing_manager: PreprocessingManager,
         ocr_manager: OCREngineManager,
         output_flags: Dict[str, bool],
-        paths_config: Dict[str, Any]
     ):
-        # Ya no crea nada. Solo recibe y asigna sus Jefes de Área y configuraciones.
-        self.polygon_manager = polygon_manager
+        self.input_manager = input_manager
         self.preprocessing_manager = preprocessing_manager
         self.ocr_manager = ocr_manager
         self.output_flags = output_flags
-        self.paths_config = paths_config
 
     def _save_polygon_images(self, polygons: List[Dict], output_folder: str, base_filename: str):
         """Guarda solo las imágenes de los polígonos, no metadata."""
@@ -47,39 +45,34 @@ class ProcessingBuilder:
         except Exception as e:
             logger.error(f"Error guardando imágenes de polígonos: {e}")
 
-    def process_single_image(self, input_path: str) -> Optional[Dict[str, Any]]:
+    def _process_single_image(self, output_flags: Dict[str, bool]) -> Optional[Dict[str, Any]]:
         """
         Procesa una sola imagen. El código interno de este método
         NO CAMBIA, ya que sigue usando self.polygon_manager, etc.
         """
         workflow_start = time.perf_counter()
         processing_times_summary: Dict[str, float] = {}
-        original_file_name = os.path.basename(input_path)
 
         try:
             # FASE 1: Cargar imagen y obtener polígonos
             phase1_start = time.perf_counter()
-            image_array = cv2.imread(input_path)
-            if image_array is None:
-                logger.error(f"No se pudo cargar la imagen: {input_path}")
-                return None
                 
-            # La llamada no cambia, pero ahora usa el manager inyectado.
-            refined_polygons, time_poly = self.polygon_manager._generate_polygons(
-                image_array, input_path
-            )
+            extracted_polygons, time_poly = self.input_manager._generate_polygons(output_flags)
+            
+            polygons_to_bin = self.input_manager._get_polygons_to_binarize()
+            
             phase1_time = time.perf_counter() - phase1_start
             processing_times_summary["1_polygons"] = round(time_poly, 4)
-            logger.info(f"Polígonos: {phase1_time:.3f}s")
+            logger.info(f"Polígonos generados en: {phase1_time:.3f}s")
             
-            if refined_polygons is None:
+            if extracted_polygons is None:
                 logger.critical("No se pudieron generar polígonos válidos.")
                 return None
             
             # FASE 2: Preprocesamiento
             phase2_start = time.perf_counter()
             preprocess_dict, total_duration = self.preprocessing_manager._apply_preprocessing_pipelines(
-                refined_polygons
+                extracted_polygons, polygons_to_bin
             )
             phase2_time = time.perf_counter() - phase2_start
             processing_times_summary["2_preprocesamiento"] = round(total_duration, 4)
@@ -104,7 +97,7 @@ class ProcessingBuilder:
                 if self.output_flags.get('refined_polygons'):
                     self._save_polygon_images(list(refined_polygons.values()), output_folder, f"{file_name_no_ext}_refined")
                 
-                problematic_ids = self.polygon_manager.get_problematic_ids()
+                problematic_ids = self.preprocessing_manager.get_problematic_ids()
                 if self.output_flags.get('problematic_ids') and problematic_ids:
                     problematic_polygons = {pid: poly for pid, poly in refined_polygons.items() if pid in problematic_ids}
                     self._save_polygon_images(list(problematic_polygons.values()), output_folder, f"{file_name_no_ext}_problematic")

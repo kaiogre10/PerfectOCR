@@ -4,7 +4,7 @@ import numpy as np
 import logging
 import os
 import datetime
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple
 from PIL import Image
 
 logger = logging.getLogger(__name__)
@@ -14,12 +14,11 @@ class ImageLoader:
     Módulo especializado en carga de imágenes y metadatos.
     Responsabilidad única: cargar imagen + extraer metadatos en una sola operación.
     """
-    
     def __init__(self, config: Dict[str, Any], project_root: str):
-        self.config = config
         self.project_root = project_root
+        self.config = config
     
-    def load_image_and_metadata(self, input_path: str) -> Tuple[np.ndarray, Dict[str, Any]]:
+    def _load_image_and_metadata(self, input_path: str) -> Tuple[np.ndarray, Dict[str, Any]]:
         """
         Carga imagen y extrae metadatos en una sola operación.
         Elimina la triple transferencia del pipeline actual.
@@ -27,19 +26,19 @@ class ImageLoader:
         try:
             # Validar archivo
             self._validate_file(input_path)
-            
+                        
             # Cargar imagen y metadatos en una sola operación
             with Image.open(input_path) as img:
                 # Extraer metadatos
-                metadata = self._extract_metadata(img, input_path)
+                metadata = self._resolutor(input_path)
                 
                 # Convertir a numpy array
                 image_array = np.array(img)
                 if len(image_array.shape) == 3:
-                    # PIL usa RGB, OpenCV usa BGR
-                    image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
                 
-                return image_array, metadata
+            gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY) if len(image_array.shape) > 2 else image_array                
+                
+            return gray_image, metadata
                 
         except Exception as e:
             logger.error(f"Error cargando {input_path}: {e}")
@@ -58,20 +57,20 @@ class ImageLoader:
         if not input_path.lower().endswith(valid_extensions):
             raise ValueError(f"Formato de imagen no soportado: {input_path}")
     
-    def _extract_metadata(self, img: Image.Image, input_path: str) -> Dict[str, Any]:
-        """Extrae metadatos de imagen ya cargada."""
+    def _resolutor(self, input_path: str):
+        self.input_path = input_path
         try:
-            # Dimensiones
-            img_dims = {
-                "width": int(img.size[0]),
-                "height": int(img.size[1])
-            }
-            
-            # DPI
-            dpi = img.info.get('dpi')
-            dpi_val = int(dpi[0]) if dpi is not None else None
-            
-            # Fecha de creación
+            with Image.open(input_path) as img:
+                formato = img.format
+                img_dims = {
+                    "width": int(img.size[0]),
+                    "height": int(img.size[1])
+                }
+                dpi = img.info.get('dpi')
+                if dpi is not None:
+                    dpi_val = int(dpi[0])
+                else:
+                    dpi_val = None
             fecha_creacion = None
             try:
                 stat = os.stat(input_path)
@@ -80,21 +79,18 @@ class ImageLoader:
                 ).strftime('%Y-%m-%d %H:%M:%S')
             except Exception:
                 pass
-            
             return {
-                "doc_name": os.path.basename(input_path),
-                "formato": img.format,
+                "formato": formato,
                 "img_dims": img_dims,
                 "dpi": dpi_val,
-                "fecha_creacion": fecha_creacion
+                "fecha_creacion": fecha_creacion,
+                "doc_name": os.path.basename(input_path)
             }
-            
-        except Exception as e:
-            logger.warning(f"Error extrayendo metadatos de {input_path}: {e}")
+        except Exception:
             return {
-                "doc_name": os.path.basename(input_path),
                 "formato": None,
-                "img_dims": {"width": 0, "height": 0},
+                "img_dims": {"width": None, "height": None},
                 "dpi": None,
-                "fecha_creacion": None
+                "fecha_creacion": None,
+                "doc_name": None
             }

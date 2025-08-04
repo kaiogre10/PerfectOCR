@@ -60,7 +60,7 @@ def run(
     typer.echo(f"Modo seleccionado: {'LOTE' if use_batch else 'INTERACTIVO'}")
     
     if dry_run:
-        from core.utils.batch_tools import estimate_processing_time
+        from utils.batch_tools import estimate_processing_time
         estimation = estimate_processing_time(len(image_paths))
         typer.echo(f"Estimación de tiempo: {estimation['parallel_minutes']:.1f} minutos")
         typer.echo(f"Workers que se usarían: {estimation['workers']}")

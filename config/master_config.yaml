@@ -1,6 +1,4 @@
 # PerfectOCR/config/master_config.yaml
-
-# Configuración global del sistema
 system:
   project_root: "C:/PerfectOCR"
   log_level: "DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -19,20 +17,21 @@ paths:
   input_folder: "C:/PerfectOCR/input"
   output_folder: "C:/PerfectOCR/output"
   temp_folder: "C:/PerfectOCR/data/temp"
-  models:
-    paddle:
-      det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
-      rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
-      cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
+
+  paddlepaddle:
+    det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
+    rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
+    cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
 
 # Configuración de salida (independiente)
 enabled_outputs:
-  preprocessed_image: false
-  ocr_raw: false
-  ocr_debug: false
-  cropped_words: false
-  refined_polygons: true
-  problematic_ids: true
+  output_flag:
+    preprocessed_image: false
+    ocr_raw: false
+    ocr_debug: false
+    cropped_words: false
+    refined_polygons: true
+    problematic_ids: true
 
 # Configuración de procesamiento
 processing:
@@ -48,9 +47,9 @@ processing:
 # Configuración específica de cada módulo (SIN rutas)
 modules:
   image_loader:
-    valid_image_extensions: [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"]
+    extensions:
+      valid_image_extensions: [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"]
   
-  polygonal:
     deskew:
       min_angle_for_correction: 0.1
       canny_thresholds: [50, 150]
@@ -58,19 +57,6 @@ modules:
       hough_min_line_length_cap_px: 300
       hough_max_line_gap_px: 20
       hough_angle_filter_range_degrees: [-20.0, 20.0]
-    
-    binarize:
-      c_value: 7
-      height_thresholds_px: [100, 800, 1500, 2500]
-      block_sizes_map: [15, 21, 25, 35, 41]
-      quality:
-        quality_min: 0.005
-        quality_max: 0.95
-    
-    fragmentation:
-      min_contour_area: 0.001
-      density_std_factor: 2.0
-      approx_poly_epsilon: 0.005
     
     cutting:
       cropping_padding: 5
@@ -111,9 +97,23 @@ modules:
       sharpness_threshold: 50.0
       radius: 1.0
       amount: 1.5
+      
+    binarize:
+      c_value: 7
+      height_thresholds_px: [100, 800, 1500, 2500]
+      block_sizes_map: [15, 21, 25, 35, 41]
+      
+      quality:
+        quality_min: 0.005
+        quality_max: 0.95
+    
+    fragmentation:
+      min_contour_area: 0.001
+      density_std_factor: 2.0
+      approx_poly_epsilon: 0.005
 
   ocr:
-    paddleocr:
+    paddle:
       use_angle_cls: false
       lang: "es"
       show_log: false
