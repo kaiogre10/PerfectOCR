@@ -65,7 +65,7 @@ def _get_input_paths() -> List[str]:
         # Rutas por defecto desde ConfigManager
         temp_config = ConfigService(MASTER_CONFIG_FILE)
         default_input = temp_config._paths_config.get('input_folder')
-        return [default_input]
+        return [default_input] if default_input is not None else []
 
 @app.command()
 def run(
@@ -94,6 +94,7 @@ def run(
 def _activate_main(input_paths: List[str], output_dir: Optional[str], config: str, 
                   mode: Optional[str], workers: Optional[int], dry_run: bool):
     """Función principal de procesamiento - fusiona la lógica original."""
+    config_services = None
     try:
         # 1. Main activa al Contralor (ConfigManager)
         logging.info("Activando ConfigManager...")
@@ -128,8 +129,9 @@ def _activate_main(input_paths: List[str], output_dir: Optional[str], config: st
         return {"error": str(e)}
     finally:
         logging.info("Procesamiento finalizado, iniciando limpieza de caché.")
-        cache_manager = CacheService(config_services)
-        cache_manager.cleanup_project_cache()
+        if config_services is not None:
+            cache_manager = CacheService(config_services)
+            cache_manager.cleanup_project_cache()
 
 
 def _create_builders(config_services, project_root, workflow_report):

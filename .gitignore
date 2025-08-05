@@ -1,6 +1,6 @@
 # Ignorar la carpeta .vscode
 .vscode/
-
+.models/
 # Ignorar carpetas de caché
 __pycache__/
 .pytest_cache/
@@ -18,7 +18,7 @@ __pycache__/
 # Ignorar carpeta
 input/
 output/
-
+models/
 # Excepción
 !density_encoder.json
 !especificaciones_inspiron.txt

@@ -13,7 +13,7 @@ class GeometryDetector:
     """
     def __init__(self, paddle_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.paddle_config = paddle_config  # <--- nombre consistente
+        self.paddle_config = paddle_config
         self._engine = None 
         logger.info("GeometryDetector inicializado (motor PaddleOCR no cargado aún).")
 
@@ -47,8 +47,7 @@ class GeometryDetector:
 
     def detect(self, img_to_poly: np.ndarray, doc_data: Dict) -> Dict[str, Any]:
         """
-        Detecta la geometría del texto y añade un diccionario de polígonos
-        al diccionario de datos del documento original.
+        Detecta la geometría del texto y la añade al diccionario de datos del documento.
         """
         if not self.engine:
             logger.error("El motor de geometría de PaddleOCR no está inicializado.")
@@ -61,7 +60,6 @@ class GeometryDetector:
                 logger.warning("La detección geométrica no encontró polígonos de texto.")
                 doc_data['polygons'] = {}
                 return doc_data
-            logger.info(f"-> Detección geométrica exitosa. Polígonos crudos encontrados: {len(results[0])}")
         except Exception as e:
             logger.error(f"Error durante la detección geométrica con PaddleOCR: {e}", exc_info=True)
             doc_data['polygons'] = {}
@@ -92,8 +90,6 @@ class GeometryDetector:
                 logger.warning(f"Omitiendo polígono inválido en el índice {idx}: {e}")
                 continue
                 
-        logger.info(f"-> Polígonos válidos procesados: {len(polygons_dict)}")
-        
         doc_data["polygons"] = polygons_dict
         
         return doc_data

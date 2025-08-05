@@ -6,6 +6,8 @@ import os
 import datetime
 from typing import Dict, Any, Tuple, Optional
 from PIL import Image
+from core.domain.workflow_job import WorkflowJob, DocumentMetadata, ImageDimensions, ProcessingStage
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +19,6 @@ class ImageLoader:
     def __init__(self, config: Dict, input_path: Dict, project_root: str):
         self.project_root = project_root
         self.config = config
-        # self.input_path se recibe en __init__ pero es sobrescrito por el que se pasa
-        # a _load_image_and_metadata. Es redundante, pero se mantiene la firma por ahora.
         self.input_path = input_path
 
     def _resolutor(self, input_path: Dict) -> Tuple[Optional[Image.Image], Dict[str, Any]]:
@@ -26,12 +26,10 @@ class ImageLoader:
         Resuelve la ruta, carga la imagen y extrae metadatos.
         Devuelve (None, metadata_con_error) si falla.
         """
-        # La clave correcta es 'path', no 'full_path'.
         image_path = input_path.get('path', "")
         image_name = input_path.get('name', "")
         extension = input_path.get('extension', "")
         
-        # Crear un diccionario de metadatos base para ir llenando
         metadata = {
             "image_name": image_name,
             "formato": extension,
@@ -48,7 +46,7 @@ class ImageLoader:
 
         try:
             with Image.open(image_path) as img:
-                img.load()  # Cargar datos de la imagen en memoria
+                img.load()
             
             logger.info(f"Imagen '{image_name}' cargada exitosamente desde '{image_path}'")
             
@@ -66,30 +64,66 @@ class ImageLoader:
             metadata['error'] = error_msg
             return None, metadata
 
-    def _load_image_and_metadata(self, input_path: Dict) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
+    def _load_image_and_metadata(self, input_path: Dict) -> Tuple[Optional[WorkflowJob], Dict[str, Any]]:
         """
         Carga imagen y extrae metadatos en una sola operación.
         """
+        logger.info(f"[ImageLoader] Iniciando carga de imagen: {input_path.get('name', 'desconocido')}")
+        start_time = time.time()
+        
         img, metadata = self._resolutor(input_path)
         
         if img is None:
-            logger.error(f"No se pudo resolver la imagen desde: {input_path}")
-            # Devuelve None para la imagen, pero los metadatos (que pueden tener un error)
+            logger.error(f"[ImageLoader] No se pudo resolver la imagen desde: {input_path}")
             return None, metadata
 
         try:
-            # Convertir a numpy array
             image_array = np.array(img)
             
-            # Asegurar que está en escala de grises
             if len(image_array.shape) == 3:
                 gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
             else:
                 gray_image = image_array
             
-            return gray_image, metadata
+            # CREAR WORKFLOWJOB AQUÍ
+            job_id = f"job_{metadata['image_name']}_{int(time.time())}"
+            logger.info(f"[ImageLoader] Creando WorkflowJob con ID: {job_id}")
+            
+            # Crear ImageDimensions
+            img_dims_dict = metadata.get("img_dims", {})
+            img_dims = ImageDimensions(
+                width=int(img_dims_dict.get("width", 0)),
+                height=int(img_dims_dict.get("height", 0))
+            )
+            
+            # Crear DocumentMetadata
+            doc_metadata = DocumentMetadata(
+                doc_name=metadata["image_name"],
+                img_dims=img_dims,
+                formato=metadata.get("formato"),
+                dpi=metadata.get("dpi"),
+                fecha_creacion=datetime.datetime.now()
+            )
+            
+            # Crear WorkflowJob
+            workflow_job = WorkflowJob(
+                job_id=job_id,
+                full_img=gray_image,
+                doc_metadata=doc_metadata,
+                current_stage=ProcessingStage.IMAGE_LOADED
+            )
+            
+            workflow_job.update_stage(ProcessingStage.IMAGE_LOADED)
+            
+            load_time = time.time() - start_time
+            workflow_job.processing_times["image_loading"] = load_time
+            
+            logger.info(f"[ImageLoader] WorkflowJob creado exitosamente en {load_time:.3f}s")
+            logger.info(f"[ImageLoader] Dimensiones: {img_dims.width}x{img_dims.height}, DPI: {doc_metadata.dpi}")
+            
+            return workflow_job, metadata
 
         except Exception as e:
-            logger.error(f"Error al convertir la imagen a formato numpy: {e}")
+            logger.error(f"[ImageLoader] Error al convertir la imagen a formato numpy: {e}")
             metadata['error'] = f"Error de conversión a numpy: {e}"
             return None, metadata

@@ -3,9 +3,6 @@ import cv2
 import logging
 from typing import Any, Dict, Tuple
 import numpy as np
-from PIL import Image
-import os
-import datetime  # Añadir al inicio 
 
 logger = logging.getLogger(__name__)
 
@@ -53,29 +50,13 @@ class ImageCleaner:
     
     def _quick_enhance(self, gray_image: np.ndarray, metadata: Dict) -> Tuple[np.ndarray, Dict[str, Any]]:
         """
-        Limpia la imagen y crea el diccionario de metadatos inicial del documento.
+        Limpia la imagen y devuelve la imagen limpia y un diccionario de datos del documento.
         """
         clean_img = self._geometric_enhance(gray_image)
         
-        # Validaciones de seguridad para evitar errores de tipo
-        img_dims = metadata.get("img_dims") or {}
-        if not isinstance(img_dims, dict):
-            img_dims = {"width": 0, "height": 0}
-        
-        # Asegurar que width y height existen
-        width = img_dims.get("width", 0)
-        height = img_dims.get("height", 0)
-
+        # Crear doc_data para compatibilidad con workers posteriores
         doc_data = {
-            "metadata": {
-                "image_name": metadata["image_name"],          # nombre del documento
-                "formato": metadata["formato"],            # formato de la imagen (JPEG, PNG, etc)
-                "img_dims": {                          # dimensiones de la imagen
-                    "width": width,                    # ancho en píxeles
-                    "height": height                   # alto en píxeles
-                },
-                "dpi": metadata["dpi"],                    # resolución en DPI
-            }
+            "metadata": metadata
         }
                 
         return clean_img, doc_data

@@ -33,7 +33,7 @@ class AngleCorrector:
         
         if h == 0 or w == 0:
             logger.warning("Dimensiones de imagen inválidas (0) para la corrección de ángulo.")
-            return clean_img, img_dims
+            return clean_img, {}
 
         center = (w // 2, h // 2)
         min_len = min(w // 3, hough_min_line_length_cap_px)
@@ -44,14 +44,14 @@ class AngleCorrector:
 
         if lines is None or len(lines) == 0:
             logger.info("No se detectaron líneas para la corrección de inclinación.")
-            return clean_img, {"height": h, "width": w}
+            return clean_img, {}
 
         angles = [math.degrees(math.atan2(l[0][3]-l[0][1], l[0][2]-l[0][0])) for l in lines]
         filtered_angles = [a for a in angles if hough_angle_filter_range_degrees[0] < a < hough_angle_filter_range_degrees[1]]
         
         if not filtered_angles:
             logger.info("Ninguna línea detectada en el rango de ángulos para corrección.")
-            return clean_img, {"height": h, "width": w}
+            return clean_img, {}
 
         angle = np.median(filtered_angles)
 
@@ -63,4 +63,4 @@ class AngleCorrector:
             return deskewed_img, {"height": final_h, "width": final_w}
         else:
             logger.info("Ángulo de inclinación insignificante. No se aplica corrección.")
-            return clean_img, {"height": h, "width": w}
+            return clean_img, {}

@@ -26,11 +26,11 @@ paths:
 # Configuración de salida (independiente)
 enabled_outputs:
   output_flag:
-    preprocessed_image: false
-    ocr_raw: false
-    cropped_words: false
-    refined_polygons: false
-    problematic_ids: false
+    preprocessed_image: true
+    ocr_raw: true
+    cropped_words: true
+    refined_polygons: true
+    problematic_ids: true
 
 # Configuración de procesamiento
 processing:

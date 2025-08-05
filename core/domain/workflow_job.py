@@ -1,73 +1,264 @@
-# domain/workflow_job.py
+# core/domain/workflow_job.py
 import numpy as np
 import time
-from typing import List, Dict, Any, Optional, Tuple
+import uuid
+from typing import List, Dict, Any, Optional, Tuple, Union
 from dataclasses import dataclass, field
+from enum import Enum
+from datetime import datetime
+
+# ========== ENUMS PARA ESTADOS Y ETAPAS ==========
+class ProcessingStage(Enum):
+    """Estados del procesamiento para tracking preciso"""
+    INITIALIZED = "initialized"
+    IMAGE_LOADED = "image_loaded"
+    GEOMETRY_DETECTED = "geometry_detected"
+    POLYGONS_EXTRACTED = "polygons_extracted"
+    LINES_RECONSTRUCTED = "lines_reconstructed"
+    PREPROCESSING_COMPLETE = "preprocessing_complete"
+    OCR_COMPLETE = "ocr_complete"
+    VECTORIZATION_COMPLETE = "vectorization_complete"
+    ERROR = "error"
+
+class ProcessingStatus(Enum):
+    """Estado general del job"""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+# ========== ESTRUCTURAS DE DATOS OPTIMIZADAS ==========
+@dataclass(frozen=True)
+class ImageDimensions:
+    """Dimensiones de imagen inmutables para evitar errores"""
+    width: int
+    height: int
+    
+    def __post_init__(self):
+        if self.width <= 0 or self.height <= 0:
+            raise ValueError("Dimensiones deben ser positivas")
+    
+    @property
+    def area(self) -> int:
+        return self.width * self.height
+    
+    @property
+    def aspect_ratio(self) -> float:
+        return self.width / self.height
+
+@dataclass(frozen=True)
+class BoundingBox:
+    """Bounding box inmutable con validación"""
+    x_min: float
+    y_min: float
+    x_max: float
+    y_max: float
+    
+    def __post_init__(self):
+        if self.x_min >= self.x_max or self.y_min >= self.y_max:
+            raise ValueError("Bounding box inválido")
+    
+    @property
+    def width(self) -> float:
+        return self.x_max - self.x_min
+    
+    @property
+    def height(self) -> float:
+        return self.y_max - self.y_min
+    
+    @property
+    def area(self) -> float:
+        return self.width * self.height
+    
+    @property
+    def centroid(self) -> Tuple[float, float]:
+        return ((self.x_min + self.x_max) / 2, (self.y_min + self.y_max) / 2)
+
+@dataclass(frozen=True)
+class DocumentMetadata:
+    """Metadatos del documento con validación robusta"""
+    doc_name: str
+    img_dims: ImageDimensions
+    formato: Optional[str] = None
+    dpi: Optional[float] = None
+    fecha_creacion: datetime = field(default_factory=datetime.now)
+    
+    def __post_init__(self):
+        if not self.doc_name:
+            raise ValueError("Nombre de documento requerido")
+        if self.dpi is not None and self.dpi <= 0:
+            raise ValueError("DPI debe ser positivo")
 
 @dataclass
-class DocumentMetadata:
-    """Almacena metadatos inmutables sobre el documento original.
-    REFLEJO EXACTO de document_dict["metadata"]"""
-    doc_name: str                        # "doc_name": "ejemplo.pdf"
-    formato: Optional[str]               # "formato": "PDF"
-    img_dims: Dict[str, float]           # "img_dims": {"width": 1240, "height": 1754}
-    dpi: Optional[float]                 # "dpi": 300
-    fecha_creacion: Optional[str]        # "fecha_creacion": "2023-04-15 10:30:45"
-    
-@dataclass
 class PolygonGeometry:
-    """Almacena los atributos geométricos inmutables de un polígono.
-    REFLEJO EXACTO de polygon["geometry"]"""
-    polygon_coords: List[List[float]]    # "polygon_coords": [[120.0, 230.0], [420.0, 230.0], ...]
-    bounding_box: List[float]            # "bounding_box": [120.0, 230.0, 420.0, 260.0]
-    centroid: List[float]                # "centroid": [270.0, 245.0]
-    width: float                         # "width": 300.0
-    height: float                        # "height": 30.0
+    """Geometría de polígono con métodos útiles"""
+    polygon_coords: List[Tuple[float, float]]  # Lista de tuplas (x, y)
+    bounding_box: BoundingBox
+    centroid: Tuple[float, float]
     
+    def __post_init__(self):
+        if len(self.polygon_coords) < 3:
+            raise ValueError("Polígono debe tener al menos 3 puntos")
+    
+    @property
+    def perimeter(self) -> float:
+        """Calcula perímetro del polígono"""
+        perimeter = 0.0
+        for i in range(len(self.polygon_coords)):
+            p1 = self.polygon_coords[i]
+            p2 = self.polygon_coords[(i + 1) % len(self.polygon_coords)]
+            perimeter += np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+        return perimeter
+    
+    @property
+    def area(self) -> float:
+        """Calcula área del polígono usando fórmula del área"""
+        area = 0.0
+        for i in range(len(self.polygon_coords)):
+            j = (i + 1) % len(self.polygon_coords)
+            area += self.polygon_coords[i][0] * self.polygon_coords[j][1]
+            area -= self.polygon_coords[j][0] * self.polygon_coords[i][1]
+        return abs(area) / 2.0
+
 @dataclass
 class Polygon:
-    """Representa un único polígono.
-    REFLEJO EXACTO de document_dict["polygons"]["poly_XXXX"]"""
-    polygon_id: str                      # "polygon_id": "poly_0000"
-    geometry: PolygonGeometry            # "geometry": {...}
-    line_id: str                         # "line_id": "line_0001"
-    cropped_img: Optional[np.ndarray]    # "cropped_img": imagen_recortada_0000
-    bin_img: Optional[np.ndarray]        # "binarized_poly": polygono binarizado mapeado
-    padding_coords: List[float]          # "padding_coords": [115, 225, 425, 265]
-    was_fragmented: bool                 # "was_fragmented": False
-    perimeter: float                     # "perimeter": 580.0
-    text: Optional[str] = None           # "text": "palabra" (añadido por OCR)
-    confidence: Optional[float] = None   # "confidence": 95.5 (añadido por OCR)
+    """Polígono con validación y métodos útiles"""
+    polygon_id: str
+    geometry: PolygonGeometry
+    line_id: str
+    cropped_img: Optional[np.ndarray] = None
+    bin_img: Optional[np.ndarray] = None
+    padding_coords: Optional[List[float]] = None
+    was_fragmented: bool = False
+    text: Optional[str] = None
+    confidence: Optional[float] = None
+    
+    def __post_init__(self):
+        if not self.polygon_id.startswith("poly_"):
+            raise ValueError("ID de polígono debe empezar con 'poly_'")
+        if not self.line_id.startswith("line_"):
+            raise ValueError("ID de línea debe empezar con 'line_'")
+        if self.confidence is not None and not (0 <= self.confidence <= 100):
+            raise ValueError("Confianza debe estar entre 0 y 100")
+    
+    @property
+    def has_text(self) -> bool:
+        return self.text is not None and len(self.text.strip()) > 0
+    
+    @property
+    def is_high_confidence(self) -> bool:
+        return self.confidence is not None and self.confidence >= 80.0
 
 @dataclass
 class LineInfo:
-    """La información por línea del documento.
-    REFLEJO EXACTO de lines_geometry["line_XXXX"]"""
-    line_id: str                         # "line_id": "line_0001"
-    bounding_box: List[float]            # "bounding_box": [120.0, 230.0, 1080.0, 260.0]
-    centroid: List[float]                # "centroid": [600.0, 245.0]
-    polygon_ids: List[str]               # "polygon_ids": ["poly_0000", "poly_0001", "poly_0002"]
+    """Información de línea con métodos útiles"""
+    line_id: str
+    bounding_box: BoundingBox
+    centroid: Tuple[float, float]
+    polygon_ids: List[str]
+    
+    def __post_init__(self):
+        if not self.line_id.startswith("line_"):
+            raise ValueError("ID de línea debe empezar con 'line_'")
+        if not self.polygon_ids:
+            raise ValueError("Línea debe tener al menos un polígono")
+    
+    @property
+    def polygon_count(self) -> int:
+        return len(self.polygon_ids)
+    
+    @property
+    def width(self) -> float:
+        return self.bounding_box.width
+    
+    @property
+    def height(self) -> float:
+        return self.bounding_box.height
 
+# ========== ESTRUCTURA PRINCIPAL OPTIMIZADA ==========
 @dataclass
 class WorkflowJob:
-    """REFLEJO COMPLETO del diccionario poligonal y todos sus componentes.
-    Contiene:
-    - document_dict["metadata"] → doc_metadata
-    - document_dict["polygons"] → polygons
-    - lines_geometry → lines (convertido a lista para preservar orden)
-    - binarized_polygons → binarized_polygons
-    """
-    job_id: str
-    full_img: Optional[np.ndarray]
-    # REFLEJO de document_dict["metadata"]
-    doc_metadata: DocumentMetadata
+    """Estructura principal optimizada para máxima eficiencia"""
+    # Identificación única
+    job_id: str = field(default_factory=lambda: f"job_{uuid.uuid4().hex[:8]}")
+    
+    # Imagen principal (referencia, no copia)
+    full_img: Optional[np.ndarray] = None
+    
+    # Metadatos inmutables
+    doc_metadata: Optional[DocumentMetadata] = None
+    
+    # Estado del procesamiento
+    current_stage: ProcessingStage = ProcessingStage.INITIALIZED
+    status: ProcessingStatus = ProcessingStatus.PENDING
+    
+    # Timestamps precisos
     creation_timestamp: float = field(default_factory=time.time)
-    current_stage: str = "initialized"
-    # REFLEJO de document_dict["polygons"]
+    stage_timestamps: Dict[ProcessingStage, float] = field(default_factory=dict)
+    
+    # Datos estructurados
     polygons: Dict[str, Polygon] = field(default_factory=dict)
-    # REFLEJO de lines_geometry (convertido a lista para preservar orden de lectura)
     lines: List[LineInfo] = field(default_factory=list)
-    # REFLEJO de binarized_polygons (diccionario separado)
     binarized_polygons: Dict[str, np.ndarray] = field(default_factory=dict)
-    # TIEMPOS DE PROCESAMIENTO
+    
+    # Métricas de rendimiento
     processing_times: Dict[str, float] = field(default_factory=dict)
+    error_log: List[str] = field(default_factory=list)
+    
+    # ========== MÉTODOS ÚTILES ==========
+    def add_polygon(self, polygon: Polygon) -> None:
+        """Añade polígono con validación"""
+        if polygon.polygon_id in self.polygons:
+            raise ValueError(f"Polígono {polygon.polygon_id} ya existe")
+        self.polygons[polygon.polygon_id] = polygon
+    
+    def add_line(self, line: LineInfo) -> None:
+        """Añade línea con validación"""
+        if any(l.line_id == line.line_id for l in self.lines):
+            raise ValueError(f"Línea {line.line_id} ya existe")
+        self.lines.append(line)
+    
+    def update_stage(self, stage: ProcessingStage) -> None:
+        """Actualiza etapa con timestamp"""
+        self.current_stage = stage
+        self.stage_timestamps[stage] = time.time()
+    
+    def add_error(self, error: str) -> None:
+        """Añade error al log"""
+        self.error_log.append(f"[{datetime.now()}] {error}")
+        self.status = ProcessingStatus.FAILED
+    
+    def get_polygons_by_line(self, line_id: str) -> List[Polygon]:
+        """Obtiene polígonos de una línea específica"""
+        return [p for p in self.polygons.values() if p.line_id == line_id]
+    
+    def get_polygons_with_text(self) -> List[Polygon]:
+        """Obtiene polígonos que tienen texto"""
+        return [p for p in self.polygons.values() if p.has_text]
+    
+    def get_high_confidence_polygons(self) -> List[Polygon]:
+        """Obtiene polígonos con alta confianza"""
+        return [p for p in self.polygons.values() if p.is_high_confidence]
+    
+    @property
+    def total_polygons(self) -> int:
+        return len(self.polygons)
+    
+    @property
+    def total_lines(self) -> int:
+        return len(self.lines)
+    
+    @property
+    def has_errors(self) -> bool:
+        return len(self.error_log) > 0
+    
+    @property
+    def is_completed(self) -> bool:
+        return self.status == ProcessingStatus.COMPLETED
+    
+    @property
+    def processing_duration(self) -> float:
+        if self.status == ProcessingStatus.COMPLETED:
+            return time.time() - self.creation_timestamp
+        return 0.0

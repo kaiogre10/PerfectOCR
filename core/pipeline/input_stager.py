@@ -12,6 +12,7 @@ from core.workers.image_preparation.angle_corrector import AngleCorrector
 from core.workers.image_preparation.geometry_detector import GeometryDetector
 from core.workers.image_preparation.lineal_reconstructor import LineReconstructor
 from core.workers.image_preparation.poly_gone import PolygonExtractor
+from core.domain.workflow_job import WorkflowJob, ProcessingStage, DocumentMetadata, ImageDimensions, BoundingBox, PolygonGeometry, Polygon, LineInfo
 
 logger = logging.getLogger(__name__)
 
@@ -35,85 +36,118 @@ class InputManager:
         self._lines_geometry: Optional[Dict[str, Any]] = None
         self._binarization: Optional[Dict[str, Any]] = None
                 
-    def _generate_polygons(
-        self
-    ) -> Tuple[Optional[Dict[str, Any]], float]:
-        
+    def _generate_polygons(self) -> Tuple[Optional[WorkflowJob], float]:
+        """
+        Recibe WorkflowJob del ImageLoader y lo enriquece con polígonos y líneas.
+        """
         pipeline_start = time.time()
         
-        logger.info("Iniciando carga de imagen para procesar")
+        workflow_job, metadata = self._image_load._load_image_and_metadata(self.input_path)
         
-        gray_image, metadata = self._image_load._load_image_and_metadata(self.input_path)
-        
-        if gray_image is None:
-            logger.error("No se pudo cargar la imagen en escala de grises. Abortando pipeline.")
+        if workflow_job is None or workflow_job.doc_metadata is None or workflow_job.full_img is None:
             return None, 0.0
 
-        step_start = time.time()
-        logger.info("Iniciando limpieza rápida")
+        metadata_dict = {
+            "image_name": workflow_job.doc_metadata.doc_name,
+            "formato": workflow_job.doc_metadata.formato,
+            "img_dims": {
+                "width": workflow_job.doc_metadata.img_dims.width,
+                "height": workflow_job.doc_metadata.img_dims.height
+            },
+            "dpi": workflow_job.doc_metadata.dpi
+        }
         
-        clean_image, doc_data = self._cleaner._quick_enhance(gray_image, metadata)
+        clean_image, doc_data = self._cleaner._quick_enhance(workflow_job.full_img, metadata_dict)
+        deskewed_img, new_dims = self._angle_corrector.correct(clean_image, doc_data.get("metadata", {}).get("img_dims", {}))
         
-        step_start = time.time()
-        logger.info("Iniciando fase de corrección de ángulo")
-        
-        metadata = doc_data.get("metadata", {})
-        img_dims = metadata.get("img_dims", {})
-        h = img_dims.get("height")
-        w = img_dims.get("width")
+        if new_dims and (new_dims["width"] != workflow_job.doc_metadata.img_dims.width or new_dims["height"] != workflow_job.doc_metadata.img_dims.height):
+            updated_dims = ImageDimensions(
+                width=int(new_dims.get("width", workflow_job.doc_metadata.img_dims.width)),
+                height=int(new_dims.get("height", workflow_job.doc_metadata.img_dims.height))
+            )
+            workflow_job.doc_metadata = DocumentMetadata(
+                doc_name=workflow_job.doc_metadata.doc_name,
+                img_dims=updated_dims,
+                formato=workflow_job.doc_metadata.formato,
+                dpi=workflow_job.doc_metadata.dpi,
+                fecha_creacion=workflow_job.doc_metadata.fecha_creacion
+            )
+            workflow_job.full_img = deskewed_img
+            logger.info(f"[InputManager] Dimensiones de imagen actualizadas a {updated_dims.width}x{updated_dims.height}")
 
-        if not h or not w:
-            logger.warning("Dimensiones no encontradas en metadata, extrayendo de la imagen.")
-            h, w = clean_image.shape[:2]
-            img_dims = {"height": h, "width": w}
-            metadata["img_dims"] = img_dims
-        
-        logger.info("Iniciando corrección de inclinación.")
-        deskewed_img, new_dims = self._angle_corrector.correct(clean_image, img_dims)
-        
-        # Actualizar el diccionario de dimensiones original en su lugar.
-        img_dims.update(new_dims)
-        img_for_geometry = deskewed_img.copy()
+        enriched_doc = self._geometry_detector.detect(deskewed_img.copy(), doc_data)
 
-        # 2. Detectar geometría
-        logger.info("Iniciando detección de geometría.")
-        enriched_doc = self._geometry_detector.detect(img_for_geometry, doc_data)
-
-        step_duration = time.time() - step_start
-        polygons_count = len(enriched_doc.get("polygons", {}))
-        logger.info(f"Fase de geometría completada en {step_duration:.4f}s. Detectados {polygons_count} polígonos.")
-            
-        # Paralelización de lineal y poly
-        step_start_parallel = time.time()
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_lineal = executor.submit(self._lineal._reconstruct_lines, enriched_doc)
             future_poly = executor.submit(self._poly._extract_individual_polygons, deskewed_img, enriched_doc)
+            
             lineal_result = future_lineal.result()
-            extracted_polygons = future_poly.result()
-               
-        total_lines = self._lineal._get_lines_geometry()
-                
-        step_duration_parallel = time.time() - step_start_parallel
-        logger.info(f"Paralelización lineal/poly completada en {step_duration_parallel:.4f}s")
-        logger.info(f"Lineal devolvió {len(lineal_result)} IDs y {len(total_lines)} geometrías de línea. Poly devolvió {len(extracted_polygons)} polígonos.")
+            extracted_polygons_dict = future_poly.result()
+        
+        total_lines_dict = self._lineal._get_lines_geometry()
+        
+        for poly_id, poly_data in extracted_polygons_dict.items():
+            if poly_id in lineal_result:
+                poly_data["line_id"] = lineal_result[poly_id]
 
-        fusionados = 0
-        for poly_id, poly in extracted_polygons.items():
-            pid = poly.get("polygon_id")
-            if pid and pid in lineal_result:
-                poly["line_id"] = lineal_result[pid]
-                fusionados += 1
-        logger.info(f"Fusión de line_id completada: {fusionados} polígonos enriquecidos.")
+        for poly_id, poly_data in extracted_polygons_dict.items():
+            try:
+                geometry_data = poly_data.get("geometry", {})
+                bbox_list = geometry_data.get("bounding_box", [0, 0, 0, 0])
+                bbox = BoundingBox(
+                    x_min=float(bbox_list[0]), y_min=float(bbox_list[1]),
+                    x_max=float(bbox_list[2]), y_max=float(bbox_list[3])
+                )
+                coords_list = geometry_data.get("polygon_coords", [])
+                coords_tuples = [(float(p[0]), float(p[1])) for p in coords_list]
+                centroid_list = geometry_data.get("centroid", [0, 0])
+                
+                geometry = PolygonGeometry(
+                    polygon_coords=coords_tuples,
+                    bounding_box=bbox,
+                    centroid=(float(centroid_list[0]), float(centroid_list[1]))
+                )
+                
+                polygon = Polygon(
+                    polygon_id=poly_data.get("polygon_id", poly_id),
+                    geometry=geometry,
+                    line_id=poly_data.get("line_id", "line_0000"),
+                    cropped_img=poly_data.get("cropped_img"),
+                    padding_coords=poly_data.get("padding_coords")
+                )
+                workflow_job.add_polygon(polygon)
+            except Exception as e:
+                workflow_job.add_error(f"Error convirtiendo polígono {poly_id}: {e}")
+                continue
         
-        time_poly = time.time () - pipeline_start
+        for line_id, line_data in total_lines_dict.items():
+            try:
+                bbox_list = line_data.get("bounding_box", [0, 0, 0, 0])
+                bbox = BoundingBox(
+                    x_min=float(bbox_list[0]), y_min=float(bbox_list[1]),
+                    x_max=float(bbox_list[2]), y_max=float(bbox_list[3])
+                )
+                centroid_list = line_data.get("centroid", [0, 0])
+                line_info = LineInfo(
+                    line_id=line_id,
+                    bounding_box=bbox,
+                    centroid=(float(centroid_list[0]), float(centroid_list[1])),
+                    polygon_ids=line_data.get("polygon_ids", [])
+                )
+                workflow_job.add_line(line_info)
+            except Exception as e:
+                workflow_job.add_error(f"Error convirtiendo línea {line_id}: {e}")
+                continue
         
-        return extracted_polygons, time_poly
+        workflow_job.update_stage(ProcessingStage.POLYGONS_EXTRACTED)
+        total_time = time.time() - pipeline_start
+        workflow_job.processing_times["polygon_generation"] = total_time
+        
+        logger.info(f"[InputManager] Generación de polígonos completada en {total_time:.3f}s")
+        return workflow_job, total_time
 
     def _get_polygons_to_binarize(self) -> Dict[str, Any]:
         """Expone los IDs problemáticos para que el builder pueda usarlos."""
-         
         polygons_to_binarize = self._poly._get_polygons_copy()
-        
         polygons_to_bin = polygons_to_binarize
-        
         return polygons_to_bin
