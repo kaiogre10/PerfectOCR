@@ -1,39 +1,151 @@
-2025-08-03 02:39:32 - INFO - root:60 - main - Activando ConfigManager...
-2025-08-03 02:39:32 - INFO - root:65 - main - Creando Jefes de Área (Managers)...
-2025-08-03 02:39:32 - INFO - core.workers.image_preparation.angle_corrector:17 - angle_corrector - AngleCorrector inicializado.
-2025-08-03 02:39:32 - INFO - core.workers.image_preparation.geometry_detector:18 - geometry_detector - GeometryDetector inicializado (motor PaddleOCR no cargado aún).
-2025-08-03 02:39:32 - INFO - root:86 - main - Activando ProcessingBuilder con equipo asignado...
-2025-08-03 02:39:32 - INFO - root:97 - main - Activando WorkflowManager...
-2025-08-03 02:39:32 - INFO - root:105 - main - Iniciando procesamiento...
-2025-08-03 02:39:32 - INFO - app.workflow_manager:108 - workflow_manager - Procesando 1 imágenes en modo INTERACTIVO
-2025-08-03 02:39:32 - INFO - app.workflow_manager:109 - workflow_manager - Tiempo estimado: 0.1 min con 1 workers
-2025-08-03 02:39:32 - INFO - app.workflow_manager:117 - workflow_manager - Iniciando modo INTERACTIVO (un solo proceso)
-2025-08-03 02:39:32 - INFO - app.workflow_manager:120 - workflow_manager - Procesando imagen 1/1: prueba12.png
-2025-08-03 02:39:32 - INFO - core.pipeline.input_manager:41 - input_manager - INICIANDO GENERACIÓN DE POLIGONAL
-2025-08-03 02:39:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
-2025-08-03 02:39:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
-2025-08-03 02:39:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
-2025-08-03 02:39:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
-2025-08-03 02:39:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
-2025-08-03 02:39:32 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
-2025-08-03 02:39:32 - INFO - core.pipeline.input_manager:50 - input_manager - Iniciando fase de corrección de ángulo y detección de geometría.
-2025-08-03 02:39:32 - INFO - core.pipeline.input_manager:64 - input_manager - Iniciando corrección de inclinación.
-2025-08-03 02:39:33 - INFO - core.workers.image_preparation.angle_corrector:59 - angle_corrector - -> Aplicando corrección de inclinación: -1.01 grados.
-2025-08-03 02:39:33 - INFO - core.pipeline.input_manager:72 - input_manager - Iniciando detección de geometría.
-2025-08-03 02:39:33 - INFO - core.workers.image_preparation.geometry_detector:41 - geometry_detector - Instancia de PaddleOCR para GEOMETRÍA cargada exitosamente.
-2025-08-03 02:39:34 - INFO - core.workers.image_preparation.geometry_detector:64 - geometry_detector - -> Detección geométrica exitosa. Polígonos crudos encontrados: 56
-2025-08-03 02:39:34 - INFO - core.workers.image_preparation.geometry_detector:95 - geometry_detector - -> Polígonos válidos procesados: 56
-2025-08-03 02:39:34 - INFO - core.pipeline.input_manager:77 - input_manager - Fase de geometría completada en 1.6630s. Detectados 56 polígonos.
-2025-08-03 02:39:34 - INFO - core.workers.image_preparation.poly_gone:75 - poly_gone - Imágenes recortadas exitosamente: 56/56
-2025-08-03 02:39:34 - INFO - core.pipeline.input_manager:90 - input_manager - Paralelización lineal/poly completada en 0.0042s
-2025-08-03 02:39:34 - INFO - core.pipeline.input_manager:91 - input_manager - Lineal devolvió 56 IDs y 27 geometrías de línea. Poly devolvió 56 polígonos.
-2025-08-03 02:39:34 - INFO - core.pipeline.input_manager:99 - input_manager - Fusión de line_id completada: 56 polígonos enriquecidos.
-2025-08-03 02:39:34 - INFO - app.process_builder:74 - process_builder - Polígonos: 1.878s
-2025-08-03 02:39:34 - INFO - core.pipeline.preprocessing_manager:47 - preprocessing_manager - Iniciando pipeline de preprocesamiento
-2025-08-03 02:39:34 - WARNING - core.pipeline.preprocessing_manager:52 - preprocessing_manager - No se encontraron polígonos para preprocesar
-2025-08-03 02:39:34 - INFO - app.process_builder:87 - process_builder - Preprocesamiento: 0.000s
-2025-08-03 02:39:35 - INFO - core.workers.ocr.paddle_wrapper:50 - paddle_wrapper - Total inicialización PaddleOCRWrapper: 0.806s (carga de modelo: 0.806s)
-2025-08-03 02:39:35 - WARNING - core.pipeline.ocr_manager:106 - ocr_manager - No polygons were provided to OCREngineCoordinator.
-2025-08-03 02:39:35 - INFO - app.process_builder:99 - process_builder - OCR: 0.000s
-2025-08-03 02:39:35 - ERROR - app.process_builder:129 - process_builder - Error procesando C:/PerfectOCR/input\prueba12.png: name 'refined_polygons' is not defined
-2025-08-03 02:39:35 - INFO - root:115 - main - Procesamiento finalizado, iniciando limpieza de caché.
+2025-08-04 18:25:26 - INFO - root:99 - main - Activando ConfigManager...
+2025-08-04 18:25:26 - INFO - root:104 - main - Creando WorkFlowBuilder...
+2025-08-04 18:25:26 - INFO - root:110 - main - Analizando imágenes disponibles...
+2025-08-04 18:25:26 - INFO - app.workflow_builder:59 - workflow_builder - PLANIFICACIÓN COMPLETADA:
+2025-08-04 18:25:26 - INFO - app.workflow_builder:60 - workflow_builder -   - 2 imágenes detectadas
+2025-08-04 18:25:26 - INFO - app.workflow_builder:61 - workflow_builder -   - Modo: INTERACTIVE
+2025-08-04 18:25:26 - INFO - app.workflow_builder:62 - workflow_builder -   - Workers requeridos: 1
+2025-08-04 18:25:26 - INFO - app.workflow_builder:63 - workflow_builder -   - Tiempo estimado: 0.1 min
+2025-08-04 18:25:26 - INFO - root:117 - main - Creando builders según análisis...
+2025-08-04 18:25:26 - INFO - core.workers.image_preparation.angle_corrector:17 - angle_corrector - AngleCorrector inicializado.
+2025-08-04 18:25:26 - INFO - core.workers.image_preparation.geometry_detector:18 - geometry_detector - GeometryDetector inicializado (motor PaddleOCR no cargado aún).
+2025-08-04 18:25:26 - INFO - core.workers.image_preparation.angle_corrector:17 - angle_corrector - AngleCorrector inicializado.
+2025-08-04 18:25:26 - INFO - core.workers.image_preparation.geometry_detector:18 - geometry_detector - GeometryDetector inicializado (motor PaddleOCR no cargado aún).
+2025-08-04 18:25:26 - INFO - root:121 - main - Iniciando procesamiento...
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:44 - input_manager - Iniciando carga de imagen para procesar
+2025-08-04 18:25:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-08-04 18:25:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 41 9
+2025-08-04 18:25:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'iTXt' 62 1232
+2025-08-04 18:25:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 1306 8192
+2025-08-04 18:25:26 - INFO - core.workers.image_preparation.image_loader:53 - image_loader - Imagen '1' cargada exitosamente desde 'C:/PerfectOCR/input\1.png'
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:49 - input_manager - Iniciando limpieza rápida
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:54 - input_manager - Iniciando fase de corrección de ángulo
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:67 - input_manager - Iniciando corrección de inclinación.
+2025-08-04 18:25:26 - INFO - core.workers.image_preparation.angle_corrector:59 - angle_corrector - -> Aplicando corrección de inclinación: -0.91 grados.
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:75 - input_manager - Iniciando detección de geometría.
+2025-08-04 18:25:26 - WARNING - core.workers.image_preparation.geometry_detector:38 - geometry_detector - No se encontró un directorio de modelo de detección local. PaddleOCR intentará descargarlo.
+2025-08-04 18:25:26 - ERROR - core.workers.image_preparation.geometry_detector:44 - geometry_detector - Error crítico al inicializar la instancia geométrica de PaddleOCR: unexpected end of data
+Traceback (most recent call last):
+  File "C:\PerfectOCR\core\workers\image_preparation\geometry_detector.py", line 40, in engine
+    self._engine = PaddleOCR(**init_params)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\site-packages\paddleocr\paddleocr.py", line 653, in __init__
+    maybe_download(params.det_model_dir, det_url)
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\site-packages\paddleocr\ppocr\utils\network.py", line 58, in maybe_download
+    for member in tarObj.getmembers():
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2044, in getmembers
+    self._load()        # all members, we first have to
+    ^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2824, in _load
+    while self.next() is not None:
+          ^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2732, in next
+    raise ReadError("unexpected end of data")
+tarfile.ReadError: unexpected end of data
+2025-08-04 18:25:26 - ERROR - core.workers.image_preparation.geometry_detector:54 - geometry_detector - El motor de geometría de PaddleOCR no está inicializado.
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:80 - input_manager - Fase de geometría completada en 0.2754s. Detectados 0 polígonos.
+2025-08-04 18:25:26 - WARNING - core.workers.image_preparation.lineal_reconstructor:23 - lineal_reconstructor - No hay polígonos en el diccionario
+2025-08-04 18:25:26 - WARNING - core.workers.image_preparation.poly_gone:22 - poly_gone - No se encontraron polígonos en el documento enriquecido
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:93 - input_manager - Paralelización lineal/poly completada en 0.0000s
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:94 - input_manager - Lineal devolvió 0 IDs y 0 geometrías de línea. Poly devolvió 0 polígonos.
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:102 - input_manager - Fusión de line_id completada: 0 polígonos enriquecidos.
+2025-08-04 18:25:26 - INFO - app.process_builder:41 - process_builder - Polígonos generados en: 0.707s
+2025-08-04 18:25:26 - INFO - core.pipeline.preprocessing_manager:47 - preprocessing_manager - Iniciando pipeline de preprocesamiento
+2025-08-04 18:25:26 - WARNING - core.pipeline.preprocessing_manager:52 - preprocessing_manager - No se encontraron polígonos para preprocesar
+2025-08-04 18:25:26 - INFO - app.process_builder:54 - process_builder - Preprocesamiento: 0.000s
+2025-08-04 18:25:26 - ERROR - core.workers.ocr.paddle_wrapper:53 - paddle_wrapper - Critical error initializing PaddleOCR for recognition: unexpected end of data
+Traceback (most recent call last):
+  File "C:\PerfectOCR\core\workers\ocr\paddle_wrapper.py", line 47, in engine
+    self._engine = PaddleOCR(**init_params)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\site-packages\paddleocr\paddleocr.py", line 653, in __init__
+    maybe_download(params.det_model_dir, det_url)
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\site-packages\paddleocr\ppocr\utils\network.py", line 58, in maybe_download
+    for member in tarObj.getmembers():
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2044, in getmembers
+    self._load()        # all members, we first have to
+    ^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2824, in _load
+    while self.next() is not None:
+          ^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2732, in next
+    raise ReadError("unexpected end of data")
+tarfile.ReadError: unexpected end of data
+2025-08-04 18:25:26 - ERROR - core.pipeline.ocr_manager:62 - ocr_manager - PaddleOCR recognition engine not available.
+2025-08-04 18:25:26 - INFO - app.process_builder:66 - process_builder - OCR: 0.000s
+2025-08-04 18:25:26 - INFO - app.process_builder:80 - process_builder - Procesamiento completado: 0.717s
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:44 - input_manager - Iniciando carga de imagen para procesar
+2025-08-04 18:25:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-08-04 18:25:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 41 9
+2025-08-04 18:25:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'iTXt' 62 1232
+2025-08-04 18:25:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 1306 8192
+2025-08-04 18:25:26 - INFO - core.workers.image_preparation.image_loader:53 - image_loader - Imagen '2' cargada exitosamente desde 'C:/PerfectOCR/input\2.png'
+2025-08-04 18:25:26 - INFO - core.pipeline.input_manager:49 - input_manager - Iniciando limpieza rápida
+2025-08-04 18:25:27 - INFO - core.pipeline.input_manager:54 - input_manager - Iniciando fase de corrección de ángulo
+2025-08-04 18:25:27 - INFO - core.pipeline.input_manager:67 - input_manager - Iniciando corrección de inclinación.
+2025-08-04 18:25:27 - INFO - core.workers.image_preparation.angle_corrector:59 - angle_corrector - -> Aplicando corrección de inclinación: -0.95 grados.
+2025-08-04 18:25:27 - INFO - core.pipeline.input_manager:75 - input_manager - Iniciando detección de geometría.
+2025-08-04 18:25:27 - WARNING - core.workers.image_preparation.geometry_detector:38 - geometry_detector - No se encontró un directorio de modelo de detección local. PaddleOCR intentará descargarlo.
+2025-08-04 18:25:27 - ERROR - core.workers.image_preparation.geometry_detector:44 - geometry_detector - Error crítico al inicializar la instancia geométrica de PaddleOCR: unexpected end of data
+Traceback (most recent call last):
+  File "C:\PerfectOCR\core\workers\image_preparation\geometry_detector.py", line 40, in engine
+    self._engine = PaddleOCR(**init_params)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\site-packages\paddleocr\paddleocr.py", line 653, in __init__
+    maybe_download(params.det_model_dir, det_url)
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\site-packages\paddleocr\ppocr\utils\network.py", line 58, in maybe_download
+    for member in tarObj.getmembers():
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2044, in getmembers
+    self._load()        # all members, we first have to
+    ^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2824, in _load
+    while self.next() is not None:
+          ^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2732, in next
+    raise ReadError("unexpected end of data")
+tarfile.ReadError: unexpected end of data
+2025-08-04 18:25:27 - ERROR - core.workers.image_preparation.geometry_detector:54 - geometry_detector - El motor de geometría de PaddleOCR no está inicializado.
+2025-08-04 18:25:27 - INFO - core.pipeline.input_manager:80 - input_manager - Fase de geometría completada en 0.2802s. Detectados 0 polígonos.
+2025-08-04 18:25:27 - WARNING - core.workers.image_preparation.lineal_reconstructor:23 - lineal_reconstructor - No hay polígonos en el diccionario
+2025-08-04 18:25:27 - WARNING - core.workers.image_preparation.poly_gone:22 - poly_gone - No se encontraron polígonos en el documento enriquecido
+2025-08-04 18:25:27 - INFO - core.pipeline.input_manager:93 - input_manager - Paralelización lineal/poly completada en 0.0000s
+2025-08-04 18:25:27 - INFO - core.pipeline.input_manager:94 - input_manager - Lineal devolvió 0 IDs y 0 geometrías de línea. Poly devolvió 0 polígonos.
+2025-08-04 18:25:27 - INFO - core.pipeline.input_manager:102 - input_manager - Fusión de line_id completada: 0 polígonos enriquecidos.
+2025-08-04 18:25:27 - INFO - app.process_builder:41 - process_builder - Polígonos generados en: 0.664s
+2025-08-04 18:25:27 - INFO - core.pipeline.preprocessing_manager:47 - preprocessing_manager - Iniciando pipeline de preprocesamiento
+2025-08-04 18:25:27 - WARNING - core.pipeline.preprocessing_manager:52 - preprocessing_manager - No se encontraron polígonos para preprocesar
+2025-08-04 18:25:27 - INFO - app.process_builder:54 - process_builder - Preprocesamiento: 0.000s
+2025-08-04 18:25:27 - ERROR - core.workers.ocr.paddle_wrapper:53 - paddle_wrapper - Critical error initializing PaddleOCR for recognition: unexpected end of data
+Traceback (most recent call last):
+  File "C:\PerfectOCR\core\workers\ocr\paddle_wrapper.py", line 47, in engine
+    self._engine = PaddleOCR(**init_params)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\site-packages\paddleocr\paddleocr.py", line 653, in __init__
+    maybe_download(params.det_model_dir, det_url)
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\site-packages\paddleocr\ppocr\utils\network.py", line 58, in maybe_download
+    for member in tarObj.getmembers():
+                  ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2044, in getmembers
+    self._load()        # all members, we first have to
+    ^^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2824, in _load
+    while self.next() is not None:
+          ^^^^^^^^^^^
+  File "C:\Users\skinn\miniconda3\envs\idp\Lib\tarfile.py", line 2732, in next
+    raise ReadError("unexpected end of data")
+tarfile.ReadError: unexpected end of data
+2025-08-04 18:25:27 - ERROR - core.pipeline.ocr_manager:62 - ocr_manager - PaddleOCR recognition engine not available.
+2025-08-04 18:25:27 - INFO - app.process_builder:66 - process_builder - OCR: 0.000s
+2025-08-04 18:25:27 - INFO - app.process_builder:80 - process_builder - Procesamiento completado: 0.671s
+2025-08-04 18:25:27 - INFO - root:130 - main - Procesamiento finalizado, iniciando limpieza de caché.
+2025-08-04 18:25:27 - INFO - services.cache_service:42 - cache_service - --- Limpieza Final: Eliminando caché del proyecto ---
+2025-08-04 18:25:27 - DEBUG - services.cache_service:19 - cache_service - Eliminada carpeta de caché: C:/PerfectOCR\app\__pycache__
+2025-08-04 18:25:27 - DEBUG - services.cache_service:19 - cache_service - Eliminada carpeta de caché: C:/PerfectOCR\core\pipeline\__pycache__
+2025-08-04 18:25:27 - DEBUG - services.cache_service:19 - cache_service - Eliminada carpeta de caché: C:/PerfectOCR\core\workers\image_preparation\__pycache__
+2025-08-04 18:25:27 - DEBUG - services.cache_service:19 - cache_service - Eliminada carpeta de caché: C:/PerfectOCR\core\workers\ocr\__pycache__
+2025-08-04 18:25:27 - DEBUG - services.cache_service:19 - cache_service - Eliminada carpeta de caché: C:/PerfectOCR\core\workers\preprocessing\__pycache__
+2025-08-04 18:25:27 - DEBUG - services.cache_service:19 - cache_service - Eliminada carpeta de caché: C:/PerfectOCR\services\__pycache__
+2025-08-04 18:25:27 - DEBUG - services.cache_service:19 - cache_service - Eliminada carpeta de caché: C:/PerfectOCR\utils\__pycache__

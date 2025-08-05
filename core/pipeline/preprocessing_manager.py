@@ -22,9 +22,9 @@ class PreprocessingManager:
     def __init__(self, config: Dict, stage_config: Dict, project_root: str):
         self.project_root = project_root
         self.preprocessing_config = config
-        
-        # Inyección en cascada a los workers de preprocesamiento:
+        self.manager_config = stage_config
         denoise_config = self.preprocessing_config.get('denoise', {})
+        
         self._moire = MoireDenoiser(config=denoise_config.get('moire', {}), project_root=self.project_root)
         self._sp = DoctorSaltPepper(config=denoise_config.get('median_filter', {}), project_root=self.project_root)
         self._gauss = GaussianDenoiser(config=denoise_config.get('bilateral_params', {}), project_root=self.project_root)
@@ -115,7 +115,32 @@ class PreprocessingManager:
         
         return refined_polygons, time_poly
 
-    def get_problematic_ids(self) -> Set[str]:
-        """Expone los IDs problemáticos para que el builder pueda usarlos."""
-        return self._fragment._get_problematic_ids()
-
+    def _save_problematic_polygons(self, all_polygons: Dict[str, Any], image_name: str) -> None:
+        """Guarda imágenes de polígonos problemáticos si está habilitado."""
+        if not self.manager_config.get('output_flag', {}).get('problematic_ids', False):
+            return
+        output_folder = self.manager_config.get('output_folder')
+            
+        problematic_ids = self._fragment._get_problematic_ids()
+        if not problematic_ids:
+            return
+            
+        output_folder = self.preprocessing_config.get('output_folder')
+        if not output_folder:
+            logger.warning("No se puede guardar polígonos problemáticos porque 'output_folder' no está definido.")
+            return
+            
+        try:
+            os.makedirs(output_folder, exist_ok=True)
+            saved_count = 0
+            for i, (poly_id, poly_data) in enumerate(all_polygons.items()):
+                if poly_id in problematic_ids:
+                    img = poly_data.get('cropped_img')
+                    if img is not None:
+                        img_filename = f"{image_name}_problematic_{i+1}.png"
+                        img_path = os.path.join(output_folder, img_filename)
+                        cv2.imwrite(img_path, img)
+                        saved_count += 1
+            logger.info(f"PreprocessingManager: Guardadas {saved_count} imágenes problemáticas en {output_folder}")
+        except Exception as e:
+            logger.error(f"PreprocessingManager: Error guardando imágenes problemáticas: {e}")

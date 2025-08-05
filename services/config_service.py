@@ -64,6 +64,22 @@ class ConfigService:
         cleanup_config = self.config.get('cleanup', {})
         return cleanup_config
     
+    @property
+    def _workflow_config(self) -> Dict[str, Any]:
+        """Obtiene configuración del workflow."""
+        workflow_config = self.config.get('system', {})
+        return workflow_config
+
+    @property
+    def _roots_config(self) -> Dict[str, Any]:
+        """Obtiene configuración de rutas para limpieza."""
+        cleanup_config = self._cleanup_config
+        return {
+            'folders_to_empty': cleanup_config.get('folders_to_empty', []),
+            'folder_names_to_delete': cleanup_config.get('folder_extensions_to_delete', []),
+            'project_root': self._workflow_config.get('project_root', '')
+        }
+
 # FUNCIONES MÁS ESPECÍFICAS:
     
     @property
@@ -94,11 +110,9 @@ class ConfigService:
     def _image_loader_config(self) -> Dict[str, Any]:
         """Devuelve la configuración del image_loader con la ruta de entrada."""
         image_loader_params = self._modules_config.get('image_loader', {})
-        input_path = self._paths_config.get('input_folder', "")
         paddle_config = self._paddle_detection_config
         image_loader_config = {
             "image_loader": image_loader_params,
-            "input_folder": input_path,
             "paddle_det": paddle_config
         }
         return image_loader_config
@@ -107,13 +121,7 @@ class ConfigService:
     def _preprocessing_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica del preprocesamiento."""
         preprocessing_config = self._modules_config.get('preprocessing', {})
-        return preprocessing_config
-    
-    @property
-    def _ocr_config(self) -> Dict[str, Any]:
-        """Obtiene configuración específica del OCR (sin rutas)."""
-        ocr_config = self._modules_config.get('ocr', {})
-        return ocr_config 
+        return preprocessing_config 
     
     @property
     def _vectorization_config(self) -> Dict[str, Any]:
@@ -126,24 +134,30 @@ class ConfigService:
         """Devuelve los modelos básivos de  PaddleOCR"""
         paddle_models = self._paths_config.get('paddlepaddle', {})
         return paddle_models 
-    
-    @property
-    def _paddle_rec(self) -> Dict[str, Any]:
-        """Devuelve la configuración de PaddleOCR para reconocimiento (PaddleWrapper)."""
-        paddle_rec = self._ocr_config.get('paddleocr', {}).copy()
-        rec_model_dir = self._paddle_models.get('rec_model_dir', "")
-        if rec_model_dir:
-            paddle_rec['rec_model_dir'] = rec_model_dir
-        return paddle_rec
-                        
+        
     @property
     def _paddle_detection_config(self) -> Dict[str, Any]:
         """Devuelve la configuración de PaddleOCR para detección (GeometryDetector)."""
-        paddle_det = self._ocr_config.get('paddleocr', {}).copy()
+        paddle_det = self._ocr_config.get('paddle', {}).copy()
         det_model_dir = self._paddle_models.get('det_model_dir', "")
         if det_model_dir:
             paddle_det['det_model_dir'] = det_model_dir
         return paddle_det
+    
+    @property
+    def _paddle_rec_config(self) -> Dict[str, Any]:
+        """Devuelve la configuración de PaddleOCR para PaddleWrapper."""
+        paddle_rec = self._ocr_config.get('paddle', {}).copy()
+        rec_model_dir = self._paddle_models.get('rec_model_dir', "")
+        if rec_model_dir:
+            paddle_rec['rec_model_dir'] = rec_model_dir
+        return {"paddle": paddle_rec}  # Envolver en clave 'paddle'
+        
+    @property
+    def _ocr_config(self) -> Dict[str, Any]:
+        """Obtiene configuración específica del OCR."""
+        ocr_config = self._modules_config.get('ocr', {})
+        return ocr_config
     
     @property
     def max_workers(self) -> int:

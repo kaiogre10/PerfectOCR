@@ -3,21 +3,19 @@ import os
 import numpy as np
 import logging
 import time
-from collections import defaultdict
+import json
 from datetime import datetime
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, Tuple
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 import cv2
 
 logger = logging.getLogger(__name__)
 
 class OCREngineManager:
-    def __init__(self, config: Dict, project_root: str, output_flags: Dict[str, bool], workflow_config: Optional[Dict[str, Any]] = None):
-        self.ocr_config_from_workflow = config
+    def __init__(self, config: Dict, stage_config: Dict, project_root: str):
         self.project_root = project_root
-        self.output_flags = output_flags
-        self.workflow_config = workflow_config or {}
-        paddle_specific_config = self.ocr_config_from_workflow.get('paddleocr')
+        self.padd_ocr = config
+        paddle_specific_config = config.get('paddle', {})
         if paddle_specific_config:
             self.paddle = PaddleOCRWrapper(paddle_specific_config, self.project_root)
             
@@ -27,67 +25,31 @@ class OCREngineManager:
 
         self.num_workers = 1
 
-    def _save_paddle_raw_output(self, batch_results: List, polygon_ids: List[str], image_file_name: str) -> None:
+    def _save_complete_ocr_results(self, output_data: Dict[str, Any], image_name: str) -> None:
         """
-        Guarda la salida raw completa de PaddleOCR para cada polígono.
-        Incluye toda la información que devuelve PaddleOCR, no solo el texto final.
+        Guarda los resultados completos del OCR en formato JSON si está habilitado.
+        Incluye todos los metadatos y resultados estructurados.
         """
-        if not self.output_flags.get('ocr_debug', False):
+        if not self.manager_config.get('output_flag', {}).get('ocr_raw', False):
             return
             
-        output_folder = self.workflow_config.get('output_folder')
+        output_folder = self.manager_config.get('output_folder')
         if not output_folder:
-            logger.error("No se puede guardar debug de OCR porque 'output_folder' no está definido.")
+            logger.warning("No se puede guardar resultados OCR porque 'output_folder' no está definido.")
             return
             
-        base_name = os.path.splitext(image_file_name)[0]
-        debug_folder = os.path.join(output_folder, f"{base_name}_paddle_debug")
-        os.makedirs(debug_folder, exist_ok=True)
-        
-
-        batch_info = {
-            "timestamp": datetime.now().isoformat(),
-            "total_polygons": len(polygon_ids),
-            "batch_results_count": len(batch_results),
-            "image_file_name": image_file_name
-        }
-        
-        batch_info_path = os.path.join(debug_folder, "batch_info.txt")
-        with open(batch_info_path, 'w', encoding='utf-8') as f:
-            f.write("=== INFORMACIÓN DEL BATCH ===\n")
-            for key, value in batch_info.items():
-                f.write(f"{key}: {value}\n")
-            f.write("\n")
-        
-        for i, (polygon_id, result) in enumerate(zip(polygon_ids, batch_results)):
-            debug_filename = f"polygon_{polygon_id}_paddle_raw.txt"
-            debug_path = os.path.join(debug_folder, debug_filename)
+        try:
+            os.makedirs(output_folder, exist_ok=True)
+            base_name = image_name
+            json_filename = f"{base_name}_ocr_results.json"
+            json_path = os.path.join(output_folder, json_filename)
             
-            with open(debug_path, 'w', encoding='utf-8') as f:
-                f.write(f"=== POLÍGONO {polygon_id} ===\n")
-                f.write(f"Índice en batch: {i}\n")
-                f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-                f.write(f"Resultado raw de PaddleOCR:\n")
-                f.write(f"{result}\n")
-                f.write(f"Tipo de resultado: {type(result)}\n")
-                f.write(f"Longitud del resultado: {len(str(result))}\n")
-                f.write("\n")
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(output_data, f, indent=2, ensure_ascii=False)
                 
-                if result is not None:
-                    f.write("=== ANÁLISIS DETALLADO ===\n")
-                    f.write(f"¿Es lista?: {isinstance(result, list)}\n")
-                    f.write(f"¿Es diccionario?: {isinstance(result, dict)}\n")
-                    if isinstance(result, list):
-                        f.write(f"Longitud de la lista: {len(result)}\n")
-                        for j, item in enumerate(result):
-                            f.write(f"  Item {j}: {item} (tipo: {type(item)})\n")
-                    elif isinstance(result, dict):
-                        for key, value in result.items():
-                            f.write(f"  {key}: {value} (tipo: {type(value)})\n")
-                else:
-                    f.write("RESULTADO: None (PaddleOCR no devolvió nada)\n")
-        
-        logger.info(f"Debug de PaddleOCR guardado en: {debug_folder}")
+            logger.info(f"OCREngineManager: Resultados OCR guardados en {json_path}")
+        except Exception as e:
+            logger.error(f"OCREngineManager: Error guardando resultados OCR: {e}")
 
     def _run_ocr_on_polygons(
         self, 
@@ -157,6 +119,9 @@ class OCREngineManager:
             },
             "polygon_results": polygon_results,
         }
+
+        image_name = preprocess_dict.get("metadata", {}).get("doc_name", "unknown")
+        self._save_complete_ocr_results(output_data, image_name)
 
         total_time = time.perf_counter() - start_time
         logger.info(f"Tiempo total del flujo OCR por lotes: {total_time:.3f}s")

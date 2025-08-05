@@ -1,31 +1,22 @@
 # perfectocr/management/cache_manager.py
 import shutil
-import yaml
 import os
 import logging
+from services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
 
 class CacheService:
-    def __init__(self, config_path: str):
-        self.config = self._load_yaml_config(config_path)
-        self.workflow_config = self.config.get('workflow', {})
-        self.roots_config = self.config.get('roots_paths', {})
-    
-
-    def _load_yaml_config(self, path: str) -> dict:
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                return yaml.safe_load(f) or {}
-        except Exception as e:
-            logger.error(f"Error cargando config: {e}")
-            return {}
+    def __init__(self, config_service):
+        self.config_service = config_service
+        self.workflow_config = config_service._workflow_config
+        self.roots_config = config_service._roots_config
 
     def _delete_item(self, path: str):
         try:
             if os.path.isdir(path):
                 shutil.rmtree(path)
-                logger.info(f"Eliminada carpeta de caché: {path}")
+                logger.debug(f"Eliminada carpeta de caché: {path}")
             else:
                 os.remove(path)
         except OSError as e:
@@ -41,11 +32,15 @@ class CacheService:
                 self._delete_item(os.path.join(folder_path, item_name))
 
     def cleanup_project_cache(self):
+        """Limpia el caché del proyecto usando la configuración."""
         project_root = self.workflow_config.get('project_root')
-        if not project_root: return
+        if not project_root:
+            logger.warning("No se encontró project_root en la configuración")
+            return
 
         folder_names = self.roots_config.get('folder_names_to_delete', [])
         logger.info("--- Limpieza Final: Eliminando caché del proyecto ---")
+
         for dirpath, dirnames, _ in os.walk(project_root):
             for d in list(dirnames):
                 if d in folder_names:

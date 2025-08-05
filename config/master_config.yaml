@@ -28,10 +28,9 @@ enabled_outputs:
   output_flag:
     preprocessed_image: false
     ocr_raw: false
-    ocr_debug: false
     cropped_words: false
-    refined_polygons: true
-    problematic_ids: true
+    refined_polygons: false
+    problematic_ids: false
 
 # Configuración de procesamiento
 processing:
@@ -131,7 +130,6 @@ cleanup:
     - ".pytest_cache"
     - ".mypy_cache"
     - "node_modules"
-    - ".vscode"
     - ".idea"
     - "temp"
     - "cache"

@@ -51,15 +51,14 @@ class ImageCleaner:
         
         return clean_img
     
-    def _quick_enhance(self, gray_image: np.ndarray, input_path: str) -> Tuple[np.ndarray, Dict[str, Any]]:
+    def _quick_enhance(self, gray_image: np.ndarray, metadata: Dict) -> Tuple[np.ndarray, Dict[str, Any]]:
         """
         Limpia la imagen y crea el diccionario de metadatos inicial del documento.
         """
         clean_img = self._geometric_enhance(gray_image)
-        meta = self._resolutor(input_path)
-
+        
         # Validaciones de seguridad para evitar errores de tipo
-        img_dims = meta.get("img_dims") or {}
+        img_dims = metadata.get("img_dims") or {}
         if not isinstance(img_dims, dict):
             img_dims = {"width": 0, "height": 0}
         
@@ -69,14 +68,13 @@ class ImageCleaner:
 
         doc_data = {
             "metadata": {
-                "doc_name": meta["doc_name"],          # nombre del documento
-                "formato": meta["formato"],            # formato de la imagen (JPEG, PNG, etc)
+                "image_name": metadata["image_name"],          # nombre del documento
+                "formato": metadata["formato"],            # formato de la imagen (JPEG, PNG, etc)
                 "img_dims": {                          # dimensiones de la imagen
                     "width": width,                    # ancho en píxeles
                     "height": height                   # alto en píxeles
                 },
-                "dpi": meta["dpi"],                    # resolución en DPI
-                "fecha_creacion": meta["fecha_creacion"] # fecha de creación del archivo
+                "dpi": metadata["dpi"],                    # resolución en DPI
             }
         }
                 

@@ -20,13 +20,13 @@ class InputManager:
     Coordina la fase de extracción de polígonos, delegando todo el trabajo
     a un único worker autosuficiente.
     """
-    def __init__(self, config: Dict, stage_config: Dict, project_root: str):
+    def __init__(self, config: Dict, stage_config: Dict, input_path: Dict, project_root: str):
         self.project_root = project_root
         self.image_loader = config
         self.manager_config = stage_config
-        output_flags = stage_config.get('output_flag', {})
+        self.input_path = input_path
         paddle_config = self.image_loader.get('paddle_config', {})
-        self._image_load = ImageLoader(config=self.image_loader.get('extensions', {}), project_root=self.project_root)
+        self._image_load = ImageLoader(config=self.image_loader.get('extensions', {}), input_path = self.input_path, project_root=self.project_root)
         self._cleaner = ImageCleaner(config=self.image_loader.get('cleaning', {}), project_root=self.project_root)
         self._angle_corrector = AngleCorrector(config=self.image_loader.get('deskew', {}), project_root=self.project_root)
         self._geometry_detector = GeometryDetector(paddle_config=paddle_config, project_root=self.project_root)
@@ -36,19 +36,22 @@ class InputManager:
         self._binarization: Optional[Dict[str, Any]] = None
                 
     def _generate_polygons(
-        self, config: Dict,
-        stage_config: Dict
+        self
     ) -> Tuple[Optional[Dict[str, Any]], float]:
         
         pipeline_start = time.time()
-        logger.info("INICIANDO GENERACIÓN DE POLIGONAL")
-
-        gray_image, metadata = self._image_load._load_image_and_metadata()
         
-        clean_image, doc_data = self._cleaner._quick_enhance(gray_image)
+        logger.info("Iniciando carga de imagen para procesar")
+        
+        gray_image, metadata = self._image_load._load_image_and_metadata(self.input_path)
         
         step_start = time.time()
-        logger.info("Iniciando fase de corrección de ángulo y detección de geometría.")
+        logger.info("Iniciando limpieza rápida")
+        
+        clean_image, doc_data = self._cleaner._quick_enhance(gray_image, metadata)
+        
+        step_start = time.time()
+        logger.info("Iniciando fase de corrección de ángulo")
         
         metadata = doc_data.get("metadata", {})
         img_dims = metadata.get("img_dims", {})
@@ -61,7 +64,6 @@ class InputManager:
             img_dims = {"height": h, "width": w}
             metadata["img_dims"] = img_dims
         
-        # 1. Corregir ángulo
         logger.info("Iniciando corrección de inclinación.")
         deskewed_img, new_dims = self._angle_corrector.correct(clean_image, img_dims)
         
@@ -111,3 +113,26 @@ class InputManager:
         polygons_to_bin = polygons_to_binarize
         
         return polygons_to_bin
+
+    def _save_refined_polygons(self, polygons: Dict[str, Any], image_name: str) -> None:
+        """Guarda imágenes de polígonos refinados si está habilitado."""
+        if not self.manager_config.get('output_flag', {}).get('cropped_words', False):
+            return
+            
+        output_folder = self.manager_config.get('output_folder')        
+        if not output_folder:
+            logger.warning("No se puede guardar polígonos refinados porque 'output_folder' no está definido.")
+            
+            try:
+                os.makedirs(output_folder, exist_ok=True)
+                saved_count = 0
+                for i, (poly_id, poly_data) in enumerate(polygons.items()):
+                    img = poly_data.get('cropped_img')
+                    if img is not None:
+                        img_filename = f"{image_name}_refined_{i+1}.png"
+                        img_path = os.path.join(output_folder, img_filename)
+                        cv2.imwrite(img_path, img)
+                        saved_count += 1
+                logger.info(f"InputManager: Guardadas {saved_count} imágenes refinadas en {output_folder}")
+            except Exception as e:
+                logger.error(f"InputManager: Error guardando imágenes refinadas: {e}")

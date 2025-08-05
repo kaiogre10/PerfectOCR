@@ -1,6 +1,4 @@
 # PerfectOCR/core/workspace/utils/multifeaturer.py
-from sklearnex import patch_sklearn
-patch_sklearn()
 from skimage.feature import graycomatrix, graycoprops, local_binary_pattern
 from skimage.measure import shannon_entropy, label, regionprops
 from skimage.filters import threshold_sauvola, unsharp_mask, rank

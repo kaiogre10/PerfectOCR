@@ -15,32 +15,12 @@ class ProcessingBuilder:
     Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y
     coordina el procesamiento técnico de una sola imagen.
     """
-    def __init__(self, input_manager, preprocessing_manager, ocr_manager, input_path: str):
-        # RECIBE input_path específico en constructor
+    def __init__(self, input_manager, preprocessing_manager, ocr_manager):
         self.input_manager = input_manager
         self.preprocessing_manager = preprocessing_manager
         self.ocr_manager = ocr_manager
-        self.input_path = input_path  # RUTA ESPECÍFICA de esta imagen
-        self.output_flags = config_manager._enabled_outputs
-
-    def _save_polygon_images(self, polygons: List[Dict], output_folder: str, base_filename: str):
-        """Guarda solo las imágenes de los polígonos, no metadata."""
-        if not polygons:
-            return
-            
-        try:
-            os.makedirs(output_folder, exist_ok=True)
-            for i, poly in enumerate(polygons):
-                img = poly.get('cropped_img')
-                if img is not None:
-                    img_filename = f"{base_filename}_{i+1}.png"
-                    img_path = os.path.join(output_folder, img_filename)
-                    cv2.imwrite(img_path, img)
-            logger.info(f"Guardadas {len(polygons)} imágenes en {output_folder}")
-        except Exception as e:
-            logger.error(f"Error guardando imágenes de polígonos: {e}")
-
-    def _process_single_image(self, output_flags: Dict[str, bool]) -> Optional[Dict[str, Any]]:
+        
+    def _process_single_image(self, image_name: str) -> Optional[Dict[str, Any]]:
         """
         Procesa una sola imagen. El código interno de este método
         NO CAMBIA, ya que sigue usando self.polygon_manager, etc.
@@ -52,7 +32,7 @@ class ProcessingBuilder:
             # FASE 1: Cargar imagen y obtener polígonos
             phase1_start = time.perf_counter()
                 
-            extracted_polygons, time_poly = self.input_manager._generate_polygons(output_flags)
+            extracted_polygons, time_poly = self.input_manager._generate_polygons()
             
             polygons_to_bin = self.input_manager._get_polygons_to_binarize()
             
@@ -84,25 +64,13 @@ class ProcessingBuilder:
             phase3_time = time.perf_counter() - phase3_start
             processing_times_summary["3_ocr"] = round(time_ocr, 4)
             logger.info(f"OCR: {time_ocr:.3f}s")
-            
-            # Guardar artefactos de salida si está habilitado
-            output_folder = self.paths_config.get('output_folder')
-            if output_folder:
-                file_name_no_ext = os.path.splitext(original_file_name)[0]
-                if self.output_flags.get('refined_polygons'):
-                    self._save_polygon_images(list(refined_polygons.values()), output_folder, f"{file_name_no_ext}_refined")
-                
-                problematic_ids = self.preprocessing_manager.get_problematic_ids()
-                if self.output_flags.get('problematic_ids') and problematic_ids:
-                    problematic_polygons = {pid: poly for pid, poly in refined_polygons.items() if pid in problematic_ids}
-                    self._save_polygon_images(list(problematic_polygons.values()), output_folder, f"{file_name_no_ext}_problematic")
-			
+            			
             # RESULTADO FINAL
             total_workflow_time = time.perf_counter() - workflow_start
             processing_times_summary["total_workflow"] = round(total_workflow_time, 4)
             
             result = {
-                "document_id": original_file_name,
+                "image_name,": image_name,
                 "status": "success",
                 "processing_times": processing_times_summary,
                 "ocr_results": ocr_raw,
@@ -113,9 +81,9 @@ class ProcessingBuilder:
             return result
             
         except Exception as e:
-            logger.error(f"Error procesando {input_path}: {e}")
+            logger.error(f"Error procesando {image_name}: {e}")
             return {
-                "document_id": original_file_name,
+                "image_name": image_name,
                 "status": "error",
                 "error": str(e),
                 "processing_times": processing_times_summary

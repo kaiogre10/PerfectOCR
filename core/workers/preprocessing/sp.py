@@ -1,6 +1,4 @@
 # PerfectOCR/core/workflow/preprocessing/sp.py
-from sklearnex import patch_sklearn
-patch_sklearn()
 import cv2
 import numpy as np
 import logging

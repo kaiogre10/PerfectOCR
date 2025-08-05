@@ -8,7 +8,7 @@ from typing import Optional, List
 from services.cache_service import CacheService
 from services.config_service import ConfigService
 from app.process_builder import ProcessingBuilder
-from app.workflow_builder import WorkBuilder
+from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.input_manager import InputManager
 from core.pipeline.preprocessing_manager import PreprocessingManager
 from core.pipeline.ocr_manager import OCREngineManager
@@ -90,70 +90,32 @@ def run(
     
     return results
 
-@app.command() 
-def benchmark(
-    input_dir: str = typer.Argument(..., help="Carpeta con imágenes de prueba"),
-    config: str = typer.Option(MASTER_CONFIG_FILE, "--config", "-c"),
-):
-    """Compara rendimiento entre modo interactivo y lote."""
-    import time
-    
-    input_path = Path(input_dir)
-    image_paths = list(input_path.glob("*.png"))[:10]  # Máximo 10 para benchmark
-    
-    if len(image_paths) < 2:
-        typer.echo("Se necesitan al menos 2 imágenes para benchmark", err=True)
-        return
-    
-    # Convertir a strings para compatibilidad
-    input_paths = [str(p) for p in image_paths]
-    
-    # Benchmark modo interactivo
-    typer.echo("🔄 Benchmarking modo interactivo...")
-    start_time = time.time()
-    results_interactive = _activate_main(input_paths, "./output", config, 'interactive', None, False)
-    time_interactive = time.time() - start_time
-    
-    # Benchmark modo lote
-    typer.echo("Benchmarking modo lote...")
-    start_time = time.time()
-    results_batch = _activate_main(input_paths, "./output", config, 'batch', None, False)
-    time_batch = time.time() - start_time
-    
-    # Mostrar resultados
-    typer.echo("\nResultados del benchmark:")
-    typer.echo(f"Modo interactivo: {time_interactive:.1f}s ({time_interactive/len(input_paths):.1f}s por imagen)")
-    typer.echo(f"Modo lote: {time_batch:.1f}s ({time_batch/len(input_paths):.1f}s por imagen)")
-    typer.echo(f"Aceleración real: {time_interactive/time_batch:.2f}x")
-
 # ========== FUNCIÓN PRINCIPAL DE PROCESAMIENTO ==========
-def _activate_main(input_paths: List[str], output_dir: Optional[str], config_file: str, 
+def _activate_main(input_paths: List[str], output_dir: Optional[str], config: str, 
                   mode: Optional[str], workers: Optional[int], dry_run: bool):
     """Función principal de procesamiento - fusiona la lógica original."""
     try:
         # 1. Main activa al Contralor (ConfigManager)
         logging.info("Activando ConfigManager...")
-        config_manager = ConfigService(config_file)
+        config_services = ConfigService(config)
         project_root = PROJECT_ROOT
 
-        # 2. Main crea WorkflowManager con rutas dinámicas
-        logging.info("Creando WorkflowManager...")
-        workflow_manager = WorkBuilder(
-            config_manager=config_manager,
-            project_root=project_root,
-            input_paths=input_paths
-        )
-        
+        # 2. Main crea WorkFlowBuilder con configuración centralizada
+        logging.info("Creando WorkFlowBuilder...")
+        workflow_manager = WorkFlowBuilder(
+            config_services=config_services,
+            project_root=project_root
+        )        
         # 3. WorkflowManager analiza y reporta
         logging.info("Analizando imágenes disponibles...")
-        workflow_report = workflow_manager.count_and_plan()
+        workflow_report = workflow_manager._count_and_plan()
         
         if dry_run:
             return _show_estimation(workflow_report)
         
         # 4. Main crea builders según el reporte
         logging.info("Creando builders según análisis...")
-        builders = _create_builders(config_manager, project_root, workflow_report)
+        builders = _create_builders(config_services, project_root, workflow_report)
         
         # 5. Main ejecuta procesamiento
         logging.info("Iniciando procesamiento...")
@@ -166,14 +128,67 @@ def _activate_main(input_paths: List[str], output_dir: Optional[str], config_fil
         return {"error": str(e)}
     finally:
         logging.info("Procesamiento finalizado, iniciando limpieza de caché.")
-        cache_manager = CacheService(config_file)
+        cache_manager = CacheService(config_services)
         cache_manager.cleanup_project_cache()
 
+
+def _create_builders(config_services, project_root, workflow_report):
+    """Crea builders para cada imagen encontrada."""
+    builders = []
+    image_info_list = workflow_report.get('image_info', [])
+    
+    for image_data in image_info_list:
+        # Cada builder se asocia con UNA imagen específica
+        input_manager = InputManager(
+            config=config_services._image_loader_config,
+            stage_config=config_services._manager_config,
+            input_path=image_data,  # Pasa el dict de la imagen
+            project_root=project_root
+        )
+        
+        preprocessing_manager = PreprocessingManager(
+            config=config_services._preprocessing_config,
+            stage_config=config_services._manager_config,
+            project_root=project_root
+        )
+        
+        ocr_manager = OCREngineManager(
+            config=config_services._paddle_rec_config,
+            stage_config=config_services._manager_config,
+            project_root=project_root
+        )
+        
+        builder = ProcessingBuilder(
+            input_manager=input_manager,
+            preprocessing_manager=preprocessing_manager,
+            ocr_manager=ocr_manager
+        )
+        builders.append(builder)
+        
+    return builders
+
+def _execute_processing(builders, workflow_report):
+    """Ejecuta el procesamiento para cada builder."""
+    results = {}
+    image_info_list = workflow_report.get('image_info', [])
+
+    for i, builder in enumerate(builders):
+        if i < len(image_info_list):
+            image_name = image_info_list[i].get('name', f'imagen_{i}')
+            result = builder._process_single_image(image_name)
+            results[image_name] = result
+    
+    return {
+        "mode": workflow_report.get('mode', 'unknown'),
+        "processed": len(results),
+        "results": results
+    }
+    
 def _show_estimation(workflow_report: dict):
     """Muestra estimación sin procesar."""
     from utils.batch_tools import estimate_processing_time
     
-    total_images = len(workflow_report['assignments'])
+    total_images = len(workflow_report['image_info'])
     estimation = estimate_processing_time(total_images)
     
     typer.echo(f"Estimación:")
@@ -184,48 +199,6 @@ def _show_estimation(workflow_report: dict):
     
     return {"mode": "estimation", "total_images": total_images}
 
-def _create_builders(config_manager, project_root, workflow_report):
-    """Crea builders según el reporte del WorkflowManager."""
-    builders = []
-    num_builders = workflow_report['total_builders_needed']
-    
-    for i in range(num_builders):
-        builder = ProcessingBuilder(
-            input_manager=InputManager(
-                config=config_manager._image_loader_config,
-                stage_config=config_manager._manager_config,
-                project_root=project_root
-            ),
-            preprocessing_manager=PreprocessingManager(
-                config=config_manager._preprocessing_config,
-                stage_config=config_manager._manager_config,
-                project_root=project_root
-            ),
-            ocr_manager=OCREngineManager(
-                config=config_manager._ocr_config,
-                stage_config=config_manager._manager_config,
-                project_root=project_root
-            )
-        )
-        builders.append(builder)
-    
-    return builders
-
-def _execute_processing(builders, workflow_report):
-    """Ejecuta el procesamiento según las asignaciones."""
-    assignments = workflow_report['assignments']
-    results = {}
-    
-    for i, assignment in enumerate(assignments):
-        builder = builders[i]
-        result = builder.process_single_image(assignment)
-        results[assignment['image_name']] = result
-    
-    return {
-        "mode": workflow_report['mode'],
-        "processed": len(results),
-        "results": results
-    }
 
 def main():
     """
@@ -241,7 +214,6 @@ def main():
         input_paths = sys.argv[1:]
         return _activate_main(input_paths, None, MASTER_CONFIG_FILE, None, None, False)
     else:
-        # Argumentos Typer: python main.py run --help
         app()
 
 if __name__ == "__main__":
