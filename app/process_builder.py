@@ -4,9 +4,9 @@ import logging
 import cv2
 import time
 from typing import Dict, Optional, Any, List
-from core.pipeline.input_manager import InputManager
-from core.pipeline.preprocessing_manager import PreprocessingManager
-from core.pipeline.ocr_manager import OCREngineManager
+from core.pipeline.input_stager import InputManager
+from core.pipeline.preprocessing_stager import PreprocessingManager
+from core.pipeline.ocr_stager import OCREngineManager
 
 logger = logging.getLogger(__name__)
 

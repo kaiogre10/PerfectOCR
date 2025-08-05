@@ -9,9 +9,9 @@ from services.cache_service import CacheService
 from services.config_service import ConfigService
 from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
-from core.pipeline.input_manager import InputManager
-from core.pipeline.preprocessing_manager import PreprocessingManager
-from core.pipeline.ocr_manager import OCREngineManager
+from core.pipeline.input_stager import InputManager
+from core.pipeline.preprocessing_stager import PreprocessingManager
+from core.pipeline.ocr_stager import OCREngineManager
 
 # Configuración de threads (se mantiene como está)
 os.environ.update({

@@ -16,7 +16,6 @@ __pycache__/
 .cursorignore/
 
 # Ignorar carpeta
-data/models/
 input/
 output/
 
