@@ -128,7 +128,6 @@ class Polygon:
     geometry: PolygonGeometry
     line_id: str
     cropped_img: Optional[np.ndarray] = None
-    bin_img: Optional[np.ndarray] = None
     padding_coords: Optional[List[float]] = None
     was_fragmented: bool = False
     text: Optional[str] = None

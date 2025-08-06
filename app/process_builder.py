@@ -39,8 +39,7 @@ class ProcessingBuilder:
                 return error_job
 
             # FASE 2: Preprocesamiento (PreprocessingManager modifica WorkflowJob)
-            polygons_to_bin = self.input_manager._get_polygons_to_binarize()
-            workflow_job, prep_time = self.preprocessing_manager._apply_preprocessing_pipelines(workflow_job, polygons_to_bin)
+            workflow_job, prep_time = self.preprocessing_manager._apply_preprocessing_pipelines(workflow_job)
 
             # FASE 3: OCR (OCREngineManager modifica WorkflowJob)
             if workflow_job:

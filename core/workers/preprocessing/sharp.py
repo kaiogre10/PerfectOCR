@@ -13,21 +13,20 @@ class SharpeningEnhancer:
         self.project_root = project_root
         self.corrections = config
 
-    def _estimate_sharpness(self, clahe_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _estimate_sharpness(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Detecta y corrige patrones de moiré en cada polígono del diccionario.
         Args:
             refined_polygons: Diccionario principal con los polígonos
         Returns:
             El mismo diccionario (moire_img), con los 'cropped_img' corregidos si aplica"""
-        polygons = clahe_dict.get("polygons", {})
-        for poly in polygons.values():
-            cropped_img = poly.get("clahe_poly")  # Ya está correcto
-            if cropped_img is not None:
-                sharp_poly = self._estimate_sharpness_single(cropped_img)
-                poly["sharp_poly"] = sharp_poly  # Cambiar de clahe_poly a sharp_poly
-                
-        sharp_dict = clahe_dict
-        return sharp_dict
+        polygons = processing_dict.get("polygons", {})
+        for poly_data in polygons.values():
+            current_image = poly_data.get("cropped_img")
+            if current_image is not None:
+                # Procesa la imagen y la sobrescribe en el mismo lugar
+                poly_data["cropped_img"] = self._estimate_sharpness_single(current_image)
+        
+        return processing_dict
 
 
     def _estimate_sharpness_single(self, clahed_img: np.ndarray) -> np.ndarray:

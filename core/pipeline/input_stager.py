@@ -13,6 +13,7 @@ from core.workers.image_preparation.geometry_detector import GeometryDetector
 from core.workers.image_preparation.lineal_reconstructor import LineReconstructor
 from core.workers.image_preparation.poly_gone import PolygonExtractor
 from core.domain.workflow_job import WorkflowJob, ProcessingStage, DocumentMetadata, ImageDimensions, BoundingBox, PolygonGeometry, Polygon, LineInfo
+from services.output_service import OutputService
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,11 @@ class InputManager:
         self._lineal = LineReconstructor(config={}, project_root=self.project_root)
         self._lines_geometry: Optional[Dict[str, Any]] = None
         self._binarization: Optional[Dict[str, Any]] = None
+        self.output_flags = self.manager_config.get("output_flag", {})
+        self.output_folder = self.manager_config.get("output_folder", None)
+        self.output_service = None
+        if self.output_folder and self.output_flags.get("cropped_words", False):
+            self.output_service = OutputService()
                 
     def _generate_polygons(self) -> Tuple[Optional[WorkflowJob], float]:
         """
@@ -142,7 +148,18 @@ class InputManager:
         workflow_job.update_stage(ProcessingStage.POLYGONS_EXTRACTED)
         total_time = time.time() - pipeline_start
         workflow_job.processing_times["polygon_generation"] = total_time
-        
+
+        # Guardar imágenes de los polígonos si el flag está activo
+        if self.output_service and self.output_flags.get("cropped_words", False):
+            polygons_to_bin = self._get_polygons_to_binarize()
+            images = []
+            for poly_id, poly_data in polygons_to_bin.items():
+                cropped_img = poly_data.get("cropped_img")
+                if cropped_img is not None:
+                    images.append(cropped_img)
+            base_name = f"{workflow_job.doc_metadata.doc_name}_cropped"
+            self.output_service.save_images(images, self.output_folder, base_name)
+
         logger.info(f"[InputManager] Generación de polígonos completada en {total_time:.3f}s")
         return workflow_job, total_time
 

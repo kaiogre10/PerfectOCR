@@ -17,7 +17,7 @@ class PolygonFragmentator:
         self.approx_poly_epsilon = fragmentator_params.get('approx_poly_epsilon', 0.02)
         self.problematic_ids: Set[str] = set()
 
-    def _intercept_polygons(self, binarized_polygons: Dict[str, np.ndarray], extracted_polygons: Dict[str, Any]) -> Dict[str, Any]:
+    def _intercept_polygons(self, binarized_polygons: Dict[str, np.ndarray], processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analiza polígonos binarizados para detectar problemas y fragmenta los polígonos originales correspondientes.
         
@@ -28,9 +28,9 @@ class PolygonFragmentator:
         Returns:
             Dict[str, Any]: Diccionario de polígonos modificado con was_fragmented y perimeter
         """
-        if not extracted_polygons or not binarized_polygons:
+        if not processing_dict or not binarized_polygons:
             logger.warning("Se recibieron diccionarios de polígonos vacíos. No se puede procesar.")
-            return extracted_polygons if extracted_polygons is not None else {}
+            return processing_dict if processing_dict is not None else {}
 
         # --- PASO 1: ANÁLISIS RÁPIDO - Medir perímetros de todos los contornos en cada polígono ---
         poly_perimeters = []
@@ -70,7 +70,7 @@ class PolygonFragmentator:
 
         if not poly_perimeters:
             logger.warning("No se pudo calcular perímetros de ningún polígono.")
-            return extracted_polygons
+            return processing_dict
 
         # --- PASO 2: VERIFICACIÓN ESTADÍSTICA - Identificar outliers ---
         num_contours_list = [d['num_valid_contours'] for d in poly_perimeters]
@@ -95,8 +95,10 @@ class PolygonFragmentator:
             f"Se identificaron {len(problematic_ids)} polígonos problemáticos."
         )
 
-        refined_polygons = {}        
-        sorted_polygons = sorted(extracted_polygons.items(), key=lambda item: int(item[0].split('_')[-1]))
+        refined_polygons = {}
+        # Accede al diccionario interno 'polygons' antes de ordenar
+        polygons_to_sort = processing_dict.get("polygons", {})
+        sorted_polygons = sorted(polygons_to_sort.items(), key=lambda item: int(item[0].split('_')[-1]))
         current_position = 0
         
         for poly_id, original_poly in sorted_polygons:

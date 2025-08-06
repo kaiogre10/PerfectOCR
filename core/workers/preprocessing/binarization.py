@@ -2,7 +2,7 @@
 import cv2
 import numpy as np
 import logging
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any
 from skimage.filters import threshold_sauvola
 from skimage.util import img_as_ubyte
 

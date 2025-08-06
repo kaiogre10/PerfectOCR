@@ -14,20 +14,20 @@ class DoctorSaltPepper:
         self.corrections = config
         self.denoise_corrections = config.get('denoise', {})
     
-    def _estimate_salt_pepper_noise(self, moire_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _estimate_salt_pepper_noise(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Detecta y corrige patrones de moiré en cada polígono del diccionario.
         Args:
             refined_polygons: Diccionario principal con los polígonos
         Returns:
-            El mismo diccionario (moire_img), con los 'cropped_img' corregidos si aplica"""
-        polygons = moire_dict.get("polygons", {})
-        for poly in polygons.values():
-            cropped_img = poly.get("moire_poly")
-            if cropped_img is not None:
-                sp_poly = self._detect_sp_single(cropped_img)
-                poly["sp_poly"] = sp_poly
-        sp_dict = moire_dict
-        return sp_dict
+            El los 'cropped_img' corregidos si aplica"""
+        polygons = processing_dict.get("polygons", {})
+        for poly_data in polygons.values():
+            current_image = poly_data.get("cropped_img")
+            if current_image is not None:
+                # Procesa la imagen y la sobrescribe en el mismo lugar
+                poly_data["cropped_img"] = self._detect_sp_single(current_image)
+        
+        return processing_dict
                 
     
     def _detect_sp_single(self, cropped_img: np.ndarray) -> np.ndarray:

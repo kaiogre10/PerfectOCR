@@ -28,32 +28,47 @@ class OCREngineManager:
 
     def _save_complete_ocr_results(self, workflow_job: WorkflowJob, image_name: str) -> None:
         """
-        Guarda los resultados completos del OCR en formato JSON si está habilitado.
+        Guarda los resultados OCR en formato JSON, solo con polygon_id, texto, confianza y metadata básica.
         """
         if not self.manager_config.get('output_flag', {}).get('ocr_raw', False):
             return
-            
+
         output_folder = self.manager_config.get('output_folder')
         if not output_folder:
             logger.warning("[OCREngineManager] No se puede guardar resultados OCR porque 'output_folder' no está definido.")
             return
-            
+
         try:
             os.makedirs(output_folder, exist_ok=True)
             base_name = image_name
             json_filename = f"{base_name}_ocr_results.json"
             json_path = os.path.join(output_folder, json_filename)
-            
-            # Crear un diccionario serializable desde el WorkflowJob
+
+            # Metadata básica
+            metadata = workflow_job.doc_metadata
             output_data = {
-                "job_id": workflow_job.job_id,
-                "doc_metadata": workflow_job.doc_metadata.__dict__ if workflow_job.doc_metadata else None,
-                "polygons": {pid: p.__dict__ for pid, p in workflow_job.polygons.items()}
+                "doc_name": metadata.doc_name if metadata else None,
+                "formato": metadata.formato if metadata else None,
+                "dpi": metadata.dpi if metadata else None,
+                "img_dims": {
+                    "width": metadata.img_dims.width,
+                    "height": metadata.img_dims.height
+                } if metadata and metadata.img_dims else None,
+                "fecha_creacion": str(metadata.fecha_creacion) if metadata else None,
+                "polygons": []
             }
-            
+
+            # Solo polygon_id, texto y confianza
+            for pid, p in workflow_job.polygons.items():
+                output_data["polygons"].append({
+                    "polygon_id": pid,
+                    "text": getattr(p, "text", None),
+                    "confidence": getattr(p, "confidence", None)
+                })
+
             with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(output_data, f, indent=2, ensure_ascii=False, default=str)
-                
+                json.dump(output_data, f, indent=2, ensure_ascii=False)
+
             logger.info(f"[OCREngineManager] Resultados OCR guardados en {json_path}")
         except Exception as e:
             logger.error(f"[OCREngineManager] Error guardando resultados OCR: {e}")

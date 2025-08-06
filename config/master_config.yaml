@@ -26,11 +26,16 @@ paths:
 # Configuración de salida (independiente)
 enabled_outputs:
   output_flag:
-    preprocessed_image: true
-    ocr_raw: true
-    cropped_words: true
-    refined_polygons: true
-    problematic_ids: true
+    preprocessed_image: false
+    ocr_raw: false
+    cropped_words: false
+    moire_poly: false
+    sp_poly: false
+    gauss_poly: false
+    clahe_poly: false
+    sharp_poly: false
+    binarized_polygons: false
+    problematic_polygons: true
 
 # Configuración de procesamiento
 processing:

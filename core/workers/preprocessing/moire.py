@@ -13,22 +13,23 @@ class MoireDenoiser:
         self.corrections = config
         self.denoise_corrections = config.get('denoise', {})
 
-    def _detect_moire_patterns(self, refined_polygons: Dict[str, Any]) -> Dict[str, Any]:
+    def _detect_moire_patterns(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Detecta y corrige patrones de moiré en cada polígono del diccionario.
+        Detecta y corrige patrones de moiré en cada polígono del diccionario,
+        modificando 'cropped_img' in-situ.
         Args:
-            refined_polygons: Diccionario principal con los polígonos
+            processing_dict: Diccionario principal con los polígonos
         Returns:
-            El mismo diccionario (moire_img), con los 'cropped_img' corregidos si aplica
+            El mismo diccionario con los 'cropped_img' corregidos si aplica
         """
-        polygons = refined_polygons.get("polygons", {})
-        for poly in polygons.values():
-            cropped_img = poly.get("cropped_img")
-            if cropped_img is not None:
-                moire_poly = self._detect_moire_single(cropped_img)
-                poly["moire_poly"] = moire_poly  # Cambiar de cropped_img a moire_poly
-        moire_dict = refined_polygons
-        return moire_dict
+        polygons = processing_dict.get("polygons", {})
+        for poly_data in polygons.values():
+            current_image = poly_data.get("cropped_img")
+            if current_image is not None:
+                # Procesa la imagen y la sobrescribe en el mismo lugar
+                poly_data["cropped_img"] = self._detect_moire_single(current_image)
+        
+        return processing_dict
         
     def _detect_moire_single(self, cropped_img: np.ndarray) -> np.ndarray:
 
