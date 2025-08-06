@@ -196,7 +196,14 @@ class PolygonFragmentator:
                 current_position += 1
 
         logger.info(f"Análisis completado. Total de polígonos refinados: {len(refined_polygons)}")
-        return {"polygons": refined_polygons}
+        return {"polygons": {
+            poly_id: {
+                "cropped_img": poly_data["cropped_img"],
+                "was_fragmented": poly_data["was_fragmented"],
+                "perimeter": poly_data.get("perimeter", 0.0)
+            }
+            for poly_id, poly_data in refined_polygons.items()
+        }}
     
     def _get_problematic_ids(self) -> Set[str]:
         """Retorna los IDs de polígonos problemáticos del último procesamiento."""

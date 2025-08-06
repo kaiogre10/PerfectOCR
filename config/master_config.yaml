@@ -35,7 +35,7 @@ enabled_outputs:
     clahe_poly: false
     sharp_poly: false
     binarized_polygons: false
-    problematic_polygons: true
+    problematic_polygons: false
 
 # Configuración de procesamiento
 processing:

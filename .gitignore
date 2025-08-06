@@ -1,12 +1,7 @@
-# Ignorar la carpeta .vscode
-.vscode/
-.models/
-# Ignorar carpetas de caché
+# Ignorar carpetas
 __pycache__/
 .pytest_cache/
 .cache/
-
-# Ignorar extensiones de archivos
 .pyc/
 .png/
 .json/
@@ -14,11 +9,15 @@ __pycache__/
 .log/
 .ini/
 .cursorignore/
+.vscode/
+
 
 # Ignorar carpeta
 input/
 output/
 models/
+data/
+
 # Excepción
 !density_encoder.json
 !especificaciones_inspiron.txt
@@ -30,4 +29,6 @@ models/
 # Ignorar perfectocr.txt
 perfectocr.txt/
 *perfectocr.txt
-*.cursorignore
+*cursorignore
+*cursorignore/
+cursorignore

@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
 
-# ========== ENUMS PARA ESTADOS Y ETAPAS ==========
 class ProcessingStage(Enum):
     """Estados del procesamiento para tracking preciso"""
     INITIALIZED = "initialized"
@@ -28,7 +27,6 @@ class ProcessingStatus(Enum):
     FAILED = "failed"
     CANCELLED = "cancelled"
 
-# ========== ESTRUCTURAS DE DATOS OPTIMIZADAS ==========
 @dataclass(frozen=True)
 class ImageDimensions:
     """Dimensiones de imagen inmutables para evitar errores"""
@@ -47,7 +45,7 @@ class ImageDimensions:
     def aspect_ratio(self) -> float:
         return self.width / self.height
 
-@dataclass(frozen=True)
+@dataclass
 class BoundingBox:
     """Bounding box inmutable con validación"""
     x_min: float
@@ -93,7 +91,7 @@ class DocumentMetadata:
 @dataclass
 class PolygonGeometry:
     """Geometría de polígono con métodos útiles"""
-    polygon_coords: List[Tuple[float, float]]  # Lista de tuplas (x, y)
+    polygon_coords: List[Tuple[float, float]]
     bounding_box: BoundingBox
     centroid: Tuple[float, float]
     
@@ -111,15 +109,6 @@ class PolygonGeometry:
             perimeter += np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
         return perimeter
     
-    @property
-    def area(self) -> float:
-        """Calcula área del polígono usando fórmula del área"""
-        area = 0.0
-        for i in range(len(self.polygon_coords)):
-            j = (i + 1) % len(self.polygon_coords)
-            area += self.polygon_coords[i][0] * self.polygon_coords[j][1]
-            area -= self.polygon_coords[j][0] * self.polygon_coords[i][1]
-        return abs(area) / 2.0
 
 @dataclass
 class Polygon:
@@ -164,10 +153,6 @@ class LineInfo:
             raise ValueError("Línea debe tener al menos un polígono")
     
     @property
-    def polygon_count(self) -> int:
-        return len(self.polygon_ids)
-    
-    @property
     def width(self) -> float:
         return self.bounding_box.width
     
@@ -175,7 +160,6 @@ class LineInfo:
     def height(self) -> float:
         return self.bounding_box.height
 
-# ========== ESTRUCTURA PRINCIPAL OPTIMIZADA ==========
 @dataclass
 class WorkflowJob:
     """Estructura principal optimizada para máxima eficiencia"""
