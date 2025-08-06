@@ -1,6 +1,6 @@
 # PerfectOCR/core/utils/batch_tools.py
 from typing import Iterator, List, TypeVar
-import os
+from typing import Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ def get_optimal_workers(num_images: int, max_physical_cores: int = 4) -> int:
         # Para lotes grandes, usar todos los núcleos disponibles
         return min(max_physical_cores + 1, num_images)
 
-def estimate_processing_time(num_images: int, avg_time_per_image: float = 45.0) -> dict:
+def estimate_processing_time(num_images: int, avg_time_per_image: float = 45.0) -> Dict[str, Any]:
     """Estima tiempos de procesamiento para diferentes modos."""
     workers = get_optimal_workers(num_images)
     

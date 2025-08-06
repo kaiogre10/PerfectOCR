@@ -1,6 +1,6 @@
 SISTEMA DE INYECCIÓN DE DEPENDECIAS EN CASCADA
 
-Main → Con cli ahora generalizado para todas las entradas, se específica "input_path" (se conserva la funcionalidad de escribir varias rutas o determinadas archivos), unica ruta dinámica.
+Main → Con cli ahora generalizado para todas las entradas, se específica "input_path", o se deja por default (se conserva la funcionalidad de escribir varias rutas o determinadas archivos), unica ruta dinámica.
   ↓ 
 Main → ConfigManager (carga YAML completo)
   ↓

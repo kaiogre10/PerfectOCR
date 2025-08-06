@@ -4,16 +4,40 @@ import numpy as np
 import logging
 import os
 from typing import Tuple, List, Dict, Any
+from core.workers.factory.abstract_worker import AbstractWorker
+from core.domain.workflow_job import ProcessingStage
 
 logger = logging.getLogger(__name__)
 
-class PolygonExtractor:
+class PolygonExtractor(AbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config = config
         self.polygons_info: Dict[str, Any] = {}
         
-    def _extract_individual_polygons(self, deskewed_img: np.ndarray, enriched_doc: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, image: np.ndarray[Any, Any], context: Dict[str, Any]) -> np.ndarray[Any, Any]:
+        """
+        Implementa el método abstracto de AbstractWorker.
+        """
+        workflow_job = context.get('workflow_job')
+        metadata = context.get('metadata', {})
+        
+        # Crear doc_data para compatibilidad
+        doc_data = {
+            "metadata": metadata,
+            "polygons": {}  # Los polígonos vendrían del worker anterior
+        }
+        
+        # Extraer polígonos individuales
+        polygons = self._extract_individual_polygons(image, doc_data)
+        
+        # Actualizar el WorkflowJob si está disponible
+        if workflow_job and workflow_job.full_img is not None:
+            workflow_job.update_stage(ProcessingStage.POLYGONS_EXTRACTED)
+        
+        return image  # Retorna la misma imagen (no la modifica)
+        
+    def _extract_individual_polygons(self, deskewed_img: np.ndarray[Any, Any], enriched_doc: Dict[str, Any]) -> Dict[str, Any]:
         """Extrae y recorta los polígonos individuales."""
         polygons = enriched_doc.get("polygons", {})
         if not polygons:

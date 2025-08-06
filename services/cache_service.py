@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 class CacheService:
     def __init__(self, config_service):
         self.config_service = config_service
-        self.workflow_config = config_service._workflow_config
-        self.roots_config = config_service._roots_config
+        self.workflow_config = config_service.workflow_config
+        self.roots_config = config_service.roots_config
 
     def _delete_item(self, path: str):
         try:

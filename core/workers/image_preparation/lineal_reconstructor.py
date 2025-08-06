@@ -4,14 +4,38 @@ import math
 import numpy as np
 from typing import Dict, Any, List
 from shapely.geometry import Polygon
+from core.workers.factory.abstract_worker import AbstractWorker
+from core.domain.workflow_job import ProcessingStage
 
 logger = logging.getLogger(__name__)
 
-class LineReconstructor:
+class LineReconstructor(AbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.corrections = config
         self.lines_info: Dict[str, Any] = {}
+
+    def process(self, image: np.ndarray[Any, Any], context: Dict[str, Any]) -> np.ndarray[Any, Any]:
+        """
+        Implementa el método abstracto de AbstractWorker.
+        """
+        workflow_job = context.get('workflow_job')
+        metadata = context.get('metadata', {})
+        
+        # Crear doc_data para compatibilidad
+        doc_data = {
+            "metadata": metadata,
+            "polygons": {}  # Los polígonos vendrían del worker anterior
+        }
+        
+        # Reconstruir líneas
+        id_map = self._reconstruct_lines(doc_data)
+        
+        # Actualizar el WorkflowJob si está disponible
+        if workflow_job and workflow_job.full_img is not None:
+            workflow_job.update_stage(ProcessingStage.LINES_RECONSTRUCTED)
+        
+        return image  # Retorna la misma imagen (no la modifica)
 
     def _reconstruct_lines(self, enriched_doc: Dict[str, Any]) -> Dict[str, str]:
         """

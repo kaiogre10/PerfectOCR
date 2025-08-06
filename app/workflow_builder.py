@@ -2,7 +2,7 @@
 import os
 import logging
 from typing import List, Dict, Any, Tuple
-from utils.batch_tools import chunked, get_optimal_workers, estimate_processing_time
+from utils.batch_tools import get_optimal_workers
 from services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
@@ -17,26 +17,25 @@ class WorkFlowBuilder:
         # SOLO recibe ConfigService - NO necesita input_paths externos
         self.config_services = config_services
         self.project_root = project_root
-        self.processing_config = config_services._processing_config
+        self.processing_config = config_services.processing_config
         self.batch_config = self.processing_config.get('batch_processing', {})
         self.small_batch_limit = self.batch_config.get('small_batch_limit', 5)
-        self.max_physical_cores = config_services._max_workers_for_cpu
+        self.max_physical_cores = config_services.max_workers_for_cpu
 
-    def _count_and_plan(self) -> Dict[str, Any]:
+    def count_and_plan(self) -> Dict[str, Any]:
         """
         PLANIFICA el procesamiento: cuenta imágenes y decide estrategia.
         REPORTA a Main: cuántos builders crear y qué modo usar.
         """
-        paths_config = self.config_services._paths_config
+        paths_config = self.config_services.paths_config
         input_folder = paths_config.get('input_folder', "")
-        valid_extensions = self._get_valid_extensions()
+        valid_extensions = self.get_valid_extensions()
 
         if not os.path.isdir(input_folder):
             logger.critical(f"La carpeta de entrada no existe: {input_folder}")
             return {"error": f"Carpeta de entrada no encontrada: {input_folder}"}
 
-        # CONTAR y EXTRAER rutas de imágenes válidas
-        image_info = self._extract_valid_image_paths(input_folder, valid_extensions)
+        image_info = self.extract_valid_image_paths(input_folder, valid_extensions)
         
         if not image_info:
             logger.critical("No se encontraron imágenes válidas en la carpeta de entrada.")
@@ -52,28 +51,26 @@ class WorkFlowBuilder:
             workers_needed = get_optimal_workers(num_images, self.max_physical_cores)
         else:
             workers_needed = 1
-
-        # GENERAR reporte para Main
-        estimation = estimate_processing_time(num_images, self.max_physical_cores)
+        
         
         logger.info(f"PLANIFICACIÓN COMPLETADA:")
         logger.info(f"  - {num_images} imágenes detectadas")
         logger.info(f"  - Modo: {mode.upper()}")
         logger.info(f"  - Workers requeridos: {workers_needed}")
-        logger.info(f"  - Tiempo estimado: {estimation['parallel_minutes']:.1f} min")
 
-        return {
+        workflow_report =  {
             "status": "success",
             "total_images": num_images,
             "mode": mode,
             "workers_needed": workers_needed,
-            "image_info": image_info,
-            "processing_estimation": estimation
+            "image_info": image_info
         }
 
-    def _extract_valid_image_paths(self, input_folder: str, valid_extensions: tuple) -> List[Dict[str, str]]:
+        return workflow_report
+        
+    def extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, str]]:
         """Extrae lista de rutas y nombres de imágenes válidas."""
-        image_info = []
+        image_info: List[Dict[str, str]] = []
         for filename in os.listdir(input_folder):
             if filename.lower().endswith(valid_extensions):
                 full_path = os.path.join(input_folder, filename)
@@ -86,8 +83,16 @@ class WorkFlowBuilder:
                 })
         return image_info
 
-    def _get_valid_extensions(self) -> tuple:
+    def get_valid_extensions(self) -> Tuple[str, ...]:
         """Obtiene extensiones válidas desde configuración."""
-        image_loader_config = self.config_services._image_loader_config
-        extensions = image_loader_config.get('image_loader', {}).get('extensions', {}).get('valid_image_extensions', [])
+        # ¿Está bien así?
+        # Analizando: Estás obteniendo las extensiones válidas desde self.config_services.preprocessing_config.
+        # Sin embargo, según la estructura de tu YAML y la lógica de tu ConfigService, 
+        # las extensiones válidas están bajo 'processing' -> 'valid_image_extensions', 
+        # no bajo 'modules' -> 'preprocessing'.
+        # Por lo tanto, deberías usar self.config_services.processing_config en vez de preprocessing_config.
+        # Además, el log tiene un pequeño error de ortografía y no muestra el valor real cargado.
+
+        extensions = self.config_services.processing_config.get('valid_image_extensions', [])
+        logger.info(f"Extensiones cargadas: {extensions}")
         return tuple(extensions)

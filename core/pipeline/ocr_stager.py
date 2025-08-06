@@ -12,7 +12,7 @@ import cv2
 
 logger = logging.getLogger(__name__)
 
-class OCREngineManager:
+class OCRStager:
     def __init__(self, config: Dict, stage_config: Dict, project_root: str):
         self.project_root = project_root
         self.padd_ocr = config
@@ -26,7 +26,7 @@ class OCREngineManager:
 
         self.num_workers = 1
 
-    def _save_complete_ocr_results(self, workflow_job: WorkflowJob, image_name: str) -> None:
+    def _save_complete_ocr_results(self, workflow_job: WorkflowJob, image_name: str):
         """
         Guarda los resultados OCR en formato JSON, solo con polygon_id, texto, confianza y metadata básica.
         """
@@ -54,7 +54,7 @@ class OCREngineManager:
                     "width": metadata.img_dims.width,
                     "height": metadata.img_dims.height
                 } if metadata and metadata.img_dims else None,
-                "fecha_creacion": str(metadata.fecha_creacion) if metadata else None,
+                "fecha_creacion": str(metadata.date_creation) if metadata else None,
                 "polygons": []
             }
 
@@ -73,7 +73,7 @@ class OCREngineManager:
         except Exception as e:
             logger.error(f"[OCREngineManager] Error guardando resultados OCR: {e}")
 
-    def _run_ocr_on_polygons(
+    def run_ocr_on_polygons(
         self, 
         workflow_job: WorkflowJob
     ) -> Tuple[Optional[WorkflowJob], float]:
@@ -121,9 +121,7 @@ class OCREngineManager:
         if workflow_job.doc_metadata:
             self._save_complete_ocr_results(workflow_job, workflow_job.doc_metadata.doc_name)
 
-        total_time = time.perf_counter() - start_time
-        workflow_job.processing_times["ocr"] = total_time
+        ocr_time = time.perf_counter() - start_time
+        workflow_job.processing_times["ocr"] = ocr_time
         
-        logger.info(f"[OCREngineManager] Tiempo total del flujo OCR: {total_time:.3f}s")
-        
-        return workflow_job, total_time
+        return workflow_job, ocr_time

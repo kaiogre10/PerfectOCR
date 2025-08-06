@@ -40,6 +40,8 @@ enabled_outputs:
 # Configuración de procesamiento
 processing:
   max_workers: 4
+  valid_image_extensions: [.png, .jpg, .jpeg, .bmp, .tif, .tiff, .webp, .gif, .pbm, .pgm, .ppm, .jp2, .ico]
+  
   batch_mode: true
   batch_processing:
     small_batch_limit: 5
@@ -47,12 +49,17 @@ processing:
     add_extra_worker: true
     batch_size_factor: 2
     auto_mode: true
-
+    
 # Configuración específica de cada módulo (SIN rutas)
 modules:
-  image_loader:
-    extensions:
-      valid_image_extensions: [".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"]
+  image_loader:      
+    preparation_pipeline:
+    - "image_loader"      # Carga inicial
+    - "cleaner"           # Limpieza y mejora
+    - "angle_corrector"   # Corrección de ángulo
+    - "geometry_detector" # Detección de geometría
+    - "line_reconstructor" # Reconstrucción de líneas
+    - "polygon_extractor" # Extracción de polígonos
   
     deskew:
       min_angle_for_correction: 0.1

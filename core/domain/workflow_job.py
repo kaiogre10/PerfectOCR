@@ -2,7 +2,7 @@
 import numpy as np
 import time
 import uuid
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
@@ -36,10 +36,6 @@ class ImageDimensions:
     def __post_init__(self):
         if self.width <= 0 or self.height <= 0:
             raise ValueError("Dimensiones deben ser positivas")
-    
-    @property
-    def area(self) -> int:
-        return self.width * self.height
     
     @property
     def aspect_ratio(self) -> float:
@@ -80,7 +76,8 @@ class DocumentMetadata:
     img_dims: ImageDimensions
     formato: Optional[str] = None
     dpi: Optional[float] = None
-    fecha_creacion: datetime = field(default_factory=datetime.now)
+    color: Optional[str] = None
+    date_creation: datetime = field(default_factory=datetime.now)
     
     def __post_init__(self):
         if not self.doc_name:
@@ -116,7 +113,7 @@ class Polygon:
     polygon_id: str
     geometry: PolygonGeometry
     line_id: str
-    cropped_img: Optional[np.ndarray] = None
+    cropped_img: Optional[np.ndarray] = None # type: ignore
     padding_coords: Optional[List[float]] = None
     was_fragmented: bool = False
     text: Optional[str] = None
@@ -167,7 +164,7 @@ class WorkflowJob:
     job_id: str = field(default_factory=lambda: f"job_{uuid.uuid4().hex[:8]}")
     
     # Imagen principal (referencia, no copia)
-    full_img: Optional[np.ndarray] = None
+    full_img: Optional[np.ndarray] = None  # type: ignore
     
     # Metadatos inmutables
     doc_metadata: Optional[DocumentMetadata] = None
@@ -183,13 +180,12 @@ class WorkflowJob:
     # Datos estructurados
     polygons: Dict[str, Polygon] = field(default_factory=dict)
     lines: List[LineInfo] = field(default_factory=list)
-    binarized_polygons: Dict[str, np.ndarray] = field(default_factory=dict)
     
     # Métricas de rendimiento
     processing_times: Dict[str, float] = field(default_factory=dict)
     error_log: List[str] = field(default_factory=list)
     
-    # ========== MÉTODOS ÚTILES ==========
+    
     def add_polygon(self, polygon: Polygon) -> None:
         """Añade polígono con validación"""
         if polygon.polygon_id in self.polygons:

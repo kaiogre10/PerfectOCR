@@ -17,7 +17,7 @@ from services.output_service import OutputService
 
 logger = logging.getLogger(__name__)
 
-class PreprocessingManager:
+class PreprocessingStager:
     """
     Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
     """
@@ -50,7 +50,10 @@ class PreprocessingManager:
         ]):
             self.output_service = OutputService()
         
-    def _apply_preprocessing_pipelines(self, workflow_job: WorkflowJob) -> Tuple[Optional[WorkflowJob], float]:
+    def apply_preprocessing_pipelines(
+        self, 
+        workflow_job: WorkflowJob
+        ) -> Tuple[Optional[WorkflowJob], float]:
         """
         Procesa el WorkflowJob de forma secuencial, modificando los polígonos in-situ
         siguiendo una filosofía de pipeline limpio.

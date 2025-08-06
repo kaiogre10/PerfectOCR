@@ -1,18 +1,36 @@
 # PerfectOCR/core/workers/image_preparation/cleanner.py
 import cv2
 import logging
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 import numpy as np
+from core.workers.factory.abstract_worker import AbstractWorker
 
 logger = logging.getLogger(__name__)
 
-class ImageCleaner:
+class ImageCleaner(AbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.corrections = config
-                
-    def _geometric_enhance(self, gray_image: np.ndarray) -> np.ndarray:
+        
+    def process(self, image: np.ndarray[Any, Any], context: Dict[str, Any]) -> np.ndarray[Any, Any]:
+        """
+        Implementa el método abstracto de AbstractWorker.
+        """
+        workflow_job = context.get('workflow_job')
+        metadata = context.get('metadata', {})
+        
+        # Procesar imagen
+        clean_image = self._quick_enhance(image, metadata)
+        
+        # Actualizar el WorkflowJob si está disponible
+        if workflow_job and workflow_job.full_img is not None:
+            workflow_job.full_img = clean_image
+            workflow_job.update_stage(ProcessingStage.GEOMETRY_DETECTED)
+        
+        return clean_image
+    
+    def _geometric_enhance(self, gray_image: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Aplica una secuencia de mejoras rápidas y adaptativas a una imagen en escala de grises."""
         # --- 1. Denoising Adaptativo (Bilateral Filter) ---
         img_var = np.var(gray_image)
@@ -48,15 +66,9 @@ class ImageCleaner:
         
         return clean_img
     
-    def _quick_enhance(self, gray_image: np.ndarray, metadata: Dict) -> Tuple[np.ndarray, Dict[str, Any]]:
+    def _quick_enhance(self, image: np.ndarray[Any, Any], metadata: Dict[str, Any]) -> np.ndarray[Any, Any]:
         """
-        Limpia la imagen y devuelve la imagen limpia y un diccionario de datos del documento.
+        Limpia la imagen y devuelve la imagen limpia.
         """
-        clean_img = self._geometric_enhance(gray_image)
-        
-        # Crear doc_data para compatibilidad con workers posteriores
-        doc_data = {
-            "metadata": metadata
-        }
-                
-        return clean_img, doc_data
+        clean_img = self._geometric_enhance(image)
+        return clean_img

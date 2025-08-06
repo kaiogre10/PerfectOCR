@@ -4,10 +4,12 @@ import logging
 from typing import Dict, Any
 import numpy as np
 from paddleocr import PaddleOCR
+from core.workers.factory.abstract_worker import AbstractWorker
+from core.domain.workflow_job import ProcessingStage
 
 logger = logging.getLogger(__name__)
 
-class GeometryDetector:
+class GeometryDetector(AbstractWorker):
     """
     Worker especializado que utiliza PaddleOCR para detectar la geometría del texto.
     """
@@ -16,6 +18,29 @@ class GeometryDetector:
         self.paddle_config = paddle_config
         self._engine = None 
         logger.info("GeometryDetector inicializado (motor PaddleOCR no cargado aún).")
+
+    def process(self, image: np.ndarray[Any, Any], context: Dict[str, Any]) -> np.ndarray[Any, Any]:
+        """
+        Implementa el método abstracto de AbstractWorker.
+        """
+        workflow_job = context.get('workflow_job')
+        metadata = context.get('metadata', {})
+        
+        # Crear doc_data para compatibilidad
+        doc_data = {
+            "metadata": metadata,
+            "polygons": {}
+        }
+        
+        # Detectar geometría
+        doc_data = self.detect(image, doc_data)
+        
+        # Actualizar el WorkflowJob si está disponible
+        if workflow_job and workflow_job.full_img is not None:
+            workflow_job.update_stage(ProcessingStage.GEOMETRY_DETECTED)
+            # Aquí podrías agregar los polígonos al job si es necesario
+        
+        return image  # Retorna la misma imagen (no la modifica)
 
     @property
     def engine(self):
@@ -45,7 +70,7 @@ class GeometryDetector:
                 self._engine = None
         return self._engine
 
-    def detect(self, img_to_poly: np.ndarray, doc_data: Dict) -> Dict[str, Any]:
+    def detect(self, img_to_poly: np.ndarray[Any, Any], doc_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detecta la geometría del texto y la añade al diccionario de datos del documento.
         """

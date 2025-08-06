@@ -75,7 +75,6 @@ FEATURE_FUNCTIONS = {
         'contrast': lambda image: graycoprops(graycomatrix(image, [1], [0], levels=256, symmetric=True, normed=True), 'contrast')[0, 0],
         'shannon_entropy': lambda image: shannon_entropy(image),
         'lbp_hist': lambda image: (lambda hist: hist.astype("float") / (hist.sum() + 1e-6))(np.histogram(local_binary_pattern(image, P=8, R=1, method='uniform').ravel(), bins=np.arange(0, 11), range=(0, 10))[0]),
-        
             # --- Filtros de scikit-image ---
         'threshold_sauvola': lambda image: threshold_sauvola(image),
         'unsharp_mask': lambda image: unsharp_mask(image),
@@ -83,7 +82,6 @@ FEATURE_FUNCTIONS = {
         'rank_median_disk3': lambda image: rank.median(image, disk(3)),
         'rank_entropy_disk3': lambda image: rank.entropy(image, disk(3)),
         'rank_enhance_disk3': lambda image: rank.enhance_contrast(image, disk(3)),
-
     },
     'binary': {
         # --- Features agregados para imágenes binarizadas ---
@@ -107,7 +105,7 @@ FEATURE_FUNCTIONS = {
 
 # FUNCIÓN INTERNA: RECOLECTA UNA FEATURE PARA TODOS LOS OBJETOS
 
-def _collect_feature_for_all(objs, func, n_jobs):
+def _collect_feature_for_all(objs, func: Dict[str,]):
     """
     Calcula una feature específica para todos los objetos en paralelo.
     """
@@ -117,53 +115,75 @@ def _collect_feature_for_all(objs, func, n_jobs):
 
 # FUNCIÓN PÚBLICA: PUNTO DE ACCESO ÚNICO PARA PEDIDOS DE FEATURES
 
-def request_features(requests: Dict[str, Any],  n_jobs=-1) -> Dict[str, Any]:
-    """
-    Función pública que recibe el pedido de features y entrega los resultados.
-    
-    Args:
-        objs (list): Lista de objetos (polígonos, imágenes, regiones).
-        requests (set, list, o tuple): Conjunto de nombres de features solicitadas.
-        n_jobs (int): Número de núcleos a usar.
-    
-    Returns:
-        dict: {feature_name: [resultados]}
-    """
-    
-    # Convertir requests a lista si viene como set u otro tipo
-    feature_list = list(requests) if not isinstance(requests, list) else requests
-    
-    # Validaciones
-    if not objs:
-        raise ValueError("La lista de objetos está vacía.")
-    if not feature_list:
-        raise ValueError("No se solicitaron features.")
-    
-    results = {}
-    for feat in feature_list:
-        func = FEATURE_FUNCTIONS.get(feat)
-        if func is None:
-            raise ValueError(f"Feature '{feat}' no está implementada.")
+class FeatureFactory:
+    def __init__(self, project_root: str):
+        self.project_root = project_root
+        self._density_encoder = None  # ← Lazy loading del JSON
         
-        # Delega el cálculo a la recolectora
-        results[feat] = _collect_feature_for_all(objs, func, n_jobs)
+    def request_features(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Estructura simple con carga automática de JSON cuando se necesita.
+        """
+        objects = request_data.get("objects", [])
+        features = request_data.get("features", [])
+        
+        if not objects or not features:
+            return {}
+        
+        results = {}
+        for feature_name in features:
+            func = self._find_specific_function(feature_name)
+            if func:
+                results[feature_name] = self._calculate_single_feature(objects, func)
+        
+        return results
     
-    return results
-
-# FUNCIÓN DE CONVENIENCIA: PARA UNA SOLA FEATURE
-
-def request_single_feature(objs, feature, n_jobs=-1):
-    """
-    Función de conveniencia para calcular una sola feature.
+    def _find_specific_function(self, feature_name: str):
+        """Busca función específica con carga automática de JSON."""
+        
+        # Features de imagen (sin JSON)
+        image_features = {
+            'area': lambda region: region.area,
+            'perimeter': lambda region: region.perimeter,
+            'eccentricity': lambda region: region.eccentricity,
+            'shannon_entropy': lambda image: shannon_entropy(image),
+            # ... más features de imagen
+        }
+        
+        # Features de vectorización (requieren JSON)
+        vectorization_features = {
+            'density_encode': self._density_encode_feature,
+            'character_frequency': self._character_frequency_feature,
+            'text_complexity': self._text_complexity_feature,
+            # ... más features de vectorización
+        }
+        
+        # Buscar en features de imagen
+        if feature_name in image_features:
+            return image_features[feature_name]
+        
+        # Buscar en features de vectorización
+        if feature_name in vectorization_features:
+            return vectorization_features[feature_name]
+        
+        return None
     
-    areas = request_single_feature(regions, 'area')
-    Args:
-        objs (list): Lista de objetos.
-        feature (str): Nombre de la feature a calcular.
-        n_jobs (int): Número de núcleos a usar.
+    def _load_density_encoder(self):
+        """Carga JSON solo cuando se necesita."""
+        if self._density_encoder is None:
+            json_path = os.path.join(self.project_root, "core/workers/factory/density_enconder.json")
+            with open(json_path, 'r', encoding='utf-8') as f:
+                self._density_encoder = json.load(f)
+            logger.info("Density encoder JSON cargado en memoria")
     
-    Returns:
-        list: Lista con los resultados para cada objeto.
-    """
-    result_dict = request_features(objs, [feature], n_jobs)
-    return result_dict[feature]
+    def _density_encode_feature(self, text_obj):
+        """Feature que requiere JSON cargado."""
+        self._load_density_encoder()  # ← Carga automática
+        # Lógica de densidad usando self._density_encoder
+        return self._calculate_density(text_obj.text, self._density_encoder)
+    
+    def _character_frequency_feature(self, text_obj):
+        """Feature que requiere JSON cargado."""
+        self._load_density_encoder()  # ← Carga automática
+        # Lógica de frecuencia usando self._density_encoder
+        return self._calculate_frequency(text_obj.text, self._density_encoder)
