@@ -2,7 +2,7 @@
 import cv2
 import numpy as np
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -10,8 +10,7 @@ class MoireDenoiser:
     """Detecta y corrige patrones de moiré."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.corrections = config
-        self.denoise_corrections = config.get('denoise', {})
+        self.config = config
 
     def _detect_moire_patterns(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -33,7 +32,7 @@ class MoireDenoiser:
         
     def _detect_moire_single(self, cropped_img: np.ndarray) -> np.ndarray:
 
-        moire_corrections = self.denoise_corrections.get('moire', {})
+        moire_corrections = self.config.get('moire', {})
         mode = moire_corrections.get('mode', {})
         percentile_corrections = mode.get('percentile', {})
         factor_corrections = mode.get('factor', {})

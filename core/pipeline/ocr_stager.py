@@ -4,7 +4,6 @@ import numpy as np
 import logging
 import time
 import json
-from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from core.domain.workflow_job import WorkflowJob, ProcessingStage
@@ -13,27 +12,20 @@ import cv2
 logger = logging.getLogger(__name__)
 
 class OCRStager:
-    def __init__(self, config: Dict, stage_config: Dict, project_root: str):
+    def __init__(self, stage_config: Dict[str, Any], paddleocr: PaddleOCRWrapper, project_root: str):
+        self.stage_config = stage_config
         self.project_root = project_root
-        self.padd_ocr = config
-        self.manager_config = stage_config
-        paddle_specific_config = config.get('paddle', {})
-        if paddle_specific_config:
-            self.paddle = PaddleOCRWrapper(paddle_specific_config, self.project_root)
-        else:
-            self.paddle = None
-            raise ValueError("PaddleOCR engine not enabled or configured for recognition.")
-
-        self.num_workers = 1
-
+        self.paddleocr = paddleocr
+        self.paddle = paddleocr
+        
     def _save_complete_ocr_results(self, workflow_job: WorkflowJob, image_name: str):
         """
         Guarda los resultados OCR en formato JSON, solo con polygon_id, texto, confianza y metadata básica.
         """
-        if not self.manager_config.get('output_flag', {}).get('ocr_raw', False):
+        if not self.stage_config.get('output_flag', {}).get('ocr_raw', False):
             return
 
-        output_folder = self.manager_config.get('output_folder')
+        output_folder = self.stage_config.get('output_folder')
         if not output_folder:
             logger.warning("[OCREngineManager] No se puede guardar resultados OCR porque 'output_folder' no está definido.")
             return

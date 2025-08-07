@@ -1,6 +1,5 @@
 # PerfectOCR/core/workflow/ocr/paddle_wrapper.py
 import os
-import cv2
 import logging
 import time
 import numpy as np
@@ -15,9 +14,9 @@ class PaddleOCRWrapper:
     de texto en imágenes pre-recortadas (polígonos).
     Utiliza carga perezosa para el motor de PaddleOCR.
     """
-    def __init__(self, config_dict: Dict, project_root: str):
-        self.paddle_config = config_dict
+    def __init__(self, config_dict: Dict[str, Any], project_root: str):
         self.project_root = project_root
+        self.config_dict = config_dict
         self._engine = None  # Inicialización perezosa
 
     @property
@@ -32,14 +31,14 @@ class PaddleOCRWrapper:
                 init_params = {
                     'use_angle_cls': False,
                     'det': False,
-                    'lang': self.paddle_config.get('lang', 'es'),
-                    'show_log': self.paddle_config.get('show_log', False),
-                    'use_gpu': self.paddle_config.get('use_gpu', False),
-                    'enable_mkldnn': self.paddle_config.get('enable_mkldnn', True),
+                    'lang': self.config_dict.get('lang', 'es'),
+                    'show_log': self.config_dict.get('show_log', False),
+                    'use_gpu': self.config_dict.get('use_gpu', False),
+                    'enable_mkldnn': self.config_dict.get('enable_mkldnn', True),
                     'rec_batch_num': 64,
                 }
 
-                rec_model_path = self.paddle_config.get('rec_model_dir')
+                rec_model_path = self.config_dict.get('rec_model_dir')
                 if rec_model_path and os.path.exists(rec_model_path):
                     init_params['rec_model_dir'] = rec_model_path
 
@@ -63,9 +62,7 @@ class PaddleOCRWrapper:
         if image is None or image.size == 0:
             logger.warning("Se recibió una imagen vacía para el reconocimiento.")
             return None
-
-        logger.debug(f"Procesando imagen de tamaño: {image.shape}")
-        
+                
         try:
             ocr_start = time.perf_counter()
             result = self.engine.ocr(image, cls=False)

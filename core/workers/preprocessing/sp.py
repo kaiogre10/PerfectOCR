@@ -11,15 +11,9 @@ class DoctorSaltPepper:
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.corrections = config
-        self.denoise_corrections = config.get('denoise', {})
+        self.config = config
     
     def _estimate_salt_pepper_noise(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
-        """Detecta y corrige patrones de moiré en cada polígono del diccionario.
-        Args:
-            refined_polygons: Diccionario principal con los polígonos
-        Returns:
-            El los 'cropped_img' corregidos si aplica"""
         polygons = processing_dict.get("polygons", {})
         for poly_data in polygons.values():
             current_image = poly_data.get("cropped_img")
@@ -32,7 +26,7 @@ class DoctorSaltPepper:
     
     def _detect_sp_single(self, cropped_img: np.ndarray) -> np.ndarray:
         """Estima ruido sal y pimienta con histograma."""
-        sp_corrections = self.denoise_corrections.get('median_filter', {})
+        sp_corrections = self.config.get('median_filter', {})
         low_thresh = sp_corrections.get('salt_pepper_low', 10)
         high_thresh = sp_corrections.get('salt_pepper_high', 245)
         kernel_size = sp_corrections.get('kernel_size', 3)
@@ -43,8 +37,8 @@ class DoctorSaltPepper:
         if total_pixels == 0:
             sp_poly =  cropped_img
             return sp_poly
-        
-        hist, _ = histogram(cropped_img, nbins=256, source_range='image')
+                
+        hist, _, = histogram(cropped_img, nbins=256, source_range='image')
         
         # Sumar píxeles en extremos
         sp_pixels = np.sum(hist[:low_thresh]) + np.sum(hist[high_thresh:])

@@ -41,34 +41,6 @@ class ImageDimensions:
     def aspect_ratio(self) -> float:
         return self.width / self.height
 
-@dataclass
-class BoundingBox:
-    """Bounding box inmutable con validación"""
-    x_min: float
-    y_min: float
-    x_max: float
-    y_max: float
-    
-    def __post_init__(self):
-        if self.x_min >= self.x_max or self.y_min >= self.y_max:
-            raise ValueError("Bounding box inválido")
-    
-    @property
-    def width(self) -> float:
-        return self.x_max - self.x_min
-    
-    @property
-    def height(self) -> float:
-        return self.y_max - self.y_min
-    
-    @property
-    def area(self) -> float:
-        return self.width * self.height
-    
-    @property
-    def centroid(self) -> Tuple[float, float]:
-        return ((self.x_min + self.x_max) / 2, (self.y_min + self.y_max) / 2)
-
 @dataclass(frozen=True)
 class DocumentMetadata:
     """Metadatos del documento con validación robusta"""
@@ -85,34 +57,49 @@ class DocumentMetadata:
         if self.dpi is not None and self.dpi <= 0:
             raise ValueError("DPI debe ser positivo")
 
+
+@dataclass
+class BoundingBox:
+    """Bounding box con validación"""
+    x_min: float
+    y_min: float
+    x_max: float
+    y_max: float
+    
+    def __post_init__(self):
+        if self.x_min >= self.x_max or self.y_min >= self.y_max:
+            raise ValueError("Bounding box inválido")
+    
+    @property
+    def width(self) -> float:
+        return self.x_max - self.x_min
+    
+    @property
+    def height(self) -> float:
+        return self.y_max - self.y_min
+        
+    @property
+    def centroid(self) -> Tuple[float, float]:
+        return ((self.x_min + self.x_max) / 2, (self.y_min + self.y_max) / 2)
+
 @dataclass
 class PolygonGeometry:
     """Geometría de polígono con métodos útiles"""
     polygon_coords: List[Tuple[float, float]]
     bounding_box: BoundingBox
     centroid: Tuple[float, float]
-    
+    perimeter: Optional[float]
+
     def __post_init__(self):
         if len(self.polygon_coords) < 3:
             raise ValueError("Polígono debe tener al menos 3 puntos")
-    
-    @property
-    def perimeter(self) -> float:
-        """Calcula perímetro del polígono"""
-        perimeter = 0.0
-        for i in range(len(self.polygon_coords)):
-            p1 = self.polygon_coords[i]
-            p2 = self.polygon_coords[(i + 1) % len(self.polygon_coords)]
-            perimeter += np.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
-        return perimeter
-    
 
 @dataclass
 class Polygon:
     """Polígono con validación y métodos útiles"""
     polygon_id: str
     geometry: PolygonGeometry
-    line_id: str
+    line_id: Optional[str]
     cropped_img: Optional[np.ndarray] = None # type: ignore
     padding_coords: Optional[List[float]] = None
     was_fragmented: bool = False
@@ -122,7 +109,7 @@ class Polygon:
     def __post_init__(self):
         if not self.polygon_id.startswith("poly_"):
             raise ValueError("ID de polígono debe empezar con 'poly_'")
-        if not self.line_id.startswith("line_"):
+        if self.line_id is not None and not self.line_id.startswith("line_"):
             raise ValueError("ID de línea debe empezar con 'line_'")
         if self.confidence is not None and not (0 <= self.confidence <= 100):
             raise ValueError("Confianza debe estar entre 0 y 100")

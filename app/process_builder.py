@@ -37,11 +37,10 @@ class ProcessingBuilder:
                 error_job.add_error("Fallo en la fase de generación de polígonos.")
                 return error_job
 
-            total_time_poly = workflow_start - time_poly
-            logger.info(f"Poligonal time: {total_time_poly}")
+            logger.info(f"Poligonal time: {time_poly:4f}")
 
             # FASE 2: Preprocesamiento (PreprocessingManager modifica WorkflowJob)
-            prep_initime = time.perf_counter()
+
             workflow_job, prep_time = self.preprocessing_stager.apply_preprocessing_pipelines(workflow_job)
             
             if workflow_job is None:
@@ -49,9 +48,9 @@ class ProcessingBuilder:
                 error_job = WorkflowJob(job_id=f"error_{image_name}_{int(time.time())}", status=ProcessingStatus.FAILED)
                 error_job.add_error("Fallo en la fase de preprocesamiento.")
                 return error_job
-            else:    
-                prepro_total = prep_initime - prep_time
-            logger.info(f"Preprocessing time: {prepro_total}")
+            else:
+
+                logger.info(f"Preprocessing time: {prep_time}")
 
 
             # FASE 3: OCR (OCREngineManager modifica WorkflowJob)

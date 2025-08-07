@@ -1,6 +1,6 @@
 # core/workers/factory/abstract.py
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Callable
 from core.workers.factory.abstract_worker import AbstractWorker
 
 class AbstractBaseFactory(ABC):
@@ -12,7 +12,7 @@ class AbstractBaseFactory(ABC):
         self.worker_registry = self._create_worker_registry()
     
     @abstractmethod
-    def _create_worker_registry(self) -> Dict[str, callable]:
+    def _create_worker_registry(self) -> Dict[str, Callable]:
         """Cada módulo define su registro de workers."""
         pass
     

@@ -10,9 +10,8 @@ class GaussianDenoiser:
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.corrections = config
-        self.denoise_corrections = config.get('denoise', {})
-
+        self.config = config
+        
     def _estimate_gaussian_noise(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Detecta y corrige patrones de moiré en cada polígono del diccionario.
         Args:
@@ -31,7 +30,7 @@ class GaussianDenoiser:
 
     def _estimate_gaussian_noise_single(self, cropped_img: np.ndarray) -> np.ndarray:
         """Estima ruido general con varianza del Laplaciano."""
-        bilateral_corrections = self.corrections.get('bilateral_params', {})
+        bilateral_corrections = self.config.get('bilateral_params', {})
         d = bilateral_corrections.get('d', 9)
         sigma_color = bilateral_corrections.get('sigma_color', 75)
         sigma_space = bilateral_corrections.get('sigma_space', 75)

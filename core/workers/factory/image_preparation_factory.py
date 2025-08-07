@@ -1,20 +1,20 @@
 # core/workers/factory/image_preparation_factory.py
 from typing import Dict, Callable, Any
+from core.workers.factory.abstract_worker import AbstractWorker
 from core.workers.factory.abstract_factory import AbstractBaseFactory
 from core.workers.image_preparation.cleanner import ImageCleaner
 from core.workers.image_preparation.angle_corrector import AngleCorrector
-from core.workers.image_preparation.geometry_detector import GeometryDetector
 from core.workers.image_preparation.lineal_reconstructor import LineReconstructor
 from core.workers.image_preparation.poly_gone import PolygonExtractor
 
 class ImagePreparationFactory(AbstractBaseFactory):
     """Factory para workers de preparación de imagen."""
     
-    def _create_worker_registry(self) -> Dict[str, Callable]:
+    def _create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], AbstractWorker]]:
+        
         return {
             "cleaner": self._create_cleaner,
             "angle_corrector": self._create_angle_corrector,
-            "geometry_detector": self._create_geometry_detector,
             "line_reconstructor": self._create_line_reconstructor,
             "polygon_extractor": self._create_polygon_extractor
         }
@@ -26,11 +26,7 @@ class ImagePreparationFactory(AbstractBaseFactory):
     def _create_angle_corrector(self, context: Dict[str, Any]) -> AngleCorrector:
         deskew_config = self.module_config.get('deskew', {})
         return AngleCorrector(config=deskew_config, project_root=self.project_root)
-    
-    def _create_geometry_detector(self, context: Dict[str, Any]) -> GeometryDetector:
-        paddle_config = self.module_config.get('paddle_config', {})
-        return GeometryDetector(paddle_config=paddle_config, project_root=self.project_root)
-    
+        
     def _create_line_reconstructor(self, context: Dict[str, Any]) -> LineReconstructor:
         return LineReconstructor(config={}, project_root=self.project_root)
     

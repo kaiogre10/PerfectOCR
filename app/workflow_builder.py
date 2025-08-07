@@ -54,9 +54,7 @@ class WorkFlowBuilder:
         
         
         logger.info(f"PLANIFICACIÓN COMPLETADA:")
-        logger.info(f"  - {num_images} imágenes detectadas")
-        logger.info(f"  - Modo: {mode.upper()}")
-        logger.info(f"  - Workers requeridos: {workers_needed}")
+        logger.info(f" {num_images} imágenes detectadas")
 
         workflow_report =  {
             "status": "success",
@@ -85,14 +83,5 @@ class WorkFlowBuilder:
 
     def get_valid_extensions(self) -> Tuple[str, ...]:
         """Obtiene extensiones válidas desde configuración."""
-        # ¿Está bien así?
-        # Analizando: Estás obteniendo las extensiones válidas desde self.config_services.preprocessing_config.
-        # Sin embargo, según la estructura de tu YAML y la lógica de tu ConfigService, 
-        # las extensiones válidas están bajo 'processing' -> 'valid_image_extensions', 
-        # no bajo 'modules' -> 'preprocessing'.
-        # Por lo tanto, deberías usar self.config_services.processing_config en vez de preprocessing_config.
-        # Además, el log tiene un pequeño error de ortografía y no muestra el valor real cargado.
-
         extensions = self.config_services.processing_config.get('valid_image_extensions', [])
-        logger.info(f"Extensiones cargadas: {extensions}")
         return tuple(extensions)

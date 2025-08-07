@@ -22,11 +22,30 @@ class LineReconstructor(AbstractWorker):
         workflow_job = context.get('workflow_job')
         metadata = context.get('metadata', {})
         
-        # Crear doc_data para compatibilidad
-        doc_data = {
-            "metadata": metadata,
-            "polygons": {}  # Los polígonos vendrían del worker anterior
-        }
+        # Usar polígonos del WorkflowJob en lugar de doc_data
+        if workflow_job and workflow_job.polygons:
+            # Convertir objetos Polygon a formato dict para compatibilidad
+            polygons_dict = {}
+            for poly_id, polygon in workflow_job.polygons.items():
+                polygons_dict[poly_id] = {
+                    "polygon_id": polygon.polygon_id,
+                    "geometry": {
+                        "polygon_coords": polygon.geometry.polygon_coords,
+                        "bounding_box": [polygon.geometry.bounding_box.x_min, polygon.geometry.bounding_box.y_min, 
+                                       polygon.geometry.bounding_box.x_max, polygon.geometry.bounding_box.y_max],
+                        "centroid": polygon.geometry.centroid
+                    }
+                }
+            
+            doc_data = {
+                "metadata": metadata,
+                "polygons": polygons_dict
+            }
+        else:
+            doc_data = {
+                "metadata": metadata,
+                "polygons": {}
+            }
         
         # Reconstruir líneas
         id_map = self._reconstruct_lines(doc_data)
@@ -37,12 +56,12 @@ class LineReconstructor(AbstractWorker):
         
         return image  # Retorna la misma imagen (no la modifica)
 
-    def _reconstruct_lines(self, enriched_doc: Dict[str, Any]) -> Dict[str, str]:
+    def _reconstruct_lines(self, doc_data: Dict[str, Any]) -> Dict[str, str]:
         """
         Asigna un 'line_id' a cada polígono y construye la geometría de las líneas.
         Devuelve un mapeo polygon_id -> line_id.
         """
-        polygons = enriched_doc.get("polygons", {})
+        polygons = doc_data.get("polygons", {})
         if not polygons:
             logger.warning("No hay polígonos para reconstruir líneas.")
             return {}

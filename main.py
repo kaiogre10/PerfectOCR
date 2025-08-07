@@ -13,6 +13,8 @@ from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.workers.factory.main_factory import MainFactory
 from core.workers.image_preparation.image_loader import ImageLoader
+from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
+from core.workers.image_preparation.geometry_detector import GeometryDetector
 
 # Configuración de threads (se mantiene como está)
 os.environ.update({
@@ -141,6 +143,7 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
 
 def create_builders(config_services: ConfigService, project_root: str, workflow_report: Dict[str, Any])-> List[ProcessingBuilder]:
     """Crea builders para cada imagen encontrada usando inyecciones en cascada."""
+    context = {}
     builders = []
     image_info_list = workflow_report.get('image_info', [])
     
@@ -151,18 +154,33 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             project_root=project_root
         )
          
-        image_prep_factory = worker_factory.get_image_preparation_factory() 
+        image_load_factory = worker_factory.get_image_preparation_factory() 
+        workers = image_load_factory.create_workers([
+            'cleaner', 'angle_corrector', 'line_reconstructor', 'polygon_extractor'],
+            context
+        )
                
-        # Unica Excepción
+        # Unicas Excepciones
         image_loader = ImageLoader(
             image_info=image_data,
             project_root=project_root,
         )
         
+        paddleocr = PaddleOCRWrapper(
+            config_dict=config_services.paddle_rec_config,
+            project_root=project_root
+        )
+
+        paddlepaddle = GeometryDetector(
+            paddle_config=config_services.paddle_det_config,
+            project_root=project_root
+        )
+
         # Crear managers con workers inyectados
         input_stager = InputStager(
-            workers_factory=image_prep_factory,
+            workers_factory=workers,
             image_loader = image_loader,
+            paddlepaddle=paddlepaddle,
             stage_config=config_services.manager_config,
             project_root=project_root
         )
@@ -174,8 +192,8 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         )
         
         ocr_stager = OCRStager(
-            config=config_services.paddle_rec_config,
             stage_config=config_services.manager_config,
+            paddleocr=paddleocr,
             project_root=project_root
         )
         

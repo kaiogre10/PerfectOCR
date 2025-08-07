@@ -75,8 +75,7 @@ class ImageLoader:
             metadata['error'] = error_msg
             return None, metadata
     
-    @property
-    def load_image_and_metadata(self) -> WorkflowJob:  # ← Solo retorna WorkflowJob
+    def load_image_and_metadata(self) -> WorkflowJob:
         """
         Carga imagen y extrae metadatos en una sola operación.
         """
@@ -88,8 +87,7 @@ class ImageLoader:
                     
         # CREAR WORKFLOWJOB AQUÍ
         job_id = f"job_{metadata['image_name']}_{int(time.time())}"
-        logger.info(f"[ImageLoader] Creando WorkflowJob con ID: {job_id}")
-        
+                
         # Crear ImageDimensions
         img_dims_dict = metadata.get("img_dims", {})
         img_dims = ImageDimensions(
@@ -111,7 +109,7 @@ class ImageLoader:
         workflow_job = WorkflowJob(
             job_id=job_id,
             full_img=gray_image,
-            doc_metadata=doc_metadata,  # ← Metadata ya está en el job
+            doc_metadata=doc_metadata, 
             current_stage=ProcessingStage.IMAGE_LOADED
         )
         
@@ -122,4 +120,4 @@ class ImageLoader:
         
         logger.info(f"[ImageLoader] WorkflowJob creado exitosamente en {load_time:.3f}s")
                 
-        return workflow_job  # ← Solo retorna el job
+        return workflow_job  

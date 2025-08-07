@@ -4,7 +4,7 @@ import numpy as np
 import logging
 import time
 import os
-from typing import Any, Optional, Dict, Tuple, List, Set
+from typing import Any, Optional, Dict, Tuple, List
 from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
@@ -21,22 +21,21 @@ class PreprocessingStager:
     """
     Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
     """
-    def __init__(self, config: Dict, stage_config: Dict, project_root: str):
+    def __init__(self, config: Dict[str, Any], stage_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.preprocessing_config = config
-        self.manager_config = stage_config
-        denoise_config = self.preprocessing_config.get('denoise', {})
+        self.stage_config = stage_config
         
-        self._moire = MoireDenoiser(config=denoise_config.get('moire', {}), project_root=self.project_root)
-        self._sp = DoctorSaltPepper(config=denoise_config.get('median_filter', {}), project_root=self.project_root)
-        self._gauss = GaussianDenoiser(config=denoise_config.get('bilateral_params', {}), project_root=self.project_root)
+        self._moire = MoireDenoiser(config=self.preprocessing_config.get('moire', {}), project_root=self.project_root)
+        self._sp = DoctorSaltPepper(config=self.preprocessing_config.get('median_filter', {}), project_root=self.project_root)
+        self._gauss = GaussianDenoiser(config=self.preprocessing_config.get('bilateral_params', {}), project_root=self.project_root)
         self._claher = ClaherEnhancer(config=self.preprocessing_config.get('contrast', {}), project_root=self.project_root)
         self._sharp = SharpeningEnhancer(config=self.preprocessing_config.get('sharpening', {}), project_root=self.project_root)
         self._bin = Binarizator(config=self.preprocessing_config.get('binarize', {}), project_root=self.project_root)
         self._fragment = PolygonFragmentator(config=self.preprocessing_config.get('fragmentation', {}), project_root=self.project_root)
 
-        self.output_flags = self.manager_config.get("output_flag", {})
-        self.output_folder = self.manager_config["output_folder"]
+        self.output_flags = self.stage_config.get("output_flag", {})
+        self.output_folder = self.stage_config["output_folder"]
         self.output_service = None
         if self.output_folder and any([
             self.output_flags.get("moire_poly", False),

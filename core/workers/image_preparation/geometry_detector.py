@@ -3,13 +3,13 @@ import os
 import logging
 from typing import Dict, Any
 import numpy as np
+import time
 from paddleocr import PaddleOCR
-from core.workers.factory.abstract_worker import AbstractWorker
 from core.domain.workflow_job import ProcessingStage
 
 logger = logging.getLogger(__name__)
 
-class GeometryDetector(AbstractWorker):
+class GeometryDetector:
     """
     Worker especializado que utiliza PaddleOCR para detectar la geometría del texto.
     """
@@ -19,33 +19,11 @@ class GeometryDetector(AbstractWorker):
         self._engine = None 
         logger.info("GeometryDetector inicializado (motor PaddleOCR no cargado aún).")
 
-    def process(self, image: np.ndarray[Any, Any], context: Dict[str, Any]) -> np.ndarray[Any, Any]:
-        """
-        Implementa el método abstracto de AbstractWorker.
-        """
-        workflow_job = context.get('workflow_job')
-        metadata = context.get('metadata', {})
-        
-        # Crear doc_data para compatibilidad
-        doc_data = {
-            "metadata": metadata,
-            "polygons": {}
-        }
-        
-        # Detectar geometría
-        doc_data = self.detect(image, doc_data)
-        
-        # Actualizar el WorkflowJob si está disponible
-        if workflow_job and workflow_job.full_img is not None:
-            workflow_job.update_stage(ProcessingStage.GEOMETRY_DETECTED)
-            # Aquí podrías agregar los polígonos al job si es necesario
-        
-        return image  # Retorna la misma imagen (no la modifica)
-
     @property
     def engine(self):
         """Inicialización perezosa de PaddleOCR para no consumir recursos si no se usa."""
         if self._engine is None:
+            start_time = time.perf_counter()
             try:
                 init_params = {
                     "use_angle_cls": False,
@@ -56,13 +34,18 @@ class GeometryDetector(AbstractWorker):
                     "enable_mkldnn": self.paddle_config.get('enable_mkldnn', True)
                 }
 
-                det_model_path = self.paddle_config.get('det_model_dir')
+                det_model_path = self.paddle_config.get('det_model_dir', "")
                 if det_model_path and os.path.exists(det_model_path):
                     init_params['det_model_dir'] = det_model_path
                 else:
                     logger.warning("No se encontró un directorio de modelo de detección local. PaddleOCR intentará descargarlo.")
 
+                model_load_start = time.perf_counter()
                 self._engine = PaddleOCR(**init_params)
+                model_load_time = time.perf_counter() - model_load_start
+                total_init_time = time.perf_counter() - start_time
+                logger.info(f"Total inicialización PaddleOCR para GEOMETRÍA: {total_init_time:.3f}s (carga de modelo: {model_load_time:.3f}s)")
+
                 logger.info("Instancia de PaddleOCR para GEOMETRÍA cargada exitosamente.")
 
             except Exception as e:
@@ -70,7 +53,7 @@ class GeometryDetector(AbstractWorker):
                 self._engine = None
         return self._engine
 
-    def detect(self, img_to_poly: np.ndarray[Any, Any], doc_data: Dict[str, Any]) -> Dict[str, Any]:
+    def detect(self, current_image: np.ndarray[Any, Any], doc_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detecta la geometría del texto y la añade al diccionario de datos del documento.
         """
@@ -80,7 +63,7 @@ class GeometryDetector(AbstractWorker):
             return doc_data
         
         try:
-            results = self.engine.ocr(img_to_poly, cls=False, rec=False)
+            results = self.engine.ocr(current_image, cls=False, rec=False)
             if not (results and len(results) > 0 and results[0] is not None):
                 logger.warning("La detección geométrica no encontró polígonos de texto.")
                 doc_data['polygons'] = {}

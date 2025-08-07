@@ -7,7 +7,7 @@ from services.config_service import ConfigService
 logger = logging.getLogger(__name__)
 
 class CacheService:
-    def __init__(self, config_service):
+    def __init__(self, config_service: ConfigService):
         self.config_service = config_service
         self.workflow_config = config_service.workflow_config
         self.roots_config = config_service.roots_config

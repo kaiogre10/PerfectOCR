@@ -77,14 +77,29 @@ class ConfigService:
         return workflow_config
 
     @property
-    def roots_config(self) -> Dict[str, Any]:
-        """Obtiene configuración de rutas para limpieza."""
-        cleanup_config = self.cleanup_config
-        return {
-            'folders_to_empty': cleanup_config.get('folders_to_empty', ""),
-            'folder_names_to_delete': cleanup_config.get('folder_extensions_to_delete', []),
-            'project_root': self.workflow_config.get('project_root', "")
-        }
+    def paddle_config(self) -> Dict[str, Any]:
+        """Obtiene la configuración global para Paddle"""
+        paddle_config = self.config.get('paddle_config', {})
+        return paddle_config
+
+    @property
+    def paddle_det_config(self) -> Dict[str, Any]:
+        """Devuelve la configuración de PaddleOCR para detección (GeometryDetector)."""
+        paddle_det = self.paddle_config
+        det_model_dir = self.paddle_config.get('det_model_dir', "")
+        if det_model_dir:
+            paddle_det['det_model_dir'] = det_model_dir
+        return paddle_det
+
+    @property
+    def paddle_rec_config(self) -> Dict[str, Any]:
+        """Devuelve la configuración de PaddleOCR para PaddleWrapper."""
+        paddle_rec = self.paddle_config
+        rec_model_dir = self.paddle_config.get('rec_model_dir', "")
+        if rec_model_dir:
+            paddle_rec['rec_model_dir'] = rec_model_dir
+        return paddle_rec
+
 
 # FUNCIONES MÁS ESPECÍFICAS:
     
@@ -105,10 +120,12 @@ class ConfigService:
         """ Devuelve el paquete estándar de configuraciones de los managers"""
         output_path = self.paths_config.get('output_folder', "")
         output_flags = self.enabled_outputs.get('output_flag', {})
+        pipeline = self.pipeline_config.get('secuence', [])
         
         manager_stage_config = {
-            "output_folder": output_path,
-            "output_flag": output_flags
+            "output_folder": output_path, #str
+            "output_flag": output_flags, #dict
+            'secuence': pipeline #dict
         }
         return manager_stage_config
 
@@ -116,10 +133,10 @@ class ConfigService:
     def image_loader_config(self) -> Dict[str, Any]:
         """Devuelve la configuración del image_loader con la ruta de entrada."""
         image_loader_params = self.modules_config.get('image_loader', {})
-        paddle_config = self.paddle_detection_config
+        paddle_det_config = self.paddle_config.get('det_model_dir', "")
         image_loader_config = {
             "image_loader": image_loader_params,
-            "paddle_det": paddle_config
+            "paddle_det": paddle_det_config
         }
         return image_loader_config
         
@@ -134,37 +151,7 @@ class ConfigService:
         """Obtiene configuración específica de vectorización."""
         vectorization_config =  self.modules_config.get('vectorization', {})
         return vectorization_config
-        
-    @property
-    def paddle_models(self) -> Dict[str, Any]:
-        """Devuelve los modelos básivos de  PaddleOCR"""
-        paddle_models = self.paths_config.get('paddlepaddle', {})
-        return paddle_models 
-        
-    @property
-    def paddle_detection_config(self) -> Dict[str, Any]:
-        """Devuelve la configuración de PaddleOCR para detección (GeometryDetector)."""
-        paddle_det = self.ocr_config.get('paddle', {}).copy()
-        det_model_dir = self.paddle_models.get('det_model_dir', "")
-        if det_model_dir:
-            paddle_det['det_model_dir'] = det_model_dir
-        return paddle_det
-    
-    @property
-    def paddle_rec_config(self) -> Dict[str, Any]:
-        """Devuelve la configuración de PaddleOCR para PaddleWrapper."""
-        paddle_rec = self.ocr_config.get('paddle', {}).copy()
-        rec_model_dir = self.paddle_models.get('rec_model_dir', "")
-        if rec_model_dir:
-            paddle_rec['rec_model_dir'] = rec_model_dir
-        return {"paddle": paddle_rec}  # Envolver en clave 'paddle'
-        
-    @property
-    def ocr_config(self) -> Dict[str, Any]:
-        """Obtiene configuración específica del OCR."""
-        ocr_config = self.modules_config.get('ocr', {})
-        return ocr_config
-    
+                                
     @property
     def max_workers(self) -> int:
         """Obtiene número de workers desde configuración de procesamiento."""
@@ -181,3 +168,13 @@ class ConfigService:
         if add_extra and workers < cpu_count:
             workers += 1
         return max(1, workers)
+    
+    @property
+    def roots_config(self) -> Dict[str, Any]:
+        """Obtiene configuración de rutas para limpieza."""
+        cleanup_config = self.cleanup_config
+        return {
+            'folders_to_empty': cleanup_config.get('folders_to_empty', ""),
+            'folder_names_to_delete': cleanup_config.get('folder_extensions_to_delete', []),
+            'project_root': self.workflow_config.get('project_root', "")
+        }
