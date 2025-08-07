@@ -52,7 +52,6 @@ class ProcessingBuilder:
 
                 logger.info(f"Preprocessing time: {prep_time}")
 
-
             # FASE 3: OCR (OCREngineManager modifica WorkflowJob)
             ocr_initime = time.perf_counter()
             if workflow_job:

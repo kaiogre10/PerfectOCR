@@ -1,8 +1,7 @@
 # PerfectOCR/core/preprocessing/poly_gone.py
-import cv2
 import numpy as np
 import logging
-from typing import Tuple, List, Dict, Any
+from typing import Dict, Any
 from core.workers.factory.abstract_worker import AbstractWorker
 from core.domain.workflow_job import ProcessingStage
 
@@ -20,6 +19,8 @@ class PolygonExtractor(AbstractWorker):
         """
         workflow_job = context.get('workflow_job')
         metadata = context.get('metadata', {})
+        
+        logger.info(f"[PolygonExtractor] Iniciando extracción de polígonos")
         
         # Usar polígonos del WorkflowJob en lugar de doc_data
         if workflow_job and workflow_job.polygons:
@@ -43,20 +44,24 @@ class PolygonExtractor(AbstractWorker):
         else:
             doc_data = {
                 "metadata": metadata,
-                "polygons": {}
+                "polygons": None
             }
-        
+            logger.warning("[PolygonExtractor] No hay polígonos en WorkflowJob")
+            
         # Extraer polígonos individuales
         polygons = self._extract_individual_polygons(image, doc_data)
         
         # Actualizar el WorkflowJob con las imágenes recortadas
         if workflow_job and workflow_job.full_img is not None:
             # Actualizar los polígonos del WorkflowJob con las imágenes recortadas
+            updated_count = 0
             for poly_id, polygon in workflow_job.polygons.items():
                 if poly_id in self.polygons_info:
                     polygon.cropped_img = self.polygons_info[poly_id]["cropped_img"]
                     polygon.padding_coords = self.polygons_info[poly_id]["padding_coords"]
+                    updated_count += 1
             
+            logger.info(f"[PolygonExtractor] Actualizados {updated_count} polígonos con imágenes recortadas")
             workflow_job.update_stage(ProcessingStage.POLYGONS_EXTRACTED)
         
         return image  # Retorna la misma imagen (no la modifica)
@@ -72,16 +77,19 @@ class PolygonExtractor(AbstractWorker):
         metadata = doc_data.get("metadata", {})
         img_dims = metadata.get("img_dims", {})
         
+        logger.info(f"[PolygonExtractor] Metadata: {type(metadata)}")
+        logger.info(f"[PolygonExtractor] img_dims: {type(img_dims)}")
+        
         # img_dims es un objeto ImageDimensions, no un diccionario
         if hasattr(img_dims, 'height') and hasattr(img_dims, 'width'):
             img_h = img_dims.height
             img_w = img_dims.width
         else:
-            # Fallback si no es un objeto ImageDimensions
             img_h = int(img_dims.get("height", 0) if isinstance(img_dims, dict) else 0)
             img_w = int(img_dims.get("width", 0) if isinstance(img_dims, dict) else 0)
 
         self.polygons_info = {}
+        extracted_count = 0
         
         for poly_id, poly_data in polygons.items():
             try:
@@ -104,11 +112,13 @@ class PolygonExtractor(AbstractWorker):
                             "cropped_img": cropped_poly.copy(),
                             "padding_coords": [poly_x1, poly_y1, poly_x2, poly_y2]
                         }
+                        extracted_count += 1
                 
             except Exception as e:
                 logger.error(f"Error recortando polígono {poly_id}: {e}")
                 poly_data["cropped_img"] = None
 
+        logger.info(f"[PolygonExtractor] Extraídos {extracted_count} polígonos de {len(polygons)}")
         return polygons
     
     def _get_polygons_copy(self) -> Dict[str, Any]:

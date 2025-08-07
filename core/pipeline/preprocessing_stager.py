@@ -1,9 +1,7 @@
 # PerfectOCR/core/coordinators/preprocessing_coordinator.py
-import cv2
 import numpy as np
 import logging
 import time
-import os
 from typing import Any, Optional, Dict, Tuple, List
 from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper

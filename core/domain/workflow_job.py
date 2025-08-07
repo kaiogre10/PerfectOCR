@@ -57,7 +57,6 @@ class DocumentMetadata:
         if self.dpi is not None and self.dpi <= 0:
             raise ValueError("DPI debe ser positivo")
 
-
 @dataclass
 class BoundingBox:
     """Bounding box con validación"""
@@ -88,7 +87,7 @@ class PolygonGeometry:
     polygon_coords: List[Tuple[float, float]]
     bounding_box: BoundingBox
     centroid: Tuple[float, float]
-    perimeter: Optional[float]
+    perimeter: Optional[float] = None
 
     def __post_init__(self):
         if len(self.polygon_coords) < 3:
@@ -99,8 +98,8 @@ class Polygon:
     """Polígono con validación y métodos útiles"""
     polygon_id: str
     geometry: PolygonGeometry
-    line_id: Optional[str]
-    cropped_img: Optional[np.ndarray] = None # type: ignore
+    line_id: Optional[str] = None
+    cropped_img: Optional[np.ndarray] = None  # type: ignore
     padding_coords: Optional[List[float]] = None
     was_fragmented: bool = False
     text: Optional[str] = None
@@ -171,7 +170,6 @@ class WorkflowJob:
     # Métricas de rendimiento
     processing_times: Dict[str, float] = field(default_factory=dict)
     error_log: List[str] = field(default_factory=list)
-    
     
     def add_polygon(self, polygon: Polygon) -> None:
         """Añade polígono con validación"""

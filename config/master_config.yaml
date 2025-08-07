@@ -16,7 +16,6 @@ logging:
 paths:
   input_folder: "C:/PerfectOCR/input"
   output_folder: "C:/PerfectOCR/output"
-  temp_folder: "C:/PerfectOCR/data/temp"
 
 paddle_config:
   use_angle_cls: false
@@ -30,15 +29,15 @@ paddle_config:
     cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
 
 
-pipeline:
-  secuence:
-    image_preparation:
-      - "cleaner"           # Limpieza y mejora
-      - "angle_corrector"   # Corrección de ángulo
-      - "line_reconstructor" # Reconstrucción de líneas
-      - "polygon_extractor" # Extracción de polígonos
-    
-    preprocess:
+pipeline_secuence:
+  image_preparation:
+    - "cleaner"           
+    - "angle_corrector" 
+    - "geometry_detection"  
+    - "line_reconstructor" 
+    - "polygon_extractor" 
+  
+  preprocess:
 
 
 # Configuración de salida (independiente)

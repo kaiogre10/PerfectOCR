@@ -14,13 +14,11 @@ from core.pipeline.ocr_stager import OCRStager
 from core.workers.factory.main_factory import MainFactory
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
-from core.workers.image_preparation.geometry_detector import GeometryDetector
 
-# Configuración de threads (se mantiene como está)
 os.environ.update({
-    'OMP_NUM_THREADS': '1',        # Conservador para evitar contención
-    'MKL_NUM_THREADS': '2',        # Conservador
-    'FLAGS_use_mkldnn': '1',       # Mantener (es estable en main thread)
+    'OMP_NUM_THREADS': '1',        
+    'MKL_NUM_THREADS': '2',
+    'FLAGS_use_mkldnn': '1',     
 })
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -30,34 +28,9 @@ if PROJECT_ROOT not in sys.path:
 MASTER_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 
-def setup_logging():
-    """Configura el sistema de logging centralizado."""
-    logger_root = logging.getLogger()
-    logger_root.setLevel(logging.DEBUG)
-    if logger_root.hasHandlers():
-        logger_root.handlers.clear()
-
-    formatters = {
-        'file': logging.Formatter(
-            fmt='%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(module)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        ),
-        'console': logging.Formatter('%(levelname)s:%(name)s:%(lineno)d - %(message)s')
-    }
-
-    file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
-    file_handler.setFormatter(formatters['file'])
-    file_handler.setLevel(logging.DEBUG)
-    logger_root.addHandler(file_handler)
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatters['console'])
-    console_handler.setLevel(logging.INFO)
-    logger_root.addHandler(console_handler)
-    return logging.getLogger(__name__)
-
-logger = setup_logging()
-
 app = typer.Typer(help="PerfectOCR - Sistema de OCR optimizado")
+
+config_service = ConfigService(MASTER_CONFIG_FILE)
 
 def get_input_paths() -> List[str]:
     """Obtiene rutas de entrada: CLI o por defecto."""
@@ -77,38 +50,35 @@ def get_output_paths() -> List[str]:
         default_output = tmp_config.paths_config.get('output_folder', "")
         return [default_output]
 
-
 @app.command()
 def run(
-    input_paths: Optional[List[str]] = typer.Argument(None, help="Rutas de entrada (opcional, usa rutas por defecto)"),
-    output_paths: Optional[List[str]] = typer.Argument(None, help="Rutas de salida (opcional, usa rutas por defecto)"),
-    config: str = typer.Option(MASTER_CONFIG_FILE, "--config", "-c", help="Archivo de configuración")
-) -> Dict[str, Any]:
-    """Ejecuta PerfectOCR con rutas por defecto o personalizadas."""
-    
-    if not input_paths:
-        input_paths = get_input_paths()
-    
-    if not output_paths:
-        output_paths = get_output_paths()
+    input_paths: Optional[List[str]] = typer.Argument(None),
+    output_paths: Optional[List[str]] = typer.Argument(None),
+    config: str = typer.Option(MASTER_CONFIG_FILE, "--config", "-c")
+):
+    # Determinar el modo de arranque
+    modo_config = "default" if config == MASTER_CONFIG_FILE else "custom"
+    modo_input = "default" if not input_paths else "cli"
+    modo_output = "default" if not output_paths else "cli"
 
-    
-    results = activate_main(input_paths, output_paths, config)
-        
-    return results
+    # Puedes pasar estos flags a activate_main o a cualquier parte del pipeline
+    activate_main(
+        input_paths=input_paths,
+        output_paths=output_paths,
+        config=config,
+        modo_config=modo_config,
+        modo_input=modo_input,
+        modo_output=modo_output
+    )
 
 def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[str]], config: str) -> Dict[str, Any]:
-    """Función principal de procesamiento - fusiona la lógica original."""
-        
-        # Si no se proporcionan rutas, usar las del YAML
-                
-    # Ejecutar procesamiento
+    """Función principal de procesamiento - CON VALIDACIÓN AUTOMÁTICA."""
 
     config_services = None
     try:
-        # 1. Main activa al Contralor (ConfigManager)
-        logging.info("Activando ConfigManager...")
-        config_services = ConfigService(config)
+        # 1. Main activa al Contralor (ConfigManager) - AHORA CON VALIDACIÓN
+        logging.info("Activando ConfigManager con validación robusta...")
+        config_services = ConfigService(config)  # ← VALIDACIÓN AUTOMÁTICA AQUÍ
         project_root = PROJECT_ROOT
 
         # 2. Main crea WorkFlowBuilder con configuración centralizada
@@ -140,7 +110,6 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
             cache_manager = CacheService(config_services)
             cache_manager.cleanup_project_cache()
 
-
 def create_builders(config_services: ConfigService, project_root: str, workflow_report: Dict[str, Any])-> List[ProcessingBuilder]:
     """Crea builders para cada imagen encontrada usando inyecciones en cascada."""
     context = {}
@@ -155,8 +124,13 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         )
          
         image_load_factory = worker_factory.get_image_preparation_factory() 
+        
+        context = {
+            "paddle_det_config": config_services.paddle_det_config
+        }
+        
         workers = image_load_factory.create_workers([
-            'cleaner', 'angle_corrector', 'line_reconstructor', 'polygon_extractor'],
+            'cleaner', 'angle_corrector', 'geometry_detector', 'line_reconstructor', 'polygon_extractor'],
             context
         )
                
@@ -171,17 +145,10 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             project_root=project_root
         )
 
-        paddlepaddle = GeometryDetector(
-            paddle_config=config_services.paddle_det_config,
-            project_root=project_root
-        )
-
         # Crear managers con workers inyectados
         input_stager = InputStager(
             workers_factory=workers,
             image_loader = image_loader,
-            paddlepaddle=paddlepaddle,
-            stage_config=config_services.manager_config,
             project_root=project_root
         )
         

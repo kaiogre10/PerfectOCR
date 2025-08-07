@@ -5,17 +5,19 @@ from typing import Dict, Any
 import numpy as np
 import time
 from paddleocr import PaddleOCR
-from core.domain.workflow_job import ProcessingStage
+from core.domain.workflow_job import ProcessingStage, Polygon, BoundingBox, PolygonGeometry
+from core.workers.factory.abstract_worker import AbstractWorker
 
 logger = logging.getLogger(__name__)
 
-class GeometryDetector:
+class GeometryDetector(AbstractWorker):
     """
     Worker especializado que utiliza PaddleOCR para detectar la geometría del texto.
+    Implementa AbstractWorker para ser usado en la factory.
     """
-    def __init__(self, paddle_config: Dict[str, Any], project_root: str):
+    def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.paddle_config = paddle_config
+        self.paddle_config = config
         self._engine = None 
         logger.info("GeometryDetector inicializado (motor PaddleOCR no cargado aún).")
 
@@ -52,6 +54,78 @@ class GeometryDetector:
                 logger.error(f"Error crítico al inicializar la instancia geométrica de PaddleOCR: {e}", exc_info=True)
                 self._engine = None
         return self._engine
+
+    def process(self, image: np.ndarray[Any, Any], context: Dict[str, Any]) -> np.ndarray[Any, Any]:
+        """
+        Implementa el contrato de AbstractWorker.
+        Detecta geometría y actualiza el WorkflowJob en el contexto.
+        """
+        workflow_job = context.get('workflow_job')
+        if not workflow_job:
+            logger.warning("GeometryDetector: No se encontró WorkflowJob en el contexto")
+            return image
+        
+        try:
+            # Usar el método detect existente
+            doc_data = {
+                "metadata": workflow_job.doc_metadata.__dict__ if workflow_job.doc_metadata else {},
+                "polygons": {}
+            }
+            
+            doc_data = self.detect(image, doc_data)
+            
+            # Actualizar WorkflowJob con los polígonos detectados
+            if doc_data["polygons"]:
+                logger.info(f"[GeometryDetector] Encontrados {len(doc_data['polygons'])} polígonos")
+                
+                # Convertir polígonos detectados a objetos Polygon del WorkflowJob
+                for poly_id, poly_data in doc_data['polygons'].items():
+                    try:
+                        geometry_data = poly_data['geometry']
+                
+                        bbox = geometry_data['bounding_box']
+                        bounding_box = BoundingBox(
+                            x_min=bbox[0], y_min=bbox[1], 
+                            x_max=bbox[2], y_max=bbox[3]
+                        )
+                        
+                        polygon_geometry = PolygonGeometry(
+                            polygon_coords=geometry_data['polygon_coords'],
+                            bounding_box=bounding_box,
+                            centroid=tuple(geometry_data['centroid']),
+                            perimeter=None 
+                        )
+                        
+                        polygon = Polygon(
+                            polygon_id=poly_id,
+                            geometry=polygon_geometry,
+                            line_id=None,
+                            cropped_img=None,
+                            padding_coords=None,
+                            was_fragmented=False,
+                            text=None,
+                            confidence=None
+                        )
+                        
+                        workflow_job.add_polygon(polygon)
+                        
+                    except Exception as e:
+                        logger.warning(f"Error convirtiendo polígono {poly_id}: {e}")
+                        continue
+                
+                logger.info(f"[GeometryDetector] {len(doc_data['polygons'])} polígonos guardados en WorkflowJob")
+                workflow_job.update_stage(ProcessingStage.GEOMETRY_DETECTED)
+            
+            else:
+                logger.warning("[GeometryDetector] No se encontraron polígonos")
+            
+        except Exception as e:
+            error_msg = f"Error en GeometryDetector: {e}"
+            logger.error(error_msg, exc_info=True)
+            if workflow_job:
+                workflow_job.add_error(error_msg)
+        
+        return image  # Retorna la misma imagen (no la modifica)
 
     def detect(self, current_image: np.ndarray[Any, Any], doc_data: Dict[str, Any]) -> Dict[str, Any]:
         """

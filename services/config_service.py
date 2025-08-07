@@ -1,168 +1,126 @@
-# PerfectOCR/management/config_manager.py
+# services/config_service.py
 import yaml
 import os
 import logging
 from typing import Dict, Any
+from config.config_models import MasterConfig  # ← Validador Pydantic
 
 logger = logging.getLogger(__name__)
 
 class ConfigService:
-    """Fragmentador centralizado que carga YAML una sola vez y proporciona configuraciones específicas para cada módulo."""
+    """Fragmentador centralizado con validación robusta y flexibilidad."""
     
     def __init__(self, config_path: str):
         self.config_path = config_path
-        self.config = self.load_yaml_config()
+        # VALIDACIÓN ROBUSTA
+        self.validated_config = self._load_and_validate_yaml()
+        # FLEXIBILIDAD: Convertir a dict para compatibilidad
+        self.config = self.validated_config.model_dump()
         
-    def load_yaml_config(self) -> Dict[str, Any]:
-        """Carga el YAML una sola vez."""
+    def _load_and_validate_yaml(self) -> MasterConfig:
+        """Carga YAML y valida con Pydantic - ROBUSTEZ."""
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f) or {}
-                return config
+                raw_config = yaml.safe_load(f) or {}
+            
+            # ← VALIDACIÓN AUTOMÁTICA
+            return MasterConfig(**raw_config)
+            
         except Exception as e:
-            logger.error(f"Error cargando configuración desde {self.config_path}: {e}")
+            logger.error(f"Error validando configuración desde {self.config_path}: {e}")
             raise
     
-    def system_config(self) -> Dict[str, Any]:
-        """Obtiene configuración del sistema."""
-        system_config = self.config.get('system', {})
-        return system_config
-        
+    # FLEXIBILIDAD: Properties que devuelven dicts (como antes)
     @property
     def logging_config(self) -> Dict[str, Any]:
         """Obtiene configuración de logging."""
-        logging_config = self.config.get('logging', {})
-        return logging_config
+        return self.config.get('logging', {})
     
     @property
     def paths_config(self) -> Dict[str, Any]:
         """Obtiene todas las rutas del sistema."""
-        paths_config = self.config.get('paths', {})
-        return paths_config
-
+        return self.config.get('paths', {})
+    
     @property
     def enabled_outputs(self) -> Dict[str, Any]:
         """Obtiene flags de salida habilitados."""
-        enabled_outputs = self.config.get('enabled_outputs', {})
-        return enabled_outputs
-
+        return self.config.get('enabled_outputs', {})
+    
     @property
     def processing_config(self) -> Dict[str, Any]:
         """Obtiene configuración de procesamiento."""
-        processing_config = self.config.get('processing', {})
-        return processing_config
+        return self.config.get('processing', {})
     
     @property
     def modules_config(self) -> Dict[str, Any]:
         """Obtiene configuración de módulos."""
-        modules_config = self.config.get('modules', {})
-        return modules_config
-
-    @property
-    def cleanup_config(self) -> Dict[str, Any]:
-        """Obtiene configuración de limpieza."""
-        cleanup_config = self.config.get('cleanup', {})
-        return cleanup_config
+        return self.config.get('modules', {})
     
-    @property
-    def pipeline_config(self) -> Dict[str, Any]:
-        """Obtienen el orden de ejecución de los workers"""
-        pipeline_config = self.config.get('pipeline', {})
-        return pipeline_config
-    
-    @property
-    def workflow_config(self) -> Dict[str, Any]:
-        """Obtiene configuración del workflow."""
-        workflow_config = self.config.get('system', {})
-        return workflow_config
-
     @property
     def paddle_config(self) -> Dict[str, Any]:
         """Obtiene la configuración global para Paddle"""
-        paddle_config = self.config.get('paddle_config', {})
-        return paddle_config
-
-    @property
-    def paddle_det_config(self) -> Dict[str, Any]:
-        """Devuelve la configuración de PaddleOCR para detección (GeometryDetector)."""
-        paddle_det = self.paddle_config
-        det_model_dir = self.paddle_config.get('det_model_dir', "")
-        if det_model_dir:
-            paddle_det['det_model_dir'] = det_model_dir
-        return paddle_det
-
-    @property
-    def paddle_rec_config(self) -> Dict[str, Any]:
-        """Devuelve la configuración de PaddleOCR para PaddleWrapper."""
-        paddle_rec = self.paddle_config
-        rec_model_dir = self.paddle_config.get('rec_model_dir', "")
-        if rec_model_dir:
-            paddle_rec['rec_model_dir'] = rec_model_dir
-        return paddle_rec
-
-
-# FUNCIONES MÁS ESPECÍFICAS:
+        return self.config.get('paddle_config', {})
     
+    # ROBUSTEZ: Acceso directo a objetos validados (nuevo)
+    @property
+    def validated_paddle_config(self):
+        """Acceso directo al objeto Pydantic validado."""
+        return self.validated_config.paddle_config
+    
+    @property
+    def validated_modules_config(self):
+        """Acceso directo al objeto Pydantic validado."""
+        return self.validated_config.modules
+    
+    # CAPSULAS ESPECÍFICAS (como antes)
     @property
     def input_path(self) -> str:
         """Devuelve la ruta de la carpeta de entrada."""
-        input_path = self.paths_config.get('input_folder', "")
-        return input_path
-
+        return self.paths_config.get('input_folder', "")
+    
     @property
     def output_path(self) -> str:
         """Devuelve la ruta de la carpeta de salida."""
-        output_path = self.paths_config.get('output_folder', "")
-        return output_path 
-
+        return self.paths_config.get('output_folder', "")
+    
     @property
     def manager_config(self) -> Dict[str, Any]:
-        """ Devuelve el paquete estándar de configuraciones de los managers"""
-        output_path = self.paths_config.get('output_folder', "")
-        output_flags = self.enabled_outputs.get('output_flag', {})
-        pipeline = self.pipeline_config.get('secuence', [])
-        
-        manager_stage_config = {
-            "output_folder": output_path, #str
-            "output_flag": output_flags, #dict
-            'secuence': pipeline #dict
+        """Devuelve el paquete estándar de configuraciones de los managers"""
+        return {
+            "output_folder": self.output_path,
+            "output_flag": self.enabled_outputs.get('output_flag', {}),
+            'secuence': self.pipeline_config.get('secuence', [])
         }
-        return manager_stage_config
-
+    
     @property
     def image_loader_config(self) -> Dict[str, Any]:
         """Devuelve la configuración del image_loader con la ruta de entrada."""
-        image_loader_params = self.modules_config.get('image_loader', {})
-        paddle_det_config = self.paddle_config.get('det_model_dir', "")
-        image_loader_config = {
-            "image_loader": image_loader_params,
-            "paddle_det": paddle_det_config
+        return {
+            "image_loader": self.modules_config.get('image_loader', {}),
+            "paddle_det": self.paddle_config.get('det_model_dir', "")
         }
-        return image_loader_config
-        
+    
     @property
     def preprocessing_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica del preprocesamiento."""
-        preprocessing_config = self.modules_config.get('preprocessing', {})
-        return preprocessing_config 
+        return self.modules_config.get('preprocessing', {})
     
     @property
     def vectorization_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica de vectorización."""
-        vectorization_config =  self.modules_config.get('vectorization', {})
-        return vectorization_config
-                                
+        return self.modules_config.get('vectorization', {})
+    
     @property
     def max_workers(self) -> int:
         """Obtiene número de workers desde configuración de procesamiento."""
-        return self.processing_config.get('max_workers', {})
+        return self.processing_config.get('max_workers', 4)
     
     @property
     def max_workers_for_cpu(self) -> int:
         """Obtiene el número óptimo de workers basado en CPU."""
         batch_config = self.processing_config.get('batch_processing', {})
         cpu_count = os.cpu_count() or 4
-        max_cores = batch_config.get('max_physical_cores', {})
+        max_cores = batch_config.get('max_physical_cores', 4)
         add_extra = batch_config.get('add_extra_worker', True)
         workers = min(max_cores, cpu_count - 1)
         if add_extra and workers < cpu_count:
@@ -172,9 +130,9 @@ class ConfigService:
     @property
     def roots_config(self) -> Dict[str, Any]:
         """Obtiene configuración de rutas para limpieza."""
-        cleanup_config = self.cleanup_config
+        cleanup_config = self.config.get('cleanup', {})
         return {
             'folders_to_empty': cleanup_config.get('folders_to_empty', ""),
             'folder_names_to_delete': cleanup_config.get('folder_extensions_to_delete', []),
-            'project_root': self.workflow_config.get('project_root', "")
+            'project_root': self.config.get('system', {}).get('project_root', "")
         }
