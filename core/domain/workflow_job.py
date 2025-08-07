@@ -7,39 +7,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
 
-class ProcessingStage(Enum):
-    """Estados del procesamiento para tracking preciso"""
-    INITIALIZED = "initialized"
-    IMAGE_LOADED = "image_loaded"
-    GEOMETRY_DETECTED = "geometry_detected"
-    POLYGONS_EXTRACTED = "polygons_extracted"
-    LINES_RECONSTRUCTED = "lines_reconstructed"
-    PREPROCESSING_COMPLETE = "preprocessing_complete"
-    OCR_COMPLETE = "ocr_complete"
-    VECTORIZATION_COMPLETE = "vectorization_complete"
-    ERROR = "error"
-
-class ProcessingStatus(Enum):
-    """Estado general del job"""
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-
 @dataclass(frozen=True)
 class ImageDimensions:
     """Dimensiones de imagen inmutables para evitar errores"""
     width: int
     height: int
-    
-    def __post_init__(self):
-        if self.width <= 0 or self.height <= 0:
-            raise ValueError("Dimensiones deben ser positivas")
-    
-    @property
-    def aspect_ratio(self) -> float:
-        return self.width / self.height
 
 @dataclass(frozen=True)
 class DocumentMetadata:
@@ -50,12 +22,6 @@ class DocumentMetadata:
     dpi: Optional[float] = None
     color: Optional[str] = None
     date_creation: datetime = field(default_factory=datetime.now)
-    
-    def __post_init__(self):
-        if not self.doc_name:
-            raise ValueError("Nombre de documento requerido")
-        if self.dpi is not None and self.dpi <= 0:
-            raise ValueError("DPI debe ser positivo")
 
 @dataclass
 class BoundingBox:
@@ -64,11 +30,7 @@ class BoundingBox:
     y_min: float
     x_max: float
     y_max: float
-    
-    def __post_init__(self):
-        if self.x_min >= self.x_max or self.y_min >= self.y_max:
-            raise ValueError("Bounding box inválido")
-    
+        
     @property
     def width(self) -> float:
         return self.x_max - self.x_min
@@ -89,10 +51,6 @@ class PolygonGeometry:
     centroid: Tuple[float, float]
     perimeter: Optional[float] = None
 
-    def __post_init__(self):
-        if len(self.polygon_coords) < 3:
-            raise ValueError("Polígono debe tener al menos 3 puntos")
-
 @dataclass
 class Polygon:
     """Polígono con validación y métodos útiles"""
@@ -104,15 +62,7 @@ class Polygon:
     was_fragmented: bool = False
     text: Optional[str] = None
     confidence: Optional[float] = None
-    
-    def __post_init__(self):
-        if not self.polygon_id.startswith("poly_"):
-            raise ValueError("ID de polígono debe empezar con 'poly_'")
-        if self.line_id is not None and not self.line_id.startswith("line_"):
-            raise ValueError("ID de línea debe empezar con 'line_'")
-        if self.confidence is not None and not (0 <= self.confidence <= 100):
-            raise ValueError("Confianza debe estar entre 0 y 100")
-    
+        
     @property
     def has_text(self) -> bool:
         return self.text is not None and len(self.text.strip()) > 0
@@ -129,20 +79,6 @@ class LineInfo:
     centroid: Tuple[float, float]
     polygon_ids: List[str]
     
-    def __post_init__(self):
-        if not self.line_id.startswith("line_"):
-            raise ValueError("ID de línea debe empezar con 'line_'")
-        if not self.polygon_ids:
-            raise ValueError("Línea debe tener al menos un polígono")
-    
-    @property
-    def width(self) -> float:
-        return self.bounding_box.width
-    
-    @property
-    def height(self) -> float:
-        return self.bounding_box.height
-
 @dataclass
 class WorkflowJob:
     """Estructura principal optimizada para máxima eficiencia"""
@@ -155,21 +91,9 @@ class WorkflowJob:
     # Metadatos inmutables
     doc_metadata: Optional[DocumentMetadata] = None
     
-    # Estado del procesamiento
-    current_stage: ProcessingStage = ProcessingStage.INITIALIZED
-    status: ProcessingStatus = ProcessingStatus.PENDING
-    
-    # Timestamps precisos
-    creation_timestamp: float = field(default_factory=time.time)
-    stage_timestamps: Dict[ProcessingStage, float] = field(default_factory=dict)
-    
     # Datos estructurados
     polygons: Dict[str, Polygon] = field(default_factory=dict)
     lines: List[LineInfo] = field(default_factory=list)
-    
-    # Métricas de rendimiento
-    processing_times: Dict[str, float] = field(default_factory=dict)
-    error_log: List[str] = field(default_factory=list)
     
     def add_polygon(self, polygon: Polygon) -> None:
         """Añade polígono con validación"""
@@ -182,11 +106,6 @@ class WorkflowJob:
         if any(l.line_id == line.line_id for l in self.lines):
             raise ValueError(f"Línea {line.line_id} ya existe")
         self.lines.append(line)
-    
-    def update_stage(self, stage: ProcessingStage) -> None:
-        """Actualiza etapa con timestamp"""
-        self.current_stage = stage
-        self.stage_timestamps[stage] = time.time()
     
     def add_error(self, error: str) -> None:
         """Añade error al log"""

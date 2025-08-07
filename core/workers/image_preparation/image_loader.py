@@ -5,11 +5,10 @@ import logging
 import datetime
 from typing import Dict, Any, Tuple, Optional
 from PIL import Image
-from core.domain.workflow_job import WorkflowJob, DocumentMetadata, ImageDimensions, ProcessingStage
+from core.domain.workflow_job import WorkflowJob, DocumentMetadata, ImageDimensions
 import time
 
 logger = logging.getLogger(__name__)
-
 
 class ImageLoader:
     """
