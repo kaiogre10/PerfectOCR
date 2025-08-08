@@ -27,6 +27,8 @@ if PROJECT_ROOT not in sys.path:
 
 MASTER_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
+DEFAULT_INPUT_PAHT = os.path.join(PROJECT_ROOT, "input")
+DEFAULT_OUTPUT_PAHT = os.path.join(PROJECT_ROOT, "output")
 
 app = typer.Typer(help="PerfectOCR - Sistema de OCR optimizado")
 

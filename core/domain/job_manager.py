@@ -76,10 +76,7 @@ class JobManager:
             self._validate_structure()
             return True
         except Exception as e:
-            print(f"❌ Error actualizando OCR: {e}")
-            return False
-    
-    # === MÉTODOS DE SALIDA (JobManager -> Workers) ===
+            print(f"Error actualizando OCR: {e}")
     
     def get_job_data(self) -> Dict[str, Any]:
         """Devuelve copia completa del job"""

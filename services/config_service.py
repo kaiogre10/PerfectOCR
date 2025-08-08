@@ -3,7 +3,7 @@ import yaml
 import os
 import logging
 from typing import Dict, Any
-from config.config_models import MasterConfig  # ← Validador Pydantic
+from config.config_models import MasterConfig
 
 logger = logging.getLogger(__name__)
 
@@ -12,9 +12,7 @@ class ConfigService:
     
     def __init__(self, config_path: str):
         self.config_path = config_path
-        # VALIDACIÓN ROBUSTA
         self.validated_config = self._load_and_validate_yaml()
-        # FLEXIBILIDAD: Convertir a dict para compatibilidad
         self.config = self.validated_config.model_dump()
         
     def _load_and_validate_yaml(self) -> MasterConfig:
