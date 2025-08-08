@@ -1,0 +1,76 @@
+workflow_dict: {  # DICCIONARIO
+    job_id: string,  # VALOR SIMPLE
+    full_img: np.ndarray,  # VALOR SIMPLE
+    document_dict: {  # DICCIONARIO
+        metadata: {  # DICCIONARIO
+            doc_name: string,  # VALOR SIMPLE
+            formato: string,  # VALOR SIMPLE
+            img_dims: {  # DICCIONARIO
+                width: integer,  # VALOR SIMPLE
+                height: integer  # VALOR SIMPLE
+            },
+            dpi: float | null,  # VALOR SIMPLE
+            date: string,  # VALOR SIMPLE
+            color: string | null  # VALOR SIMPLE
+        },
+        polygons: {  # DICCIONARIO
+            poly_0001: {  # DICCIONARIO
+                polygon_id: string,  # VALOR SIMPLE
+                geometry: {  # DICCIONARIO
+                    polygon_coords: [  # LISTA
+                        [float, float],  # LISTA
+                        [float, float],  # LISTA
+                        [float, float],  # LISTA
+                        [float, float]   # LISTA
+                    ],
+                    bounding_box: [  # LISTA
+                        float,  # VALOR SIMPLE
+                        float,  # VALOR SIMPLE
+                        float,  # VALOR SIMPLE
+                        float   # VALOR SIMPLE
+                    ],
+                    centroid: [  # LISTA
+                        float,  # VALOR SIMPLE
+                        float   # VALOR SIMPLE
+                    ],
+                    width: float,  # VALOR SIMPLE
+                    height: float,  # VALOR SIMPLE
+                    padding_coords: [  # LISTA
+                        integer,  # VALOR SIMPLE
+                        integer,  # VALOR SIMPLE
+                        integer,  # VALOR SIMPLE
+                        integer   # VALOR SIMPLE
+                    ],
+                    perimeter: float  # VALOR SIMPLE
+                },
+                line_id: string | null,  # VALOR SIMPLE
+                cropped_img: np.ndarray | null,  # VALOR SIMPLE
+                was_fragmented: boolean,  # VALOR SIMPLE
+                ocr: {  # DICCIONARIO
+                    ocr_raw: string,  # VALOR SIMPLE
+                    confidence: float  # VALOR SIMPLE
+                }
+            }
+        },
+        all_lines: {  # DICCIONARIO
+            line_0001: {  # DICCIONARIO
+                line_id: string,  # VALOR SIMPLE
+                bounding_box: [  # LISTA
+                    float,  # VALOR SIMPLE
+                    float,  # VALOR SIMPLE
+                    float,  # VALOR SIMPLE
+                    float   # VALOR SIMPLE
+                ],
+                centroid: [  # LISTA
+                    float,  # VALOR SIMPLE
+                    float   # VALOR SIMPLE
+                ],
+                polygon_ids: [  # LISTA
+                    string,  # VALOR SIMPLE
+                    string,  # VALOR SIMPLE
+                    string   # VALOR SIMPLE
+                ]
+            }
+        }
+    }
+}

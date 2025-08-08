@@ -1,0 +1,77 @@
+workflow_dict = {
+    "job_id": "string",
+    "full_img": "np.ndarray",
+    "document_dict": {
+        "metadata": {
+            "doc_name": "string",
+            "formato": "string",
+            "img_dims": {
+                "width": "integer",
+                "height": "integer"
+            },
+            "dpi": "float | null",
+            "date": "string",
+            "color": "string | null"
+        },
+        "polygons": {
+            "poly_0001": {
+                "polygon_id": "string",
+                "geometry": {
+                    "polygon_coords": [
+                        ["float", "float"],
+                        ["float", "float"],
+                        ["float", "float"],
+                        ["float", "float"]
+                    ],
+                    "bounding_box": [
+                        "float",
+                        "float",
+                        "float",
+                        "float"
+                    ],
+                    "centroid": [
+                        "float",
+                        "float"
+                    ],
+                    "width": "float",
+                    "height": "float",
+                    "padding_coords": [
+                        "integer",
+                        "integer",
+                        "integer",
+                        "integer"
+                    ],
+                    "perimeter": "float"
+                },
+                "line_id": "string | null",
+                "cropped_img": "np.ndarray | null",
+                "was_fragmented": "boolean",
+                "ocr": {
+                    "ocr_raw": "string",
+                    "confidence": "float"
+                }
+            }
+        },
+        "all_lines": {
+            "line_0001": {
+                "line_id": "string",
+                "bounding_box": [
+                    "float",
+                    "float",
+                    "float",
+                    "float"
+                ],
+                "centroid": [
+                    "float",
+                    "float"
+                ],
+                "polygon_ids": [
+                    "string",
+                    "string",
+                    "string"
+                ]
+            }
+        }
+    }
+}
+
