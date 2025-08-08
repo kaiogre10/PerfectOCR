@@ -2,22 +2,12 @@
 system:
   project_root: "C:/PerfectOCR"
   log_level: "DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
-
-# Configuración de logging
-logging:
-  log_file: "C:/PerfectOCR/perfectocr.txt"
-  console_level: "INFO"
-  file_level: "DEBUG"
-  console_format: "%(levelname)s:%(name)s:%(lineno)d - %(message)s"
-  file_format: "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(module)s - %(message)s"
-  date_format: "%Y-%m-%d %H:%M:%S"
-
+  
 # Todas las rutas del sistema
 paths:
   input_folder: "C:/PerfectOCR/input"
   output_folder: "C:/PerfectOCR/output"
-  temp_folder: "C:/PerfectOCR/temp"
-
+  
 paddle_config:
   use_angle_cls: false
   lang: "es"
@@ -132,40 +122,3 @@ modules:
   vectorization:
     table_detection_params:
       min_cluster_size: 2
-
-# Configuración de limpieza
-cleanup:
-  folder_extensions_to_delete:
-    - "__pycache__"
-    - ".pytest_cache"
-    - ".mypy_cache"
-    - "node_modules"
-    - ".idea"
-    - "temp"
-    - "cache"
-    - "logs"
-  
-  file_extensions_to_delete:
-    - ".pyc"
-    - ".pyo"
-    - ".pyd"
-    - ".txt"
-    - ".JSON"
-    - ".temp"
-    - ".tmt"
-    - ".log"
-    - ".bak"
-    - ".tmp"
-  
-  folders_to_empty:
-    - "C:/PerfectOCR/output"
-  
-  folders_to_exclude:
-    - "C:/PerfectOCR/data/models/paddle"
-    - "C:/PerfectOCR/data/models"
-    - "C:/PerfectOCR/input"
-    - "C:/PerfectOCR/data"
-  
-  files_to_exclude_by_name:
-    - "density_encoder.json"
-    - "estructura_inspiron.txt"

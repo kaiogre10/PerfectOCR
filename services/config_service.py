@@ -19,7 +19,7 @@ class ConfigService:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
-                raw = yaml.safe_load(f) or {}
+                raw = yaml.safe_load(f) or {} 
             if not isinstance(raw, dict):
                 raise TypeError(f"Config raíz debe ser dict, recibido: {type(raw).__name__}")
             typed_raw = cast(Dict[str, Any], raw)
@@ -37,11 +37,6 @@ class ConfigService:
             "output_flag": self.enabled_outputs,
             'secuence': self.processing_config.get('pipeline_secuence', {})
         }
-
-    @property
-    def logging_config(self) -> Dict[str, Any]:
-        """Obtiene configuración de logging."""
-        return self.config.get('logging', {})
     
     @property
     def paths_config(self) -> Dict[str, Any]:
@@ -121,24 +116,3 @@ class ConfigService:
         if add_extra and workers < cpu_count:
             workers += 1
         return max(1, workers)
-    
-    @property
-    def roots_config(self) -> Dict[str, Any]:
-        """Obtiene configuración de rutas para limpieza."""
-        cleanup_config = self.config.get('cleanup', {})
-        return {
-            'folders_to_empty': cleanup_config.get('folders_to_empty', ""),
-            'folder_names_to_delete': cleanup_config.get('folder_extensions_to_delete', []),
-            'project_root': self.config.get('system', {}).get('project_root', "")
-        }
-    
-    @property
-    def workflow_config(self) -> Dict[str, Any]:
-        """Configuración para workflow y limpieza."""
-        return {
-            "project_root": self.config.get('system', {}).get('project_root', ""),
-            "output_folder": self.output_path,
-            "input_folder": self.input_path
-        }
-    
-    

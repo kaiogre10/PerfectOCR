@@ -6,14 +6,6 @@ from typing import Dict, Any, List, Tuple
 class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-class LoggingConfig(ConfigWithNumpy):
-    log_file: str
-    console_level: str = "INFO"
-    file_level: str = "DEBUG"
-    console_format: str = "%(levelname)s:%(name)s:%(lineno)d - %(message)s"
-    file_format: str = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(module)s - %(message)s"
-    date_format: str = "%Y-%m-%d %H:%M:%S"
-
 class OutputFlag(ConfigWithNumpy):
     preprocessed_image: bool
     ocr_raw: bool
@@ -55,7 +47,6 @@ class PaddleOCRConfig(ConfigWithNumpy):
 class PathsConfig(ConfigWithNumpy):
     input_folder: str
     output_folder: str
-    temp_folder: str
 
 class PipelineSecuence(ConfigWithNumpy):
     image_preparation: List[str]
@@ -159,19 +150,10 @@ class ModulesConfig(ConfigWithNumpy):
     preprocessing: PreprocessingConfig
     vectorization: VectorConfig
 
-class CleanupConfig(ConfigWithNumpy):
-    folder_extensions_to_delete: List[str]
-    file_extensions_to_delete: List[str]
-    folders_to_empty: List[str]
-    folders_to_exclude: List[str]
-    files_to_exclude_by_name: List[str]
-
 class MasterConfig(ConfigWithNumpy):
     system: Dict[str, Any]
-    logging: LoggingConfig
     paths: PathsConfig
     enabled_outputs: OutputFlag
     processing: Processing
     paddle_config: PaddleOCRConfig
     modules: ModulesConfig
-    cleanup: CleanupConfig
