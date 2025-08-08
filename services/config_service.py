@@ -2,7 +2,7 @@
 import yaml
 import os
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, cast
 from config.config_models import MasterConfig
 
 logger = logging.getLogger(__name__)
@@ -12,23 +12,32 @@ class ConfigService:
     
     def __init__(self, config_path: str):
         self.config_path = config_path
-        self.validated_config = self._load_and_validate_yaml()
+        self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
         
-    def _load_and_validate_yaml(self) -> MasterConfig:
+    def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as f:
-                raw_config = yaml.safe_load(f) or {}
-            
-            # ← VALIDACIÓN AUTOMÁTICA
-            return MasterConfig(**raw_config)
+            with open(config_path, 'r', encoding='utf-8') as f:
+                raw = yaml.safe_load(f) or {}
+            if not isinstance(raw, dict):
+                raise TypeError(f"Config raíz debe ser dict, recibido: {type(raw).__name__}")
+            typed_raw = cast(Dict[str, Any], raw)
+            return MasterConfig.model_validate(typed_raw)
             
         except Exception as e:
             logger.error(f"Error validando configuración desde {self.config_path}: {e}")
             raise
     
-    # FLEXIBILIDAD: Properties que devuelven dicts (como antes)
+    @property
+    def manager_config(self) -> Dict[str, Any]:
+        """Devuelve el paquete estándar de configuraciones de los managers"""
+        return {
+            "output_folder": self.output_path,
+            "output_flag": self.enabled_outputs,
+            'secuence': self.processing_config.get('pipeline_secuence', {})
+        }
+
     @property
     def logging_config(self) -> Dict[str, Any]:
         """Obtiene configuración de logging."""
@@ -59,7 +68,6 @@ class ConfigService:
         """Obtiene la configuración global para Paddle"""
         return self.config.get('paddle_config', {})
     
-    # ROBUSTEZ: Acceso directo a objetos validados (nuevo)
     @property
     def validated_paddle_config(self):
         """Acceso directo al objeto Pydantic validado."""
@@ -70,7 +78,6 @@ class ConfigService:
         """Acceso directo al objeto Pydantic validado."""
         return self.validated_config.modules
     
-    # CAPSULAS ESPECÍFICAS (como antes)
     @property
     def input_path(self) -> str:
         """Devuelve la ruta de la carpeta de entrada."""
@@ -80,24 +87,14 @@ class ConfigService:
     def output_path(self) -> str:
         """Devuelve la ruta de la carpeta de salida."""
         return self.paths_config.get('output_folder', "")
-    
-    @property
-    def manager_config(self) -> Dict[str, Any]:
-        """Devuelve el paquete estándar de configuraciones de los managers"""
-        return {
-            "output_folder": self.output_path,
-            "output_flag": self.enabled_outputs.get('output_flag', {}),
-            'secuence': self.pipeline_config.get('secuence', [])
-        }
-    
+        
     @property
     def image_loader_config(self) -> Dict[str, Any]:
         """Devuelve la configuración del image_loader con la ruta de entrada."""
         return {
             "image_loader": self.modules_config.get('image_loader', {}),
-            "paddle_det": self.paddle_config.get('det_model_dir', "")
         }
-    
+
     @property
     def preprocessing_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica del preprocesamiento."""
@@ -134,3 +131,14 @@ class ConfigService:
             'folder_names_to_delete': cleanup_config.get('folder_extensions_to_delete', []),
             'project_root': self.config.get('system', {}).get('project_root', "")
         }
+    
+    @property
+    def workflow_config(self) -> Dict[str, Any]:
+        """Configuración para workflow y limpieza."""
+        return {
+            "project_root": self.config.get('system', {}).get('project_root', ""),
+            "output_folder": self.output_path,
+            "input_folder": self.input_path
+        }
+    
+    

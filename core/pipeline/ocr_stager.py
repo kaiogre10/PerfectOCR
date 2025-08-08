@@ -6,7 +6,7 @@ import time
 import json
 from typing import Optional, Dict, Any, Tuple
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
-from core.domain.workflow_job import WorkflowJob, ProcessingStage
+from core.domain.workflow_job import WorkflowJob
 import cv2
 
 logger = logging.getLogger(__name__)
@@ -107,8 +107,6 @@ class OCRStager:
                 processed_count += 1
         
         logger.info(f"[OCREngineManager] Lote procesado. Resultados para {processed_count}/{len(images_batch)} polígonos.")
-
-        workflow_job.update_stage(ProcessingStage.OCR_COMPLETE)
         
         if workflow_job.doc_metadata:
             self._save_complete_ocr_results(workflow_job, workflow_job.doc_metadata.doc_name)

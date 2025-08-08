@@ -59,19 +59,40 @@ class PathsConfig(ConfigWithNumpy):
 
 class PipelineSecuence(ConfigWithNumpy):
     image_preparation: List[str]
-    preprocess: List[str]
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
     radius: float
     amount: float
 
+class MoirePercentile(ConfigWithNumpy):
+    percentile_threshold: int
+    notch_radius: int
+    min_distance_from_center: int
+
+class MoireFactor(ConfigWithNumpy):
+    mean_factor_threshold: int
+
+class MoireAbsolute(ConfigWithNumpy):
+    absolute_threshold: int
+
+class MoireMode(ConfigWithNumpy):
+    percentile: MoirePercentile
+    factor: MoireFactor
+    absolute: MoireAbsolute
+
+class MoireConfig(ConfigWithNumpy):
+    mode: MoireMode
+
+class BinarizeQuality(ConfigWithNumpy):
+    quality_min: float
+    quality_max: float
+
 class Binarization(ConfigWithNumpy):
     c_value: int
     height_thresholds_px: List[int]
     block_sizes_map: List[int]
-    quality_min: float
-    quality_max: float
+    quality: BinarizeQuality
 
 class Fragmentador(ConfigWithNumpy):
     min_contour_area: float
@@ -90,47 +111,55 @@ class GaussianConfig(ConfigWithNumpy):
     sigma_color: int
     sigma_space: int
 
-class ClaheConfig(ConfigWithNumpy):
+class DeskewConfig(ConfigWithNumpy):
+    min_angle_for_correction: float
+    canny_thresholds: List[int]
+    hough_threshold: int
+    hough_min_line_length_cap_px: int
+    hough_max_line_gap_px: int
+    hough_angle_filter_range_degrees: List[int]
+
+class CuttingConfig(ConfigWithNumpy):
+    cropping_padding: int
+
+class ImageLoader(ConfigWithNumpy):
+    deskew: DeskewConfig
+    cutting: CuttingConfig
+
+class ContrastConfigGeneral(ConfigWithNumpy):
     clahe_clip_limit: float
     dimension_thresholds_px: List[int]
     grid_sizes_map: List[List[int]]
+  
+class ContrastConfigLocal(ConfigWithNumpy):
     window_size: int
     std_dev_threshold: float
 
-class MoirePercentile(ConfigWithNumpy):
-    percentile_threshold: int
-    notch_radius: int
-    min_distance_from_center: int
-
-class MoireFactor(ConfigWithNumpy):
-    mean_factor_threshold: int
-
-class MoireAbsolute(ConfigWithNumpy):
-    absolute_threshold: int
-
-class MoireConfig(ConfigWithNumpy):
-    percentile: MoirePercentile
-    factor: MoireFactor
-    absolute: MoireAbsolute
+class ContrastConfig(ConfigWithNumpy):
+    general: ContrastConfigGeneral
+    local: ContrastConfigLocal
 
 class PreprocessingConfig(ConfigWithNumpy):
-    salt_pepper: SaltPepper
-    gaussian: GaussianConfig
-    contrast: ClaheConfig
-    binarize: Binarization
-    fragmentation: Fragmentador
+    moire: MoireConfig  
+    median_filter: SaltPepper 
+    bilateral_params: GaussianConfig  
+    contrast: ContrastConfig  
+    binarize: Binarization  
+    fragmentation: Fragmentador  
     sharpening: SharpeningConfig
-    moire: MoireConfig
 
-class VectorConfig(ConfigWithNumpy):
+class TableDetectionParams(ConfigWithNumpy):
     min_cluster_size: int
 
+class VectorConfig(ConfigWithNumpy):
+    table_detection_params: TableDetectionParams
+
 class ModulesConfig(ConfigWithNumpy):
-    image_loader: Dict[str, Any]
+    image_loader: ImageLoader
     preprocessing: PreprocessingConfig
     vectorization: VectorConfig
 
-class Cleanup(ConfigWithNumpy):
+class CleanupConfig(ConfigWithNumpy):
     folder_extensions_to_delete: List[str]
     file_extensions_to_delete: List[str]
     folders_to_empty: List[str]
@@ -145,4 +174,4 @@ class MasterConfig(ConfigWithNumpy):
     processing: Processing
     paddle_config: PaddleOCRConfig
     modules: ModulesConfig
-    cleanup: Cleanup
+    cleanup: CleanupConfig

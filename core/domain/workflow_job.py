@@ -110,8 +110,7 @@ class WorkflowJob:
     def add_error(self, error: str) -> None:
         """Añade error al log"""
         self.error_log.append(f"[{datetime.now()}] {error}")
-        self.status = ProcessingStatus.FAILED
-    
+
     def get_polygons_by_line(self, line_id: str) -> List[Polygon]:
         """Obtiene polígonos de una línea específica"""
         return [p for p in self.polygons.values() if p.line_id == line_id]
@@ -135,13 +134,3 @@ class WorkflowJob:
     @property
     def has_errors(self) -> bool:
         return len(self.error_log) > 0
-    
-    @property
-    def is_completed(self) -> bool:
-        return self.status == ProcessingStatus.COMPLETED
-    
-    @property
-    def processing_duration(self) -> float:
-        if self.status == ProcessingStatus.COMPLETED:
-            return time.time() - self.creation_timestamp
-        return 0.0

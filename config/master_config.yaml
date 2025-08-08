@@ -16,6 +16,7 @@ logging:
 paths:
   input_folder: "C:/PerfectOCR/input"
   output_folder: "C:/PerfectOCR/output"
+  temp_folder: "C:/PerfectOCR/temp"
 
 paddle_config:
   use_angle_cls: false
@@ -23,7 +24,7 @@ paddle_config:
   show_log: false
   use_gpu: false
   enable_mkldnn: true
-  paddlepaddle:
+  models:
     det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
     rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
     cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
@@ -37,12 +38,8 @@ pipeline_secuence:
     - "line_reconstructor" 
     - "polygon_extractor" 
   
-  preprocess:
-
-
 # Configuración de salida (independiente)
 enabled_outputs:
-  output_flag:
     preprocessed_image: false
     ocr_raw: false
     cropped_words: false
@@ -82,6 +79,16 @@ modules:
       cropping_padding: 5
 
   preprocessing:
+    moire:
+        mode:
+          percentile:
+            percentile_threshold: 98
+            notch_radius: 2
+            min_distance_from_center: 200
+          factor:
+            mean_factor_threshold: 4
+          absolute:
+            absolute_threshold: 200000000
     median_filter:
       kernel_size: 3
       salt_pepper_threshold: 0.0010
@@ -94,19 +101,8 @@ modules:
       sigma_color: 75
       sigma_space: 75
       
-    moire:
-      mode:
-        percentile:
-          percentile_threshold: 98
-          notch_radius: 2
-          min_distance_from_center: 200
-        factor:
-          mean_factor_threshold: 4
-        absolute:
-          absolute_threshold: 200000000
-    
     contrast:
-      global:
+      general:
         clahe_clip_limit: 2.0
         dimension_thresholds_px: [1000, 2500, 4000]
         grid_sizes_map: [[6, 6], [8, 8], [10, 10]]

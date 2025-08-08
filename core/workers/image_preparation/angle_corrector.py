@@ -5,7 +5,6 @@ import logging
 import math
 from typing import Dict, Any
 from core.workers.factory.abstract_worker import AbstractWorker
-from core.domain.workflow_job import ProcessingStage
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,6 @@ class AngleCorrector(AbstractWorker):
         # Actualizar el WorkflowJob si está disponible
         if workflow_job and workflow_job.full_img is not None:
             workflow_job.full_img = corrected_image
-            workflow_job.update_stage(ProcessingStage.GEOMETRY_DETECTED)
         
         return corrected_image
 

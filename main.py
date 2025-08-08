@@ -32,25 +32,25 @@ DEFAULT_OUTPUT_PAHT = os.path.join(PROJECT_ROOT, "output")
 
 app = typer.Typer(help="PerfectOCR - Sistema de OCR optimizado")
 
-config_service = ConfigService(MASTER_CONFIG_FILE)
-
-def get_input_paths() -> List[str]:
-    """Obtiene rutas de entrada: CLI o por defecto."""
-    if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
-        return sys.argv[1:]
+def main():
+    """
+    Función main original para compatibilidad con ejecución directa.
+    """
+    # Detectar si hay argumentos CLI
+    if len(sys.argv) == 1:
+        # Sin argumentos: usar rutas por defecto
+        input_paths = [DEFAULT_INPUT_PAHT]
+        output_paths = [DEFAULT_OUTPUT_PAHT]
+        if not input_paths or not output_paths:
+            logging.info("Sin rutas default")
+            return
+        return activate_main(input_paths, output_paths, MASTER_CONFIG_FILE)
+    elif len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
+        input_paths = sys.argv[1:]
+        output_paths = sys.argv[1:]
+        return activate_main(input_paths, output_paths, MASTER_CONFIG_FILE)
     else:
-        temp_config = ConfigService(MASTER_CONFIG_FILE)
-        default_input = temp_config.paths_config.get('input_folder', "")
-        return [default_input]
-        
-def get_output_paths() -> List[str]:
-    """Obtiene rutas de salida: CLI o por defecto."""
-    if len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
-        return sys.argv[1:]
-    else:
-        tmp_config = ConfigService(MASTER_CONFIG_FILE)
-        default_output = tmp_config.paths_config.get('output_folder', "")
-        return [default_output]
+        app()
 
 @app.command()
 def run(
@@ -67,21 +67,20 @@ def run(
     activate_main(
         input_paths=input_paths,
         output_paths=output_paths,
-        config=config,
-        modo_config=modo_config,
-        modo_input=modo_input,
-        modo_output=modo_output
+        config_path=config,
     )
 
-def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[str]], config: str) -> Dict[str, Any]:
+def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[str]], config_path: str) -> Dict[str, Any]:
     """Función principal de procesamiento - CON VALIDACIÓN AUTOMÁTICA."""
 
+    project_root = PROJECT_ROOT
+    config_path = MASTER_CONFIG_FILE
     config_services = None
+    
     try:
         # 1. Main activa al Contralor (ConfigManager) - AHORA CON VALIDACIÓN
         logging.info("Activando ConfigManager con validación robusta...")
-        config_services = ConfigService(config)  # ← VALIDACIÓN AUTOMÁTICA AQUÍ
-        project_root = PROJECT_ROOT
+        config_services = ConfigService(config_path)
 
         # 2. Main crea WorkFlowBuilder con configuración centralizada
         logging.info("Creando WorkFlowBuilder...")
@@ -115,7 +114,7 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
 def create_builders(config_services: ConfigService, project_root: str, workflow_report: Dict[str, Any])-> List[ProcessingBuilder]:
     """Crea builders para cada imagen encontrada usando inyecciones en cascada."""
     context = {}
-    builders = []
+    builders: List[ProcessingBuilder] = []
     image_info_list = workflow_report.get('image_info', [])
     
     for image_data in image_info_list:
@@ -128,7 +127,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         image_load_factory = worker_factory.get_image_preparation_factory() 
         
         context = {
-            "paddle_det_config": config_services.paddle_det_config
+            "paddle_det_config": config_services.validated_paddle_config.models.det_model_dir
         }
         
         workers = image_load_factory.create_workers([
@@ -136,14 +135,13 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             context
         )
                
-        # Unicas Excepciones
         image_loader = ImageLoader(
             image_info=image_data,
             project_root=project_root,
         )
         
-        paddleocr = PaddleOCRWrapper(
-            config_dict=config_services.paddle_rec_config,
+        paddleocr = PaddleOCRWrapper({
+            "config_dict": config_services.validated_paddle_config.models.rec_model_dir},
             project_root=project_root
         )
 
@@ -177,7 +175,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
 
 def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dict[str, Any]) -> Dict[str, Any]:
     """Ejecuta el procesamiento para cada builder."""
-    results = {}
+    results: Dict[str, Any] = {}
     image_info_list = workflow_report.get('image_info', [])
 
     for i, builder in enumerate(builders):
@@ -191,24 +189,6 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
         "processed": len(results),
         "results": results
     }
-
-def main():
-    """
-    Función main original para compatibilidad con ejecución directa.
-    """
-    # Detectar si hay argumentos CLI
-    if len(sys.argv) == 1:
-        # Sin argumentos: usar rutas por defecto
-        input_paths = get_input_paths()
-        output_paths = get_output_paths()
-        return activate_main(input_paths, output_paths, MASTER_CONFIG_FILE)
-    elif len(sys.argv) > 1 and not sys.argv[1].startswith('-'):
-        # Argumentos directos: python main.py /input /input2
-        input_paths = sys.argv[1:]
-        output_paths = sys.argv[1:]
-        return activate_main(input_paths, output_paths, MASTER_CONFIG_FILE)
-    else:
-        app()
 
 if __name__ == "__main__":
     main()

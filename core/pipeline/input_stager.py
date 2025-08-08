@@ -4,7 +4,7 @@ import time
 from typing import Optional, Tuple, List
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.workers.factory.abstract_worker import AbstractWorker
-from core.domain.workflow_job import WorkflowJob, ProcessingStage
+from core.domain.workflow_job import WorkflowJob
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,5 @@ class InputStager:
             except Exception as e:
                 workflow_job.add_error(f"Error en {worker.__class__.__name__}: {e}")
                 return None, 0.0
-        
-        workflow_job.update_stage(ProcessingStage.POLYGONS_EXTRACTED)
+    
         return workflow_job, time.time() - start_time

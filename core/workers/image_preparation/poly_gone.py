@@ -3,7 +3,6 @@ import numpy as np
 import logging
 from typing import Dict, Any
 from core.workers.factory.abstract_worker import AbstractWorker
-from core.domain.workflow_job import ProcessingStage
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +61,6 @@ class PolygonExtractor(AbstractWorker):
                     updated_count += 1
             
             logger.info(f"[PolygonExtractor] Actualizados {updated_count} polígonos con imágenes recortadas")
-            workflow_job.update_stage(ProcessingStage.POLYGONS_EXTRACTED)
         
         return image  # Retorna la misma imagen (no la modifica)
         

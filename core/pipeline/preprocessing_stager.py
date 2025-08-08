@@ -10,7 +10,7 @@ from core.workers.preprocessing.clahe import ClaherEnhancer
 from core.workers.preprocessing.sharp import SharpeningEnhancer
 from core.workers.preprocessing.binarization import Binarizator
 from core.workers.preprocessing.fragmentator import PolygonFragmentator
-from core.domain.workflow_job import WorkflowJob, ProcessingStage
+from core.domain.workflow_job import WorkflowJob
 from services.output_service import OutputService
 
 logger = logging.getLogger(__name__)
@@ -130,8 +130,6 @@ class PreprocessingStager:
             else:
                 # Aquí agregas los nuevos
                 workflow_job.polygons[poly_id] = poly_data
-        
-        workflow_job.update_stage(ProcessingStage.PREPROCESSING_COMPLETE)
         
         total_time = time.time() - pipeline_start
         workflow_job.processing_times["preprocessing"] = total_time

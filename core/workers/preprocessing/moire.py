@@ -11,7 +11,7 @@ class MoireDenoiser:
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config = config
-
+        
     def _detect_moire_patterns(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
         Detecta y corrige patrones de moiré en cada polígono del diccionario,
@@ -32,7 +32,7 @@ class MoireDenoiser:
         
     def _detect_moire_single(self, cropped_img: np.ndarray) -> np.ndarray:
 
-        moire_corrections = self.config.get('moire', {})
+        moire_corrections = self.config
         mode = moire_corrections.get('mode', {})
         percentile_corrections = mode.get('percentile', {})
         factor_corrections = mode.get('factor', {})

@@ -109,10 +109,7 @@ class ImageLoader:
             job_id=job_id,
             full_img=gray_image,
             doc_metadata=doc_metadata, 
-            current_stage=ProcessingStage.IMAGE_LOADED
         )
-        
-        workflow_job.update_stage(ProcessingStage.IMAGE_LOADED)
         
         load_time = time.time() - start_time
         workflow_job.processing_times["image_loading"] = load_time

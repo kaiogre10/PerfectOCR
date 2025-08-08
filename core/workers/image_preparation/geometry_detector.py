@@ -5,7 +5,7 @@ from typing import Dict, Any
 import numpy as np
 import time
 from paddleocr import PaddleOCR
-from core.domain.workflow_job import ProcessingStage, Polygon, BoundingBox, PolygonGeometry
+from core.domain.workflow_job import Polygon, BoundingBox, PolygonGeometry
 from core.workers.factory.abstract_worker import AbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -114,7 +114,6 @@ class GeometryDetector(AbstractWorker):
                         continue
                 
                 logger.info(f"[GeometryDetector] {len(doc_data['polygons'])} polígonos guardados en WorkflowJob")
-                workflow_job.update_stage(ProcessingStage.GEOMETRY_DETECTED)
             
             else:
                 logger.warning("[GeometryDetector] No se encontraron polígonos")

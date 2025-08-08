@@ -5,7 +5,6 @@ import numpy as np
 from typing import Dict, Any, List
 from shapely.geometry import Polygon
 from core.workers.factory.abstract_worker import AbstractWorker
-from core.domain.workflow_job import ProcessingStage
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +51,8 @@ class LineReconstructor(AbstractWorker):
         
         # Actualizar el WorkflowJob si está disponible
         if workflow_job and workflow_job.full_img is not None:
-            workflow_job.update_stage(ProcessingStage.LINES_RECONSTRUCTED)
         
-        return image  # Retorna la misma imagen (no la modifica)
+            return image  
 
     def _reconstruct_lines(self, doc_data: Dict[str, Any]) -> Dict[str, str]:
         """
