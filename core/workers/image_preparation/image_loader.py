@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from core.domain.workflow_dict import DataFormatter
+from core.domain.workflow_manager import DataFormatter
 from typing import Dict, Any, Tuple, Optional
 from PIL import Image
 
@@ -84,7 +84,7 @@ class ImageLoader:
             logger.error(f"Error cargando imagen: {metadata.get('error', 'Unknown error')}")
             return None
         
-        # Crear job_id único
+        # Crear dict_id único
         dict_id = f"dict_{metadata['image_name']}_{int(time.time())}"
         
         logger.info(f"dict_id creado con {dict_id}")
