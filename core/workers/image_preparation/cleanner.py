@@ -4,6 +4,7 @@ import logging
 from typing import Any, Dict
 import numpy as np
 from core.workers.factory.abstract_worker import AbstractWorker
+from core.domain.workflow_dict import DataFormatter
 
 logger = logging.getLogger(__name__)
 

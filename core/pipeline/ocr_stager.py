@@ -6,7 +6,6 @@ import time
 import json
 from typing import Optional, Dict, Any, Tuple
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
-from core.domain.workflow_job import WorkflowJob
 import cv2
 
 logger = logging.getLogger(__name__)

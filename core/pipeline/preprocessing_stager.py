@@ -10,7 +10,6 @@ from core.workers.preprocessing.clahe import ClaherEnhancer
 from core.workers.preprocessing.sharp import SharpeningEnhancer
 from core.workers.preprocessing.binarization import Binarizator
 from core.workers.preprocessing.fragmentator import PolygonFragmentator
-from core.domain.workflow_job import WorkflowJob
 from services.output_service import OutputService
 
 logger = logging.getLogger(__name__)

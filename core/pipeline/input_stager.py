@@ -1,10 +1,9 @@
 # PerfectOCR/core/pipeline/input_stager.py
 import logging
 import time
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.workers.factory.abstract_worker import AbstractWorker
-from core.domain.workflow_job import WorkflowJob
 
 logger = logging.getLogger(__name__)
 
@@ -14,31 +13,33 @@ class InputStager:
         self.workers_factory = workers_factory
         self.image_loader = image_loader
 
-    def generate_polygons(self) -> Tuple[Optional[WorkflowJob], float]:
+    def generate_polygons(self) -> Tuple[Optional[Dict[str, Any]], float]:
         start_time = time.time()
-        
-        workflow_job = self.image_loader.load_image_and_metadata()
-        if not workflow_job or workflow_job.full_img is None:
+
+        # 1) Cargar dict autosuficiente (job_data)
+        dict_data = self.image_loader.load_image_and_metadata()
+        if not dict_data or dict_data.get("full_img") is None:
+            logger.error("No se pudo cargar la imagen o crear el dict inicial")
             return None, 0.0
-        
-        # Contexto con el WorkflowJob para todos los workers
+
+        # 2) Contexto simple para los workers
         context = {
-            "workflow_job": workflow_job,
-            "metadata": {
-                "img_dims": {
-                    "width": workflow_job.doc_metadata.img_dims.width if workflow_job.doc_metadata else 0,
-                    "height": workflow_job.doc_metadata.img_dims.height if workflow_job.doc_metadata else 0
-                }
-            } if workflow_job.doc_metadata else {}
-        }
-        current_image = workflow_job.full_img
-        
+            "": dict_data,
+            "metadata": dict_data.get("metadata", {})
+            }
+
+        current_image = dict_data["full_img"]
+
+        # 3) Ejecutar workers en secuencia
         for worker in self.workers_factory:
             try:
                 current_image = worker.process(current_image, context)
-                workflow_job.full_img = current_image
+                dict_data["full_img"] = current_image
             except Exception as e:
-                workflow_job.add_error(f"Error en {worker.__class__.__name__}: {e}")
+                logger.error(f"Error en {worker.__class__.__name__}: {e}")
                 return None, 0.0
-    
-        return workflow_job, time.time() - start_time
+
+        total_time = time.time() - start_time
+        logger.info(f"[InputStager] Pipeline completado en: {total_time:.3f}s")
+
+        return dict_data, total_time

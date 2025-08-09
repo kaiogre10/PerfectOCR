@@ -2,11 +2,10 @@
 import cv2
 import numpy as np
 import logging
-import datetime
+import time
+from core.domain.workflow_dict import DataFormatter
 from typing import Dict, Any, Tuple, Optional
 from PIL import Image
-from core.domain.workflow_job import WorkflowJob, DocumentMetadata, ImageDimensions
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +29,10 @@ class ImageLoader:
 
         metadata = {
             "image_name": image_name,
-            "formato": extension,
+            "format": extension,
             "img_dims": {"width": None, "height": None},
             "dpi": None,
-            "mode": None,
+            "color": None,
         }
 
         try:
@@ -49,7 +48,7 @@ class ImageLoader:
             with Image.open(input_path) as img:
                 pillow_width, pillow_height = img.width, img.height
                 metadata["img_dims"] = {"width": pillow_width, "height": pillow_height}
-                metadata["mode"] = img.mode
+                metadata["color"] = img.mode
                 dpi_info = img.info.get('dpi')
                 if dpi_info and isinstance(dpi_info, tuple) and len(dpi_info) == 2:
                     metadata["dpi"] = float(dpi_info[0])  # Usar DPI X (horizontal)
@@ -74,46 +73,36 @@ class ImageLoader:
             metadata['error'] = error_msg
             return None, metadata
     
-    def load_image_and_metadata(self) -> WorkflowJob:
+    def load_image_and_metadata(self) -> Optional[Dict[str, Any]]:
         """
-        Carga imagen y extrae metadatos en una sola operación.
+        Carga imagen y crea job dict completo usando DataFormatter.
         """
-        image_info = self.image_info
-        
         start_time = time.time()
         
-        gray_image, metadata = self.resolutor(image_info) # type: ignore
-                    
-        # CREAR WORKFLOWJOB AQUÍ
-        job_id = f"job_{metadata['image_name']}_{int(time.time())}"
+        gray_image, metadata = self.resolutor(self.image_info)
+        
+        if gray_image is None or 'error' in metadata:
+            logger.error(f"Error cargando imagen: {metadata.get('error', 'Unknown error')}")
+            return None
+        
+        # Crear job_id único
+        dict_id = f"dict_{metadata['image_name']}_{int(time.time())}"
+        
+        logger.info(f"dict_id creado con {dict_id}")
+        
+        # Usar DataFormatter para crear dict completo
+        formatter = DataFormatter()
+        success = formatter.create_dict(dict_id, gray_image, metadata)
+        
+        if not success:
+            logger.error("Error creando job con DataFormatter")
+            return None
+        
+        # Devolver job dict completo
+        dict_id = formatter.get_dict_data()
+        total_time = time.time() - start_time
+        
+        logger.info(f"[ImageLoader] Dict creado exitosamente en: {total_time:.3f}s")
+        return dict_id
                 
-        # Crear ImageDimensions
-        img_dims_dict = metadata.get("img_dims", {})
-        img_dims = ImageDimensions(
-            width=int(img_dims_dict.get("width")),
-            height=int(img_dims_dict.get("height"))
-        )
-        
-        # Crear DocumentMetadata
-        doc_metadata = DocumentMetadata(
-            doc_name=metadata["image_name"],
-            img_dims=img_dims,
-            formato=metadata.get("formato"),
-            dpi=metadata.get("dpi"),
-            color=metadata.get("mode"),
-            date_creation=datetime.datetime.now()
-        )
-        
-        # Crear WorkflowJob con TODO incluido
-        workflow_job = WorkflowJob(
-            job_id=job_id,
-            full_img=gray_image,
-            doc_metadata=doc_metadata, 
-        )
-        
-        load_time = time.time() - start_time
-        workflow_job.processing_times["image_loading"] = load_time
-        
-        logger.info(f"[ImageLoader] WorkflowJob creado exitosamente en {load_time:.3f}s")
                 
-        return workflow_job  

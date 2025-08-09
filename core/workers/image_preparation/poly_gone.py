@@ -10,117 +10,73 @@ class PolygonExtractor(AbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config = config
-        self.polygons_info: Dict[str, Any] = {}
-        
-    def process(self, image: np.ndarray[Any, Any], context: Dict[str, Any]) -> np.ndarray[Any, Any]:
-        """
-        Implementa el método abstracto de AbstractWorker.
-        """
-        workflow_job = context.get('workflow_job')
-        metadata = context.get('metadata', {})
-        
-        logger.info(f"[PolygonExtractor] Iniciando extracción de polígonos")
-        
-        # Usar polígonos del WorkflowJob en lugar de doc_data
-        if workflow_job and workflow_job.polygons:
-            # Convertir objetos Polygon a formato dict para compatibilidad
-            polygons_dict = {}
-            for poly_id, polygon in workflow_job.polygons.items():
-                polygons_dict[poly_id] = {
-                    "polygon_id": polygon.polygon_id,
-                    "geometry": {
-                        "polygon_coords": polygon.geometry.polygon_coords,
-                        "bounding_box": [polygon.geometry.bounding_box.x_min, polygon.geometry.bounding_box.y_min, 
-                                       polygon.geometry.bounding_box.x_max, polygon.geometry.bounding_box.y_max],
-                        "centroid": polygon.geometry.centroid
-                    }
-                }
-            
-            doc_data = {
-                "metadata": metadata,
-                "polygons": polygons_dict
-            }
-        else:
-            doc_data = {
-                "metadata": metadata,
-                "polygons": None
-            }
-            logger.warning("[PolygonExtractor] No hay polígonos en WorkflowJob")
-            
-        # Extraer polígonos individuales
-        polygons = self._extract_individual_polygons(image, doc_data)
-        
-        # Actualizar el WorkflowJob con las imágenes recortadas
-        if workflow_job and workflow_job.full_img is not None:
-            # Actualizar los polígonos del WorkflowJob con las imágenes recortadas
-            updated_count = 0
-            for poly_id, polygon in workflow_job.polygons.items():
-                if poly_id in self.polygons_info:
-                    polygon.cropped_img = self.polygons_info[poly_id]["cropped_img"]
-                    polygon.padding_coords = self.polygons_info[poly_id]["padding_coords"]
-                    updated_count += 1
-            
-            logger.info(f"[PolygonExtractor] Actualizados {updated_count} polígonos con imágenes recortadas")
-        
-        return image  # Retorna la misma imagen (no la modifica)
-        
-    def _extract_individual_polygons(self, image: np.ndarray[Any, Any], doc_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Extrae y recorta los polígonos individuales."""
-        polygons = doc_data.get("polygons", {})
+
+    def process(self, image: np.ndarray, context: Dict[str, Any]) -> np.ndarray:
+        dict_data = context["dict_data"]
+        img_h = dict_data["metadata"]["img_dims"]["height"]
+        img_w = dict_data["metadata"]["img_dims"]["width"]
+
+        # Asegurar estructura
+        if "image_data" not in dict_data:
+            dict_data["image_data"] = {}
+        if "polygons" not in dict_data["image_data"]:
+            dict_data["image_data"]["polygons"] = {}
+
+        polygons = dict_data["image_data"]["polygons"]
         if not polygons:
-            logger.warning("No se encontraron polígonos en el documento enriquecido")
-            return {}
-        
-        padding = self.config.get('cropping_padding', 5)
-        metadata = doc_data.get("metadata", {})
-        img_dims = metadata.get("img_dims", {})
-        
-        logger.info(f"[PolygonExtractor] Metadata: {type(metadata)}")
-        logger.info(f"[PolygonExtractor] img_dims: {type(img_dims)}")
-        
-        # img_dims es un objeto ImageDimensions, no un diccionario
-        if hasattr(img_dims, 'height') and hasattr(img_dims, 'width'):
-            img_h = img_dims.height
-            img_w = img_dims.width
-        else:
-            img_h = int(img_dims.get("height", 0) if isinstance(img_dims, dict) else 0)
-            img_w = int(img_dims.get("width", 0) if isinstance(img_dims, dict) else 0)
+            logger.warning("[PolygonExtractor] No hay polígonos para recortar")
+            return image
 
-        self.polygons_info = {}
-        extracted_count = 0
-        
-        for poly_id, poly_data in polygons.items():
-            try:
-                bbox = poly_data.get("geometry", {}).get("bounding_box")
-                if not bbox:
-                    continue
+        padding = int(self.config.get("cropping_padding", 5))
+        extracted = 0
 
-                poly_min_x, poly_min_y, poly_max_x, poly_max_y = map(int, bbox)
-                poly_x1 = max(0, poly_min_x - padding)
-                poly_y1 = max(0, poly_min_y - padding)
-                poly_x2 = min(img_w, poly_max_x + padding)
-                poly_y2 = min(img_h, poly_max_y + padding)
+        for poly_id, poly in polygons.items():
+            geometry = poly.get("geometry")
+            bbox = None
+            if isinstance(geometry, dict):
+                bbox = geometry.get("bounding_box")
+            if not isinstance(bbox, (list)) or len(bbox) != 4:
+                continue
 
-                if poly_x2 > poly_x1 and poly_y2 > poly_y1:
-                    cropped_poly = image[poly_y1:poly_y2, poly_x1:poly_x2]
-                    if cropped_poly.size > 0:
-                        poly_data["cropped_img"] = cropped_poly
-                        poly_data["padding_coords"] = [poly_x1, poly_y1, poly_x2, poly_y2]
-                        self.polygons_info[poly_id] = {
-                            "cropped_img": cropped_poly.copy(),
-                            "padding_coords": [poly_x1, poly_y1, poly_x2, poly_y2]
-                        }
-                        extracted_count += 1
-                
-            except Exception as e:
-                logger.error(f"Error recortando polígono {poly_id}: {e}")
-                poly_data["cropped_img"] = None
+            x1, y1, x2, y2 = map(int, bbox)
 
-        logger.info(f"[PolygonExtractor] Extraídos {extracted_count} polígonos de {len(polygons)}")
-        return polygons
-    
-    def _get_polygons_copy(self) -> Dict[str, Any]:
-        """
-        Devuelve una copia de los polígonos con sus imágenes recortadas.
-        """
-        return self.polygons_info.copy()
+            # Padding duro con clamp a bordes
+            px1 = max(0, x1 - padding)
+            py1 = max(0, y1 - padding)
+            px2 = min(img_w, x2 + padding)
+            py2 = min(img_h, y2 + padding)
+            if px2 <= px1 or py2 <= py1:
+                continue
+
+            cropped = image[py1:py2, px1:px2]
+            if cropped.size == 0:
+                continue
+
+            # Medidas reales del recorte
+            width = float(px2 - px1)
+            height = float(py2 - py1)
+            padd_centroid = [px1 + width / 2.0, py1 + height / 2.0]
+            padding_coords = [px1, py1, px2, py2]
+            padding_bbox = [px1, py1, px2, py2]
+
+            # Escribir salida completa
+            poly["cropped_img"] = cropped
+            if "cropedd_geometry" not in poly:
+                poly["cropedd_geometry"] = {}
+
+            poly["cropedd_geometry"].update({
+                "padding_coords": padding_coords,   # [x1,y1,x2,y2] absolutos en la página
+                "padding_bbox": padding_bbox,       # alias explícito del bbox del recorte
+                "padd_centroid": padd_centroid,     # centroide del recorte
+            })
+
+            # Opcional: reflejar width/height del recorte
+            # Si deseas que queden en geometry del polígono original:
+            geom = poly.setdefault("cropedd_geometry", {})
+            geom["width"] = width
+            geom["height"] = height
+
+            extracted += 1
+
+        logger.info(f"[PolygonExtractor] Generadas padding-geometry y recortes para {extracted} polígonos")
+        return image

@@ -21,20 +21,10 @@ class AngleCorrector(AbstractWorker):
         """
         Implementa el método abstracto de AbstractWorker.
         """
-        workflow_job = context.get('workflow_job')
-        
-        # Obtener dimensiones de la imagen
-        img_dims = {
-            "width": image.shape[1],
-            "height": image.shape[0]
-        }
-        
-        # Aplicar corrección de ángulo
+        dict_data = context["dict_data"]
+        img_dims = dict_data["metadata"]["img_dims"]
         corrected_image = self.correct(image, img_dims)
-        
-        # Actualizar el WorkflowJob si está disponible
-        if workflow_job and workflow_job.full_img is not None:
-            workflow_job.full_img = corrected_image
+        dict_data["full_img"] = corrected_image
         
         return corrected_image
 
