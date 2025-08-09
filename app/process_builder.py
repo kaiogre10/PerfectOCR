@@ -5,6 +5,7 @@ from typing import Dict, Optional, Any
 from core.pipeline.input_stager import InputStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
+from core.domain.workflow_dict import DataFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class ProcessingBuilder:
         self.preprocessing_stager = preprocessing_stager
         self.ocr_stager = ocr_stager
         
-    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[WorkflowJob]:
+    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[DataFormatter]:
         """
         Procesa una sola imagen. El ProcessingBuilder SOLO COORDINA, no convierte.
         """

@@ -3,6 +3,7 @@ import numpy as np
 import logging
 import time
 from typing import Any, Optional, Dict, Tuple
+from core.domain.workflow_dict import DataFormatter
 from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
@@ -48,8 +49,8 @@ class PreprocessingStager:
         
     def apply_preprocessing_pipelines(
         self, 
-        workflow_job: WorkflowJob
-        ) -> Tuple[Optional[WorkflowJob], float]:
+        dict_id: DataFormatter
+        ) -> Tuple[Optional[DataFormatter], float]:
         """
         Procesa el WorkflowJob de forma secuencial, modificando los polígonos in-situ
         siguiendo una filosofía de pipeline limpio.
@@ -69,8 +70,7 @@ class PreprocessingStager:
                 if p.cropped_img is not None
             }
         }
-        image_name = workflow_job.doc_metadata.doc_name if workflow_job.doc_metadata else "document"
-        
+
         processing_dict = self._moire._detect_moire_patterns(processing_dict)
         if self.output_service and self.output_flags.get("moire_poly", False):
             moire_imgs = [d["cropped_img"] for d in processing_dict.get("polygons", {}).values() if d.get("cropped_img") is not None]

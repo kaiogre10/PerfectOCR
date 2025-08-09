@@ -50,14 +50,13 @@ class ImageLoader:
                 metadata["img_dims"] = {"width": pillow_width, "height": pillow_height}
                 metadata["color"] = img.mode
                 dpi_info = img.info.get('dpi')
-                if dpi_info and isinstance(dpi_info, tuple) and len(dpi_info) == 2:
-                    metadata["dpi"] = float(dpi_info[0])  # Usar DPI X (horizontal)
+                if dpi_info and isinstance(dpi_info, tuple) and len(dpi_info) == 2:  # type: ignore
+                    metadata["dpi"] = float(dpi_info[0])   # type: ignore
                 elif dpi_info and isinstance(dpi_info, (int, float)):
                     metadata["dpi"] = float(dpi_info)
                 else:
                     metadata["dpi"] = None
 
-            # Comprobación de dimensiones
             if (pillow_width == cv2_width) and (pillow_height == cv2_height):
                 metadata["img_dims"] = {"width": pillow_width, "height": pillow_height}
             else:

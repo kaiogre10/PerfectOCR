@@ -9,13 +9,14 @@ __pycache__/
 .ini/
 .cursorignore/
 .vscode/
-
+.idea/
+.cursor/
+.github/
 
 # Ignorar carpeta
 input/
 output/
 data/models/
-
 
 # Excepción
 !density_encoder.json
