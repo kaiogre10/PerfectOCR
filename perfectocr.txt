@@ -1,44 +1,39 @@
-2025-08-10 07:31:56 - INFO - root:59 - main - Logging configurado correctamente.
-2025-08-10 07:31:56 - INFO - services.cache_service:14 - cache_service - --- Limpieza Inicial: Vaciando carpetas de salida ---
-2025-08-10 07:31:56 - INFO - root:23 - main_builder - Activando ConfigManager con validación robusta...
-2025-08-10 07:31:56 - INFO - root:27 - main_builder - Creando WorkFlowBuilder...
-2025-08-10 07:31:56 - INFO - root:34 - main_builder - Analizando imágenes disponibles...
-2025-08-10 07:31:56 - INFO - root:38 - main_builder - Creando builders según análisis
-2025-08-10 07:31:56 - WARNING - core.workers.image_preparation.geometry_detector:37 - geometry_detector - No se ha especificado 'det_model_dir' en la configuración
-2025-08-10 07:31:56 - INFO - core.workers.image_preparation.geometry_detector:39 - geometry_detector - GeometryDetector inicializado (motor PaddleOCR no cargado aún).
-2025-08-10 07:31:56 - INFO - core.workers.image_preparation.angle_corrector:19 - angle_corrector - AngleCorrector inicializado.
-2025-08-10 07:31:56 - WARNING - core.workers.image_preparation.geometry_detector:37 - geometry_detector - No se ha especificado 'det_model_dir' en la configuración
-2025-08-10 07:31:56 - INFO - core.workers.image_preparation.geometry_detector:39 - geometry_detector - GeometryDetector inicializado (motor PaddleOCR no cargado aún).
-2025-08-10 07:31:56 - INFO - root:42 - main_builder - Iniciando procesamiento...
-2025-08-10 07:31:56 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
-2025-08-10 07:31:56 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
-2025-08-10 07:31:56 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
-2025-08-10 07:31:56 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
-2025-08-10 07:31:56 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
-2025-08-10 07:31:56 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
-2025-08-10 07:31:56 - INFO - core.workers.image_preparation.image_loader:75 - image_loader - Dimensiones pillow obtenidas con IMG.:(2056, 2954)
-2025-08-10 07:31:56 - INFO - core.workers.image_preparation.image_loader:93 - image_loader - Imagen 'AAAA.0006' cargada exitosamente desde 'C:\PerfectOCR\input\AAAA.0006.png'
-2025-08-10 07:31:56 - INFO - core.workers.image_preparation.angle_corrector:66 - angle_corrector - AngleCorrector: Procesando imagen con dimensiones {'width': 2056, 'height': 2954}
-2025-08-10 07:31:56 - INFO - core.workers.image_preparation.angle_corrector:112 - angle_corrector - No se detectaron líneas para la corrección de inclinación.
-2025-08-10 07:31:56 - ERROR - core.workers.image_preparation.geometry_detector:83 - geometry_detector - Error inicializando PaddleOCR para geometría: 'str' object has no attribute 'get'
-Traceback (most recent call last):
-  File "C:\PerfectOCR\core\workers\image_preparation\geometry_detector.py", line 57, in engine
-    "lang": self.config.get("lang", "es"),
-            ^^^^^^^^^^^^^^^
-AttributeError: 'str' object has no attribute 'get'
-2025-08-10 07:31:56 - ERROR - core.workers.image_preparation.geometry_detector:88 - geometry_detector - Motor PaddleOCR no inicializado correctamente.
-2025-08-10 07:31:56 - ERROR - core.workers.image_preparation.geometry_detector:107 - geometry_detector - GeometryDetector: Motor PaddleOCR no inicializado
-2025-08-10 07:31:56 - ERROR - core.pipeline.input_stager:47 - input_stager - InputStager: Fallo en el worker GeometryDetector
-2025-08-10 07:31:56 - ERROR - app.process_builder:38 - process_builder - [ProcessingBuilder] No se pudo procesar la fase de entrada.
-2025-08-10 07:31:56 - INFO - root:54 - main_builder - Procesamiento finalizado, iniciando limpieza de caché.
-2025-08-10 07:31:56 - INFO - services.cache_service:32 - cache_service - --- Limpieza Final: Eliminando caché del proyecto ---
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\app\__pycache__
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\config\__pycache__
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\domain\__pycache__
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\factory\__pycache__
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\pipeline\__pycache__
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\workers\image_preparation\__pycache__
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\workers\preprocessing\__pycache__
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\services\__pycache__
-2025-08-10 07:31:56 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\utils\__pycache__
-2025-08-10 07:31:56 - INFO - root:56 - main_builder - Limpieza de caché completada.
+2025-08-10 14:00:07 - INFO - root:59 - main - Logging configurado correctamente.
+2025-08-10 14:00:07 - INFO - services.cache_service:14 - cache_service - --- Limpieza Inicial: Vaciando carpetas de salida ---
+2025-08-10 14:00:07 - INFO - root:22 - main_builder - Activando ConfigManager con validación robusta...
+2025-08-10 14:00:07 - INFO - root:26 - main_builder - Creando WorkFlowBuilder...
+2025-08-10 14:00:07 - INFO - root:33 - main_builder - Analizando imágenes disponibles...
+2025-08-10 14:00:07 - INFO - root:37 - main_builder - Creando builders según análisis
+2025-08-10 14:00:07 - INFO - core.workers.image_preparation.angle_corrector:19 - angle_corrector - AngleCorrector inicializado.
+2025-08-10 14:00:07 - INFO - root:41 - main_builder - Iniciando procesamiento...
+2025-08-10 14:00:07 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-08-10 14:00:07 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
+2025-08-10 14:00:07 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
+2025-08-10 14:00:07 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
+2025-08-10 14:00:07 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
+2025-08-10 14:00:07 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
+2025-08-10 14:00:07 - INFO - core.workers.image_preparation.image_loader:78 - image_loader - Dimensiones pillow obtenidas con IMG.:(2056, 2954)
+2025-08-10 14:00:07 - INFO - core.workers.image_preparation.image_loader:95 - image_loader - Imagen 'AAAA.0006' cargada exitosamente desde 'C:\PerfectOCR\input\AAAA.0006.png'
+2025-08-10 14:00:09 - INFO - core.workers.image_preparation.angle_corrector:68 - angle_corrector - AngleCorrector: Procesando imagen con dimensiones {'width': 2056, 'height': 2954}
+2025-08-10 14:00:09 - INFO - core.workers.image_preparation.angle_corrector:114 - angle_corrector - No se detectaron líneas para la corrección de inclinación.
+2025-08-10 14:00:09 - WARNING - core.workers.image_preparation.angle_corrector:81 - angle_corrector - AngleCorrector: No se pudo actualizar full_img en el manager: 'DataFormatter' object has no attribute '_update_full_img'
+2025-08-10 14:00:09 - INFO - core.workers.image_preparation.geometry_detector:47 - geometry_detector - Usando modelo de detección en: C:/PerfectOCR/data/models/paddle/det/es
+2025-08-10 14:00:09 - INFO - core.workers.image_preparation.geometry_detector:55 - geometry_detector - Inicializando motor PaddleOCR...
+2025-08-10 14:00:10 - INFO - core.workers.image_preparation.geometry_detector:57 - geometry_detector - PaddleOCR (det) listo en 0.887s (carga modelo: 0.887s)
+2025-08-10 14:00:10 - INFO - core.workers.image_preparation.geometry_detector:87 - geometry_detector - GeometryDetector: Convirtiendo imagen de gris a BGR para PaddleOCR
+2025-08-10 14:00:11 - INFO - core.domain.data_formatter:73 - data_formatter - Polígonos estructurados: 87
+2025-08-10 14:00:11 - INFO - core.workers.image_preparation.geometry_detector:107 - geometry_detector - GeometryDetector: Polígonos estructurados correctamente.
+2025-08-10 14:00:11 - ERROR - core.pipeline.input_stager:48 - input_stager - InputStager: Fallo en el worker GeometryDetector
+2025-08-10 14:00:11 - ERROR - app.process_builder:38 - process_builder - [ProcessingBuilder] No se pudo procesar la fase de entrada.
+2025-08-10 14:00:11 - INFO - root:53 - main_builder - Procesamiento finalizado, iniciando limpieza de caché.
+2025-08-10 14:00:11 - INFO - services.cache_service:32 - cache_service - --- Limpieza Final: Eliminando caché del proyecto ---
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\app\__pycache__
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\config\__pycache__
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\domain\__pycache__
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\factory\__pycache__
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\pipeline\__pycache__
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\workers\image_preparation\__pycache__
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\workers\preprocessing\__pycache__
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\services\__pycache__
+2025-08-10 14:00:11 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\utils\__pycache__
+2025-08-10 14:00:11 - INFO - root:55 - main_builder - Limpieza de caché completada.

@@ -1,7 +1,7 @@
 # core/workers/workers_factory/abstract_worker.py
 from abc import ABC, abstractmethod
 from typing import Dict, Any
-from core.domain.data_manager import DataFormatter
+from core.domain.data_formatter import DataFormatter
 
 class AbstractWorker(ABC):
     """

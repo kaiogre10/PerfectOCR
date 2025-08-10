@@ -5,7 +5,7 @@ import logging
 import math
 from typing import Dict, Any
 from core.factory.abstract_worker import AbstractWorker
-from core.domain.data_manager import DataFormatter
+from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -29,13 +29,15 @@ class AngleCorrector(AbstractWorker):
         # Intentamos obtener img_dims de varias fuentes posibles
         img_dims = context.get("img_dims", {})
         
+        
+        
         # Si img_dims no está directamente en el contexto, buscamos en metadata
-        if not img_dims or not isinstance(img_dims, dict) or "width" not in img_dims or "height" not in img_dims:
-            if isinstance(metadata, dict):
+        if not img_dims or not isinstance(img_dims, Dict) or "width" not in img_dims or "height" not in img_dims:
+            if isinstance(metadata, Dict):
                 img_dims = metadata.get("img_dims", {})
             
         # Si aún no tenemos img_dims, intentamos obtenerlo del DataFormatter
-        if not img_dims or not isinstance(img_dims, dict) or "width" not in img_dims or "height" not in img_dims:
+        if not img_dims or not isinstance(img_dims, Dict) or "width" not in img_dims or "height" not in img_dims:
             try:
                 manager_metadata = manager.get_metadata()
                 img_dims = manager_metadata.get("img_dims", {})
@@ -43,7 +45,7 @@ class AngleCorrector(AbstractWorker):
                 logger.warning(f"AngleCorrector: No se pudo obtener img_dims del manager: {e}")
         
         # Si no encontramos img_dims válidos en ninguna parte, usamos dimensiones predeterminadas
-        if not img_dims or not isinstance(img_dims, dict) or "width" not in img_dims or "height" not in img_dims:
+        if not img_dims or not isinstance(img_dims, Dict) or "width" not in img_dims or "height" not in img_dims:
             logger.warning("AngleCorrector: No se encontró img_dims válido, usando valores predeterminados")
             # Calculamos dimensiones a partir de la imagen si es posible
             full_img = context.get("full_img")
@@ -65,16 +67,16 @@ class AngleCorrector(AbstractWorker):
         # Debug para ver qué valores estamos usando
         logger.info(f"AngleCorrector: Procesando imagen con dimensiones {img_dims}")
         
-        corrected_img = self.correct(full_img, img_dims)
+        full_img = self.correct(full_img, img_dims)
         
         # Actualiza la imagen en el contexto
-        context["full_img"] = corrected_img
+        context["full_img"] = full_img
         
         # Y también en el manager si es posible
         try:
             dict_id = context.get("dict_id")
             if dict_id:
-                manager._update_full_img(dict_id, corrected_img)
+                manager._update_full_img(dict_id, full_img)
         except Exception as e:
             logger.warning(f"AngleCorrector: No se pudo actualizar full_img en el manager: {e}")
             # Pero continuamos porque la imagen está actualizada en el contexto

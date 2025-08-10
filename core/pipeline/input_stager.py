@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Optional, Tuple, List, Dict, Any, cast
 import numpy as np
-from core.domain.data_manager import DataFormatter
+from core.domain.data_formatter import DataFormatter
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.factory.abstract_worker import AbstractWorker
 
@@ -27,7 +27,7 @@ class InputStager:
         manager = DataFormatter()
         dict_id = f"dict_{metadata.get('image_name')}_{int(time.time())}"
 
-        # Cast para callar warning de tipo parcialmente desconocido (sin # type: ignore)
+        # Cast para callar warning de tipo parcialmente desconocido 
         full_img = cast(np.ndarray[Any, Any], gray_image)
         if not manager.create_dict(dict_id, full_img, metadata):
             logger.error("InputStager: Fallo al crear dict_job en el manager.")
@@ -38,7 +38,8 @@ class InputStager:
             "dict_id": dict_id,
             "full_img": full_img,
             "metadata": metadata,
-            "img_dims": metadata.get("img_dims", {})
+            "img_dims": metadata.get("img_dims", {}),
+
         }
 
         # 4) Ejecutar workers (inyectar context y manager)

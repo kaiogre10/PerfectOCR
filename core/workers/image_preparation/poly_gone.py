@@ -3,7 +3,7 @@ import numpy as np
 import logging
 from typing import Dict, Any, List
 from core.factory.abstract_worker import AbstractWorker
-from core.domain.data_manager import DataFormatter
+from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -28,40 +28,8 @@ class PolygonExtractor(AbstractWorker):
             padding = int(self.config.get("cropping_padding", 5))
             img_h, img_w = full_img.shape[:2]
 
-            sorted_polygons = sorted(
-                polygons.items(), 
-                key=lambda item: (item[1].get("geometry", {}).get("centroid", [0, 99999])[1])
-            )
-
-            line_id_map: Dict[str, str] = {}
-            current_line_bbox = None
-            line_counter = 1
-
-            for poly_id, poly_data in sorted_polygons:
-                bbox = (poly_data.get("geometry") or {}).get("bounding_box")
-                if not bbox: continue
-
-                if current_line_bbox is None:
-                    line_id = f"line_{line_counter:04d}"
-                    current_line_bbox = list(bbox)
-                else:
-                    y1_min, y1_max = current_line_bbox[1], current_line_bbox[3]
-                    y2_min, y2_max = bbox[1], bbox[3]
-                    overlap = max(0.0, min(y1_max, y2_max) - max(y1_min, y2_min))
-                    min_h = min(y1_max - y1_min, y2_max - y2_min)
-                    overlap_ratio = overlap / min_h if min_h > 1e-5 else 0.0
-
-                    if overlap_ratio > 0.3:
-                        line_id = f"line_{line_counter:04d}"
-                        all_y = [current_line_bbox[1], current_line_bbox[3], bbox[1], bbox[3]]
-                        current_line_bbox[1] = min(all_y)
-                        current_line_bbox[3] = max(all_y)
-                    else:
-                        line_counter += 1
-                        line_id = f"line_{line_counter:04d}"
-                        current_line_bbox = list(bbox)
-                
-                line_id_map[poly_id] = line_id
+            # Asignar line_id usando la lógica del lineal_reconstructor
+            line_id_map = self.assign_line_id(polygons)
 
             abstract_update: Dict[str, Dict[str, Any]] = {
                 "cropped_img": {},
@@ -97,73 +65,37 @@ class PolygonExtractor(AbstractWorker):
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
             return False
 
-    def _reconstruct_lines(self, doc_data: Dict[str, Any]) -> Dict[str, str]:
+    def assign_line_id(self, polygons: Dict[str, Any]) -> Dict[str, str]:
         """
-        Asigna un 'line_id' a cada polígono y construye la geometría de las líneas.
+        Asigna un 'line_id' a cada polígono.
         Devuelve un mapeo polygon_id -> line_id.
         """
-        polygons = doc_data.get("polygons", {})
         if not polygons:
-            logger.warning("No hay polígonos para reconstruir líneas.")
+            logger.warning("No hay polígonos para asignar line_id.")
             return {}
-        
-        prepared_sorted = sorted(polygons.values(), key=lambda p: p.get("geometry", {}).get("centroid", [0, 0])[1])
+
+        # Ordenar por la coordenada Y del centroide para simular líneas
+        prepared_sorted = sorted(
+            polygons.values(),
+            key=lambda p: p.get("geometry", {}).get("centroid", [0, 0])[1]
+        )
         id_map: Dict[str, str] = {}
-        self.lines_info: Dict[str, Any] = {} 
-        current_line_polys: List[Dict[str, Any]] = []
-        current_line_bbox = None
         line_counter = 1
-
-        def _finalize_line(polys, bbox, line_num):
-            if not polys: return
-            
-            line_id = f"line_{line_num:04d}"
-            polygon_ids = [p.get("polygon_id") for p in polys if p.get("polygon_id")]
-            centroids_x = [p.get("geometry", {}).get("centroid")[0] for p in polys if p.get("geometry", {}).get("centroid")]
-            centroids_y = [p.get("geometry", {}).get("centroid")[1] for p in polys if p.get("geometry", {}).get("centroid")]
-
-            for pid in polygon_ids:
-                id_map[pid] = line_id
-            
-            line_centroid = [np.mean(centroids_x), np.mean(centroids_y)] if centroids_x else [0, 0]
-            
-            self.lines_info[line_id] = {
-                "bounding_box": bbox,
-                "centroid": line_centroid,
-                "polygon_ids": polygon_ids
-            }
+        last_centroid_y = None
+        line_id = f"line_{line_counter:04d}"
 
         for poly in prepared_sorted:
-            bbox = poly.get("geometry", {}).get("bounding_box")
-            if not bbox: continue
-
-            if not current_line_polys or current_line_bbox is None:
-                current_line_polys = [poly]
-                current_line_bbox = list(bbox)
-            else:
-                y1_min, y1_max = current_line_bbox[1], current_line_bbox[3]
-                y2_min, y2_max = bbox[1], bbox[3]
-                overlap_abs = max(0.0, min(y1_max, y2_max) - max(y1_min, y2_min))
-                min_h = min(y1_max - y1_min, y2_max - y2_min)
-                overlap = overlap_abs / min_h if min_h > 1e-5 else 0.0
-
-                if overlap > 0.3:
-                    current_line_polys.append(poly)
-                    all_bboxes = [p.get("geometry", {}).get("bounding_box") for p in current_line_polys if p.get("geometry", {}).get("bounding_box")]
-                    if all_bboxes:
-                        all_xs = [b[0] for b in all_bboxes] + [b[2] for b in all_bboxes]
-                        all_y_mins = [b[1] for b in all_bboxes]
-                        all_y_maxs = [b[3] for b in all_bboxes]
-                        avg_y_min = sum(all_y_mins) / len(all_y_mins)
-                        avg_y_max = sum(all_y_maxs) / len(all_y_maxs)
-                        current_line_bbox = [min(all_xs), avg_y_min, max(all_xs), avg_y_max]
-                else:
-                    _finalize_line(current_line_polys, current_line_bbox, line_counter)
-                    line_counter += 1
-                    current_line_polys = [poly]
-                    current_line_bbox = list(bbox)
-
-        if current_line_polys:
-            _finalize_line(current_line_polys, current_line_bbox, line_counter)
+            centroid = poly.get("geometry", {}).get("centroid")
+            if centroid is None:
+                continue
+            centroid_y = centroid[1]
+            if last_centroid_y is not None and abs(centroid_y - last_centroid_y) > 20:
+                # Si la diferencia en Y es significativa, nueva línea
+                line_counter += 1
+                line_id = f"line_{line_counter:04d}"
+            poly_id = poly.get("polygon_id")
+            if poly_id:
+                id_map[poly_id] = line_id
+            last_centroid_y = centroid_y
 
         return id_map

@@ -38,7 +38,10 @@ class ImageLoader:
         metadata = {
             "image_name": image_name,
             "format": extension,
-            "img_dims": {"width": int, "height": int},
+            "img_dims":{
+                    "width": None,
+                    "height":  None,
+                },
             "dpi": None,
             "color": None,
         }
@@ -74,15 +77,14 @@ class ImageLoader:
                     }
                     logger.info(f"Dimensiones pillow obtenidas con IMG.:{pillow_width, pillow_height}")
                     
-                        
                     metadata["color"] = img.mode
-                    dpi_info = img.info.get('dpi')
+                    dpi_info: Optional[Dict[float, float]] = img.info.get('dpi')
                     if dpi_info and isinstance(dpi_info, tuple) and len(dpi_info) == 2: 
                         metadata["dpi"] = float(dpi_info[0]) 
                     elif dpi_info and isinstance(dpi_info, (int, float)):
                         metadata["dpi"] = float(dpi_info)
                     else:
-                            metadata["dpi"] = None
+                        metadata["dpi"] = None
 
                 if (pillow_width == cv2_width) and (pillow_height == cv2_height):
                     metadata["img_dims"] = {"width": max(int(pillow_width), 1), "height": max(int(pillow_height), 1)}

@@ -5,7 +5,7 @@ from typing import Dict, Optional, Any
 from core.pipeline.input_stager import InputStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 #from core.pipeline.ocr_stager import OCRStager
-from core.domain.data_manager import DataFormatter
+from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 class ConfigService:
     """Fragmentador centralizado con validación robusta y flexibilidad."""
-    
     def __init__(self, config_path: str):
         self.config_path = config_path
         self.validated_config = self._load_and_validate_yaml(config_path)
@@ -67,7 +66,8 @@ class ConfigService:
     def validated_paddle_config(self):
         """Acceso directo al objeto Pydantic validado."""
         return self.validated_config.paddle_config
-    
+
+        
     @property
     def validated_modules_config(self):
         """Acceso directo al objeto Pydantic validado."""
@@ -116,3 +116,24 @@ class ConfigService:
         if add_extra and workers < cpu_count:
             workers += 1
         return max(1, workers)
+
+    @property
+    def paddle_det_config(self) -> Dict[str, Any]:
+        """
+        Devuelve la configuración fusionada para el modelo de detección de Paddle.
+        Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.
+        """
+        paddle_config = self.paddle_config
+        det_model = paddle_config.get('models', {})
+        det_model_path = det_model.get("det_model_dir", "")
+        
+        return {
+            "det_model_dir": det_model_path,
+            "use_angle_cls": paddle_config.get("use_angle_cls", False),
+            "show_log": paddle_config.get("show_log", False),
+            "use_gpu": paddle_config.get("use_gpu", False),
+            "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
+            "lang": paddle_config.get("lang", "es"),
+        }
+            
+        

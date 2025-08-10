@@ -2,10 +2,12 @@
 import os
 import logging
 import time
-from typing import Dict, Any, Optional
-from paddleocr import PaddleOCR
+import numpy as np
+from typing import Dict, Any, Optional, List
+from paddleocr import PaddleOCR  # type: ignore
 from core.factory.abstract_worker import AbstractWorker
-from core.domain.data_manager import DataFormatter
+from core.domain.data_formatter import DataFormatter
+import cv2
 
 logger = logging.getLogger(__name__)
 
@@ -18,50 +20,27 @@ class GeometryDetector(AbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config = config
+        self.init_params = config.get("paddle_det_config", {})
         self._engine = None
-        
-        # Verificar que la configuración tiene la ruta del modelo
-        if "det_model_dir" in self.config:
-            model_dir = self.config["det_model_dir"]
-            if os.path.exists(model_dir):
-                required_files = ["inference.pdiparams", "inference.pdiparams.info", "inference.pdmodel"]
-                missing_files = [f for f in required_files if not os.path.exists(os.path.join(model_dir, f))]
-                
-                if missing_files:
-                    logger.error(f"Faltan archivos necesarios en el directorio del modelo: {missing_files}")
-                else:
-                    logger.info(f"Directorio del modelo verificado: {model_dir}")
-            else:
-                logger.error(f"El directorio del modelo de detección no existe: {model_dir}")
-        else:
-            logger.warning("No se ha especificado 'det_model_dir' en la configuración")
             
-        logger.info("GeometryDetector inicializado (motor PaddleOCR no cargado aún).")
-
     @property
     def engine(self) -> Optional[PaddleOCR]:
         if self._engine is None:
             start_time = time.perf_counter()
             try:
-                # Verificar que Paddle esté disponible
-                try:
-                    from paddleocr import PaddleOCR
-                except ImportError:
-                    logger.error("No se pudo importar PaddleOCR. Verifica la instalación.")
-                    return None
-                
                 # Configurar parámetros de inicialización
                 init_params = {
                     "use_angle_cls": False,
                     "rec": False,
-                    "lang": self.config.get("lang", "es"),
-                    "show_log": self.config.get("show_log", False),
-                    "use_gpu": self.config.get("use_gpu", False),
-                    "enable_mkldnn": self.config.get("enable_mkldnn", True),
+                    "lang": self.config.get("paddle_config", {}).get("lang", "es"),
+                    "show_log": self.config.get("paddle_config", {}).get("show_log", False),
+                    "use_gpu": self.config.get("paddle_config", {}).get("use_gpu", False),
+                    "enable_mkldnn": self.config.get("paddle_config", {}).get("enable_mkldnn", True),
+                    "det_model_dir": "C:/PerfectOCR/data/models/paddle/det/es"
                 }
                 
                 # Verificar la ruta del modelo de detección
-                det_model_path = self.config.get("det_model_dir", "")
+                det_model_path = init_params["det_model_dir"]
                 if det_model_path:
                     if os.path.exists(det_model_path):
                         init_params["det_model_dir"] = det_model_path
@@ -90,13 +69,7 @@ class GeometryDetector(AbstractWorker):
         return self._engine
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """
-        - Lee 'job_data' desde context
-        - Detecta bounding polys
-        - Escribe en job_data['image_data']['polygons']
-        - Retorna la misma imagen (no la modifica)
-        """
-        img = context.get("full_img")
+        img: Optional[np.ndarray[Any, Any]] = context.get("full_img")
         if img is None:
             logger.error("GeometryDetector: full_img no encontrado")
             return False
@@ -108,28 +81,31 @@ class GeometryDetector(AbstractWorker):
             return False
 
         try:
+            # TRUCO: Convertir de gris a BGR para engañar a PaddleOCR
+            if len(img.shape) == 2:  # Si es escala de grises
+                img_for_paddle = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+                logger.info("GeometryDetector: Convirtiendo imagen de gris a BGR para PaddleOCR")
+            else:
+                img_for_paddle = img
+
             # Llamamos explícitamente a engine.ocr() después de verificar que engine no es None
-            results = engine.ocr(img, cls=False, rec=False)
+            results:Optional[List[Any]] = engine.ocr(img_for_paddle, det=True, cls=False, rec=False)
             if not (results and len(results) > 0 and results[0] is not None):
                 logger.warning("La detección geométrica no encontró polígonos de texto.")
                 return False
+                
+            if manager.workflow is None:
+                manager.create_dict(
+                    dict_id=context.get("dict_id", "default"),
+                    full_img=img,
+                        metadata=context.get("metadata", {})
+                    )
+            success = manager.create_polygon_dicts(results)
+            if not success:
+                logger.error("GeometryDetector: Fallo al estructurar polígonos.")
+                return False
+            logger.info("GeometryDetector: Polígonos estructurados correctamente.")
+
         except Exception as e:
             logger.error(f"Error durante la detección con PaddleOCR: {e}", exc_info=True)
             return False
-
-        abstract: Dict[str, Dict[str, Any]] = {}
-        for idx, poly_pts in enumerate(results[0]):
-            xs = [float(p[0]) for p in poly_pts]
-            ys = [float(p[1]) for p in poly_pts]
-            poly_id = f"poly_{idx:04d}"
-            abstract.setdefault("polygon_id", {})[poly_id] = poly_id
-            abstract.setdefault("polygon_coords", {})[poly_id] = [[xs[i], ys[i]] for i in range(len(xs))]
-            abstract.setdefault("bounding_box", {})[poly_id] = [min(xs), min(ys), max(xs), max(ys)]
-            abstract.setdefault("centroid", {})[poly_id] = [sum(xs) / len(xs), sum(ys) / len(ys)]
-
-        if abstract:
-            ok = manager.update_data(abstract)
-            if not ok:
-                logger.error("GeometryDetector: fallo al escribir polígonos")
-                return False
-        return True

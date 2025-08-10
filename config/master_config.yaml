@@ -1,7 +1,7 @@
 # PerfectOCR/config/master_config.yaml
 system:
   project_root: "C:/PerfectOCR"
-  log_level: "DEBUG" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_level: "INFO" # DEBUG, INFO, WARNING, ERROR, CRITICAL
   
 # Todas las rutas del sistema
 paths:
@@ -10,6 +10,7 @@ paths:
   
 paddle_config:
   use_angle_cls: false
+  lang: "es"
   show_log: false
   use_gpu: false
   enable_mkldnn: true
@@ -17,7 +18,7 @@ paddle_config:
     det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
     rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
     cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
-  lang: "es"
+  
 
 pipeline_secuence:
   image_preparation:

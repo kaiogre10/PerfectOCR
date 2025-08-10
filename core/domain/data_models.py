@@ -2,7 +2,7 @@
 import numpy as np
 from typing import Dict, List, Optional
 from dataclasses import dataclass
-
+from typing import Any
 
 WORKFLOW_SCHEMA = {
     "type": "object",
@@ -21,7 +21,17 @@ WORKFLOW_SCHEMA = {
                         "height": {"type": "integer"},
                     },
                 },
-                "dpi": {"type": ["number", "null"]},
+                "dpi": {
+                    "anyOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "x": {"type": "number"},
+                                "y": {"type": "null"}
+                            }
+                        },
+                    ],
+                },
                 "date_creation": {"type": "string"},
                 "color": {"type": ["string", "null"]}
             },
@@ -138,7 +148,7 @@ class PaddingGeometry:
     padding_bbox: List[float]
     padd_centroid: List[float]
     padding_coords: List[List[float]]
-    perimeter: float
+    perimeter: Optional[float]
     was_fragmented: bool
 
 @dataclass
@@ -148,7 +158,7 @@ class OCR:
     
 @dataclass
 class CroppedImage:
-    cropped_img: np.ndarray # type: ignore
+    cropped_img: Optional[np.ndarray[Any, Any]]
         
 @dataclass(frozen=True)
 class Geometry:
@@ -173,15 +183,15 @@ class ImageData:
 class Metadata:
     image_name: str
     format: str
-    img_dims: Dict[str, int]
-    dpi: float
+    img_dims: Optional[Dict[str, int]]
+    dpi: Optional[Dict[str, Optional[float]]]
     date_creation: str
     color: Optional[str]
 
 @dataclass
 class WorkflowDict:
     dict_id: str
-    full_img: np.ndarray # type: ignore
+    full_img: Optional[np.ndarray[Any, Any]]
     metadata:  Metadata
     image_data: ImageData
 

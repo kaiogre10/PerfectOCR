@@ -8,11 +8,10 @@ from core.pipeline.preprocessing_stager import PreprocessingStager
 #from core.pipeline.ocr_stager import OCRStager
 from core.factory.main_factory import MainFactory
 from core.workers.image_preparation.image_loader import ImageLoader
-from core.domain.data_manager import DataFormatter
+from core.domain.data_formatter import DataFormatter
 #from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from services.config_service import ConfigService
 from services.cache_service import cleanup_project_cache
-from core.workers.image_preparation.geometry_detector import GeometryDetector
 
 logger = logging.getLogger(__name__)
 
@@ -77,18 +76,14 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         #     project_root=project_root
         # )
         
-        geometry_detector = GeometryDetector({
-            "config_dict": config_services.validated_paddle_config.models.det_model_dir},
-            project_root=project_root
-        )
+        geometry_detector = config_services.paddle_det_config
         
         context = {
-            "paddle_det_config": config_services.validated_paddle_config.models.det_model_dir,
-            'geometry_detector': geometry_detector
+            "geometry_detector": geometry_detector
         }
     
         workers = image_load_factory.create_workers([
-            'cleaner', 'angle_corrector', 'geometry_detector', 'polygon_extractor'],
+            "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"],
             context
         )
 

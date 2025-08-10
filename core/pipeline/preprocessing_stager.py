@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import time
 from typing import Any, Optional, Dict, Tuple
-from core.domain.data_manager import DataFormatter
+from core.domain.data_formatter import DataFormatter
 from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
