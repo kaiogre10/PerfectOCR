@@ -20,8 +20,8 @@ class PolygonExtractor(AbstractWorker):
                 return False
 
             dict_data = manager.get_dict_data()
-            polygons = dict_data.get("image_data", {}).get("polygons", {})
-            if not isinstance(polygons, dict) or not polygons:
+            polygons:  Dict[str, Any] = dict_data.get("image_data", {}).get("polygons", {})
+            if not polygons:
                 logger.warning("PolygonExtractor: No se encontraron polígonos para procesar.")
                 return True
 
@@ -29,34 +29,54 @@ class PolygonExtractor(AbstractWorker):
             img_h, img_w = full_img.shape[:2]
 
             # Asignar line_id usando la lógica del lineal_reconstructor
-            line_id_map = self.assign_line_id(polygons)
+            id_map = self.assign_line_id(polygons)
 
-            abstract_update: Dict[str, Dict[str, Any]] = {
-                "cropped_img": {},
-                "line_id": line_id_map
-            }
+            # Diccionario para almacenar las imágenes recortadas
+            cropped_images: Dict[str, np.ndarray[Any, Any]] = {}
+            cropped_geometries: Dict[str, Dict[str, Any]] = {}
             extracted_count = 0
+            
             for poly_id, poly_data in polygons.items():
-                bbox = (poly_data.get("geometry") or {}).get("bounding_box")
-                if not isinstance(bbox, list) or len(bbox) != 4: continue
-
+                # Usar geometry.bounding_box directamente
+                bbox: List[float] = poly_data.get("bounding_box")
+                if not bbox or len(bbox) != 4:
+                    logger.warning(f"PolygonExtractor: Bounding box inválido para {poly_id}")
+                    continue
+                
                 x1, y1, x2, y2 = map(int, bbox)
                 px1, py1 = max(0, x1 - padding), max(0, y1 - padding)
                 px2, py2 = min(img_w, x2 + padding), min(img_h, y2 + padding)
-                if px2 <= px1 or py2 <= py1: continue
+                if px2 <= px1 or py2 <= py1:
+                    logger.warning(f"PolygonExtractor: Dimensiones inválidas para {poly_id}")
+                    continue
 
                 cropped = full_img[py1:py2, px1:px2].copy()
-                if cropped.size == 0: continue
+                if cropped.size == 0:
+                    logger.warning(f"PolygonExtractor: Imagen recortada vacía para {poly_id}")
+                    continue
 
-                abstract_update["cropped_img"][poly_id] = cropped
+                # Guardamos la imagen recortada en nuestro diccionario temporal
+                cropped_images[poly_id] = cropped
+
+                # Guardar la geometría del recorte (bounding box ajustada) como dict
+                cropped_geometries[poly_id] = {
+                    "px1": px1,
+                    "py1": py1,
+                    "px2": px2,
+                    "py2": py2
+                }
                 extracted_count += 1
 
-            if extracted_count > 0 and not manager.update_data(abstract_update):
-                logger.error("PolygonExtractor: Fallo al guardar datos en el manager.")
+            # Guardamos todas las imágenes recortadas en el workflow
+            
+            success = manager.save_cropped_images(cropped_images, id_map, cropped_geometries)
+            if not success:
+                logger.error("PolygonExtractor: Error al guardar imágenes recortadas en el workflow")
                 return False
 
+            # Liberamos la imagen del contexto y del workflow para ahorrar memoria
             context["full_img"] = None
-            manager.dict_id["full_img"] = None
+            manager.update_full_img(None)
             
             logger.info(f"PolygonExtractor: {extracted_count} recortes creados. 'full_img' liberada.")
             return True

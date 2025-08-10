@@ -88,4 +88,56 @@ class DataFormatter:
         return asdict(self.workflow.metadata) if self.workflow else {}
 
     def get_polygons(self) -> Dict[str, Any]:
-        return {k: asdict(v) for k, v in self.workflow.image_data.polygons.items()} if self.workflow else {}
+        return self.workflow.image_data.polygons if self.workflow else {}
+        
+    def get_workflow_schema(self) -> Dict[str, Any]:
+        """Devuelve el esquema de workflow definido en los datamodels"""
+        return self.schema    
+        
+    def update_full_img(self, new_img: Optional[np.ndarray[Any, Any]] = None) -> bool:
+        """Actualiza o vacía la imagen completa en el workflow"""
+        try:
+            if self.workflow is None:
+                logger.error("No hay workflow inicializado para actualizar full_img.")
+                return False
+                
+            if new_img is None:
+                # Si se pasa None, vaciamos la imagen para liberar memoria
+                self.workflow.full_img = None
+                logger.info("full_img liberada del workflow.")
+            else:
+                # Si se pasa una imagen, la actualizamos
+                self.workflow.full_img = new_img.tolist()
+                logger.info("full_img actualizada en el workflow.")
+            return True
+        except Exception as e:
+            logger.error(f"Error actualizando full_img: {e}")
+            return False
+            
+    def save_cropped_images(
+        self,
+        cropped_images: Dict[str, np.ndarray[Any, Any]],
+        line_ids: Dict[str, str],
+        cropped_geometries: Dict[str, Dict[str, Any]]
+    ) -> bool:
+        """Guarda imágenes recortadas, line_ids y geometría de recorte en los polígonos del workflow"""
+        try:
+            if self.workflow is None:
+                logger.error("No hay workflow inicializado para guardar imágenes recortadas.")
+                return False
+
+            for poly_id, img in cropped_images.items():
+                if poly_id in self.workflow.image_data.polygons:
+                    self.workflow.image_data.polygons[poly_id]["cropped_img"] = img.tolist()
+                    if poly_id in cropped_geometries:
+                        self.workflow.image_data.polygons[poly_id]["cropedd_geometry"] = cropped_geometries[poly_id]
+
+            for poly_id, line_id in line_ids.items():
+                if poly_id in self.workflow.image_data.polygons:
+                    self.workflow.image_data.polygons[poly_id]["line_id"] = line_id
+
+            logger.info(f"Guardadas {len(cropped_images)} imágenes recortadas, {len(line_ids)} line_ids y geometría de recorte.")
+            return True
+        except Exception as e:
+            logger.error(f"Error guardando imágenes recortadas y geometría: {e}")
+            return False

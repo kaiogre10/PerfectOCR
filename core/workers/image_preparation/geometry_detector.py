@@ -69,37 +69,45 @@ class GeometryDetector(AbstractWorker):
         return self._engine
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        logger.info("GeometryDetector: Iniciando proceso de detección geométrica.")
         img: Optional[np.ndarray[Any, Any]] = context.get("full_img")
         if img is None:
-            logger.error("GeometryDetector: full_img no encontrado")
+            logger.error("GeometryDetector: full_img no encontrado en el contexto.")
             return False
 
-        # Verificar que el motor esté inicializado
         engine = self.engine
         if engine is None:
-            logger.error("GeometryDetector: Motor PaddleOCR no inicializado")
+            logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")
             return False
 
         try:
-            # TRUCO: Convertir de gris a BGR para engañar a PaddleOCR
-            if len(img.shape) == 2:  # Si es escala de grises
+            logger.info(f"GeometryDetector: Imagen recibida con shape {img.shape}.")
+            if len(img.shape) == 2:
                 img_for_paddle = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                logger.info("GeometryDetector: Convirtiendo imagen de gris a BGR para PaddleOCR")
+                logger.info("GeometryDetector: Convertida imagen de gris a BGR para PaddleOCR.")
             else:
                 img_for_paddle = img
+                logger.info("GeometryDetector: Imagen ya está en formato BGR.")
 
-            # Llamamos explícitamente a engine.ocr() después de verificar que engine no es None
-            results:Optional[List[Any]] = engine.ocr(img_for_paddle, det=True, cls=False, rec=False)
+            logger.info("GeometryDetector: Ejecutando engine.ocr()...")
+            results: Optional[List[Any]] = engine.ocr(img_for_paddle, det=True, cls=False, rec=False) # type: ignore
+            logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
+
             if not (results and len(results) > 0 and results[0] is not None):
-                logger.warning("La detección geométrica no encontró polígonos de texto.")
+                logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
                 return False
-                
+
             if manager.workflow is None:
+                logger.info("GeometryDetector: Workflow no inicializado, creando dict.")
                 manager.create_dict(
                     dict_id=context.get("dict_id", "default"),
                     full_img=img,
-                        metadata=context.get("metadata", {})
-                    )
+                    metadata=context.get("metadata", {})
+                )
+            else:
+                logger.info("GeometryDetector: Workflow ya inicializado.")
+
+            logger.info("GeometryDetector: Estructurando polígonos en el manager...")
             success = manager.create_polygon_dicts(results)
             if not success:
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")
@@ -107,5 +115,8 @@ class GeometryDetector(AbstractWorker):
             logger.info("GeometryDetector: Polígonos estructurados correctamente.")
 
         except Exception as e:
-            logger.error(f"Error durante la detección con PaddleOCR: {e}", exc_info=True)
+            logger.error(f"GeometryDetector: Error durante la detección con PaddleOCR: {e}", exc_info=True)
             return False
+
+        logger.info("GeometryDetector: Proceso finalizado correctamente.")
+        return True
