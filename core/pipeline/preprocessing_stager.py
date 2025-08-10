@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import time
 from typing import Any, Optional, Dict, Tuple
-from core.domain.workflow_dict import DataFormatter
+from core.domain.data_manager import DataFormatter
 from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
@@ -136,20 +136,20 @@ class PreprocessingStager:
         logger.info(f"[PreprocessingManager] Preprocesamiento completado en {total_time:.3f}s")
         return workflow_job, total_time
         
-    def _save_problematic_polygons(self, workflow_job: WorkflowJob, image_name: str) -> None:
+    # def _save_problematic_polygons(self, workflow_job: , image_name: str) -> None:
         
-        """Guarda imágenes de polígonos problemáticos."""
-        problematic_ids = self._fragment._get_problematic_ids()
-        if not problematic_ids:
-            return
+    #     """Guarda imágenes de polígonos problemáticos."""
+    #     problematic_ids = self._fragment._get_problematic_ids()
+    #     if not problematic_ids:
+    #         return
             
-        problematic_imgs = []
-        for poly_id in problematic_ids:
-            if poly_id in workflow_job.polygons:
-                img = workflow_job.polygons[poly_id].cropped_img
-                if img is not None:
-                    problematic_imgs.append(img)
+    #     problematic_imgs = []
+    #     for poly_id in problematic_ids:
+    #         if poly_id in workflow_job.polygons:
+    #             img = workflow_job.polygons[poly_id].cropped_img
+    #             if img is not None:
+    #                 problematic_imgs.append(img)
         
-        if problematic_imgs and self.output_service is not None:
-            self.output_service.save_images(problematic_imgs, self.output_folder, f"{image_name}_problematic")
-            logger.info(f"[PreprocessingManager] Guardadas {len(problematic_imgs)} imágenes problemáticas")
+    #     if problematic_imgs and self.output_service is not None:
+    #         self.output_service.save_images(problematic_imgs, self.output_folder, f"{image_name}_problematic")
+    #         logger.info(f"[PreprocessingManager] Guardadas {len(problematic_imgs)} imágenes problemáticas")

@@ -27,8 +27,6 @@ data/models/
 *.ini
 
 # Ignorar perfectocr.txt
-perfectocr.txt/
-*perfectocr.txt
 *cursorignore
 *cursorignore/
 cursorignore

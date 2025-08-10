@@ -2,7 +2,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Dict, Any, List, Tuple
 
-# Configuración para permitir np.ndarray
 class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

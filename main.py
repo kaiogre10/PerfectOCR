@@ -27,7 +27,7 @@ LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 CONSOLE_LEVEL = "INFO"
 FILE_LEVEL = "DEBUG"
 # Formato para la consola: muestra el nivel, nombre del logger, línea y mensaje
-CONSOLE_FORMAT = "%(name)s:%(lineno)d - %(message)s"
+CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 # Formato para el archivo: incluye fecha/hora, --nivel--, --nombre del logger--, --línea--, --módulo-- y mensaje
 FILE_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(module)s - %(message)s"
 # Formato de fecha/hora utilizado en los logs

@@ -1,0 +1,69 @@
+2025-08-10 05:09:24 - INFO - root:59 - main - Logging configurado correctamente.
+2025-08-10 05:09:24 - INFO - services.cache_service:14 - cache_service - --- Limpieza Inicial: Vaciando carpetas de salida ---
+2025-08-10 05:09:24 - INFO - root:22 - main_builder - Activando ConfigManager con validación robusta...
+2025-08-10 05:09:24 - INFO - root:26 - main_builder - Creando WorkFlowBuilder...
+2025-08-10 05:09:24 - INFO - root:33 - main_builder - Analizando imágenes disponibles...
+2025-08-10 05:09:24 - INFO - root:37 - main_builder - Creando builders según análisis
+2025-08-10 05:09:24 - INFO - core.workers.image_preparation.angle_corrector:18 - angle_corrector - AngleCorrector inicializado.
+2025-08-10 05:09:24 - INFO - core.workers.image_preparation.geometry_detector:22 - geometry_detector - GeometryDetector inicializado (motor PaddleOCR no cargado aún).
+2025-08-10 05:09:24 - INFO - core.workers.image_preparation.angle_corrector:18 - angle_corrector - AngleCorrector inicializado.
+2025-08-10 05:09:24 - INFO - core.workers.image_preparation.geometry_detector:22 - geometry_detector - GeometryDetector inicializado (motor PaddleOCR no cargado aún).
+2025-08-10 05:09:24 - INFO - core.workers.image_preparation.angle_corrector:18 - angle_corrector - AngleCorrector inicializado.
+2025-08-10 05:09:24 - INFO - core.workers.image_preparation.geometry_detector:22 - geometry_detector - GeometryDetector inicializado (motor PaddleOCR no cargado aún).
+2025-08-10 05:09:24 - INFO - root:41 - main_builder - Iniciando procesamiento...
+2025-08-10 05:09:24 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-08-10 05:09:24 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 41 9
+2025-08-10 05:09:24 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'iTXt' 62 1232
+2025-08-10 05:09:24 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 1306 8192
+2025-08-10 05:09:24 - INFO - core.workers.image_preparation.image_loader:74 - image_loader - Imagen '1' cargada exitosamente desde 'C:\PerfectOCR\input\1.png'
+2025-08-10 05:09:25 - ERROR - app.process_builder:74 - process_builder - [ProcessingBuilder] Error fatal procesando la imagen: AngleCorrector.process() takes 2 positional arguments but 3 were given
+Traceback (most recent call last):
+  File "C:\PerfectOCR\app\process_builder.py", line 35, in process_single_image
+    processed_manager, time_poly = self.input_stager.generate_polygons(manager)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PerfectOCR\core\pipeline\input_stager.py", line 44, in generate_polygons
+    if not worker.process(context, manager):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: AngleCorrector.process() takes 2 positional arguments but 3 were given
+2025-08-10 05:09:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-08-10 05:09:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 41 9
+2025-08-10 05:09:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'iTXt' 62 1232
+2025-08-10 05:09:25 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 1306 8192
+2025-08-10 05:09:25 - INFO - core.workers.image_preparation.image_loader:74 - image_loader - Imagen '2' cargada exitosamente desde 'C:\PerfectOCR\input\2.png'
+2025-08-10 05:09:26 - ERROR - app.process_builder:74 - process_builder - [ProcessingBuilder] Error fatal procesando la imagen: AngleCorrector.process() takes 2 positional arguments but 3 were given
+Traceback (most recent call last):
+  File "C:\PerfectOCR\app\process_builder.py", line 35, in process_single_image
+    processed_manager, time_poly = self.input_stager.generate_polygons(manager)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PerfectOCR\core\pipeline\input_stager.py", line 44, in generate_polygons
+    if not worker.process(context, manager):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: AngleCorrector.process() takes 2 positional arguments but 3 were given
+2025-08-10 05:09:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IHDR' 16 13
+2025-08-10 05:09:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'sRGB' 41 1
+2025-08-10 05:09:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'gAMA' 54 4
+2025-08-10 05:09:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'PLTE' 70 768
+2025-08-10 05:09:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'pHYs' 850 9
+2025-08-10 05:09:26 - DEBUG - PIL.PngImagePlugin:201 - PngImagePlugin - STREAM b'IDAT' 871 64665
+2025-08-10 05:09:26 - INFO - core.workers.image_preparation.image_loader:74 - image_loader - Imagen 'AAAA.0006' cargada exitosamente desde 'C:\PerfectOCR\input\AAAA.0006.png'
+2025-08-10 05:09:26 - ERROR - app.process_builder:74 - process_builder - [ProcessingBuilder] Error fatal procesando la imagen: AngleCorrector.process() takes 2 positional arguments but 3 were given
+Traceback (most recent call last):
+  File "C:\PerfectOCR\app\process_builder.py", line 35, in process_single_image
+    processed_manager, time_poly = self.input_stager.generate_polygons(manager)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\PerfectOCR\core\pipeline\input_stager.py", line 44, in generate_polygons
+    if not worker.process(context, manager):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: AngleCorrector.process() takes 2 positional arguments but 3 were given
+2025-08-10 05:09:26 - INFO - root:53 - main_builder - Procesamiento finalizado, iniciando limpieza de caché.
+2025-08-10 05:09:26 - INFO - services.cache_service:32 - cache_service - --- Limpieza Final: Eliminando caché del proyecto ---
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\app\__pycache__
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\config\__pycache__
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\domain\__pycache__
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\factory\__pycache__
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\pipeline\__pycache__
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\workers\image_preparation\__pycache__
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\core\workers\preprocessing\__pycache__
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\services\__pycache__
+2025-08-10 05:09:26 - DEBUG - services.cache_service:40 - cache_service - Eliminada carpeta de caché: C:\PerfectOCR\utils\__pycache__
+2025-08-10 05:09:26 - INFO - root:55 - main_builder - Limpieza de caché completada.

@@ -4,7 +4,7 @@ import numpy as np
 import logging
 import math
 from typing import Dict, Any
-from core.workers.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import AbstractWorker
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +17,13 @@ class AngleCorrector(AbstractWorker):
         self.corrections = config
         logger.info("AngleCorrector inicializado.")
 
-    def process(self, image: np.ndarray[Any, Any], context: Dict[str, Any]) -> np.ndarray[Any, Any]:
+    def process(self, workflow_dict: Dict[str, Any]) -> Dict[str, Any]:
         """
         Implementa el método abstracto de AbstractWorker.
         """
-        dict_data = context["dict_data"]
+        dict_data = workflow_dict["dict_data"]
         img_dims = dict_data["metadata"]["img_dims"]
-        corrected_image = self.correct(image, img_dims)
+        corrected_image = self.correct(img_dims)
         dict_data["full_img"] = corrected_image
         
         return corrected_image

@@ -10,7 +10,7 @@ class MoireDenoiser:
     """Detecta y corrige patrones de moiré."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.config = config
+        self.config = config.get('moire', {})
         
     def _detect_moire_patterns(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """

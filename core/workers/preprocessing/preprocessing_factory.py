@@ -1,7 +1,7 @@
 # core/workers/factory/preprocessing_factory.py
 from typing import Dict, Callable, Any
-from core.workers.factory.abstract_worker import AbstractWorker
-from core.workers.factory.abstract_factory import AbstractBaseFactory
+from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
@@ -13,7 +13,7 @@ from core.workers.preprocessing.fragmentator import PolygonFragmentator
 class PreprocessingFactory(AbstractBaseFactory):
     """Factory para workers de preprocesamiento."""
     
-    def _create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], AbstractWorker]]:
+    def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], AbstractWorker]]:
 
         return {
             "moire": self._create_moire,
@@ -22,7 +22,7 @@ class PreprocessingFactory(AbstractBaseFactory):
             "binarization": self._create_binarization,
             "clahe": self._create_clahe,
             "sharp": self._create_sharp,
-            "fragmentator": self._create_fragmentator 
+            "fragmentator": self._create_fragmentator ,
         }
     
     def _create_moire(self, context: Dict[str, Any]) -> MoireDenoiser:

@@ -2,8 +2,6 @@
 import cv2
 import numpy as np
 import logging
-import time
-from core.domain.workflow_manager import DataFormatter
 from typing import Dict, Any, Tuple, Optional
 from PIL import Image
 
@@ -17,8 +15,18 @@ class ImageLoader:
     def __init__(self, image_info: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.image_info = image_info
+                
+    def load_image_and_metadata(self) -> Tuple[Optional[np.ndarray[ Any, Any]], Dict[str, Any]]:
+        """
+        Carga imagen y crea job dict completo usando DataFormatter.
+        """
+        gray_image, metadata = self.resolutor(self.image_info)
+        if gray_image is None or ('error' in metadata):
+            logger.error(f"Error cargando imagen: {metadata.get('error', 'Unknown error')}")
 
-    def resolutor(self, image_info: Dict[str, Any]) -> Tuple[Optional[np.ndarray], Dict[str, Any]]: # type: ignore
+        return gray_image, metadata
+                
+    def resolutor(self, image_info: Dict[str, Any]) -> Tuple[Optional[np.ndarray[ Any, Any]], Dict[str, Any]]:
         """
         Carga la imagen y extrae metadatos.
         Devuelve (None, metadata_con_error) si falla.
@@ -67,41 +75,8 @@ class ImageLoader:
             return gray_image, metadata
 
         except Exception as e:
-            error_msg = f"Error al procesar la imagen '{input_path}': {e}"
+            error_msg = f"Error al  la imagen '{input_path}': {e}"
             logger.error(error_msg)
             metadata['error'] = error_msg
             return None, metadata
     
-    def load_image_and_metadata(self) -> Optional[Dict[str, Any]]:
-        """
-        Carga imagen y crea job dict completo usando DataFormatter.
-        """
-        start_time = time.time()
-        
-        gray_image, metadata = self.resolutor(self.image_info)
-        
-        if gray_image is None or 'error' in metadata:
-            logger.error(f"Error cargando imagen: {metadata.get('error', 'Unknown error')}")
-            return None
-        
-        # Crear dict_id único
-        dict_id = f"dict_{metadata['image_name']}_{int(time.time())}"
-        
-        logger.info(f"dict_id creado con {dict_id}")
-        
-        # Usar DataFormatter para crear dict completo
-        formatter = DataFormatter()
-        success = formatter.create_dict(dict_id, gray_image, metadata)
-        
-        if not success:
-            logger.error("Error creando job con DataFormatter")
-            return None
-        
-        # Devolver job dict completo
-        dict_id = formatter.get_dict_data()
-        total_time = time.time() - start_time
-        
-        logger.info(f"[ImageLoader] Dict creado exitosamente en: {total_time:.3f}s")
-        return dict_id
-                
-                

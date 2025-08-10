@@ -1,23 +1,21 @@
-# core/workers/factory/image_preparation_factory.py
+# core/workers/image_preparation_factory.py
 from typing import Dict, Callable, Any
-from core.workers.factory.abstract_worker import AbstractWorker
-from core.workers.factory.abstract_factory import AbstractBaseFactory
+from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.image_preparation.cleanner import ImageCleaner
 from core.workers.image_preparation.angle_corrector import AngleCorrector
 from core.workers.image_preparation.geometry_detector import GeometryDetector
-from core.workers.image_preparation.lineal_reconstructor import LineReconstructor
 from core.workers.image_preparation.poly_gone import PolygonExtractor
 
 class ImagePreparationFactory(AbstractBaseFactory):
     """Factory para workers de preparación de imagen."""
     
-    def _create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], AbstractWorker]]:
+    def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], AbstractWorker]]:
         
         return {
             "cleaner": self._create_cleaner,
             "angle_corrector": self._create_angle_corrector,
             "geometry_detector": self._create_geometry_detector,
-            "line_reconstructor": self._create_line_reconstructor,
             "polygon_extractor": self._create_polygon_extractor
         }
     
@@ -30,12 +28,8 @@ class ImagePreparationFactory(AbstractBaseFactory):
         return AngleCorrector(config=deskew_config, project_root=self.project_root)
     
     def _create_geometry_detector(self, context: Dict[str, Any]) -> GeometryDetector:
-        # Usar configuración de Paddle del contexto
-        paddle_config = context.get('paddle_det_config', {})
-        return GeometryDetector(config=paddle_config, project_root=self.project_root)
-        
-    def _create_line_reconstructor(self, context: Dict[str, Any]) -> LineReconstructor:
-        return LineReconstructor(config={}, project_root=self.project_root)
+        paddleocr = context.get('paddle_det_config', {})
+        return GeometryDetector(config=paddleocr, project_root=self.project_root)
     
     def _create_polygon_extractor(self, context: Dict[str, Any]) -> PolygonExtractor:
         cutting_config = self.module_config.get('cutting', {})

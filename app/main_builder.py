@@ -5,10 +5,11 @@ from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.input_stager import InputStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
-from core.pipeline.ocr_stager import OCRStager
-from core.workers.factory.main_factory import MainFactory
+#from core.pipeline.ocr_stager import OCRStager
+from core.factory.main_factory import MainFactory
 from core.workers.image_preparation.image_loader import ImageLoader
-from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
+from core.domain.data_manager import DataFormatter
+#from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from services.config_service import ConfigService
 from services.cache_service import cleanup_project_cache
 
@@ -54,9 +55,7 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
             logging.info("Limpieza de caché completada.")
         except Exception as cleanup_error:
             logging.error(f"Error durante la limpieza de caché: {cleanup_error}", exc_info=True)
-
-                    
-            
+    
 def create_builders(config_services: ConfigService, project_root: str, workflow_report: Dict[str, Any], output_paths: Optional[List[str]])-> List[ProcessingBuilder]:
     """Crea builders para cada imagen encontrada usando inyecciones en cascada."""
     context = {}
@@ -71,47 +70,51 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         
         image_load_factory = worker_factory.get_image_preparation_factory() 
         
-        context = {
-            "paddle_det_config": config_services.validated_paddle_config.models.det_model_dir
-        }
         
+        # paddleocr = PaddleOCRWrapper({
+        #     "config_dict": config_services.validated_paddle_config.models.rec_model_dir},
+        #     project_root=project_root
+        # )
+        
+        context = {
+            "paddle_det_config": config_services.validated_paddle_config.models.det_model_dir,
+        }
+    
         workers = image_load_factory.create_workers([
-            'cleaner', 'angle_corrector', 'geometry_detector', 'line_reconstructor', 'polygon_extractor'],
+            'cleaner', 'angle_corrector', 'geometry_detector', 'polygon_extractor'],
             context
         )
             
+        manager = DataFormatter()
+        
         image_loader = ImageLoader(
             image_info=image_data,
             project_root=project_root,
         )
-        
-        paddleocr = PaddleOCRWrapper({
-            "config_dict": config_services.validated_paddle_config.models.rec_model_dir},
-            project_root=project_root
-        )
-
+    
         input_stager = InputStager(
-            workers_factory=workers,
+            workers=workers,
             image_loader = image_loader,
             project_root=project_root
         )
-        
+            
         preprocessing_stager = PreprocessingStager(
             config=config_services.preprocessing_config,
             stage_config=config_services.manager_config,
             project_root=project_root
         )
         
-        ocr_stager = OCRStager(
-            stage_config=config_services.manager_config,
-            paddleocr=paddleocr,
-            project_root=project_root
-        )
+        # ocr_stager = OCRStager(
+        #     stage_config=config_services.manager_config,
+        #     paddleocr=paddleocr,
+        #     project_root=project_root
+        # )
         
         builder = ProcessingBuilder(
+            manager=manager,
             input_stager=input_stager,
             preprocessing_stager=preprocessing_stager,
-            ocr_stager=ocr_stager
+         #   ocr_stager=ocr_stager
         )
         builders.append(builder)
         
@@ -124,8 +127,8 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
 
     for i, builder in enumerate(builders):
         if i < len(image_info_list):
-            image_data = image_info_list[i]  # dict con name, path, extension
-            result = builder.process_single_image(image_data)
+            image_data = image_info_list[i] 
+            result = builder.process_single_image()
             results[image_data.get('name', f'imagen_{i}')] = result
 
     return {

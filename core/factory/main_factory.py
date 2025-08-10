@@ -1,7 +1,7 @@
 # core/workers/factory/main_factory.py
 from typing import Dict, Any
-from core.workers.factory.image_preparation_factory import ImagePreparationFactory
-from core.workers.factory.preprocessing_factory import PreprocessingFactory
+from core.workers.image_preparation.image_preparation_factory import ImagePreparationFactory
+from core.workers.preprocessing.preprocessing_factory import PreprocessingFactory
 
 class MainFactory:
     """Factory universal que coordina todas las factories de módulos."""

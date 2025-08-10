@@ -17,7 +17,7 @@ class OCRStager:
         self.paddleocr = paddleocr
         self.paddle = paddleocr
         
-    def _save_complete_ocr_results(self, workflow_job: WorkflowJob, image_name: str):
+    def _save_complete_ocr_results(self, workflow_job, image_name: str):
         """
         Guarda los resultados OCR en formato JSON, solo con polygon_id, texto, confianza y metadata básica.
         """
