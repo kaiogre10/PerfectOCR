@@ -5,6 +5,7 @@ import logging
 import math
 from typing import Dict, Any
 from core.factory.abstract_worker import AbstractWorker
+from core.domain.data_manager import DataFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -17,18 +18,20 @@ class AngleCorrector(AbstractWorker):
         self.corrections = config
         logger.info("AngleCorrector inicializado.")
 
-    def process(self, workflow_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Implementa el método abstracto de AbstractWorker.
         """
-        dict_data = workflow_dict["dict_data"]
-        img_dims = dict_data["metadata"]["img_dims"]
-        corrected_image = self.correct(img_dims)
-        dict_data["full_img"] = corrected_image
-        
-        return corrected_image
+        img_dims = context.get("img_dims", {})
+        full_img = context.get("full_img")
+        if full_img is None:
+            logger.error("Cleaner: full_img no encontrado en contexto")
+            return False
+        full_img = self.correct(full_img, img_dims)
+        full_img[...] = full_img
 
-    def correct(self, clean_img: np.ndarray[Any, Any], img_dims: Dict[str, Any]) -> np.ndarray[Any, Any]:
+
+    def correct(self, full_img: np.ndarray[Any, Any], img_dims: Dict[str, Any]) -> np.ndarray[Any, Any]:
         """
         Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no).
         """
@@ -39,38 +42,39 @@ class AngleCorrector(AbstractWorker):
         hough_min_line_length_cap_px = self.corrections.get('hough_min_line_length_cap_px', 300)
         min_angle_for_correction = self.corrections.get('min_angle_for_correction', 0.1)
 
-        h = int(img_dims.get("height", 0) or 0)
-        w = int(img_dims.get("width", 0) or 0)
+        h = int(img_dims.get("height", 0))
+        w = int(img_dims.get("width", 0))
+        
         
         if h == 0 or w == 0:
             logger.warning("Dimensiones de imagen inválidas (0) para la corrección de ángulo.")
-            return clean_img
-
+            return full_img
+        
         center = (w // 2, h // 2)
         min_len = min(w // 3, hough_min_line_length_cap_px)
         
-        edges = cv2.Canny(clean_img, canny_thresholds[0], canny_thresholds[1])
+        edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
         lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold,
                                 minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
 
         if lines is None or len(lines) == 0:
             logger.info("No se detectaron líneas para la corrección de inclinación.")
-            return clean_img
+            return full_img
 
         angles = [math.degrees(math.atan2(l[0][3]-l[0][1], l[0][2]-l[0][0])) for l in lines]
         filtered_angles = [a for a in angles if hough_angle_filter_range_degrees[0] < a < hough_angle_filter_range_degrees[1]]
         
         if not filtered_angles:
             logger.info("Ninguna línea detectada en el rango de ángulos para corrección.")
-            return clean_img
+            return full_img
 
         angle = np.median(filtered_angles)
 
         if abs(angle) > min_angle_for_correction:
             logger.info(f"-> Aplicando corrección de inclinación: {angle:.2f} grados.")
             rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
-            deskewed_img = cv2.warpAffine(clean_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+            deskewed_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
             return deskewed_img
         else:
             logger.info("Ángulo de inclinación insignificante. No se aplica corrección.")
-            return clean_img
+        return full_img

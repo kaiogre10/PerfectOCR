@@ -1,7 +1,7 @@
 # PerfectOCR/core/workers/image_preparation/cleanner.py
 import cv2
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import numpy as np
 from core.factory.abstract_worker import AbstractWorker
 from core.domain.data_manager import DataFormatter
@@ -16,7 +16,7 @@ class ImageCleaner(AbstractWorker):
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            full_img = context.get("full_img")
+            full_img: Optional[np.ndarray[Any, Any]] = context.get("full_img")
             if full_img is None:
                 logger.error("Cleaner: full_img no encontrado en contexto")
                 return False
@@ -36,9 +36,10 @@ class ImageCleaner(AbstractWorker):
             enhanced = clahe.apply(denoised)
             # 3) sharpen adaptativo
             mean_intensity = float(np.mean(enhanced))
-            kernel = (np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-                      if mean_intensity < 128 else
-                      np.array([[0, -0.5, 0], [-0.5, 3, -0.5], [0, -0.5, 0]]))
+            if mean_intensity < 128:
+                kernel = (np.array([[0, -1, 0], [-1, 3, -1], [0, -1, 0]]))
+            else:
+                kernel = (np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]))   
             clean_img = cv2.filter2D(enhanced, -1, kernel)
             # in-place estricto (misma referencia)
             full_img[...] = clean_img

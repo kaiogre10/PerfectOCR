@@ -36,7 +36,7 @@ class InputStager:
         # 3) Contexto liviano
         context: Dict[str, Any] = {
             "dict_id": dict_id,
-            "full_img": full_img
+            "full_img": full_img,
         }
 
         # 4) Ejecutar workers (inyectar context y manager)

@@ -84,8 +84,8 @@ class DataFormatter:
             "image_name": str(metadata.get("image_name", "")),
             "format": str(metadata.get("format", "")),
             "img_dims": {
-                "width": int(metadata.get("img_dims", {}).get("width", 0)),
-                "height": int(metadata.get("img_dims", {}).get("height", 0))
+                "width": int(metadata.get("img_dims", {}).get("width")),
+                "height": int(metadata.get("img_dims", {}).get("height"))
             },
             "dpi": float(metadata["dpi"]) if metadata.get("dpi") is not None else None,
             "date_creation": metadata.get("date_creation", datetime.now().isoformat()),
