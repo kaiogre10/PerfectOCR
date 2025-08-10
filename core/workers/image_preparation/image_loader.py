@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 from typing import Dict, Any, Tuple, Optional
-from PIL import Image, ExifTags
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class ImageLoader:
         metadata = {
             "image_name": image_name,
             "format": extension,
-            "img_dims": {"width": None, "height": None},
+            "img_dims": {"width": int, "height": int},
             "dpi": None,
             "color": None,
         }
@@ -65,11 +65,14 @@ class ImageLoader:
                     metadata["img_dims"] = {"width": int(pillow_width), "height": int(pillow_height)}
                     logger.info(f"Dimensiones pillow obtenidas con exif: :{pillow_width, pillow_width}")
                 else:
-                    metadata["img_dims"] = {"width": int(img.width), "height": int(img.height)}
-                    pillow_width =img.width
-                    pillow_height =img.height    
-                    metadata["img_dims"] = {"width": int(pillow_width), "height": int(pillow_width)}
-                    logger.info(f"Dimensiones pillow obtenidas con IMG.:{pillow_width, pillow_width}")
+                    pillow_width = img.width
+                    pillow_height = img.height
+                    # Asegurar que las dimensiones nunca sean 0 o None
+                    metadata["img_dims"] = {
+                        "width": max(int(pillow_width), 1), 
+                        "height": max(int(pillow_height), 1)
+                    }
+                    logger.info(f"Dimensiones pillow obtenidas con IMG.:{pillow_width, pillow_height}")
                     
                         
                     metadata["color"] = img.mode
@@ -82,9 +85,9 @@ class ImageLoader:
                             metadata["dpi"] = None
 
                 if (pillow_width == cv2_width) and (pillow_height == cv2_height):
-                    metadata["img_dims"] = {"width": pillow_width, "height": pillow_height}
+                    metadata["img_dims"] = {"width": max(int(pillow_width), 1), "height": max(int(pillow_height), 1)}
                 else:
-                    metadata["img_dims"] = {"width": int(cv2_width), "height": int(cv2_height)}
+                    metadata["img_dims"] = {"width": max(int(cv2_width), 1), "height": max(int(cv2_height), 1)}
                     logger.warning(f"Dimensiones distintas: Pillow ({pillow_width}, {pillow_height}) != cv2 ({cv2_width}, {cv2_height}), usando cv2.")
 
                 logger.info(f"Imagen '{image_name}' cargada exitosamente desde '{input_path}'")

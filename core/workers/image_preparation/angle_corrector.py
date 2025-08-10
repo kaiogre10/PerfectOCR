@@ -22,16 +22,67 @@ class AngleCorrector(AbstractWorker):
         """
         Implementa el método abstracto de AbstractWorker.
         """
+        
+        # Obtenemos los metadatos completos para acceder a img_dims
+        metadata = context.get("metadata", {})
+        
+        # Intentamos obtener img_dims de varias fuentes posibles
         img_dims = context.get("img_dims", {})
+        
+        # Si img_dims no está directamente en el contexto, buscamos en metadata
+        if not img_dims or not isinstance(img_dims, dict) or "width" not in img_dims or "height" not in img_dims:
+            if isinstance(metadata, dict):
+                img_dims = metadata.get("img_dims", {})
+            
+        # Si aún no tenemos img_dims, intentamos obtenerlo del DataFormatter
+        if not img_dims or not isinstance(img_dims, dict) or "width" not in img_dims or "height" not in img_dims:
+            try:
+                manager_metadata = manager.get_metadata()
+                img_dims = manager_metadata.get("img_dims", {})
+            except Exception as e:
+                logger.warning(f"AngleCorrector: No se pudo obtener img_dims del manager: {e}")
+        
+        # Si no encontramos img_dims válidos en ninguna parte, usamos dimensiones predeterminadas
+        if not img_dims or not isinstance(img_dims, dict) or "width" not in img_dims or "height" not in img_dims:
+            logger.warning("AngleCorrector: No se encontró img_dims válido, usando valores predeterminados")
+            # Calculamos dimensiones a partir de la imagen si es posible
+            full_img = context.get("full_img")
+            if full_img is not None and hasattr(full_img, "shape"):
+                h, w = full_img.shape[:2]
+                img_dims = {"width": w, "height": h}
+            else:
+                # Usamos valores predeterminados
+                img_dims = {"width": 1, "height": 1}
+                logger.error("AngleCorrector: No se pudo determinar img_dims. Usando valores predeterminados.")
+                return False
+        
+        # A este punto, tenemos img_dims válido o hemos retornado False
         full_img = context.get("full_img")
         if full_img is None:
-            logger.error("Cleaner: full_img no encontrado en contexto")
+            logger.error("AngleCorrector: full_img no encontrado en contexto")
             return False
-        full_img = self.correct(full_img, img_dims)
-        full_img[...] = full_img
+            
+        # Debug para ver qué valores estamos usando
+        logger.info(f"AngleCorrector: Procesando imagen con dimensiones {img_dims}")
+        
+        corrected_img = self.correct(full_img, img_dims)
+        
+        # Actualiza la imagen en el contexto
+        context["full_img"] = corrected_img
+        
+        # Y también en el manager si es posible
+        try:
+            dict_id = context.get("dict_id")
+            if dict_id:
+                manager._update_full_img(dict_id, corrected_img)
+        except Exception as e:
+            logger.warning(f"AngleCorrector: No se pudo actualizar full_img en el manager: {e}")
+            # Pero continuamos porque la imagen está actualizada en el contexto
+        
+        return True
 
 
-    def correct(self, full_img: np.ndarray[Any, Any], img_dims: Dict[str, Any]) -> np.ndarray[Any, Any]:
+    def correct(self, full_img: np.ndarray[Any, Any], img_dims: Dict[str, int]) -> np.ndarray[Any, Any]:
         """
         Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no).
         """
@@ -42,16 +93,16 @@ class AngleCorrector(AbstractWorker):
         hough_min_line_length_cap_px = self.corrections.get('hough_min_line_length_cap_px', 300)
         min_angle_for_correction = self.corrections.get('min_angle_for_correction', 0.1)
 
-        h = int(img_dims.get("height", 0))
-        w = int(img_dims.get("width", 0))
-        
-        
-        if h == 0 or w == 0:
-            logger.warning("Dimensiones de imagen inválidas (0) para la corrección de ángulo.")
+        h = img_dims.get("height")
+        w = img_dims.get("width")
+
+        # Ensure h and w are valid integers and not None
+        if h is None or w is None or h == 0 or w == 0:
+            logger.warning("Dimensiones de imagen inválidas (None o 0) para la corrección de ángulo.")
             return full_img
-        
-        center = (w // 2, h // 2)
-        min_len = min(w // 3, hough_min_line_length_cap_px)
+
+        center = w // 2, h // 2
+        min_len = min((w) // 3, hough_min_line_length_cap_px)
         
         edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
         lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold,

@@ -41,7 +41,7 @@ class DataFormatter:
             if self.dict_id.get("dict_id") != dict_id:
                 logger.warning(f"dict_id '{dict_id}' no coincide con el actual.")
                 return False
-            self.dict_id["full_img"] = full_img.tolist(),
+            self.dict_id["full_img"] = full_img.tolist()  # Corregido: eliminada la coma extra
             # Valida la estructura
             self._validate_structure()
             return True
@@ -80,12 +80,16 @@ class DataFormatter:
 
     def _validate_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Transforma y valida metadatos"""
+        # Garantizar que width y height sean enteros válidos y nunca None o 0
+        width = metadata.get("img_dims", {}).get("width", 1)
+        height = metadata.get("img_dims", {}).get("height", 1)
+        
         return {
             "image_name": str(metadata.get("image_name", "")),
             "format": str(metadata.get("format", "")),
             "img_dims": {
-                "width": int(metadata.get("img_dims", {}).get("width")),
-                "height": int(metadata.get("img_dims", {}).get("height"))
+                "width": max(int(width), 1),
+                "height": max(int(height), 1)
             },
             "dpi": float(metadata["dpi"]) if metadata.get("dpi") is not None else None,
             "date_creation": metadata.get("date_creation", datetime.now().isoformat()),

@@ -33,10 +33,12 @@ class InputStager:
             logger.error("InputStager: Fallo al crear dict_job en el manager.")
             return None, 0.0
 
-        # 3) Contexto liviano
+        # 3) Contexto con metadatos necesarios
         context: Dict[str, Any] = {
             "dict_id": dict_id,
             "full_img": full_img,
+            "metadata": metadata,
+            "img_dims": metadata.get("img_dims", {})
         }
 
         # 4) Ejecutar workers (inyectar context y manager)

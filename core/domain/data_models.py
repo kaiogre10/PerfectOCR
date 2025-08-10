@@ -18,7 +18,7 @@ WORKFLOW_SCHEMA = {
                     "type": "object",
                     "properties": {
                         "width": {"type": "integer"},
-                        "height": {"type": "integer"}
+                        "height": {"type": "integer"},
                     },
                 },
                 "dpi": {"type": ["number", "null"]},
