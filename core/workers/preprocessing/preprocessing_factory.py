@@ -19,10 +19,10 @@ class PreprocessingFactory(AbstractBaseFactory):
             "moire": self._create_moire,
             "sp": self._create_sp,
             "gauss": self._create_gauss,
-            "binarization": self._create_binarization,
             "clahe": self._create_clahe,
             "sharp": self._create_sharp,
-            "fragmentator": self._create_fragmentator ,
+            "binarization": self._create_binarization,
+            "fragmentator": self._create_fragmentator,
         }
     
     def _create_moire(self, context: Dict[str, Any]) -> MoireDenoiser:
@@ -38,7 +38,7 @@ class PreprocessingFactory(AbstractBaseFactory):
         return GaussianDenoiser(config=gauss_config, project_root=self.project_root)
 
     def _create_binarization(self, context: Dict[str, Any]) -> Binarizator:
-        binarization_config = self.module_config.get('binarization', {})
+        binarization_config = self.module_config.get('binarize', {})
         return Binarizator(config=binarization_config, project_root=self.project_root)
     
     def _create_clahe(self, context: Dict[str, Any]) -> ClaherEnhancer:
@@ -50,5 +50,5 @@ class PreprocessingFactory(AbstractBaseFactory):
         return SharpeningEnhancer(config=sharp_config, project_root=self.project_root)
     
     def _create_fragmentator(self, context: Dict[str, Any]) -> PolygonFragmentator:
-        fragment_config = self.module_config.get('sharp', {})
+        fragment_config = self.module_config.get('fragmentation', {})
         return PolygonFragmentator(config=fragment_config, project_root=self.project_root)

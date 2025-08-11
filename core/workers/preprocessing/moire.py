@@ -1,56 +1,52 @@
-# PerfectOCR/core/workflow/preprocessing/
+# PerfectOCR/core/workflow/preprocessing/moire.py
 import cv2
 import numpy as np
 import logging
 from typing import Dict, Any
+from core.factory.abstract_worker import AbstractWorker
+from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
-class MoireDenoiser:
+class MoireDenoiser(AbstractWorker):
     """Detecta y corrige patrones de moiré."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.config = config.get('moire', {})
+        self.config = config
         
-    def _detect_moire_patterns(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Detecta y corrige patrones de moiré en cada polígono del diccionario,
         modificando 'cropped_img' in-situ.
-        Args:
-            processing_dict: Diccionario principal con los polígonos
-        Returns:
-            El mismo diccionario con los 'cropped_img' corregidos si aplica
         """
-        polygons = processing_dict.get("polygons", {})
+        polygons = context.get("polygons", {})
         for poly_data in polygons.values():
             current_image = poly_data.get("cropped_img")
             if current_image is not None:
                 # Procesa la imagen y la sobrescribe en el mismo lugar
                 poly_data["cropped_img"] = self._detect_moire_single(current_image)
         
-        return processing_dict
+        return True  # Indicar que el procesamiento fue exitoso
         
-    def _detect_moire_single(self, cropped_img: np.ndarray) -> np.ndarray:
+    def _detect_moire_single(self, current_image: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
 
         moire_corrections = self.config
         mode = moire_corrections.get('mode', {})
         percentile_corrections = mode.get('percentile', {})
-        factor_corrections = mode.get('factor', {})
-        abs_corrections = mode.get('absolute', {})
-
         notch_radius = int(percentile_corrections.get('notch_radius', 2))
         min_dist = int(percentile_corrections.get('min_distance_from_center', 200))
-        mean_factor = factor_corrections.get('mean_factor_threshold', 4)
-        abs_threshold = abs_corrections.get('absolute_threshold', 200000000)
+    
 
-        img_dims = cropped_img.shape
+        moire_poly = []
+
+        img_dims = current_image.shape
         h, w = img_dims
         max_dim = max(h, w)
-        spectrum_var = np.var(cropped_img)
+        spectrum_var = np.var(current_image)
         adaptive_notch = max(2, min(6, int(notch_radius * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
         adaptive_min_dist = max(50, min(300, int(min_dist * (max_dim / 2000.0))))
 
-        img_float = np.float32(cropped_img)
+        img_float = np.float32(current_image)
         f_transform = cv2.dft(np.asarray(img_float), flags=cv2.DFT_COMPLEX_OUTPUT)
         f_shifted = np.fft.fftshift(f_transform)
         
@@ -104,6 +100,6 @@ class MoireDenoiser:
             return moire_poly
         
         else:
-            moire_poly = cropped_img
+            moire_poly = current_image
         
         return moire_poly

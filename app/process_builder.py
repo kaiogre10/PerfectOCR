@@ -27,28 +27,22 @@ class ProcessingBuilder:
         try:
             # FASE 1: Cargar imagen, obtener polígonos y liberar full_img
             workflow_start = time.perf_counter()
-            
-            # El builder crea el manager, que es único para este job
             manager = DataFormatter()
             
-            # El stager recibe el manager y lo usa para orquestar
-            processed_manager, time_poly = self.input_stager.generate_polygons(manager)
+            manager, time_poly = self.input_stager.generate_polygons(manager)
             
-            if processed_manager is None:
+            if manager is None:
                 logger.error("[ProcessingBuilder] No se pudo procesar la fase de entrada.")
                 return None
             
             logger.info(f"Fase de entrada completada en: {time_poly:.4f}s")
 
-            # FASE 2: Preprocesamiento (modifica el manager con los recortes)
-            # workflow_job, prep_time = self.preprocessing_stager.apply_preprocessing_pipelines(workflow_job)
+            manager, time_poly = self.preprocessing_stager.apply_preprocessing_pipelines(manager)
             
-            # if workflow_job is None:
-            #     logger.error("[ProcessingBuilder] No se pudo generar WorkflowJob desde Preprocesing")
-            #     error_job.add_error("Fallo en la fase de preprocesamiento.")
-            #     return error_job
-            # else:
-            #     logger.info(f"Preprocessing time: {prep_time}")
+            if manager is None:
+                logger.error("[ProcessingBuilder] No se pudo generar WorkflowJob desde Preprocesing")
+                return None
+            logger.info(f"Fase de preprocesamiento completada en: {time_poly:.4f}s")
 
             # FASE 3: OCR (modifica el manager y libera los recortes)
             # ocr_initime = time.perf_counter()
@@ -68,9 +62,9 @@ class ProcessingBuilder:
             # processed_manager.set_value(...) 
             logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.3f}s")
             
-            return processed_manager
+            return manager
             
         except Exception as e:
             logger.error(f"[ProcessingBuilder] Error fatal procesando la imagen: {e}", exc_info=True)
             # Podrías crear un manager con el error si es necesario
-            return None
+        return None

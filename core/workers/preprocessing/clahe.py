@@ -3,37 +3,40 @@ import cv2
 import numpy as np
 import logging
 from typing import Dict, Any
+from core.factory.abstract_worker import AbstractWorker
+from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
-class ClaherEnhancer:
+class ClaherEnhancer(AbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.corrections = config
-
-    def _estimate_contrast(self, processing_dict: Dict[str, Any]) -> Dict[str, Any]:
+        
+    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y corrige patrones de moiré en cada polígono del diccionario.
         Args:
             refined_polygons: Diccionario principal con los polígonos
         Returns:
             El mismo diccionario (moire_img), con los 'cropped_img' corregidos si aplica"""
-        polygons = processing_dict.get("polygons", {})
+        polygons = context.get("polygons", {})
         for poly_data in polygons.values():
             current_image = poly_data.get("cropped_img")
             if current_image is not None:
                 # Procesa la imagen y la sobrescribe en el mismo lugar
                 poly_data["cropped_img"] = self._estimate_contrast_single(current_image)
         
-        return processing_dict
 
-    def _estimate_contrast_single(self, cropped_img: np.ndarray) -> np.ndarray:
+    def _estimate_contrast_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Aplica mejora de contraste."""
         global_clahe_corrects = self.corrections.get('global', {})
         contrast_threshold = global_clahe_corrects.get('contrast_threshold', 50.0)
         clip_limit = global_clahe_corrects.get('clahe_clip_limit', 2.0)
         page_dimensions = global_clahe_corrects.get('dimension_thresholds_px', [1000, 2500])
         grid_maps = global_clahe_corrects.get('grid_sizes_map', [[6, 6], [8, 8], [10, 10]])
+
+        clahe_poly = []
 
         # Cálculo de estadísticos:
         contrast_std = np.std(cropped_img) 

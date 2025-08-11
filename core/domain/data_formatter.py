@@ -1,5 +1,5 @@
 # core/domain/workflow_manager.py
-from core.domain.data_models import WorkflowDict, Metadata, ImageData, WORKFLOW_SCHEMA
+from core.domain.data_models import WorkflowDict, Metadata, ImageData, WORKFLOW_SCHEMA, CroppedImage
 from dataclasses import asdict
 import numpy as np
 import jsonschema
@@ -82,7 +82,7 @@ class DataFormatter:
     def get_dict_data(self) -> Dict[str, Any]:
         """Devuelve copia completa del dict"""
         return asdict(self.workflow) if self.workflow else {}
-
+    
     def get_metadata(self) -> Dict[str, Any]:
         """Devuelve los metadatos del dict"""
         return asdict(self.workflow.metadata) if self.workflow else {}
@@ -93,7 +93,15 @@ class DataFormatter:
     def get_workflow_schema(self) -> Dict[str, Any]:
         """Devuelve el esquema de workflow definido en los datamodels"""
         return self.schema    
-        
+    
+    def get_polygons_with_cropped_img(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Devuelve el diccionario de polígonos con sus imágenes recortadas listas para el contexto de los workers.
+        """
+        if self.workflow is None:
+            return {}
+        return self.workflow.image_data.polygons
+
     def update_full_img(self, new_img: Optional[np.ndarray[Any, Any]] = None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""
         try:

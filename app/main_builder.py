@@ -69,23 +69,27 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         )
         
         image_load_factory = worker_factory.get_image_preparation_factory() 
-        
-        
-        # paddleocr = PaddleOCRWrapper({
-        #     "config_dict": config_services.validated_paddle_config.models.rec_model_dir},
-        #     project_root=project_root
-        # )
-        
+        workers = image_load_factory.create_workers([
+            "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"],
+            context
+
+        )
         geometry_detector = config_services.paddle_det_config
         
         context = {
             "geometry_detector": geometry_detector
         }
-    
-        workers = image_load_factory.create_workers([
-            "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"],
+                
+        # paddleocr = PaddleOCRWrapper({
+        #     "config_dict": config_services.validated_paddle_config.models.rec_model_dir},
+        #     project_root=project_root
+        # )
+        
+        preprocessing_factory = worker_factory.get_preprocessing_factory()
+        workers = preprocessing_factory.create_workers(
+            ["moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
             context
-        )
+            )
 
         manager = DataFormatter()
         
@@ -101,7 +105,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         )
             
         preprocessing_stager = PreprocessingStager(
-            config=config_services.preprocessing_config,
+            workers=workers,
             stage_config=config_services.manager_config,
             project_root=project_root
         )

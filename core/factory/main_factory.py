@@ -33,6 +33,6 @@ class MainFactory:
         return factory
 
     def get_preprocessing_factory(self) -> PreprocessingFactory:
-        factory =  self.module_factories["preprocessing"]
+        factory = self.module_factories["preprocessing"]
         assert isinstance(factory, PreprocessingFactory)
         return factory

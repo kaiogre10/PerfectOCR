@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass
 from typing import Any
 
-WORKFLOW_SCHEMA = {
+WORKFLOW_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "properties": {
         "dict_id": {"type": "string"},
