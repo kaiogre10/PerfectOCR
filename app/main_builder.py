@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[str]], config_path: str, project_root: str) -> Dict[str, Any]:
     
     try:        
-        # 1. Main activa al Contralor (ConfigManager) - AHORA CON VALIDACIÓN
+        # 1. Main activa al Condifurador
         logging.info("Activando ConfigManager con validación robusta...")
         config_services = ConfigService(config_path)
     

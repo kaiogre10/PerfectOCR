@@ -192,12 +192,12 @@ class DataFormatter:
         
         
     # NUEVO método en DataFormatter  
-    def update_preprocessing_result(self, poly_id: str, processed_img: CroppedImage, 
+    def update_preprocessing_result(self, poly_id: str, cropped_img: Optional[CroppedImage],
                                 worker_name: str, success: bool):
         """Actualiza resultado de preprocesamiento y marca stage/status"""
         if poly_id in self.workflow.image_data.polygons:
             # Actualizar imagen
-            self.workflow.image_data.polygons[poly_id]["cropped_img"] = processed_img.cropped_img
+            self.workflow.image_data.polygons[poly_id]["cropped_img"] = cropped_img
             # Actualizar metadatos
             self.workflow.image_data.polygons[poly_id]["stage"] = worker_name
             self.workflow.image_data.polygons[poly_id]["status"] = success

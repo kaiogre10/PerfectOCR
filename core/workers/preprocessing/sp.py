@@ -10,8 +10,9 @@ from core.domain.data_models import CroppedImage
 logger = logging.getLogger(__name__)
     
 class DoctorSaltPepper(PreprossesingAbstractWorker):
-
-    def __init__(self, config: Dict[str, Any], project_root: str):
+    total_polygons_corrected = 0
+    
+    def __init__(self, config: Dict[str, Any], project_root: str):    
         self.project_root = project_root
         self.config = config
     
@@ -21,12 +22,17 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
         modificando 'cropped_img' in-situ.
         """
         start_time = time.time()
+        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
+            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
+        if cropped_img.cropped_img.dtype != np.uint8:
+            cropped_img.cropped_img = cropped_img.cropped_img.astype(np.uint8)
         self._detect_sp_single(cropped_img.cropped_img)
         
-        logger.info(f"Poligonos corregidos Clahe {cropped_img.cropped_img}")
+        DoctorSaltPepper.total_polygons_corrected += 1
         total_time = time.time() - start_time
-        logger.info(f"Clahe completado en: {total_time:.3f}s")
-
+        logger.debug(f"S&P completado en: {total_time:.4}s")
+        logger.debug(f"Total de polígonos corregidos S&P: {DoctorSaltPepper.total_polygons_corrected}")
+        
         return cropped_img
 
     

@@ -22,10 +22,12 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
         modificando 'cropped_img' in-situ.
         """
         start_time = time.time()
-        
-        current_image = cropped_img.cropped_img
-        if current_image is not None:
-            clahe_poly = self._estimate_contrast_single(current_image)
+        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
+            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
+        if cropped_img.cropped_img.dtype != np.uint8:
+            cropped_img.cropped_img = cropped_img.cropped_img.astype(np.uint8)
+
+            clahe_poly = self._estimate_contrast_single(cropped_img.cropped_img)
         else:
             return cropped_img
             

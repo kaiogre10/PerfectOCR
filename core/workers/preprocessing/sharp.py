@@ -23,16 +23,19 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
         modificando 'cropped_img' in-situ.
         """
         start_time = time.time()
-        current_image = cropped_img.cropped_img
+        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
+            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
+        if cropped_img.cropped_img.dtype != np.uint8:
+            cropped_img.cropped_img = cropped_img.cropped_img.astype(np.uint8)
         
-        sharp_poly = self._estimate_sharpness_single(current_image)
+        sharp_poly = self._estimate_sharpness_single(cropped_img.cropped_img)
             
         cropped_img.cropped_img[...] = sharp_poly
         
         
-        logger.info(f"Poligonos corregidos Clahe {sharp_poly}")
+        logger.debug(f"Poligonos corregidos Sharp {sharp_poly}")
         total_time = time.time() - start_time
-        logger.info(f"Clahe completado en: {total_time:.3f}s")
+        logger.debug(f"Clahe completado en: {total_time:.3f}s")
 
         
         return cropped_img

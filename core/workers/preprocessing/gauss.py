@@ -23,20 +23,20 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
         """
         start_time = time.time()
 
-        current_image = cropped_img.cropped_img
-        if current_image is not None:
-            gauss_poly = self._estimate_gaussian_noise_single(current_image)
+        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
+            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
+        if cropped_img.cropped_img.dtype != np.uint8:
+            cropped_img.cropped_img = cropped_img.cropped_img.astype(np.uint8)
+            gauss_poly = self._estimate_gaussian_noise_single(cropped_img.cropped_img)
         else:
             return cropped_img
             
         cropped_img.cropped_img[...] = gauss_poly
         
-        
-        logger.info(f"Poligonos corregidos Gauss {gauss_poly}")
+        logger.debug(f"Poligonos corregidos Gauss {gauss_poly}")
         total_time = time.time() - start_time
-        logger.info(f"Clahe completado en: {total_time:.3f}s")
+        logger.debug(f"Gauss completado en: {total_time:.3f}s")
 
-        
         return cropped_img
 
     def _estimate_gaussian_noise_single(self,  cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:

@@ -5,17 +5,14 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import CroppedImage
 
 class BaseWorker(ABC):
-    """Clase base común para los workers abstractos"""
+    """Contrato que todo worker de procesamiento debe cumplir.
+    Cada worker es una etapa en el pipeline.
+    """
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.config = config
         self.project_root = project_root    
 
 class ImagePrepAbstractWorker(BaseWorker):
-    """
-    Contrato que todo worker de procesamiento debe cumplir.
-    Cada worker es una etapa en el pipeline.
-    """
-    
     @abstractmethod
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """

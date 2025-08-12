@@ -173,4 +173,3 @@ class WorkflowDict:
     full_img: Optional[np.ndarray[Any, Any]]
     metadata:  Metadata
     image_data: ImageData
-
