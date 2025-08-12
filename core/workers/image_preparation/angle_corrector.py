@@ -4,12 +4,12 @@ import numpy as np
 import logging
 import math
 from typing import Dict, Any
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
-class AngleCorrector(AbstractWorker):
+class AngleCorrector(ImagePrepAbstractWorker):
     """
     Worker especializado en detectar y corregir el ángulo de inclinación de una imagen.
     """
@@ -23,40 +23,8 @@ class AngleCorrector(AbstractWorker):
         Implementa el método abstracto de AbstractWorker.
         """
         
-        # Obtenemos los metadatos completos para acceder a img_dims
-        metadata = context.get("metadata", {})
-        
         # Intentamos obtener img_dims de varias fuentes posibles
         img_dims = context.get("img_dims", {})
-        
-        
-        
-        # Si img_dims no está directamente en el contexto, buscamos en metadata
-        if not img_dims or not isinstance(img_dims, Dict) or "width" not in img_dims or "height" not in img_dims:
-            if isinstance(metadata, Dict):
-                img_dims = metadata.get("img_dims", {})
-            
-        # Si aún no tenemos img_dims, intentamos obtenerlo del DataFormatter
-        if not img_dims or not isinstance(img_dims, Dict) or "width" not in img_dims or "height" not in img_dims:
-            try:
-                manager_metadata = manager.get_metadata()
-                img_dims = manager_metadata.get("img_dims", {})
-            except Exception as e:
-                logger.warning(f"AngleCorrector: No se pudo obtener img_dims del manager: {e}")
-        
-        # Si no encontramos img_dims válidos en ninguna parte, usamos dimensiones predeterminadas
-        if not img_dims or not isinstance(img_dims, Dict) or "width" not in img_dims or "height" not in img_dims:
-            logger.warning("AngleCorrector: No se encontró img_dims válido, usando valores predeterminados")
-            # Calculamos dimensiones a partir de la imagen si es posible
-            full_img = context.get("full_img")
-            if full_img is not None and hasattr(full_img, "shape"):
-                h, w = full_img.shape[:2]
-                img_dims = {"width": w, "height": h}
-            else:
-                # Usamos valores predeterminados
-                img_dims = {"width": 1, "height": 1}
-                logger.error("AngleCorrector: No se pudo determinar img_dims. Usando valores predeterminados.")
-                return False
         
         # A este punto, tenemos img_dims válido o hemos retornado False
         full_img = context.get("full_img")

@@ -2,58 +2,63 @@
 import cv2
 import numpy as np
 import logging
-from typing import Dict, Any, Optional
-from skimage.exposure import histogram
-from core.factory.abstract_worker import AbstractWorker
+import time
+from typing import Dict, Any 
+from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
-
-
+from core.domain.data_models import CroppedImage
 logger = logging.getLogger(__name__)
     
-class DoctorSaltPepper(AbstractWorker):
+class DoctorSaltPepper(PreprossesingAbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config = config
     
-    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def preprocess(self, cropped_img: CroppedImage, manager: DataFormatter) -> CroppedImage:
+        """
+        Detecta y corrige patrones de sal y pimienta en cada polígono del diccionario,
+        modificando 'cropped_img' in-situ.
+        """
+        start_time = time.time()
+        self._detect_sp_single(cropped_img.cropped_img)
+        
+        logger.info(f"Poligonos corregidos Clahe {cropped_img.cropped_img}")
+        total_time = time.time() - start_time
+        logger.info(f"Clahe completado en: {total_time:.3f}s")
 
-        polygons = context.get("polygons", {})
-        for poly_data in polygons.values():
-            current_image = poly_data.get("cropped_img")
-            if current_image is not None:
-                # Procesa la imagen y la sobrescribe en el mismo lugar
-                poly_data["cropped_img"] = self._detect_sp_single(current_image)
-                
+        return cropped_img
+
     
     def _detect_sp_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-        """Estima ruido sal y pimienta con histograma."""
+        """Estima ruido sal y pimienta con histograma, operando siempre in-place sobre el array original."""
         sp_corrections = self.config.get('median_filter', {})
-        low_thresh = sp_corrections.get('salt_pepper_low', 10)
-        high_thresh = sp_corrections.get('salt_pepper_high', 245)
-        kernel_size = sp_corrections.get('kernel_size', 3)
-        sp_threshold = sp_corrections.get('salt_pepper_threshold', 0.001)
-        
-        sp_poly = []
+        low_thresh = int(sp_corrections.get('salt_pepper_low', 10))
+        high_thresh = int(sp_corrections.get('salt_pepper_high', 245))
+        kernel_size = int(sp_corrections.get('kernel_size', 3))
+        sp_threshold = float(sp_corrections.get('salt_pepper_threshold', 0.001))
 
-        # Medición del ruido
         total_pixels = cropped_img.size
         if total_pixels == 0:
-            sp_poly =  cropped_img
-            return sp_poly
+            return cropped_img
 
-        hist, _ = histogram(cropped_img, nbins=256, source_range='cropped_img')
-        
-        # Sumar píxeles en extremos
-        sp_pixels = np.sum(hist[:low_thresh]) + np.sum(hist[high_thresh:])
+        # Calcular histograma
+        hist, _ = np.histogram(cropped_img, bins=256, range=(0, 255))
+
+        # Sumar píxeles en los extremos del histograma
+        sp_pixels = int(np.sum(hist[:low_thresh]) + np.sum(hist[high_thresh:]))
         sp_ratio = sp_pixels / total_pixels
 
         if sp_ratio > sp_threshold:
-            # Si el kernel_size es par, lo ajustamos a impar
+            # Ajustar kernel_size a impar si es necesario
             if kernel_size % 2 == 0:
                 kernel_size += 1
-            sp_poly = cv2.medianBlur(cropped_img, kernel_size)
-        else:
-            sp_poly = cropped_img
-        
-        return sp_poly
+            # Aplicar filtro de mediana y copiar el resultado sobre el array original (in-place)
+            filtered = cv2.medianBlur(cropped_img, kernel_size)
+            if filtered.shape == cropped_img.shape and filtered.dtype == cropped_img.dtype:
+                cropped_img[...] = filtered
+            else:
+                np.copyto(cropped_img, filtered, casting='unsafe')
+        # Si no hay suficiente ruido, no se modifica la imagen
+
+        return cropped_img

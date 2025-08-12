@@ -68,28 +68,32 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             project_root=project_root
         )
         
-        image_load_factory = worker_factory.get_image_preparation_factory() 
-        workers = image_load_factory.create_workers([
-            "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"],
-            context
-
-        )
+        # Obtener factories del worker_factory
+        image_load_factory = worker_factory.get_image_preparation_factory()
+        image_prep_workers = image_load_factory.create_workers([
+            "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"
+        ], context)
+        
         geometry_detector = config_services.paddle_det_config
         
         context = {
             "geometry_detector": geometry_detector
         }
+        
+        # Crear workers SEPARADOS
+        preprocessing_factory = worker_factory.get_preprocessing_factory()
+        preprocessing_workers = preprocessing_factory.create_workers(
+            ["moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
+            context
+        )
+
+        
                 
         # paddleocr = PaddleOCRWrapper({
         #     "config_dict": config_services.validated_paddle_config.models.rec_model_dir},
         #     project_root=project_root
         # )
         
-        preprocessing_factory = worker_factory.get_preprocessing_factory()
-        workers = preprocessing_factory.create_workers(
-            ["moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
-            context
-            )
 
         manager = DataFormatter()
         
@@ -99,13 +103,13 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         )
     
         input_stager = InputStager(
-            workers=workers,
+            workers=image_prep_workers,
             image_loader = image_loader,
             project_root=project_root
         )
             
         preprocessing_stager = PreprocessingStager(
-            workers=workers,
+            workers=preprocessing_workers,
             stage_config=config_services.manager_config,
             project_root=project_root
         )

@@ -28,6 +28,15 @@ pipeline_secuence:
     - "line_reconstructor" 
     - "polygon_extractor" 
   
+  preprocessing_stage:
+  - "moire"
+  - "sp"
+  - "gauss"
+  - "clahe"
+  - "sharp"
+  - "binarizator"
+  - "fragmentator"
+  
 # Configuración de salida (independiente)
 enabled_outputs:
     preprocessed_image: false

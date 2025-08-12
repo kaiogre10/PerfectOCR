@@ -66,7 +66,6 @@ class ConfigService:
     def validated_paddle_config(self):
         """Acceso directo al objeto Pydantic validado."""
         return self.validated_config.paddle_config
-
         
     @property
     def validated_modules_config(self):

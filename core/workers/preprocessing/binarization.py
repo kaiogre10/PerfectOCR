@@ -5,12 +5,13 @@ import logging
 from typing import Dict, Any, Optional
 from skimage.filters import threshold_sauvola # type: ignore
 from skimage.util import img_as_ubyte # type: ignore
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import CroppedImage
 
 logger = logging.getLogger(__name__)
 
-class Binarizator(AbstractWorker):
+class Binarizator(PreprossesingAbstractWorker):
     
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
@@ -104,38 +105,31 @@ class Binarizator(AbstractWorker):
 
         return bin_img
     
-    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """Procesa un diccionario de polígonos individuales aplicando binarización adaptativa a cada uno. Devuelve un diccionario con polygon_id -> binarized_img"""
-        polygons = context.get("polygons", {})
-        polygons_to_bin = polygons.copy()
-        if not polygons_to_bin:
-            logger.warning("Diccionario de polígonos vacío recibido")
-            return {}
+    def preprocess(self, cropped_img: CroppedImage, manager: DataFormatter) -> CroppedImage:
 
+        """Procesa un diccionario de polígonos individuales aplicando binarización adaptativa a cada uno. Devuelve un diccionario con polygon_id -> binarized_img"""
+        cropped_img: Optional[np.ndarray[Any, Any]] = cropped_img.cropped_img
+        polygons_to_bin = cropped_img.copy()
+            
         binarized_polygons = {}
         binarized_count = 0
         failed_count = 0
 
-        for polygon_id, polygon_data in polygons_to_bin.items():
-            try:
-                cropped_img = polygon_data.get("cropped_img")
-                if cropped_img is None:
-                    logger.warning(f"Polígono {polygon_id} sin imagen, omitiendo")
-                    failed_count += 1
-                    continue
-                cropped_img: Optional[np.ndarray[Any, Any]]
-                height = cropped_img.shape[0]
-                gray_img: Optional[np.ndarray[Any, Any]] = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY) if len(cropped_img.shape) == 3 else cropped_img
+        polygons_to_bin =[]
+        try:
                 
-                bin_img: Optional[np.ndarray[Any, Any]] = self._process_individual_polygons(gray_img, height)
+            height = cropped_img.shape[0]
+            gray_img: Optional[np.ndarray[Any, Any]] = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY) if len(cropped_img.shape) == 3 else cropped_img
+                    
+            bin_img: Optional[np.ndarray[Any, Any]] = self._process_individual_polygons(gray_img, height)
 
-                # Guardar solo el polygon_id y la imagen binarizada
-                binarized_polygons[polygon_id] = bin_img
-                binarized_count += 1
+                    # Guardar solo el polygon_id y la imagen binarizada
+            binarized_polygons[polygon_id] = bin_img
+            binarized_count += 1
 
-            except Exception as e:
-                logger.error(f"Error procesando polígono {polygon_id}: {e}")
-                failed_count += 1
+        except Exception as e:
+            logger.error(f"Error procesando polígono {polygon_id}: {e}")
+        failed_count += 1
         
         total_processed = len(polygons_to_bin)
         logger.info(f"Binarización completada: {binarized_count}/{total_processed} polígonos procesados.")

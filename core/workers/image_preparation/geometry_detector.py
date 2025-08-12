@@ -5,13 +5,13 @@ import time
 import numpy as np
 from typing import Dict, Any, Optional, List
 from paddleocr import PaddleOCR  # type: ignore
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 import cv2
 
 logger = logging.getLogger(__name__)
 
-class GeometryDetector(AbstractWorker):
+class GeometryDetector(ImagePrepAbstractWorker):
     """
     Detecta geometría con PaddleOCR y escribe resultados en el dict job_data:
     - job_data['image_data']['polygons'][poly_id] = { polygon_id, geometry, ... }
@@ -51,13 +51,8 @@ class GeometryDetector(AbstractWorker):
                     logger.warning("No se especificó 'det_model_dir'; PaddleOCR intentará descargar el modelo.")
 
                 # Inicializar el modelo
-                load_t0 = time.perf_counter()
-                logger.info("Inicializando motor PaddleOCR...")
                 self._engine = PaddleOCR(**init_params)
-                logger.info(
-                    f"PaddleOCR (det) listo en {time.perf_counter()-start_time:.3f}s "
-                    f"(carga modelo: {time.perf_counter()-load_t0:.3f}s)"
-                )
+                logger.info(f"PaddleOCR (det) listo en {time.perf_counter()-start_time:.3f}s ")
             except Exception as e:
                 logger.error(f"Error inicializando PaddleOCR para geometría: {e}", exc_info=True)
                 self._engine = None
@@ -69,7 +64,6 @@ class GeometryDetector(AbstractWorker):
         return self._engine
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        logger.info("GeometryDetector: Iniciando proceso de detección geométrica.")
         img: Optional[np.ndarray[Any, Any]] = context.get("full_img")
         if img is None:
             logger.error("GeometryDetector: full_img no encontrado en el contexto.")
@@ -81,15 +75,11 @@ class GeometryDetector(AbstractWorker):
             return False
 
         try:
-            logger.info(f"GeometryDetector: Imagen recibida con shape {img.shape}.")
             if len(img.shape) == 2:
                 img_for_paddle = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                logger.info("GeometryDetector: Convertida imagen de gris a BGR para PaddleOCR.")
             else:
                 img_for_paddle = img
-                logger.info("GeometryDetector: Imagen ya está en formato BGR.")
 
-            logger.info("GeometryDetector: Ejecutando engine.ocr()...")
             results: Optional[List[Any]] = engine.ocr(img_for_paddle, det=True, cls=False, rec=False) # type: ignore
             logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
 
@@ -98,7 +88,6 @@ class GeometryDetector(AbstractWorker):
                 return False
 
             if manager.workflow is None:
-                logger.info("GeometryDetector: Workflow no inicializado, creando dict.")
                 manager.create_dict(
                     dict_id=context.get("dict_id", "default"),
                     full_img=img,
@@ -107,16 +96,13 @@ class GeometryDetector(AbstractWorker):
             else:
                 logger.info("GeometryDetector: Workflow ya inicializado.")
 
-            logger.info("GeometryDetector: Estructurando polígonos en el manager...")
             success = manager.create_polygon_dicts(results)
             if not success:
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")
                 return False
-            logger.info("GeometryDetector: Polígonos estructurados correctamente.")
 
         except Exception as e:
             logger.error(f"GeometryDetector: Error durante la detección con PaddleOCR: {e}", exc_info=True)
             return False
 
-        logger.info("GeometryDetector: Proceso finalizado correctamente.")
         return True

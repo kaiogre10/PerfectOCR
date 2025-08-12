@@ -2,31 +2,40 @@
 import cv2
 import numpy as np
 import logging
+import time
 from typing import Dict, Any
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import CroppedImage
 
 logger = logging.getLogger(__name__)
 
-class ClaherEnhancer(AbstractWorker):
+class ClaherEnhancer(PreprossesingAbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.corrections = config
         
-    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """Detecta y corrige patrones de moiré en cada polígono del diccionario.
-        Args:
-            refined_polygons: Diccionario principal con los polígonos
-        Returns:
-            El mismo diccionario (moire_img), con los 'cropped_img' corregidos si aplica"""
-        polygons = context.get("polygons", {})
-        for poly_data in polygons.values():
-            current_image = poly_data.get("cropped_img")
-            if current_image is not None:
-                # Procesa la imagen y la sobrescribe en el mismo lugar
-                poly_data["cropped_img"] = self._estimate_contrast_single(current_image)
+    def preprocess(self, cropped_img: CroppedImage, manager: DataFormatter) -> CroppedImage:
+        """
+        Detecta y corrige patrones de moiré en cada polígono del diccionario,
+        modificando 'cropped_img' in-situ.
+        """
+        start_time = time.time()
         
+        current_image = cropped_img.cropped_img
+        if current_image is not None:
+            clahe_poly = self._estimate_contrast_single(current_image)
+        else:
+            return cropped_img
+            
+        cropped_img.cropped_img[...] = clahe_poly
+        
+        logger.info(f"Poligonos corregidos Clahe {clahe_poly}")
+        total_time = time.time() - start_time
+        logger.info(f"Clahe completado en: {total_time:.3f}s")
+
+        return cropped_img
 
     def _estimate_contrast_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Aplica mejora de contraste."""

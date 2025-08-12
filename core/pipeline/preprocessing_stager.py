@@ -1,9 +1,9 @@
 # PerfectOCR/core/coordinators/preprocessing_coordinator.py
 import logging
 import time
-from typing import Any, Optional, Dict, Tuple, List
+from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import PreprossesingAbstractWorker
 from services.output_service import OutputService
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ class PreprocessingStager:
     """
     Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
     """
-    def __init__(self, workers: List[AbstractWorker], stage_config: Dict[str, Any], project_root: str):
+    def __init__(self, workers: List[PreprossesingAbstractWorker], stage_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.workers = workers
         self.stage_config = stage_config
@@ -33,107 +33,53 @@ class PreprocessingStager:
         
     def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         """
-        Procesa el WorkflowJob de forma secuencial, modificando los polígonos in-situ
-        siguiendo una filosofía de pipeline limpio.
+        Pipeline secuencial directo: Worker1 → Worker2 → Worker3 → ...
+        Cada worker recibe la imagen del worker anterior.
         """
         start_time = time.time()
-        logger.info("[PreprocessingManager] Iniciando pipeline de preprocesamiento")
-        manager = DataFormatter()
-
-        polygons = manager.get_polygons_with_cropped_img()
-        context: Dict[str, Any]= {
-            "polygons": polygons
-            }
+        logger.info("[PreprocessingManager] Iniciando pipeline secuencial directo")
         
-        for worker in self.workers:
-            if not worker.process(context, manager):
-                logger.error(f"InputStager: Fallo en el worker {worker.__class__.__name__}")
-                return None, 0.0
-
-        total_time = time.time() - start_time
-        logger.info(f"[InputStager] Pipeline completado en: {total_time:.3f}s")
-        return manager, total_time
-
-
-        # processing_dict = self._moire._detect_moire_patterns(processing_dict)
-        # if self.output_service and self.output_flags.get("moire_poly", False):
-        #     moire_imgs = [d["cropped_img"] for d in processing_dict.get("polygons", {}).values() if d.get("cropped_img") is not None]
-        #     self.output_service.save_images(moire_imgs, self.output_folder, f"{image_name}_moire")
-
-        # processing_dict = self._sp._estimate_salt_pepper_noise(processing_dict)
-        # if self.output_service and self.output_flags.get("sp_poly", False):
-        #     sp_imgs = [d["cropped_img"] for d in processing_dict.get("polygons", {}).values() if d.get("cropped_img") is not None]
-        #     self.output_service.save_images(sp_imgs, self.output_folder, f"{image_name}_sp")
-
-        # processing_dict = self._gauss._estimate_gaussian_noise(processing_dict)
-        # if self.output_service and self.output_flags.get("gauss_poly", False):
-        #     gauss_imgs = [d["cropped_img"] for d in processing_dict.get("polygons", {}).values() if d.get("cropped_img") is not None]
-        #     self.output_service.save_images(gauss_imgs, self.output_folder, f"{image_name}_gauss")
-
-        # processing_dict = self._claher._estimate_contrast(processing_dict)
-        # if self.output_service and self.output_flags.get("clahe_poly", False):
-        #     clahe_imgs = [d["cropped_img"] for d in processing_dict.get("polygons", {}).values() if d.get("cropped_img") is not None]
-        #     self.output_service.save_images(clahe_imgs, self.output_folder, f"{image_name}_clahe")
-
-        # processing_dict = self._sharp._estimate_sharpness(processing_dict)
-        # if self.output_service and self.output_flags.get("sharp_poly", False):
-        #     sharp_imgs = [d["cropped_img"] for d in processing_dict.get("polygons", {}).values() if d.get("cropped_img") is not None]
-        #     self.output_service.save_images(sharp_imgs, self.output_folder, f"{image_name}_sharp")
-
-        # # Binarización: Se realiza sobre las imágenes ya procesadas por 'sharp'.
-        # polygons_to_bin = processing_dict.get("polygons", {})
-        # binarized_polygons = self._bin._binarize_polygons(polygons_to_bin)
-        # if self.output_service and self.output_flags.get("binarized_polygons", False):
-        #     bin_imgs = [img for img in binarized_polygons.values() if img is not None]
-        #     self.output_service.save_images(bin_imgs, self.output_folder, f"{image_name}_binarized")
-
-        # # Fragmentación: Mide sobre las binarizadas, pero corta sobre las de alta calidad (de 'sharp').
-        # # El resultado de la fragmentación también actualiza 'processing_dict'.
-        # processing_dict = self._fragment._intercept_polygons(binarized_polygons, processing_dict)
-        # if self.output_service and self.output_flags.get("refined_polygons", False):
-        #     refined_imgs = [d.get("cropped_img") for d in processing_dict.get("polygons", {}).values() if d.get("cropped_img") is not None]
-        #     self.output_service.save_images(refined_imgs, self.output_folder, f"{image_name}_refined")
-
-        # # Guardar polígonos problemáticos (solo imágenes)
-        # if self.output_service and self.output_flags.get("problematic_polygons", False):
-        #     self._save_problematic_polygons(workflow_job, image_name)
-
-        # # --- Actualización Final y Limpia del WorkflowJob ---
-        # # Se actualiza el workflow_job una sola vez al final con los resultados definitivos.
-        # final_polygons_data = processing_dict.get("polygons", {})
-        # for poly_id, poly_data in final_polygons_data.items():
-        #     if poly_id in workflow_job.polygons:
-        #         # Actualizar la imagen preprocesada final
-        #         if "cropped_img" in poly_data:
-        #             workflow_job.polygons[poly_id].cropped_img = poly_data["cropped_img"]
+        # Obtener imágenes iniciales del workflow
+        cropped_images = manager.get_cropped_images_for_preprocessing()
+        
+        if not cropped_images:
+            logger.warning("[PreprocessingManager] No hay imágenes para procesar")
+            return manager, 0.0
+        
+        # Pipeline secuencial: cada worker recibe la imagen del anterior
                 
-        #         # Actualizar el estado de fragmentación
-        #         if "was_fragmented" in poly_data:
-        #             workflow_job.polygons[poly_id].was_fragmented = poly_data["was_fragmented"]
-        #     else:
-        #         # Aquí agregas los nuevos
-        #         workflow_job.polygons[poly_id] = poly_data
-        
-        # total_time = time.time() - pipeline_start
-        # workflow_job.processing_times["preprocessing"] = total_time
-        
-        # logger.info(f"[PreprocessingManager] Preprocesamiento completado en {total_time:.3f}s")
-        # return workflow_job, total_time
-        
-    # def _save_problematic_polygons(self, workflow_job: , image_name: str) -> None:
-        
-    #     """Guarda imágenes de polígonos problemáticos."""
-    #     problematic_ids = self._fragment._get_problematic_ids()
-    #     if not problematic_ids:
-    #         return
+        for worker_idx, worker in enumerate(self.workers):
+            worker_name = worker.__class__.__name__
+            logger.info(f"[PreprocessingManager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
-    #     problematic_imgs = []
-    #     for poly_id in problematic_ids:
-    #         if poly_id in workflow_job.polygons:
-    #             img = workflow_job.polygons[poly_id].cropped_img
-    #             if img is not None:
-    #                 problematic_imgs.append(img)
+            
+            # Procesar todas las imágenes con el worker actual
+            processed_images = {}
+            
+            for poly_id, cropped_img in cropped_images.items():
+                try:
+                    # Worker procesa la imagen (recibe la del worker anterior)
+                    cropped_img = worker.preprocess(cropped_img, manager)
+                    processed_images[poly_id] = cropped_img
+                    
+                    logger.debug(f"[{worker_name}] Polígono {poly_id} procesado exitosamente")
+                    
+                except Exception as e:
+                    logger.error(f"[{worker_name}] Error procesando polígono {poly_id}: {e}", exc_info=True)
+                    # En caso de error, mantener la imagen anterior para el siguiente worker
+                    processed_images[poly_id] = cropped_img
+            
+            # Pasar las imágenes procesadas al siguiente worker
+            current_images = processed_images
+            
+            logger.info(f"[{worker_name}] Completado. {len(processed_images)} imágenes procesadas")
         
-    #     if problematic_imgs and self.output_service is not None:
-    #         self.output_service.save_images(problematic_imgs, self.output_folder, f"{image_name}_problematic")
-    #         logger.info(f"[PreprocessingManager] Guardadas {len(problematic_imgs)} imágenes problemáticas")
+        # Al final, actualizar el workflow con las imágenes finales
+        logger.info("[PreprocessingManager] Actualizando workflow con imágenes finales")
+        for poly_id, final_img in current_images.items():
+            manager.update_preprocessing_result
+            #logger.info(poly_id, final_img, "pipeline_complete", True)
+        
+        total_time = time.time() - start_time
+        logger.info(f"[PreprocessingStager] Pipeline secuencial completado en: {total_time:.3f}s")
+        return manager, total_time

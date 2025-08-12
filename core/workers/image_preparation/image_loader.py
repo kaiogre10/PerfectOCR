@@ -39,8 +39,8 @@ class ImageLoader:
             "image_name": image_name,
             "format": extension,
             "img_dims":{
-                    "width": None,
-                    "height":  None,
+                    "width": int,
+                    "height": int,
                 },
             "dpi": None,
             "color": None,

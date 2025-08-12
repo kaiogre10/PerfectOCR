@@ -3,12 +3,12 @@ import cv2
 import logging
 from typing import Dict, Any, Optional
 import numpy as np
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
-class ImageCleaner(AbstractWorker):
+class ImageCleaner(ImagePrepAbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root

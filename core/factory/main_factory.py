@@ -20,7 +20,6 @@ class MainFactory:
                 self.modules_config.get('preprocessing', {}),
                 project_root
             ),
-            # agregar más fábricas aquí
         }
 
     def get_factory(self, module_name: str):

@@ -64,9 +64,24 @@ class DataFormatter:
                 poly_id = f"poly_{idx:04d}"
                 polygons[poly_id] = {
                     "polygon_id": poly_id,
-                    "polygon_coords": [[xs[i], ys[i]] for i in range(len(xs))],
-                    "bounding_box": [min(xs), min(ys), max(xs), max(ys)],
-                    "centroid": [sum(xs) / len(xs), sum(ys) / len(ys)]
+                    "geometry": {
+                        "polygon_coords": [[xs[i], ys[i]] for i in range(len(xs))],
+                        "bounding_box": [min(xs), min(ys), max(xs), max(ys)],
+                        "centroid": [sum(xs) / len(xs), sum(ys) / len(ys)]
+                    },
+                    "cropped_geometry": {
+                        "padding_bbox": [],
+                        "padd_centroid": [],
+                        "padding_coords": [],
+                    },
+                    "cropped_img": None,
+                    "perimeter": None,
+                    "line_id": "",
+                    "ocr_text": "",
+                    "ocr_confidence": None,
+                    "was_fragmented": False,
+                    "status": False,
+                    "stage": ""
                 }
             if self.workflow:
                 self.workflow.image_data.polygons = polygons
@@ -138,7 +153,7 @@ class DataFormatter:
                 if poly_id in self.workflow.image_data.polygons:
                     self.workflow.image_data.polygons[poly_id]["cropped_img"] = img.tolist()
                     if poly_id in cropped_geometries:
-                        self.workflow.image_data.polygons[poly_id]["cropedd_geometry"] = cropped_geometries[poly_id]
+                        self.workflow.image_data.polygons[poly_id]["cropped_geometry"] = cropped_geometries[poly_id]
 
             for poly_id, line_id in line_ids.items():
                 if poly_id in self.workflow.image_data.polygons:
@@ -149,3 +164,40 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}")
             return False
+            
+    def get_cropped_images_for_preprocessing(self) -> Dict[str, CroppedImage]:
+        """Excepción controlada: convierte dict interno a CroppedImage para preprocesamiento
+    cropped_images = {
+        "poly_0000": CroppedImage(
+            cropped_img=np.ndarray,  # Imagen numpy del polígono
+            polygon_id="poly_0000"   # ID del polígono
+        ),
+        "poly_0001": CroppedImage(
+            cropped_img=np.ndarray,  # Imagen numpy del polígono
+            polygon_id="poly_0001"   # ID del polígono
+        ),
+        """
+        
+        cropped_images = {}
+        if not self.workflow or not self.workflow.image_data:
+            return cropped_images
+            
+        for poly_id, poly_data in self.workflow.image_data.polygons.items():
+            if poly_data.get("cropped_img") is not None:
+                cropped_images[poly_id] = CroppedImage(
+                    cropped_img=poly_data["cropped_img"],
+                    polygon_id=poly_id  
+                )
+        return cropped_images
+        
+        
+    # NUEVO método en DataFormatter  
+    def update_preprocessing_result(self, poly_id: str, processed_img: CroppedImage, 
+                                worker_name: str, success: bool):
+        """Actualiza resultado de preprocesamiento y marca stage/status"""
+        if poly_id in self.workflow.image_data.polygons:
+            # Actualizar imagen
+            self.workflow.image_data.polygons[poly_id]["cropped_img"] = processed_img.cropped_img
+            # Actualizar metadatos
+            self.workflow.image_data.polygons[poly_id]["stage"] = worker_name
+            self.workflow.image_data.polygons[poly_id]["status"] = success

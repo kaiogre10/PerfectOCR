@@ -5,12 +5,12 @@ from typing import Optional, Tuple, List, Dict, Any, cast
 import numpy as np
 from core.domain.data_formatter import DataFormatter
 from core.workers.image_preparation.image_loader import ImageLoader
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import ImagePrepAbstractWorker
 
 logger = logging.getLogger(__name__)
 
 class InputStager:
-    def __init__(self, workers: List[AbstractWorker], image_loader: ImageLoader, project_root: str):
+    def __init__(self, workers: List[ImagePrepAbstractWorker], image_loader: ImageLoader, project_root: str):
         self.project_root = project_root
         self.workers = workers
         self._image_loader = image_loader
@@ -41,7 +41,6 @@ class InputStager:
             "img_dims": metadata.get("img_dims", {}),
 
         }
-
         # 4) Ejecutar workers (inyectar context y manager)
         for worker in self.workers:
             if not worker.process(context, manager):

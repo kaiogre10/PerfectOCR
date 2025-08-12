@@ -2,12 +2,12 @@
 import numpy as np
 import logging
 from typing import Dict, Any, List
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
-class PolygonExtractor(AbstractWorker):
+class PolygonExtractor(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config = config
@@ -38,7 +38,7 @@ class PolygonExtractor(AbstractWorker):
             
             for poly_id, poly_data in polygons.items():
                 # Usar geometry.bounding_box directamente
-                bbox: List[float] = poly_data.get("bounding_box")
+                bbox: List[float] = poly_data.get("geometry", {}).get("bounding_box")
                 if not bbox or len(bbox) != 4:
                     logger.warning(f"PolygonExtractor: Bounding box inválido para {poly_id}")
                     continue
@@ -56,14 +56,15 @@ class PolygonExtractor(AbstractWorker):
                     continue
 
                 # Guardamos la imagen recortada en nuestro diccionario temporal
+                
+                                
                 cropped_images[poly_id] = cropped
 
                 # Guardar la geometría del recorte (bounding box ajustada) como dict
                 cropped_geometries[poly_id] = {
-                    "px1": px1,
-                    "py1": py1,
-                    "px2": px2,
-                    "py2": py2
+                    "padding_bbox": [px1, py1, px2, py2],
+                    "padd_centroid": [(px1 + px2) / 2, (py1 + py2) / 2],
+                    "padding_coords": [px1, py1, px2, py2]
                 }
                 extracted_count += 1
 

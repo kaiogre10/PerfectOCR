@@ -1,7 +1,7 @@
 # PerfectOCR/app/process_builder.py
 import logging
 import time
-from typing import Dict, Optional, Any
+from typing import Optional
 from core.pipeline.input_stager import InputStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 #from core.pipeline.ocr_stager import OCRStager
@@ -37,11 +37,9 @@ class ProcessingBuilder:
             
             logger.info(f"Fase de entrada completada en: {time_poly:.4f}s")
 
+            # Fase 2: Corregir y preparar la imagen para el OCR
             manager, time_poly = self.preprocessing_stager.apply_preprocessing_pipelines(manager)
             
-            if manager is None:
-                logger.error("[ProcessingBuilder] No se pudo generar WorkflowJob desde Preprocesing")
-                return None
             logger.info(f"Fase de preprocesamiento completada en: {time_poly:.4f}s")
 
             # FASE 3: OCR (modifica el manager y libera los recortes)

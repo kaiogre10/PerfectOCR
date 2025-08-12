@@ -3,10 +3,15 @@ import cv2
 import logging
 import numpy as np
 from typing import Dict, Any, Set
+from core.factory.abstract_worker import PreprossesingAbstractWorker
+from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import CroppedImage
+
 
 logger = logging.getLogger(__name__)
 
-class PolygonFragmentator:
+class PolygonFragmentator(PreprossesingAbstractWorker):
+    
     
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
@@ -16,6 +21,10 @@ class PolygonFragmentator:
         self.density_std_factor = fragmentator_params.get('density_std_factor', 1.0)
         self.approx_poly_epsilon = fragmentator_params.get('approx_poly_epsilon', 0.02)
         self.problematic_ids: Set[str] = set()
+        
+    #def preprocess(self, cropped_img: CroppedImage, manager: DataFormatter) -> CroppedImage:
+        
+        return        
 
     def _intercept_polygons(self, binarized_polygons: Dict[str, np.ndarray], processing_dict: Dict[str, Any]) -> Dict[str, Any]:
         """

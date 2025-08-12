@@ -56,7 +56,7 @@ WORKFLOW_SCHEMA: Dict[str, Any] = {
                                                 "items": {"type": "number"},
                                                 "minItems": 3,
                                                 "maxItems": 4
-                                            }
+                                            },
                                         },
                                         "bounding_box": {
                                             "type": "array",
@@ -93,19 +93,16 @@ WORKFLOW_SCHEMA: Dict[str, Any] = {
                                             "minItems": 4,
                                             "maxItems": 4
                                         },
-                                        "perimeter": {"type": ["number", "null"]},
-                                        "was_fragmented": {"type": "boolean"},
                                     }, 
                                 },
-                                "line_id": {"type": "string"},
                                 "cropped_img": {"type": ["object", "null"]},
-                                "ocr": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ocr_raw": {"type": ["string", "null"]},
-                                        "confidence": {"type": "number", "minimum": 60, "maximum": 100}
-                                    },
-                                },
+                                "perimeter": {"type": ["number", "null"]},
+                                "line_id": {"type": "string"},
+                                "ocr_text": {"type": "string"},
+                                "ocr_confidence": {"type": ["number", "null"]},
+                                "was_fragmented": {"type": "boolean"},
+                                "stage": {"type": "string"},
+                                "status": {"type": "boolean"},
                             },
                         },
                     },
@@ -126,40 +123,17 @@ WORKFLOW_SCHEMA: Dict[str, Any] = {
 {"type": "array"}        Debe ser lista 
 """""
 
-# Mapa de rutas invertido (hoja -> raíz) para ruteo eficiente..
-data_paths: Dict[str, List[str]] = {
-    "bounding_box": ["geometry", "{poly_id}", "polygons"],
-    "centroid": ["geometry", "{poly_id}", "polygons"],
-    "confidence": ["ocr", "{poly_id}", "polygons"],
-    "cropped_img": ["{poly_id}", "polygons"],
-    "line_id": ["{poly_id}", "polygons"],
-    "ocr_raw": ["ocr", "{poly_id}", "polygons"],
-    "padd_centroid": ["cropedd_geometry", "{poly_id}", "polygons"],
-    "padding_bbox": ["cropedd_geometry", "{poly_id}", "polygons"],
-    "padding_coords": ["cropedd_geometry", "{poly_id}", "polygons"],
-    "perimeter": ["cropedd_geometry", "{poly_id}", "polygons"],
-    "polygon_coords": ["geometry", "{poly_id}", "polygons"],
-    "polygon_id": ["{poly_id}", "polygons"],
-    "was_fragmented": ["cropedd_geometry", "{poly_id}", "polygons"]
-}
-
 @dataclass
-class PaddingGeometry:
+class CroppedGeometry:
     padding_bbox: List[float]
     padd_centroid: List[float]
     padding_coords: List[List[float]]
-    perimeter: Optional[float]
-    was_fragmented: bool
-
-@dataclass
-class OCR:
-    ocr_raw: str
-    confidence: float
     
 @dataclass
 class CroppedImage:
-    cropped_img: Optional[np.ndarray[Any, Any]]
-        
+    cropped_img: np.ndarray[Any, Any]
+    polygon_id: str
+            
 @dataclass(frozen=True)
 class Geometry:
     polygon_coords: List[List[float]]
@@ -170,10 +144,15 @@ class Geometry:
 class Polygons:
     polygon_id: str
     geometry: Geometry
-    cropedd_geometry: PaddingGeometry
+    cropedd_geometry: CroppedGeometry
     cropped_img: Optional[CroppedImage]
-    ocr: OCR
+    perimeter: Optional[float]
     line_id: str
+    ocr_text: Optional[str]
+    ocr_confidence: Optional[float]
+    was_fragmented: bool
+    status: bool
+    stage: str
 
 @dataclass
 class ImageData:
@@ -183,7 +162,7 @@ class ImageData:
 class Metadata:
     image_name: str
     format: str
-    img_dims: Optional[Dict[str, int]]
+    img_dims: Dict[str, int]
     dpi: Optional[Dict[str, Optional[float]]]
     date_creation: str
     color: Optional[str]

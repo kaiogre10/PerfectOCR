@@ -1,16 +1,15 @@
 # core/workers/image_preparation_factory.py
 from typing import Dict, Callable, Any
-from core.factory.abstract_worker import AbstractWorker
+from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.image_preparation.cleanner import ImageCleaner
 from core.workers.image_preparation.angle_corrector import AngleCorrector
 from core.workers.image_preparation.geometry_detector import GeometryDetector
 from core.workers.image_preparation.poly_gone import PolygonExtractor
 
-class ImagePreparationFactory(AbstractBaseFactory):
-    """Factory para workers de preparación de imagen."""
-    
-    def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], AbstractWorker]]:
+
+class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):    
+    def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], ImagePrepAbstractWorker]]:
         
         return {
             "cleaner": self._create_cleaner,
