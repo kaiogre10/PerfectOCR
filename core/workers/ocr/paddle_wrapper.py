@@ -4,7 +4,7 @@ import logging
 import time
 import numpy as np
 from typing import Dict, Any, List, Optional
-from paddleocr import PaddleOCR
+from paddleocr import PaddleOCR # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -17,30 +17,36 @@ class PaddleOCRWrapper:
     def __init__(self, config_dict: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config_dict = config_dict
-        self._engine = None  # Inicialización perezosa
+        self.init_paramss = config_dict.get("paddleocr", {})
+        self._engine = None
 
     @property
-    def engine(self):
-        """
-        Propiedad para inicializar PaddleOCR de forma perezosa.
-        El motor solo se crea la primera vez que se accede a esta propiedad.
-        """
+    def engine(self) -> Optional[PaddleOCR]:
         if self._engine is None:
             start_time = time.perf_counter()
             try:
+                # Configurar parámetros de inicialización
                 init_params = {
-                    'use_angle_cls': False,
-                    'det': False,
-                    'lang': self.config_dict.get('lang', 'es'),
-                    'show_log': self.config_dict.get('show_log', False),
-                    'use_gpu': self.config_dict.get('use_gpu', False),
-                    'enable_mkldnn': self.config_dict.get('enable_mkldnn', True),
+                    "use_angle_cls": False,
+                    "det": False,
+                    "lang": self.config_dict.get("paddle_config", {}).get("lang", "es"),
+                    "show_log": self.config_dict.get("paddle_config", {}).get("show_log", False),
+                    "use_gpu": self.config_dict.get("paddle_config", {}).get("use_gpu", False),
+                    "enable_mkldnn": self.config_dict.get("paddle_config", {}).get("enable_mkldnn", True),
+                    "rec_model_dir": "C:/PerfectOCR/data/models/paddle/rec/es",
                     'rec_batch_num': 64,
                 }
-
+                
                 rec_model_path = self.config_dict.get('rec_model_dir')
-                if rec_model_path and os.path.exists(rec_model_path):
-                    init_params['rec_model_dir'] = rec_model_path
+                if rec_model_path:
+                    if os.path.exists(rec_model_path):
+                        init_params["rec_model_dir"] = rec_model_path
+                        logger.info(f"Usando modelo de detección en: {rec_model_path}")
+                    else:
+                        logger.warning(f"Ruta del modelo de detección no válida: {rec_model_path}")
+                else:
+                    logger.warning("No se especificó 'det_model_dir'; PaddleOCR intentará descargar el modelo.")
+
 
                 model_load_start = time.perf_counter()
                 self._engine = PaddleOCR(**init_params)
@@ -53,7 +59,7 @@ class PaddleOCRWrapper:
                 self._engine = None
         return self._engine
 
-    def recognize_text_from_image(self, image: np.ndarray) -> Optional[Dict[str, Any]]:
+    def recognize_text_from_image(self, image: Optional[np.ndarray[Any, Any]]) -> Optional[Dict[str, Any]]:
         start_time = time.perf_counter()
         
         if self.engine is None:
@@ -65,7 +71,7 @@ class PaddleOCRWrapper:
                 
         try:
             ocr_start = time.perf_counter()
-            result = self.engine.ocr(image, cls=False)
+            result: List[Any] = self.engine.ocr(image, det= False, cls=False)
             ocr_time = time.perf_counter() - ocr_start
             
             logger.debug(f"OCR ejecutado en: {ocr_time:.4f}s")
@@ -90,7 +96,7 @@ class PaddleOCRWrapper:
             logger.error(f"Error durante el reconocimiento de texto en un polígono: {e}", exc_info=True)
             return None
 
-    def recognize_text_from_batch(self, images: List[np.ndarray]) -> List[Optional[Dict[str, Any]]]:
+    def recognize_text_from_batch(self, image_list: List[Optional[np.ndarray[Any, Any]]]) -> List[Optional[Dict[str, Any]]]:
         """
         Ejecuta OCR en un lote (batch) de imágenes pre-recortadas.
         Está adaptado para manejar el caso en que PaddleOCR devuelve una única
@@ -98,22 +104,31 @@ class PaddleOCRWrapper:
         """
         if self.engine is None:
             logger.error("PaddleOCR recognition engine not initialized. Cannot recognize text.")
-            return [None] * len(images)
-        if not images:
+            return [None] * len(image_list)
+        if not image_list:
             logger.warning("Se recibió una lista vacía de imágenes para el reconocimiento por lotes.")
             return []
 
         try:
             start_time = time.perf_counter()
-            batch_results = self.engine.ocr(images, cls=False, det=False)
+            valid_images = []
+            for idx, img in enumerate(image_list):
+                if img is None or not hasattr(img, "shape") or len(img.shape) < 2 or img.size == 0:
+                    logger.warning(f"Imagen inválida en el batch (índice {idx}): {type(img)} - shape: {getattr(img, 'shape', None)}")
+                    continue
+                valid_images.append(img)
+            if not valid_images:
+                logger.error("No hay imágenes válidas para el reconocimiento por lotes.")
+                return []
+            batch_results: List[Any] = self.engine.ocr(image_list, cls=False, det=False)  # type: ignore
             total_time = time.perf_counter() - start_time
-            logger.info(f"Batch OCR para {len(images)} polígonos completado en: {total_time:.3f}s")
+            logger.info(f"Batch OCR para {len(image_list)} polígonos completado en: {total_time:.3f}s")
             
             if len(batch_results) == 1 and isinstance(batch_results[0], list):
                 consolidated_results = batch_results[0]
                 
-                if len(consolidated_results) == len(images):
-                    logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(images)} imágenes por orden.")
+                if len(consolidated_results) == len(image_list):
+                    logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
                     final_results = []
                     for text, confidence in consolidated_results:
                         processed_result = {
@@ -125,8 +140,8 @@ class PaddleOCRWrapper:
                     logger.info(f"Total de resultados finales procesados: {len(final_results)}")
                     return final_results
                 else:
-                    logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(images)} imágenes. No se puede garantizar la correspondencia.")
-                    return [None] * len(images)
+                    logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes. No se puede garantizar la correspondencia.")
+                    return [None] * len(image_list)
             
             # Escenario ideal (si PaddleOCR se comportara como se espera en el futuro)
             logger.info("Procesando resultados con la estructura esperada (un resultado por imagen).")
@@ -153,4 +168,4 @@ class PaddleOCRWrapper:
 
         except Exception as e:
             logger.error(f"Error crítico durante el reconocimiento de texto en lote: {e}", exc_info=True)
-            return [None] * len(images)
+            return [None] * len(image_list)

@@ -23,9 +23,10 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         """
         start_time = time.time()
         polygons = manager.get_polygons()
-        poly_id = cropped_img.polygon_id  # Obtener el ID del polígono actual
-        cropped_geometry = polygons.get(poly_id, {}).get('cropped_geometry', {})
-        bbox = cropped_geometry.get("padding_bbox", [])
+        poly_id = cropped_img.polygon_id
+        cropped_geometry = polygons.get('polygon').get('cropped_geometry', {})
+        bbox: List[float] = cropped_geometry("padding_bbox", [])
+        
         if not bbox or len(bbox) < 4:
             logger.error(f"bbox inválido para polígono {poly_id}: {bbox}")
             return cropped_img

@@ -40,7 +40,7 @@ pipeline_secuence:
 # Configuración de salida (independiente)
 enabled_outputs:
     preprocessed_image: false
-    ocr_raw: false
+    ocr_raw: true
     cropped_words: false
     moire_poly: false
     sp_poly: false

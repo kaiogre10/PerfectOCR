@@ -1,5 +1,5 @@
 # core/domain/workflow_manager.py
-from core.domain.data_models import WorkflowDict, Metadata, ImageData, WORKFLOW_SCHEMA, CroppedImage
+from core.domain.data_models import WorkflowDict, Metadata, ImageData, WORKFLOW_SCHEMA, CroppedImage, Polygons, Geometry, CroppedGeometry
 from dataclasses import asdict
 import numpy as np
 import jsonschema
@@ -54,35 +54,45 @@ class DataFormatter:
 
     def create_polygon_dicts(self, results: Optional[List[Any]]) -> bool:
         """
-        Procesa los resultados de PaddleOCR y los guarda como diccionario de polígonos en el workflow.
+        Procesa los resultados de PaddleOCR y los guarda como objetos Polygons en el workflow.
         """
-        polygons: Dict[str, Dict[str, Any]] = {}
+        polygons: Dict[str, Polygons] = {}
         try:
+            if not results or not results[0]:
+                logger.warning("No se encontraron polígonos en los resultados de PaddleOCR.")
+                return False
+
             for idx, poly_pts in enumerate(results[0]):
                 xs = [float(p[0]) for p in poly_pts]
                 ys = [float(p[1]) for p in poly_pts]
                 poly_id = f"poly_{idx:04d}"
-                polygons[poly_id] = {
-                    "polygon_id": poly_id,
-                    "geometry": {
-                        "polygon_coords": [[xs[i], ys[i]] for i in range(len(xs))],
-                        "bounding_box": [min(xs), min(ys), max(xs), max(ys)],
-                        "centroid": [sum(xs) / len(xs), sum(ys) / len(ys)]
-                    },
-                    "cropped_geometry": {
-                        "padding_bbox": [],
-                        "padd_centroid": [],
-                        "padding_coords": [],
-                    },
-                    "cropped_img": None,
-                    "perimeter": None,
-                    "line_id": "",
-                    "ocr_text": "",
-                    "ocr_confidence": None,
-                    "was_fragmented": False,
-                    "status": False,
-                    "stage": ""
-                }
+
+                geometry = Geometry(
+                    polygon_coords=[[xs[i], ys[i]] for i in range(len(xs))],
+                    bounding_box=[min(xs), min(ys), max(xs), max(ys)],
+                    centroid=[sum(xs) / len(xs), sum(ys) / len(ys)]
+                )
+                
+                cropped_geometry = CroppedGeometry(
+                    padding_bbox=[],
+                    padd_centroid=[],
+                    padding_coords=[]
+                )
+
+                polygons[poly_id] = Polygons(
+                    polygon_id=poly_id,
+                    geometry=geometry,
+                    cropedd_geometry=cropped_geometry,
+                    cropped_img=None,
+                    perimeter=None,
+                    line_id="",
+                    ocr_text="",
+                    ocr_confidence=None,
+                    was_fragmented=False,
+                    status=False,
+                    stage=""
+                )
+
             if self.workflow:
                 self.workflow.image_data.polygons = polygons
                 logger.info(f"Polígonos estructurados: {len(polygons)}")
@@ -91,25 +101,25 @@ class DataFormatter:
                 logger.error("No hay workflow inicializado.")
                 return False
         except Exception as e:
-            logger.error(f"Error creando diccionario de polígonos: {e}")
+            logger.error(f"Error creando diccionario de polígonos: {e}", exc_info=True)
             return False
 
     def get_dict_data(self) -> Dict[str, Any]:
         """Devuelve copia completa del dict"""
         return asdict(self.workflow) if self.workflow else {}
     
-    def get_metadata(self) -> Dict[str, Any]:
+    def get_metadata(self) -> Optional[Metadata]:
         """Devuelve los metadatos del dict"""
-        return asdict(self.workflow.metadata) if self.workflow else {}
+        return self.workflow.metadata if self.workflow else None
 
-    def get_polygons(self) -> Dict[str, Any]:
+    def get_polygons(self) -> Dict[str, Polygons]:
         return self.workflow.image_data.polygons if self.workflow else {}
         
     def get_workflow_schema(self) -> Dict[str, Any]:
         """Devuelve el esquema de workflow definido en los datamodels"""
         return self.schema    
     
-    def get_polygons_with_cropped_img(self) -> Dict[str, Dict[str, Any]]:
+    def get_polygons_with_cropped_img(self) -> Dict[str, Polygons]:
         """
         Devuelve el diccionario de polígonos con sus imágenes recortadas listas para el contexto de los workers.
         """
@@ -130,8 +140,7 @@ class DataFormatter:
                 logger.info("full_img liberada del workflow.")
             else:
                 # Si se pasa una imagen, la actualizamos
-                self.workflow.full_img = new_img.tolist()
-                logger.info("full_img actualizada en el workflow.")
+                self.workflow.full_img = new_img
             return True
         except Exception as e:
             logger.error(f"Error actualizando full_img: {e}")
@@ -151,13 +160,22 @@ class DataFormatter:
 
             for poly_id, img in cropped_images.items():
                 if poly_id in self.workflow.image_data.polygons:
-                    self.workflow.image_data.polygons[poly_id]["cropped_img"] = img.tolist()
-                    if poly_id in cropped_geometries:
-                        self.workflow.image_data.polygons[poly_id]["cropped_geometry"] = cropped_geometries[poly_id]
+                    polygon = self.workflow.image_data.polygons[poly_id]
+                    if polygon:
+                        polygon.cropped_img = img
+                        if poly_id in cropped_geometries:
+                            geom_data = cropped_geometries[poly_id]
+                            polygon.cropedd_geometry = CroppedGeometry(
+                                padding_bbox=geom_data.get('padding_bbox', []),
+                                padd_centroid=geom_data.get('padd_centroid', []),
+                                padding_coords=geom_data.get('padding_coords', [])
+                            )
 
             for poly_id, line_id in line_ids.items():
                 if poly_id in self.workflow.image_data.polygons:
-                    self.workflow.image_data.polygons[poly_id]["line_id"] = line_id
+                    polygon = self.workflow.image_data.polygons[poly_id]
+                    if polygon:
+                        polygon.line_id = line_id
 
             logger.info(f"Guardadas {len(cropped_images)} imágenes recortadas, {len(line_ids)} line_ids y geometría de recorte.")
             return True
@@ -183,9 +201,9 @@ class DataFormatter:
             return cropped_images
             
         for poly_id, poly_data in self.workflow.image_data.polygons.items():
-            if poly_data.get("cropped_img") is not None:
+            if poly_data.cropped_img is not None:
                 cropped_images[poly_id] = CroppedImage(
-                    cropped_img=poly_data["cropped_img"],
+                    cropped_img=poly_data.cropped_img,
                     polygon_id=poly_id  
                 )
         return cropped_images
@@ -195,9 +213,9 @@ class DataFormatter:
     def update_preprocessing_result(self, poly_id: str, cropped_img: Optional[CroppedImage],
                                 worker_name: str, success: bool):
         """Actualiza resultado de preprocesamiento y marca stage/status"""
-        if poly_id in self.workflow.image_data.polygons:
-            # Actualizar imagen
-            self.workflow.image_data.polygons[poly_id]["cropped_img"] = cropped_img
-            # Actualizar metadatos
-            self.workflow.image_data.polygons[poly_id]["stage"] = worker_name
-            self.workflow.image_data.polygons[poly_id]["status"] = success
+        if self.workflow and poly_id in self.workflow.image_data.polygons:
+            polygon = self.workflow.image_data.polygons[poly_id]
+            if polygon and cropped_img:
+                polygon.cropped_img = cropped_img.cropped_img
+                polygon.stage = worker_name
+                polygon.status = success

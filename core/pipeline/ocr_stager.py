@@ -4,9 +4,12 @@ import numpy as np
 import logging
 import time
 import json
-from typing import Optional, Dict, Any, Tuple
+from core.domain.data_formatter import DataFormatter
+from typing import Optional, Dict, Any, Tuple, List
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 import cv2
+from core.domain.data_models import Polygons
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,66 @@ class OCRStager:
         self.paddleocr = paddleocr
         self.paddle = paddleocr
         
-    def _save_complete_ocr_results(self, workflow_job, image_name: str):
+    def run_ocr_on_polygons( 
+        self, manager: DataFormatter
+    ) -> Tuple[Optional[DataFormatter], float]:
+        
+        start_time = time.perf_counter()
+        
+        cropped_images = manager.get_cropped_images_for_preprocessing()
+        
+        
+        if not self.paddle or self.paddle.engine is None:
+            return manager, 0.0
+
+        if not manager.get_cropped_images_for_preprocessing():
+            logger.warning("[OCREngineManager] No polygons were provided to OCREngineCoordinator.")
+            return manager, 0.0
+
+        image_list = []
+        polygon_ids = []
+        for poly_id, polygon in cropped_images.items():
+            
+                # Convertir imagen a RGB si está en escala de grises
+            img = polygon.cropped_img
+            if img is None:
+                logger.warning(f"La imagen recortada para el polígono {poly_id} es nula, se omitirá.")
+                continue
+
+            if not isinstance(img, np.ndarray):
+                img = np.array(img)
+
+            if len(img.shape) == 2:
+                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+            image_list.append(img)
+            polygon_ids.append(poly_id)
+
+        if not image_list:
+            logger.warning("[OCREngineManager] No se encontraron polígonos con imágenes válidas para procesar.")
+            return manager, 0.0
+
+        batch_results = self.paddle.recognize_text_from_batch(image_list)
+        
+        processed_count = 0
+        if batch_results:
+            for i, result in enumerate(batch_results):
+                if i < len(polygon_ids):
+                    poly_id = polygon_ids[i]
+                    if result and manager.workflow and poly_id in manager.workflow.image_data.polygons:
+                        polygon = manager.workflow.image_data.polygons[poly_id]
+                        polygon.ocr_text = result.get("text")
+                        polygon.ocr_confidence = result.get("confidence")
+                        processed_count += 1
+        
+        logger.info(f"[OCREngineManager] Lote procesado. Resultados para {processed_count}/{len(image_list)} polígonos.")
+        
+        ocr_time = time.perf_counter() - start_time
+        
+        
+        return manager, ocr_time
+
+
+    def _save_complete_ocr_results(self, manager: DataFormatter, image_name: str):
         """
         Guarda los resultados OCR en formato JSON, solo con polygon_id, texto, confianza y metadata básica.
         """
@@ -35,26 +97,31 @@ class OCRStager:
             json_filename = f"{base_name}_ocr_results.json"
             json_path = os.path.join(output_folder, json_filename)
 
+            if not manager.workflow:
+                logger.warning("No se puede guardar resultados OCR porque el workflow en DataFormatter no está inicializado.")
+                return
+
             # Metadata básica
-            metadata = workflow_job.doc_metadata
+            metadata = manager.workflow.metadata
             output_data = {
-                "doc_name": metadata.doc_name if metadata else None,
-                "formato": metadata.formato if metadata else None,
+                "doc_name": metadata.image_name if metadata else None,
+                "formato": metadata.format if metadata else None,
                 "dpi": metadata.dpi if metadata else None,
                 "img_dims": {
-                    "width": metadata.img_dims.width,
-                    "height": metadata.img_dims.height
+                    "width": metadata.img_dims.get("width") if metadata and metadata.img_dims else None,
+                    "height": metadata.img_dims.get("height") if metadata and metadata.img_dims else None
                 } if metadata and metadata.img_dims else None,
                 "fecha_creacion": str(metadata.date_creation) if metadata else None,
                 "polygons": []
             }
 
             # Solo polygon_id, texto y confianza
-            for pid, p in workflow_job.polygons.items():
+            polygons_data = manager.workflow.image_data.polygons
+            for pid, p in polygons_data.items():
                 output_data["polygons"].append({
                     "polygon_id": pid,
-                    "text": getattr(p, "text", None),
-                    "confidence": getattr(p, "confidence", None)
+                    "text": p.ocr_text,
+                    "confidence": p.ocr_confidence
                 })
 
             with open(json_path, 'w', encoding='utf-8') as f:
@@ -63,54 +130,3 @@ class OCRStager:
             logger.info(f"[OCREngineManager] Resultados OCR guardados en {json_path}")
         except Exception as e:
             logger.error(f"[OCREngineManager] Error guardando resultados OCR: {e}")
-
-    def run_ocr_on_polygons(
-        self, 
-        workflow_job: WorkflowJob
-    ) -> Tuple[Optional[WorkflowJob], float]:
-        
-        start_time = time.perf_counter()
-        
-        if not self.paddle or self.paddle.engine is None:
-            workflow_job.add_error("PaddleOCR recognition engine not available.")
-            logger.error("[OCREngineManager] PaddleOCR recognition engine not available.")
-            return workflow_job, 0.0
-
-        if not workflow_job.polygons:
-            logger.warning("[OCREngineManager] No polygons were provided to OCREngineCoordinator.")
-            return workflow_job, 0.0
-
-        images_batch = []
-        polygon_ids = []
-        for poly_id, polygon in workflow_job.polygons.items():
-            if polygon.cropped_img is not None:
-                # Convertir imagen a RGB si está en escala de grises
-                img = polygon.cropped_img
-                if len(img.shape) == 2:  # Grayscale
-                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-                images_batch.append(img)
-                polygon_ids.append(poly_id)
-
-        if not images_batch:
-            logger.warning("[OCREngineManager] No se encontraron polígonos con imágenes válidas para procesar.")
-            return workflow_job, 0.0
-
-        batch_results = self.paddle.recognize_text_from_batch(images_batch)
-        
-        processed_count = 0
-        for i, result in enumerate(batch_results):
-            poly_id = polygon_ids[i]
-            if result and poly_id in workflow_job.polygons:
-                workflow_job.polygons[poly_id].text = result.get("text")
-                workflow_job.polygons[poly_id].confidence = result.get("confidence")
-                processed_count += 1
-        
-        logger.info(f"[OCREngineManager] Lote procesado. Resultados para {processed_count}/{len(images_batch)} polígonos.")
-        
-        if workflow_job.doc_metadata:
-            self._save_complete_ocr_results(workflow_job, workflow_job.doc_metadata.doc_name)
-
-        ocr_time = time.perf_counter() - start_time
-        workflow_job.processing_times["ocr"] = ocr_time
-        
-        return workflow_job, ocr_time

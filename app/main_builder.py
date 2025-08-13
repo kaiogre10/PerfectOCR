@@ -5,11 +5,11 @@ from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.input_stager import InputStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
-#from core.pipeline.ocr_stager import OCRStager
+from core.pipeline.ocr_stager import OCRStager
 from core.factory.main_factory import MainFactory
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.domain.data_formatter import DataFormatter
-#from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
+from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from services.config_service import ConfigService
 from services.cache_service import cleanup_project_cache
 
@@ -86,15 +86,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             ["moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
             context
         )
-
-        
                 
-        # paddleocr = PaddleOCRWrapper({
-        #     "config_dict": config_services.validated_paddle_config.models.rec_model_dir},
-        #     project_root=project_root
-        # )
-        
-
         manager = DataFormatter()
         
         image_loader = ImageLoader(
@@ -114,17 +106,22 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             project_root=project_root
         )
         
-        # ocr_stager = OCRStager(
-        #     stage_config=config_services.manager_config,
-        #     paddleocr=paddleocr,
-        #     project_root=project_root
-        # )
+        paddleocr = PaddleOCRWrapper(
+            {"paddle_config": config_services.paddleocr},
+            project_root=project_root
+        )
+        
+        ocr_stager = OCRStager(
+            stage_config=config_services.manager_config,
+            paddleocr=paddleocr,
+            project_root=project_root
+        )
         
         builder = ProcessingBuilder(
             manager=manager,
             input_stager=input_stager,
             preprocessing_stager=preprocessing_stager,
-         #   ocr_stager=ocr_stager
+           ocr_stager=ocr_stager
         )
         builders.append(builder)
         

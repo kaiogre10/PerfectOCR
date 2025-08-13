@@ -136,3 +136,21 @@ class ConfigService:
         }
             
         
+    @property
+    def paddleocr(self) -> Dict[str, Any]:
+        """
+        Devuelve la configuración fusionada para el modelo de reconocimiento de Paddle.
+        Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.
+        """
+        paddleocr = self.paddle_config
+        rec_model = paddleocr.get('models', {})
+        rec_model_path = rec_model.get("rec_model_dir", "")
+        
+        return {
+            "rec_model_dir": rec_model_path,
+            "use_angle_cls": paddleocr.get("use_angle_cls", False),
+            "show_log": paddleocr.get("show_log", False),
+            "use_gpu": paddleocr.get("use_gpu", False),
+            "enable_mkldnn": paddleocr.get("enable_mkldnn", True),
+            "lang": paddleocr.get("lang", "es"),
+        }

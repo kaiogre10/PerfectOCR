@@ -4,7 +4,7 @@ import time
 from typing import Optional
 from core.pipeline.input_stager import InputStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
-#from core.pipeline.ocr_stager import OCRStager
+from core.pipeline.ocr_stager import OCRStager
 from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
@@ -14,11 +14,11 @@ class ProcessingBuilder:
     Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y
     coordina el procesamiento técnico de una sola imagen.
     """
-    def __init__(self, input_stager: InputStager, preprocessing_stager: PreprocessingStager, manager: DataFormatter): #ocr_stager: OCRStager
+    def __init__(self, input_stager: InputStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, manager: DataFormatter): 
         self.manager = manager
         self.input_stager = input_stager
         self.preprocessing_stager = preprocessing_stager
-        #self.ocr_stager = ocr_stager
+        self.ocr_stager = ocr_stager
         
     def process_single_image(self) -> Optional[DataFormatter]:
         """
@@ -43,16 +43,15 @@ class ProcessingBuilder:
             logger.info(f"Fase de preprocesamiento completada en: {time_poly:.4f}s")
 
             # FASE 3: OCR (modifica el manager y libera los recortes)
-            # ocr_initime = time.perf_counter()
-            # if workflow_job:
-            #     workflow_job, ocr_time = self.ocr_stager.run_ocr_on_polygons(workflow_job)
-            #     if workflow_job is None:
-            #         logger.error("[ProcessingBuilder] No se pudo generar WorkflowJob desde OCR")
-            #         error_job.add_error("Fallo en la fase de OCR.")
-            #         return error_job
-            #     else:
-            #         ocr_total = ocr_initime - ocr_time 
-            #         logger.info(f"OCR time: {ocr_total}")
+            ocr_initime = time.perf_counter()
+            if manager:
+                manager, ocr_time = self.ocr_stager.run_ocr_on_polygons(manager)
+                if manager is None:
+                    logger.error("[ProcessingBuilder] No se pudo generar WorkflowJob desde OCR")
+
+                else:
+                    ocr_total = ocr_initime - ocr_time 
+                    logger.info(f"OCR time: {ocr_total}")
                     
             # RESULTADO FINAL
             total_workflow_time = time.perf_counter() - workflow_start

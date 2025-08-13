@@ -23,17 +23,16 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
         """
         start_time = time.time()
 
-        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
-            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
-        if cropped_img.cropped_img.dtype != np.uint8:
-            cropped_img.cropped_img = cropped_img.cropped_img.astype(np.uint8)
-            gauss_poly = self._estimate_gaussian_noise_single(cropped_img.cropped_img)
-        else:
-            return cropped_img
-            
-        cropped_img.cropped_img[...] = gauss_poly
+        img = cropped_img.cropped_img
         
-        logger.debug(f"Poligonos corregidos Gauss {gauss_poly}")
+        img = np.array(img)
+        if img.dtype != np.uint8:
+            img = img.astype(np.uint8)
+
+        gauss_poly = self._estimate_gaussian_noise_single(img)
+            
+        cropped_img.cropped_img = gauss_poly
+        
         total_time = time.time() - start_time
         logger.debug(f"Gauss completado en: {total_time:.3f}s")
 
@@ -48,9 +47,6 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
         gauss_threshold = bilateral_corrections.get('laplacian_variance_threshold', 100)
 
         laplacian_var = cv2.Laplacian(cropped_img, cv2.CV_64F).var()
-        if laplacian_var > gauss_threshold:
-            gauss_poly = cropped_img
-            return gauss_poly
         
         if laplacian_var < gauss_threshold:
             gauss_poly = cv2.bilateralFilter(cropped_img, d, sigmaColor=sigma_color, sigmaSpace=sigma_space)

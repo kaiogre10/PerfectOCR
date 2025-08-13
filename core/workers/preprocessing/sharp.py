@@ -23,21 +23,20 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
         modificando 'cropped_img' in-situ.
         """
         start_time = time.time()
-        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
-            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
-        if cropped_img.cropped_img.dtype != np.uint8:
-            cropped_img.cropped_img = cropped_img.cropped_img.astype(np.uint8)
         
-        sharp_poly = self._estimate_sharpness_single(cropped_img.cropped_img)
+        img = cropped_img.cropped_img
+        if not isinstance(img, np.ndarray):
+            img = np.array(img)
+        if img.dtype != np.uint8:
+            img = img.astype(np.uint8)
+        
+        sharp_poly = self._estimate_sharpness_single(img)
             
-        cropped_img.cropped_img[...] = sharp_poly
+        cropped_img.cropped_img = sharp_poly
         
-        
-        logger.debug(f"Poligonos corregidos Sharp {sharp_poly}")
         total_time = time.time() - start_time
-        logger.debug(f"Clahe completado en: {total_time:.3f}s")
+        logger.debug(f"Sharp completado en: {total_time:.3f}s")
 
-        
         return cropped_img
 
     def _estimate_sharpness_single(self, current_image: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
@@ -45,8 +44,6 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
         sharpen_corrections = self.corrections.get('sharpening', {})
         radius = sharpen_corrections.get('radius', 1.0)
         amount = sharpen_corrections.get('amount', 1.5)
-
-        sharp_poly = []
 
         # Calcular Sobel y otros estadísticos
         sobel = cv2.Sobel(current_image, cv2.CV_64F, 1, 1, ksize=3)
@@ -62,9 +59,10 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
 
             sharpened: Optional[np.ndarray[Any, Any]] = filters.unsharp_mask(current_image, radius=float(radius), amount=float(amount))
 
-            sharpened = np.asarray(sharpened, None)
-
-            sharp_poly = (sharpened * 255).astype(np.uint8)
+            if sharpened is not None:
+                sharp_poly = (sharpened * 255).astype(np.uint8)
+            else:
+                sharp_poly = current_image
         
         else:
             sharp_poly = current_image

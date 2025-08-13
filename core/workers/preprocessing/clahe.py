@@ -22,20 +22,22 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
         modificando 'cropped_img' in-situ.
         """
         start_time = time.time()
-        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
-            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
-        if cropped_img.cropped_img.dtype != np.uint8:
-            cropped_img.cropped_img = cropped_img.cropped_img.astype(np.uint8)
-
-            clahe_poly = self._estimate_contrast_single(cropped_img.cropped_img)
-        else:
-            return cropped_img
-            
-        cropped_img.cropped_img[...] = clahe_poly
         
-        logger.info(f"Poligonos corregidos Clahe {clahe_poly}")
+        # Asegurarse de que la imagen sea un ndarray de tipo uint8
+        img = cropped_img.cropped_img
+        if not isinstance(img, np.ndarray):
+            img = np.array(img)
+        if img.dtype != np.uint8:
+            img = img.astype(np.uint8)
+
+        # Aplicar la mejora de contraste
+        clahe_poly = self._estimate_contrast_single(img)
+        
+        # Actualizar la imagen en el objeto CroppedImage
+        cropped_img.cropped_img = clahe_poly
+        
         total_time = time.time() - start_time
-        logger.info(f"Clahe completado en: {total_time:.3f}s")
+        logger.debug(f"Clahe completado en: {total_time:.3f}s")
 
         return cropped_img
 
@@ -46,8 +48,6 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
         clip_limit = global_clahe_corrects.get('clahe_clip_limit', 2.0)
         page_dimensions = global_clahe_corrects.get('dimension_thresholds_px', [1000, 2500])
         grid_maps = global_clahe_corrects.get('grid_sizes_map', [[6, 6], [8, 8], [10, 10]])
-
-        clahe_poly = []
 
         # Cálculo de estadísticos:
         contrast_std = np.std(cropped_img) 
