@@ -96,7 +96,7 @@ class PaddleOCRWrapper:
             logger.error(f"Error durante el reconocimiento de texto en un polígono: {e}", exc_info=True)
             return None
 
-    def recognize_text_from_batch(self, image_list: List[Optional[np.ndarray[Any, Any]]]) -> List[Optional[Dict[str, Any]]]:
+    def recognize_text_from_batch(self, image_list: List[np.ndarray[Any, Any]]) -> List[Optional[Dict[str, Any]]]:
         """
         Ejecuta OCR en un lote (batch) de imágenes pre-recortadas.
         Está adaptado para manejar el caso en que PaddleOCR devuelve una única

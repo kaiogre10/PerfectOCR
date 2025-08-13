@@ -44,7 +44,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         try:
             dict_id = context.get("dict_id")
             if dict_id:
-                manager._update_full_img(dict_id, full_img)
+                manager.update_full_img(dict_id, full_img)
         except Exception as e:
             logger.warning(f"AngleCorrector: No se pudo actualizar full_img en el manager: {e}")
             # Pero continuamos porque la imagen está actualizada en el contexto

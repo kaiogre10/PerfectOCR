@@ -1,10 +1,12 @@
 # PerfectOCR/core/coordinators/preprocessing_coordinator.py
 import logging
 import time
+import numpy as np
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from services.output_service import OutputService
+from core.domain.data_models import CroppedImage
 
 logger = logging.getLogger(__name__)
 
@@ -32,55 +34,36 @@ class PreprocessingStager:
             self.output_service = OutputService()
         
     def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+        """Ejecuta secuencialmente cada worker sobre todas las imágenes recortadas.
+
+        Flujo:
+          1. Obtiene diccionario {poly_id: CroppedImage}
+          2. Para cada worker procesa todos los polígonos
+          3. Almacena temporalmente resultados binarizados para inyectarlos en fragmentator
+          4. Actualiza el manager al final
+        """
         start_time = time.time()
         logger.info("[PreprocessingManager] Iniciando pipeline secuencial directo")
         
-        cropped_images = manager.get_cropped_images_for_preprocessing()
-        if not cropped_images:
-            logger.warning("[PreprocessingManager] No hay imágenes para procesar")
-            return manager, 0.0
+        cropped_images: Dict[str, CroppedImage] = manager.get_cropped_images_for_preprocessing()
         
-        # Variable temporal para almacenar imágenes binarizadas
-        binarized_images = {}
-        
+        cropped_img: CroppedImage = cropped_images.get("cropped_img")
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
             logger.info(f"[PreprocessingManager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
-            
-            processed_images = {}
-            
-            for poly_id, cropped_img in cropped_images.items():
-                try:
-                    # Worker procesa la imagen
-                    processed_img = worker.preprocess(cropped_img, manager)
-                    processed_images[poly_id] = processed_img
+
+            cropped_img = worker.preprocess(cropped_img, manager)
+            if not cropped_img:
+                logger.error(f"[{worker_name}] Fallo procesando polígono {poly_id}")
+                continue
                     
-                    # Si es el binarizador, guardar las imágenes binarizadas temporalmente
-                    if worker_name == "binarization":
-                        binarized_images[poly_id] = processed_img.cropped_img
-                    
-                    logger.debug(f"[{worker_name}] Polígono {poly_id} procesado exitosamente")
-                    
-                except Exception as e:
-                    logger.error(f"[{worker_name}] Error procesando polígono {poly_id}: {e}", exc_info=True)
-                    processed_images[poly_id] = cropped_img
-            
-            # Pasar las imágenes procesadas al siguiente worker
-            cropped_images = processed_images
-            
-            # Si el siguiente worker es el fragmentador, inyectar las imágenes binarizadas
-            if worker_idx + 1 < len(self.workers):
-                next_worker = self.workers[worker_idx + 1]
-                if next_worker.__class__.__name__ == "fragmentator":
-                    # Inyectar las imágenes binarizadas en el contexto del fragmentador
-                    next_worker.set_binarized_images(binarized_images)
-            
-            logger.info(f"[{worker_name}] Completado. {len(processed_images)} imágenes procesadas")
-        
-        # Actualizar el workflow
-        for poly_id, final_img in cropped_images.items():
-            manager.update_preprocessing_result(poly_id, final_img, "pipeline_complete", True)
-        
-        total_time = time.time() - start_time
-        logger.info(f"[PreprocessingStager] Pipeline secuencial completado en: {total_time:.3f}s")
-        return manager, total_time
+        # Actualizar estado final en manager
+        for poly_id, poly_data in cropped_images.items():
+            try:
+                manager.update_preprocessing_result(poly_id, cropped_img, worker_name, True)
+            except Exception as e:
+                logger.error(f"Error actualizando resultado de polígono {poly_id}: {e}")
+
+        elapsed = time.time() - start_time
+        logger.info(f"[PreprocessingStager] Pipeline secuencial completado en: {elapsed:.3f}s; polígonos: {len(cropped_images)}")
+        return manager, elapsed

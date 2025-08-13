@@ -156,7 +156,7 @@ class Polygons:
 
 @dataclass
 class ImageData:
-    polygons: Dict[str, "Polygons"]
+    polygons: Dict[str, Polygons]
                 
 @dataclass(frozen=True)
 class Metadata:

@@ -46,7 +46,6 @@ class ImageLoader:
             "color": None,
         }
 
-
         img_array = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
         image_array = np.array(img_array)
         cv2_height, cv2_width = image_array.shape[:2]

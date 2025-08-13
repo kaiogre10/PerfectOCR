@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_models import CroppedImage
 from core.domain.data_formatter import DataFormatter
@@ -22,19 +22,8 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         modificando 'cropped_img' in-situ.
         """
         start_time = time.time()
-        polygons = manager.get_polygons()
-        poly_id = cropped_img.polygon_id
-        cropped_geometry = polygons.get('polygon').get('cropped_geometry', {})
-        bbox: List[float] = cropped_geometry("padding_bbox", [])
-        
-        if not bbox or len(bbox) < 4:
-            logger.error(f"bbox inválido para polígono {poly_id}: {bbox}")
-            return cropped_img
-        
-        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
-            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
-
-        processed_img = self._detect_moire_single(cropped_img.cropped_img, bbox)
+                        
+        processed_img = self._detect_moire_single(cropped_img.cropped_img)
             
         cropped_img.cropped_img[...] = processed_img
         
@@ -43,15 +32,14 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         
         return cropped_img
         
-    def _detect_moire_single(self, cropped_img: np.ndarray[Any, Any], bbox: List[float]) -> np.ndarray[Any, Any]:
+    def _detect_moire_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         moire_corrections = self.config
         mode = moire_corrections.get('mode', {})
         percentile_corrections = mode.get('percentile', {})
         notch_radius = int(percentile_corrections.get('notch_radius', 2))
         min_dist = int(percentile_corrections.get('min_distance_from_center', 200))
                 
-        w = int(bbox[2] - bbox[0])
-        h = int(bbox[3] - bbox[1])
+        h, w = cropped_img.shape
                 
         max_dim = max(h, w)
         spectrum_var = np.var(cropped_img)
