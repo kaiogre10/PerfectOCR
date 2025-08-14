@@ -1,7 +1,7 @@
 # PerfectOCR/core/pipeline/input_stager.py
 import logging
 import time
-from typing import Optional, Tuple, List, Dict, Any, cast
+from typing import Optional, Tuple, List, Dict, Any
 import numpy as np
 from core.domain.data_formatter import DataFormatter
 from core.workers.image_preparation.image_loader import ImageLoader

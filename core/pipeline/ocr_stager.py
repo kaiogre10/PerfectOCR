@@ -8,7 +8,6 @@ from core.domain.data_formatter import DataFormatter
 from typing import Optional, Dict, Any, Tuple, List
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 import cv2
-from core.domain.data_models import Polygons
 
 
 logger = logging.getLogger(__name__)
@@ -63,12 +62,12 @@ class OCRStager:
                 if idx >= len(polygon_ids):
                     break
                 poly_id = polygon_ids[idx]
-                if not res or not manager.workflow or poly_id not in manager.workflow.image_data.polygons:
+                if not res or not manager.workflow_dict or poly_id not in manager.workflow_dict:
                     continue
                 try:
                     # Estructura esperada: {"text": str, "confidence": float}
-                    manager.workflow.image_data.polygons[poly_id]["ocr_text"] = res.get("text", "")
-                    manager.workflow.image_data.polygons[poly_id]["ocr_confidence"] = res.get("confidence")
+                    manager.workflow_dict[poly_id]["ocr_text"] = res.get("text", "")
+                    manager.workflow_dict[poly_id]["ocr_confidence"] = res.get("confidence")
                     processed_count += 1
                 except Exception as e:
                     logger.error(f"Error asignando resultado OCR a polígono {poly_id}: {e}")
@@ -116,7 +115,7 @@ class OCRStager:
             }
 
             # Solo polygon_id, texto y confianza
-            polygons_data = manager.workflow.image_data.polygons
+            polygons_data = manager.workflow_dict.polygons
             for pid, p in polygons_data.items():
                 output_data["polygons"].append({
                     "polygon_id": pid,

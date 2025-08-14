@@ -16,7 +16,7 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
         self.project_root = project_root
         self.config = config
     
-    def preprocess(self, cropped_img: CroppedImage, manager: DataFormatter) -> CroppedImage:
+    def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Detecta y corrige patrones de sal y pimienta en cada polígono del diccionario,
         modificando 'cropped_img' in-situ.

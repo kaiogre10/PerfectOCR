@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 class GeometryDetector(ImagePrepAbstractWorker):
     """
-    Detecta geometría con PaddleOCR y escribe resultados en el dict job_data:
-    - job_data['image_data']['polygons'][poly_id] = { polygon_id, geometry, ... }
+    Detecta geometría con PaddleOCR y escribe resultados en el workflow_dict:
+    workflow_dict['polygons'][poly_id] = { polygon_id, geometry, ... }
     No usa WorkflowJob.
     """
     def __init__(self, config: Dict[str, Any], project_root: str):

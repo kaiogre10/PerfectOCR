@@ -84,7 +84,7 @@ def update_polygon_geometry(self, poly_id: str, polygon_coords: List[List[float]
     """Actualiza solo la geometría básica de un polígono específico"""
     try:
         # 1. VALIDAR ENTRADA
-        if poly_id not in self.dict_id["image_data"]["polygons"]:
+        if poly_id not in self.dict_id["polygons"]:
             raise ValueError(f"Polígono {poly_id} no existe")
             
         # 2. CREAR DATACLASS
@@ -95,8 +95,8 @@ def update_polygon_geometry(self, poly_id: str, polygon_coords: List[List[float]
         )
         
         # 3. UBICAR DESTINO Y ACTUALIZAR
-        # Ruta: dict_id["image_data"]["polygons"][poly_id]["geometry"]
-        self.dict_id["image_data"]["polygons"][poly_id]["geometry"] = asdict(geometry_obj)
+        # Ruta: dict_id["polygons"][poly_id]["geometry"]
+        self.dict_id["polygons"][poly_id]["geometry"] = asdict(geometry_obj)
         
         # 4. VALIDAR
         self._validate_structure()
@@ -117,17 +117,17 @@ def update_polygon_perimeter(self, poly_id: str, perimeter: float) -> bool:
     """Actualiza solo el perímetro en cropedd_geometry de un polígono"""
     try:
         # 1. VALIDAR ENTRADA
-        if poly_id not in self.dict_id["image_data"]["polygons"]:
+        if poly_id not in self.dict_id["polygons"]:
             raise ValueError(f"Polígono {poly_id} no existe")
             
         # 2. VERIFICAR ESTRUCTURA
-        poly = self.dict_id["image_data"]["polygons"][poly_id]
+        poly = self.dict_id["polygons"][poly_id]
         if "cropedd_geometry" not in poly:
             raise KeyError(f"cropedd_geometry no existe en polígono {poly_id}")
             
         # 3. ACTUALIZAR SUBCAMPO
-        # Ruta: dict_id["image_data"]["polygons"][poly_id]["cropedd_geometry"]["perimeter"]
-        self.dict_id["image_data"]["polygons"][poly_id]["cropedd_geometry"]["perimeter"] = float(perimeter)
+        # Ruta: dict_id["polygons"][poly_id]["cropedd_geometry"]["perimeter"]
+        self.dict_id["polygons"][poly_id]["cropedd_geometry"]["perimeter"] = float(perimeter)
         
         # 4. VALIDAR
         self._validate_structure()
@@ -145,10 +145,10 @@ def update_polygon_cropped_image(self, poly_id: str, cropped_img: np.ndarray) ->
     """Actualiza imagen recortada solo si el polígono existe y tiene cropedd_geometry"""
     try:
         # 1. VALIDACIONES MÚLTIPLES
-        if poly_id not in self.dict_id["image_data"]["polygons"]:
+        if poly_id not in self.dict_id["polygons"]:
             raise ValueError(f"Polígono {poly_id} no existe")
             
-        poly = self.dict_id["image_data"]["polygons"][poly_id]
+        poly = self.dict_id["polygons"][poly_id]
         if "cropedd_geometry" not in poly or not poly["cropedd_geometry"]:
             raise ValueError(f"Polígono {poly_id} no tiene geometría de recorte")
             
@@ -158,7 +158,7 @@ def update_polygon_cropped_image(self, poly_id: str, cropped_img: np.ndarray) ->
             raise ValueError(f"Polígono {poly_id} no tiene coordenadas de padding válidas")
             
         # 3. ACTUALIZAR
-        self.dict_id["image_data"]["polygons"][poly_id]["cropped_img"] = cropped_img
+        self.dict_id["polygons"][poly_id]["cropped_img"] = cropped_img
         
         # 4. VALIDAR
         self._validate_structure()

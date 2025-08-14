@@ -17,7 +17,7 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
         self.project_root = project_root
         self.corrections = config
 
-    def preprocess(self, cropped_img: CroppedImage, manager: DataFormatter) -> CroppedImage:
+    def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Detecta y corrige patrones de moiré en cada polígono del diccionario,
         modificando 'cropped_img' in-situ.

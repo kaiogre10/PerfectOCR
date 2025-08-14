@@ -1,12 +1,10 @@
 # PerfectOCR/core/coordinators/preprocessing_coordinator.py
 import logging
 import time
-import numpy as np
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from services.output_service import OutputService
-from core.domain.data_models import CroppedImage
 
 logger = logging.getLogger(__name__)
 
@@ -44,25 +42,21 @@ class PreprocessingStager:
         """
         start_time = time.time()
         logger.info("[PreprocessingManager] Iniciando pipeline secuencial directo")
-        
-        cropped_images: Dict[str, CroppedImage] = manager.get_cropped_images_for_preprocessing()
-        
-        cropped_img: CroppedImage = cropped_images.get("cropped_img")
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
             logger.info(f"[PreprocessingManager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
 
-            cropped_img = worker.preprocess(cropped_img, manager)
-            if not cropped_img:
-                logger.error(f"[{worker_name}] Fallo procesando polígono {poly_id}")
-                continue
-                    
-        # Actualizar estado final en manager
-        for poly_id, poly_data in cropped_images.items():
-            try:
-                manager.update_preprocessing_result(poly_id, cropped_img, worker_name, True)
-            except Exception as e:
-                logger.error(f"Error actualizando resultado de polígono {poly_id}: {e}")
+        metadata = manager.get_metadata
+        cropped_img = manager.get_polygons_with_cropped_img
+        
+        context: Dict[str, Any] = {
+            "metadata": metadata,
+            "cropped_img": cropped_img            
+        }
+        for worker in self.workers:
+            if not worker.preprocess(context, manager):
+                logger.error(f"InputStager: Fallo en el worker {worker.__class__.__name__}")
+                return None, 0.0
 
         elapsed = time.time() - start_time
         logger.info(f"[PreprocessingStager] Pipeline secuencial completado en: {elapsed:.3f}s; polígonos: {len(cropped_images)}")

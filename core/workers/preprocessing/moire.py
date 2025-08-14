@@ -3,9 +3,8 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from core.factory.abstract_worker import PreprossesingAbstractWorker
-from core.domain.data_models import CroppedImage
 from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
@@ -16,23 +15,20 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         self.project_root = project_root
         self.config = config
         
-    def preprocess(self, cropped_img: CroppedImage, manager: DataFormatter) -> CroppedImage:
+    def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Detecta y corrige patrones de moiré en cada polígono del diccionario,
         modificando 'cropped_img' in-situ.
         """
         start_time = time.time()
+        cropped_img = context.get("cropped_img", {})
+        processed_img = self._detect_moire_single(cropped_img)
         
-        tuple[cropped_img, np.ndarray[Any, Any]]
-
-        processed_img = self._detect_moire_single(cropped_img.cropped_img)
-            
-        cropped_img.cropped_img[...] = processed_img
+        cropped_img[...] = processed_img
         
         total_time = time.time() - start_time
         logger.debug(f"Moire completado en: {total_time:.3f}s")
         
-        return cropped_img
         
     def _detect_moire_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         moire_corrections = self.config
@@ -40,10 +36,9 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         percentile_corrections = mode.get('percentile', {})
         notch_radius = int(percentile_corrections.get('notch_radius', 2))
         min_dist = int(percentile_corrections.get('min_distance_from_center', 200))
-                
         
-        h, w = cropped_img.size
-                
+        h, w = cropped_img.shape
+                                
         max_dim = max(h, w)
         spectrum_var = np.var(cropped_img)
         logger.debug(f"Varianza del espectro: {spectrum_var:.2f}")

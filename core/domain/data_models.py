@@ -35,79 +35,73 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                 "date_creation": {"type": "string"},
                 "color": {"type": ["string", "null"]}
             },
-        },
-        "image_data": {
+        }, 
+        "polygons": {
             "type": "object",
-            "properties": {   
-                "polygons": {
+            "patternProperties": {
+                "^poly_\\d{4}$": {
                     "type": "object",
-                    "patternProperties": {
-                        "^poly_\\d{4}$": {
+                    "properties": {
+                        "polygon_id": {"type": "string"},
+                        "geometry": {
                             "type": "object",
                             "properties": {
-                                "polygon_id": {"type": "string"},
-                                "geometry": {
-                                    "type": "object",
-                                    "properties": {
-                                        "polygon_coords": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "array",
-                                                "items": {"type": "number"},
-                                                "minItems": 3,
-                                                "maxItems": 4
-                                            },
-                                        },
-                                        "bounding_box": {
-                                            "type": "array",
-                                            "items": {"type": "number"},
-                                            "minItems": 4,
-                                            "maxItems": 4
-                                        },
-                                        "centroid": {
-                                            "type": "array",
-                                            "items": {"type": "number"},
-                                            "minItems": 2,
-                                            "maxItems": 2
-                                        },
-                                    }, 
+                                "polygon_coords": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "array",
+                                        "items": {"type": "number"},
+                                        "minItems": 3,
+                                        "maxItems": 4
+                                    },
                                 },
-                                "cropedd_geometry":{
-                                    "type": "object",
-                                    "properties": {
-                                        "padding_bbox": {
-                                            "type": "array",
-                                            "items": {"type": "number"},
-                                            "minItems": 4,
-                                            "maxItems": 4
-                                        },
-                                        "padd_centroid": {
-                                            "type": "array",
-                                            "items": {"type": "number"},
-                                            "minItems": 2,
-                                            "maxItems": 2
-                                        },
-                                        "padding_coords": {
-                                            "type": "array",
-                                            "items": {"type": "integer"},
-                                            "minItems": 4,
-                                            "maxItems": 4
-                                        },
-                                    }, 
+                                "bounding_box": {
+                                    "type": "array",
+                                    "items": {"type": "number"},
+                                    "minItems": 4,
+                                    "maxItems": 4
                                 },
-                                "cropped_img": {"type": ["object", "null"]},
-                                "perimeter": {"type": ["number", "null"]},
-                                "line_id": {"type": "string"},
-                                "ocr_text": {"type": "string"},
-                                "ocr_confidence": {"type": ["number", "null"]},
-                                "was_fragmented": {"type": "boolean"},
-                                "stage": {"type": "string"},
-                                "status": {"type": "boolean"},
-                            },
+                                "centroid": {
+                                    "type": "array",
+                                    "items": {"type": "number"},
+                                    "minItems": 2,
+                                    "maxItems": 2
+                                },
+                            }, 
                         },
+                        "cropedd_geometry":{
+                            "type": "object",
+                            "properties": {
+                                "padding_bbox": {
+                                    "type": "array",
+                                    "items": {"type": "number"},
+                                    "minItems": 4,
+                                    "maxItems": 4
+                                },
+                                "padd_centroid": {
+                                    "type": "array",
+                                    "items": {"type": "number"},
+                                    "minItems": 2,
+                                    "maxItems": 2
+                                },
+                                "padding_coords": {
+                                    "type": "array",
+                                    "items": {"type": "integer"},
+                                    "minItems": 4,
+                                    "maxItems": 4
+                                },
+                            }, 
+                        },
+                        "cropped_img": {"type": ["object", "null"]},
+                        "perimeter": {"type": ["number", "null"]},
+                        "line_id": {"type": "string"},
+                        "ocr_text": {"type": "string"},
+                        "ocr_confidence": {"type": ["number", "null"]},
+                        "was_fragmented": {"type": "boolean"},
+                        "stage": {"type": "string"},
+                        "status": {"type": "boolean"},
                     },
                 },
-
             },
         },
     },
@@ -152,10 +146,6 @@ class Polygons:
     was_fragmented: bool
     status: bool
     stage: str
-
-@dataclass
-class ImageData:
-    polygons: Dict[str, Polygons]
                 
 @dataclass(frozen=True)
 class Metadata:
@@ -171,4 +161,4 @@ class WorkflowDict:
     dict_id: str
     full_img: Optional[np.ndarray[Any, Any]]
     metadata:  Metadata
-    image_data: ImageData
+    polygons: Dict[str, Polygons]

@@ -2,7 +2,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import CroppedImage
 
 class BaseWorker(ABC):
     """Contrato que todo worker de procesamiento debe cumplir.
@@ -23,7 +22,7 @@ class ImagePrepAbstractWorker(BaseWorker):
     
 class PreprossesingAbstractWorker(BaseWorker):
     @abstractmethod
-    def preprocess(self, cropped_img: CroppedImage, manager: DataFormatter) -> CroppedImage:
+    def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Recibe la imagen para corregirla si es necesario
         """

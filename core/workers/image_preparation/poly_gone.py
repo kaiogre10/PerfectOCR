@@ -14,13 +14,14 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            full_img = context.get("full_img")
+            full_img= context.get("full_img", {})
+            full_img: np.ndarray[Any, Any] 
             if full_img is None:
                 logger.error("PolygonExtractor: 'full_img' no encontrado en el contexto.")
                 return False
 
             dict_data = manager.get_dict_data()
-            polygons:  Dict[str, Any] = dict_data.get("image_data", {}).get("polygons", {})
+            polygons: Dict[str, Any] = dict_data.get("polygons", {})
             if not polygons:
                 logger.warning("PolygonExtractor: No se encontraron polígonos para procesar.")
                 return True
@@ -55,15 +56,16 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     logger.warning(f"PolygonExtractor: Imagen recortada vacía para {poly_id}")
                     continue
 
-                # Guardamos la imagen recortada en nuestro diccionario temporal
-                
-                                
+                # Guardamos la imagen recortada en nuestro diccionario temporal       
                 cropped_images[poly_id] = cropped
-
+                
                 # Guardar la geometría del recorte (bounding box ajustada) como dict
+                pcx = (px1 + px2) / 2
+                pcy = (py1 + py2) / 2
+
                 cropped_geometries[poly_id] = {
                     "padding_bbox": [px1, py1, px2, py2],
-                    "padd_centroid": [(px1 + px2) / 2, (py1 + py2) / 2],
+                    "padd_centroid": [pcx, pcy],
                     "padding_coords": [px1, py1, px2, py2]
                 }
                 extracted_count += 1
