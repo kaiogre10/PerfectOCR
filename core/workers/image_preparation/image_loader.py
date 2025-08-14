@@ -42,18 +42,34 @@ class ImageLoader:
                     "width": int,
                     "height": int,
                 },
-            "dpi": None,
-            "color": None,
+            "dpi": Optional[Dict[str, Optional[float]]],
+            "color": str,
         }
 
         img_array = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
+        if img_array is None:
+            error_msg = f"No se pudo leer la imagen en '{input_path}'"
+            logger.error(error_msg)
+            metadata['error'] = error_msg
+            return None, metadata
+        logger.info(f"Imagen cargada correctamente desde: {input_path}")
+
         image_array = np.array(img_array)
+        if image_array.size == 0:
+            error_msg = f"Imagen vacía o corrupta en '{input_path}'"
+            logger.error(error_msg)
+            metadata['error'] = error_msg
+            return None, metadata
+        
+        logger.info(f"Size de la imagen completa: {image_array.size}")
+
         cv2_height, cv2_width = image_array.shape[:2]
         if len(image_array.shape) == 3:
             gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
         else:
             gray_image = image_array
-
+        
+        logger.info(f"Shape de la imagen completa: {cv2_width, cv2_height}")
         # Extraer metadatos completos con Pillow
         with Image.open(input_path) as img:
             try:
@@ -74,10 +90,10 @@ class ImageLoader:
                         "width": max(int(pillow_width), 1), 
                         "height": max(int(pillow_height), 1)
                     }
-                    logger.info(f"Dimensiones pillow obtenidas con IMG.:{pillow_width, pillow_height}")
+                    logger.info(f"Dimensiones pillow obtenidas con img.:{pillow_width, pillow_height}")
                     
                     metadata["color"] = img.mode
-                    dpi_info: Optional[Dict[float, float]] = img.info.get('dpi')
+                    dpi_info: Optional[Dict[str, Optional[float]]] = img.info.get('dpi')
                     if dpi_info and isinstance(dpi_info, tuple) and len(dpi_info) == 2: 
                         metadata["dpi"] = float(dpi_info[0]) 
                     elif dpi_info and isinstance(dpi_info, (int, float)):

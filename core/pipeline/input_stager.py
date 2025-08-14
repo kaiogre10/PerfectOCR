@@ -20,15 +20,17 @@ class InputStager:
 
         # 1) Cargar datos crudos (sin manager)
         gray_image, metadata = self._image_loader.load_image_and_metadata()
-        if gray_image is None:
-            logger.error("InputStager: No se pudo cargar la imagen.")
-
+        if gray_image is None or not isinstance(gray_image, np.ndarray) or gray_image.size == 0:
+            logger.error(f"InputStager: Imagen no válida para '{metadata.get('image_name')}")
+            return None, 0.0
+        
+        
         # 2) Crear manager y dict_job una sola vez aquí
         manager = DataFormatter()
         dict_id = f"dict_{metadata.get('image_name')}_{int(time.time())}"
 
         # Cast para callar warning de tipo parcialmente desconocido 
-        full_img = cast(np.ndarray[Any, Any], gray_image)
+        full_img = gray_image
         if not manager.create_dict(dict_id, full_img, metadata):
             logger.error("InputStager: Fallo al crear dict_job en el manager.")
             return None, 0.0

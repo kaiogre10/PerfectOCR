@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_models import CroppedImage
 from core.domain.data_formatter import DataFormatter
@@ -22,7 +22,9 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         modificando 'cropped_img' in-situ.
         """
         start_time = time.time()
-                        
+        
+        tuple[cropped_img, np.ndarray[Any, Any]]
+
         processed_img = self._detect_moire_single(cropped_img.cropped_img)
             
         cropped_img.cropped_img[...] = processed_img
@@ -39,7 +41,8 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         notch_radius = int(percentile_corrections.get('notch_radius', 2))
         min_dist = int(percentile_corrections.get('min_distance_from_center', 200))
                 
-        h, w = cropped_img.shape
+        
+        h, w = cropped_img.size
                 
         max_dim = max(h, w)
         spectrum_var = np.var(cropped_img)
