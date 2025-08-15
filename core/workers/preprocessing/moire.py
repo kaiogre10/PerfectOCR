@@ -12,9 +12,12 @@ logger = logging.getLogger(__name__)
 class MoireDenoiser(PreprossesingAbstractWorker):
     """Detecta y corrige patrones de moiré."""
     def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config
-        
+        self.worker_config = self.config.get('moire', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("moire_poly", False)
+
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Detecta y corrige patrones de moiré en cada polígono del diccionario,
@@ -32,9 +35,7 @@ class MoireDenoiser(PreprossesingAbstractWorker):
                 return False
             
             h, w = cropped_img.shape[:2]
-
             img_dims: Tuple[int, int] = h, w
-
 
             if len(cropped_img.shape) == 3:
                 cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
@@ -47,6 +48,22 @@ class MoireDenoiser(PreprossesingAbstractWorker):
             
             total_time = time.time() - start_time
             logger.debug(f"Moire completado en: {total_time:.3f}s")
+
+            if self.output:
+                from services.output_service import save_image
+                import os
+                
+                output_paths = context.get("output_paths", [])
+                poly_id = context.get("poly_id", "unknown_poly")
+                
+                for path in output_paths:
+                    output_dir = os.path.join(path, "moire")
+                    file_name = f"{poly_id}_moire_debug.png"
+                    save_image(processed_img, output_dir, file_name)
+                
+                if output_paths:
+                    logger.info(f"Imagen de debug de moiré para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")
+
             return True
         except Exception as e:
             logger.error(f"Error en manejo de  {e}")

@@ -4,7 +4,6 @@ import time
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import PreprossesingAbstractWorker
-from services.output_service import OutputService
 
 logger = logging.getLogger(__name__)
 
@@ -12,25 +11,12 @@ class PreprocessingStager:
     """
     Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
     """
-    def __init__(self, workers: List[PreprossesingAbstractWorker], stage_config: Dict[str, Any], project_root: str):
+    def __init__(self, workers: List[PreprossesingAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
         self.project_root = project_root
         self.workers = workers
         self.stage_config = stage_config
-        self.output_flags = self.stage_config.get("output_flag", "")
-        self.output_folder = self.stage_config["output_folder"]
-        self.output_service = None
-        if self.output_folder and any([
-            self.output_flags.get("moire_poly", False),
-            self.output_flags.get("sp_poly", False),
-            self.output_flags.get("gauss_poly", False),
-            self.output_flags.get("clahe_poly", False),
-            self.output_flags.get("sharp_poly", False),
-            self.output_flags.get("binarized_polygons", False),
-            self.output_flags.get("refined_polygons", False),
-            self.output_flags.get("problematic_polygons", False)
-        ]):
-            self.output_service = OutputService()
-        
+        self.output_paths = output_paths
+
     def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
         logger.info("[PreprocessingManager] Iniciando pipeline secuencial directo")
@@ -38,6 +24,7 @@ class PreprocessingStager:
         # Obtener datos
         metadata = manager.get_metadata()
         polygons = manager.get_polygons_with_cropped_img()
+        output_paths = self.output_paths
         
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
@@ -55,7 +42,9 @@ class PreprocessingStager:
                 context = {
                     "poly_id": poly_id,
                     "cropped_img": cropped_img,
-                    "metadata": metadata
+                    "metadata": metadata,
+                    "output_paths": self.output_paths,
+                    "project_root": self.project_root
                 }
                 
                 # Worker procesa esta imagen específica

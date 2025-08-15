@@ -15,7 +15,6 @@ __pycache__/
 
 # Ignorar carpeta
 input/
-output/
 data/models/
 
 # Excepción

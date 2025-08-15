@@ -9,7 +9,6 @@ from typing import Optional, Dict, Any, Tuple, List
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 import cv2
 
-
 logger = logging.getLogger(__name__)
 
 class OCRStager:
@@ -19,61 +18,61 @@ class OCRStager:
         self.paddleocr = paddleocr
         self.paddle = paddleocr
         
-    def run_ocr_on_polygons( 
-        self, manager: DataFormatter
-    ) -> Tuple[Optional[DataFormatter], float]:
+    def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
-
-        if not self.paddle or self.paddle.engine is None:
-            logger.error("[OCREngineManager] Engine PaddleOCR no inicializado.")
-            return manager, 0.0
-
-        cropped_images = manager.get_cropped_images_for_preprocessing()
-        if not isinstance(cropped_images, dict) or not cropped_images:
-            logger.warning("[OCREngineManager] No hay imágenes recortadas para OCR.")
-            return manager, 0.0
-
-        image_list: List[Any] = []  # type: ignore
-        polygon_ids: List[str] = []
-        for poly_id, cropped in cropped_images.items():
-            try:
-                img = getattr(cropped, "cropped_img", None)
-                if img is None:
-                    continue
-                # Validar tamaño mínimo
-                if hasattr(img, 'shape') and isinstance(img.shape, tuple) and len(img.shape) >= 2:
-                    if min(img.shape[:2]) == 0:
-                        continue
-                image_list.append(img)
-                polygon_ids.append(poly_id)
-            except Exception as e:
-                logger.error(f"Error preparando imagen de polígono {poly_id} para OCR: {e}")
-                continue
-
+        
+        # Obtener datos (igual que preprocessing)
+        polygons = manager.get_polygons_with_cropped_img()
+        
+        # DEBUG: Ver qué contiene polygons
+        logger.info(f"[OCREngineManager] Polígonos obtenidos: {len(polygons)}")
+        for poly_id, poly_data in list(polygons.items())[:3]:  # Solo los primeros 3
+            cropped_img = poly_data.get("cropped_img")
+            logger.info(f"[OCREngineManager] {poly_id}: cropped_img type={type(cropped_img)}, shape={getattr(cropped_img, 'shape', 'N/A')}")
+        
+        # Preparar batch (igual que preprocessing pero optimizado para OCR)
+        image_list = []
+        polygon_ids = []
+        
+        for poly_id, poly_data in polygons.items():
+            cropped_img = poly_data.get("cropped_img")
+            if cropped_img is not None:
+                # Convertir a np.ndarray si es necesario
+                if isinstance(cropped_img, list):
+                    cropped_img = np.array(cropped_img)
+                
+                # Validar que la imagen sea procesable
+                if hasattr(cropped_img, 'shape') and len(cropped_img.shape) >= 2:
+                    if min(cropped_img.shape[:2]) > 0:  # Dimensiones válidas
+                        # ✅ CONVERTIR A 3 CANALES para PaddleOCR
+                        if len(cropped_img.shape) == 2:  # Escala de grises
+                            cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
+                        elif cropped_img.shape[2] == 1:  # 1 canal
+                            cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
+                        
+                        image_list.append(cropped_img)
+                        polygon_ids.append(poly_id)
+        
         if not image_list:
             logger.warning("[OCREngineManager] No se encontraron imágenes válidas para OCR.")
             return manager, 0.0
-
+        
+        # Procesar BATCH (mantener rendimiento)
         batch_results = self.paddle.recognize_text_from_batch(image_list)
-
+        
+        # Actualizar resultados (igual que preprocessing)
         processed_count = 0
         if batch_results:
             for idx, res in enumerate(batch_results):
-                if idx >= len(polygon_ids):
-                    break
-                poly_id = polygon_ids[idx]
-                if not res or not manager.workflow_dict or poly_id not in manager.workflow_dict:
-                    continue
-                try:
-                    # Estructura esperada: {"text": str, "confidence": float}
-                    manager.workflow_dict[poly_id]["ocr_text"] = res.get("text", "")
-                    manager.workflow_dict[poly_id]["ocr_confidence"] = res.get("confidence")
-                    processed_count += 1
-                except Exception as e:
-                    logger.error(f"Error asignando resultado OCR a polígono {poly_id}: {e}")
-
-        logger.info(f"[OCREngineManager] Lote procesado. Resultados para {processed_count}/{len(image_list)} polígonos.")
-
+                if idx < len(polygon_ids):
+                    poly_id = polygon_ids[idx]
+                    if res and manager.workflow_dict and poly_id in manager.workflow_dict["polygons"]:
+                        manager.workflow_dict["polygons"][poly_id]["ocr_text"] = res.get("text", "")
+                        manager.workflow_dict["polygons"][poly_id]["ocr_confidence"] = res.get("confidence")
+                        processed_count += 1
+        
+        logger.info(f"[OCREngineManager] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados.")
+        
         ocr_time = time.perf_counter() - start_time
         return manager, ocr_time
 

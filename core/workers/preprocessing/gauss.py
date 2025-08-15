@@ -12,8 +12,11 @@ logger = logging.getLogger(__name__)
 class GaussianDenoiser(PreprossesingAbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config
+        self.worker_config = self.config.get('bilateral_params', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("gauss_poly", False)
         
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -42,6 +45,21 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
             
             total_time = time.time() - start_time
             logger.debug(f"Moire completado en: {total_time:.3f}s")
+
+            if self.output:
+                from services.output_service import save_image
+                import os
+                
+                output_paths = context.get("output_paths", [])
+                poly_id = context.get("poly_id", "unknown_poly")
+                
+                for path in output_paths:
+                    output_dir = os.path.join(path, "gauss")
+                    file_name = f"{poly_id}_gauss_debug.png"
+                    save_image(processed_img, output_dir, file_name)
+                
+                if output_paths:
+                    logger.info(f"Imagen de debug Gauss para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")
             return True
         except Exception as e:
             logger.error(f"Error en manejo de  {e}")

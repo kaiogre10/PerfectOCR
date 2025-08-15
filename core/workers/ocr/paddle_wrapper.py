@@ -17,7 +17,7 @@ class PaddleOCRWrapper:
     def __init__(self, config_dict: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.config_dict = config_dict
-        self.init_paramss = config_dict.get("paddleocr", {})
+        self.init_params = config_dict.get("paddleocr", {})
         self._engine = None
 
     @property
@@ -33,7 +33,7 @@ class PaddleOCRWrapper:
                     "show_log": self.config_dict.get("paddle_config", {}).get("show_log", False),
                     "use_gpu": self.config_dict.get("paddle_config", {}).get("use_gpu", False),
                     "enable_mkldnn": self.config_dict.get("paddle_config", {}).get("enable_mkldnn", True),
-                    "rec_model_dir": "C:/PerfectOCR/data/models/paddle/rec/es",
+                    "rec_model_dir": self.config_dict.get("C:/PerfectOCR/data/models/paddle/rec/es"),
                     'rec_batch_num': 64,
                 }
                 
@@ -41,9 +41,9 @@ class PaddleOCRWrapper:
                 if rec_model_path:
                     if os.path.exists(rec_model_path):
                         init_params["rec_model_dir"] = rec_model_path
-                        logger.info(f"Usando modelo de detección en: {rec_model_path}")
+                        logger.info(f"Usando modelo de reconocimiento en: {rec_model_path}")
                     else:
-                        logger.warning(f"Ruta del modelo de detección no válida: {rec_model_path}")
+                        logger.warning(f"Ruta del modelo de reconocimiento no válida: {rec_model_path}")
                 else:
                     logger.warning("No se especificó 'det_model_dir'; PaddleOCR intentará descargar el modelo.")
 

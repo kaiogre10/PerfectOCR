@@ -10,14 +10,22 @@ class MainFactory:
         self.modules_config = modules_config
         self.project_root = project_root
 
+        # Extraer la configuración anidada y los outputs globales
+        nested_modules = self.modules_config.get('modules', {})
+        enabled_outputs = self.modules_config.get('enabled_outputs', {})
+
+        # Crear configuración enriquecida para preprocesamiento
+        preprocessing_config = nested_modules.get('preprocessing', {}).copy()
+        preprocessing_config['enabled_outputs'] = enabled_outputs
+
         # Registro de fábricas por nombre de módulo
         self.module_factories = {
             "image_loader": ImagePreparationFactory(
-                self.modules_config.get('image_loader', {}),
+                nested_modules.get('image_loader', {}),
                 project_root
             ),
             "preprocessing": PreprocessingFactory(
-                self.modules_config.get('preprocessing', {}),
+                preprocessing_config, # Usar la configuración enriquecida
                 project_root
             ),
         }

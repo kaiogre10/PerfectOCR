@@ -43,7 +43,7 @@ class ConfigService:
         return self.config.get('paths', {})
     
     @property
-    def enabled_outputs(self) -> Dict[str, Any]:
+    def enabled_outputs(self) -> Dict[str, bool]:
         """Obtiene flags de salida habilitados."""
         return self.config.get('enabled_outputs', {})
     
@@ -55,7 +55,10 @@ class ConfigService:
     @property
     def modules_config(self) -> Dict[str, Any]:
         """Obtiene configuración de módulos."""
-        return self.config.get('modules', {})
+        return {
+            "modules": self.config.get("modules", {}),
+            "enabled_outputs": self.enabled_outputs, 
+        }
     
     @property
     def paddle_config(self) -> Dict[str, Any]:

@@ -5,7 +5,6 @@
 *input
 *.cursorignore
 *tests
-*output
 # Para ignorar un archivo específico, simplemente escribe su nombre o ruta relativa, por ejemplo:
 # ejemplo.txt
 # Para ignorar todos los archivos de un tipo específico, usa el comodín, por ejemplo:

@@ -67,18 +67,17 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             config_services.modules_config,
             project_root=project_root
         )
-        
+    
+        geometry_detector = config_services.paddle_det_config
+
+        context = {
+            "geometry_detector": geometry_detector,
+        }
         # Obtener factories del worker_factory
         image_load_factory = worker_factory.get_image_preparation_factory()
         image_prep_workers = image_load_factory.create_workers([
             "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"
         ], context)
-        
-        geometry_detector = config_services.paddle_det_config
-        
-        context = {
-            "geometry_detector": geometry_detector
-        }
         
         # Crear workers SEPARADOS
         preprocessing_factory = worker_factory.get_preprocessing_factory()
@@ -103,6 +102,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         preprocessing_stager = PreprocessingStager(
             workers=preprocessing_workers,
             stage_config=config_services.manager_config,
+            output_paths=output_paths,
             project_root=project_root
         )
         

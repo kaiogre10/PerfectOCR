@@ -29,13 +29,13 @@ pipeline_secuence:
     - "polygon_extractor" 
   
   preprocessing_stage:
-  - "moire"
-  - "sp"
-  - "gauss"
-  - "clahe"
-  - "sharp"
-  - "binarizator"
-  - "fragmentator"
+    - "moire"
+    - "sp"
+    - "gauss"
+    - "clahe"
+    - "sharp"
+    - "binarizator"
+    - "fragmentator"
   
 # Configuración de salida (independiente)
 enabled_outputs:

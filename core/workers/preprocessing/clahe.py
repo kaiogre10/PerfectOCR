@@ -12,8 +12,11 @@ logger = logging.getLogger(__name__)
 class ClaherEnhancer(PreprossesingAbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
         self.project_root = project_root
-        self.corrections = config
+        self.worker_config = self.config.get('contrast', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("clahe_poly", False)
         
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -42,6 +45,21 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
             
             total_time = time.time() - start_time
             logger.debug(f"Moire completado en: {total_time:.3f}s")
+
+            if self.output:
+                from services.output_service import save_image
+                import os
+                
+                output_paths = context.get("output_paths", [])
+                poly_id = context.get("poly_id", "unknown_poly")
+                
+                for path in output_paths:
+                    output_dir = os.path.join(path, "clahe")
+                    file_name = f"{poly_id}_clahe_debug.png"
+                    save_image(processed_img, output_dir, file_name)
+                
+                if output_paths:
+                    logger.info(f"Imagen de debug de clahe para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")
             return True
         except Exception as e:
             logger.error(f"Error en manejo de  {e}")
@@ -49,7 +67,7 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
 
     def _estimate_contrast_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Aplica mejora de contraste."""
-        global_clahe_corrects = self.corrections.get('global', {})
+        global_clahe_corrects = self.config.get('global', {})
         contrast_threshold = global_clahe_corrects.get('contrast_threshold', 50.0)
         clip_limit = global_clahe_corrects.get('clahe_clip_limit', 2.0)
         page_dimensions = global_clahe_corrects.get('dimension_thresholds_px', [1000, 2500])

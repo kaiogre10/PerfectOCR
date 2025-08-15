@@ -24,24 +24,19 @@ class PreprocessingFactory(AbstractBaseFactory[PreprossesingAbstractWorker]):
         }
     # 
     def _create_moire(self, context: Dict[str, Any]) -> MoireDenoiser:
-        moire_config = self.module_config.get('moire', {})
-        return MoireDenoiser(config=moire_config, project_root=self.project_root)
+        return MoireDenoiser(config=self.module_config, project_root=self.project_root)
 
     def _create_sp(self, context: Dict[str, Any]) -> DoctorSaltPepper:
-        sp_config = self.module_config.get('median_filter', {})
-        return DoctorSaltPepper(config=sp_config, project_root=self.project_root)
+        return DoctorSaltPepper(config=self.module_config, project_root=self.project_root)
 
     def _create_gauss(self, context: Dict[str, Any]) -> GaussianDenoiser:
-        gauss_config = self.module_config.get('bilateral_params', {})
-        return GaussianDenoiser(config=gauss_config, project_root=self.project_root)
+        return GaussianDenoiser(config=self.module_config, project_root=self.project_root)
 
     def _create_clahe(self, context: Dict[str, Any]) -> ClaherEnhancer:
-        clahe_config = self.module_config.get('clahe', {})
-        return ClaherEnhancer(config=clahe_config, project_root=self.project_root)
+        return ClaherEnhancer(config=self.module_config, project_root=self.project_root)
 
     def _create_sharp(self, context: Dict[str, Any]) -> SharpeningEnhancer:
-        sharp_config = self.module_config.get('sharp', {})
-        return SharpeningEnhancer(config=sharp_config, project_root=self.project_root)
+        return SharpeningEnhancer(config=self.module_config, project_root=self.project_root)
 
     # def _create_binarization(self, context: Dict[str, Any]) -> Binarizator:
     #     binarization_config = self.module_config.get('binarize', {})

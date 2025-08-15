@@ -145,7 +145,8 @@ class DataFormatter:
 
             for poly_id, img in cropped_images.items():
                 if poly_id in self.workflow_dict["polygons"]:
-                    self.workflow_dict["polygons"][poly_id]["cropped_img"] = img.tolist()
+                    # ✅ MANTENER como np.ndarray, NO convertir a list
+                    self.workflow_dict["polygons"][poly_id]["cropped_img"] = img  # Sin .tolist()
                     if poly_id in cropped_geometries:
                         self.workflow_dict["polygons"][poly_id]["cropped_geometry"] = cropped_geometries[poly_id]
 
