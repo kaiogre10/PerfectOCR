@@ -2,7 +2,6 @@
 import os
 import logging
 from typing import List, Dict, Any, Tuple, Optional
-from utils.batch_tools import get_optimal_workers
 from services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
@@ -58,13 +57,11 @@ class WorkFlowBuilder:
         num_images = len(image_info)
         use_batch = num_images > self.small_batch_limit
         mode = 'batch' if use_batch else 'interactive'
-        workers_needed = get_optimal_workers(num_images, self.max_physical_cores) if use_batch else 1
 
         return {
             "status": "success",
             "total_images": num_images,
             "mode": mode,
-            "workers_needed": workers_needed,
             "image_info": image_info,
         }
         

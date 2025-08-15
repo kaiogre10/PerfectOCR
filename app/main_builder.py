@@ -114,6 +114,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         ocr_stager = OCRStager(
             stage_config=config_services.manager_config,
             paddleocr=paddleocr,
+            output_paths=output_paths,
             project_root=project_root
         )
         

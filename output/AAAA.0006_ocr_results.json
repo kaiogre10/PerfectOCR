@@ -1,0 +1,450 @@
+{
+    "doc_name": "AAAA.0006",
+    "formato": ".png",
+    "dpi": {
+        "x": 599.9988,
+        "y": null
+    },
+    "img_dims": {
+        "width": 2056,
+        "height": 2954
+    },
+    "fecha_creacion": "2025-08-15T01:55:27.545724",
+    "polygons": [
+        {
+            "polygon_id": "poly_0000",
+            "text": "1024.12",
+            "confidence": 99.89
+        },
+        {
+            "polygon_id": "poly_0001",
+            "text": "Total:",
+            "confidence": 99.96
+        },
+        {
+            "polygon_id": "poly_0002",
+            "text": "98.20",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0003",
+            "text": "49.10",
+            "confidence": 94.41
+        },
+        {
+            "polygon_id": "poly_0004",
+            "text": "CART FLUORESC AM C/10",
+            "confidence": 97.55
+        },
+        {
+            "polygon_id": "poly_0005",
+            "text": "8",
+            "confidence": 99.72
+        },
+        {
+            "polygon_id": "poly_0006",
+            "text": "2",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0007",
+            "text": "34.93",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0008",
+            "text": "50",
+            "confidence": 99.98
+        },
+        {
+            "polygon_id": "poly_0009",
+            "text": "34.93",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0010",
+            "text": "GLOBO 5 SURT C/100",
+            "confidence": 96.34
+        },
+        {
+            "polygon_id": "poly_0011",
+            "text": "1",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0012",
+            "text": "59.28",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0013",
+            "text": "59.28",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0014",
+            "text": "PALO RED DELG 4X60 K 95",
+            "confidence": 96.51
+        },
+        {
+            "polygon_id": "poly_0015",
+            "text": "2",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0016",
+            "text": "1",
+            "confidence": 99.98
+        },
+        {
+            "polygon_id": "poly_0017",
+            "text": "29.76",
+            "confidence": 92.86
+        },
+        {
+            "polygon_id": "poly_0018",
+            "text": "PLACA UNIC 25X25X1",
+            "confidence": 99.45
+        },
+        {
+            "polygon_id": "poly_0019",
+            "text": "2.98",
+            "confidence": 99.98
+        },
+        {
+            "polygon_id": "poly_0020",
+            "text": "5",
+            "confidence": 99.94
+        },
+        {
+            "polygon_id": "poly_0021",
+            "text": "10",
+            "confidence": 99.82
+        },
+        {
+            "polygon_id": "poly_0022",
+            "text": "90.00",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0023",
+            "text": "30.00",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0024",
+            "text": "CARTA DIAM CANARI0 C/10",
+            "confidence": 96.79
+        },
+        {
+            "polygon_id": "poly_0025",
+            "text": "5",
+            "confidence": 99.96
+        },
+        {
+            "polygon_id": "poly_0026",
+            "text": "3",
+            "confidence": 99.95
+        },
+        {
+            "polygon_id": "poly_0027",
+            "text": "42.30",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0028",
+            "text": "42.30",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0029",
+            "text": "KM FINO NG C/12",
+            "confidence": 97.38
+        },
+        {
+            "polygon_id": "poly_0030",
+            "text": "6",
+            "confidence": 99.94
+        },
+        {
+            "polygon_id": "poly_0031",
+            "text": "1",
+            "confidence": 99.98
+        },
+        {
+            "polygon_id": "poly_0032",
+            "text": "39.90",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0033",
+            "text": "39.90",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0034",
+            "text": "KM MED NG C/12",
+            "confidence": 99.85
+        },
+        {
+            "polygon_id": "poly_0035",
+            "text": "5",
+            "confidence": 99.87
+        },
+        {
+            "polygon_id": "poly_0036",
+            "text": "1",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0037",
+            "text": "96.00",
+            "confidence": 98.06
+        },
+        {
+            "polygon_id": "poly_0038",
+            "text": "48.00",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0039",
+            "text": "CREPE NGO C/10",
+            "confidence": 98.19
+        },
+        {
+            "polygon_id": "poly_0040",
+            "text": "8",
+            "confidence": 76.3
+        },
+        {
+            "polygon_id": "poly_0041",
+            "text": "2",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0042",
+            "text": "49.80",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0043",
+            "text": "49.80",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0044",
+            "text": "SOBRE C/ROND CTA C/10",
+            "confidence": 99.66
+        },
+        {
+            "polygon_id": "poly_0045",
+            "text": "7",
+            "confidence": 99.9
+        },
+        {
+            "polygon_id": "poly_0046",
+            "text": "1",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0047",
+            "text": "45.00",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0048",
+            "text": "22.50",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0049",
+            "text": "FOLDER CTA CR C/10",
+            "confidence": 99.49
+        },
+        {
+            "polygon_id": "poly_0050",
+            "text": "5",
+            "confidence": 99.8
+        },
+        {
+            "polygon_id": "poly_0051",
+            "text": "2",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0052",
+            "text": "135.00",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0053",
+            "text": "135.00",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0054",
+            "text": "12",
+            "confidence": 99.98
+        },
+        {
+            "polygon_id": "poly_0055",
+            "text": "PASTA CTA SURT C/25",
+            "confidence": 99.96
+        },
+        {
+            "polygon_id": "poly_0056",
+            "text": "1",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0057",
+            "text": "47.45",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0058",
+            "text": "15",
+            "confidence": 99.96
+        },
+        {
+            "polygon_id": "poly_0059",
+            "text": "PUNTILLAS PM 0.5",
+            "confidence": 99.55
+        },
+        {
+            "polygon_id": "poly_0060",
+            "text": "9.49",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0061",
+            "text": "5",
+            "confidence": 99.95
+        },
+        {
+            "polygon_id": "poly_0062",
+            "text": "256.50",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0063",
+            "text": "85.50",
+            "confidence": 100.0
+        },
+        {
+            "polygon_id": "poly_0064",
+            "text": "12",
+            "confidence": 99.97
+        },
+        {
+            "polygon_id": "poly_0065",
+            "text": "VINCI 25 AM LIM 50 C/10",
+            "confidence": 96.58
+        },
+        {
+            "polygon_id": "poly_0066",
+            "text": "3",
+            "confidence": 99.93
+        },
+        {
+            "polygon_id": "poly_0067",
+            "text": "Importe",
+            "confidence": 98.11
+        },
+        {
+            "polygon_id": "poly_0068",
+            "text": "P.S.",
+            "confidence": 98.57
+        },
+        {
+            "polygon_id": "poly_0069",
+            "text": "P.U.C.D:",
+            "confidence": 94.03
+        },
+        {
+            "polygon_id": "poly_0070",
+            "text": "Producto",
+            "confidence": 99.62
+        },
+        {
+            "polygon_id": "poly_0071",
+            "text": "Cant.",
+            "confidence": 91.03
+        },
+        {
+            "polygon_id": "poly_0072",
+            "text": "Atendio:",
+            "confidence": 99.67
+        },
+        {
+            "polygon_id": "poly_0073",
+            "text": "8 ML",
+            "confidence": 99.89
+        },
+        {
+            "polygon_id": "poly_0074",
+            "text": "13:43",
+            "confidence": 99.68
+        },
+        {
+            "polygon_id": "poly_0075",
+            "text": "Folic: 0176",
+            "confidence": 98.48
+        },
+        {
+            "polygon_id": "poly_0076",
+            "text": "Mayoreo",
+            "confidence": 87.4
+        },
+        {
+            "polygon_id": "poly_0077",
+            "text": "Nota",
+            "confidence": 99.47
+        },
+        {
+            "polygon_id": "poly_0078",
+            "text": "19 ene 25",
+            "confidence": 97.74
+        },
+        {
+            "polygon_id": "poly_0079",
+            "text": "Cte:",
+            "confidence": 99.73
+        },
+        {
+            "polygon_id": "poly_0080",
+            "text": "A1251 ROSA MARIA CENTURION LOPEZ",
+            "confidence": 98.42
+        },
+        {
+            "polygon_id": "poly_0081",
+            "text": "Oficina, Papeles Extendidos, Escolar.",
+            "confidence": 98.37
+        },
+        {
+            "polygon_id": "poly_0082",
+            "text": "Dibujo,Ingenieria,Escritura,Computacion,",
+            "confidence": 97.75
+        },
+        {
+            "polygon_id": "poly_0083",
+            "text": "REGIMEN SIMPLIFICADO DE CONFIANZA",
+            "confidence": 99.53
+        },
+        {
+            "polygon_id": "poly_0084",
+            "text": "JOSE MENDEZ DAYILA R.F.C. MEDJ630711HU5",
+            "confidence": 98.44
+        },
+        {
+            "polygon_id": "poly_0085",
+            "text": "FEDERICO GOMEZ#6 ZUMP: -* ED0 MEX CP55600",
+            "confidence": 93.92
+        },
+        {
+            "polygon_id": "poly_0086",
+            "text": "Papeleria el 'estudiante",
+            "confidence": 93.37
+        }
+    ]
+}

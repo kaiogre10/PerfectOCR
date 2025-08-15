@@ -12,16 +12,16 @@ import cv2
 logger = logging.getLogger(__name__)
 
 class OCRStager:
-    def __init__(self, stage_config: Dict[str, Any], paddleocr: PaddleOCRWrapper, project_root: str):
+    def __init__(self, stage_config: Dict[str, Any], paddleocr: PaddleOCRWrapper, output_paths: Optional[List[str]], project_root: str):
         self.stage_config = stage_config
         self.project_root = project_root
         self.paddleocr = paddleocr
         self.paddle = paddleocr
+        self.output_paths = output_paths if output_paths is not None else []
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
         
-        # Obtener datos (igual que preprocessing)
         polygons = manager.get_polygons_with_cropped_img()
         
         # DEBUG: Ver qué contiene polygons
@@ -72,6 +72,8 @@ class OCRStager:
                         processed_count += 1
         
         logger.info(f"[OCREngineManager] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados.")
+        image_name = manager.get_metadata().get("image_name", "unknown_image")
+        self._save_complete_ocr_results(manager, image_name)
         
         ocr_time = time.perf_counter() - start_time
         return manager, ocr_time
@@ -79,7 +81,7 @@ class OCRStager:
 
     def _save_complete_ocr_results(self, manager: DataFormatter, image_name: str):
         """
-        Guarda los resultados OCR en formato JSON, solo con polygon_id, texto, confianza y metadata básica.
+        Ordena al OutputService que guarde los resultados del OCR.
         """
         if not self.stage_config.get('output_flag', {}).get('ocr_raw', False):
             return
@@ -90,41 +92,7 @@ class OCRStager:
             return
 
         try:
-            os.makedirs(output_folder, exist_ok=True)
-            base_name = image_name
-            json_filename = f"{base_name}_ocr_results.json"
-            json_path = os.path.join(output_folder, json_filename)
-
-            if not manager.workflow:
-                logger.warning("No se puede guardar resultados OCR porque el workflow en DataFormatter no está inicializado.")
-                return
-
-            # Metadata básica
-            metadata = manager.workflow.metadata
-            output_data = {
-                "doc_name": metadata.image_name if metadata else None,
-                "formato": metadata.format if metadata else None,
-                "dpi": metadata.dpi if metadata else None,
-                "img_dims": {
-                    "width": metadata.img_dims.get("width") if metadata and metadata.img_dims else None,
-                    "height": metadata.img_dims.get("height") if metadata and metadata.img_dims else None
-                } if metadata and metadata.img_dims else None,
-                "fecha_creacion": str(metadata.date_creation) if metadata else None,
-                "polygons": []
-            }
-
-            # Solo polygon_id, texto y confianza
-            polygons_data = manager.workflow_dict.polygons
-            for pid, p in polygons_data.items():
-                output_data["polygons"].append({
-                    "polygon_id": pid,
-                    "text": p.ocr_text,
-                    "confidence": p.ocr_confidence
-                })
-
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(output_data, f, indent=2, ensure_ascii=False)
-
-            logger.info(f"[OCREngineManager] Resultados OCR guardados en {json_path}")
+            from services.output_service import save_ocr_json
+            save_ocr_json(manager, output_folder, image_name)
         except Exception as e:
-            logger.error(f"[OCREngineManager] Error guardando resultados OCR: {e}")
+            logger.error(f"[OCREngineManager] Fallo al invocar save_ocr_json: {e}")

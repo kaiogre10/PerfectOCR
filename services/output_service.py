@@ -42,3 +42,39 @@ def save_text(text: str, output_dir: str, file_name_with_extension: str) -> Opti
     except Exception as e:
         logger.error(f"Error guardando texto: {e}")
         return None
+
+def save_ocr_json(manager: Any, output_folder: str, image_name: str) -> None:
+    """
+    Guarda los resultados OCR en formato JSON, usando la lógica centralizada.
+    """
+    try:
+        if not manager.workflow_dict:
+            logger.warning("No se puede guardar resultados OCR porque el workflow_dict no está inicializado.")
+            return
+
+        # Preparar la estructura de datos para el JSON
+        metadata = manager.get_metadata()
+        output_data = {
+            "doc_name": metadata.get("image_name"),
+            "formato": metadata.get("format"),
+            "dpi": metadata.get("dpi"),
+            "img_dims": metadata.get("img_dims"),
+            "fecha_creacion": str(metadata.get("date_creation")),
+            "polygons": []
+        }
+
+        polygons_data = manager.workflow_dict.get("polygons", {})
+        for pid, p_data in polygons_data.items():
+            output_data["polygons"].append({
+                "polygon_id": pid,
+                "text": p_data.get("ocr_text"),
+                "confidence": p_data.get("ocr_confidence")
+            })
+
+        # Usar la función save_json existente
+        json_filename = f"{image_name}_ocr_results.json"
+        save_json(output_data, output_folder, json_filename)
+        logger.info(f"Resultados OCR en JSON guardados en: {os.path.join(output_folder, json_filename)}")
+
+    except Exception as e:
+        logger.error(f"Error guardando resultados OCR en JSON: {e}")
