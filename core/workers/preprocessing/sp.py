@@ -6,7 +6,6 @@ import time
 from typing import Dict, Any 
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import CroppedImage
 logger = logging.getLogger(__name__)
     
 class DoctorSaltPepper(PreprossesingAbstractWorker):
@@ -21,20 +20,33 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
         Detecta y corrige patrones de sal y pimienta en cada polígono del diccionario,
         modificando 'cropped_img' in-situ.
         """
-        start_time = time.time()
-        if not isinstance(cropped_img.cropped_img, np.ndarray): # type: ignore
-            cropped_img.cropped_img = np.array(cropped_img.cropped_img)
-        if cropped_img.cropped_img.dtype != np.uint8:
-            cropped_img.cropped_img = cropped_img.cropped_img.astype(np.uint8)
-        self._detect_sp_single(cropped_img.cropped_img)
-        
-        DoctorSaltPepper.total_polygons_corrected += 1
-        total_time = time.time() - start_time
-        logger.debug(f"S&P completado en: {total_time:.4}s")
-        logger.debug(f"Total de polígonos corregidos S&P: {DoctorSaltPepper.total_polygons_corrected}")
-        
-        return cropped_img
+        try:
+            start_time = time.time()
+            cropped_image = context.get("cropped_img", {})
 
+            cropped_img = np.array(cropped_image)
+            if cropped_img.size == 0:
+                error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
+                logger.error(error_msg)
+                context['error'] = error_msg
+                return False
+        
+            if len(cropped_img.shape) == 3:
+                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+                logger.info("convirtiendo a escala de grises")
+            else:
+                cropped_img = cropped_img
+                    
+            processed_img = self._detect_sp_single(cropped_img)
+            
+            cropped_img[...] = processed_img
+            
+            total_time = time.time() - start_time
+            logger.debug(f"Moire completado en: {total_time:.3f}s")
+            return True
+        except Exception as e:
+            logger.error(f"Error en manejo de  {e}")
+            return False
     
     def _detect_sp_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Estima ruido sal y pimienta con histograma, operando siempre in-place sobre el array original."""
@@ -59,12 +71,31 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
             # Ajustar kernel_size a impar si es necesario
             if kernel_size % 2 == 0:
                 kernel_size += 1
-            # Aplicar filtro de mediana y copiar el resultado sobre el array original (in-place)
-            filtered = cv2.medianBlur(cropped_img, kernel_size)
-            if filtered.shape == cropped_img.shape and filtered.dtype == cropped_img.dtype:
-                cropped_img[...] = filtered
-            else:
-                np.copyto(cropped_img, filtered, casting='unsafe')
-        # Si no hay suficiente ruido, no se modifica la imagen
 
+            try:
+                # Mover img_min e img_max aquí para que estén en scope
+                img_min = np.min(cropped_img)
+                img_max = np.max(cropped_img)
+                
+                if cropped_img.dtype != np.uint8:
+                    if img_max > img_min:
+                        normalized = ((cropped_img - img_min) / (img_max - img_min) * 255).astype(np.uint8)
+                    else:
+                        normalized = cropped_img.astype(np.uint8)
+                else:
+                    normalized = cropped_img
+            
+                # Aplicar filtro de mediana
+                filtered = cv2.medianBlur(normalized, kernel_size)
+                if cropped_img.dtype != np.uint8:
+                    filtered_scaled = (filtered.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
+                    cropped_img[...] = filtered_scaled
+                else:
+                    cropped_img[...] = filtered
+                
+            except cv2.error as e:
+                logger.warning(f"Polígono sin suficiente ruido: {e}")
+                pass
+        
         return cropped_img
+        

@@ -35,7 +35,7 @@ class ImageLoader:
         image_name = image_info.get('name', "")
         extension = image_info.get('extension', "")
 
-        metadata = {
+        metadata: Dict[str, Any] = {
             "image_name": image_name,
             "format": extension,
             "img_dims":{

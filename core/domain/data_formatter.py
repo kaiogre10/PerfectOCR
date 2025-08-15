@@ -28,8 +28,8 @@ class DataFormatter:
                 "image_name": str(metadata.get("image_name", "")),
                 "format": str(metadata.get("format", "")),
                 "img_dims": {
-                    "width": int(metadata.get("img_dims", {}).get("width", 2)),
-                    "height": int(metadata.get("img_dims", {}).get("height", 2)),
+                    "width": int(metadata.get("img_dims", {}).get("width")),
+                    "height": int(metadata.get("img_dims", {}).get("height")),
                 },
                 "dpi": (
                     metadata.get("dpi") if isinstance(metadata.get("dpi"), dict)
@@ -43,7 +43,6 @@ class DataFormatter:
 
         try:
             jsonschema.validate(self.workflow_dict, self.schema)
-            self.workflow_dict = self.schema  # Solo dict, sin instancia
             return True
         except Exception as e:
             logger.error(f"Error validando workflow_dict: {e}")

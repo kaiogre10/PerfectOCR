@@ -14,10 +14,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            full_img= context.get("full_img", {})
-            full_img: np.ndarray[Any, Any] 
-            if full_img is None:
-                logger.error("PolygonExtractor: 'full_img' no encontrado en el contexto.")
+            full_img: np.ndarray[Any, Any] = context.get("full_img", {})
+            
+            if full_img is None: # addType ignore
+
+                logger.warning("PolygonExtractor: 'full_img' no encontrado en el contexto.")
                 return False
 
             dict_data = manager.get_dict_data()
@@ -55,7 +56,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 if cropped.size == 0:
                     logger.warning(f"PolygonExtractor: Imagen recortada vacía para {poly_id}")
                     continue
-
+                logger.debug(f"Dimensiones de polígono: {cropped.shape}") 
                 # Guardamos la imagen recortada en nuestro diccionario temporal       
                 cropped_images[poly_id] = cropped
                 

@@ -5,7 +5,6 @@ import logging
 from typing import Dict, Any
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import CroppedImage
 import time
 
 logger = logging.getLogger(__name__)
@@ -21,24 +20,34 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
         Detecta y corrige patrones de moiré en cada polígono del diccionario,
         modificando 'cropped_img' in-situ.
         """
-        start_time = time.time()
+        try:
+            start_time = time.time()
+            cropped_image = context.get("cropped_img", {})
 
-        img = cropped_img.cropped_img
-        
-        img = np.array(img)
-        if img.dtype != np.uint8:
-            img = img.astype(np.uint8)
+            cropped_img = np.array(cropped_image)
+            if cropped_img.size == 0:
+                error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
+                logger.error(error_msg)
+                context['error'] = error_msg
+                return False
 
-        gauss_poly = self._estimate_gaussian_noise_single(img)
+            if len(cropped_img.shape) == 3:
+                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+            else:
+                cropped_img = cropped_img
+                    
+            processed_img = self._estimate_gaussian_noise_single(cropped_img)
             
-        cropped_img.cropped_img = gauss_poly
-        
-        total_time = time.time() - start_time
-        logger.debug(f"Gauss completado en: {total_time:.3f}s")
+            cropped_img[...] = processed_img
+            
+            total_time = time.time() - start_time
+            logger.debug(f"Moire completado en: {total_time:.3f}s")
+            return True
+        except Exception as e:
+            logger.error(f"Error en manejo de  {e}")
+            return False
 
-        return cropped_img
-
-    def _estimate_gaussian_noise_single(self,  cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+    def _estimate_gaussian_noise_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Estima ruido general con varianza del Laplaciano."""
         bilateral_corrections = self.config.get('bilateral_params', {})
         d = bilateral_corrections.get('d', 9)
@@ -46,11 +55,33 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
         sigma_space = bilateral_corrections.get('sigma_space', 75)
         gauss_threshold = bilateral_corrections.get('laplacian_variance_threshold', 100)
 
-        laplacian_var = cv2.Laplacian(cropped_img, cv2.CV_64F).var()
-        
-        if laplacian_var < gauss_threshold:
-            gauss_poly = cv2.bilateralFilter(cropped_img, d, sigmaColor=sigma_color, sigmaSpace=sigma_space)
-        else:
-            gauss_poly = cropped_img
-
-        return gauss_poly
+        try:
+            # Convertir a formato OpenCV compatible para Laplacian
+            if cropped_img.dtype != np.uint8:
+                img_min = np.min(cropped_img)
+                img_max = np.max(cropped_img)
+                if img_max > img_min:
+                    normalized = ((cropped_img - img_min) / (img_max - img_min) * 255).astype(np.uint8)
+                else:
+                    normalized = cropped_img.astype(np.uint8)
+            else:
+                normalized = cropped_img
+            
+            # Calcular varianza del Laplaciano
+            laplacian_var = cv2.Laplacian(normalized, cv2.CV_64F).var()
+            
+            if laplacian_var < gauss_threshold:
+                # Aplicar filtro bilateral
+                processed_img = cv2.bilateralFilter(normalized, d, sigmaColor=sigma_color, sigmaSpace=sigma_space)
+                
+                # Convertir de vuelta al formato original si es necesario
+                if cropped_img.dtype != np.uint8:
+                    processed_img = (processed_img.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
+            else:
+                processed_img = cropped_img
+                
+            return processed_img
+            
+        except cv2.error as e:
+            logger.warning(f"OpenCV falló en GaussianDenoiser: {e}, manteniendo imagen original")
+            return cropped_img

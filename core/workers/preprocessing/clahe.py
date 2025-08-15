@@ -6,7 +6,6 @@ import time
 from typing import Dict, Any
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import CroppedImage
 
 logger = logging.getLogger(__name__)
 
@@ -21,25 +20,32 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
         Detecta y corrige patrones de moiré en cada polígono del diccionario,
         modificando 'cropped_img' in-situ.
         """
-        start_time = time.time()
-        
-        # Asegurarse de que la imagen sea un ndarray de tipo uint8
-        img = cropped_img.cropped_img
-        if not isinstance(img, np.ndarray):
-            img = np.array(img)
-        if img.dtype != np.uint8:
-            img = img.astype(np.uint8)
+        try:
+            start_time = time.time()
+            cropped_image = context.get("cropped_img", {})
 
-        # Aplicar la mejora de contraste
-        clahe_poly = self._estimate_contrast_single(img)
-        
-        # Actualizar la imagen en el objeto CroppedImage
-        cropped_img.cropped_img = clahe_poly
-        
-        total_time = time.time() - start_time
-        logger.debug(f"Clahe completado en: {total_time:.3f}s")
+            cropped_img = np.array(cropped_image)
+            if cropped_img.size == 0:
+                error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
+                logger.error(error_msg)
+                context['error'] = error_msg
+                return False
 
-        return cropped_img
+            if len(cropped_img.shape) == 3:
+                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+            else:
+                cropped_img = cropped_img
+                    
+            processed_img = self._estimate_contrast_single(cropped_img)
+            
+            cropped_img[...] = processed_img
+            
+            total_time = time.time() - start_time
+            logger.debug(f"Moire completado en: {total_time:.3f}s")
+            return True
+        except Exception as e:
+            logger.error(f"Error en manejo de  {e}")
+            return False
 
     def _estimate_contrast_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Aplica mejora de contraste."""
@@ -49,29 +55,50 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
         page_dimensions = global_clahe_corrects.get('dimension_thresholds_px', [1000, 2500])
         grid_maps = global_clahe_corrects.get('grid_sizes_map', [[6, 6], [8, 8], [10, 10]])
 
-        # Cálculo de estadísticos:
-        contrast_std = np.std(cropped_img) 
-        global_var = np.var(cropped_img)
-        max_value = np.max(cropped_img)
-        min_value = np.min(cropped_img)
-        dynamic_range = max_value - min_value
-        dynamic_interval = max(30.0, global_var * 0.6)
-        adaptative_threshold = dynamic_interval if dynamic_range > contrast_threshold else 20
-                
-        if contrast_std < adaptative_threshold:
-            img_h, img_w = cropped_img.shape
-            max_dim = max(img_h, img_w)
-            if max_dim < page_dimensions[0]:
-                grid_size = grid_maps[0]
-            elif max_dim < page_dimensions[1]:
-                grid_size = grid_maps[1]
+        try:
+            # Convertir a formato exacto que requiere OpenCV CLAHE
+            if cropped_img.dtype != np.uint8:
+                img_min = np.min(cropped_img)
+                img_max = np.max(cropped_img)
+                if img_max > img_min:
+                    # Normalizar a [0, 255] y convertir a uint8 (CV_8UC1)
+                    normalized = ((cropped_img - img_min) / (img_max - img_min) * 255).astype(np.uint8)
+                else:
+                    normalized = cropped_img.astype(np.uint8)
             else:
-                grid_size = grid_maps[2]
-            clip_limit = min(3.0, max(1.0, dynamic_range * 0.01))
+                normalized = cropped_img
 
-            clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
-            clahe_poly = clahe.apply(cropped_img)
-        else: 
-            clahe_poly = cropped_img
+            # Cálculo de estadísticos sobre la imagen normalizada
+            contrast_std = np.std(normalized) 
+            global_var = np.var(normalized)
+            max_value = np.max(normalized)
+            min_value = np.min(normalized)
+            dynamic_range = max_value - min_value
+            dynamic_interval = max(30.0, global_var * 0.6)
+            adaptative_threshold = dynamic_interval if dynamic_range > contrast_threshold else 20
+                    
+            if contrast_std < adaptative_threshold:
+                img_h, img_w = normalized.shape
+                max_dim = max(img_h, img_w)
+                if max_dim < page_dimensions[0]:
+                    grid_size = grid_maps[0]
+                elif max_dim < page_dimensions[1]:
+                    grid_size = grid_maps[1]
+                else:
+                    grid_size = grid_maps[2]
+                clip_limit = min(3.0, max(1.0, dynamic_range * 0.01))
 
-        return clahe_poly
+                clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
+                processed_img = clahe.apply(normalized)  # Ahora funciona con CV_8UC1
+                
+                # Convertir de vuelta al formato original si es necesario
+                if cropped_img.dtype != np.uint8:
+                    processed_img = (processed_img.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
+            else: 
+                processed_img = cropped_img
+
+            return processed_img
+            
+        except cv2.error as e:
+            logger.warning(f"OpenCV CLAHE falló: {e}, manteniendo imagen original")
+            return cropped_img

@@ -1,15 +1,14 @@
 # launcher_gui.py
-import customtkinter as ctk
-from tkinter import filedialog
+import tkinter as Tk
 import subprocess
 import threading
 import os
 import sys
 
-ctk.set_appearance_mode("System")  # Puede ser "Dark", "Light"
-ctk.set_default_color_theme("blue")
+Tk.set_appearance_mode("System")  # Puede ser "Dark", "Light"
+Tk.set_default_color_theme("blue")
 
-class AppLauncher(ctk.CTk):
+class AppLauncher(Tk.Tk):
     def __init__(self):
         super().__init__()
 
@@ -21,28 +20,28 @@ class AppLauncher(ctk.CTk):
         self.grid_rowconfigure(2, weight=1) # El área de texto se expandirá
 
         # --- Frame para los controles ---
-        self.controls_frame = ctk.CTkFrame(self)
+        self.controls_frame = AppLauncher(Tk.Tk)
         self.controls_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
-        self.controls_frame.grid_columnconfigure(1, weight=1)
+        self.controls_frame.grid_columnconfigure(0, weight=1)
 
         # --- Selección de Archivos de Entrada ---
-        self.input_label = ctk.CTkLabel(self.controls_frame, text="Archivos de Entrada:")
+        self.input_label = Tk.Label(self.controls_frame, text="Archivos de Entrada:")
         self.input_label.grid(row=0, column=0, padx=10, pady=10)
         
-        self.input_entry = ctk.CTkEntry(self.controls_frame, placeholder_text="Selecciona una o más imágenes...")
+        self.input_entry = Tk.Entry(self.controls_frame, placeholder_text="Selecciona una o más imágenes...")
         self.input_entry.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
-        self.input_button = ctk.CTkButton(self.controls_frame, text="Examinar...", command=self.select_input_files)
+        self.input_button = Tk.Button(self.controls_frame, text="Examinar...", command=self.select_input_files)
         self.input_button.grid(row=0, column=2, padx=10, pady=10)
 
         # --- Selección de Carpeta de Salida ---
-        self.output_label = ctk.CTkLabel(self.controls_frame, text="Carpeta de Salida:")
+        self.output_label = Tk.Label(self.controls_frame, text="Carpeta de Salida:")
         self.output_label.grid(row=1, column=0, padx=10, pady=10)
         
-        self.output_entry = ctk.CTkEntry(self.controls_frame, placeholder_text="Selecciona una carpeta de salida...")
+        self.output_entry = yTk.Entry(self.controls_frame, placeholder_text="Selecciona una carpeta de salida...")
         self.output_entry.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-        self.output_button = ctk.CTkButton(self.controls_frame, text="Examinar...", command=self.select_output_folder)
+        self.output_button = Tk.Button(self.controls_frame, text="Examinar...", command=self.select_output_folder)
         self.output_button.grid(row=1, column=2, padx=10, pady=10)
 
         # --- Botón de Ejecución ---

@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
@@ -20,24 +20,47 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         Detecta y corrige patrones de moiré en cada polígono del diccionario,
         modificando 'cropped_img' in-situ.
         """
-        start_time = time.time()
-        cropped_img = context.get("cropped_img", {})
-        processed_img = self._detect_moire_single(cropped_img)
+        try:
+            start_time = time.time()
+            cropped_image = context.get("cropped_img", {})
+
+            cropped_img = np.array(cropped_image)
+            if cropped_img.size == 0:
+                error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
+                logger.error(error_msg)
+                context['error'] = error_msg
+                return False
+            
+            h, w = cropped_img.shape[:2]
+
+            img_dims: Tuple[int, int] = h, w
+
+
+            if len(cropped_img.shape) == 3:
+                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+            else:
+                cropped_img = cropped_img
+                    
+            processed_img = self._detect_moire_single(cropped_img, img_dims)
+            
+            cropped_img[...] = processed_img
+            
+            total_time = time.time() - start_time
+            logger.debug(f"Moire completado en: {total_time:.3f}s")
+            return True
+        except Exception as e:
+            logger.error(f"Error en manejo de  {e}")
+            return False
         
-        cropped_img[...] = processed_img
         
-        total_time = time.time() - start_time
-        logger.debug(f"Moire completado en: {total_time:.3f}s")
-        
-        
-    def _detect_moire_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+    def _detect_moire_single(self, cropped_img: np.ndarray[Any, Any], img_dims: Tuple[int , int]) -> np.ndarray[Any, Any]:
         moire_corrections = self.config
         mode = moire_corrections.get('mode', {})
         percentile_corrections = mode.get('percentile', {})
         notch_radius = int(percentile_corrections.get('notch_radius', 2))
         min_dist = int(percentile_corrections.get('min_distance_from_center', 200))
         
-        h, w = cropped_img.shape
+        h, w = img_dims
                                 
         max_dim = max(h, w)
         spectrum_var = np.var(cropped_img)

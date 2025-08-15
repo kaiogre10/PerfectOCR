@@ -32,32 +32,37 @@ class PreprocessingStager:
             self.output_service = OutputService()
         
     def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
-        """Ejecuta secuencialmente cada worker sobre todas las imágenes recortadas.
-
-        Flujo:
-          1. Obtiene diccionario {poly_id: CroppedImage}
-          2. Para cada worker procesa todos los polígonos
-          3. Almacena temporalmente resultados binarizados para inyectarlos en fragmentator
-          4. Actualiza el manager al final
-        """
         start_time = time.time()
         logger.info("[PreprocessingManager] Iniciando pipeline secuencial directo")
+        
+        # Obtener datos
+        metadata = manager.get_metadata()
+        polygons = manager.get_polygons_with_cropped_img()
+        
+        # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
             logger.info(f"[PreprocessingManager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
-
-        metadata = manager.get_metadata
-        cropped_img = manager.get_polygons_with_cropped_img
+            
+            # Procesar cada polígono con este worker
+            for poly_id, poly_data in polygons.items():
+                cropped_img = poly_data.get("cropped_img")
+                if cropped_img is None:
+                    logger.warning(f"Imagen recortada no encontrada para {poly_id}")
+                    continue
+                    
+                # Contexto individual para cada polígono
+                context = {
+                    "poly_id": poly_id,
+                    "cropped_img": cropped_img,
+                    "metadata": metadata
+                }
+                
+                # Worker procesa esta imagen específica
+                if not worker.preprocess(context, manager):
+                    logger.error(f"Worker {worker_name} falló en {poly_id}")
+                    return None, 0.0
         
-        context: Dict[str, Any] = {
-            "metadata": metadata,
-            "cropped_img": cropped_img            
-        }
-        for worker in self.workers:
-            if not worker.preprocess(context, manager):
-                logger.error(f"InputStager: Fallo en el worker {worker.__class__.__name__}")
-                return None, 0.0
-
         elapsed = time.time() - start_time
-        logger.info(f"[PreprocessingStager] Pipeline secuencial completado en: {elapsed:.3f}s; polígonos: {len(cropped_images)}")
+        logger.info(f"[PreprocessingStager] Pipeline completado en: {elapsed:.3f}s; polígonos: {len(polygons)}")
         return manager, elapsed
