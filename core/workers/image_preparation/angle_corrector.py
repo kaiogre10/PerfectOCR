@@ -33,7 +33,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             return False
             
         # Debug para ver qué valores estamos usando
-        logger.info(f"AngleCorrector: Procesando imagen con dimensiones {img_dims}")
+        logger.debug(f"AngleCorrector: Procesando imagen con dimensiones {img_dims}")
         
         full_img = self.correct(full_img, img_dims)
         

@@ -1,13 +1,10 @@
 # PerfectOCR/core/workers/vectorial_transformation/linal_reconstructor.py
 import logging
-import math
 import time
 import numpy as np
-from typing import Dict, Any, List, Optional, Union
-from shapely.geometry import Polygon
+from typing import Dict, Any, List
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from shapely.ops import unary_union
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +20,27 @@ class LinealReconstructor(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         
         try:
-            start_time = time.time
+            start_time = time.time()
             polygons = context.get("polygons", {})
             if not polygons:
                 logger.warning("No hay polígonos para reconstruir líneas.")
                 return False
                 
-            lines = self._reconstruct_lines(polygons)
+            lines_info: Dict[str, Any] = self._reconstruct_lines(polygons)
+            
+            success = manager.create_text_lines(lines_info)
+            total_time = time.time() - start_time
+
+            logger.info(f"Armado de líneas completado en {total_time:.4f}")
+
+            if not success:
+                logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
+                return False
+
+            return True
+        except Exception as e:
+            logger.error(f"error {e}")
+            return False
                 
         
     def _reconstruct_lines(self, polygons: Dict[str, Any]) -> Dict[str, Any]:
@@ -99,17 +110,11 @@ class LinealReconstructor(VectorizationAbstractWorker):
             texts = [p.get("ocr_text", "") for p in current_line_polys]
 
             lines_info[line_id] = {
-                "bounding_box": current_line_bbox,
-                "centroid": [np.mean(centroids_x), np.mean(centroids_y)] if centroids_x else [0, 0],
+                "line_bbox": current_line_bbox,
+                "line_centroid": [np.mean(centroids_x), np.mean(centroids_y)] if centroids_x else [0, 0],
                 "polygon_ids": polygon_ids,
                 "text": " ".join(texts).strip()
             }
 
         self.lines_info = lines_info
-        return lines_info     
-        
-    def _get_lines_geometry(self) -> Dict[str, Any]:
-        """
-        Devuelve la geometría de las líneas construida.
-        """
-    return self.lines_info.copy()
+        return lines_info

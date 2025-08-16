@@ -61,7 +61,7 @@ class ImageLoader:
             metadata['error'] = error_msg
             return None, metadata
         
-        logger.info(f"Size de la imagen completa: {image_array.size}")
+        logger.debug(f"Size de la imagen completa: {image_array.size}")
 
         cv2_height, cv2_width = image_array.shape[:2]
         if len(image_array.shape) == 3:
@@ -69,7 +69,7 @@ class ImageLoader:
         else:
             gray_image = image_array
         
-        logger.info(f"Shape de la imagen completa: {cv2_width, cv2_height}")
+        logger.debug(f"Shape de la imagen completa: {cv2_width, cv2_height}")
         # Extraer metadatos completos con Pillow
         with Image.open(input_path) as img:
             try:

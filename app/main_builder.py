@@ -87,7 +87,8 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
-            ["lineal", "dbscan"], context
+            ["lineal", "dbscan"], 
+            context
         )
                 
         manager = DataFormatter()
@@ -123,8 +124,9 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         )
         
         vectorization_stager = VectorizationStager(
-            stage_config=config_services.manager_config,
             workers=vectorization_workers,
+            stage_config=config_services.manager_config,
+            output_paths=output_paths,
             project_root=project_root
         )
         
@@ -132,7 +134,8 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             manager=manager,
             input_stager=input_stager,
             preprocessing_stager=preprocessing_stager,
-           ocr_stager=ocr_stager
+            ocr_stager=ocr_stager,
+            vectorization_stager=vectorization_stager
         )
         builders.append(builder)
         

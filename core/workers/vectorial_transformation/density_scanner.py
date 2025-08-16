@@ -1,13 +1,12 @@
 # PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
-from sklearnex import patch_sklearn
+from sklearnex import patch_sklearn # type: ignore
 patch_sklearn()
-from sklearnex.cluster import DBSCAN
+from sklearn.cluster import DBSCAN
 import math
-import json
-import os
 import numpy as np
+import time
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 from sklearn.preprocessing import StandardScaler
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -21,303 +20,219 @@ class DensityScanner(VectorizationAbstractWorker):
         self.worker_config = config.get('dsbscan', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)        
-        
+                
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        
-    def get_char_value(self, desnsity_map: str, char: int):
-        """Mapea caracteres a valores según la tabla proporcionada"""
-        with open('density_encoder.json', 'r', encoding='utf-8') as f:
-            char_map = json.load(f)
-            
-        return char_map.get(char, 0)
-
-    def convert_line_to_values(line):
-        """Convierte línea de texto a valores numéricos (sin espacios ni indentaciones)"""
-        # Eliminar todos los espacios en blanco de la línea
-        line = ''.join(line.split())
-        return [get_char_value(char) for char in line]
-    
-    def load_lines_from_json(json_file_path):
-        """Carga líneas desde un archivo JSON"""
+        """
+        Analiza líneas codificadas para detectar tablas usando DBSCAN.
+        """
         try:
-            with open(json_file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            start_time = time.time()
+            logger.info("Scanner iniciado")
             
-            # Extraer líneas del JSON con estructura grouped_lines
-            if isinstance(data, dict) and 'grouped_lines' in data:
-                lines = []
-                for line_group in data['grouped_lines']:
-                    if isinstance(line_group, list):
-                        # Extraer texto de cada palabra en la línea
-                        line_text = ' '.join([word.get('text', '') for word in line_group if isinstance(word, dict)])
-                        if line_text.strip():  # Solo agregar líneas no vacías
-                            lines.append(line_text)
-                return lines
-            elif isinstance(data, list):
-                return data
-            elif isinstance(data, dict):
-                # Buscar la clave que contenga las líneas
-                for key in ['lines', 'text', 'content', 'data']:
-                    if key in data and isinstance(data[key], list):
-                        return data[key]
-            return []
+            
+            # Obtener líneas codificadas del DataFormatter
+            encoded_lines = manager.encode_lines()
+            if not encoded_lines:
+                logger.warning("No hay líneas codificadas para analizar.")
+                return False
+            
+            # Convertir a lista de valores para procesamiento
+            lines_values = list(encoded_lines.values())
+            line_ids = list(encoded_lines.keys())
+            
+            # Analizar líneas y detectar tablas
+            table_detection_result = self._detect_tables_from_encoded_lines(lines_values, line_ids)
+            
+            # Llamar directamente al manager para guardar (como LinealReconstructor)
+            if table_detection_result["status"] == "success" and table_detection_result["table_lines"]:
+                success = manager.save_tabular_lines(table_detection_result)
+                if not success:
+                    logger.error("Error al guardar líneas tabulares en el workflow_dict")
+                    return False
+            else:
+                logger.info("No se detectaron tablas en el documento")
+            
+            total_time = time.time() - start_time
+            logger.info(f"Detección de tablas completada en {total_time:.4f}s")
+            
+            return True
+            
         except Exception as e:
-            print(f"Error al cargar {json_file_path}: {e}")
+            logger.error(f"Error en DensityScanner: {e}")
+            return False
+
+    def _detect_tables_from_encoded_lines(self, lines_values: List[List[int]], line_ids: List[str]) -> Dict[str, Any]:
+        """
+        Detecta tablas usando DBSCAN en líneas ya codificadas.
+        """
+        try:
+            # Analizar cada línea para obtener estadísticas
+            line_analyses = []
+            for line_values in lines_values:
+                if len(line_values) >= 2:
+                    analysis = self._analyze_encoded_line(line_values)
+                    if analysis:
+                        line_analyses.append(analysis)
+                else:
+                    line_analyses.append(None)
+            
+            # Filtrar análisis válidos
+            valid_analyses = [a for a in line_analyses if a is not None]
+            valid_indices = [i for i, a in enumerate(line_analyses) if a is not None]
+            
+            if len(valid_analyses) < 2:
+                logger.warning("No hay suficientes líneas válidas para clustering.")
+                return {"status": "insufficient_data", "table_lines": []}
+            
+            # Aplicar DBSCAN
+            table_indices = self._apply_dbscan_clustering(valid_analyses, valid_indices)
+            
+            # Expandir a intervalo consecutivo
+            if table_indices:
+                consecutive_indices = self._expand_to_consecutive_interval(table_indices)
+                table_line_ids = [line_ids[i] for i in consecutive_indices if i < len(line_ids)]
+            else:
+                consecutive_indices = []
+                table_line_ids = []
+            
+            return {
+                "status": "success",
+                "table_lines": table_line_ids,
+                "table_indices": consecutive_indices,
+                "total_lines_analyzed": len(lines_values),
+                "table_lines_count": len(table_line_ids)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error detectando tablas: {e}")
+            return {"status": "error", "table_lines": []}
+
+    def _analyze_encoded_line(self, line_values: List[int]) -> Dict[str, float]:
+        """
+        Analiza una línea codificada y retorna estadísticas.
+        """
+        try:
+            # Filtrar solo valores numéricos
+            numeric_values = [x for x in line_values if isinstance(x, (int, float))]
+            if len(numeric_values) < 2:
+                return None
+
+            mean = sum(numeric_values) / len(numeric_values)
+            variance = sum((x - mean) ** 2 for x in numeric_values) / (len(numeric_values) - 1)
+            std_dev = math.sqrt(variance)
+
+            # Calcular percentiles
+            sorted_values = sorted(numeric_values)
+            n = len(sorted_values)
+
+            def percentile(p):
+                index = (p / 100) * (n - 1)
+                lower = int(index)
+                upper = min(lower + 1, n - 1)
+                weight = index - lower
+                return sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
+
+            p25, p50, p75 = percentile(25), percentile(50), percentile(75)
+            iqr = p75 - p25
+
+            # Calcular skewness
+            if std_dev > 0:
+                moment3 = sum(((x - mean) / std_dev) ** 3 for x in numeric_values)
+                skewness = moment3 / n
+            else:
+                skewness = 0
+
+            return {
+                'count': len(numeric_values),
+                'mean': mean,
+                'std_dev': std_dev,
+                'iqr': iqr,
+                'p50': p50,
+                'skewness': skewness
+            }
+
+        except Exception as e:
+            logger.error(f"Error analizando línea: {e}")
+            return None
+
+    def _apply_dbscan_clustering(self, analyses: List[Dict[str, float]], valid_indices: List[int]) -> List[int]:
+        """
+        Aplica DBSCAN para agrupar líneas similares.
+        """
+        # Obtener parámetros de configuración con valores por defecto y casting robusto
+        raw_min_samples = (
+            self.worker_config.get("min_cluster_size")
+            if isinstance(self.worker_config, dict) else None
+        )
+        if raw_min_samples is None:
+            raw_min_samples = self.config.get("min_cluster_size", 2) if hasattr(self, "config") else 2
+        try:
+            min_cluster_size = int(raw_min_samples)
+            if min_cluster_size < 1:
+                min_cluster_size = 3
+        except (TypeError, ValueError):
+            min_cluster_size = 3
+
+        raw_eps = (
+            self.worker_config.get("eps")
+            if isinstance(self.worker_config, dict) else None
+        )
+        if raw_eps is None:
+            raw_eps = self.config.get("eps", 1.0) if hasattr(self, "config") else 1.0
+        try:
+            eps = float(raw_eps)
+            if eps <= 0:
+                eps = 1.0
+        except (TypeError, ValueError):
+            eps = 1.0
+        try:
+            # Preparar features para clustering
+            features = []
+            for analysis in analyses:
+                features.append([
+                    analysis['count'],
+                    analysis['mean'],
+                    analysis['std_dev'],
+                    analysis['iqr'],
+                    analysis['p50'],
+                    analysis.get('skewness', 0.0),
+                ])
+            
+            features_array = np.array(features)
+            
+            # Escalar features
+            scaler = StandardScaler()
+            features_scaled = scaler.fit_transform(features_array)
+            
+            # Aplicar DBSCAN
+            clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
+            labels = clustering.fit_predict(features_scaled)
+            
+            # Encontrar cluster principal (excluyendo ruido -1)
+            unique_labels = [l for l in set(labels) if l != -1]
+            if not unique_labels:
+                return []
+            
+            cluster_sizes = {label: list(labels).count(label) for label in unique_labels}
+            main_cluster = max(cluster_sizes, key=cluster_sizes.get)
+            
+            # Retornar índices de líneas de tabla
+            table_indices = [valid_indices[i] for i, label in enumerate(labels) if label == main_cluster]
+            
+            return table_indices
+            
+        except Exception as e:
+            logger.error(f"Error en clustering DBSCAN: {e}")
             return []
 
-
-    def calculate_mean(values):
-    """Calcula la media"""
-    return sum(values) / len(values)
-
-    def calculate_variance(values):
-    """Calcula la varianza muestral"""
-    mean = calculate_mean(values)
-    squared_deviations = [(x - mean) ** 2 for x in values]
-    return sum(squared_deviations) / (len(values) - 1)
-
-    def calculate_std_dev(variance):
-    """Calcula la desviación estándar"""
-    return math.sqrt(variance)
-
-    def calculate_skewness(values):
-    """Calcula la asimetría (skewness)"""
-    mean = calculate_mean(values)
-    n = len(values)
-    std_dev = calculate_std_dev(calculate_variance(values))
-    
-    if std_dev == 0:
-        return 0
-    
-    moment3 = sum(((x - mean) / std_dev) ** 3 for x in values)
-    return moment3 / n
-
-    def calculate_percentiles(values):
-    """Calcula percentiles 25, 50, 75"""
-    sorted_values = sorted(values)
-    n = len(sorted_values)
-    
-    def percentile(p):
-        index = (p / 100) * (n - 1)
-        lower = int(index)
-        upper = min(lower + 1, n - 1)
-        weight = index - lower
-        return sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
-    
-    return {
-        'p25': percentile(25),
-        'p50': percentile(50),
-        'p75': percentile(75)
-    }
-
-    def calculate_iqr(p25, p75):
-    """Calcula rango intercuartil"""
-    return p75 - p25
-
-    def analyze_line(line):
-        """Analiza una línea de texto y retorna estadísticas"""
-        values = convert_line_to_values(line)
+    def _expand_to_consecutive_interval(self, indices: List[int]) -> List[int]:
+        """
+        Expande lista de índices a intervalo consecutivo.
+        """
+        if not indices:
+            return []
         
-        if len(values) < 2:
-            return None
-        
-        mean = calculate_mean(values)
-        variance = calculate_variance(values)
-        std_dev = calculate_std_dev(variance)
-        skewness = calculate_skewness(values)
-        percentiles = calculate_percentiles(values)
-        iqr = calculate_iqr(percentiles['p25'], percentiles['p75'])
-        
-        return {
-            'mean': mean,
-            'variance': variance,
-            'std_dev': std_dev,
-            'skewness': skewness,
-            'p25': percentiles['p25'],
-            'p50': percentiles['p50'],
-            'p75': percentiles['p75'],
-            'iqr': iqr,
-            'count': len(values)
-        }
-
-    def process_lines(lines):
-    """Procesa múltiples líneas y muestra resultados"""
-    # Encabezados con ancho fijo
-    print(f"{'Media':<10}{'Varianza':<12}{'Desv.Est':<10}{'Asimetría':<12}{'P25':<8}{'P50':<8}{'P75':<8}{'IQR':<8}{'Conteo':<8}")
-    print("-" * 80)
-
-    for i, line in enumerate(lines):
-        result = analyze_line(line)
-        if result:
-            # Valores con ancho fijo
-            print(f"{result['mean']:<10.2f}{result['variance']:<12.2f}{result['std_dev']:<10.2f}{result['skewness']:<12.2f}{result['p25']:<8.2f}{result['p50']:<8.2f}{result['p75']:<8.2f}{result['iqr']:<8.2f}{result['count']:<8}")
-        else:
-            print(f"Línea {i+1}: Datos insuficientes")
-
-    def prepare_features_for_clustering(results):
-    """Prepara features para DBSCAN con características mejoradas"""
-    features = []
-    for result in results:
-        if result:
-            features.append([
-                result['count'],      # Número de caracteres
-                result['mean'],       # Media
-                result['std_dev'],    # Desviación estándar
-                result['iqr'],        # Rango intercuartil
-                result['p50']         # Mediana
-            ])
-    return np.array(features)
-
-    def cluster_lines(lines):
-        """Aplica DBSCAN a las líneas"""
-        results = [analyze_line(line) for line in lines]
-        
-        valid_results = [r for r in results if r is not None]
-        valid_indices = [i for i, r in enumerate(results) if r is not None]
-        
-        if len(valid_results) < 2:
-            return [], []
-        
-        features = prepare_features_for_clustering(valid_results)
-        
-        scaler = StandardScaler()
-        features_scaled = scaler.fit_transform(features)
-        
-        n_samples = len(features_scaled)
-        eps = 1.0
-        min_samples = 2
-        
-        clustering = DBSCAN(eps=eps, min_samples=min_samples)
-        labels = clustering.fit_predict(features_scaled)
-        
-        return labels, valid_indices
-
-    def identify_table_lines(lines):
-    """Identifica líneas de tabla"""
-    labels, valid_indices = cluster_lines(lines)
-    
-    if len(labels) == 0:
-        return []
-    
-    # Encontrar cluster más grande (excluyendo ruido -1)
-    unique_labels = [l for l in set(labels) if l != -1]
-    if not unique_labels:
-        return []
-    
-    cluster_sizes = {label: list(labels).count(label) for label in unique_labels}
-    main_cluster = max(cluster_sizes, key=cluster_sizes.get)
-    
-    # Devolver índices originales de líneas de tabla
-    table_indices = [valid_indices[i] for i, label in enumerate(labels) if label == main_cluster]
-    
-    return table_indices
-
-    def expand_to_consecutive_interval(indices):
-        """Expande lista de índices a intervalo consecutivo"""
-        start = indices[0]
-        end = indices[-1]
+        start = min(indices)
+        end = max(indices)
         return list(range(start, end + 1))
 
-    def process_lines_with_clustering(lines):
-        """Procesa líneas con clustering y señala las líneas agrupadas"""
-        print(f"{'Línea':<8}{'Media':<10}{'Varianza':<12}{'Desv.Est':<10}{'Asimetría':<12}{'P25':<8}{'P50':<8}{'P75':<8}{'IQR':<8}{'Conteo':<8}")
-        print("-" * 90)
-        
-        for i, line in enumerate(lines):
-            result = analyze_line(line)
-            if result:
-                print(f"{i+1:<8}{result['mean']:<10.2f}{result['variance']:<12.2f}{result['std_dev']:<10.2f}{result['skewness']:<12.2f}{result['p25']:<8.2f}{result['p50']:<8.2f}{result['p75']:<8.2f}{result['iqr']:<8.2f}{result['count']:<8}")
-            else:
-                print(f"{i+1:<8}Línea {i+1}: Datos insuficientes")
-        
-        # Identificar líneas de tabla
-        table_indices = identify_table_lines(lines)
-        consecutive_indices = expand_to_consecutive_interval(table_indices)
-        
-        print(f"\nLíneas agrupadas (base 1): {[i+1 for i in consecutive_indices]}")
-        for idx in consecutive_indices:
-            print(f"{idx+1}: {lines[idx]}")
-        
-        return consecutive_indices
-
-    def process_lines_with_dbscan(lines, output_file="lineas_agrupadas.txt"):
-        """Procesa líneas con DBSCAN y guarda resultados en archivo"""
-        # Preparar contenido para el archivo
-        output_content = []
-        output_content.append("DETECCIÓN DE LÍNEAS TABULARES CON DBSCAN")
-        output_content.append("=" * 50)
-        
-        # Mostrar tabla de estadísticas
-        stats_header = f"{'Línea':<8}{'Media':<10}{'Varianza':<12}{'Desv.Est':<10}{'Asimetría':<12}{'P25':<8}{'P50':<8}{'P75':<8}{'IQR':<8}{'Conteo':<8}"
-        output_content.append(stats_header)
-        
-        separator = "-" * 90
-        output_content.append(separator)
-        
-        for i, line in enumerate(lines):
-            result = analyze_line(line)
-            if result:
-                stats_line = f"{i+1:<8}{result['mean']:<10.2f}{result['variance']:<12.2f}{result['std_dev']:<10.2f}{result['skewness']:<12.2f}{result['p25']:<8.2f}{result['p50']:<8.2f}{result['p75']:<8.2f}{result['iqr']:<8.2f}{result['count']:<8}"
-                output_content.append(stats_line)
-            else:
-                error_line = f"{i+1:<8}Línea {i+1}: Datos insuficientes"
-                output_content.append(error_line)
-        
-        output_content.append("")
-        output_content.append("RESULTADOS DBSCAN:")
-        
-        # Aplicar DBSCAN
-        dbscan_indices = identify_table_lines(lines)
-        dbscan_consecutive = expand_to_consecutive_interval(dbscan_indices)
-        
-        dbscan_result = f"Líneas agrupadas (base 1): {[i+1 for i in dbscan_consecutive]}"
-        output_content.append(dbscan_result)
-        
-        output_content.append("")
-        output_content.append(f"Total de líneas agrupadas: {len(dbscan_consecutive)}")
-        
-        # Agregar las líneas agrupadas
-        output_content.append("")
-        output_content.append("LÍNEAS TABULARES DETECTADAS:")
-        output_content.append("=" * 30)
-        
-        if dbscan_consecutive:
-            for idx in dbscan_consecutive:
-                output_content.append(f"{idx+1}: {lines[idx]}")
-        else:
-            output_content.append("No se detectaron líneas tabulares.")
-        
-        # Guardar en archivo
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(output_content))
-        
-        return dbscan_consecutive
-
-    def _identify_table():
-        """Procesa todos los archivos JSON en la carpeta input/"""
-        input_dir = "input"
-        
-        if not os.path.exists(input_dir):
-            return
-        
-        json_files = [f for f in os.listdir(input_dir) if f.endswith('.json')]
-        
-        if not json_files:
-            return
-        
-        for json_file in json_files:
-            json_path = os.path.join(input_dir, json_file)
-            
-            lines = load_lines_from_json(json_path)
-            
-            if not lines:
-                continue
-            
-            # Generar nombre de archivo de salida basado en el JSON de entrada
-            output_filename = json_file.replace('.json', '_lineas_agrupadas.txt')
-            
-            # Procesar las líneas con DBSCAN
-            process_lines_with_dbscan(lines, output_filename)
-
-    if __name__ == "__main__":
-        process_json_files()

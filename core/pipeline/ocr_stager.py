@@ -28,7 +28,7 @@ class OCRStager:
         logger.info(f"[OCREngineManager] Polígonos obtenidos: {len(polygons)}")
         for poly_id, poly_data in list(polygons.items())[:3]:  # Solo los primeros 3
             cropped_img = poly_data.get("cropped_img", {})
-            logger.info(f"[OCREngineManager] {poly_id}: cropped_img type={type(cropped_img)}, shape={getattr(cropped_img, 'shape', 'N/A')}")
+            logger.debug(f"[OCREngineManager] {poly_id}: cropped_img type={type(cropped_img)}, shape={getattr(cropped_img, 'shape', 'N/A')}")
         
         # Preparar batch (igual que preprocessing pero optimizado para OCR)
         image_list: List[np.ndarray[Any, Any]] = []
@@ -45,7 +45,7 @@ class OCRStager:
                 # Validar que la imagen sea procesable
                 if hasattr(cropped_img, 'shape') and len(cropped_img.shape) >= 2:
                     if min(cropped_img.shape[:2]) > 0:  # Dimensiones válidas
-                        # ✅ CONVERTIR A 3 CANALES para PaddleOCR
+                        # CONVERTIR A 3 CANALES para PaddleOCR
                         if len(cropped_img.shape) == 2:  # Escala de grises
                             cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
                         elif cropped_img.shape[2] == 1:  # 1 canal
@@ -66,7 +66,11 @@ class OCRStager:
         if batch_results:
             success = manager.update_ocr_results(batch_results, polygon_ids)
             processed_count = len(batch_results) if success else 0
-            # ...existing code...
+
+            for poly_id in polygon_ids:
+                if poly_id in manager.get_polygons():
+                    manager.workflow_dict["polygons"][poly_id]["cropped_img"] = None
+                    #logger.debug("Cropped_img liberadas, texto generado")
         
         logger.info(f"[OCREngineManager] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados.")
         image_name = manager.get_metadata().get("image_name", "unknown_image")

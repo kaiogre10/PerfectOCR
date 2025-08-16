@@ -104,6 +104,46 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                 },
             },
         },
+        "all_lines": {
+            "type": "object",
+            "patternProperties": {
+                "^line_\\d{4}$": {
+                    "type": "object",
+                    "properties": {
+                        "lineal_id": {"type": "string"},
+                        "text": {"type": "string"},
+                        "encoded_text": {"type": "array", "items": {"type": "integer"}},
+                        "polygon_ids": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
+                        "line_bbox": {
+                                    "type": "array",
+                                    "items": {"type": "number"},
+                                    "minItems": 4,
+                                    "maxItems": 4
+                                },
+                        "line_centroid": {
+                                    "type": "array",
+                                    "items": {"type": "number"},
+                                    "minItems": 2,
+                                    "maxItems": 2
+                        },
+                    },
+                },
+            },
+        },
+        "tabular_lines": {
+           "type": "object",
+            "patternProperties": {
+            "line_id": {
+                "type": "object",
+                "properties": {
+                "texto": {"type": "string"}
+                },
+            },
+            },
+        },
     },
 }
 
@@ -264,7 +304,21 @@ class Polygons:
     was_fragmented: bool
     status: bool
     stage: str
-                
+
+@dataclass
+class TabularLines:
+    lineal_id: str
+    complete_text: str
+
+@dataclass
+class AllLines:
+    lineal_id: str
+    text: str
+    encoded_text: List[int]
+    polygon_ids: List[str]
+    line_bbox: List[float]
+    line_centroid: List[float]
+
 @dataclass(frozen=True)
 class Metadata:
     image_name: str
@@ -280,3 +334,5 @@ class WorkflowDict:
     full_img: Optional[np.ndarray[Any, Any]]
     metadata:  Metadata
     polygons: Dict[str, Polygons]
+    all_lines: Dict[str, AllLines]
+    tabular_lines: Dict[str, TabularLines]

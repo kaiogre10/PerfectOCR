@@ -24,12 +24,11 @@ class PreprocessingStager:
         # Obtener datos
         metadata = manager.get_metadata()
         polygons = manager.get_polygons_with_cropped_img()
-        output_paths = self.output_paths
         
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
-            logger.info(f"[PreprocessingManager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            logger.debug(f"[PreprocessingManager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
             # Procesar cada polígono con este worker
             for poly_id, poly_data in polygons.items():
@@ -39,7 +38,7 @@ class PreprocessingStager:
                     continue
                     
                 # Contexto individual para cada polígono
-                context = {
+                context: Dict[str, Any] = {
                     "poly_id": poly_id,
                     "cropped_img": cropped_img,
                     "metadata": metadata,

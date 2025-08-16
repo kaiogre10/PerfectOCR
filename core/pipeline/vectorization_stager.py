@@ -14,24 +14,39 @@ class VectorizationStager:
         self.workers = workers
         self.stage_config = stage_config
         self.output_paths = output_paths
-
-        
-        logger.debug("Tensor inicializado con sus workers.")
-
+    
     def vectorize_results(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         """
         Orquesta el flujo completo de vectorización siguiendo una estrategia por fases
         para máxima eficiencia de memoria.
-
-        Fase 1: Agrupación de polígonos en líneas.
-        Fase 2: Generación de secuencias de densidad LIGERAS para todas las líneas.
-        Fase 3: Detección de la tabla usando las secuencias ligeras (DTW).
-        Fase 4 (Condicional): Si se detecta una tabla, se generan los vectores
-                 PESADOS (Elementales y Atómicos Enriquecidos) solo para
-                 las líneas tabulares, se usan y se descartan."""
+        """
         
         start_time = time.time()
-        logger.info("[PreprocessingManager] Iniciando pipeline secuencial directo")
+        logger.info("[VectorStager] Iniciando pipeline de vectorización")
+        metadata = manager.get_metadata()
+        polygons = manager.get_polygons()
+        
+        
+        # Para cada worker, procesar todos los polígonos
+        for worker_idx, worker in enumerate(self.workers):
+            worker_name = worker.__class__.__name__
+            logger.debug(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+                                
+            # Contexto con TODOS los polígonos para el worker
+            context: Dict[str, Any] = {
+                "polygons": polygons,  # TODOS los polígonos, no solo uno
+                "metadata": metadata,
+                "output_paths": self.output_paths,
+                "project_root": self.project_root,
+            }
+                
+            if not worker.vectorize(context, manager):
+                logger.error(f"Worker {worker_name} falló")
+                return None, 0.0
+        
+        elapsed = time.time() - start_time
+        logger.info(f"[VectorStager] Pipeline completado en: {elapsed:.3f}s")
+        return manager, elapsed
             
 
     #     indices, non_indices, intervalo = self._table_detector.detectar_lineas_tabulares(sequences,
@@ -185,7 +200,3 @@ class VectorizationStager:
             
     #     except Exception as e:
     #         logger.error(f"Error al guardar líneas agrupadas en texto: {e}", exc_info=True)
-    
-        vect_time = time.time() - start_time
-        logger.info(f"[PreprocessingStager] Pipeline completado en: {vect_time:.3f}s")
-        return manager, vect_time

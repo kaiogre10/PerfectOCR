@@ -10,7 +10,7 @@ class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
         
         return {
             "lineal": self._create_lineal,
-            "dsbscan": self._create_scanner,
+            "dbscan": self._create_scanner,
         }
         
     def _create_lineal(self, context: Dict[str, Any]) -> LinealReconstructor:
