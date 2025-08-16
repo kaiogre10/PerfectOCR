@@ -1,6 +1,4 @@
 # PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
-from sklearnex import patch_sklearn # type: ignore
-patch_sklearn()
 from sklearn.cluster import DBSCAN
 import math
 import numpy as np
@@ -169,9 +167,9 @@ class DensityScanner(VectorizationAbstractWorker):
         try:
             min_cluster_size = int(raw_min_samples)
             if min_cluster_size < 1:
-                min_cluster_size = 3
+                min_cluster_size = 2  # Usar 2 como en el original
         except (TypeError, ValueError):
-            min_cluster_size = 3
+            min_cluster_size = 2  # Usar 2 como en el original
 
         raw_eps = (
             self.worker_config.get("eps")
@@ -208,17 +206,23 @@ class DensityScanner(VectorizationAbstractWorker):
             clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
             labels = clustering.fit_predict(features_scaled)
             
+            logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
+            
             # Encontrar cluster principal (excluyendo ruido -1)
             unique_labels = [l for l in set(labels) if l != -1]
             if not unique_labels:
+                logger.debug("DBSCAN: No se encontraron clusters válidos (todos son ruido -1)")
                 return []
             
             cluster_sizes = {label: list(labels).count(label) for label in unique_labels}
             main_cluster = max(cluster_sizes, key=cluster_sizes.get)
             
+            logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
+            
             # Retornar índices de líneas de tabla
             table_indices = [valid_indices[i] for i, label in enumerate(labels) if label == main_cluster]
             
+            logger.debug(f"DBSCAN: table_indices={table_indices}")
             return table_indices
             
         except Exception as e:

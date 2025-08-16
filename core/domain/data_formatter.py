@@ -293,9 +293,12 @@ class DataFormatter:
                 logger.error("No hay workflow_dict o all_lines para guardar líneas tabulares.")
                 return False
             
+            # Extraer las líneas detectadas del resultado
+            table_line_ids = table_detection_result.get("table_lines", [])
+            
             # Crear diccionario de líneas tabulares
             tabular_lines = {}
-            for line_id in table_detection_result:
+            for line_id in table_line_ids:
                 if line_id in self.workflow_dict["all_lines"]:
                     line_data = self.workflow_dict["all_lines"][line_id]
                     tabular_lines[line_id] = {
