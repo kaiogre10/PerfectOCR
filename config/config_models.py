@@ -138,11 +138,15 @@ class PreprocessingConfig(ConfigWithNumpy):
     fragmentation: Fragmentador  
     sharpening: SharpeningConfig
 
-class TableDetectionParams(ConfigWithNumpy):
+class DBSCAN(ConfigWithNumpy):
     min_cluster_size: int
+    
+class LINEAL(ConfigWithNumpy):
+    overlap: float
 
 class VectorConfig(ConfigWithNumpy):
-    table_detection_params: TableDetectionParams
+    lineal: LINEAL
+    dbscan: DBSCAN
 
 class ModulesConfig(ConfigWithNumpy):
     image_loader: ImageLoader

@@ -30,9 +30,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             padding = int(self.config.get("cropping_padding", 5))
             img_h, img_w = full_img.shape[:2]
 
-            # Asignar line_id usando la lógica del lineal_reconstructor
-            id_map = self.assign_line_id(polygons)
-
             # Diccionario para almacenar las imágenes recortadas
             cropped_images: Dict[str, np.ndarray[Any, Any]] = {}
             cropped_geometries: Dict[str, Dict[str, Any]] = {}
@@ -73,7 +70,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # Guardamos todas las imágenes recortadas en el workflow
             
-            success = manager.save_cropped_images(cropped_images, id_map, cropped_geometries)
+            success = manager.save_cropped_images(cropped_images, cropped_geometries)
             if not success:
                 logger.error("PolygonExtractor: Error al guardar imágenes recortadas en el workflow")
                 return False
@@ -88,38 +85,3 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         except Exception as e:
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
             return False
-
-    def assign_line_id(self, polygons: Dict[str, Any]) -> Dict[str, str]:
-        """
-        Asigna un 'line_id' a cada polígono.
-        Devuelve un mapeo polygon_id -> line_id.
-        """
-        if not polygons:
-            logger.warning("No hay polígonos para asignar line_id.")
-            return {}
-
-        # Ordenar por la coordenada Y del centroide para simular líneas
-        prepared_sorted = sorted(
-            polygons.values(),
-            key=lambda p: p.get("geometry", {}).get("centroid", [0, 0])[1]
-        )
-        id_map: Dict[str, str] = {}
-        line_counter = 1
-        last_centroid_y = None
-        line_id = f"line_{line_counter:04d}"
-
-        for poly in prepared_sorted:
-            centroid = poly.get("geometry", {}).get("centroid")
-            if centroid is None:
-                continue
-            centroid_y = centroid[1]
-            if last_centroid_y is not None and abs(centroid_y - last_centroid_y) > 20:
-                # Si la diferencia en Y es significativa, nueva línea
-                line_counter += 1
-                line_id = f"line_{line_counter:04d}"
-            poly_id = poly.get("polygon_id")
-            if poly_id:
-                id_map[poly_id] = line_id
-            last_centroid_y = centroid_y
-
-        return id_map

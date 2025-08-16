@@ -1,20 +1,28 @@
 # PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
 from sklearnex import patch_sklearn
 patch_sklearn()
+from sklearnex.cluster import DBSCAN
 import math
 import json
 import os
 import numpy as np
+import logging
 from typing import Dict, Any
-from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
+from core.factory.abstract_worker import VectorizationAbstractWorker
+from core.domain.data_formatter import DataFormatter
 
-class DensityScanner:
-    def __init__(self, config: dict, project_root: str): 
-        self.config = config
+logger = logging.getLogger(__name__)
+
+class DensityScanner(VectorizationAbstractWorker):
+    def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
         self.project_root = project_root
-        density_map = self.config.get('density_map', {})
-        # Cargar el mapa de caracteres desde el JSON
+        self.worker_config = config.get('dsbscan', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("table_lines", False)        
+        
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         
     def get_char_value(self, desnsity_map: str, char: int):
         """Mapea caracteres a valores según la tabla proporcionada"""

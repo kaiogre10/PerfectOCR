@@ -78,14 +78,14 @@ class PaddleOCRWrapper:
             
             # Validar el resultado
             if not result or not result[0] or not result[0][0]:
-                logger.debug("OCR no devolvió resultados para un polígono.")
+                logger.info("OCR no devolvió resultados para un polígono.")
                 return None
 
             # Extraer texto y confianza
             text, confidence = result[0][0]
             
             total_time = time.perf_counter() - start_time
-            logger.debug(f"Total tiempo polígono: {total_time:.4f}s - Texto: '{text}'")
+            logger.info(f"Total tiempo polígono: {total_time:.4f}s - Texto: '{text}'")
             
             return {
                 "text": str(text).strip(),
@@ -111,7 +111,7 @@ class PaddleOCRWrapper:
 
         try:
             start_time = time.perf_counter()
-            valid_images = []
+            valid_images: List[np.ndarray[Any, Any]] = []
             for idx, img in enumerate(image_list):
                 if img is None or not hasattr(img, "shape") or len(img.shape) < 2 or img.size == 0:
                     logger.warning(f"Imagen inválida en el batch (índice {idx}): {type(img)} - shape: {getattr(img, 'shape', None)}")
@@ -125,11 +125,11 @@ class PaddleOCRWrapper:
             logger.info(f"Batch OCR para {len(image_list)} polígonos completado en: {total_time:.3f}s")
             
             if len(batch_results) == 1 and isinstance(batch_results[0], list):
-                consolidated_results = batch_results[0]
+                consolidated_results: List[Any] = batch_results[0]
                 
                 if len(consolidated_results) == len(image_list):
                     logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
-                    final_results = []
+                    final_results: List[Dict[str, str|float]] = []
                     for text, confidence in consolidated_results:
                         processed_result = {
                             "text": str(text).strip(),

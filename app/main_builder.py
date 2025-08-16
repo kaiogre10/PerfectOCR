@@ -6,6 +6,7 @@ from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.input_stager import InputStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
+from core.pipeline.vectorization_stager import VectorizationStager
 from core.factory.main_factory import MainFactory
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.domain.data_formatter import DataFormatter
@@ -22,7 +23,7 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
         logging.info("Activando ConfigManager con validación robusta...")
         config_services = ConfigService(config_path)
     
-        # 3. Main crea WorkFlowBuilder con configuración centralizada
+        # 2. Main crea WorkFlowBuilder con configuración centralizada
         logging.info("Creando WorkFlowBuilder...")
         workflow_manager = WorkFlowBuilder(
             config_services=config_services,
@@ -42,13 +43,11 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
         results = execute_processing(builders, workflow_report)
         return results
         
-        
     except Exception as e:
         logging.error(f"Error fatal en main: {e}", exc_info=True)
         return {"error": str(e)}
-        
-    finally:
-        
+
+    finally:        
         try:
             logging.info("Procesamiento finalizado, iniciando limpieza de caché.")
             cleanup_project_cache(project_root)
@@ -85,6 +84,11 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             ["moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
             context
         )
+        
+        vectorizing_factory = worker_factory.get_vectorizing_factory()
+        vectorization_workers = vectorizing_factory.create_workers(
+            ["lineal", "dbscan"], context
+        )
                 
         manager = DataFormatter()
         
@@ -115,6 +119,12 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             stage_config=config_services.manager_config,
             paddleocr=paddleocr,
             output_paths=output_paths,
+            project_root=project_root
+        )
+        
+        vectorization_stager = VectorizationStager(
+            stage_config=config_services.manager_config,
+            workers=vectorization_workers,
             project_root=project_root
         )
         

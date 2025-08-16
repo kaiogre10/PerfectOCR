@@ -2,6 +2,7 @@
 from typing import Dict, Any
 from core.workers.image_preparation.image_preparation_factory import ImagePreparationFactory
 from core.workers.preprocessing.preprocessing_factory import PreprocessingFactory
+from core.workers.vectorial_transformation.vectorizing_factory import VectorizingFactory
 
 class MainFactory:
     """Factory universal que coordina todas las factories de módulos."""
@@ -17,6 +18,9 @@ class MainFactory:
         # Crear configuración enriquecida para preprocesamiento
         preprocessing_config = nested_modules.get('preprocessing', {}).copy()
         preprocessing_config['enabled_outputs'] = enabled_outputs
+        
+        vectorizing_config = nested_modules.get('vectorization', {}).copy()
+        vectorizing_config['enabled_outputs'] = enabled_outputs
 
         # Registro de fábricas por nombre de módulo
         self.module_factories = {
@@ -25,7 +29,12 @@ class MainFactory:
                 project_root
             ),
             "preprocessing": PreprocessingFactory(
-                preprocessing_config, # Usar la configuración enriquecida
+                preprocessing_config,
+                project_root
+            ),
+            
+            "vectorization": VectorizingFactory(
+                vectorizing_config,
                 project_root
             ),
         }
@@ -42,4 +51,9 @@ class MainFactory:
     def get_preprocessing_factory(self) -> PreprocessingFactory:
         factory = self.module_factories["preprocessing"]
         assert isinstance(factory, PreprocessingFactory)
+        return factory
+        
+    def get_vectorizing_factory(self) -> VectorizingFactory:
+        factory = self.module_factories["vectorization"]
+        assert isinstance(factory, VectorizingFactory)
         return factory

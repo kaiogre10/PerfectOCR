@@ -27,3 +27,11 @@ class PreprossesingAbstractWorker(BaseWorker):
         Recibe la imagen para corregirla si es necesario
         """
         pass
+    
+class VectorizationAbstractWorker(BaseWorker):
+    @abstractmethod
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        """
+        Vectoriza el resultado del texto ocr
+        """
+        pass

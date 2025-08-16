@@ -27,15 +27,16 @@ class OCRStager:
         # DEBUG: Ver qué contiene polygons
         logger.info(f"[OCREngineManager] Polígonos obtenidos: {len(polygons)}")
         for poly_id, poly_data in list(polygons.items())[:3]:  # Solo los primeros 3
-            cropped_img = poly_data.get("cropped_img")
+            cropped_img = poly_data.get("cropped_img", {})
             logger.info(f"[OCREngineManager] {poly_id}: cropped_img type={type(cropped_img)}, shape={getattr(cropped_img, 'shape', 'N/A')}")
         
         # Preparar batch (igual que preprocessing pero optimizado para OCR)
-        image_list = []
-        polygon_ids = []
+        image_list: List[np.ndarray[Any, Any]] = []
+        polygon_ids: List[str] = []
         
         for poly_id, poly_data in polygons.items():
-            cropped_img = poly_data.get("cropped_img")
+            cropped_img = poly_data.get("cropped_img", {})
+            cropped_img: np.ndarray[Any, Any]
             if cropped_img is not None:
                 # Convertir a np.ndarray si es necesario
                 if isinstance(cropped_img, list):
@@ -58,18 +59,14 @@ class OCRStager:
             return manager, 0.0
         
         # Procesar BATCH (mantener rendimiento)
-        batch_results = self.paddle.recognize_text_from_batch(image_list)
+        batch_results: List[Optional[Dict[str, Any]]] = self.paddle.recognize_text_from_batch(image_list)
         
-        # Actualizar resultados (igual que preprocessing)
+        # Actualizar resultados usando el método centralizado
         processed_count = 0
         if batch_results:
-            for idx, res in enumerate(batch_results):
-                if idx < len(polygon_ids):
-                    poly_id = polygon_ids[idx]
-                    if res and manager.workflow_dict and poly_id in manager.workflow_dict["polygons"]:
-                        manager.workflow_dict["polygons"][poly_id]["ocr_text"] = res.get("text", "")
-                        manager.workflow_dict["polygons"][poly_id]["ocr_confidence"] = res.get("confidence")
-                        processed_count += 1
+            success = manager.update_ocr_results(batch_results, polygon_ids)
+            processed_count = len(batch_results) if success else 0
+            # ...existing code...
         
         logger.info(f"[OCREngineManager] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados.")
         image_name = manager.get_metadata().get("image_name", "unknown_image")

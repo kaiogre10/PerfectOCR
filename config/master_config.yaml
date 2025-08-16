@@ -49,6 +49,8 @@ enabled_outputs:
     sharp_poly: false
     binarized_polygons: false
     problematic_polygons: false
+    reconstructed_lines: false
+    table_lines: false
 
 # Configuración de procesamiento
 processing:
@@ -129,5 +131,8 @@ modules:
       approx_poly_epsilon: 0.005
 
   vectorization:
-    table_detection_params:
+    lineal:
+      overlap: 0.3
+    
+    dbscan:
       min_cluster_size: 2

@@ -75,9 +75,9 @@ class DataFormatter:
                     "perimeter": None,
                     "line_id": "",
                     "ocr_text": "",
-                    "ocr_confidence": None,
-                    "was_fragmented": False,
-                    "status": False,
+                    "ocr_confidence": float,
+                    "was_fragmented": bool,
+                    "status": bool,
                     "stage": ""
                 }
             if self.workflow_dict:
@@ -134,7 +134,6 @@ class DataFormatter:
     def save_cropped_images(
         self,
         cropped_images: Dict[str, np.ndarray[Any, Any]],
-        line_ids: Dict[str, str],
         cropped_geometries: Dict[str, Dict[str, Any]]
     ) -> bool:
         """Guarda imágenes recortadas, line_ids y geometría de recorte en los polígonos del workflow_dict"""
@@ -145,16 +144,13 @@ class DataFormatter:
 
             for poly_id, img in cropped_images.items():
                 if poly_id in self.workflow_dict["polygons"]:
-                    # ✅ MANTENER como np.ndarray, NO convertir a list
+                    # MANTENER como np.ndarray, NO convertir a list
                     self.workflow_dict["polygons"][poly_id]["cropped_img"] = img  # Sin .tolist()
                     if poly_id in cropped_geometries:
                         self.workflow_dict["polygons"][poly_id]["cropped_geometry"] = cropped_geometries[poly_id]
 
-            for poly_id, line_id in line_ids.items():
-                if poly_id in self.workflow_dict["polygons"]:
-                    self.workflow_dict["polygons"][poly_id]["line_id"] = line_id
 
-            logger.info(f"Guardadas {len(cropped_images)} imágenes recortadas, {len(line_ids)} line_ids y geometría de recorte.")
+            logger.info(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte.")
             return True
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}")
@@ -194,3 +190,27 @@ class DataFormatter:
             # Actualizar metadatos
             self.workflow_dict["polygons"][poly_id]["stage"] = worker_name
             self.workflow_dict["polygons"][poly_id]["status"] = success
+            
+    def update_ocr_results(self, batch_results: List[Optional[Dict[str, Any]]], polygon_ids: List[str]) -> bool:
+        """
+        Actualiza los resultados de OCR en los polígonos del workflow_dict.
+        batch_results: lista de dicts con 'text' y 'confidence'
+        polygon_ids: lista de ids de los polígonos procesados
+        """
+        try:
+            if not self.workflow_dict:
+                logger.error("No hay workflow_dict inicializado para actualizar resultados OCR.")
+                return False
+
+            for idx, res in enumerate(batch_results):
+                if idx < len(polygon_ids):
+                    poly_id = polygon_ids[idx]
+                    if poly_id in self.workflow_dict["polygons"]:
+                        self.workflow_dict["polygons"][poly_id]["ocr_text"] = res.get("text", "")
+                        self.workflow_dict["polygons"][poly_id]["ocr_confidence"] = res.get("confidence")
+                        
+            logger.info("Texto actualizado")
+            return True
+        except Exception as e:
+            logger.error(f"Error actualizando resultados OCR: {e}")
+            return False

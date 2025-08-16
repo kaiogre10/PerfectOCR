@@ -22,7 +22,7 @@ class PreprocessingFactory(AbstractBaseFactory[PreprossesingAbstractWorker]):
             # "binarization": self._create_binarization,
             # "fragmentator": self._create_fragmentator,
         }
-    # 
+         
     def _create_moire(self, context: Dict[str, Any]) -> MoireDenoiser:
         return MoireDenoiser(config=self.module_config, project_root=self.project_root)
 
