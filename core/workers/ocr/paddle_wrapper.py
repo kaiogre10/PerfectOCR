@@ -120,12 +120,12 @@ class PaddleOCRWrapper:
             if not valid_images:
                 logger.error("No hay imágenes válidas para el reconocimiento por lotes.")
                 return []
-            batch_result: List[Any] = self.engine.ocr(image_list, cls=False, det=False)  # type: ignore
+            batch_results: List[Any] = self.engine.ocr(image_list, cls=False, det=False)  # type: ignore
             total_time = time.perf_counter() - start_time
             logger.info(f"Batch OCR para {len(image_list)} polígonos completado en: {total_time:.3f}s")
             
-            if len(batch_result) == 1 and isinstance(batch_result[0], list):
-                consolidated_results: List[List[Any]] = batch_result[0]
+            if len(batch_results) == 1 and isinstance(batch_results[0], list):
+                consolidated_results: List[List[Any]] = batch_results[0]
                 
                 if len(consolidated_results) == len(image_list):
                     logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
@@ -146,7 +146,7 @@ class PaddleOCRWrapper:
             # Escenario ideal (si PaddleOCR se comportara como se espera en el futuro)
             logger.info("Procesando resultados con la estructura esperada (un resultado por imagen).")
             final_results = []
-            for i, result_for_image in enumerate(batch_result):
+            for i, result_for_image in enumerate(batch_results):
                 logger.debug(f"Procesando resultado {i}: {result_for_image}")
                 if not result_for_image or not result_for_image[0] or not result_for_image[0][0]:
                     logger.debug(f"Resultado {i} vacío o inválido: {result_for_image}")

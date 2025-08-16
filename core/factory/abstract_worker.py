@@ -30,7 +30,7 @@ class PreprossesingAbstractWorker(BaseWorker):
     
 class VectorizationAbstractWorker(BaseWorker):
     @abstractmethod
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         """
         Vectoriza el resultado del texto ocr
         """

@@ -1,8 +1,10 @@
 # core/domain/workflow_models.py
 import numpy as np
+import pandas as pd
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from typing import Any
+import pandas as pd
 
 WORKFLOW_SCHEMA: Dict[str , Any] = {
     "type": "object",
@@ -274,6 +276,13 @@ DENSITY_ENCODER: Dict[str, int] = {
     "e": 113
 }
 
+
+@dataclass
+class StructuredTable:
+    df: pd.DataFrame
+    columns: List[str]
+    semantic_types: Optional[List[str]] = None
+    
 @dataclass
 class CroppedGeometry:
     padding_bbox: List[float]

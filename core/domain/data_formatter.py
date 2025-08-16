@@ -1,10 +1,11 @@
 # core/domain/workflow_manager.py
-from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER
+from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable
 import numpy as np
 import jsonschema
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,8 @@ class DataFormatter:
         self.workflow: Optional[WorkflowDict] = None
         self.schema = WORKFLOW_SCHEMA
         self.encoder = DENSITY_ENCODER
+    # Estructura de tabla en memoria para intercambio entre workers
+        self.structured_table: Optional[StructuredTable] = None
 
     def create_dict(self, dict_id: str, full_img: np.ndarray[Any, Any], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo dict"""
@@ -52,8 +55,7 @@ class DataFormatter:
     def create_polygon_dicts(self, results: Optional[List[Any]]) -> bool:
         """
         Procesa los resultados de PaddleOCR y los guarda como diccionario de polígonos en el workflow_dict.
-        """
-        
+        """        
         polygons: Dict[str, Dict[str, Any]] = {}
         try:
             for idx, poly_pts in enumerate(results[0]):
@@ -105,6 +107,12 @@ class DataFormatter:
         
     def get_tabular_lines(self) -> Dict[str, Any]:
         return self.workflow_dict["tabular_lines"] if self.workflow_dict else {}
+        
+    def get_structured_table(self) -> Optional[pd.DataFrame]:
+        return self.structured_table.df if self.structured_table else None
+
+    def get_structured_semantic_types(self) -> Optional[List[str]]:
+        return self.structured_table.semantic_types if self.structured_table else None
         
     def get_polygons_with_cropped_img(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -238,14 +246,13 @@ class DataFormatter:
             self.workflow_dict["all_lines"] = all_lines
             num_lines = len(all_lines)
             logger.info(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
-            for line_id, line_data in all_lines.items():
-                logger.info(f"Línea {line_id} - Texto: {line_data.get('text', '')}")
+            # for line_id, line_data in all_lines.items():
+            #     logger.info(f"Línea {line_id} - Texto: {line_data.get('text', "")}")
                 
             return True
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}")
             return False
-
 
     def encode_lines(self, line_ids: Optional[List[str]] = None) -> Dict[str, List[int]]:
         """
@@ -262,7 +269,7 @@ class DataFormatter:
             if not self.workflow_dict or "all_lines" not in self.workflow_dict:
                 logger.warning("No hay líneas disponibles para codificar.")
                 return {}
-            encoded_lines = {}
+            encoded_lines: Dict[str, List[int]] = {}
             all_lines = self.workflow_dict["all_lines"]
             # Determinar qué líneas codificar
             lines_to_encode = line_ids if line_ids is not None else list(all_lines.keys())
@@ -325,12 +332,18 @@ class DataFormatter:
             self.workflow_dict["tabular_lines"] = tabular_lines
             num_tab_lines = len(tabular_lines)
             logger.info(f"Guardadas {num_tab_lines} líneas tabulares en tabular_lines (incluyendo encabezado si corresponde)")
-            for line_id, data in tabular_lines.items():
-                logger.info(f"Línea tabular: {line_id} - Texto: {data.get('texto', '')}")
+            # for line_id, data in tabular_lines.items():
+                #logger.info(f"Línea tabular: {line_id} - Texto: {data.get('texto', '')}")
             return True
             
         except Exception as e:
             logger.error(f"Error guardando líneas tabulares: {e}")
             return False
             
-    
+    def save_structured_table(self, df: pd.DataFrame, columns: List[str], semantic_types: Optional[List[str]] = None) -> bool:
+        try:
+            self.structured_table = StructuredTable(df=df, columns=columns, semantic_types=semantic_types)
+            return True
+        except Exception as e:
+            logger.error(f"Error guardando structured_table en memoria: {e}")
+            return False

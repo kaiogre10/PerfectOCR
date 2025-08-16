@@ -56,7 +56,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         current_line_polys: List[Dict[str, Any]] = []
         current_line_bbox = None
         line_counter = 1
-
+        
         for poly in prepared_sorted:
             bbox = poly.get("geometry", {}).get("bounding_box")
             if not bbox:
@@ -64,7 +64,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
             if not current_line_polys or current_line_bbox is None:
                 current_line_polys = [poly]
-                current_line_bbox = list(bbox)
+                current_line_bbox: List[float] = list(bbox)
             else:
                 y1_min, y1_max = current_line_bbox[1], current_line_bbox[3]
                 y2_min, y2_max = bbox[1], bbox[3]

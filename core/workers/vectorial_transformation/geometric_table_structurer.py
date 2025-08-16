@@ -17,8 +17,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_structured", False)        
 
-        
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> Optional[pandas.DataFrame]:
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time = time.time()
             
@@ -41,7 +40,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 return None
 
             # 2. Construir 'main_header_line_elements' (H*) con la geometría requerida
-            main_header_line_elements = []
+            main_header_line_elements: List[Dict[str, Any]]  = []
             for poly_id in header_poly_ids:
                 poly_data = polygons.get(poly_id)
                 if poly_data and "geometry" in poly_data:
@@ -80,6 +79,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 })
 
             logger.info(f"Iniciando estructuración de tabla con H={H} columnas.")
+            lines_table_only: List[Dict[str, Any]]
             table_matrix = self.structure_table(lines_table_only, main_header_line_elements)
 
             # Convertir la matriz a DataFrame
@@ -94,11 +94,14 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
             logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.4f} segundos. Se encontraron {len(table_matrix)} filas.")
             logger.info(f"\n{df.to_string(index=False)}")
-            return df
+
+            # Guardar en memoria (DataFormatter) para etapas posteriores
+            saved = manager.save_structured_table(df=df, columns=list(df.columns))
+            return bool(saved)
 
         except Exception as e:
             logger.error(f"Error fatal en GeometricTableStructurer.vectorize: {e}", exc_info=True)
-            return None
+            return False
 
     
 
@@ -131,7 +134,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
         logger.info(f"GeometricTableStructurer: Structuring table with H={H} columns.")
         
-        header_centroids = []
+        header_centroids: List[Tuple[float, float]] = []
         for header_elem in main_header_line_elements:
             if 'cx' in header_elem and 'cy' in header_elem:
                 header_centroids.append((float(header_elem['cx']), float(header_elem['cy'])))
@@ -236,10 +239,10 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         return table_matrix_T
         
         
-    def _calculate_centroid_cosine_similarity(self, centroid1: Tuple[float, float], centroid2: Tuple[float, float]) -> float:
+    def _calculate_centroid_cosine_similarity(self, word_centroid: Tuple[float, float], header_cent: Tuple[float, float]) -> float:
         """Calculates cosine similarity between two centroid vectors relative to origin (0,0)."""
-        c1_x, c1_y = centroid1
-        c2_x, c2_y = centroid2
+        c1_x, c1_y = word_centroid
+        c2_x, c2_y = header_cent
 
         dot_product = c1_x * c2_x + c1_y * c2_y
         magnitude1 = math.sqrt(c1_x**2 + c1_y**2)

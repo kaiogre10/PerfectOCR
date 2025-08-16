@@ -21,52 +21,54 @@ class TextCleaner:
         self.project_root = project_root
         # Configuración para la limpieza, puedes añadir umbrales aquí
         self.config = config.get("text_cleaner", {})
-        self.min_word_len_for_frag = self.config.get("min_word_len_for_frag", 3)
+        self.min_word_len_for_frag = self.config.get("min_word_len_for_frag", 2)
 
-    def _clean_and_analyze_batch(
+    def clean_and_analyze_batch(
         self, 
-        batch_result: List[Optional[Tuple[str, float]]], 
-        polygon_ids: List[str]
-    ) -> Tuple[List[Optional[Tuple[str, float]]], List[str]]:
+        polygon_ids: List[str],
+        batch_result: List[Optional[Dict[str, Any]]]
+    ) -> Tuple[List[Optional[Dict[str, Any]]], List[Tuple[str, int]]]:
         """
         Procesa un lote de resultados de OCR. Limpia el texto y devuelve una
         lista de IDs de polígonos que necesitan ser re-evaluados para fragmentación.
 
         Args:
-            batch_result: Lista de resultados de PaddleOCR (tupla de texto y confianza).
             polygon_ids: Lista de IDs de polígonos correspondientes a cada resultado.
+            batch_result: Lista de resultados de PaddleOCR (dict con 'text' y 'confidence').
 
         Returns:
             Un tuple conteniendo:
             - La lista de resultados de OCR con el texto ya limpiado.
-            - Una lista de IDs de polígonos que se sugiere fragmentar.
+            - Una lista de tuplas (poly_id, cantidad_de_fragmentos_necesarios)
         """
         if len(batch_result) != len(polygon_ids):
             logger.error("La cantidad de resultados de OCR no coincide con la de IDs de polígonos.")
             return [], []
 
-        cleaned_batch_results = []
-        fragmentation_candidates = []
+        cleaned_batch_results: List[Optional[Dict[str, Any]]] = []
+        fragmentation_suggestions: List[Tuple[str, int]] = []
 
         for result, poly_id in zip(batch_result, polygon_ids):
-            if not result or not result[0]:
+            if not result or not result.get("text"):
                 cleaned_batch_results.append(result)
                 continue
 
-            original_text = result[0]
-            confidence = result[1]
-
+            original_text = result["text"]
+            
             # 1. Limpiar el texto
             cleaned_text = self._process_single_text(original_text)
             
             # 2. Analizar si necesita fragmentación
-            if self._text_needs_fragmentation(cleaned_text):
-                logger.debug(f"Polígono '{poly_id}' marcado para fragmentación (Texto: '{cleaned_text}')")
-                fragmentation_candidates.append(poly_id)
+            word_count = len(cleaned_text.split())
+            if word_count > 1:
+                fragmentation_suggestions.append((poly_id, word_count))
 
-            cleaned_batch_results.append((cleaned_text, confidence))
+            # Mantener la estructura original del dict
+            cleaned_result = result.copy()
+            cleaned_result["text"] = cleaned_text
+            cleaned_batch_results.append(cleaned_result)
         
-        return cleaned_batch_results, fragmentation_candidates
+        return cleaned_batch_results, fragmentation_suggestions
 
     def _process_single_text(self, text: str) -> str:
         """
@@ -74,7 +76,7 @@ class TextCleaner:
         y seguro a los valores que parecen numéricos.
         """
         if not isinstance(text, str):
-            return str(text) if text is not None else ""
+            return (text) if text is not None else ""
 
         # Dividir por espacios para procesar token por token, preservando la estructura.
         words = text.split(' ')
@@ -89,10 +91,14 @@ class TextCleaner:
                 # --- RUTA DE LIMPIEZA GENERAL PARA TEXTO ---
                 cleaned_word = clean(
                     word,
-                    fix_unicode=True, to_ascii=False, lower=False,
-                    no_line_breaks=True, no_urls=True, no_emails=True,
-                    no_phone_numbers=True, no_numbers=False, no_digits=False,
-                    no_currency_symbols=False, no_punct=False, lang="es"
+                    clean_all=False, extra_spaces=True, stemming= False,
+                    stopwords= True,
+                    lowercase= False,
+                    numbers = False,
+                    punct = False,
+                    reg = '',
+                    reg_replace = '',
+                    stp_lang= 'spanish'
                 )
                 processed_words.append(cleaned_word)
         

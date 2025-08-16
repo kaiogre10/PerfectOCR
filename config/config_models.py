@@ -16,6 +16,10 @@ class OutputFlag(ConfigWithNumpy):
     sharp_poly: bool
     binarized_polygons: bool
     problematic_polygons: bool
+    reconstructed_lines: bool
+    table_lines: bool
+    table_structured: bool
+    math_max_corrected: bool
 
 class BatchProcessing(ConfigWithNumpy):
     small_batch_limit: int
@@ -128,29 +132,41 @@ class ContrastConfigLocal(ConfigWithNumpy):
 class ContrastConfig(ConfigWithNumpy):
     general: ContrastConfigGeneral
     local: ContrastConfigLocal
+    
+class MathMaxConfig(ConfigWithNumpy):
+    total_mtl_abs_tolerance: float
+    row_relative_tolerance: float
+
+class TextualConfig(ConfigWithNumpy):
+    min_confidence: float
 
 class PreprocessingConfig(ConfigWithNumpy):
     moire: MoireConfig  
     median_filter: SaltPepper 
     bilateral_params: GaussianConfig  
     contrast: ContrastConfig  
+    sharpening: SharpeningConfig
+    
+class OCRConfig(ConfigWithNumpy):
+    textual: TextualConfig
     binarize: Binarization  
     fragmentation: Fragmentador  
-    sharpening: SharpeningConfig
 
 class DBSCAN(ConfigWithNumpy):
     min_cluster_size: int
     
-class LINEAL(ConfigWithNumpy):
+class Lineal(ConfigWithNumpy):
     overlap: float
 
 class VectorConfig(ConfigWithNumpy):
-    lineal: LINEAL
+    lineal: Lineal
     dbscan: DBSCAN
+    math_max: MathMaxConfig
 
 class ModulesConfig(ConfigWithNumpy):
     image_loader: ImageLoader
     preprocessing: PreprocessingConfig
+    ocr: OCRConfig
     vectorization: VectorConfig
 
 class MasterConfig(ConfigWithNumpy):

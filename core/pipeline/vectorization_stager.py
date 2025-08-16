@@ -40,9 +40,15 @@ class VectorizationStager:
                 "project_root": self.project_root,
             }
                 
-            if not worker.vectorize(context, manager):
-                logger.error(f"Worker {worker_name} falló")
+            result = worker.vectorize(context, manager)
+            if result is None or (hasattr(result, "empty") and result.empty):
+                # El resultado es None o un DataFrame vacío
+                # Maneja el caso de error o datos insuficientes
+                logger.error(f"Worker {worker_name} falló o devolvió resultados vacíos")
                 return None, 0.0
+            else:
+                # El resultado es válido
+                continue
         
         elapsed = time.time() - start_time
         logger.info(f"[VectorStager] Pipeline completado en: {elapsed:.3f}s")
