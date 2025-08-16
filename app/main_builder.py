@@ -87,7 +87,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
-            ["lineal", "dbscan", "table_structurer"], 
+            ["lineal", "dbscan", "table_structurer", "math_max"], 
             context
         )
                 
@@ -97,7 +97,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             image_info=image_data,
             project_root=project_root,
         )
-    
+        
         input_stager = InputStager(
             workers=image_prep_workers,
             image_loader = image_loader,
@@ -116,8 +116,10 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             project_root=project_root
         )
         
+        
         ocr_stager = OCRStager(
             stage_config=config_services.manager_config,
+            config=config_services.ocr_config,
             paddleocr=paddleocr,
             output_paths=output_paths,
             project_root=project_root

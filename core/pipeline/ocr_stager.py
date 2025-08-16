@@ -1,23 +1,26 @@
 # PerfectOCR/core/coordinators/ocr_manager.py
-import os
 import numpy as np
 import logging
 import time
-import json
 from core.domain.data_formatter import DataFormatter
 from typing import Optional, Dict, Any, Tuple, List
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
+from core.workers.ocr.text_cleaner import TextCleaner
+from core.workers.ocr.interceptor import Interceptor
 import cv2
 
 logger = logging.getLogger(__name__)
 
 class OCRStager:
-    def __init__(self, stage_config: Dict[str, Any], paddleocr: PaddleOCRWrapper, output_paths: Optional[List[str]], project_root: str):
+    def __init__(self, stage_config: Dict[str, Any], config: Dict[str, Any], paddleocr: PaddleOCRWrapper, output_paths: Optional[List[str]], project_root: str):
         self.stage_config = stage_config
+        self.config = config
         self.project_root = project_root
         self.paddleocr = paddleocr
         self.paddle = paddleocr
         self.output_paths = output_paths if output_paths is not None else []
+        self._text_cleanner = TextCleaner(config=self.config, project_root=self.project_root)
+        self._interceptor = Interceptor(config=self.config, project_root=self.project_root)
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
@@ -57,10 +60,12 @@ class OCRStager:
         if not image_list:
             logger.warning("[OCREngineManager] No se encontraron imágenes válidas para OCR.")
             return manager, 0.0
-        
+            
+        image_list_copy = image_list.copy()
         # Procesar BATCH (mantener rendimiento)
-        batch_results: List[Optional[Dict[str, Any]]] = self.paddle.recognize_text_from_batch(image_list)
-        
+        batch_result: List[Optional[Dict[str, Any]]] = self.paddle.recognize_text_from_batch(image_list)
+        cleaned_batch_results, fragmentation_candidates: Tuple[List[Optional[Tuple[str, float]]], List[str]] = self._text_cleanner._clean_and_analyze_batch(polygon_ids, batch_result)
+        batch_results: Optional[List[str]] = self._interceptor._intercept_polygons(image_list_copy, cleaned_batch_results, fragmentation_candidates)
         # Actualizar resultados usando el método centralizado
         processed_count = 0
         if batch_results:

@@ -98,6 +98,11 @@ class ConfigService:
         return self.modules_config.get('preprocessing', {})
     
     @property
+    def ocr_config(self) -> Dict[str, Any]:
+        """Obtiene configuración específica del OCR."""
+        return self.modules_config.get('ocr', {})
+    
+    @property
     def vectorization_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica de vectorización."""
         return self.modules_config.get('vectorization', {})

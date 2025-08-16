@@ -1,6 +1,5 @@
 # PerfectOCR/core/table_structure/geometric_table_structurer.py
 import logging
-import numpy as np
 from typing import List, Dict, Any, Tuple, Optional
 import math
 import time

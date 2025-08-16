@@ -7,8 +7,6 @@ from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
 from core.workers.preprocessing.clahe import ClaherEnhancer
 from core.workers.preprocessing.sharp import SharpeningEnhancer
-# from core.workers.preprocessing.binarization import Binarizator
-# from core.workers.preprocessing.fragmentator import PolygonFragmentator
 
 class PreprocessingFactory(AbstractBaseFactory[PreprossesingAbstractWorker]):
     def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], PreprossesingAbstractWorker]]:
@@ -19,8 +17,6 @@ class PreprocessingFactory(AbstractBaseFactory[PreprossesingAbstractWorker]):
             "gauss": self._create_gauss,
             "clahe": self._create_clahe,
             "sharp": self._create_sharp,
-            # "binarization": self._create_binarization,
-            # "fragmentator": self._create_fragmentator,
         }
          
     def _create_moire(self, context: Dict[str, Any]) -> MoireDenoiser:
@@ -37,11 +33,3 @@ class PreprocessingFactory(AbstractBaseFactory[PreprossesingAbstractWorker]):
 
     def _create_sharp(self, context: Dict[str, Any]) -> SharpeningEnhancer:
         return SharpeningEnhancer(config=self.module_config, project_root=self.project_root)
-
-    # def _create_binarization(self, context: Dict[str, Any]) -> Binarizator:
-    #     binarization_config = self.module_config.get('binarize', {})
-    #     return Binarizator(config=binarization_config, project_root=self.project_root)    
-        
-    # def _create_fragmentator(self, context: Dict[str, Any]) -> PolygonFragmentator:
-    #    fragment_config = self.module_config.get('fragmentation', {})
-    #    return PolygonFragmentator(config=fragment_config, project_root=self.project_root)

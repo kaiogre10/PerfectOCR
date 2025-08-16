@@ -1,0 +1,950 @@
+{
+    "doc_name": "2",
+    "formato": ".png",
+    "dpi": {
+        "x": 96.012,
+        "y": null
+    },
+    "img_dims": {
+        "width": 2641,
+        "height": 3406
+    },
+    "fecha_creacion": "2025-08-16T06:36:26.491146",
+    "polygons": [
+        {
+            "polygon_id": "poly_0000",
+            "text": "Paglna 2 :",
+            "confidence": 87.18
+        },
+        {
+            "polygon_id": "poly_0001",
+            "text": "V",
+            "confidence": 8.05
+        },
+        {
+            "polygon_id": "poly_0002",
+            "text": "CANTIDADA REPARTIR",
+            "confidence": 97.25
+        },
+        {
+            "polygon_id": "poly_0003",
+            "text": "i",
+            "confidence": 19.28
+        },
+        {
+            "polygon_id": "poly_0004",
+            "text": "3573",
+            "confidence": 59.44
+        },
+        {
+            "polygon_id": "poly_0005",
+            "text": "58.806.90",
+            "confidence": 95.02
+        },
+        {
+            "polygon_id": "poly_0006",
+            "text": "$216,000.00",
+            "confidence": 96.36
+        },
+        {
+            "polygon_id": "poly_0007",
+            "text": "*",
+            "confidence": 23.75
+        },
+        {
+            "polygon_id": "poly_0008",
+            "text": "SUPERFICIE TOTAL M2",
+            "confidence": 97.88
+        },
+        {
+            "polygon_id": "poly_0009",
+            "text": "1:216.00000",
+            "confidence": 83.37
+        },
+        {
+            "polygon_id": "poly_0010",
+            "text": "TOTAL",
+            "confidence": 99.71
+        },
+        {
+            "polygon_id": "poly_0011",
+            "text": "50.906.90",
+            "confidence": 78.53
+        },
+        {
+            "polygon_id": "poly_0012",
+            "text": "2.864.07",
+            "confidence": 83.44
+        },
+        {
+            "polygon_id": "poly_0013",
+            "text": "=",
+            "confidence": 98.45
+        },
+        {
+            "polygon_id": "poly_0014",
+            "text": "$3.6730384",
+            "confidence": 98.18
+        },
+        {
+            "polygon_id": "poly_0015",
+            "text": "X",
+            "confidence": 56.94
+        },
+        {
+            "polygon_id": "poly_0016",
+            "text": "780.00",
+            "confidence": 99.96
+        },
+        {
+            "polygon_id": "poly_0017",
+            "text": "GE'SIEFAYARRETEGODINEZ",
+            "confidence": 78.56
+        },
+        {
+            "polygon_id": "poly_0018",
+            "text": "$1.101.91",
+            "confidence": 92.15
+        },
+        {
+            "polygon_id": "poly_0019",
+            "text": "=",
+            "confidence": 43.12
+        },
+        {
+            "polygon_id": "poly_0020",
+            "text": "$3.6730334",
+            "confidence": 98.92
+        },
+        {
+            "polygon_id": "poly_0021",
+            "text": "x",
+            "confidence": 61.06
+        },
+        {
+            "polygon_id": "poly_0022",
+            "text": "300.00",
+            "confidence": 99.97
+        },
+        {
+            "polygon_id": "poly_0023",
+            "text": ".68.jOMAS SANCHEZ RODRIGUEZ",
+            "confidence": 92.73
+        },
+        {
+            "polygon_id": "poly_0024",
+            "text": "$1,928.35",
+            "confidence": 89.9
+        },
+        {
+            "polygon_id": "poly_0025",
+            "text": "$3.6730334",
+            "confidence": 98.27
+        },
+        {
+            "polygon_id": "poly_0026",
+            "text": "X",
+            "confidence": 51.05
+        },
+        {
+            "polygon_id": "poly_0027",
+            "text": "525.00",
+            "confidence": 99.97
+        },
+        {
+            "polygon_id": "poly_0028",
+            "text": "1.0",
+            "confidence": 66.62
+        },
+        {
+            "polygon_id": "poly_0029",
+            "text": "C7 SEBASTIAIN RAMOS GODINEZ -",
+            "confidence": 96.51
+        },
+        {
+            "polygon_id": "poly_0030",
+            "text": "$2.001.507",
+            "confidence": 86.42
+        },
+        {
+            "polygon_id": "poly_0031",
+            "text": "$3.6730301",
+            "confidence": 92.89
+        },
+        {
+            "polygon_id": "poly_0032",
+            "text": "x",
+            "confidence": 50.45
+        },
+        {
+            "polygon_id": "poly_0033",
+            "text": "784.50",
+            "confidence": 99.13
+        },
+        {
+            "polygon_id": "poly_0034",
+            "text": "GG..TOMAS BARRERA GODINEZ",
+            "confidence": 92.7
+        },
+        {
+            "polygon_id": "poly_0035",
+            "text": "7.713.30",
+            "confidence": 90.69
+        },
+        {
+            "polygon_id": "poly_0036",
+            "text": "=",
+            "confidence": 24.21
+        },
+        {
+            "polygon_id": "poly_0037",
+            "text": "$3.6730304",
+            "confidence": 93.76
+        },
+        {
+            "polygon_id": "poly_0038",
+            "text": "X",
+            "confidence": 61.11
+        },
+        {
+            "polygon_id": "poly_0039",
+            "text": "2,100.00",
+            "confidence": 96.62
+        },
+        {
+            "polygon_id": "poly_0040",
+            "text": "65,FCO.FERMIN RODRIGUEZ",
+            "confidence": 96.06
+        },
+        {
+            "polygon_id": "poly_0041",
+            "text": "yon.",
+            "confidence": 73.66
+        },
+        {
+            "polygon_id": "poly_0042",
+            "text": "82,864.97",
+            "confidence": 85.09
+        },
+        {
+            "polygon_id": "poly_0043",
+            "text": "=",
+            "confidence": 86.78
+        },
+        {
+            "polygon_id": "poly_0044",
+            "text": "$3.6730384",
+            "confidence": 99.15
+        },
+        {
+            "polygon_id": "poly_0045",
+            "text": "X",
+            "confidence": 55.94
+        },
+        {
+            "polygon_id": "poly_0046",
+            "text": "780.00",
+            "confidence": 98.58
+        },
+        {
+            "polygon_id": "poly_0047",
+            "text": "6'AINSELMO SANCHEZ",
+            "confidence": 92.34
+        },
+        {
+            "polygon_id": "poly_0048",
+            "text": "2.751.7",
+            "confidence": 94.04
+        },
+        {
+            "polygon_id": "poly_0049",
+            "text": "$3.6730384",
+            "confidence": 96.28
+        },
+        {
+            "polygon_id": "poly_0050",
+            "text": "X",
+            "confidence": 54.58
+        },
+        {
+            "polygon_id": "poly_0051",
+            "text": "750.00:",
+            "confidence": 92.34
+        },
+        {
+            "polygon_id": "poly_0052",
+            "text": ".C3 ANDRES DOMINGUEZ",
+            "confidence": 92.07
+        },
+        {
+            "polygon_id": "poly_0053",
+            "text": "3",
+            "confidence": 15.84
+        },
+        {
+            "polygon_id": "poly_0054",
+            "text": "600.05",
+            "confidence": 91.85
+        },
+        {
+            "polygon_id": "poly_0055",
+            "text": "$3.6730304",
+            "confidence": 96.9
+        },
+        {
+            "polygon_id": "poly_0056",
+            "text": "x",
+            "confidence": 63.94
+        },
+        {
+            "polygon_id": "poly_0057",
+            "text": "165.00",
+            "confidence": 99.53
+        },
+        {
+            "polygon_id": "poly_0058",
+            "text": "62 A'1ADA VARGAS",
+            "confidence": 86.97
+        },
+        {
+            "polygon_id": "poly_0059",
+            "text": "",
+            "confidence": 0.0
+        },
+        {
+            "polygon_id": "poly_0060",
+            "text": "S10C.0",
+            "confidence": 54.36
+        },
+        {
+            "polygon_id": "poly_0061",
+            "text": "$3.6730384",
+            "confidence": 99.36
+        },
+        {
+            "polygon_id": "poly_0062",
+            "text": "X",
+            "confidence": 51.09
+        },
+        {
+            "polygon_id": "poly_0063",
+            "text": "127.00",
+            "confidence": 99.56
+        },
+        {
+            "polygon_id": "poly_0064",
+            "text": "61.SILVIANO PEREZ RODRIGUEZ",
+            "confidence": 94.04
+        },
+        {
+            "polygon_id": "poly_0065",
+            "text": "+",
+            "confidence": 69.26
+        },
+        {
+            "polygon_id": "poly_0066",
+            "text": "$1.035.0",
+            "confidence": 94.47
+        },
+        {
+            "polygon_id": "poly_0067",
+            "text": "a",
+            "confidence": 11.1
+        },
+        {
+            "polygon_id": "poly_0068",
+            "text": "$3.6730384",
+            "confidence": 98.65
+        },
+        {
+            "polygon_id": "poly_0069",
+            "text": "x",
+            "confidence": 56.13
+        },
+        {
+            "polygon_id": "poly_0070",
+            "text": "282.00",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0071",
+            "text": "GOJUAN AGUILAR VIZUET",
+            "confidence": 93.83
+        },
+        {
+            "polygon_id": "poly_0072",
+            "text": "$3.116.1",
+            "confidence": 74.8
+        },
+        {
+            "polygon_id": "poly_0073",
+            "text": "=",
+            "confidence": 97.64
+        },
+        {
+            "polygon_id": "poly_0074",
+            "text": "$3.6730384",
+            "confidence": 99.84
+        },
+        {
+            "polygon_id": "poly_0075",
+            "text": "X",
+            "confidence": 57.4
+        },
+        {
+            "polygon_id": "poly_0076",
+            "text": "855.00:",
+            "confidence": 95.47
+        },
+        {
+            "polygon_id": "poly_0077",
+            "text": ".59ALVARO GODINEZDOMINGUEZ",
+            "confidence": 94.88
+        },
+        {
+            "polygon_id": "poly_0078",
+            "text": "3.203.56",
+            "confidence": 80.55
+        },
+        {
+            "polygon_id": "poly_0079",
+            "text": "$3.6730384",
+            "confidence": 98.11
+        },
+        {
+            "polygon_id": "poly_0080",
+            "text": "=",
+            "confidence": 86.21
+        },
+        {
+            "polygon_id": "poly_0081",
+            "text": ".x",
+            "confidence": 75.75
+        },
+        {
+            "polygon_id": "poly_0082",
+            "text": "873.00",
+            "confidence": 99.87
+        },
+        {
+            "polygon_id": "poly_0083",
+            "text": "S8 M.AURO REYES RODRIGUEZ",
+            "confidence": 93.71
+        },
+        {
+            "polygon_id": "poly_0084",
+            "text": "1,630.03",
+            "confidence": 77.07
+        },
+        {
+            "polygon_id": "poly_0085",
+            "text": "2",
+            "confidence": 45.32
+        },
+        {
+            "polygon_id": "poly_0086",
+            "text": "$3.6730384",
+            "confidence": 99.75
+        },
+        {
+            "polygon_id": "poly_0087",
+            "text": "X",
+            "confidence": 55.54
+        },
+        {
+            "polygon_id": "poly_0088",
+            "text": "444.00:",
+            "confidence": 94.6
+        },
+        {
+            "polygon_id": "poly_0089",
+            "text": "2,75:.78",
+            "confidence": 87.66
+        },
+        {
+            "polygon_id": "poly_0090",
+            "text": "$3.6730384",
+            "confidence": 99.77
+        },
+        {
+            "polygon_id": "poly_0091",
+            "text": "750.00 :",
+            "confidence": 97.56
+        },
+        {
+            "polygon_id": "poly_0092",
+            "text": "X",
+            "confidence": 52.11
+        },
+        {
+            "polygon_id": "poly_0093",
+            "text": "$5,377.3",
+            "confidence": 91.15
+        },
+        {
+            "polygon_id": "poly_0094",
+            "text": "5",
+            "confidence": 12.37
+        },
+        {
+            "polygon_id": "poly_0095",
+            "text": "$3.6730384",
+            "confidence": 95.71
+        },
+        {
+            "polygon_id": "poly_0096",
+            "text": "X",
+            "confidence": 55.01
+        },
+        {
+            "polygon_id": "poly_0097",
+            "text": "1.464.00",
+            "confidence": 95.83
+        },
+        {
+            "polygon_id": "poly_0098",
+            "text": "55 JE&US ALMAYAN ROJAS",
+            "confidence": 90.48
+        },
+        {
+            "polygon_id": "poly_0099",
+            "text": "2314.01",
+            "confidence": 96.6
+        },
+        {
+            "polygon_id": "poly_0100",
+            "text": "53.6730384",
+            "confidence": 90.43
+        },
+        {
+            "polygon_id": "poly_0101",
+            "text": "x",
+            "confidence": 52.96
+        },
+        {
+            "polygon_id": "poly_0102",
+            "text": "630.00",
+            "confidence": 99.9
+        },
+        {
+            "polygon_id": "poly_0103",
+            "text": "54 UZRO SARRERA FIGUEROA",
+            "confidence": 94.27
+        },
+        {
+            "polygon_id": "poly_0104",
+            "text": "23.129.",
+            "confidence": 81.3
+        },
+        {
+            "polygon_id": "poly_0105",
+            "text": "$3.6730304",
+            "confidence": 92.03
+        },
+        {
+            "polygon_id": "poly_0106",
+            "text": "852.00 : X",
+            "confidence": 97.82
+        },
+        {
+            "polygon_id": "poly_0107",
+            "text": "53 JEUS FLORES VERA",
+            "confidence": 93.6
+        },
+        {
+            "polygon_id": "poly_0108",
+            "text": "$E31.57",
+            "confidence": 60.47
+        },
+        {
+            "polygon_id": "poly_0109",
+            "text": "&",
+            "confidence": 27.53
+        },
+        {
+            "polygon_id": "poly_0110",
+            "text": "$3.6730304",
+            "confidence": 96.14
+        },
+        {
+            "polygon_id": "poly_0111",
+            "text": "144.75 : X",
+            "confidence": 90.68
+        },
+        {
+            "polygon_id": "poly_0112",
+            "text": "52'JE:SUS RODRIGUEZ GODINEZ",
+            "confidence": 92.67
+        },
+        {
+            "polygon_id": "poly_0113",
+            "text": "$4.37.39",
+            "confidence": 97.45
+        },
+        {
+            "polygon_id": "poly_0114",
+            "text": "$3.6730384",
+            "confidence": 98.82
+        },
+        {
+            "polygon_id": "poly_0115",
+            "text": "1.191.00 : X",
+            "confidence": 96.91
+        },
+        {
+            "polygon_id": "poly_0116",
+            "text": "51 J.!IESRODRIGUEZPRUDENGI",
+            "confidence": 88.84
+        },
+        {
+            "polygon_id": "poly_0117",
+            "text": "=",
+            "confidence": 82.91
+        },
+        {
+            "polygon_id": "poly_0118",
+            "text": "$3.6730384",
+            "confidence": 98.81
+        },
+        {
+            "polygon_id": "poly_0119",
+            "text": "2,97.1",
+            "confidence": 92.21
+        },
+        {
+            "polygon_id": "poly_0120",
+            "text": "810.00 : X",
+            "confidence": 98.8
+        },
+        {
+            "polygon_id": "poly_0121",
+            "text": "50.ARTUR.O RAMOS ESCALONA : :",
+            "confidence": 89.43
+        },
+        {
+            "polygon_id": "poly_0122",
+            "text": ":",
+            "confidence": 16.66
+        },
+        {
+            "polygon_id": "poly_0123",
+            "text": "32.809.07",
+            "confidence": 89.53
+        },
+        {
+            "polygon_id": "poly_0124",
+            "text": "$3.8790304.",
+            "confidence": 69.97
+        },
+        {
+            "polygon_id": "poly_0125",
+            "text": "x",
+            "confidence": 19.09
+        },
+        {
+            "polygon_id": "poly_0126",
+            "text": "705.00",
+            "confidence": 88.13
+        },
+        {
+            "polygon_id": "poly_0127",
+            "text": "49 A. EZEQUIEL NAVARRETE REYES",
+            "confidence": 95.77
+        },
+        {
+            "polygon_id": "poly_0128",
+            "text": "2.751.70",
+            "confidence": 94.15
+        },
+        {
+            "polygon_id": "poly_0129",
+            "text": "$3.6730384",
+            "confidence": 99.35
+        },
+        {
+            "polygon_id": "poly_0130",
+            "text": "=",
+            "confidence": 67.46
+        },
+        {
+            "polygon_id": "poly_0131",
+            "text": "750.00  x",
+            "confidence": 95.27
+        },
+        {
+            "polygon_id": "poly_0132",
+            "text": "=C-J..LUPECALAS RODRIGUEZ",
+            "confidence": 86.24
+        },
+        {
+            "polygon_id": "poly_0133",
+            "text": ".-.",
+            "confidence": 47.63
+        },
+        {
+            "polygon_id": "poly_0134",
+            "text": "$3.6730384",
+            "confidence": 99.85
+        },
+        {
+            "polygon_id": "poly_0135",
+            "text": "X",
+            "confidence": 59.2
+        },
+        {
+            "polygon_id": "poly_0136",
+            "text": "147.00",
+            "confidence": 99.98
+        },
+        {
+            "polygon_id": "poly_0137",
+            "text": "$539.9",
+            "confidence": 97.39
+        },
+        {
+            "polygon_id": "poly_0138",
+            "text": "47 FEi:IPA SOSA RODRIGUEZ+",
+            "confidence": 86.46
+        },
+        {
+            "polygon_id": "poly_0139",
+            "text": "210.00",
+            "confidence": 98.99
+        },
+        {
+            "polygon_id": "poly_0140",
+            "text": "=",
+            "confidence": 85.56
+        },
+        {
+            "polygon_id": "poly_0141",
+            "text": "$3.6730384",
+            "confidence": 99.42
+        },
+        {
+            "polygon_id": "poly_0142",
+            "text": "$771.31",
+            "confidence": 96.71
+        },
+        {
+            "polygon_id": "poly_0143",
+            "text": "x",
+            "confidence": 78.0
+        },
+        {
+            "polygon_id": "poly_0144",
+            "text": "(46MALBIM.BARRERALEON",
+            "confidence": 89.83
+        },
+        {
+            "polygon_id": "poly_0145",
+            "text": "$3.6730384",
+            "confidence": 99.01
+        },
+        {
+            "polygon_id": "poly_0146",
+            "text": "1,725.00.:",
+            "confidence": 92.77
+        },
+        {
+            "polygon_id": "poly_0147",
+            "text": "$6,335.99",
+            "confidence": 95.27
+        },
+        {
+            "polygon_id": "poly_0148",
+            "text": "x",
+            "confidence": 56.85
+        },
+        {
+            "polygon_id": "poly_0149",
+            "text": "AS M.1URTENCIA GUERRERO HERNANDEZ",
+            "confidence": 92.06
+        },
+        {
+            "polygon_id": "poly_0150",
+            "text": "$3.8730384",
+            "confidence": 93.29
+        },
+        {
+            "polygon_id": "poly_0151",
+            "text": "960.00",
+            "confidence": 93.17
+        },
+        {
+            "polygon_id": "poly_0152",
+            "text": "$3,525.12",
+            "confidence": 88.18
+        },
+        {
+            "polygon_id": "poly_0153",
+            "text": "=",
+            "confidence": 69.54
+        },
+        {
+            "polygon_id": "poly_0154",
+            "text": "14S!MON SOSA NAVARRETE",
+            "confidence": 87.56
+        },
+        {
+            "polygon_id": "poly_0155",
+            "text": "53.162.1",
+            "confidence": 85.65
+        },
+        {
+            "polygon_id": "poly_0156",
+            "text": "0",
+            "confidence": 16.68
+        },
+        {
+            "polygon_id": "poly_0157",
+            "text": "$3.6730304",
+            "confidence": 98.58
+        },
+        {
+            "polygon_id": "poly_0158",
+            "text": "861.00",
+            "confidence": 99.99
+        },
+        {
+            "polygon_id": "poly_0159",
+            "text": "!x",
+            "confidence": 95.04
+        },
+        {
+            "polygon_id": "poly_0160",
+            "text": "43 LECBARDO LUNA RODRIGUEZ",
+            "confidence": 95.87
+        },
+        {
+            "polygon_id": "poly_0161",
+            "text": "$3.6730304",
+            "confidence": 93.08
+        },
+        {
+            "polygon_id": "poly_0162",
+            "text": "1,725.00",
+            "confidence": 98.97
+        },
+        {
+            "polygon_id": "poly_0163",
+            "text": "$0.935.9",
+            "confidence": 83.83
+        },
+        {
+            "polygon_id": "poly_0164",
+            "text": "ix",
+            "confidence": 65.72
+        },
+        {
+            "polygon_id": "poly_0165",
+            "text": "42 PAILO ESCALONA FLORES :",
+            "confidence": 91.23
+        },
+        {
+            "polygon_id": "poly_0166",
+            "text": "$3.6730384",
+            "confidence": 99.95
+        },
+        {
+            "polygon_id": "poly_0167",
+            "text": "435.75",
+            "confidence": 99.94
+        },
+        {
+            "polygon_id": "poly_0168",
+            "text": "$1.600.53",
+            "confidence": 95.79
+        },
+        {
+            "polygon_id": "poly_0169",
+            "text": "ix",
+            "confidence": 74.7
+        },
+        {
+            "polygon_id": "poly_0170",
+            "text": "41 IGNACIO ESCALONA BAUTISTA",
+            "confidence": 97.36
+        },
+        {
+            "polygon_id": "poly_0171",
+            "text": "$3.6730384",
+            "confidence": 99.59
+        },
+        {
+            "polygon_id": "poly_0172",
+            "text": ":x",
+            "confidence": 75.78
+        },
+        {
+            "polygon_id": "poly_0173",
+            "text": "858.00",
+            "confidence": 99.4
+        },
+        {
+            "polygon_id": "poly_0174",
+            "text": "53,151.47",
+            "confidence": 97.59
+        },
+        {
+            "polygon_id": "poly_0175",
+            "text": "1O EULALIO ALMAZAN HERNANDEZ",
+            "confidence": 92.14
+        },
+        {
+            "polygon_id": "poly_0176",
+            "text": ":",
+            "confidence": 87.27
+        },
+        {
+            "polygon_id": "poly_0177",
+            "text": "M2",
+            "confidence": 99.14
+        },
+        {
+            "polygon_id": "poly_0178",
+            "text": "PERSONA",
+            "confidence": 98.94
+        },
+        {
+            "polygon_id": "poly_0179",
+            "text": "POR M2",
+            "confidence": 95.22
+        },
+        {
+            "polygon_id": "poly_0180",
+            "text": "IMPORTE",
+            "confidence": 99.69
+        },
+        {
+            "polygon_id": "poly_0181",
+            "text": "SUPERFICIE",
+            "confidence": 99.65
+        },
+        {
+            "polygon_id": "poly_0182",
+            "text": "PAGARPOR",
+            "confidence": 96.64
+        },
+        {
+            "polygon_id": "poly_0183",
+            "text": "NOMBRE DELAFECTADO",
+            "confidence": 96.86
+        },
+        {
+            "polygon_id": "poly_0184",
+            "text": "IMPORTE A",
+            "confidence": 94.81
+        },
+        {
+            "polygon_id": "poly_0185",
+            "text": "LISTA DE PERSONAS AFECTADAS POR PEMEX",
+            "confidence": 97.91
+        },
+        {
+            "polygon_id": "poly_0186",
+            "text": "Hoja1",
+            "confidence": 98.27
+        }
+    ]
+}

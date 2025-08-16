@@ -1,23 +1,32 @@
 # PerfectOCR/core/postprocessing/math_max.py
-
+import pandas
 import logging
 from itertools import permutations
 import math
 import numpy as np
+from typing import Dict, Any, Optional
+from core.factory.abstract_worker import VectorizationAbstractWorker
+from core.domain.data_formatter import DataFormatter
+
 
 logger = logging.getLogger(__name__)
 
-class MatrixSolver:
+class MatrixSolver(VectorizationAbstractWorker):
     """
     Resuelve inconsistencias matemáticas en una tabla estructurada usando un
     enfoque de puntuación global y validación final contra un total.
     """
 
-    def __init__(self, config: dict = None):
-        self.config = config if config is not None else {}
-        # Tolerancias configurables desde YAML
+    def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
+        self.project_root = project_root
+        self.worker_config = config.get('math_max', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("table_structured", False)        
         self.total_mtl_tolerance = self.config.get('total_mtl_abs_tolerance', 0.05) # 5% de tolerancia relativa por defecto
         self.arithmetic_tolerance = self.config.get('row_relative_tolerance', 0.005) # 0.5% por defecto
+        
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
 
     def _clean_numeric_value(self, value):
         """Limpia símbolos comunes de valores numéricos antes de convertir a float."""
@@ -90,12 +99,11 @@ class MatrixSolver:
         
         return valid_hypotheses
 
-    def solve(self, matrix: list, semantic_types: list, quarantined_data: list, document_totals: dict = None) -> dict:
+    def solve(self, matrix: list, semantic_types: list, quarantined_data: list, document_totals: Optional[Dict] = None) -> Dict:
         """
         Punto de entrada principal para resolver la matriz.
         Ahora acepta los argumentos que le pasa el coordinador.
         """
-        # --- LOG DE TOTALES PREVIOS ---
         if document_totals:
             total_mtl = document_totals.get("total_mtl")
             total_c = document_totals.get("total_c")

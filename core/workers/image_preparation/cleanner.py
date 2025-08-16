@@ -20,10 +20,18 @@ class ImageCleaner(ImagePrepAbstractWorker):
             if full_img is None:
                 logger.error("Cleaner: full_img no encontrado en contexto")
                 return False
+
+            # Convertir a escala de grises si es color
+            if len(full_img.shape) == 3 and full_img.shape[2] == 3:
+                img_gray = cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY)
+            else:
+                img_gray = full_img.copy()
+
             # 1) bilateral adaptativo
-            img_var = float(np.var(full_img))
+            img_var = float(np.var(img_gray))
             d, sC, sS = (5, 30, 30) if img_var < 100 else (9, 60, 60)
-            denoised = cv2.bilateralFilter(full_img, d, sC, sS)
+            denoised = cv2.bilateralFilter(img_gray, d, sC, sS)
+
             # 2) CLAHE adaptativo
             img_std = float(np.std(denoised))
             if img_std < 25:
@@ -34,15 +42,20 @@ class ImageCleaner(ImagePrepAbstractWorker):
                 clip, grid = 1.0, (10, 10)
             clahe = cv2.createCLAHE(clipLimit=clip, tileGridSize=grid)
             enhanced = clahe.apply(denoised)
+
             # 3) sharpen adaptativo
             mean_intensity = float(np.mean(enhanced))
             if mean_intensity < 128:
-                kernel = (np.array([[0, -1, 0], [-1, 3, -1], [0, -1, 0]]))
+                kernel = np.array([[0, -1, 0], [-1, 3, -1], [0, -1, 0]])
             else:
-                kernel = (np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]]))   
+                kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
             clean_img = cv2.filter2D(enhanced, -1, kernel)
-            # in-place estricto (misma referencia)
+
+            # Normalización final
+            clean_img = np.clip(clean_img, 0, 255).astype(np.uint8)
+
             full_img[...] = clean_img
+            logger.info("Cleaner: limpieza automatizada aplicada correctamente.")
             return True
         except Exception as e:
             logger.error(f"Cleaner: {e}", exc_info=True)
