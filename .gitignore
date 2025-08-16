@@ -12,6 +12,7 @@ __pycache__/
 .idea/
 .cursor/
 .github/
+.typings/
 
 # Ignorar carpeta
 input/
