@@ -27,7 +27,6 @@ class DensityScanner(VectorizationAbstractWorker):
             start_time = time.time()
             logger.info("Scanner iniciado")
             
-            
             # Obtener líneas codificadas del DataFormatter
             encoded_lines = manager.encode_lines()
             if not encoded_lines:
@@ -43,6 +42,10 @@ class DensityScanner(VectorizationAbstractWorker):
             
             # Llamar directamente al manager para guardar (como LinealReconstructor)
             if table_detection_result["status"] == "success" and table_detection_result["table_lines"]:
+                
+                total_time = time.time() - start_time
+                logger.info(f"Detección de tablas completada en {total_time:.4f}s")
+                
                 success = manager.save_tabular_lines(table_detection_result)
                 if not success:
                     logger.error("Error al guardar líneas tabulares en el workflow_dict")
@@ -50,8 +53,7 @@ class DensityScanner(VectorizationAbstractWorker):
             else:
                 logger.info("No se detectaron tablas en el documento")
             
-            total_time = time.time() - start_time
-            logger.info(f"Detección de tablas completada en {total_time:.4f}s")
+            
             
             return True
             

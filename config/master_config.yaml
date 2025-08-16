@@ -51,6 +51,7 @@ enabled_outputs:
     problematic_polygons: false
     reconstructed_lines: false
     table_lines: false
+    table_structured: false
 
 # Configuración de procesamiento
 processing:
@@ -136,3 +137,6 @@ modules:
     
     dbscan:
       min_cluster_size: 2
+      
+    table_structurer:
+    

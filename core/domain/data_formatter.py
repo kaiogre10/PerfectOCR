@@ -103,6 +103,9 @@ class DataFormatter:
     def get_polygons(self) -> Dict[str, Any]:
         return self.workflow_dict["polygons"] if self.workflow_dict else {}
         
+    def get_tabular_lines(self) -> Dict[str, Any]:
+        return self.workflow_dict["tabular_lines"] if self.workflow_dict else {}
+        
     def get_polygons_with_cropped_img(self) -> Dict[str, Dict[str, Any]]:
         """
         Devuelve el diccionario de polígonos con sus imágenes recortadas listas para el contexto de los workers.
@@ -179,7 +182,6 @@ class DataFormatter:
                 cropped_images[poly_id] = cropped_img
         return cropped_images
         
-    # NUEVO método en DataFormatter  
     def update_preprocessing_result(self, poly_id: str, cropped_img: np.ndarray[Any, Any], 
                                 worker_name: str, success: bool):
         """Actualiza resultado de preprocesamiento y marca stage/status"""
@@ -236,6 +238,9 @@ class DataFormatter:
             self.workflow_dict["all_lines"] = all_lines
             num_lines = len(all_lines)
             logger.info(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
+            for line_id, line_data in all_lines.items():
+                logger.info(f"Línea {line_id} - Texto: {line_data.get('text', '')}")
+                
             return True
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}")
@@ -286,7 +291,7 @@ class DataFormatter:
         
     def save_tabular_lines(self, table_detection_result: Dict[str, Any]) -> bool:
         """
-        Guarda las líneas tabulares detectadas en el formato correcto.
+        Guarda las líneas tabulares detectadas en el formato correcto, incluyendo el encabezado inmediato superior.
         """
         try:
             if not self.workflow_dict or "all_lines" not in self.workflow_dict:
@@ -296,6 +301,17 @@ class DataFormatter:
             # Extraer las líneas detectadas del resultado
             table_line_ids = table_detection_result.get("table_lines", [])
             
+            # Agregar encabezado (línea anterior a la primera línea de tabla)
+            if table_line_ids:
+                # Ordenar los IDs para obtener el índice mínimo
+                all_line_keys = list(self.workflow_dict["all_lines"].keys())
+                first_table_idx = all_line_keys.index(table_line_ids[0])
+                if first_table_idx > 0:
+                    header_line_id = all_line_keys[first_table_idx - 1]
+                    # Insertar encabezado al inicio si no está ya incluido
+                    if header_line_id not in table_line_ids:
+                        table_line_ids = [header_line_id] + table_line_ids
+
             # Crear diccionario de líneas tabulares
             tabular_lines = {}
             for line_id in table_line_ids:
@@ -308,9 +324,13 @@ class DataFormatter:
             # Guardar en workflow_dict
             self.workflow_dict["tabular_lines"] = tabular_lines
             num_tab_lines = len(tabular_lines)
-            logger.info(f"Guardadas {num_tab_lines} líneas tabulares en tabular_lines")
+            logger.info(f"Guardadas {num_tab_lines} líneas tabulares en tabular_lines (incluyendo encabezado si corresponde)")
+            for line_id, data in tabular_lines.items():
+                logger.info(f"Línea tabular: {line_id} - Texto: {data.get('texto', '')}")
             return True
             
         except Exception as e:
             logger.error(f"Error guardando líneas tabulares: {e}")
             return False
+            
+    

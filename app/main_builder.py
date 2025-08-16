@@ -87,7 +87,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
-            ["lineal", "dbscan"], 
+            ["lineal", "dbscan", "table_structurer"], 
             context
         )
                 

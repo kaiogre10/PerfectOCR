@@ -3,29 +3,105 @@ import logging
 import numpy as np
 from typing import List, Dict, Any, Tuple, Optional
 import math
+import time
+from core.factory.abstract_worker import VectorizationAbstractWorker
+from core.domain.data_formatter import DataFormatter
+import pandas
 
 logger = logging.getLogger(__name__)
 
-class GeometricTableStructurer:
-    def __init__(self, config: Optional[Dict] = None):
-        self.config = config if config is not None else {}
-        # Placeholder for any future config parameters for this specific structurer
-        logger.info("GeometricTableStructurer initialized.")
+class GeometricTableStructurer(VectorizationAbstractWorker):
+    def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
+        self.project_root = project_root
+        self.worker_config = config.get('table_structurer', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("table_structured", False)        
 
-    def _calculate_centroid_cosine_similarity(self, centroid1: Tuple[float, float], centroid2: Tuple[float, float]) -> float:
-        """Calculates cosine similarity between two centroid vectors relative to origin (0,0)."""
-        c1_x, c1_y = centroid1
-        c2_x, c2_y = centroid2
-
-        dot_product = c1_x * c2_x + c1_y * c2_y
-        magnitude1 = math.sqrt(c1_x**2 + c1_y**2)
-        magnitude2 = math.sqrt(c2_x**2 + c2_y**2)
-
-        if magnitude1 == 0 or magnitude2 == 0:
-            return 0.0  # Avoid division by zero; no similarity if one vector is zero
         
-        cosine_similarity = dot_product / (magnitude1 * magnitude2)
-        return cosine_similarity
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> Optional[pandas.DataFrame]:
+        try:
+            start_time = time.time()
+            
+            # Obtener todo el diccionario de datos para tener acceso a todas las claves
+            workflow_data = manager.get_dict_data()
+            all_lines = workflow_data.get("all_lines", {})
+            polygons = workflow_data.get("polygons", {})
+            tabular_line_ids = list(workflow_data.get("tabular_lines", {}).keys())
+
+            if not tabular_line_ids or not all_lines or not polygons:
+                logger.warning("GeometricTableStructurer: Faltan datos necesarios (líneas tabulares, all_lines o polígonos) para la estructuración.")
+                return None
+
+            # 1. Asumir que la primera línea tabular es el encabezado y determinar H
+            header_line_id = tabular_line_ids[0]
+            header_poly_ids = all_lines.get(header_line_id, {}).get("polygon_ids", [])
+            H = len(header_poly_ids)
+            if H == 0:
+                logger.warning("La línea de encabezado no tiene polígonos. No se puede determinar el número de columnas.")
+                return None
+
+            # 2. Construir 'main_header_line_elements' (H*) con la geometría requerida
+            main_header_line_elements = []
+            for poly_id in header_poly_ids:
+                poly_data = polygons.get(poly_id)
+                if poly_data and "geometry" in poly_data:
+                    geom = poly_data["geometry"]
+                    main_header_line_elements.append({
+                        "text_raw": poly_data.get("ocr_text", ""),
+                        "cx": geom.get("centroid", [0,0])[0],
+                        "cy": geom.get("centroid", [0,0])[1]
+                    })
+            
+            # 3. Construir 'lines_table_only' (S) para todas las líneas tabulares
+            lines_table_only = []
+            for line_id in tabular_line_ids:
+                line_data = all_lines.get(line_id, {})
+                poly_ids_for_line = line_data.get("polygon_ids", [])
+                
+                constituent_elements = []
+                for poly_id in poly_ids_for_line:
+                    poly_data = polygons.get(poly_id)
+                    if poly_data and "geometry" in poly_data:
+                        geom = poly_data["geometry"]
+                        bbox = geom.get("bounding_box", [0,0,0,0])
+                        constituent_elements.append({
+                            "text_raw": poly_data.get("ocr_text", ""),
+                            "xmin": bbox[0],
+                            "ymin": bbox[1],
+                            "xmax": bbox[2],
+                            "ymax": bbox[3],
+                            "cx": geom.get("centroid", [0,0])[0],
+                            "cy": geom.get("centroid", [0,0])[1]
+                        })
+                
+                lines_table_only.append({
+                    "line_id": line_id,
+                    "constituent_elements_ocr_data": constituent_elements
+                })
+
+            logger.info(f"Iniciando estructuración de tabla con H={H} columnas.")
+            table_matrix = self.structure_table(lines_table_only, main_header_line_elements)
+
+            # Convertir la matriz a DataFrame
+            df = pandas.DataFrame([
+                [cell.get('cell_text', '') for cell in row]
+                for row in table_matrix
+            ])
+            # Usar la primera fila como encabezado si lo deseas
+            if not df.empty:
+                df.columns = df.iloc[0]
+                df = df[1:].reset_index(drop=True)
+
+            logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.4f} segundos. Se encontraron {len(table_matrix)} filas.")
+            logger.info(f"\n{df.to_string(index=False)}")
+            return df
+
+        except Exception as e:
+            logger.error(f"Error fatal en GeometricTableStructurer.vectorize: {e}", exc_info=True)
+            return None
+
+    
 
     def structure_table(self,
                         lines_table_only: List[Dict[str, Any]],
@@ -159,3 +235,19 @@ class GeometricTableStructurer:
 
         logger.info(f"GeometricTableStructurer: Successfully structured {len(table_matrix_T)} lines into {H} columns.")
         return table_matrix_T
+        
+        
+    def _calculate_centroid_cosine_similarity(self, centroid1: Tuple[float, float], centroid2: Tuple[float, float]) -> float:
+        """Calculates cosine similarity between two centroid vectors relative to origin (0,0)."""
+        c1_x, c1_y = centroid1
+        c2_x, c2_y = centroid2
+
+        dot_product = c1_x * c2_x + c1_y * c2_y
+        magnitude1 = math.sqrt(c1_x**2 + c1_y**2)
+        magnitude2 = math.sqrt(c2_x**2 + c2_y**2)
+
+        if magnitude1 == 0 or magnitude2 == 0:
+            return 0.0  # Avoid division by zero; no similarity if one vector is zero
+        
+        cosine_similarity = dot_product / (magnitude1 * magnitude2)
+        return cosine_similarity
