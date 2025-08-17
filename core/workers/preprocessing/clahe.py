@@ -59,7 +59,7 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
                     save_image(processed_img, output_dir, file_name)
                 
                 if output_paths:
-                    logger.info(f"Imagen de debug de clahe para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")
+                    logger.debug(f"Imagen de debug de clahe para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")
             return True
         except Exception as e:
             logger.error(f"Error en manejo de  {e}")

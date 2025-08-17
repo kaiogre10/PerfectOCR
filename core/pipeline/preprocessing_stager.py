@@ -19,7 +19,7 @@ class PreprocessingStager:
 
     def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
-        logger.info("[PreprocessingManager] Iniciando pipeline secuencial directo")
+        logger.debug("[PreprocessingManager] Iniciando pipeline secuencial directo")
         
         # Obtener datos
         metadata = manager.get_metadata()

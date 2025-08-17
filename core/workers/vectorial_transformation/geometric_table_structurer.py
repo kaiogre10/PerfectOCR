@@ -1,6 +1,6 @@
 # PerfectOCR/core/table_structure/geometric_table_structurer.py
 import logging
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple
 import math
 import time
 from core.factory.abstract_worker import VectorizationAbstractWorker
@@ -78,7 +78,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     "constituent_elements_ocr_data": constituent_elements
                 })
 
-            logger.info(f"Iniciando estructuración de tabla con H={H} columnas.")
+            logger.debug(f"Iniciando estructuración de tabla con H={H} columnas.")
             lines_table_only: List[Dict[str, Any]]
             table_matrix = self.structure_table(lines_table_only, main_header_line_elements)
 
@@ -92,8 +92,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 df.columns = df.iloc[0]
                 df = df[1:].reset_index(drop=True)
 
-            logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.4f} segundos. Se encontraron {len(table_matrix)} filas.")
-            logger.info(f"\n{df.to_string(index=False)}")
+            logger.debug(f"Estructuración de tabla completada en {time.time() - start_time:.4f} segundos. Se encontraron {len(table_matrix)} filas.")
+            logger.debug(f"\n{df.to_string(index=False)}")
 
             # Guardar en memoria (DataFormatter) para etapas posteriores
             saved = manager.save_structured_table(df=df, columns=list(df.columns))
@@ -131,8 +131,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         if H == 0:
             logger.warning("GeometricTableStructurer: Number of columns (H) is 0 based on header elements.")
             return []
-
-        logger.info(f"GeometricTableStructurer: Structuring table with H={H} columns.")
         
         header_centroids: List[Tuple[float, float]] = []
         for header_elem in main_header_line_elements:
@@ -235,7 +233,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             table_matrix_T.append(current_row_cells)
 
-        logger.info(f"GeometricTableStructurer: Successfully structured {len(table_matrix_T)} lines into {H} columns.")
+        logger.debug(f"GeometricTableStructurer: Successfully structured {len(table_matrix_T)} lines into {H} columns.")
         return table_matrix_T
         
         

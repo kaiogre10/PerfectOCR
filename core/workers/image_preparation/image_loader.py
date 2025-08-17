@@ -52,7 +52,7 @@ class ImageLoader:
             logger.error(error_msg)
             metadata['error'] = error_msg
             return None, metadata
-        logger.info(f"Imagen cargada correctamente desde: {input_path}")
+        logger.debug(f"Imagen cargada correctamente desde: {input_path}")
 
         image_array = np.array(img_array)
         if image_array.size == 0:
@@ -81,7 +81,7 @@ class ImageLoader:
                     pillow_width =width_exif
                     pillow_height =height_exif
                     metadata["img_dims"] = {"width": int(pillow_width), "height": int(pillow_height)}
-                    logger.info(f"Dimensiones pillow obtenidas con exif: :{pillow_width, pillow_width}")
+                    logger.debug(f"Dimensiones pillow obtenidas con exif: :{pillow_width, pillow_width}")
                 else:
                     pillow_width = img.width
                     pillow_height = img.height
@@ -90,7 +90,7 @@ class ImageLoader:
                         "width": max(int(pillow_width), 1), 
                         "height": max(int(pillow_height), 1)
                     }
-                    logger.info(f"Dimensiones pillow obtenidas con img.:{pillow_width, pillow_height}")
+                    logger.debug(f"Dimensiones pillow obtenidas con img.:{pillow_width, pillow_height}")
                     
                     metadata["color"] = img.mode
                     dpi_info: Optional[Dict[str, Optional[float]]] = img.info.get('dpi')
@@ -107,7 +107,7 @@ class ImageLoader:
                     metadata["img_dims"] = {"width": max(int(cv2_width), 1), "height": max(int(cv2_height), 1)}
                     logger.warning(f"Dimensiones distintas: Pillow ({pillow_width}, {pillow_height}) != cv2 ({cv2_width}, {cv2_height}), usando cv2.")
 
-                logger.info(f"Imagen '{image_name}' cargada exitosamente desde '{input_path}'")
+                logger.debug(f"Imagen '{image_name}' cargada exitosamente desde '{input_path}'")
                 return gray_image, metadata
 
             except Exception as e:

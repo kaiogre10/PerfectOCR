@@ -79,7 +79,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             context["full_img"] = None
             manager.update_full_img(None)
             
-            logger.info(f"PolygonExtractor: {extracted_count} recortes creados. 'full_img' liberada.")
+            logger.debug(f"PolygonExtractor: {extracted_count} recortes creados. 'full_img' liberada.")
             return True
 
         except Exception as e:

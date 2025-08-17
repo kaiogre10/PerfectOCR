@@ -41,7 +41,7 @@ class PaddleOCRWrapper:
                 if rec_model_path:
                     if os.path.exists(rec_model_path):
                         init_params["rec_model_dir"] = rec_model_path
-                        logger.info(f"Usando modelo de reconocimiento en: {rec_model_path}")
+                        logger.debug(f"Usando modelo de reconocimiento en: {rec_model_path}")
                     else:
                         logger.warning(f"Ruta del modelo de reconocimiento no válida: {rec_model_path}")
                 else:
@@ -128,7 +128,7 @@ class PaddleOCRWrapper:
                 consolidated_results: List[List[Any]] = batch_results[0]
                 
                 if len(consolidated_results) == len(image_list):
-                    logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
+                    logger.debug(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
                     final_results: List[Dict[str, str|float]] = []
                     for text, confidence in consolidated_results:
                         processed_result = {
@@ -137,7 +137,7 @@ class PaddleOCRWrapper:
                         }
                         final_results.append(processed_result)
                     
-                    logger.info(f"Total de resultados finales procesados: {len(final_results)}")
+                    logger.debug(f"Total de resultados finales procesados: {len(final_results)}")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes. No se puede garantizar la correspondencia.")

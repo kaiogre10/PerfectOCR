@@ -20,7 +20,7 @@ def save_json(data: Dict[str, Any], output_dir: str, file_name_with_extension: s
         logger.error(f"Error guardando JSON: {e}")
         return None
 
-def save_image(image: np.ndarray, output_dir: str, file_name_with_extension: str) -> Optional[str]:
+def save_image(image: np.ndarray[Any, Any], output_dir: str, file_name_with_extension: str) -> Optional[str]:
     """Guarda una única imagen en disco."""
     try:
         os.makedirs(output_dir, exist_ok=True)
@@ -54,7 +54,7 @@ def save_ocr_json(manager: Any, output_folder: str, image_name: str) -> None:
 
         # Preparar la estructura de datos para el JSON
         metadata = manager.get_metadata()
-        output_data = {
+        output_data: Dict[ str, Any] = {
             "doc_name": metadata.get("image_name"),
             "formato": metadata.get("format"),
             "dpi": metadata.get("dpi"),
@@ -74,7 +74,7 @@ def save_ocr_json(manager: Any, output_folder: str, image_name: str) -> None:
         # Usar la función save_json existente
         json_filename = f"{image_name}_ocr_results.json"
         save_json(output_data, output_folder, json_filename)
-        logger.info(f"Resultados OCR en JSON guardados en: {os.path.join(output_folder, json_filename)}")
+        logger.debug(f"Resultados OCR en JSON guardados en: {os.path.join(output_folder, json_filename)}")
 
     except Exception as e:
         logger.error(f"Error guardando resultados OCR en JSON: {e}")

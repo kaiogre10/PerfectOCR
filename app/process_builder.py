@@ -1,12 +1,32 @@
 # PerfectOCR/app/process_builder.py
-import logging
 import time
+t_import0 = time.perf_counter()
+
+import logging
 from typing import Optional
+
+t_import1 = time.perf_counter()
 from core.pipeline.input_stager import InputStager
+print(f"Desde PROCESS_BUILDER: Import INPUT_STAGER en {time.perf_counter() - t_import1:.6f}s")
+
+t_import2 = time.perf_counter()
 from core.pipeline.preprocessing_stager import PreprocessingStager
+print(f"Desde PROCESS_BUILDER: Import PREPRCCESSING STAGER en {time.perf_counter() - t_import2:.6f}s")
+
+t_import3 = time.perf_counter()
 from core.pipeline.ocr_stager import OCRStager
+print(f"Desde PROCESS_BUILDER: Import OCR STAGER en {time.perf_counter() - t_import3:.6f}s")
+
+t_import4 = time.perf_counter()
 from core.pipeline.vectorization_stager import VectorizationStager
+print(f"Desde PROCESS_BUILDER: Import VECTOR STAGER en {time.perf_counter() - t_import4:.6f}s")
+
+t_import5 = time.perf_counter()
 from core.domain.data_formatter import DataFormatter
+print(f"Desde PROCESS_BUILDER: Import FORMATTER STAGER en {time.perf_counter() - t_import5:.6f}s")
+print(f"Desde PROCESS_BUILDER: TIEMPO TOTAL {time.perf_counter() - t_import0:.6f}s")
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +35,7 @@ class ProcessingBuilder:
     Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y
     coordina el procesamiento técnico de una sola imagen.
     """
-    def __init__(self, input_stager: InputStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter): 
+    def __init__(self, input_stager: InputStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
         self.manager = manager
         self.input_stager = input_stager
         self.preprocessing_stager = preprocessing_stager
@@ -44,18 +64,15 @@ class ProcessingBuilder:
             
             logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.4f}s")
 
-            # FASE 3: OCR (modifica el manager y libera los recortes)
-            ocr_initime = time.perf_counter()
+            # # FASE 3: OCR (modifica el manager y libera los recortes)
             if manager:
                 manager, ocr_time = self.ocr_stager.run_ocr_on_polygons(manager)
                 if manager is None:
                     logger.error("[ProcessingBuilder] No se pudo generar WorkflowDict desde OCR")
                 else:
-                    ocr_total = ocr_time  # ocr_time ya es la duración
                     logger.info(f"OCR time: {ocr_time:.4f}s")
                     
             # Fase 4: Vectorización y Tokenización
-            vect_initime = time.perf_counter()
             if manager:
                 manager, vect_time = self.vectorization_stager.vectorize_results(manager)
                 if manager is None:
@@ -65,7 +82,7 @@ class ProcessingBuilder:
                     logger.info(f"Vectorización time {vect_total:.4f}s")
                                     
             total_workflow_time = time.perf_counter() - workflow_start
-            logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.3f}s")
+            logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.4f}s")
             
             return manager
             

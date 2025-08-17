@@ -85,7 +85,7 @@ class DataFormatter:
                 }
             if self.workflow_dict:
                 self.workflow_dict["polygons"] = polygons
-                logger.info(f"Polígonos estructurados: {len(polygons)}")
+                logger.debug(f"Polígonos estructurados: {len(polygons)}")
                 return True
             else:
                 logger.error("No hay workflow_dict inicializado.")
@@ -132,12 +132,12 @@ class DataFormatter:
             if full_img is None:
                 # Si se pasa None, vaciamos la imagen para liberar memoria
                 self.workflow_dict["full_img"] = None
-                logger.info("full_img liberada del workflow_dict.")
+                logger.debug("full_img liberada del workflow_dict.")
                 return True
             else:
                 # Si se pasa una imagen, la actualizamos
                 self.workflow_dict["full_img"] = full_img.tolist()
-                logger.info("full_img actualizada en el workflow_dict.")
+                logger.debug("full_img actualizada en el workflow_dict.")
             return True
         except Exception as e:
             logger.error(f"Error actualizando full_img: {e}")
@@ -162,7 +162,7 @@ class DataFormatter:
                         self.workflow_dict["polygons"][poly_id]["cropped_geometry"] = cropped_geometries[poly_id]
 
 
-            logger.info(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte.")
+            logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte.")
             return True
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}")
@@ -218,7 +218,7 @@ class DataFormatter:
                         self.workflow_dict["polygons"][poly_id]["ocr_text"] = res.get("text", "")
                         self.workflow_dict["polygons"][poly_id]["ocr_confidence"] = res.get("confidence")
                         
-            logger.info("Texto actualizado")
+            logger.debug("Texto actualizado")
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}")
@@ -245,7 +245,7 @@ class DataFormatter:
                 }
             self.workflow_dict["all_lines"] = all_lines
             num_lines = len(all_lines)
-            logger.info(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
+            logger.debug(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
             # for line_id, line_data in all_lines.items():
             #     logger.info(f"Línea {line_id} - Texto: {line_data.get('text', "")}")
                 
@@ -290,7 +290,7 @@ class DataFormatter:
                         logger.warning(f"Línea {line_id} no tiene texto para codificar.")
                 else:
                     logger.warning(f"Línea {line_id} no encontrada en all_lines.")
-            logger.info(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
+            logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
             return encoded_lines
         except Exception as e:
             logger.error(f"Error codificando líneas: {e}")
@@ -331,7 +331,7 @@ class DataFormatter:
             # Guardar en workflow_dict
             self.workflow_dict["tabular_lines"] = tabular_lines
             num_tab_lines = len(tabular_lines)
-            logger.info(f"Guardadas {num_tab_lines} líneas tabulares en tabular_lines (incluyendo encabezado si corresponde)")
+            logger.debug(f"Guardadas {num_tab_lines} líneas tabulares en tabular_lines (incluyendo encabezado si corresponde)")
             # for line_id, data in tabular_lines.items():
                 #logger.info(f"Línea tabular: {line_id} - Texto: {data.get('texto', '')}")
             return True

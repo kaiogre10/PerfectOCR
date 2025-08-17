@@ -44,7 +44,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 if det_model_path:
                     if os.path.exists(det_model_path):
                         init_params["det_model_dir"] = det_model_path
-                        logger.info(f"Usando modelo de detección en: {det_model_path}")
+                        logger.debug(f"Usando modelo de detección en: {det_model_path}")
                     else:
                         logger.warning(f"Ruta del modelo de detección no válida: {det_model_path}")
                 else:
@@ -52,7 +52,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
                 # Inicializar el modelo
                 self._engine = PaddleOCR(**init_params)
-                logger.info(f"PaddleOCR (det) listo en {time.perf_counter()-start_time:.3f}s ")
+                logger.debug(f"PaddleOCR (det) listo en {time.perf_counter()-start_time:.3f}s ")
             except Exception as e:
                 logger.error(f"Error inicializando PaddleOCR para geometría: {e}", exc_info=True)
                 self._engine = None
@@ -81,7 +81,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 img_for_paddle = img
 
             results: Optional[List[Any]] = engine.ocr(img_for_paddle, det=True, cls=False, rec=False) # type: ignore
-            logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
+            logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
 
             if not (results and len(results) > 0 and results[0] is not None):
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
@@ -94,7 +94,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                     metadata=context.get("metadata", {})
                 )
             else:
-                logger.info("GeometryDetector: Workflow ya inicializado.")
+                logger.debug("GeometryDetector: Workflow ya inicializado.")
 
             success = manager.create_polygon_dicts(results)
             if not success:

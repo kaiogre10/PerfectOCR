@@ -1,12 +1,32 @@
 # core/workers/image_preparation_factory.py
-from typing import Dict, Callable, Any
-from core.factory.abstract_worker import ImagePrepAbstractWorker
-from core.factory.abstract_factory import AbstractBaseFactory
-from core.workers.image_preparation.cleanner import ImageCleaner
-from core.workers.image_preparation.angle_corrector import AngleCorrector
-from core.workers.image_preparation.geometry_detector import GeometryDetector
-from core.workers.image_preparation.poly_gone import PolygonExtractor
+import time
+t_import0 = time.perf_counter()
 
+from typing import Dict, Callable, Any
+t_import1 = time.perf_counter()
+from core.factory.abstract_worker import ImagePrepAbstractWorker
+print(f"Desde IMAGEPREPARATIONFACTORY: Import ImagePrepAbstractWorker en {time.perf_counter() - t_import1:.6f}s")
+
+t_import2 = time.perf_counter()
+from core.factory.abstract_factory import AbstractBaseFactory
+print(f"Desde IMAGEPREPARATIONFACTORY: Import AbstractBaseFactory en {time.perf_counter() - t_import2:.6f}s")
+
+t_import3 = time.perf_counter()
+from core.workers.image_preparation.cleanner import ImageCleaner
+print(f"Desde IMAGEPREPARATIONFACTORY: Import ImageCleaner en {time.perf_counter() - t_import3:.6f}s")
+
+t_import4 = time.perf_counter()
+from core.workers.image_preparation.angle_corrector import AngleCorrector
+print(f"Desde IMAGEPREPARATIONFACTORY: Import AngleCorrector en {time.perf_counter() - t_import4:.6f}s")
+
+t_import5 = time.perf_counter()
+from core.workers.image_preparation.geometry_detector import GeometryDetector
+print(f"Desde IMAGEPREPARATIONFACTORY: Import GeometryDetector en {time.perf_counter() - t_import5:.6f}s")
+
+t_import6 = time.perf_counter()
+from core.workers.image_preparation.poly_gone import PolygonExtractor
+print(f"Desde IMAGEPREPARATIONFACTORY: Import PolygonExtractor en {time.perf_counter() - t_import6:.6f}s")
+print(f"Desde IMAGEPREPARATIONFACTORY: Tiempo total de importaciones en {time.perf_counter() - t_import0:.6f}s")
 
 class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):    
     def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], ImagePrepAbstractWorker]]:

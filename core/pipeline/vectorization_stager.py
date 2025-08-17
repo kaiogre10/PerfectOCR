@@ -22,7 +22,7 @@ class VectorizationStager:
         """
         
         start_time = time.time()
-        logger.info("[VectorStager] Iniciando pipeline de vectorización")
+        logger.debug("[VectorStager] Iniciando pipeline de vectorización")
         metadata = manager.get_metadata()
         polygons = manager.get_polygons()
         
@@ -51,7 +51,7 @@ class VectorizationStager:
                 continue
         
         elapsed = time.time() - start_time
-        logger.info(f"[VectorStager] Pipeline completado en: {elapsed:.3f}s")
+        logger.info(f"[VectorStager] Pipeline completado en: {elapsed:.4f}s")
         return manager, elapsed
             
 

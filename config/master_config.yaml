@@ -41,18 +41,18 @@ pipeline_secuence:
 enabled_outputs:
     preprocessed_image: false
     ocr_raw: true
-    cropped_words: false
-    moire_poly: false
-    sp_poly: false
-    gauss_poly: false
-    clahe_poly: false
-    sharp_poly: false
-    binarized_polygons: false
-    problematic_polygons: false
-    reconstructed_lines: false
-    table_lines: false
-    table_structured: false
-    math_max_corrected: false
+    cropped_words: true
+    moire_poly: true
+    sp_poly: true
+    gauss_poly: true
+    clahe_poly: true
+    sharp_poly: true
+    binarized_polygons: true
+    problematic_polygons: true
+    reconstructed_lines: true
+    table_lines: true
+    table_structured: true
+    math_max_corrected: true
 
 # Configuración de procesamiento
 processing:

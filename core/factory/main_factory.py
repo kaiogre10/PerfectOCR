@@ -1,8 +1,21 @@
 # core/workers/factory/main_factory.py
+import time
+t_import0 = time.perf_counter()
+
 from typing import Dict, Any
+
+t_import1 = time.perf_counter()
 from core.workers.image_preparation.image_preparation_factory import ImagePreparationFactory
+print(f"Desde MAIN_FACTORY: Import IMAGEPREPARATIONFACTORY en {time.perf_counter() - t_import1:.6f}s")
+
+t_import2 = time.perf_counter()
 from core.workers.preprocessing.preprocessing_factory import PreprocessingFactory
+print(f"Desde MAIN_FACTORY: Import ProcessingFactory en {time.perf_counter() - t_import2:.6f}s")
+
+t_import3 = time.perf_counter()
 from core.workers.vectorial_transformation.vectorizing_factory import VectorizingFactory
+print(f"Desde MAIN_FACTORY: Import VectorFactory en {time.perf_counter() - t_import3:.6f}s")
+print(f"Desde MAIN_FACTORY: Tiempo total de importaciones en {time.perf_counter() - t_import0:.6f}s")
 
 class MainFactory:
     """Factory universal que coordina todas las factories de módulos."""

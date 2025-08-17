@@ -44,7 +44,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             manager.save_structured_table(df=df_corr, columns=list(df_corr.columns), semantic_types=semantic_types_final)
 
             elapsed = time.time() - start_time
-            logger.info(f"[MatrixSolver] Corrección matemática completada en {elapsed:.3f}s,  Se encontraron {len(df_corr)} filas.")
+            logger.debug(f"[MatrixSolver] Corrección matemática completada en {elapsed:.3f}s,  Se encontraron {len(df_corr)} filas.")
             return True
         except Exception as e:
             logger.error(f"Error en MatrixSolver.vectorize: {e}", exc_info=True)
@@ -94,7 +94,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         c_name = quant_cols[c_idx]
         pu_name = quant_cols[pu_idx]
         mtl_name = quant_cols[mtl_idx]
-        logger.info(f"[MatrixSolver] Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
+        logger.debug(f"[MatrixSolver] Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
         # --- FASE 2: Reconstrucción ---
         reconstructed = numeric_df.to_numpy(copy=True)
         # Calcular medianas por columna ignorando NaN

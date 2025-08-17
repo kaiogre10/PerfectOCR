@@ -1,13 +1,25 @@
 # PerfectOCR/core/coordinators/ocr_manager.py
+import time
+t_import0 = time.perf_counter()
+
+import cv2
 import numpy as np
 import logging
-import time
-from core.domain.data_formatter import DataFormatter
 from typing import Optional, Dict, Any, Tuple, List
+
+t_import1 = time.perf_counter()
+from core.domain.data_formatter import DataFormatter
+print(f"Desde OCR STAGER: Import FORMATTER en {time.perf_counter() - t_import1:.6f}s")
+
+t_import2 = time.perf_counter()
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
+print(f"Desde OCR STAGER: Import PADDLE WRAPPER en {time.perf_counter() - t_import2:.6f}s")
+print(f"Desde OCR STAGER: TIEMPO TOTAL {time.perf_counter() - t_import0:.6f}s")
+
+
 # from core.workers.ocr.text_cleaner import TextCleaner
 # from core.workers.ocr.interceptor import Interceptor
-import cv2
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +35,11 @@ class OCRStager:
         # self._interceptor = Interceptor(config=self.config, project_root=self.project_root)
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+        
         start_time = time.perf_counter()
-        
         polygons = manager.get_polygons_with_cropped_img()
-        
-        # DEBUG: Ver qué contiene polygons
-        logger.info(f"[OCREngineManager] Polígonos obtenidos: {len(polygons)}")
-        for poly_id, poly_data in list(polygons.items())[:3]:  # Solo los primeros 3
+        logger.debug(f"[OCREngineManager] Polígonos obtenidos: {len(polygons)}")
+        for poly_id, poly_data in list(polygons.items())[:3]:
             cropped_img = poly_data.get("cropped_img", {})
             logger.debug(f"[OCREngineManager] {poly_id}: cropped_img type={type(cropped_img)}, shape={getattr(cropped_img, 'shape', 'N/A')}")
         
@@ -78,7 +88,7 @@ class OCRStager:
                     manager.workflow_dict["polygons"][poly_id]["cropped_img"] = None
                     #logger.debug("Cropped_img liberadas, texto generado")
         
-        logger.info(f"[OCREngineManager] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados.")
+        logger.debug(f"[OCREngineManager] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados.")
         image_name = manager.get_metadata().get("image_name", "unknown_image")
         self._save_complete_ocr_results(manager, image_name)
         

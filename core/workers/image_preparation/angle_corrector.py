@@ -16,7 +16,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.corrections = config
-        logger.info("AngleCorrector inicializado.")
+        logger.debug("AngleCorrector inicializado con Paddle.")
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -47,9 +47,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 manager.update_full_img(dict_id, full_img)
         except Exception as e:
             logger.warning(f"AngleCorrector: No se pudo actualizar full_img en el manager: {e}")
-        
         return True
-
 
     def correct(self, full_img: np.ndarray[Any, Any], img_dims: Dict[str, int]) -> np.ndarray[Any, Any]:
         """
@@ -78,14 +76,14 @@ class AngleCorrector(ImagePrepAbstractWorker):
                                 minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
 
         if lines is None or len(lines) == 0:
-            logger.info("No se detectaron líneas para la corrección de inclinación.")
+            logger.debug("No se detectaron líneas para la corrección de inclinación.")
             return full_img
 
         angles = [math.degrees(math.atan2(l[0][3]-l[0][1], l[0][2]-l[0][0])) for l in lines]
         filtered_angles = [a for a in angles if hough_angle_filter_range_degrees[0] < a < hough_angle_filter_range_degrees[1]]
         
         if not filtered_angles:
-            logger.info("Ninguna línea detectada en el rango de ángulos para corrección.")
+            logger.debug("Ninguna línea detectada en el rango de ángulos para corrección.")
             return full_img
 
         angle = np.median(filtered_angles)

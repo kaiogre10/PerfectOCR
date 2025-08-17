@@ -55,7 +55,7 @@ class ImageCleaner(ImagePrepAbstractWorker):
             clean_img = np.clip(clean_img, 0, 255).astype(np.uint8)
 
             full_img[...] = clean_img
-            logger.info("Cleaner: limpieza automatizada aplicada correctamente.")
+            logger.debug("Cleaner: limpieza automatizada aplicada correctamente.")
             return True
         except Exception as e:
             logger.error(f"Cleaner: {e}", exc_info=True)
