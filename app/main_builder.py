@@ -41,9 +41,9 @@ t_import9 = time.perf_counter()
 from core.domain.data_formatter import DataFormatter
 print(f"Desde MAIN_BUILDER: Import DataFormatter en {time.perf_counter() - t_import9:.6f}s")
 
-t_import10 = time.perf_counter()
-from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
-print(f"Desde MAIN_BUILDER: Import PaddleOCRWrapper en {time.perf_counter() - t_import10:.6f}s")
+# t_import10 = time.perf_counter()
+# from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
+# print(f"Desde MAIN_BUILDER: Import PaddleOCRWrapper en {time.perf_counter() - t_import10:.6f}s")
 
 t_import11 = time.perf_counter()
 from services.config_service import ConfigService
@@ -113,49 +113,42 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
     image_info_list = workflow_report.get('image_info', [])
         
     for image_data in image_info_list:
-        t0 = time.perf_counter()
         worker_factory = MainFactory(
             config_services.modules_config,
             project_root=project_root
         )
-        logger.info(f"[Tiempo] MainFactory inicializada en {time.perf_counter()-t0:.6f}s")
 
         geometry_detector = config_services.paddle_det_config
+        paddle_wrapper = config_services.paddle_rec_config
+
 
         context = {
             "geometry_detector": geometry_detector,
+            "paddle_wrapper": paddle_wrapper
         }
-        t1 = time.perf_counter()
-        image_load_factory = worker_factory.get_image_preparation_factory()
-        logger.info(f"[Tiempo] ImagePreparationFactory inicializada en {time.perf_counter()-t1:.6f}s")
 
-        t2 = time.perf_counter()
+        image_load_factory = worker_factory.get_image_preparation_factory()
+
         image_prep_workers = image_load_factory.create_workers([
             "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"
         ], context)
-        logger.info(f"[Tiempo] Workers de preparación de imagen creados en {time.perf_counter()-t2:.6f}s")
 
-        t3 = time.perf_counter()
         preprocessing_factory = worker_factory.get_preprocessing_factory()
-        logger.info(f"[Tiempo] PreprocessingFactory inicializada en {time.perf_counter()-t3:.6f}s")
 
-        t4 = time.perf_counter()
         preprocessing_workers = preprocessing_factory.create_workers(
             ["moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
             context
         )
-        logger.info(f"[Tiempo] Workers de preprocesamiento creados en {time.perf_counter()-t4:.6f}s")
+        
+        ocr_factory = worker_factory.get_ocr_factory()
+        ocr_workers = ocr_factory.create_workers(["paddle_wrapper"], context)
 
-        t5 = time.perf_counter()
         vectorizing_factory = worker_factory.get_vectorizing_factory()
-        logger.info(f"[Tiempo] VectorizingFactory inicializada en {time.perf_counter()-t5:.6f}s")
 
-        t6 = time.perf_counter()
         vectorization_workers = vectorizing_factory.create_workers(
             ["lineal", "dbscan", "table_structurer", "math_max"], 
             context
         )
-        logger.info(f"[Tiempo] Workers de vectorización creados en {time.perf_counter()-t6:.6f}s")
 
         manager = DataFormatter()
         
@@ -175,18 +168,11 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             stage_config=config_services.manager_config,
             output_paths=output_paths,
             project_root=project_root
-        )
-        
-        paddleocr = PaddleOCRWrapper(
-            {"paddle_config": config_services.paddleocr},
-            project_root=project_root
-        )
-        
+        )        
         
         ocr_stager = OCRStager(
+            workers=ocr_workers,
             stage_config=config_services.manager_config,
-            config=config_services.ocr_config,
-            paddleocr=paddleocr,
             output_paths=output_paths,
             project_root=project_root
         )

@@ -40,19 +40,19 @@ pipeline_secuence:
 # Configuración de salida (independiente)
 enabled_outputs:
     preprocessed_image: false
-    ocr_raw: true
-    cropped_words: true
-    moire_poly: true
-    sp_poly: true
-    gauss_poly: true
-    clahe_poly: true
-    sharp_poly: true
-    binarized_polygons: true
-    problematic_polygons: true
-    reconstructed_lines: true
-    table_lines: true
-    table_structured: true
-    math_max_corrected: true
+    ocr_raw: false
+    cropped_words: false
+    moire_poly: false
+    sp_poly: false
+    gauss_poly: false
+    clahe_poly: false
+    sharp_poly: false
+    binarized_polygons: false
+    problematic_polygons: false
+    reconstructed_lines: false
+    table_lines: false
+    table_structured: false
+    math_max_corrected: false
 
 # Configuración de procesamiento
 processing:
@@ -117,8 +117,7 @@ modules:
       sharpness_threshold: 50.0
       radius: 1.0
       amount: 1.5
-      
-  
+        
   ocr:
     textual:
       min_confidence: 80.0

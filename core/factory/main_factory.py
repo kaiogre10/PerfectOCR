@@ -12,6 +12,8 @@ t_import2 = time.perf_counter()
 from core.workers.preprocessing.preprocessing_factory import PreprocessingFactory
 print(f"Desde MAIN_FACTORY: Import ProcessingFactory en {time.perf_counter() - t_import2:.6f}s")
 
+from core.workers.ocr.ocr_factory import OCRFactory
+
 t_import3 = time.perf_counter()
 from core.workers.vectorial_transformation.vectorizing_factory import VectorizingFactory
 print(f"Desde MAIN_FACTORY: Import VectorFactory en {time.perf_counter() - t_import3:.6f}s")
@@ -32,6 +34,10 @@ class MainFactory:
         preprocessing_config = nested_modules.get('preprocessing', {}).copy()
         preprocessing_config['enabled_outputs'] = enabled_outputs
         
+        ocr_config = nested_modules.get('ocr', {}).copy() # <-- Añadido
+        ocr_config['enabled_outputs'] = enabled_outputs # <-- Añadido
+ 
+        
         vectorizing_config = nested_modules.get('vectorization', {}).copy()
         vectorizing_config['enabled_outputs'] = enabled_outputs
 
@@ -45,7 +51,10 @@ class MainFactory:
                 preprocessing_config,
                 project_root
             ),
-            
+            "ocr": OCRFactory(
+                ocr_config,
+                project_root
+            ),
             "vectorization": VectorizingFactory(
                 vectorizing_config,
                 project_root
@@ -65,6 +74,12 @@ class MainFactory:
         factory = self.module_factories["preprocessing"]
         assert isinstance(factory, PreprocessingFactory)
         return factory
+        
+    def get_ocr_factory(self) -> OCRFactory:
+        factory = self.module_factories["ocr"] # <-- Corregido
+        assert isinstance(factory, OCRFactory) # <-- Corregido
+        return factory
+
         
     def get_vectorizing_factory(self) -> VectorizingFactory:
         factory = self.module_factories["vectorization"]

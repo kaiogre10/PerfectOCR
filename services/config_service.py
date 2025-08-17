@@ -145,7 +145,7 @@ class ConfigService:
             
         
     @property
-    def paddleocr(self) -> Dict[str, Any]:
+    def paddle_rec_config(self) -> Dict[str, Any]:
         """
         Devuelve la configuración fusionada para el modelo de reconocimiento de Paddle.
         Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.

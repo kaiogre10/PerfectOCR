@@ -1,24 +1,88 @@
 # PerfectOCR/core/workflow/ocr/paddle_wrapper.py
 import os
+import cv2
 import logging
 import time
 import numpy as np
 from typing import Dict, Any, List, Optional
 from paddleocr import PaddleOCR # type: ignore
+from core.domain.data_formatter import DataFormatter
+from core.factory.abstract_worker import OCRAbstractWorker
 
 logger = logging.getLogger(__name__)
 
-class PaddleOCRWrapper:
+class PaddleOCRWrapper(OCRAbstractWorker):
     """
     Una instancia de PaddleOCR especializada únicamente en el RECONOCIMIENTO
     de texto en imágenes pre-recortadas (polígonos).
     Utiliza carga perezosa para el motor de PaddleOCR.
     """
-    def __init__(self, config_dict: Dict[str, Any], project_root: str):
+    def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
         self.project_root = project_root
-        self.config_dict = config_dict
-        self.init_params = config_dict.get("paddleocr", {})
+        self.config_dict = config
+        self.init_params = config.get("paddle_rec_config",  {})
         self._engine = None
+        
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        
+        start_time = time.perf_counter()
+        polygons = manager.get_polygons_with_cropped_img()
+        logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
+        for poly_id, poly_data in list(polygons.items())[:3]:
+            cropped_img = poly_data.get("cropped_img", {})
+            logger.debug(f"[PaddleWrapper] {poly_id}: cropped_img type={type(cropped_img)}, shape={getattr(cropped_img, 'shape', 'N/A')}")
+        
+        # Preparar batch (igual que preprocessing pero optimizado para OCR)
+        image_list: List[np.ndarray[Any, Any]] = []
+        polygon_ids: List[str] = []
+        
+        for poly_id, poly_data in polygons.items():
+            cropped_img = poly_data.get("cropped_img", {})
+            cropped_img: np.ndarray[Any, Any]
+            if cropped_img is not None:
+                # Convertir a np.ndarray si es necesario
+                if isinstance(cropped_img, list):
+                    cropped_img = np.array(cropped_img)
+                
+                # Validar que la imagen sea procesable
+                if hasattr(cropped_img, 'shape') and len(cropped_img.shape) >= 2:
+                    if min(cropped_img.shape[:2]) > 0:  # Dimensiones válidas
+                        # CONVERTIR A 3 CANALES para PaddleOCR
+                        if len(cropped_img.shape) == 2:  # Escala de grises
+                            cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
+                        elif cropped_img.shape[2] == 1:  # 1 canal
+                            cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
+                        
+                        image_list.append(cropped_img)
+                        polygon_ids.append(poly_id)
+        
+        if not image_list:
+            logger.warning("[PaddleWrapper] No se encontraron imágenes válidas para OCR.")
+            return False
+            
+        # image_list_copy = image_list.copy()
+        # Procesar BATCH (mantener rendimiento)
+        batch_results: List[Optional[Dict[str, Any]]] = self.recognize_text_from_batch(image_list)
+        # cleaned_batch_results, fragmentation_candidates = self._text_cleanner.clean_and_analyze_batch(polygon_ids, batch_result)
+        # polygons = manager.get_polygons()
+        # batch_results = self._interceptor.intercept_polygons(polygon_ids, cleaned_batch_results, fragmentation_candidates, image_list_copy, polygons)
+        # Actualizar resultados usando el método centralizado
+        processed_count = 0
+        if batch_results:
+            success = manager.update_ocr_results(batch_results, polygon_ids)
+            processed_count = len(batch_results) if success else 0
+
+            for poly_id in polygon_ids:
+                if poly_id in manager.get_polygons():
+                    manager.workflow_dict["polygons"][poly_id]["cropped_img"] = None
+                    #logger.debug("Cropped_img liberadas, texto generado")
+        
+        image_name = manager.get_metadata().get("image_name", "unknown_image")
+        self._save_complete_ocr_results(manager, image_name)
+        total_time = time.perf_counter() - start_time
+        logger.debug(f"[OCREngineManager] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
+        return True 
 
     @property
     def engine(self) -> Optional[PaddleOCR]:
@@ -169,3 +233,23 @@ class PaddleOCRWrapper:
         except Exception as e:
             logger.error(f"Error crítico durante el reconocimiento de texto en lote: {e}", exc_info=True)
             return [None] * len(image_list)
+            
+            
+    def _save_complete_ocr_results(self, manager: DataFormatter, image_name: str):
+        """
+        Ordena al OutputService que guarde los resultados del OCR.
+        """
+        if not self.config.get('output_flag', {}).get('ocr_raw', False):
+            return
+
+        output_folder = self.config.get('output_folder')
+        if not output_folder:
+            logger.warning("[OCREngineManager] No se puede guardar resultados OCR porque 'output_folder' no está definido.")
+            return
+
+        try:
+            from services.output_service import save_ocr_json
+            save_ocr_json(manager, output_folder, image_name)
+        except Exception as e:
+            logger.error(f"[OCREngineManager] Fallo al invocar save_ocr_json: {e}")        
+        pass

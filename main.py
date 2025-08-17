@@ -16,17 +16,17 @@ import sys
 SYS_IMPORT_END = time.perf_counter()
 print(f"Import sys: {SYS_IMPORT_END - OS_IMPORT_END:.6f}s")
 
-import typer
-TYPER_IMPORT_END = time.perf_counter()
-print(f"Import typer: {TYPER_IMPORT_END - SYS_IMPORT_END:.6f}s")
+# import typer
+# TYPER_IMPORT_END = time.perf_counter()
+# print(f"Import typer: {TYPER_IMPORT_END - SYS_IMPORT_END:.6f}s")
 
-from typing import Optional, List
-TYPING_IMPORT_END = time.perf_counter()
-print(f"Import typing: {TYPING_IMPORT_END - TYPER_IMPORT_END:.6f}s")
+# from typing import Optional, List
+# TYPING_IMPORT_END = time.perf_counter()
+# print(f"Import typing: {TYPING_IMPORT_END - TYPER_IMPORT_END:.6f}s")
 
 from services.cache_service import clear_output_folders
 CACHE_IMPORT_END = time.perf_counter()
-print(f"Import cache_service: {CACHE_IMPORT_END - TYPING_IMPORT_END:.6f}s")
+print(f"Import cache_service: {CACHE_IMPORT_END - SYS_IMPORT_END:.6f}s")
 
 from app.main_builder import activate_main
 MAIN_BUILDER_IMPORT_END = time.perf_counter()
@@ -103,33 +103,38 @@ logger_root.addHandler(console_handler)
 LOGGING_TIME = time.perf_counter()
 logging.info(f"Logging configurado en {LOGGING_TIME - PATHS_TIME:.6f}s")
 
-# Log antes de crear la app Typer
-logging.info("Creando aplicación Typer...")
-TYPER_START = time.perf_counter()
-app = typer.Typer(help="PerfectOCR - Sistema de OCR optimizado")
-TYPER_TIME = time.perf_counter()
-logging.info(f"App Typer creada en {TYPER_TIME - TYPER_START:.6f}s")
+# # Log antes de crear la app Typer
+# logging.info("Creando aplicación Typer...")
+# TYPER_START = time.perf_counter()
+# app = typer.Typer(help="PerfectOCR - Sistema de OCR optimizado")
+# TYPER_TIME = time.perf_counter()
+# logging.info(f"App Typer creada en {TYPER_TIME - TYPER_START:.6f}s")
 
 # Log final
 FINAL_TIME = time.perf_counter()
 logging.info(f"Arranque de sistema en {FINAL_TIME - START_TIME:.6f}s")
 
 
-@app.command()
-def run(
-    input_paths: Optional[List[str]] = typer.Argument(None),
-    output_paths: Optional[List[str]] = typer.Argument(None),
-    config_path: str = typer.Option(DEFAULT_CONFIG_FILE, "--config", "-c"),
-    project_root: str = PROJECT_ROOT
-):
-    """Ejecuta PerfectOCR con rutas por defecto o personalizadas."""
-    if not input_paths:
-        input_paths = [DEFAULT_INPUT_PATH]
-    if not output_paths:
-        output_paths = [DEFAULT_OUTPUT_PATH]
+# Hint de uso para la terminal:
+# Ejemplo de uso:
+#   python main.py run --input-paths "ruta/imagen1.png" "ruta/imagen2.jpg" --output-paths "ruta/salida1" "ruta/salida2" --config "config/master_config.yaml" --project-root "C:/PerfectOCR"
+# Todos los argumentos son opcionales; si no se especifican, se usan los valores por defecto definidos en el sistema.
+
+# @app.command()
+# def run(
+#     input_paths: Optional[List[str]] = typer.Argument(None),
+#     output_paths: Optional[List[str]] = typer.Argument(None),
+#     config_path: str = typer.Option(DEFAULT_CONFIG_FILE, "--config", "-c"),
+#     project_root: str = PROJECT_ROOT
+# ):
+#     """Ejecuta PerfectOCR con rutas por defecto o personalizadas."""
+#     if not input_paths:
+#         input_paths = [DEFAULT_INPUT_PATH]
+#     if not output_paths:
+#         output_paths = [DEFAULT_OUTPUT_PATH]
     
-    clear_output_folders(output_paths, project_root)
-    return activate_main(input_paths, output_paths, config_path, project_root)
+#     clear_output_folders(output_paths, project_root)
+#     return activate_main(input_paths, output_paths, config_path, project_root)
 
 def main():
     """Función main para compatibilidad con ejecución directa."""
@@ -141,7 +146,7 @@ def main():
         
         clear_output_folders(output_paths, project_root)
         return activate_main(input_paths, output_paths, config_path, project_root)
-    app()
+    # app()
 
 if __name__ == "__main__":
     main()

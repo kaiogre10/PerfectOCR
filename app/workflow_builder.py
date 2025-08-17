@@ -57,6 +57,8 @@ class WorkFlowBuilder:
         num_images = len(image_info)
         use_batch = num_images > self.small_batch_limit
         mode = 'batch' if use_batch else 'interactive'
+        logging.info(f"Número de imágenes: {num_images}, modo: {mode}")
+
 
         return {
             "status": "success",
@@ -64,7 +66,7 @@ class WorkFlowBuilder:
             "mode": mode,
             "image_info": image_info,
         }
-        
+                    
     def extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, str]]:
         """Extrae lista de rutas y nombres de imágenes válidas."""
         image_info: List[Dict[str, str]] = []

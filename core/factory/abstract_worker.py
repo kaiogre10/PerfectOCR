@@ -19,12 +19,19 @@ class ImagePrepAbstractWorker(BaseWorker):
         """
         pass
     
-    
 class PreprossesingAbstractWorker(BaseWorker):
     @abstractmethod
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Recibe la imagen para corregirla si es necesario
+        """
+        pass
+    
+class OCRAbstractWorker(BaseWorker):
+    @abstractmethod
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        """
+        Transcribe la imagen por OCR
         """
         pass
     

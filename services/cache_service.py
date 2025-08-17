@@ -35,11 +35,15 @@ def clear_output_folders(output_paths: List[str], project_root: str) -> None:
                 logger.error(f"Error al eliminar {item_path}: {e}")
     tempo = time.perf_counter() - t0
     total_eliminados = archivos_eliminados + carpetas_eliminadas
-    avg_time_file = tempo / archivos_eliminados
+    if archivos_eliminados < 0:
+        avg_time_file = tempo / archivos_eliminados
+        logging.info(f"Total: {total_eliminados}, promedio por archivo {avg_time_file:.6f} archivos/s")
+    else:
+        pass        
+        
     logging.info(
         f"Limpieza inicial completada en {tempo:.6f}s. "
         f"Archivos eliminados: {archivos_eliminados}, Carpetas eliminadas: {carpetas_eliminadas}, "
-        f"Total: {total_eliminados}, promedio por archivo {avg_time_file:.6f} archivos/s"
     )
 
 def cleanup_project_cache(project_root: str) -> None:
