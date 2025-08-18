@@ -17,7 +17,6 @@ from core.workers.ocr.ocr_factory import OCRFactory
 t_import3 = time.perf_counter()
 from core.workers.vectorial_transformation.vectorizing_factory import VectorizingFactory
 print(f"Desde MAIN_FACTORY: Import VectorFactory en {time.perf_counter() - t_import3:.6f}s")
-print(f"Desde MAIN_FACTORY: Tiempo total de importaciones en {time.perf_counter() - t_import0:.6f}s")
 
 class MainFactory:
     """Factory universal que coordina todas las factories de módulos."""
@@ -25,7 +24,7 @@ class MainFactory:
     def __init__(self, modules_config: Dict[str, Any], project_root: str):
         self.modules_config = modules_config
         self.project_root = project_root
-
+        
         # Extraer la configuración anidada y los outputs globales
         nested_modules = self.modules_config.get('modules', {})
         enabled_outputs = self.modules_config.get('enabled_outputs', {})

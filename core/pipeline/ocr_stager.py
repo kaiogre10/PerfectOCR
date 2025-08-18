@@ -1,14 +1,8 @@
 # PerfectOCR/core/coordinators/ocr_manager.py
 import time
-t_import0 = time.perf_counter()
-
 import logging
 from typing import Optional, Dict, Any, Tuple, List
-
-t_import1 = time.perf_counter()
 from core.domain.data_formatter import DataFormatter
-print(f"Desde OCR STAGER: Import FORMATTER en {time.perf_counter() - t_import1:.6f}s")
-
 from core.factory.abstract_worker import OCRAbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -36,7 +30,6 @@ class OCRStager:
             return None, 0.0
             
         try:
-            # Crear contexto para el worker
             context = {
                 "config": self.config
             }

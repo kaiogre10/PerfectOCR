@@ -1,32 +1,12 @@
 # PerfectOCR/app/process_builder.py
 import time
-t_import0 = time.perf_counter()
-
 import logging
 from typing import Optional
-
-t_import1 = time.perf_counter()
 from core.pipeline.input_stager import InputStager
-print(f"Desde PROCESS_BUILDER: Import INPUT_STAGER en {time.perf_counter() - t_import1:.6f}s")
-
-t_import2 = time.perf_counter()
 from core.pipeline.preprocessing_stager import PreprocessingStager
-print(f"Desde PROCESS_BUILDER: Import PREPRCCESSING STAGER en {time.perf_counter() - t_import2:.6f}s")
-
-t_import3 = time.perf_counter()
 from core.pipeline.ocr_stager import OCRStager
-print(f"Desde PROCESS_BUILDER: Import OCR STAGER en {time.perf_counter() - t_import3:.6f}s")
-
-t_import4 = time.perf_counter()
 from core.pipeline.vectorization_stager import VectorizationStager
-print(f"Desde PROCESS_BUILDER: Import VECTOR STAGER en {time.perf_counter() - t_import4:.6f}s")
-
-t_import5 = time.perf_counter()
 from core.domain.data_formatter import DataFormatter
-print(f"Desde PROCESS_BUILDER: Import FORMATTER STAGER en {time.perf_counter() - t_import5:.6f}s")
-print(f"Desde PROCESS_BUILDER: TIEMPO TOTAL {time.perf_counter() - t_import0:.6f}s")
-
-
 
 logger = logging.getLogger(__name__)
 

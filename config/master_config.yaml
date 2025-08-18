@@ -14,6 +14,7 @@ paddle_config:
   show_log: false
   use_gpu: false
   enable_mkldnn: true
+  rec_batch_num: 64
   models:
     det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
     rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"

@@ -59,16 +59,6 @@ class ConfigService:
             "modules": self.config.get("modules", {}),
             "enabled_outputs": self.enabled_outputs, 
         }
-    
-    @property
-    def paddle_config(self) -> Dict[str, Any]:
-        """Obtiene la configuración global para Paddle"""
-        return self.config.get('paddle_config', {})
-    
-    @property
-    def validated_paddle_config(self):
-        """Acceso directo al objeto Pydantic validado."""
-        return self.validated_config.paddle_config
         
     @property
     def validated_modules_config(self):
@@ -123,6 +113,16 @@ class ConfigService:
         if add_extra and workers < cpu_count:
             workers += 1
         return max(1, workers)
+        
+    @property
+    def paddle_config(self) -> Dict[str, Any]:
+        """Obtiene la configuración global para Paddle"""
+        return self.config.get('paddle_config', {})
+    
+    @property
+    def validated_paddle_config(self):
+        """Acceso directo al objeto Pydantic validado."""
+        return self.validated_config.paddle_config
 
     @property
     def paddle_det_config(self) -> Dict[str, Any]:
@@ -150,15 +150,15 @@ class ConfigService:
         Devuelve la configuración fusionada para el modelo de reconocimiento de Paddle.
         Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.
         """
-        paddleocr = self.paddle_config
-        rec_model = paddleocr.get('models', {})
+        paddle_config = self.paddle_config
+        rec_model = paddle_config.get('models', {})
         rec_model_path = rec_model.get("rec_model_dir", "")
         
         return {
             "rec_model_dir": rec_model_path,
-            "use_angle_cls": paddleocr.get("use_angle_cls", False),
-            "show_log": paddleocr.get("show_log", False),
-            "use_gpu": paddleocr.get("use_gpu", False),
-            "enable_mkldnn": paddleocr.get("enable_mkldnn", True),
-            "lang": paddleocr.get("lang", "es"),
+            "use_angle_cls": paddle_config.get("use_angle_cls", False),
+            "show_log": paddle_config.get("show_log", False),
+            "use_gpu": paddle_config.get("use_gpu", False),
+            "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
+            "lang": paddle_config.get("lang", "es"),
         }

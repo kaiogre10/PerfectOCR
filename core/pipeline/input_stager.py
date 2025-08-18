@@ -24,7 +24,6 @@ class InputStager:
             logger.error(f"InputStager: Imagen no válida para '{metadata.get('image_name')}")
             return None, 0.0
         
-        
         # 2) Crear manager y dict_job una sola vez aquí
         manager = DataFormatter()
         dict_id = f"dict_{metadata.get('image_name')}_{int(time.time())}"
@@ -50,5 +49,5 @@ class InputStager:
                 return None, 0.0
 
         total_time = time.time() - start_time
-        logger.info(f"[InputStager] Pipeline completado en: {total_time:.3f}s")
+        logger.info(f"[InputStager] Módulo 1 completado en: {total_time:.3f}s")
         return manager, total_time
