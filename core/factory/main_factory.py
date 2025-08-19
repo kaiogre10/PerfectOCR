@@ -1,5 +1,4 @@
 # core/workers/factory/main_factory.py
-import time
 from typing import Dict, Any
 from core.workers.image_preparation.image_preparation_factory import ImagePreparationFactory
 from core.workers.preprocessing.preprocessing_factory import PreprocessingFactory
@@ -17,14 +16,12 @@ class MainFactory:
         nested_modules = self.modules_config.get('modules', {})
         enabled_outputs = self.modules_config.get('enabled_outputs', {})
 
-        # Crear configuración enriquecida para preprocesamiento
         preprocessing_config = nested_modules.get('preprocessing', {}).copy()
         preprocessing_config['enabled_outputs'] = enabled_outputs
         
-        ocr_config = nested_modules.get('ocr', {}).copy() # <-- Añadido
-        ocr_config['enabled_outputs'] = enabled_outputs # <-- Añadido
+        ocr_config = nested_modules.get('ocr', {}).copy() 
+        ocr_config['enabled_outputs'] = enabled_outputs 
  
-        
         vectorizing_config = nested_modules.get('vectorization', {}).copy()
         vectorizing_config['enabled_outputs'] = enabled_outputs
 
@@ -63,10 +60,9 @@ class MainFactory:
         return factory
         
     def get_ocr_factory(self) -> OCRFactory:
-        factory = self.module_factories["ocr"] # <-- Corregido
-        assert isinstance(factory, OCRFactory) # <-- Corregido
+        factory = self.module_factories["ocr"] 
+        assert isinstance(factory, OCRFactory) 
         return factory
-
         
     def get_vectorizing_factory(self) -> VectorizingFactory:
         factory = self.module_factories["vectorization"]

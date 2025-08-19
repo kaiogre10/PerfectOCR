@@ -148,7 +148,7 @@ class PreprocessingConfig(ConfigWithNumpy):
     sharpening: SharpeningConfig
     
 class OCRConfig(ConfigWithNumpy):
-    textual: TextualConfig
+    text_cleaner: TextualConfig
     binarize: Binarization  
     fragmentation: Fragmentador  
 

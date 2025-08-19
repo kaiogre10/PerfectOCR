@@ -53,7 +53,7 @@ class PreprocessingStager:
                     return None, 0.0
 
             worker_time = time.time() - worker_start
-            logger.info(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
+            logger.debug(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
         
         elapsed = time.time() - start_time
         logger.info(f"[PreprocessingStager] Pipeline completado en: {elapsed:.3f}s; polígonos: {len(polygons)}")

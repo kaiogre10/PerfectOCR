@@ -53,8 +53,6 @@ class DensityScanner(VectorizationAbstractWorker):
             else:
                 logger.debug("No se detectaron tablas en el documento")
             
-            
-            
             return True
             
         except Exception as e:

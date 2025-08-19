@@ -1,12 +1,14 @@
 # PerfectOCR/core/workers/ocr/text_cleaner.py
 import logging
 import re
-from typing import Dict, Any, List, Optional, Tuple
-from cleantext import clean
+from typing import Dict, Any, List, Optional
+import cleantext
+from core.domain.data_formatter import DataFormatter
+from core.factory.abstract_worker import OCRAbstractWorker
 
 logger = logging.getLogger(__name__)
 
-class TextCleaner:
+class TextCleaner(OCRAbstractWorker):
     """
     Limpiador de texto de alta seguridad para ruido OCR y analizador de contenido.
     - Limpia el texto de forma conservadora, protegiendo datos numéricos.
@@ -18,57 +20,70 @@ class TextCleaner:
     """
     
     def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
         self.project_root = project_root
-        # Configuración para la limpieza, puedes añadir umbrales aquí
+        self.config = config
         self.config = config.get("text_cleaner", {})
-        self.min_word_len_for_frag = self.config.get("min_word_len_for_frag", 2)
+        self.min_word_len_for_frag = self.config.get("min_confidence", 70.0)
+                    
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        
+        polygons: Dict[str, Any] = manager.get_polygons()
+        polygon_ids = list(polygons.keys())
+        
+        final_results: List[Optional[Dict[str, Any]]] = self.clean_and_analyze_batch(polygons)
+        
+        return manager.update_ocr_results(final_results, polygon_ids)
+                 
+    def clean_and_analyze_batch( 
+        self,
+        polygons: Dict[str, Any]
+    ) -> List[Optional[Dict[str, Any]]]:
+        logger.debug("Limpieza de texto iniciada")
 
-    def clean_and_analyze_batch(
-        self, 
-        polygon_ids: List[str],
-        batch_result: List[Optional[Dict[str, Any]]]
-    ) -> Tuple[List[Optional[Dict[str, Any]]], List[Tuple[str, int]]]:
-        """
-        Procesa un lote de resultados de OCR. Limpia el texto y devuelve una
-        lista de IDs de polígonos que necesitan ser re-evaluados para fragmentación.
-
-        Args:
-            polygon_ids: Lista de IDs de polígonos correspondientes a cada resultado.
-            batch_result: Lista de resultados de PaddleOCR (dict con 'text' y 'confidence').
-
-        Returns:
-            Un tuple conteniendo:
-            - La lista de resultados de OCR con el texto ya limpiado.
-            - Una lista de tuplas (poly_id, cantidad_de_fragmentos_necesarios)
-        """
-        if len(batch_result) != len(polygon_ids):
-            logger.error("La cantidad de resultados de OCR no coincide con la de IDs de polígonos.")
-            return [], []
+        polygon_ids = list(polygons.keys())
+        final_results = [
+            {
+                "text": polygons[pid].get("ocr_text", ""),
+                "confidence": polygons[pid].get("ocr_confidence", 0.0)
+            }
+            for pid in polygon_ids
+        ]
 
         cleaned_batch_results: List[Optional[Dict[str, Any]]] = []
-        fragmentation_suggestions: List[Tuple[str, int]] = []
+        false_count = 0
+        false_polygons: List[Dict[str, Any]] = []
 
-        for result, poly_id in zip(batch_result, polygon_ids):
-            if not result or not result.get("text"):
-                cleaned_batch_results.append(result)
-                continue
+        for result, poly_id in zip(final_results, polygon_ids):
+            cleaned_result = result.copy() if result else {}
+            text = cleaned_result.get("text", "").strip()
+            confidence = cleaned_result.get("confidence", 0.0)
 
-            original_text = result["text"]
-            
-            # 1. Limpiar el texto
-            cleaned_text = self._process_single_text(original_text)
-            
-            # 2. Analizar si necesita fragmentación
-            word_count = len(cleaned_text.split())
-            if word_count > 1:
-                fragmentation_suggestions.append((poly_id, word_count))
+            # Condiciones para marcar como inválido
+            if (
+                not text or
+                confidence < 70.0 or
+                re.fullmatch(r'[\s\.\-_,;:]+', text)
+            ):
+                cleaned_result["status"] = False
+                cleaned_result["text"] = ""
+                cleaned_result["confidence"] = 0.0
+                false_count += 1
+                false_polygons.append({"id": poly_id, "text": text, "confidence": confidence})
+            else:
+                cleaned_result["status"] = True
+                cleaned_result["text"] = self._process_single_text(text)
 
-            # Mantener la estructura original del dict
-            cleaned_result = result.copy()
-            cleaned_result["text"] = cleaned_text
             cleaned_batch_results.append(cleaned_result)
         
-        return cleaned_batch_results, fragmentation_suggestions
+        if false_count > 0:
+            logger.info(f"Polígonos marcados como status=False: {false_count}")
+            for fp in false_polygons:
+                logger.info(f"ID: {fp['id']} | Texto: '{fp['text']}' | Confianza: {fp['confidence']}")
+        else:
+            logger.info("Sin polígonos problemáticos")
+            
+        return cleaned_batch_results
 
     def _process_single_text(self, text: str) -> str:
         """
@@ -77,20 +92,20 @@ class TextCleaner:
         """
         if not isinstance(text, str):
             return (text) if text is not None else ""
-
+            
         # Dividir por espacios para procesar token por token, preservando la estructura.
         words = text.split(' ')
-        processed_words = []
+        processed_words: List[str] = []
 
-        for word in words:
-            if self._is_likely_numeric_or_code(word):
+        for token in words:
+            if self._is_likely_numeric_or_code(token):
                 # --- RUTA DE ALTA SEGURIDAD PARA NÚMEROS ---
-                safe_word = self._safe_normalize_numeric_separators(word)
+                safe_word = self._safe_normalize_numeric_separators(token)
                 processed_words.append(safe_word)
             else:
                 # --- RUTA DE LIMPIEZA GENERAL PARA TEXTO ---
-                cleaned_word = clean(
-                    word,
+                cleaned_word = cleantext.clean(
+                    token,
                     clean_all=False, extra_spaces=True, stemming= False,
                     stopwords= True,
                     lowercase= False,
@@ -103,17 +118,18 @@ class TextCleaner:
                 processed_words.append(cleaned_word)
         
         return ' '.join(processed_words)
-
-    def _text_needs_fragmentation(self, text: str) -> bool:
-        """
-        Determina si el texto de un polígono sugiere que debería ser fragmentado.
-        La lógica es simple: si contiene más de una "palabra" significativa.
-        """
-        # Dividir por espacios y filtrar palabras muy cortas que pueden ser ruido
-        meaningful_words = [
-            word for word in text.split() if len(word) >= self.min_word_len_for_frag
-        ]
-        return len(meaningful_words) > 1
+        
+        
+    # def _text_needs_fragmentation(text: str) -> bool:
+    #     """
+    #     Determina si el texto de un polígono sugiere que debería ser fragmentado.
+    #     La lógica es simple: si contiene más de una "palabra" significativa.
+    #     """
+    #     # Dividir por espacios y filtrar palabras muy cortas que pueden ser ruido
+    #     meaningful_words = [
+    #         word for word in text.split() if len(word) >= min_word_len_for_frag
+    #     ]
+    #     return len(meaningful_words) > 1
 
     def _is_likely_numeric_or_code(self, token: str) -> bool:
         """
@@ -141,15 +157,16 @@ class TextCleaner:
         Normaliza DE FORMA SEGURA los separadores en un token numérico.
         """
         symbols_to_dot = r"`'´,"
-        return re.sub(rf"(?<=\d)[{symbols_to_dot}](?=\d)", ".", token)
+        safe_word = re.sub(rf"(?<=\d)[{symbols_to_dot}](?=\d)", ".", token)
+        return safe_word
 
-    def get_cleaning_stats(self, original_text: str, cleaned_text: str) -> Dict[str, Any]:
-        """Obtiene estadísticas de la limpieza aplicada."""
-        return {
-            'original_length': len(original_text),
-            'cleaned_length': len(cleaned_text),
-            'text_changed': original_text != cleaned_text,
-            'numeric_integrity_enforced': True,
-            'cleaning_type': 'high_safety_garbage_removal',
-            'library_used': 'clean-text (conditional)'
-            }
+    # def get_cleaning_stats(original_text: str, cleaned_text: str) -> Dict[str, Any]:
+    #     """Obtiene estadísticas de la limpieza aplicada."""
+    #     return {
+    #         'original_length': len(original_text),
+    #         'cleaned_length': len(cleaned_text),
+    #         'text_changed': original_text != cleaned_text,
+    #         'numeric_integrity_enforced': True,
+    #         'cleaning_type': 'high_safety_garbage_removal',
+    #         'library_used': 'clean-text (conditional)'
+    #         }

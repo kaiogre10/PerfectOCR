@@ -46,7 +46,7 @@ class InputStager:
                 logger.error(f"InputStager: Fallo en el worker {worker.__class__.__name__}")
                 return None, 0.0
             worker_time = time.time() - worker_start
-            logger.info(f"[InputStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
+            logger.debug(f"[InputStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
 
         total_time = time.time() - start_time
         logger.info(f"[InputStager] Módulo 1 completado en: {total_time:.3f}s")

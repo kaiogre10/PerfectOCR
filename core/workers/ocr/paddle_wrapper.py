@@ -75,25 +75,24 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             
         # image_list_copy = image_list.copy()
         # Procesar BATCH (mantener rendimiento)
-        batch_results: List[Optional[Dict[str, Any]]] = self.recognize_text_from_batch(image_list)
-        # cleaned_batch_results, fragmentation_candidates = self._text_cleanner.clean_and_analyze_batch(polygon_ids, batch_result)
+        final_results: List[Optional[Dict[str, Any]]] = self.recognize_text_from_batch(image_list)
         # polygons = manager.get_polygons()
         # batch_results = self._interceptor.intercept_polygons(polygon_ids, cleaned_batch_results, fragmentation_candidates, image_list_copy, polygons)
         # Actualizar resultados usando el método centralizado
         processed_count = 0
-        if batch_results:
-            success = manager.update_ocr_results(batch_results, polygon_ids)
-            processed_count = len(batch_results) if success else 0
+        if final_results:
+            success = manager.update_ocr_results(final_results, polygon_ids)
+            processed_count = len(final_results) if success else 0
 
             for poly_id in polygon_ids:
                 if poly_id in manager.get_polygons():
                     manager.workflow_dict["polygons"][poly_id]["cropped_img"] = None
-                    #logger.debug("Cropped_img liberadas, texto generado")
+                    logger.debug("Cropped_img liberadas, texto generado")
         
-        image_name = manager.get_metadata().get("image_name", "unknown_image")
-        self._save_complete_ocr_results(manager, image_name)
+        # image_name = manager.get_metadata().get("image_name", "unknown_image")
+        # self._save_complete_ocr_results(manager, image_name)
         total_time = time.perf_counter() - start_time
-        logger.debug(f"[OCREngineManager] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
+        logger.info(f"[PaddelWrapper] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
         return True 
         
     def recognize_text_from_batch(self, image_list: List[np.ndarray[Any, Any]]) -> List[Optional[Dict[str, Any]]]:
@@ -102,15 +101,16 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         Está adaptado para manejar el caso en que PaddleOCR devuelve una única
         lista consolidada de resultados.
         """
+        
         if self.engine is None:
             logger.error("PaddleOCR recognition engine not initialized. Cannot recognize text.")
             return [None] * len(image_list)
+        
         if not image_list:
             logger.warning("Se recibió una lista vacía de imágenes para el reconocimiento por lotes.")
             return []
 
         try:
-            start_time = time.perf_counter()
             valid_images: List[np.ndarray[Any, Any]] = []
             for idx, img in enumerate(image_list):
                 if img is None or not hasattr(img, "shape") or len(img.shape) < 2 or img.size == 0:
@@ -120,109 +120,107 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             if not valid_images:
                 logger.error("No hay imágenes válidas para el reconocimiento por lotes.")
                 return []
-            batch_results: List[Any] = self.engine.ocr(image_list, cls=False, det=False)  # type: ignore
-            total_time = time.perf_counter() - start_time
-            logger.info(f"Batch OCR para {len(image_list)} polígonos completado en: {total_time:.3f}s")
-            
-            if len(batch_results) == 1 and isinstance(batch_results[0], list):
-                consolidated_results: List[List[Any]] = batch_results[0]
+            batch_result: List[List[Any]] = self.engine.ocr(image_list, cls=False, det=False)  # type: ignore
+                                    
+            if len(batch_result) == 1 and isinstance(batch_result[0], list):
+                consolidated_results = batch_result[0]
                 
                 if len(consolidated_results) == len(image_list):
-                    logger.debug(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
-                    final_results: List[Any] = []
+                    logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
+                    final_results: List[Optional[Dict[str, Any]]] = []
                     for text, confidence in consolidated_results:
-                        processed_result = {
+                        processed_result: Dict[str, Any] = {
                             "text": str(text).strip(),
                             "confidence": round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
                         }
                         final_results.append(processed_result)
                     
-                    logger.debug(f"Total de resultados finales procesados: {len(final_results)}")
+                    logger.info(f"Total de resultados finales procesados: {len(final_results)}")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes. No se puede garantizar la correspondencia.")
                     return [None] * len(image_list)
             
-            # Escenario ideal (si PaddleOCR se comportara como se espera en el futuro)
-            logger.info("Procesando resultados con la estructura esperada (un resultado por imagen).")
-            final_results: List[Any] = []
-            for i, result_for_image in enumerate(batch_results):
-                logger.debug(f"Procesando resultado {i}: {result_for_image}")
-                if not result_for_image or not result_for_image[0] or not result_for_image[0][0]:
-                    logger.debug(f"Resultado {i} vacío o inválido: {result_for_image}")
-                    final_results.append(None)
-                    continue
+            # # Escenario ideal (si PaddleOCR se comportara como se espera en el futuro)
+            # logger.info("Procesando resultados con la estructura esperada (un resultado por imagen).")
+            # final_results: List[Optional[Dict[str, Any]]] = []
+            # for i, result_for_image in enumerate(batch_result):
+            #     logger.debug(f"Procesando resultado {i}: {result_for_image}")
+            #     if not result_for_image or not result_for_image[0] or not result_for_image[0][0]:
+            #         logger.debug(f"Resultado {i} vacío o inválido: {result_for_image}")
+            #         final_results.append(None)
+            #         continue
                 
-                # Para una línea pre-recortada, se asume un único resultado principal.
-                text, confidence = result_for_image[0][0]
-                processed_result = {
-                    "text": str(text).strip(),
-                    "confidence": round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
-                }
+            #     # Para una línea pre-recortada, se asume un único resultado principal.
+            #     text, confidence = result_for_image[0][0]
+            #     processed_result = {
+            #         "text": str(text).strip(),
+            #         "confidence": round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
+            #     }
                 
-                final_results.append(processed_result)
-                logger.debug(f"Resultado {i} procesado: {processed_result}")
+            #     final_results.append(processed_result)
+            #     logger.debug(f"Resultado {i} procesado: {processed_result}")
                 
-            logger.info(f"Total de resultados finales procesados: {len(final_results)}")
-            return final_results
+            # logger.info(f"Total de resultados finales procesados: {len(final_results)}")
+            # return final_results
 
         except Exception as e:
             logger.error(f"Error crítico durante el reconocimiento de texto en lote: {e}", exc_info=True)
             return [None] * len(image_list)
 
         
-    def recognize_text_from_image(self, image: Optional[np.ndarray[Any, Any]]) -> Optional[Dict[str, Any]]:
-        start_time = time.perf_counter()
+    # def recognize_text_from_image(self, image: Optional[np.ndarray[Any, Any]]) -> Optional[Dict[str, Any]]:
+    #     start_time = time.perf_counter()
         
-        if self.engine is None:
-            logger.error("PaddleOCR recognition engine not initialized. Cannot recognize text.")
-            return None
-        if image is None or image.size == 0:
-            logger.warning("Se recibió una imagen vacía para el reconocimiento.")
-            return None
+    #     if self.engine is None:
+    #         logger.error("PaddleOCR recognition engine not initialized. Cannot recognize text.")
+    #         return None
+    #     if image is None or image.size == 0:
+    #         logger.warning("Se recibió una imagen vacía para el reconocimiento.")
+    #         return None
                 
-        try:
-            ocr_start = time.perf_counter()
-            result: List[Any] = self.engine.ocr(img=image, det=False, rec=True, cls=False)
-            ocr_time = time.perf_counter() - ocr_start
+    #     try:
+    #         ocr_start = time.perf_counter()
+    #         result: List[Any] = self.engine.ocr(img=image, det=False, rec=True, cls=False)
+    #         ocr_time = time.perf_counter() - ocr_start
             
-            logger.debug(f"OCR ejecutado en: {ocr_time:.4f}s")
+    #         logger.debug(f"OCR ejecutado en: {ocr_time:.4f}s")
             
-            # Validar el resultado
-            if not result or not result[0] or not result[0][0]:
-                logger.info("OCR no devolvió resultados para un polígono.")
-                return None
+    #         # Validar el resultado
+    #         if not result or not result[0] or not result[0][0]:
+    #             logger.info("OCR no devolvió resultados para un polígono.")
+    #             return None
 
-            # Extraer texto y confianza
-            text, confidence = result[0][0]
+    #         # Extraer texto y confianza
+    #         text, confidence = result[0][0]
             
-            total_time = time.perf_counter() - start_time
-            logger.info(f"Total tiempo polígono: {total_time:.4f}s - Texto: '{text}'")
+    #         total_time = time.perf_counter() - start_time
+    #         logger.info(f"Total tiempo polígono: {total_time:.4f}s - Texto: '{text}'")
             
-            return {
-                "text": str(text).strip(),
-                "confidence": round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
-            }
+    #         return {
+    #             "text": str(text).strip(),
+    #             "confidence": round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
+    #         }
 
-        except Exception as e:
-            logger.error(f"Error durante el reconocimiento de texto en un polígono: {e}", exc_info=True)
-            return None            
+    #     except Exception as e:
+    #         logger.error(f"Error durante el reconocimiento de texto en un polígono: {e}", exc_info=True)
+    #         return None            
             
-    def _save_complete_ocr_results(self, manager: DataFormatter, image_name: str):
-        """
-        Ordena al OutputService que guarde los resultados del OCR.
-        """
-        if not self.config.get('output_flag', {}).get('ocr_raw', False):
-            return
+    # def _save_complete_ocr_results(self, manager: DataFormatter, image_name: str):
+    #     """
+    #     Ordena al OutputService que guarde los resultados del OCR.
+    #     """
+    #     if not self.config.get('output_flag', {}).get('ocr_raw', False):
+    #         return
 
-        output_folder = self.config.get('output_folder')
-        if not output_folder:
-            logger.warning("[OCREngineManager] No se puede guardar resultados OCR porque 'output_folder' no está definido.")
-            return
+    #     output_folder = self.config.get('output_folder')
+    #     if not output_folder:
+    #         logger.warning("[OCREngineManager] No se puede guardar resultados OCR porque 'output_folder' no está definido.")
+    #         return
 
-        try:
-            from services.output_service import save_ocr_json
-            save_ocr_json(manager, output_folder, image_name)
-        except Exception as e:
-            logger.error(f"[OCREngineManager] Fallo al invocar save_ocr_json: {e}")        
-        pass
+    #     try:
+    #         from services.output_service import save_ocr_json
+    #         save_ocr_json(manager, output_folder, image_name)
+    #     except Exception as e:
+    #         logger.error(f"[OCREngineManager] Fallo al invocar save_ocr_json: {e}")        
+    #     pass

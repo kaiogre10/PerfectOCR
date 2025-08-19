@@ -29,7 +29,7 @@ class VectorizationStager:
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
-            logger.info(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            logger.debug(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
                                 
             context: Dict[str, Any] = {
                 "polygons": polygons,

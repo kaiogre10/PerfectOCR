@@ -195,7 +195,7 @@ class DataFormatter:
             self.workflow_dict["polygons"][poly_id]["stage"] = worker_name
             self.workflow_dict["polygons"][poly_id]["status"] = success
             
-    def update_ocr_results(self, batch_results: List[Optional[Dict[str, Any]]], polygon_ids: List[str]) -> bool:
+    def update_ocr_results(self, final_results: List[Optional[Dict[str, Any]]], polygon_ids: List[str]) -> bool:
         """
         Actualiza los resultados de OCR en los polígonos del workflow_dict.
         batch_results: lista de dicts con 'text' y 'confidence'
@@ -206,7 +206,7 @@ class DataFormatter:
                 logger.error("No hay workflow_dict inicializado para actualizar resultados OCR.")
                 return False
 
-            for idx, res in enumerate(batch_results):
+            for idx, res in enumerate(final_results):
                 if idx < len(polygon_ids):
                     poly_id = polygon_ids[idx]
                     if poly_id in self.workflow_dict["polygons"]:

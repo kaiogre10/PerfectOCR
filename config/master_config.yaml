@@ -126,8 +126,8 @@ modules:
       amount: 1.5
         
   ocr:
-    textual:
-      min_confidence: 80.0
+    text_cleaner:
+      min_confidence: 70.0
     
     binarize:
       c_value: 7
