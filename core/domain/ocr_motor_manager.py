@@ -37,12 +37,12 @@ class PaddleManager:
                 lang=paddle_config.get('lang', 'es'),
                 rec_batch_num = paddle_config.get('rec_batch_num', 64)
             )
-            logging.info(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
+            logging.debug(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
             # Compartir la MISMA instancia
             self._detection_engine = self._shared_engine
             self._recognition_engine = self._shared_engine
             self._initialized = True
-            logger.info(f"PaddleManager: Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
+            # logger.info(f"PaddleManager: Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
     
     @property
     def detection_engine(self) -> Optional[PaddleOCR]:

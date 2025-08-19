@@ -69,7 +69,6 @@ class MoireDenoiser(PreprossesingAbstractWorker):
             logger.error(f"Error en manejo de  {e}")
             return False
         
-        
     def _detect_moire_single(self, cropped_img: np.ndarray[Any, Any], img_dims: Tuple[int , int]) -> np.ndarray[Any, Any]:
         moire_corrections = self.config
         mode = moire_corrections.get('mode', {})

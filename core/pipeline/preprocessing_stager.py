@@ -27,9 +27,10 @@ class PreprocessingStager:
         
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
+            worker_start = time.time()
             worker_name = worker.__class__.__name__
-            logger.debug(f"[PreprocessingManager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
-            
+            logger.debug(f"[PreprocessingStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+
             # Procesar cada polígono con este worker
             for poly_id, poly_data in polygons.items():
                 cropped_img = poly_data.get("cropped_img")
@@ -50,6 +51,9 @@ class PreprocessingStager:
                 if not worker.preprocess(context, manager):
                     logger.error(f"Worker {worker_name} falló en {poly_id}")
                     return None, 0.0
+
+            worker_time = time.time() - worker_start
+            logger.info(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
         
         elapsed = time.time() - start_time
         logger.info(f"[PreprocessingStager] Pipeline completado en: {elapsed:.3f}s; polígonos: {len(polygons)}")

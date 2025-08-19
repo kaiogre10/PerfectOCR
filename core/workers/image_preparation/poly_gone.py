@@ -14,22 +14,21 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            full_img: np.ndarray[Any, Any] = context.get("full_img", {})
+            full_img= context.get("full_img", {})
             
-            if full_img is None: # addType ignore
-
+            if full_img is None:
                 logger.warning("PolygonExtractor: 'full_img' no encontrado en el contexto.")
                 return False
-
-            dict_data = manager.get_dict_data()
-            polygons: Dict[str, Any] = dict_data.get("polygons", {})
+                
+            polygons: Dict[str, Dict[str, Any]] = manager.get_polygons()
+            img_h: int = context.get("metadata", {}).get("img_dims", {}).get("height")
+            img_w: int = context.get("metadata", {}).get("img_dims", {}).get("width")
             if not polygons:
                 logger.warning("PolygonExtractor: No se encontraron polígonos para procesar.")
                 return True
 
             padding = int(self.config.get("cropping_padding", 5))
-            img_h, img_w = full_img.shape[:2]
-
+            
             # Diccionario para almacenar las imágenes recortadas
             cropped_images: Dict[str, np.ndarray[Any, Any]] = {}
             cropped_geometries: Dict[str, Dict[str, Any]] = {}
@@ -49,12 +48,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     logger.warning(f"PolygonExtractor: Dimensiones inválidas para {poly_id}")
                     continue
 
-                cropped = full_img[py1:py2, px1:px2].copy()
+                cropped: np.ndarray[Any, Any] = full_img[py1:py2, px1:px2].copy()
                 if cropped.size == 0:
                     logger.warning(f"PolygonExtractor: Imagen recortada vacía para {poly_id}")
                     continue
-                logger.debug(f"Dimensiones de polígono: {cropped.shape}") 
-                # Guardamos la imagen recortada en nuestro diccionario temporal       
+        
                 cropped_images[poly_id] = cropped
                 
                 # Guardar la geometría del recorte (bounding box ajustada) como dict
@@ -62,14 +60,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 pcy = (py1 + py2) / 2
 
                 cropped_geometries[poly_id] = {
-                    "padding_bbox": [px1, py1, px2, py2],
                     "padd_centroid": [pcx, pcy],
-                    "padding_coords": [px1, py1, px2, py2]
-                }
+                    "padding_coords": [px1, py1, px2, py2],
+                        }
                 extracted_count += 1
-
-            # Guardamos todas las imágenes recortadas en el workflow
-            
+                                
             success = manager.save_cropped_images(cropped_images, cropped_geometries)
             if not success:
                 logger.error("PolygonExtractor: Error al guardar imágenes recortadas en el workflow")

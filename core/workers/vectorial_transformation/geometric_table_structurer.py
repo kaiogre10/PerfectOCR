@@ -1,6 +1,6 @@
 # PerfectOCR/core/table_structure/geometric_table_structurer.py
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import math
 import time
 from core.factory.abstract_worker import VectorizationAbstractWorker
@@ -17,11 +17,9 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_structured", False)        
 
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:
             start_time = time.time()
-            
-            # Obtener todo el diccionario de datos para tener acceso a todas las claves
             workflow_data = manager.get_dict_data()
             all_lines = workflow_data.get("all_lines", {})
             polygons = workflow_data.get("polygons", {})
@@ -29,7 +27,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
             if not tabular_line_ids or not all_lines or not polygons:
                 logger.warning("GeometricTableStructurer: Faltan datos necesarios (líneas tabulares, all_lines o polígonos) para la estructuración.")
-                return None
+                return False
 
             # 1. Asumir que la primera línea tabular es el encabezado y determinar H
             header_line_id = tabular_line_ids[0]
@@ -37,7 +35,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             H = len(header_poly_ids)
             if H == 0:
                 logger.warning("La línea de encabezado no tiene polígonos. No se puede determinar el número de columnas.")
-                return None
+                return False
 
             # 2. Construir 'main_header_line_elements' (H*) con la geometría requerida
             main_header_line_elements: List[Dict[str, Any]]  = []
@@ -57,7 +55,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 line_data = all_lines.get(line_id, {})
                 poly_ids_for_line = line_data.get("polygon_ids", [])
                 
-                constituent_elements = []
+                constituent_elements: List[Dict[str, Any]] = []
                 for poly_id in poly_ids_for_line:
                     poly_data = polygons.get(poly_id)
                     if poly_data and "geometry" in poly_data:
@@ -92,8 +90,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 df.columns = df.iloc[0]
                 df = df[1:].reset_index(drop=True)
 
-            logger.debug(f"Estructuración de tabla completada en {time.time() - start_time:.4f} segundos. Se encontraron {len(table_matrix)} filas.")
-            logger.debug(f"\n{df.to_string(index=False)}")
+            logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.6f} segundos. Se encontraron {len(table_matrix)} filas.")
+            logger.info(f"\n{df.to_string(index=False)}")
 
             # Guardar en memoria (DataFormatter) para etapas posteriores
             saved = manager.save_structured_table(df=df, columns=list(df.columns))
@@ -102,9 +100,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"Error fatal en GeometricTableStructurer.vectorize: {e}", exc_info=True)
             return False
-
     
-
     def structure_table(self,
                         lines_table_only: List[Dict[str, Any]],
                         main_header_line_elements: List[Dict[str, Any]]
@@ -132,7 +128,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.warning("GeometricTableStructurer: Number of columns (H) is 0 based on header elements.")
             return []
         
-        header_centroids: List[Tuple[float, float]] = []
+        header_centroids = []
         for header_elem in main_header_line_elements:
             if 'cx' in header_elem and 'cy' in header_elem:
                 header_centroids.append((float(header_elem['cx']), float(header_elem['cy'])))
@@ -141,15 +137,15 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # Add a placeholder or handle appropriately if this case is critical
                 header_centroids.append(None)
 
-
         table_matrix_T: List[List[Dict[str, Any]]] = []
 
         for k, line_sk in enumerate(lines_table_only):
             # Initialize row with H empty cells
             current_row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
             
-            words_pk = line_sk.get('constituent_elements_ocr_data', [])
+            words_pk: List[Any] = line_sk.get('constituent_elements_ocr_data', [])
             # Ensure words are sorted by xmin, which should be the case from LineReconstructor
+            
             words_pk.sort(key=lambda w: float(w.get('xmin', float('inf'))))
 
             lk = len(words_pk)
@@ -163,10 +159,10 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if H == 1:
                     current_row_cells[0]['words'] = words_pk
                 else: # H > 1
-                    horizontal_distances: List[Tuple[float, int]] = [] # (distance, index_of_first_word_in_pair)
+                    horizontal_distances: List[Tuple[float, int]] = []
                     for i in range(lk - 1):
-                        word1_xmax = float(words_pk[i].get('xmax', 0))
-                        word2_xmin = float(words_pk[i+1].get('xmin', 0))
+                        word1_xmax = safe_float(words_pk[i].get('xmax', 0))
+                        word2_xmin = safe_float(words_pk[i+1].get('xmin', 0))
                         dist = word2_xmin - word1_xmax
                         if dist < 0: # Overlapping words, treat as small distance
                             dist = 0.001 
@@ -192,7 +188,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                             logger.debug(f"Line {k}: Ran out of words ({lk}) while trying to fill {H} columns based on {H-1} cuts. Remaining columns will be empty.")
                             break
 
-
             # Case B: Lk < H (Insufficient words)
             else: 
                 # Subcase B.1: Lk == 1 (Single word on the line)
@@ -205,12 +200,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     best_col_j_star = -1
                     max_cosine_similarity = -2.0 # Cosine similarity ranges from -1 to 1
 
-                    if all(hc is not None for hc in header_centroids):
+                    if all(header_cent is not None for header_cent in header_centroids):
+                        header_centroids: List[Optional[Tuple[float, float]]]
                         for j, header_cent in enumerate(header_centroids):
                             if header_cent: # Check if header_cent is not None
-                                similarity = self._calculate_centroid_cosine_similarity(word_centroid, header_cent)
-                                if similarity > max_cosine_similarity:
-                                    max_cosine_similarity = similarity
+                                cosine_similarity = self._calculate_centroid_cosine_similarity(word_centroid, header_cent)
+                                if cosine_similarity > max_cosine_similarity:
+                                    max_cosine_similarity = cosine_similarity
                                     best_col_j_star = j
                     
                     if best_col_j_star != -1:
@@ -233,9 +229,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             table_matrix_T.append(current_row_cells)
 
-        logger.debug(f"GeometricTableStructurer: Successfully structured {len(table_matrix_T)} lines into {H} columns.")
+        logger.info(f"GeometricTableStructurer: Successfully structured {len(table_matrix_T)} lines into {H} columns.")
         return table_matrix_T
-        
         
     def _calculate_centroid_cosine_similarity(self, word_centroid: Tuple[float, float], header_cent: Tuple[float, float]) -> float:
         """Calculates cosine similarity between two centroid vectors relative to origin (0,0)."""
@@ -251,3 +246,9 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         
         cosine_similarity = dot_product / (magnitude1 * magnitude2)
         return cosine_similarity
+
+def safe_float(val: Any, default: float = 0.0) -> float:
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return default

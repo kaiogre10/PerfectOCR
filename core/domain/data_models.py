@@ -21,15 +21,16 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                     "properties": {
                         "width": {"type": "integer"},
                         "height": {"type": "integer"},
+                        "size": {"type": "integer"},
                     },
                 },
                 "dpi": {
                     "anyOf": [
                         {
-                            "type": "object",
-                            "properties": {
-                                "x": {"type": "number"},
-                                "y": {"type": "null"}
+                        "type": "object",
+                        "properties": {
+                            "x": {"type": "number"},
+                            "y": {"type": "null"}
                             }
                         },
                     ],
@@ -74,12 +75,6 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                         "cropedd_geometry":{
                             "type": "object",
                             "properties": {
-                                "padding_bbox": {
-                                    "type": "array",
-                                    "items": {"type": "number"},
-                                    "minItems": 4,
-                                    "maxItems": 4
-                                },
                                 "padd_centroid": {
                                     "type": "array",
                                     "items": {"type": "number"},
@@ -91,6 +86,12 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                                     "items": {"type": "integer"},
                                     "minItems": 4,
                                     "maxItems": 4
+                                },
+                                "poly_dims": {"type": "object",
+                                    "properties": {
+                                        "poly_width": {"type": "integer"},
+                                        "poly_height": {"type": "integer"},
+                                    },
                                 },
                             }, 
                         },
@@ -285,9 +286,9 @@ class StructuredTable:
     
 @dataclass
 class CroppedGeometry:
-    padding_bbox: List[float]
     padd_centroid: List[float]
-    padding_coords: List[List[float]]
+    padding_coords: List[List[int]]
+    poly_dims: Dict[str, int]
     
 @dataclass
 class CroppedImage:

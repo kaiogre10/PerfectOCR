@@ -1,7 +1,7 @@
 # PerfectOCR/activate_main.py
-from typing import Optional, List, Dict, Any
 import time
 import logging
+from typing import Optional, List, Dict, Any
 from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.input_stager import InputStager
@@ -22,45 +22,45 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
     try:
         # 1. Main activa al Configurador
         t0 = time.perf_counter()
-        logging.debug("Activando ConfigManager con validación robusta...")
+        # logging.debug("Activando ConfigManager con validación robusta...")
         config_services = ConfigService(config_path)
-        logging.info(f"ConfigManager iniciado en {time.perf_counter()-t0:.6f}s")
+        # logging.info(f"ConfigManager iniciado en {time.perf_counter()-t0:.6f}s")
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
-        t1 = time.perf_counter()
-        logging.debug("Creando WorkFlowBuilder...")
+        # t1 = time.perf_counter()
+        # logging.debug("Creando WorkFlowBuilder...")
         workflow_manager = WorkFlowBuilder(
             config_services=config_services,
             project_root=project_root,
             input_paths=input_paths,
         )
-        logging.info(f"WorkFlowBuilder completado en {time.perf_counter()-t1:.6f}s")
+        # logging.info(f"WorkFlowBuilder completado en {time.perf_counter()-t1:.6f}s")
         
         # 3. WorkflowManager analiza y reporta
-        t2 = time.perf_counter()
-        logging.debug("Analizando imágenes disponibles...")
+        # t2 = time.perf_counter()
+        # logging.debug("Analizando imágenes disponibles...")
         workflow_report = workflow_manager.count_and_plan()
-        logging.info(f"Analisis Wrokflow builder completado en {time.perf_counter()-t2:.6f}s")
+        # logging.info(f"Analisis Wrokflow builder completado en {time.perf_counter()-t2:.6f}s")
         
         # 4. Iniciar Paddle Singleton
-        t21 = time.perf_counter()
+        # t21 = time.perf_counter()
         paddle_manager = PaddleManager.get_instance()
         paddle_config = config_services.paddle_config
         paddle_manager.initialize_engines(paddle_config)
-        logging.info(f"PaddleManager iniciado en {time.perf_counter()-t21:.6f}s")
+        # logging.info(f"PaddleManager iniciado en {time.perf_counter()-t21:.6f}s")
 
         # 5. Main crea builders según el reporte
-        t3 = time.perf_counter()
-        logging.debug("Creando builders según análisis")
+        # t3 = time.perf_counter()
+        # logging.debug("Creando builders según análisis")
         builders = create_builders(config_services, project_root, workflow_report, output_paths)
-        logging.info(f"Builders creados en {time.perf_counter()-t3:.6f}s")
+        # logging.info(f"Builders creados en {time.perf_counter()-t3:.6f}s")
         
         # 6. Main ejecuta procesamiento
         t4 = time.perf_counter()
-        logging.debug("Iniciando procesamiento...")
+        # logging.debug("Iniciando procesamiento...")
         results = execute_processing(builders, workflow_report)
-        logging.info(f"Procesamiento términado en {time.perf_counter()-t4:.6f}s")
-        logging.info(f"Proceso términado en {time.perf_counter()-t0:.6f}s")
+        logging.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
+        logging.info(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
         return results
         
     except Exception as e:
@@ -73,7 +73,6 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
         except Exception as cleanup_error:
             logging.error(f"Error durante la limpieza de caché: {cleanup_error}", exc_info=True)
 
-    
 def create_builders(config_services: ConfigService, project_root: str, workflow_report: Dict[str, Any], output_paths: Optional[List[str]])-> List[ProcessingBuilder]:
     """Crea builders para cada imagen encontrada usando inyecciones en cascada."""
     context = {}
@@ -87,7 +86,6 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         )
         
         manager = DataFormatter()
-
         geometry_detector = config_services.paddle_det_config
         paddle_wrapper = config_services.paddle_rec_config
 
@@ -175,3 +173,4 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
         "processed": len(results),
         "results": results
     }
+    

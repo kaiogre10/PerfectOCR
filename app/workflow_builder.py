@@ -21,6 +21,26 @@ class WorkFlowBuilder:
         self.max_physical_cores = config_services.max_workers_for_cpu
         self.input_paths = input_paths or []
         self.output_path = output_path
+        
+    def get_valid_extensions(self) -> Tuple[str, ...]:
+        """Obtiene extensiones válidas desde configuración."""
+        extensions = self.config_services.processing_config.get('valid_image_extensions', [])
+        return tuple(extensions)
+        
+    def extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, str]]:
+        """Extrae lista de rutas y nombres de imágenes válidas."""
+        image_info: List[Dict[str, str]] = []
+        for filename in os.listdir(input_folder):
+            if filename.lower().endswith(valid_extensions):
+                full_path = os.path.join(input_folder, filename)
+                image_name = os.path.splitext(filename)[0]
+                image_extension = os.path.splitext(filename)[1]
+                image_info.append({
+                    "path": full_path,
+                    "name": image_name,
+                    "extension": image_extension
+                })
+        return image_info
 
     def count_and_plan(self) -> Dict[str, Any]:
         """
@@ -57,7 +77,7 @@ class WorkFlowBuilder:
         num_images = len(image_info)
         use_batch = num_images > self.small_batch_limit
         mode = 'batch' if use_batch else 'interactive'
-        logging.info(f"Número de imágenes: {num_images}, modo: {mode}")
+        logging.debug(f"Número de imágenes: {num_images}, modo: {mode}")
 
 
         return {
@@ -67,22 +87,3 @@ class WorkFlowBuilder:
             "image_info": image_info,
         }
                     
-    def extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, str]]:
-        """Extrae lista de rutas y nombres de imágenes válidas."""
-        image_info: List[Dict[str, str]] = []
-        for filename in os.listdir(input_folder):
-            if filename.lower().endswith(valid_extensions):
-                full_path = os.path.join(input_folder, filename)
-                image_name = os.path.splitext(filename)[0]
-                image_extension = os.path.splitext(filename)[1]
-                image_info.append({
-                    "path": full_path,
-                    "name": image_name,
-                    "extension": image_extension
-                })
-        return image_info
-
-    def get_valid_extensions(self) -> Tuple[str, ...]:
-        """Obtiene extensiones válidas desde configuración."""
-        extensions = self.config_services.processing_config.get('valid_image_extensions', [])
-        return tuple(extensions)

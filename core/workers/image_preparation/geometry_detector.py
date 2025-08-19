@@ -44,36 +44,36 @@ class GeometryDetector(ImagePrepAbstractWorker):
             logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")
             return False
 
-        try:
-            if len(img.shape) == 2:
-                img_for_paddle = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-            else:
-                img_for_paddle = img
+        # try:
+        #     if len(img.shape) == 2:
+        #         img_for_paddle = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        #     else:
+        #         img_for_paddle = img
 
-            results: Optional[List[Any]] = engine.ocr(img=img_for_paddle, det=True, cls=False, rec=False) 
-            logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
+        results: Optional[List[Any]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
+        logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
 
-            if not (results and len(results) > 0 and results[0] is not None):
-                logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
-                return False
-
-            if manager.workflow is None:
-                manager.create_dict(
-                    dict_id=context.get("dict_id", "default"),
-                    full_img=img,
-                    metadata=context.get("metadata", {})
-                )
-                
-            else:
-                logger.debug("GeometryDetector: Workflow ya inicializado.")
-
-            success = manager.create_polygon_dicts(results)
-            if not success:
-                logger.error("GeometryDetector: Fallo al estructurar polígonos.")
-                return False
-
-        except Exception as e:
-            logger.error(f"GeometryDetector: Error durante la detección con PaddleOCR: {e}", exc_info=True)
+        if not (results and len(results) > 0 and results[0] is not None):
+            logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
             return False
+
+        # if manager.workflow is None:
+        #     manager.create_dict(
+        #         dict_id=context.get("dict_id", "default"),
+        #         full_img=img,
+        #         metadata=context.get("metadata", {})
+        #     )
+            
+        # else:
+        #     logger.debug("GeometryDetector: Workflow ya inicializado.")
+
+        success = manager.create_polygon_dicts(results)
+        if not success:
+            logger.error("GeometryDetector: Fallo al estructurar polígonos.")
+            return False
+
+        # except Exception as e:
+        #     logger.error(f"GeometryDetector: Error durante la detección con PaddleOCR: {e}", exc_info=True)
+        #     return False
 
         return True

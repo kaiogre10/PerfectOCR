@@ -15,47 +15,68 @@ class ImageCleaner(ImagePrepAbstractWorker):
         self.corrections = config
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        
+        std_low: float = float(self.corrections.get("std_low", 15.0))
+        sp_thr: float = float(self.corrections.get("sp_thr", 0.015))
+        clahe_clip_base: float = float(self.corrections.get("clahe_clip", 2.0))
+        clahe_grid = tuple(self.corrections.get("clahe_grid", (8, 8)))
+        
         try:
             full_img: Optional[np.ndarray[Any, Any]] = context.get("full_img")
+            size = context.get("metadata", {}).get("size")
             if full_img is None:
                 logger.error("Cleaner: full_img no encontrado en contexto")
                 return False
-
-            # Convertir a escala de grises si es color
-            if len(full_img.shape) == 3 and full_img.shape[2] == 3:
-                img_gray = cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY)
+            if  size is None:
+                size = full_img.size
             else:
-                img_gray = full_img.copy()
+                size = float(size)
+                
+            ext_low = float((full_img <= 5).sum())
+            ext_high = float((full_img >= 250).sum())
+            sp_ratio = (ext_low + ext_high) / size
+    
+            # 1) Desruido sal‑y‑pimienta (rápido, solo si aplica)
+            if sp_ratio > sp_thr:
+                den = cv2.medianBlur(full_img, 3)
+                full_img[...] = den
 
-            # 1) bilateral adaptativo
-            img_var = float(np.var(img_gray))
-            d, sC, sS = (5, 30, 30) if img_var < 100 else (9, 60, 60)
-            denoised = cv2.bilateralFilter(img_gray, d, sC, sS)
+            # Recalcular contraste
+            std1 = float(np.std(full_img))
 
-            # 2) CLAHE adaptativo
-            img_std = float(np.std(denoised))
-            if img_std < 25:
-                clip, grid = 3.0, (6, 6)
-            elif img_std < 50:
-                clip, grid = 2.0, (8, 8)
+            # 2) Contraste local con CLAHE (solo si contraste bajo)
+            if std1 < std_low:
+                clahe = cv2.createCLAHE(clipLimit=clahe_clip_base, tileGridSize=clahe_grid)
+                en1 = clahe.apply(full_img)
+                full_img[...] = en1
+
+                # Si siguió bajo, subir ligeramente el clipLimit
+                std2 = float(np.std(full_img))
+                if std2 < std_low:
+                    clahe2 = cv2.createCLAHE(clipLimit=clahe_clip_base + 0.5, tileGridSize=clahe_grid)
+                    en2 = clahe2.apply(full_img)
+                    full_img[...] = en2
+
+            # 3) Nitidez local (unsharp adaptativo)
+            lap = cv2.Laplacian(full_img, cv2.CV_64F)
+            lap_var = float(lap.var())
+            stdf = float(np.std(full_img))
+
+            if lap_var < 20.0 or stdf <= 25.0:
+                alpha, beta = 1.2, -0.2  # suave
+            elif lap_var < 60.0:
+                alpha, beta = 1.4, -0.4  # medio
             else:
-                clip, grid = 1.0, (10, 10)
-            clahe = cv2.createCLAHE(clipLimit=clip, tileGridSize=grid)
-            enhanced = clahe.apply(denoised)
+                alpha, beta = 1.1, -0.1  # mínimo
 
-            # 3) sharpen adaptativo
-            mean_intensity = float(np.mean(enhanced))
-            if mean_intensity < 128:
-                kernel = np.array([[0, -1, 0], [-1, 3, -1], [0, -1, 0]])
-            else:
-                kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-            clean_img = cv2.filter2D(enhanced, -1, kernel)
+            blur = cv2.GaussianBlur(full_img, (3, 3), 0)
+            sharp = cv2.addWeighted(full_img, alpha, blur, beta, 0)
+            np.clip(sharp, 0, 255, out=sharp)
+            if sharp.dtype != np.uint8:
+                sharp = sharp.astype(np.uint8, copy=False)
 
-            # Normalización final
-            clean_img = np.clip(clean_img, 0, 255).astype(np.uint8)
+            full_img[...] = sharp
 
-            full_img[...] = clean_img
-            logger.debug("Cleaner: limpieza automatizada aplicada correctamente.")
             return True
         except Exception as e:
             logger.error(f"Cleaner: {e}", exc_info=True)

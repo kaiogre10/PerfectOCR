@@ -1,5 +1,6 @@
 # core/image_loader.py
 import cv2
+import time
 import numpy as np
 import logging
 from typing import Dict, Any, Tuple, Optional
@@ -31,6 +32,7 @@ class ImageLoader:
         Carga la imagen y extrae metadatos.
         Devuelve (None, metadata_con_error) si falla.
         """
+        start_time = time.perf_counter()
         input_path = image_info['path']
         image_name = image_info.get('name', "")
         extension = image_info.get('extension', "")
@@ -39,14 +41,15 @@ class ImageLoader:
             "image_name": image_name,
             "format": extension,
             "img_dims":{
-                    "width": int,
-                    "height": int,
+                    "width": None,
+                    "height": None,
+                    "size": None
                 },
-            "dpi": Optional[Dict[str, Optional[float]]],
-            "color": str,
+            "dpi": None,
+            "color": None,
         }
 
-        img_array = cv2.imread(input_path, cv2.IMREAD_UNCHANGED)
+        img_array = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
         if img_array is None:
             error_msg = f"No se pudo leer la imagen en '{input_path}'"
             logger.error(error_msg)
@@ -55,13 +58,14 @@ class ImageLoader:
         logger.debug(f"Imagen cargada correctamente desde: {input_path}")
 
         image_array = np.array(img_array)
-        if image_array.size == 0:
+        cv2_size:float = image_array.size
+        if cv2_size == 0:
             error_msg = f"Imagen vacía o corrupta en '{input_path}'"
             logger.error(error_msg)
             metadata['error'] = error_msg
             return None, metadata
         
-        logger.debug(f"Size de la imagen completa: {image_array.size}")
+        # logger.info(f"Size de la imagen completa: {cv2_size}")
 
         cv2_height, cv2_width = image_array.shape[:2]
         if len(image_array.shape) == 3:
@@ -69,49 +73,30 @@ class ImageLoader:
         else:
             gray_image = image_array
         
-        logger.debug(f"Shape de la imagen completa: {cv2_width, cv2_height}")
-        # Extraer metadatos completos con Pillow
-        with Image.open(input_path) as img:
-            try:
-                exif_data = img.getexif()
-                width_exif = exif_data.get(0xA002)
-                height_exif = exif_data.get(0xA003)
-                
-                if width_exif and height_exif:
-                    pillow_width =width_exif
-                    pillow_height =height_exif
-                    metadata["img_dims"] = {"width": int(pillow_width), "height": int(pillow_height)}
-                    logger.debug(f"Dimensiones pillow obtenidas con exif: :{pillow_width, pillow_width}")
-                else:
-                    pillow_width = img.width
-                    pillow_height = img.height
-                    # Asegurar que las dimensiones nunca sean 0 o None
-                    metadata["img_dims"] = {
-                        "width": max(int(pillow_width), 1), 
-                        "height": max(int(pillow_height), 1)
-                    }
-                    logger.debug(f"Dimensiones pillow obtenidas con img.:{pillow_width, pillow_height}")
-                    
-                    metadata["color"] = img.mode
-                    dpi_info: Optional[Dict[str, Optional[float]]] = img.info.get('dpi')
-                    if dpi_info and isinstance(dpi_info, tuple) and len(dpi_info) == 2: 
-                        metadata["dpi"] = float(dpi_info[0]) 
-                    elif dpi_info and isinstance(dpi_info, (int, float)):
-                        metadata["dpi"] = float(dpi_info)
-                    else:
-                        metadata["dpi"] = None
+        metadata["img_dims"] = {
+                    "width": (cv2_width), 
+                    "height": (cv2_height),
+                    "size": (cv2_size)
+                }
+        logger.debug(f"Dimensiones imagen:{cv2_width, cv2_height}")
+        
+        try:
+            with Image.open(input_path) as img:
 
-                if (pillow_width == cv2_width) and (pillow_height == cv2_height):
-                    metadata["img_dims"] = {"width": max(int(pillow_width), 1), "height": max(int(pillow_height), 1)}
-                else:
-                    metadata["img_dims"] = {"width": max(int(cv2_width), 1), "height": max(int(cv2_height), 1)}
-                    logger.warning(f"Dimensiones distintas: Pillow ({pillow_width}, {pillow_height}) != cv2 ({cv2_width}, {cv2_height}), usando cv2.")
+                metadata["color"] = img.mode
+                dpi_info: Optional[Dict[str, Optional[float]]] = img.info['dpi']
+            if dpi_info and isinstance(dpi_info, tuple) and len(dpi_info) == 2: 
+                metadata["dpi"] = float(dpi_info[0]) 
+            elif dpi_info and isinstance(dpi_info, (int, float)):
+                metadata["dpi"] = float(dpi_info)
+            else:
+                metadata["dpi"] = None
+            logger.info(f"Loader completado en en {time.perf_counter() - start_time:.6f}s para {image_name}")
+            logger.debug(f" metadata: {metadata}")
+            return gray_image, metadata
 
-                logger.debug(f"Imagen '{image_name}' cargada exitosamente desde '{input_path}'")
-                return gray_image, metadata
-
-            except Exception as e:
-                error_msg = f"Error al  la imagen '{input_path}': {e}"
-                logger.error(error_msg)
-                metadata['error'] = error_msg
-                return None, metadata
+        except Exception as e:
+            error_msg = f"Error al  la imagen '{input_path}': {e}"
+            logger.error(error_msg)
+            metadata['error'] = error_msg
+            return None, metadata

@@ -78,7 +78,13 @@ modules:
       hough_min_line_length_cap_px: 300
       hough_max_line_gap_px: 20
       hough_angle_filter_range_degrees: [-20.0, 20.0]
-    
+      
+    cleaning:
+      std_low: 15.0
+      sp_thr: 0.015
+      clahe_clip: 2.0    
+      clahe_grid: [8, 8]
+      
     cutting:
       cropping_padding: 5
 

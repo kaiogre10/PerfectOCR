@@ -14,17 +14,14 @@ class DataFormatter:
     Válvula de entrada/salida para todas las operaciones del dict.
     Los workers NO tocan directamente el dict_id, solo pasan por aquí.
     """
-
     def __init__(self):
         self.workflow: Optional[WorkflowDict] = None
         self.schema = WORKFLOW_SCHEMA
         self.encoder = DENSITY_ENCODER
-    # Estructura de tabla en memoria para intercambio entre workers
         self.structured_table: Optional[StructuredTable] = None
 
     def create_dict(self, dict_id: str, full_img: np.ndarray[Any, Any], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo dict"""
-
         self.workflow_dict: Dict[str, Any] = {
             "dict_id": dict_id,
             "full_img": [full_img.tolist() if hasattr(full_img, 'tolist') else full_img],
@@ -34,6 +31,7 @@ class DataFormatter:
                 "img_dims": {
                     "width": int(metadata.get("img_dims", {}).get("width")),
                     "height": int(metadata.get("img_dims", {}).get("height")),
+                    "size": int(metadata.get("img_dims", {}).get("size")),
                 },
                 "dpi": (
                     metadata.get("dpi") if isinstance(metadata.get("dpi"), dict)
@@ -70,17 +68,16 @@ class DataFormatter:
                         "centroid": [sum(xs) / len(xs), sum(ys) / len(ys)]
                     },
                     "cropped_geometry": {
-                        "padding_bbox": [],
                         "padd_centroid": [],
                         "padding_coords": [],
                     },
                     "cropped_img": None,
                     "perimeter": None,
-                    "line_id": "",
-                    "ocr_text": "",
-                    "ocr_confidence": float,
-                    "was_fragmented": bool,
-                    "status": bool,
+                    "line_id": None,
+                    "ocr_text": None,
+                    "ocr_confidence": None,
+                    "was_fragmented": False,
+                    "status": True,
                     "stage": ""
                 }
             if self.workflow_dict:
@@ -122,7 +119,7 @@ class DataFormatter:
             return {}
         return self.workflow_dict["polygons"]
 
-    def update_full_img(self, dict_id: str, full_img: (Optional[np.ndarray[Any, Any]])=None) -> bool:
+    def update_full_img(self, full_img: (Optional[np.ndarray[Any, Any]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow_dict"""
         try:
             if not self.workflow_dict:
@@ -156,11 +153,9 @@ class DataFormatter:
 
             for poly_id, img in cropped_images.items():
                 if poly_id in self.workflow_dict["polygons"]:
-                    # MANTENER como np.ndarray, NO convertir a list
-                    self.workflow_dict["polygons"][poly_id]["cropped_img"] = img  # Sin .tolist()
+                    self.workflow_dict["polygons"][poly_id]["cropped_img"] = img
                     if poly_id in cropped_geometries:
                         self.workflow_dict["polygons"][poly_id]["cropped_geometry"] = cropped_geometries[poly_id]
-
 
             logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte.")
             return True
@@ -271,20 +266,17 @@ class DataFormatter:
                 return {}
             encoded_lines: Dict[str, List[int]] = {}
             all_lines = self.workflow_dict["all_lines"]
-            # Determinar qué líneas codificar
             lines_to_encode = line_ids if line_ids is not None else list(all_lines.keys())
             for line_id in lines_to_encode:
                 if line_id in all_lines:
                     line_text = all_lines[line_id].get("text", "")
                     if line_text:
-                        # El script original elimina los espacios en blanco antes de codificar
                         compact_text = ''.join(line_text.split())
                         encoded_text = []
                         for char in compact_text:
-                            encoded_value = self.encoder.get(char, 0)  # Valor por defecto 0
+                            encoded_value = self.encoder.get(char, 0)
                             encoded_text.append(encoded_value)
                         encoded_lines[line_id] = encoded_text
-                        # Guardar también en all_lines para trazabilidad
                         all_lines[line_id]["encoded_text"] = encoded_text
                     else:
                         logger.warning(f"Línea {line_id} no tiene texto para codificar.")

@@ -4,7 +4,7 @@ import time
 import numpy as np
 import logging
 from typing import Dict, Any, Optional
-from skimage import filters 
+from skimage.filters import unsharp_mask
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
@@ -95,21 +95,21 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
                 radius = min(2.0, max(0.5, global_sharp_var - 0.02))
                 amount = min(2.0, max(1.0, global_sharp_var - 0.03))
 
-                sharpened: Optional[np.ndarray[Any, Any]] = filters.unsharp_mask(normalized, radius=float(radius), amount=float(amount))
+                sharpened: Optional[np.ndarray[Any, Any]] = unsharp_mask(normalized, radius=float(radius), amount=float(amount))
 
                 if sharpened is not None:
                     processed_img = (sharpened * 255).astype(np.uint8)
                     
                     # Convertir de vuelta al formato original si es necesario
                     if cropped_img.dtype != np.uint8:
-                        processed_img = (processed_img.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
+                            return (processed_img.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
+                    else:
+                        processed_img = cropped_img
                 else:
                     processed_img = cropped_img
-            else:
-                processed_img = cropped_img
+                
             
-            return processed_img
+                return processed_img
             
         except Exception as e:
             logger.warning(f"OpenCV Sobel falló: {e}, manteniendo imagen original")
-            return cropped_img

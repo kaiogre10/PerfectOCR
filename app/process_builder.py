@@ -30,19 +30,18 @@ class ProcessingBuilder:
             # FASE 1: Cargar imagen, obtener polígonos y liberar full_img
             workflow_start = time.perf_counter()
             manager = DataFormatter()
-            
             manager, time_poly = self.input_stager.generate_polygons(manager)
             
             if manager is None:
                 logger.error("[ProcessingBuilder] No se pudo procesar la fase de entrada.")
                 return None
             
-            logger.debug(f"Fase de entrada completada en: {time_poly:.4f}s")
+            logger.debug(f"Fase de entrada completada en: {time_poly:.6f}s")
 
             # Fase 2: Corregir y preparar la imagen para el OCR
             manager, elapsed = self.preprocessing_stager.apply_preprocessing_pipelines(manager)
             
-            logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.4f}s")
+            logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
             # # FASE 3: OCR (modifica el manager y libera los recortes)
             if manager:
@@ -50,7 +49,7 @@ class ProcessingBuilder:
                 if manager is None:
                     logger.error("[ProcessingBuilder] No se pudo generar WorkflowDict desde OCR")
                 else:
-                    logger.info(f"OCR time: {ocr_time:.4f}s")
+                    logger.info(f"OCR time: {ocr_time:.6f}s")
                     
             # Fase 4: Vectorización y Tokenización
             if manager:
@@ -59,14 +58,13 @@ class ProcessingBuilder:
                     logger.error("[ProcessingBuilder] No se pudieron generar vectores para el WorkflowDict")
                 else:
                     vect_total = vect_time  # vect_time ya es la duración
-                    logger.info(f"Vectorización time {vect_total:.4f}s")
+                    logger.info(f"Vectorización time {vect_total:.6f}s")
                                     
             total_workflow_time = time.perf_counter() - workflow_start
-            logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.4f}s")
+            logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.6f}s")
             
             return manager
             
         except Exception as e:
             logger.error(f"[ProcessingBuilder] Error fatal procesando la imagen: {e}", exc_info=True)
-            # Podrías crear un manager con el error si es necesario
         return None
