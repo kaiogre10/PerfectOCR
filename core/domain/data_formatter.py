@@ -110,6 +110,13 @@ class DataFormatter:
 
     def get_structured_semantic_types(self) -> Optional[List[str]]:
         return self.structured_table.semantic_types if self.structured_table else None
+
+    def get_all_lines(self) -> Dict[str, Any]:
+        """
+        Devuelve la geometría de todas las líneas almacenadas en el workflow_dict.
+        Estructura: {"line_0000": {"line_geometry": {"line_bbox": [...], "line_centroid": [...]}}, ...}
+        """
+        return self.workflow_dict["all_lines"] if self.workflow_dict else {}
         
     def get_polygons_with_cropped_img(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -118,6 +125,40 @@ class DataFormatter:
         if not self.workflow_dict:
             return {}
         return self.workflow_dict["polygons"]
+        
+    def get_encode_lines(self, line_ids: Optional[List[str]] = None) -> Dict[str, List[int]]:
+        """
+        Codifica líneas específicas usando DENSITY_ENCODER.
+        Si no se especifican line_ids, codifica todas las líneas existentes.
+        """
+        try:
+            if not self.workflow_dict or "all_lines" not in self.workflow_dict:
+                logger.warning("No hay líneas disponibles para codificar.")
+                return {}
+            encoded_lines: Dict[str, List[int]] = {}
+            all_lines = self.workflow_dict["all_lines"]
+            lines_to_encode = line_ids if line_ids is not None else list(all_lines.keys())
+            for line_id in lines_to_encode:
+                if line_id in all_lines:
+                    line_text = all_lines[line_id].get("text", "")
+                    if line_text:
+                        compact_text = ''.join(line_text.split())
+                        encoded_text: List[int] = []
+                        for char in compact_text:
+                            encoded_value = self.encoder.get(char, 0)
+                            encoded_text.append(encoded_value)
+                        encoded_lines[line_id] = encoded_text
+                        all_lines[line_id]["encoded_text"] = encoded_text
+                    else:
+                        logger.warning(f"Línea {line_id} no tiene texto para codificar.")
+                else:
+                    logger.warning(f"Línea {line_id} no encontrada en all_lines.")
+            logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
+            return encoded_lines
+        except Exception as e:
+            logger.error(f"Error codificando líneas: {e}")
+            return {}
+
 
     def update_full_img(self, full_img: (Optional[np.ndarray[Any, Any]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow_dict"""
@@ -205,6 +246,8 @@ class DataFormatter:
             if not self.workflow_dict:
                 logger.error("No hay workflow_dict inicializado para actualizar resultados OCR.")
                 return False
+                
+            logger.info(f"DataFormatter recibe: {len(final_results)} resultados, {len(polygon_ids)} IDs")
 
             for idx, res in enumerate(final_results):
                 if idx < len(polygon_ids):
@@ -229,64 +272,39 @@ class DataFormatter:
                 logger.error("No hay workflow_dict inicializado para guardar líneas de texto.")
                 return False
 
-            all_lines = {}
+            all_lines: Dict[str, Any] = {}
             for line_id, line_data in lines_info.items():
+                # Validar que line_data no sea None
+                if line_data is None:
+                    logger.warning(f"line_data es None para {line_id}, omitiendo línea.")
+                    continue
+                    
+                # Obtener line_geometry de forma segura
+                line_geometry = line_data.get("line_geometry", {})
+                if not line_geometry:
+                    # Usar valores alternativos si line_geometry no existe
+                    line_bbox = line_data.get("bounding_box", [])
+                    line_centroid = line_data.get("centroid", [0, 0])
+                else:
+                    line_bbox = line_geometry.get("line_bbox", [])
+                    line_centroid = line_geometry.get("line_centroid", [0, 0])
+                
                 all_lines[line_id] = {
                     "lineal_id": line_id,
                     "text": line_data.get("text", ""),
                     "polygon_ids": line_data.get("polygon_ids", []),
-                    "line_bbox": line_data.get("line_bbox", line_data.get("bounding_box", [])),
-                    "line_centroid": line_data.get("line_centroid", line_data.get("centroid", [0, 0]))
+                    "line_bbox": line_bbox,
+                    "line_centroid": line_centroid
                 }
+                
             self.workflow_dict["all_lines"] = all_lines
             num_lines = len(all_lines)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
-            # for line_id, line_data in all_lines.items():
-            #     logger.info(f"Línea {line_id} - Texto: {line_data.get('text', "")}")
                 
             return True
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}")
             return False
-
-    def encode_lines(self, line_ids: Optional[List[str]] = None) -> Dict[str, List[int]]:
-        """
-        Codifica líneas específicas usando DENSITY_ENCODER.
-        Si no se especifican line_ids, codifica todas las líneas existentes.
-        
-        Args:
-            line_ids: Lista de IDs de líneas a codificar. Si es None, codifica todas.
-            
-        Returns:
-            Dict[str, List[int]]: {"line_0001": [80, 65, 84, 65], ...}
-        """
-        try:
-            if not self.workflow_dict or "all_lines" not in self.workflow_dict:
-                logger.warning("No hay líneas disponibles para codificar.")
-                return {}
-            encoded_lines: Dict[str, List[int]] = {}
-            all_lines = self.workflow_dict["all_lines"]
-            lines_to_encode = line_ids if line_ids is not None else list(all_lines.keys())
-            for line_id in lines_to_encode:
-                if line_id in all_lines:
-                    line_text = all_lines[line_id].get("text", "")
-                    if line_text:
-                        compact_text = ''.join(line_text.split())
-                        encoded_text = []
-                        for char in compact_text:
-                            encoded_value = self.encoder.get(char, 0)
-                            encoded_text.append(encoded_value)
-                        encoded_lines[line_id] = encoded_text
-                        all_lines[line_id]["encoded_text"] = encoded_text
-                    else:
-                        logger.warning(f"Línea {line_id} no tiene texto para codificar.")
-                else:
-                    logger.warning(f"Línea {line_id} no encontrada en all_lines.")
-            logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
-            return encoded_lines
-        except Exception as e:
-            logger.error(f"Error codificando líneas: {e}")
-            return {}
         
     def save_tabular_lines(self, table_detection_result: Dict[str, Any]) -> bool:
         """
@@ -312,7 +330,7 @@ class DataFormatter:
                         table_line_ids = [header_line_id] + table_line_ids
 
             # Crear diccionario de líneas tabulares
-            tabular_lines = {}
+            tabular_lines: Dict[str, Any] = {}
             for line_id in table_line_ids:
                 if line_id in self.workflow_dict["all_lines"]:
                     line_data = self.workflow_dict["all_lines"][line_id]

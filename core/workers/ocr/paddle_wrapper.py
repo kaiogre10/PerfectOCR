@@ -76,7 +76,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         # image_list_copy = image_list.copy()
         # Procesar BATCH (mantener rendimiento)
         final_results: List[Optional[Dict[str, Any]]] = self.recognize_text_from_batch(image_list)
-        # polygons = manager.get_polygons()
         # batch_results = self._interceptor.intercept_polygons(polygon_ids, cleaned_batch_results, fragmentation_candidates, image_list_copy, polygons)
         # Actualizar resultados usando el método centralizado
         processed_count = 0
@@ -92,7 +91,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         # image_name = manager.get_metadata().get("image_name", "unknown_image")
         # self._save_complete_ocr_results(manager, image_name)
         total_time = time.perf_counter() - start_time
-        logger.info(f"[PaddelWrapper] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
+        logger.debug(f"[PaddelWrapper] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
         return True 
         
     def recognize_text_from_batch(self, image_list: List[np.ndarray[Any, Any]]) -> List[Optional[Dict[str, Any]]]:
@@ -126,7 +125,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 consolidated_results = batch_result[0]
                 
                 if len(consolidated_results) == len(image_list):
-                    logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
+                    logger.debug(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(image_list)} imágenes por orden.")
                     final_results: List[Optional[Dict[str, Any]]] = []
                     for text, confidence in consolidated_results:
                         processed_result: Dict[str, Any] = {
@@ -135,7 +134,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         }
                         final_results.append(processed_result)
                     
-                    logger.info(f"Total de resultados finales procesados: {len(final_results)}")
+                    logger.debug(f"Total de resultados finales procesados: {len(final_results)}")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes. No se puede garantizar la correspondencia.")

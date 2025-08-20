@@ -32,7 +32,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         context["full_img"] = full_img
         
         manager.update_full_img(full_img)
-        logger.info(f"Imagen inclinada corregida actualiada en el manager")
+        logger.debug(f"Imagen inclinada corregida actualiada en el manager")
             
         return True
 

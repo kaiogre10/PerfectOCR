@@ -22,24 +22,45 @@ class WorkFlowBuilder:
         self.input_paths = input_paths or []
         self.output_path = output_path
         
-    def get_valid_extensions(self) -> Tuple[str, ...]:
+    def _get_valid_extensions(self) -> Tuple[str, ...]:
         """Obtiene extensiones válidas desde configuración."""
         extensions = self.config_services.processing_config.get('valid_image_extensions', [])
         return tuple(extensions)
         
-    def extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, str]]:
-        """Extrae lista de rutas y nombres de imágenes válidas."""
+    def _extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, str]]:
+        """Extrae lista de rutas y nombres de imágenes válidas de forma recursiva."""
         image_info: List[Dict[str, str]] = []
-        for filename in os.listdir(input_folder):
-            if filename.lower().endswith(valid_extensions):
-                full_path = os.path.join(input_folder, filename)
-                image_name = os.path.splitext(filename)[0]
-                image_extension = os.path.splitext(filename)[1]
-                image_info.append({
-                    "path": full_path,
-                    "name": image_name,
-                    "extension": image_extension
-                })
+        
+        # Recorrer recursivamente todas las subcarpetas
+        for root, dirs, files in os.walk(input_folder):
+            for filename in files:
+                if filename.lower().endswith(valid_extensions):
+                    full_path = os.path.join(root, filename)
+                    image_name = os.path.splitext(filename)[0]
+                    image_extension = os.path.splitext(filename)[1]
+                    
+                    # Obtener ruta relativa desde input_folder para mejor organización
+                    relative_path = os.path.relpath(root, input_folder)
+                    if relative_path == ".":
+                        relative_path = ""
+                    
+                    image_info.append({
+                        "path": full_path,
+                        "name": image_name,
+                        "extension": image_extension,
+                        "relative_folder": relative_path  # Nueva clave para tracking
+                    })
+                    
+        # Log para debug
+        if image_info:
+            logger.debug(f"Encontradas {len(image_info)} imágenes en {input_folder} y subcarpetas")
+            # Mostrar estructura de carpetas encontradas
+            folders_found = set(img["relative_folder"] for img in image_info if img["relative_folder"])
+            if folders_found:
+                logger.debug(f"Subcarpetas con imágenes: {sorted(folders_found)}")
+        else:
+            logger.warning(f"No se encontraron imágenes con extensiones {valid_extensions} en {input_folder}")
+            
         return image_info
 
     def count_and_plan(self) -> Dict[str, Any]:
@@ -47,14 +68,14 @@ class WorkFlowBuilder:
         PLANIFICA el procesamiento: cuenta imágenes y decide estrategia.
         REPORTA a Main: cuántos builders crear y qué modo usar.
         """
-        valid_extensions = self.get_valid_extensions()
+        valid_extensions = self._get_valid_extensions()
 
         # Si recibimos input_paths, expandimos; si no, usamos la carpeta del YAML
         image_info: List[Dict[str, str]] = []
         if self.input_paths:
             for path in self.input_paths:
                 if os.path.isdir(path):
-                    image_info.extend(self.extract_valid_image_paths(path, valid_extensions))
+                    image_info.extend(self._extract_valid_image_paths(path, valid_extensions))
                 elif os.path.isfile(path) and path.lower().endswith(valid_extensions):
                     base = os.path.basename(path)
                     image_info.append({
@@ -68,7 +89,7 @@ class WorkFlowBuilder:
             if not os.path.isdir(input_folder):
                 logger.critical(f"La carpeta de entrada no existe: {input_folder}")
                 return {"error": f"Carpeta de entrada no encontrada: {input_folder}"}
-            image_info = self.extract_valid_image_paths(input_folder, valid_extensions)
+            image_info = self._extract_valid_image_paths(input_folder, valid_extensions)
 
         if not image_info:
             logger.critical("No se encontraron imágenes válidas.")
@@ -79,11 +100,9 @@ class WorkFlowBuilder:
         mode = 'batch' if use_batch else 'interactive'
         logging.debug(f"Número de imágenes: {num_images}, modo: {mode}")
 
-
         return {
             "status": "success",
             "total_images": num_images,
             "mode": mode,
             "image_info": image_info,
         }
-                    

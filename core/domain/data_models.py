@@ -120,17 +120,22 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                             "type": "array",
                             "items": {"type": "string"}
                         },
-                        "line_bbox": {
+                        "line_geometry": {
+                            "type": "object",
+                            "properties": {
+                                "line_bbox": {
                                     "type": "array",
                                     "items": {"type": "number"},
                                     "minItems": 4,
                                     "maxItems": 4
                                 },
-                        "line_centroid": {
-                                    "type": "array",
-                                    "items": {"type": "number"},
-                                    "minItems": 2,
-                                    "maxItems": 2
+                                "line_centroid": {
+                                            "type": "array",
+                                            "items": {"type": "number"},
+                                            "minItems": 2,
+                                            "maxItems": 2,
+                                },
+                            },
                         },
                     },
                 },
@@ -321,13 +326,17 @@ class TabularLines:
     complete_text: str
 
 @dataclass
+class LineGeometry:
+    line_centroid: List[float]
+    line_bbox: List[float]
+    
+@dataclass
 class AllLines:
     lineal_id: str
     text: str
     encoded_text: List[int]
     polygon_ids: List[str]
-    line_bbox: List[float]
-    line_centroid: List[float]
+    line_geometry: LineGeometry
 
 @dataclass(frozen=True)
 class Metadata:

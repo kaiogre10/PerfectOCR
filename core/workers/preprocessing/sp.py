@@ -6,11 +6,10 @@ import time
 from typing import Dict, Any 
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
+
 logger = logging.getLogger(__name__)
     
-class DoctorSaltPepper(PreprossesingAbstractWorker):
-    total_polygons_corrected = 0
-    
+class DoctorSaltPepper(PreprossesingAbstractWorker):    
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -67,53 +66,103 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
             return False
     
     def _detect_sp_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-        """Estima ruido sal y pimienta con histograma, operando siempre in-place sobre el array original."""
-        sp_corrections = self.config.get('median_filter', {})
-        low_thresh = int(sp_corrections.get('salt_pepper_low', 10))
-        high_thresh = int(sp_corrections.get('salt_pepper_high', 245))
-        kernel_size = int(sp_corrections.get('kernel_size', 3))
-        sp_threshold = float(sp_corrections.get('salt_pepper_threshold', 0.001))
+        """Filtro adaptativo de sal y pimienta a nivel token (polígono), DPI-invariante y seguro para texto."""
+        try:
+            total_pixels = cropped_img.size
+            if total_pixels == 0:
+                return cropped_img
 
-        total_pixels = cropped_img.size
-        if total_pixels == 0:
+            h, w = cropped_img.shape[:2]
+            area = h * w
+
+            # Normalizar a uint8 solo si es necesario (para operar con OpenCV), luego reescalar de vuelta
+            orig_dtype = cropped_img.dtype
+            img_min = None
+            img_max = None
+            if orig_dtype != np.uint8:
+                img_min = float(np.min(cropped_img))
+                img_max = float(np.max(cropped_img))
+                if img_max > img_min:
+                    normalized = ((cropped_img - img_min) / (img_max - img_min) * 255).astype(np.uint8)
+                else:
+                    normalized = cropped_img.astype(np.uint8)
+            else:
+                normalized = cropped_img
+
+            # Percentiles locales: extremos adaptativos (DPI-invariante)
+            p1 = float(np.percentile(normalized, 1))
+            p5 = float(np.percentile(normalized, 5))
+            p95 = float(np.percentile(normalized, 95))
+            p99 = float(np.percentile(normalized, 99))
+            contrast_range = p99 - p1
+
+            if contrast_range > 150.0:
+                low = int(max(0, p1))
+                high = int(min(255, p99))
+            else:
+                low = int(max(0, p5))
+                high = int(min(255, p95))
+
+            # Máscara de extremos (candidatos a SP)
+            extreme_mask = (normalized <= low) | (normalized >= high)
+            sp_pixels = int(np.count_nonzero(extreme_mask))
+            sp_ratio = sp_pixels / float(area)
+
+            # Contar aislados: vecinos 8-conectados (impulsos sueltos)
+            kernel = np.ones((3, 3), np.uint8)
+            neighbor_count = cv2.filter2D(extreme_mask.astype(np.uint8), -1, kernel, borderType=cv2.BORDER_REPLICATE)
+            isolated_mask = extreme_mask & (neighbor_count <= 1)
+            isolated_count = int(np.count_nonzero(isolated_mask))
+
+            # Umbrales adaptativos por tamaño de token
+            if area < 2000:
+                ratio_thr, min_iso, ksize = 0.06, 10, 3
+            elif area < 10000:
+                ratio_thr, min_iso, ksize = 0.03, 20, 3
+            else:
+                ratio_thr, min_iso, ksize = 0.015, 30, 5
+
+            if min(h, w) >= 50:
+                ksize = max(ksize, 5)
+            if ksize % 2 == 0:
+                ksize += 1
+
+            # Activación estricta: SP real (no bordes normales)
+            if not (sp_ratio > ratio_thr and isolated_count >= min_iso):
+                return cropped_img
+
+            # Salvaguarda de nitidez (Sobel) antes/después
+            sobel_before = np.mean(np.abs(cv2.Sobel(normalized, cv2.CV_64F, 1, 1, ksize=3)))
+
+            # Mediana + reemplazo selectivo SOLO sobre la máscara de extremos (preserva trazos)
+            filtered = cv2.medianBlur(normalized, ksize)
+            if filtered is None:
+                return cropped_img
+
+            result_u8 = normalized.copy()
+            result_u8[extreme_mask] = filtered[extreme_mask]
+
+            sobel_after = np.mean(np.abs(cv2.Sobel(result_u8, cv2.CV_64F, 1, 1, ksize=3)))
+            if sobel_after < 0.85 * sobel_before:
+                return cropped_img
+
+            # Escribir in-place respetando dtype original
+            if orig_dtype != np.uint8:
+                if img_max is None or img_min is None or img_max <= img_min:
+                    cropped_img[...] = result_u8.astype(orig_dtype)
+                else:
+                    # Aseguramos que img_max y img_min no sean None antes de operar
+                    scale = float(img_max) - float(img_min)
+                    back = (result_u8.astype(np.float32) / 255.0 * scale + float(img_min)).astype(orig_dtype)
+                    cropped_img[...] = back
+            else:
+                cropped_img[...] = result_u8
+
             return cropped_img
 
-        # Calcular histograma
-        hist, _ = np.histogram(cropped_img, bins=256, range=(0, 255))
-
-        # Sumar píxeles en los extremos del histograma
-        sp_pixels = int(np.sum(hist[:low_thresh]) + np.sum(hist[high_thresh:]))
-        sp_ratio = sp_pixels / total_pixels
-
-        if sp_ratio > sp_threshold:
-            # Ajustar kernel_size a impar si es necesario
-            if kernel_size % 2 == 0:
-                kernel_size += 1
-
-            try:
-                # Mover img_min e img_max aquí para que estén en scope
-                img_min = np.min(cropped_img)
-                img_max = np.max(cropped_img)
-                
-                if cropped_img.dtype != np.uint8:
-                    if img_max > img_min:
-                        normalized = ((cropped_img - img_min) / (img_max - img_min) * 255).astype(np.uint8)
-                    else:
-                        normalized = cropped_img.astype(np.uint8)
-                else:
-                    normalized = cropped_img
-            
-                # Aplicar filtro de mediana
-                filtered = cv2.medianBlur(normalized, kernel_size)
-                if cropped_img.dtype != np.uint8:
-                    filtered_scaled = (filtered.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
-                    cropped_img[...] = filtered_scaled
-                else:
-                    cropped_img[...] = filtered
-                
-            except cv2.error as e:
-                logger.warning(f"Polígono sin suficiente ruido: {e}")
-                pass
-        
-        return cropped_img
-        
+        except cv2.error as e:
+            logger.warning(f"OpenCV en DoctorSaltPepper: {e}, manteniendo imagen original")
+            return cropped_img
+        except Exception as e:
+            logger.warning(f"SP adaptativo falló: {e}, manteniendo imagen original")
+            return cropped_img

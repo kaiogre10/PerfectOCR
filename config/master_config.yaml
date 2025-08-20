@@ -149,6 +149,7 @@ modules:
     
     dbscan:
       min_cluster_size: 2
+      eps: 2
       
     math_max:
       total_mtl_abs_tolerance: 0.05

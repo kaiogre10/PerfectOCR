@@ -31,7 +31,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             success = manager.create_text_lines(lines_info)
             total_time = time.time() - start_time
 
-            logger.info(f"Armado de líneas completado en {total_time:.4f}")
+            logger.debug(f"Armado de líneas completado en {total_time:.4f}")
 
             if not success:
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
@@ -41,7 +41,6 @@ class LinealReconstructor(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"error {e}")
             return False
-                
         
     def _reconstruct_lines(self, polygons: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -110,8 +109,10 @@ class LinealReconstructor(VectorizationAbstractWorker):
             texts = [p.get("ocr_text", "") for p in current_line_polys]
 
             lines_info[line_id] = {
-                "line_bbox": current_line_bbox,
-                "line_centroid": [np.mean(centroids_x), np.mean(centroids_y)] if centroids_x else [0, 0],
+                "line_geometry": {
+                    "line_bbox": current_line_bbox,
+                    "line_centroid": [np.mean(centroids_x), np.mean(centroids_y)] if centroids_x else [0, 0],
+                },
                 "polygon_ids": polygon_ids,
                 "text": " ".join(texts).strip()
             }

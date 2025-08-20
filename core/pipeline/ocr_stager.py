@@ -15,32 +15,26 @@ class OCRStager:
         self.output_paths = output_paths if output_paths is not None else []
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
-        start_time = time.perf_counter()
+        start_time = time.time()
+                
+        for worker_idx, worker in enumerate(self.workers):
+            worker_start = time.time()
+            worker_name = worker.__class__.__name__
+            logger.debug(f"OCRStager: Ejecutando worker OCR Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            
+            context: Dict[str, Any] = {
+                    # "poly_id": poly_id,
+                    "config": self.config,
+                    "output_paths": self.output_paths,
+                    "project_root": self.project_root
+                }    
+                
+            if not worker.transcribe(context, manager):
+                logger.error(f"OCRStager: Fallo en la transcripción OCR en worker #{worker_idx}: {worker.__class__.__name__}")
+                return None, 0.0
 
-        if not self.workers:
-            logger.error("OCRStager: No hay workers de OCR disponibles")
-            return None, 0.0
-
-        try:
-            context = {
-                "config": self.config
-            }
-
-            for worker_idx, worker in enumerate(self.workers):
-                if not hasattr(worker, 'transcribe'):
-                    logger.error(f"OCRStager: El worker #{worker_idx} no implementa el método transcribe")
-                    return None, 0.0
-
-                logger.info(f"OCRStager: Ejecutando worker OCR #{worker_idx}: {worker.__class__.__name__}")
-                success = worker.transcribe(context, manager)
-                if not success:
-                    logger.error(f"OCRStager: Fallo en la transcripción OCR en worker #{worker_idx}: {worker.__class__.__name__}")
-                    return None, 0.0
-
-            ocr_time = time.perf_counter() - start_time
-            logger.info(f"OCR completado en {ocr_time:.4f}s")
-            return manager, ocr_time
-
-        except Exception as e:
-            logger.error(f"Error en OCRStager: {e}", exc_info=True)
-            return None, 0.0
+            worker_time = time.time() - worker_start
+            logger.info(f"[OCRStager] Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
+        ocr_time = time.time() - start_time
+        logger.info(f"OCR completado en {ocr_time:.6f}s")
+        return manager, ocr_time

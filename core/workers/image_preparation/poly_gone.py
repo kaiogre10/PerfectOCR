@@ -47,13 +47,14 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 if px2 <= px1 or py2 <= py1:
                     logger.warning(f"PolygonExtractor: Dimensiones inválidas para {poly_id}")
                     continue
-
+                
                 cropped: np.ndarray[Any, Any] = full_img[py1:py2, px1:px2].copy()
                 if cropped.size == 0:
                     logger.warning(f"PolygonExtractor: Imagen recortada vacía para {poly_id}")
                     continue
         
                 cropped_images[poly_id] = cropped
+                # logger.info(f"Dimensionses para {cropped.shape[:2]}")
                 
                 # Guardar la geometría del recorte (bounding box ajustada) como dict
                 pcx = (px1 + px2) / 2

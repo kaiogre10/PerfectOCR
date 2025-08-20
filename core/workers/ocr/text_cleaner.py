@@ -2,7 +2,7 @@
 import logging
 import re
 from typing import Dict, Any, List, Optional
-import cleantext
+from cleantext import clean
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 
@@ -27,64 +27,47 @@ class TextCleaner(OCRAbstractWorker):
         self.min_word_len_for_frag = self.config.get("min_confidence", 70.0)
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        
         polygons: Dict[str, Any] = manager.get_polygons()
         polygon_ids = list(polygons.keys())
         
-        final_results: List[Optional[Dict[str, Any]]] = self.clean_and_analyze_batch(polygons)
+        logger.info(f"Polígonos de entrada: {len(polygon_ids)}")
         
-        return manager.update_ocr_results(final_results, polygon_ids)
-                 
-    def clean_and_analyze_batch( 
-        self,
-        polygons: Dict[str, Any]
-    ) -> List[Optional[Dict[str, Any]]]:
-        logger.debug("Limpieza de texto iniciada")
-
-        polygon_ids = list(polygons.keys())
-        final_results = [
-            {
-                "text": polygons[pid].get("ocr_text", ""),
-                "confidence": polygons[pid].get("ocr_confidence", 0.0)
-            }
-            for pid in polygon_ids
-        ]
-
-        cleaned_batch_results: List[Optional[Dict[str, Any]]] = []
-        false_count = 0
-        false_polygons: List[Dict[str, Any]] = []
-
-        for result, poly_id in zip(final_results, polygon_ids):
-            cleaned_result = result.copy() if result else {}
-            text = cleaned_result.get("text", "").strip()
-            confidence = cleaned_result.get("confidence", 0.0)
-
-            # Condiciones para marcar como inválido
+        # Filtrar y eliminar basura directamente
+        valid_results: List[Optional[Dict[str, Any]]] = []
+        valid_polygon_ids: List[str] = []
+        eliminated_count = 0
+        
+        for poly_id in polygon_ids:
+            text = polygons[poly_id].get("ocr_text", "").strip()
+            confidence = polygons[poly_id].get("ocr_confidence", 0.0)
+            
+            # Criterio de basura
             if (
                 not text or
-                confidence < 70.0 or
+                (confidence < 70.0 and not self._is_likely_numeric_or_code(text)) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)
             ):
-                cleaned_result["status"] = False
-                cleaned_result["text"] = ""
-                cleaned_result["confidence"] = 0.0
-                false_count += 1
-                false_polygons.append({"id": poly_id, "text": text, "confidence": confidence})
+                # Eliminar del workflow_dict
+                del manager.workflow_dict["polygons"][poly_id]
+                eliminated_count += 1
+                # logger.info(f"Eliminados: ID: {poly_id} | Texto: '{text}' | Confianza: {confidence}")
             else:
-                cleaned_result["status"] = True
-                cleaned_result["text"] = self._process_single_text(text)
-
-            cleaned_batch_results.append(cleaned_result)
+                # Conservar válido
+                result = {
+                    "text": self._process_single_text(text),
+                    "confidence": confidence,
+                    "status": True
+                }
+                valid_results.append(result)
+                valid_polygon_ids.append(poly_id)
         
-        if false_count > 0:
-            logger.info(f"Polígonos marcados como status=False: {false_count}")
-            for fp in false_polygons:
-                logger.info(f"ID: {fp['id']} | Texto: '{fp['text']}' | Confianza: {fp['confidence']}")
-        else:
-            logger.info("Sin polígonos problemáticos")
-            
-        return cleaned_batch_results
-
+        logger.info(f"Polígonos eliminados: {eliminated_count}")
+        logger.info(f"Polígonos de salida: {len(valid_results)}")
+        
+        final_results = valid_results
+        polygon_ids = valid_polygon_ids
+        return manager.update_ocr_results(final_results, polygon_ids)
+                 
     def _process_single_text(self, text: str) -> str:
         """
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
@@ -98,24 +81,34 @@ class TextCleaner(OCRAbstractWorker):
         processed_words: List[str] = []
 
         for token in words:
-            if self._is_likely_numeric_or_code(token):
-                # --- RUTA DE ALTA SEGURIDAD PARA NÚMEROS ---
-                safe_word = self._safe_normalize_numeric_separators(token)
-                processed_words.append(safe_word)
+            if not token.strip():  # Evitar procesar tokens vacíos
+                processed_words.append(token)
             else:
+                # Limpieza de caracteres ANTES de decidir si es numérico
+                cleaned_token = self._clean_characters_in_word(token)
+                
+                if self._is_likely_numeric_or_code(cleaned_token):
+                    # --- RUTA DE ALTA SEGURIDAD PARA NÚMEROS ---
+                    safe_word = self._safe_normalize_numeric_separators(cleaned_token)
+                    processed_words.append(safe_word)
+                else:
                 # --- RUTA DE LIMPIEZA GENERAL PARA TEXTO ---
-                cleaned_word = cleantext.clean(
-                    token,
-                    clean_all=False, extra_spaces=True, stemming= False,
-                    stopwords= True,
-                    lowercase= False,
-                    numbers = False,
-                    punct = False,
-                    reg = '',
-                    reg_replace = '',
-                    stp_lang= 'spanish'
-                )
-                processed_words.append(cleaned_word)
+                    try:
+                        cleaned_token = clean(
+                            token,
+                            clean_all=False, extra_spaces=True, stemming= False,
+                            stopwords= True,
+                            lowercase= False,
+                            numbers = False,
+                            punct = False,
+                            reg = '',
+                            reg_replace = '',
+                            stp_lang= 'spanish'
+                        )
+                        processed_words.append(cleaned_token)
+                    except Exception:
+                # Si clean() falla, usar el token original
+                        processed_words.append(cleaned_token)
         
         return ' '.join(processed_words)
         
@@ -160,13 +153,33 @@ class TextCleaner(OCRAbstractWorker):
         safe_word = re.sub(rf"(?<=\d)[{symbols_to_dot}](?=\d)", ".", token)
         return safe_word
 
-    # def get_cleaning_stats(original_text: str, cleaned_text: str) -> Dict[str, Any]:
-    #     """Obtiene estadísticas de la limpieza aplicada."""
-    #     return {
-    #         'original_length': len(original_text),
-    #         'cleaned_length': len(cleaned_text),
-    #         'text_changed': original_text != cleaned_text,
-    #         'numeric_integrity_enforced': True,
-    #         'cleaning_type': 'high_safety_garbage_removal',
-    #         'library_used': 'clean-text (conditional)'
-    #         }
+    def _clean_characters_in_word(self, token: str) -> str:
+        """Limpieza de caracteres específicos en palabras individuales."""
+        if not token:
+            return token
+        
+        # Reemplazar caracteres confusos OCR
+        char_replacements = {
+            # '0': 'O',  # Cero confundido con O mayúscula
+            # '1': 'l',  # Uno confundido con l minúscula
+            # '5': 'S',  # Cinco confundido con S mayúscula
+            # '8': 'B',  # Ocho confundido con B mayúscula
+            # '|': 'I',  # Barra confundida con I mayúscula
+            # '!': '1',  # Exclamación confundida con uno
+            # 'G': '6',  # G mayúscula confundida con seis
+            # 'g': '9',  # g minúscula confundida con nueve
+            # 'Z': '2',  # Z mayúscula confundida con dos
+            # 'z': '2',  # z minúscula confundida con dos
+        }
+        
+        # Aplicar reemplazos
+        if char_replacements is not None:
+            for wrong_char, correct_char in char_replacements.items():
+                token = token.replace(wrong_char, correct_char)
+            else:
+                pass
+        
+        # Limpiar caracteres de ruido OCR (mantener solo alfanuméricos + símbolos útiles)
+        token = re.sub(r'[^\w\s\.\,]', '', token)
+        
+        return token
