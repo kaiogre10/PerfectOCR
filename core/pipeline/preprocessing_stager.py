@@ -1,6 +1,7 @@
 # PerfectOCR/core/coordinators/preprocessing_coordinator.py
 import logging
 import time
+import numpy as np
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import PreprossesingAbstractWorker

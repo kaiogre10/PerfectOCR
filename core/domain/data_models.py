@@ -120,22 +120,17 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                             "type": "array",
                             "items": {"type": "string"}
                         },
-                        "line_geometry": {
-                            "type": "object",
-                            "properties": {
-                                "line_bbox": {
-                                    "type": "array",
-                                    "items": {"type": "number"},
-                                    "minItems": 4,
-                                    "maxItems": 4
-                                },
-                                "line_centroid": {
-                                            "type": "array",
-                                            "items": {"type": "number"},
-                                            "minItems": 2,
-                                            "maxItems": 2,
-                                },
-                            },
+                        "line_bbox": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 4,
+                            "maxItems": 4
+                        },
+                        "line_centroid": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 2,
+                            "maxItems": 2,
                         },
                     },
                 },

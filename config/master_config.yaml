@@ -40,20 +40,22 @@ pipeline_secuence:
   
 # Configuración de salida (independiente)
 enabled_outputs:
-    preprocessed_image: false
-    ocr_raw: false
-    cropped_words: false
-    moire_poly: false
-    sp_poly: false
-    gauss_poly: false
-    clahe_poly: false
-    sharp_poly: false
-    binarized_polygons: false
-    problematic_polygons: false
-    reconstructed_lines: false
-    table_lines: false
-    table_structured: false
-    math_max_corrected: false
+  pre_clean: false
+  angle_corrected: false
+  preprocessed_image: false
+  ocr_raw: false
+  cropped_words: false
+  moire_poly: false
+  sp_poly: false
+  gauss_poly: false
+  clahe_poly: false
+  sharp_poly: false
+  binarized_polygons: false
+  problematic_polygons: false
+  reconstructed_lines: false
+  table_lines: false
+  table_structured: false
+  math_max_corrected: false
 
 # Configuración de procesamiento
 processing:
@@ -70,9 +72,9 @@ processing:
     
 # Configuración específica de cada módulo (SIN rutas)
 modules:
-  image_loader:        
+  image_loader:
     deskew:
-      min_angle_for_correction: 0.1
+      min_angle_for_correction: 0.15
       canny_thresholds: [50, 150]
       hough_threshold: 150
       hough_min_line_length_cap_px: 300

@@ -1,4 +1,4 @@
-# core/image_loader.py
+# PerfectOCR/core/image_preparation/image_loader.py
 import cv2
 import time
 import numpy as np
@@ -21,17 +21,15 @@ class ImageLoader:
         """
         Carga imagen y crea job dict completo usando DataFormatter.
         """
-        gray_image, metadata = self.resolutor(self.image_info)
+        gray_image, metadata = self._resolutor(self.image_info)
         if gray_image is None or ('error' in metadata):
             logger.error(f"Error cargando imagen: {metadata.get('error', 'Unknown error')}")
 
         return gray_image, metadata
                 
-    def resolutor(self, image_info: Dict[str, Any]) -> Tuple[Optional[np.ndarray[ Any, Any]], Dict[str, Any]]:
-        """
-        Carga la imagen y extrae metadatos.
-        Devuelve (None, metadata_con_error) si falla.
-        """
+    def _resolutor(self, image_info: Dict[str, Any]) -> Tuple[Optional[np.ndarray[ Any, Any]], Dict[str, Any]]:
+        """Carga la imagen y extrae metadatos.
+        Devuelve (None, metadata_con_error) si falla."""
         start_time = time.perf_counter()
         input_path = image_info['path']
         image_name = image_info.get('name', "")

@@ -31,7 +31,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             success = manager.create_text_lines(lines_info)
             total_time = time.time() - start_time
 
-            logger.debug(f"Armado de líneas completado en {total_time:.4f}")
+            logger.info(f"Armado de líneas completado en {total_time:.6f}")
 
             if not success:
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
@@ -85,13 +85,15 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     # Finaliza la línea actual y guarda la info
                     line_id = f"line_{line_counter:04d}"
                     polygon_ids = [p.get("polygon_id") for p in current_line_polys if p.get("polygon_id")]
-                    centroids_x = [p.get("geometry", {}).get("centroid")[0] for p in current_line_polys if p.get("geometry", {}).get("centroid")]
-                    centroids_y = [p.get("geometry", {}).get("centroid")[1] for p in current_line_polys if p.get("geometry", {}).get("centroid")]
                     texts = [p.get("ocr_text", "") for p in current_line_polys]
 
                     lines_info[line_id] = {
-                        "bounding_box": current_line_bbox,
-                        "centroid": [np.mean(centroids_x), np.mean(centroids_y)] if centroids_x else [0, 0],
+                        "line_bbox": current_line_bbox,
+                        # El centroide de la línea se calcula como el centroide del bounding box de la línea
+                        "line_bbox": [
+                            (current_line_bbox[0] + current_line_bbox[2]) / 2,
+                            (current_line_bbox[1] + current_line_bbox[3]) / 2
+                        ] if current_line_bbox else [0, 0],
                         "polygon_ids": polygon_ids,
                         "text": " ".join(texts).strip()
                     }
@@ -104,15 +106,14 @@ class LinealReconstructor(VectorizationAbstractWorker):
         if current_line_polys:
             line_id = f"line_{line_counter:04d}"
             polygon_ids = [p.get("polygon_id") for p in current_line_polys if p.get("polygon_id")]
-            centroids_x = [p.get("geometry", {}).get("centroid")[0] for p in current_line_polys if p.get("geometry", {}).get("centroid")]
-            centroids_y = [p.get("geometry", {}).get("centroid")[1] for p in current_line_polys if p.get("geometry", {}).get("centroid")]
             texts = [p.get("ocr_text", "") for p in current_line_polys]
 
             lines_info[line_id] = {
-                "line_geometry": {
-                    "line_bbox": current_line_bbox,
-                    "line_centroid": [np.mean(centroids_x), np.mean(centroids_y)] if centroids_x else [0, 0],
-                },
+                "line_bbox": current_line_bbox,
+                "line_centroid": [
+                    (current_line_bbox[0] + current_line_bbox[2]) / 2,
+                    (current_line_bbox[1] + current_line_bbox[3]) / 2
+                    ] if current_line_bbox else [0, 0],
                 "polygon_ids": polygon_ids,
                 "text": " ".join(texts).strip()
             }

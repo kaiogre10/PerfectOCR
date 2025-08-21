@@ -9,8 +9,10 @@ logger = logging.getLogger(__name__)
 
 class PolygonExtractor(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config
+        self.worker_config = self.config.get('moire', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:

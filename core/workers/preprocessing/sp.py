@@ -24,21 +24,15 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            cropped_image = context.get("cropped_img", {})
+            cropped_img = context.get("cropped_img")
 
-            cropped_img = np.array(cropped_image)
+            cropped_img = np.array(cropped_img)
             if cropped_img.size == 0:
                 error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
                 logger.error(error_msg)
                 context['error'] = error_msg
                 return False
-        
-            if len(cropped_img.shape) == 3:
-                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
-                logger.info("convirtiendo a escala de grises")
-            else:
-                cropped_img = cropped_img
-                    
+                            
             processed_img = self._detect_sp_single(cropped_img)
             
             cropped_img[...] = processed_img
@@ -129,23 +123,26 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
 
             # Activación estricta: SP real (no bordes normales)
             if not (sp_ratio > ratio_thr and isolated_count >= min_iso):
-                return cropped_img
-
+                processed_img = cropped_img
+                return processed_img
             # Salvaguarda de nitidez (Sobel) antes/después
             sobel_before = np.mean(np.abs(cv2.Sobel(normalized, cv2.CV_64F, 1, 1, ksize=3)))
 
             # Mediana + reemplazo selectivo SOLO sobre la máscara de extremos (preserva trazos)
             filtered = cv2.medianBlur(normalized, ksize)
             if filtered is None:
-                return cropped_img
+                processed_img = cropped_img
+                return processed_img
 
             result_u8 = normalized.copy()
             result_u8[extreme_mask] = filtered[extreme_mask]
 
             sobel_after = np.mean(np.abs(cv2.Sobel(result_u8, cv2.CV_64F, 1, 1, ksize=3)))
             if sobel_after < 0.85 * sobel_before:
-                return cropped_img
-
+                
+                processed_img = cropped_img
+                return processed_img
+                
             # Escribir in-place respetando dtype original
             if orig_dtype != np.uint8:
                 if img_max is None or img_min is None or img_max <= img_min:
@@ -158,11 +155,14 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
             else:
                 cropped_img[...] = result_u8
 
-            return cropped_img
+            processed_img = cropped_img
+            return processed_img
 
         except cv2.error as e:
             logger.warning(f"OpenCV en DoctorSaltPepper: {e}, manteniendo imagen original")
-            return cropped_img
+            processed_img = cropped_img
+            return processed_img
         except Exception as e:
             logger.warning(f"SP adaptativo falló: {e}, manteniendo imagen original")
-            return cropped_img
+            processed_img = cropped_img
+            return processed_img

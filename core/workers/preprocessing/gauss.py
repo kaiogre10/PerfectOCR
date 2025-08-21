@@ -25,19 +25,14 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            cropped_image = context.get("cropped_img", {})
+            cropped_img = context.get("cropped_img")
 
-            cropped_img = np.array(cropped_image)
+            cropped_img = np.array(cropped_img)
             if cropped_img.size == 0:
                 error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
                 logger.error(error_msg)
                 context['error'] = error_msg
                 return False
-
-            if len(cropped_img.shape) == 3:
-                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
-            else:
-                cropped_img = cropped_img
                     
             processed_img = self._estimate_gaussian_noise_single(cropped_img)
             
@@ -102,4 +97,5 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
             
         except cv2.error as e:
             logger.warning(f"OpenCV falló en GaussianDenoiser: {e}, manteniendo imagen original")
-            return cropped_img
+            processed_img = cropped_img
+            return processed_img

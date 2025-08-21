@@ -112,10 +112,6 @@ class DataFormatter:
         return self.structured_table.semantic_types if self.structured_table else None
 
     def get_all_lines(self) -> Dict[str, Any]:
-        """
-        Devuelve la geometría de todas las líneas almacenadas en el workflow_dict.
-        Estructura: {"line_0000": {"line_geometry": {"line_bbox": [...], "line_centroid": [...]}}, ...}
-        """
         return self.workflow_dict["all_lines"] if self.workflow_dict else {}
         
     def get_polygons_with_cropped_img(self) -> Dict[str, Dict[str, Any]]:
@@ -158,7 +154,6 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error codificando líneas: {e}")
             return {}
-
 
     def update_full_img(self, full_img: (Optional[np.ndarray[Any, Any]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow_dict"""
@@ -299,7 +294,7 @@ class DataFormatter:
                 
             self.workflow_dict["all_lines"] = all_lines
             num_lines = len(all_lines)
-            logger.debug(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
+            logger.info(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
                 
             return True
         except Exception as e:

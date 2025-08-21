@@ -3,8 +3,8 @@ import cv2
 import time
 import numpy as np
 import logging
-from typing import Dict, Any, Optional
-from skimage.filters import unsharp_mask
+from typing import Dict, Any
+from skimage.filters import unsharp_mask # type: ignore
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
@@ -26,19 +26,14 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            cropped_image = context.get("cropped_img", {})
+            cropped_img = context.get("cropped_img")
 
-            cropped_img = np.array(cropped_image)
+            cropped_img = np.array(cropped_img)
             if cropped_img.size == 0:
                 error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
                 logger.error(error_msg)
                 context['error'] = error_msg
                 return False
-
-            if len(cropped_img.shape) == 3:
-                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
-            else:
-                cropped_img = cropped_img
                     
             processed_img = self._estimate_sharpness_single(cropped_img)
             
@@ -95,7 +90,7 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
                 radius = min(2.0, max(0.5, global_sharp_var - 0.02))
                 amount = min(2.0, max(1.0, global_sharp_var - 0.03))
 
-                sharpened: Optional[np.ndarray[Any, Any]] = unsharp_mask(normalized, radius=float(radius), amount=float(amount))
+                sharpened: np.ndarray[np.uint8, Any] = unsharp_mask(normalized, radius=float(radius), amount=float(amount))
 
                 if sharpened is not None:
                     processed_img = (sharpened * 255).astype(np.uint8)
@@ -105,11 +100,8 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
                             return (processed_img.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
                     else:
                         processed_img = cropped_img
-                else:
-                    processed_img = cropped_img
                 
-            
-                return processed_img
+                    return processed_img
             
         except Exception as e:
             logger.warning(f"OpenCV Sobel falló: {e}, manteniendo imagen original")

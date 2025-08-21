@@ -1,9 +1,8 @@
 # PerfectOCR/test/metrics.py
-
-import os
 from pathlib import Path
+from typing import List, Dict
 
-def count_lines_in_file(filepath: Path) -> dict:
+def count_lines_in_file(filepath: Path) -> Dict:
     """
     Cuenta las líneas de código, comentarios y líneas en blanco de un archivo.
     """
@@ -44,7 +43,7 @@ def analyze_project(root_dir: Path):
                 continue
             
             if path.suffix in include_exts:
-                file_stats = count_lines_in_file(path)
+                file_stats= count_lines_in_file(path)
                 relative_path = path.relative_to(root_dir)
                 all_stats[str(relative_path)] = file_stats
                 

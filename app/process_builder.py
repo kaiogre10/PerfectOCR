@@ -2,7 +2,7 @@
 import time
 import logging
 from typing import Optional
-from core.pipeline.input_stager import InputStager
+from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
@@ -15,7 +15,7 @@ class ProcessingBuilder:
     Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y
     coordina el procesamiento técnico de una sola imagen.
     """
-    def __init__(self, input_stager: InputStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
+    def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
         self.manager = manager
         self.input_stager = input_stager
         self.preprocessing_stager = preprocessing_stager

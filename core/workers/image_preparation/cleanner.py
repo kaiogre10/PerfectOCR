@@ -11,15 +11,18 @@ logger = logging.getLogger(__name__)
 class ImageCleaner(ImagePrepAbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
         self.project_root = project_root
-        self.corrections = config
-        
+        self.worker_config = self.config.get('cleaning', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("pre_clean", False)
+
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        
-        std_low: float = float(self.corrections.get("std_low", 15.0))
-        sp_thr: float = float(self.corrections.get("sp_thr", 0.015))
-        clahe_clip_base: float = float(self.corrections.get("clahe_clip", 2.0))
-        clahe_grid = tuple(self.corrections.get("clahe_grid", (8, 8)))
+        corrections = self.config      
+        std_low: float = float(corrections.get("std_low", 15.0))
+        sp_thr: float = float(corrections.get("sp_thr", 0.015))
+        clahe_clip_base: float = float(corrections.get("clahe_clip", 2.0))
+        clahe_grid = tuple(corrections.get("clahe_grid", (8, 8)))
         
         try:
             full_img: Optional[np.ndarray[Any, Any]] = context.get("full_img")

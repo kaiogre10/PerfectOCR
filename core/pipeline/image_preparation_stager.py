@@ -9,7 +9,7 @@ from core.factory.abstract_worker import ImagePrepAbstractWorker
 
 logger = logging.getLogger(__name__)
 
-class InputStager:
+class ImagePreparationStager:
     def __init__(self, workers: List[ImagePrepAbstractWorker], image_loader: ImageLoader, project_root: str):
         self.project_root = project_root
         self.workers = workers

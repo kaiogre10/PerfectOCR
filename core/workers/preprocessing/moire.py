@@ -25,9 +25,9 @@ class MoireDenoiser(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            cropped_image = context.get("cropped_img", {})
+            cropped_img = context.get("cropped_img")
 
-            cropped_img = np.array(cropped_image)
+            cropped_img = np.array(cropped_img)
             if cropped_img.size == 0:
                 error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
                 logger.error(error_msg)
@@ -37,10 +37,6 @@ class MoireDenoiser(PreprossesingAbstractWorker):
             h, w = cropped_img.shape[:2]
             img_dims: Tuple[int, int] = h, w
 
-            if len(cropped_img.shape) == 3:
-                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
-            else:
-                cropped_img = cropped_img
                     
             processed_img = self._detect_moire_single(cropped_img, img_dims)
             

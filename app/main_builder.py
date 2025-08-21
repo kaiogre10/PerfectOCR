@@ -4,7 +4,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
-from core.pipeline.input_stager import InputStager
+from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
@@ -102,8 +102,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         preprocessing_factory = worker_factory.get_preprocessing_factory()
         preprocessing_workers = preprocessing_factory.create_workers(
             ["moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
-            context
-        )
+            context)
         
         ocr_factory = worker_factory.get_ocr_factory()
         ocr_workers = ocr_factory.create_workers(["paddle_wrapper", "text_cleaner"], context)
@@ -119,7 +118,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             project_root=project_root,
         )
         
-        input_stager = InputStager(
+        input_stager = ImagePreparationStager(
             workers=image_prep_workers,
             image_loader = image_loader,
             project_root=project_root

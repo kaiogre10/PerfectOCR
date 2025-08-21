@@ -25,19 +25,14 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            cropped_image = context.get("cropped_img", {})
+            cropped_img = context.get("cropped_img")
 
-            cropped_img = np.array(cropped_image)
+            cropped_img = np.array(cropped_img)
             if cropped_img.size == 0:
                 error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
                 logger.error(error_msg)
                 context['error'] = error_msg
                 return False
-
-            if len(cropped_img.shape) == 3:
-                cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
-            else:
-                cropped_img = cropped_img
                     
             processed_img = self._estimate_contrast_single(cropped_img)
             
@@ -111,7 +106,8 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
                 
                 # Convertir de vuelta al formato original si es necesario
                 if cropped_img.dtype != np.uint8:
-                    processed_img = (processed_img.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
+                    return (processed_img.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
+                    
             else: 
                 processed_img = cropped_img
 
@@ -119,4 +115,6 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
             
         except cv2.error as e:
             logger.warning(f"OpenCV CLAHE falló: {e}, manteniendo imagen original")
-            return cropped_img
+            
+            processed_img = cropped_img
+            return processed_img
