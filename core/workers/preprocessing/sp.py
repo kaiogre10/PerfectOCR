@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any 
+from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
@@ -19,150 +19,133 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
     
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
-        Detecta y corrige patrones de sal y pimienta en cada polígono del diccionario,
-        modificando 'cropped_img' in-situ.
+        Analyzes all polygons in a batch, determines the required S&P correction via vectorized operations,
+        and applies the correction in-place.
         """
         try:
             start_time = time.time()
-            cropped_img = context.get("cropped_img")
+            polygons = context.get("polygons", {})
+            if not polygons:
+                return True
 
-            cropped_img = np.array(cropped_img)
-            if cropped_img.size == 0:
-                error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
-                logger.error(error_msg)
-                context['error'] = error_msg
-                return False
-                            
-            processed_img = self._detect_sp_single(cropped_img)
+            # 1. Analysis Phase
+            metrics: List[Dict[str, Any]] = []
+            poly_ids_order: List[str] = []
+            for poly_id, poly_data in polygons.items():
+                cropped_img = poly_data.get("cropped_img")
+                if cropped_img is None:
+                    logger.warning(f"Imagen no encontrada para '{poly_id}'")
+                    continue
+                
+                cropped_img_np = np.array(cropped_img, dtype=np.uint8)
+                if cropped_img_np.size == 0:
+                    logger.warning(f"Imagen vacía para '{poly_id}'")
+                    continue
+                
+                analysis = self._analyze_image_for_sp(cropped_img_np)
+                if analysis:
+                    metrics.append(analysis)
+                    poly_ids_order.append(poly_id)
+
+            if not metrics:
+                return True
+
+            # 2. Vectorized Decision Phase
+            areas = np.array([m['area'] for m in metrics], dtype=np.int32)
+            sp_ratios = np.array([m['sp_ratio'] for m in metrics], dtype=np.float32)
+            isolated_counts = np.array([m['isolated_count'] for m in metrics], dtype=np.int32)
+            min_dims = np.array([min(m['h'], m['w']) for m in metrics], dtype=np.int32)
+
+            cond_small = areas < 2000
+            cond_medium = (areas >= 2000) & (areas < 10000)
             
-            cropped_img[...] = processed_img
+            ratio_thrs = np.select([cond_small, cond_medium], [0.06, 0.03], default=0.015)
+            min_isos = np.select([cond_small, cond_medium], [10, 20], default=30)
+            ksizes = np.select([cond_small, cond_medium], [3, 3], default=5)
             
+            ksizes = np.where(min_dims >= 50, np.maximum(ksizes, 5), ksizes)
+            ksizes = np.where(ksizes % 2 == 0, ksizes + 1, ksizes)
+
+            needs_correction = (sp_ratios > ratio_thrs) & (isolated_counts >= min_isos)
+
+            # 3. Application Phase
+            for idx, poly_id in enumerate(poly_ids_order):
+                if not needs_correction[idx]:
+                    continue
+
+                poly_data = polygons[poly_id]
+                analysis_results = metrics[idx]
+                ksize = int(ksizes[idx])
+
+                logger.debug(f"Poly '{poly_id}': Aplicando filtro S&P con k-size: {ksize}")
+
+                corrected_img = self._apply_sp_correction(
+                    analysis_results,
+                    ksize
+                )
+                
+                poly_data["cropped_img"] = corrected_img
+                
+                if self.output:
+                    self._save_debug_image(context, poly_id, corrected_img)
+
             total_time = time.time() - start_time
-            logger.debug(f"Moire completado en: {total_time:.3f}s")
-
-            if self.output:
-                from services.output_service import save_image
-                import os
-                
-                output_paths = context.get("output_paths", [])
-                poly_id = context.get("poly_id", "unknown_poly")
-                
-                for path in output_paths:
-                    output_dir = os.path.join(path, "sp")
-                    file_name = f"{poly_id}_sp_debug.png"
-                    save_image(processed_img, output_dir, file_name)
-                
-                if output_paths:
-                    logger.debug(f"Imagen de debug de S&P para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")
+            logger.info(f"S&P batch completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
         except Exception as e:
-            logger.error(f"Error en manejo de  {e}")
+            logger.error(f"Error en el procesamiento por lotes de S&P: {e}", exc_info=True)
             return False
-    
-    def _detect_sp_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-        """Filtro adaptativo de sal y pimienta a nivel token (polígono), DPI-invariante y seguro para texto."""
-        try:
-            total_pixels = cropped_img.size
-            if total_pixels == 0:
-                return cropped_img
 
-            h, w = cropped_img.shape[:2]
-            area = h * w
+    def _analyze_image_for_sp(self, cropped_img: np.ndarray[Any, Any]) -> Dict[str, Any]:
+        h, w = cropped_img.shape[:2]
+        area = h * w
+        if area == 0:
+            return {}
 
-            # Normalizar a uint8 solo si es necesario (para operar con OpenCV), luego reescalar de vuelta
-            orig_dtype = cropped_img.dtype
-            img_min = None
-            img_max = None
-            if orig_dtype != np.uint8:
-                img_min = float(np.min(cropped_img))
-                img_max = float(np.max(cropped_img))
-                if img_max > img_min:
-                    normalized = ((cropped_img - img_min) / (img_max - img_min) * 255).astype(np.uint8)
-                else:
-                    normalized = cropped_img.astype(np.uint8)
-            else:
-                normalized = cropped_img
+        p1, p99 = np.percentile(cropped_img, [1, 99])
+        low, high = int(max(0, p1)), int(min(255, p99))
+        
+        extreme_mask = (cropped_img <= low) | (cropped_img >= high)
+        sp_ratio = np.count_nonzero(extreme_mask) / area
 
-            # Percentiles locales: extremos adaptativos (DPI-invariante)
-            p1 = float(np.percentile(normalized, 1))
-            p5 = float(np.percentile(normalized, 5))
-            p95 = float(np.percentile(normalized, 95))
-            p99 = float(np.percentile(normalized, 99))
-            contrast_range = p99 - p1
+        kernel = np.ones((3, 3), np.uint8)
+        neighbor_count = cv2.filter2D(extreme_mask.astype(np.uint8), -1, kernel, borderType=cv2.BORDER_REPLICATE)
+        isolated_mask = extreme_mask & (neighbor_count <= 1)
+        isolated_count = np.count_nonzero(isolated_mask)
 
-            if contrast_range > 150.0:
-                low = int(max(0, p1))
-                high = int(min(255, p99))
-            else:
-                low = int(max(0, p5))
-                high = int(min(255, p95))
+        return {
+            "original_img": cropped_img,
+            "h": h, "w": w, "area": area,
+            "sp_ratio": sp_ratio,
+            "isolated_count": isolated_count,
+            "extreme_mask": extreme_mask,
+            "sobel_before": np.mean(np.abs(cv2.Sobel(cropped_img, cv2.CV_64F, 1, 1, ksize=3)))
+        }
 
-            # Máscara de extremos (candidatos a SP)
-            extreme_mask = (normalized <= low) | (normalized >= high)
-            sp_pixels = int(np.count_nonzero(extreme_mask))
-            sp_ratio = sp_pixels / float(area)
+    def _apply_sp_correction(self, analysis: Dict[str, Any], ksize: int) -> np.ndarray[Any, Any]:
+        original_img = analysis['original_img']
+        filtered = cv2.medianBlur(original_img, ksize)
+        
+        result = original_img.copy()
+        result[analysis['extreme_mask']] = filtered[analysis['extreme_mask']]
 
-            # Contar aislados: vecinos 8-conectados (impulsos sueltos)
-            kernel = np.ones((3, 3), np.uint8)
-            neighbor_count = cv2.filter2D(extreme_mask.astype(np.uint8), -1, kernel, borderType=cv2.BORDER_REPLICATE)
-            isolated_mask = extreme_mask & (neighbor_count <= 1)
-            isolated_count = int(np.count_nonzero(isolated_mask))
+        sobel_after = np.mean(np.abs(cv2.Sobel(result, cv2.CV_64F, 1, 1, ksize=3)))
+        
+        if sobel_after < 0.85 * analysis['sobel_before']:
+            logger.debug("Corrección S&P revertida por pérdida de nitidez.")
+            return original_img
+        
+        return result
 
-            # Umbrales adaptativos por tamaño de token
-            if area < 2000:
-                ratio_thr, min_iso, ksize = 0.06, 10, 3
-            elif area < 10000:
-                ratio_thr, min_iso, ksize = 0.03, 20, 3
-            else:
-                ratio_thr, min_iso, ksize = 0.015, 30, 5
-
-            if min(h, w) >= 50:
-                ksize = max(ksize, 5)
-            if ksize % 2 == 0:
-                ksize += 1
-
-            # Activación estricta: SP real (no bordes normales)
-            if not (sp_ratio > ratio_thr and isolated_count >= min_iso):
-                processed_img = cropped_img
-                return processed_img
-            # Salvaguarda de nitidez (Sobel) antes/después
-            sobel_before = np.mean(np.abs(cv2.Sobel(normalized, cv2.CV_64F, 1, 1, ksize=3)))
-
-            # Mediana + reemplazo selectivo SOLO sobre la máscara de extremos (preserva trazos)
-            filtered = cv2.medianBlur(normalized, ksize)
-            if filtered is None:
-                processed_img = cropped_img
-                return processed_img
-
-            result_u8 = normalized.copy()
-            result_u8[extreme_mask] = filtered[extreme_mask]
-
-            sobel_after = np.mean(np.abs(cv2.Sobel(result_u8, cv2.CV_64F, 1, 1, ksize=3)))
-            if sobel_after < 0.85 * sobel_before:
-                
-                processed_img = cropped_img
-                return processed_img
-                
-            # Escribir in-place respetando dtype original
-            if orig_dtype != np.uint8:
-                if img_max is None or img_min is None or img_max <= img_min:
-                    cropped_img[...] = result_u8.astype(orig_dtype)
-                else:
-                    # Aseguramos que img_max y img_min no sean None antes de operar
-                    scale = float(img_max) - float(img_min)
-                    back = (result_u8.astype(np.float32) / 255.0 * scale + float(img_min)).astype(orig_dtype)
-                    cropped_img[...] = back
-            else:
-                cropped_img[...] = result_u8
-
-            processed_img = cropped_img
-            return processed_img
-
-        except cv2.error as e:
-            logger.warning(f"OpenCV en DoctorSaltPepper: {e}, manteniendo imagen original")
-            processed_img = cropped_img
-            return processed_img
-        except Exception as e:
-            logger.warning(f"SP adaptativo falló: {e}, manteniendo imagen original")
-            processed_img = cropped_img
-            return processed_img
+    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
+        from services.output_service import save_image
+        import os
+        
+        output_paths = context.get("output_paths", [])
+        for path in output_paths:
+            output_dir = os.path.join(path, "sp")
+            file_name = f"{poly_id}_sp_debug.png"
+            save_image(image, output_dir, file_name)
+        
+        if output_paths:
+            logger.debug(f"Imagen de debug de S&P para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")

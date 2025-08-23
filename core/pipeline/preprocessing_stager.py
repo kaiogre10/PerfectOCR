@@ -32,26 +32,25 @@ class PreprocessingStager:
             worker_name = worker.__class__.__name__
             logger.debug(f"[PreprocessingStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
 
-            # Procesar cada polígono con este worker
-            for poly_id, poly_data in polygons.items():
-                cropped_img = poly_data.get("cropped_img")
-                if cropped_img is None:
-                    logger.warning(f"Imagen recortada no encontrada para {poly_id}")
-                    continue
+            # # Procesar cada polígono con este worker
+            # for poly_id, poly_data in polygons.items():
+            #     cropped_img = poly_data.get("cropped_img")
+            #     if cropped_img is None:
+            #         logger.warning(f"Imagen recortada no encontrada para {poly_id}")
+            #         continue
                     
                 # Contexto individual para cada polígono
-                context: Dict[str, Any] = {
-                    "poly_id": poly_id,
-                    "cropped_img": cropped_img,
-                    "metadata": metadata,
-                    "output_paths": self.output_paths,
-                    "project_root": self.project_root
-                }
+            context: Dict[str, Any] = {
+                "polygons": polygons,
+                "metadata": metadata,
+                "output_paths": self.output_paths,
+                "project_root": self.project_root
+            }
                 
-                # Worker procesa esta imagen específica
-                if not worker.preprocess(context, manager):
-                    logger.error(f"Worker {worker_name} falló en {poly_id}")
-                    return None, 0.0
+            # Worker procesa esta imagen específica
+            if not worker.preprocess(context, manager):
+                logger.error(f"Worker {worker_name} falló")
+                return None, 0.0
 
             worker_time = time.time() - worker_start
             logger.debug(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")

@@ -1,9 +1,9 @@
-# PerfectOCR/core/workflow/preprocessing/
+# PerfectOCR/core/workers/preprocessing/clahe.py
 import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
@@ -18,103 +18,120 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("clahe_poly", False)
         
+        # Parámetros de configuración
+        global_clahe_corrects = self.worker_config.get('global', {})
+        self.contrast_threshold = global_clahe_corrects.get('contrast_threshold', 50.0)
+        self.page_dimensions = global_clahe_corrects.get('dimension_thresholds_px', [1000, 2500])
+        self.grid_maps = global_clahe_corrects.get('grid_sizes_map', [[6, 6], [8, 8], [10, 10]])
+
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
-        Detecta y corrige patrones de moiré en cada polígono del diccionario,
-        modificando 'cropped_img' in-situ.
+        Analiza el contraste de todos los polígonos, decide la corrección con CLAHE de forma
+        vectorizada y la aplica in-place.
         """
         try:
             start_time = time.time()
-            cropped_img = context.get("cropped_img")
+            polygons = context.get("polygons", {})
+            if not polygons:
+                return True
 
-            cropped_img = np.array(cropped_img)
-            if cropped_img.size == 0:
-                error_msg = f"Imagen vacía o corrupta en '{cropped_img}'"
-                logger.error(error_msg)
-                context['error'] = error_msg
-                return False
-                    
-            processed_img = self._estimate_contrast_single(cropped_img)
+            # 1. Fase de Análisis
+            analysis_results: List[Dict[str, Any]] = []
+            poly_ids_order: List[str] = []
+
+            for poly_id, poly_data in polygons.items():
+                cropped_img = poly_data.get("cropped_img")
+                if cropped_img is None:
+                    continue
+                
+                cropped_img_np = np.array(cropped_img, dtype=np.uint8)
+                if cropped_img_np.size == 0:
+                    continue
+                
+                analysis = self._analyze_image_for_contrast(cropped_img_np)
+                if analysis:
+                    analysis_results.append(analysis)
+                    poly_ids_order.append(poly_id)
+
+            if not analysis_results:
+                return True
+
+            # 2. Fase de Decisión Vectorizada
+            stds = np.array([res['std'] for res in analysis_results], dtype=np.float32)
+            variances = np.array([res['var'] for res in analysis_results], dtype=np.float32)
+            dyn_ranges = np.array([res['dyn_range'] for res in analysis_results], dtype=np.float32)
+            heights = np.array([res['h'] for res in analysis_results], dtype=np.int32)
+            widths = np.array([res['w'] for res in analysis_results], dtype=np.int32)
+
+            dynamic_intervals = np.maximum(30.0, variances * 0.6)
+            adaptive_thresholds = np.where(dyn_ranges > self.contrast_threshold, dynamic_intervals, 20.0)
             
-            cropped_img[...] = processed_img
+            needs_correction = stds < adaptive_thresholds
+
+            max_dims = np.maximum(heights, widths)
+            cond_small = max_dims < self.page_dimensions[0]
+            cond_medium = max_dims < self.page_dimensions[1]
             
+            # Vectoriza los tamaños de grid para cada polígono
+            grid_small = np.tile(self.grid_maps[0], (len(max_dims), 1))
+            grid_medium = np.tile(self.grid_maps[1], (len(max_dims), 1))
+            grid_large = np.tile(self.grid_maps[2], (len(max_dims), 1))
+
+            grid_sizes = np.where(cond_small[:, None], grid_small,
+                          np.where(cond_medium[:, None], grid_medium, grid_large))
+            clip_limits = np.clip(dyn_ranges * 0.01, 1.0, 3.0)
+
+            # 3. Fase de Aplicación
+            for idx, poly_id in enumerate(poly_ids_order):
+                if not needs_correction[idx]:
+                    continue
+
+                poly_data = polygons[poly_id]
+                original_img = analysis_results[idx]['original_img']
+                grid_size = tuple(grid_sizes[idx])
+                clip_limit = clip_limits[idx]
+
+                logger.debug(f"Poly '{poly_id}': Aplicando CLAHE (Grid: {grid_size}, Clip: {clip_limit:.2f})")
+
+                corrected_img = self._apply_clahe_correction(original_img, clip_limit, grid_size)
+                poly_data["cropped_img"] = corrected_img
+                
+                if self.output:
+                    self._save_debug_image(context, poly_id, corrected_img)
+
             total_time = time.time() - start_time
-            logger.debug(f"Moire completado en: {total_time:.3f}s")
-
-            if self.output:
-                from services.output_service import save_image
-                import os
-                
-                output_paths = context.get("output_paths", [])
-                poly_id = context.get("poly_id", "unknown_poly")
-                
-                for path in output_paths:
-                    output_dir = os.path.join(path, "clahe")
-                    file_name = f"{poly_id}_clahe_debug.png"
-                    save_image(processed_img, output_dir, file_name)
-                
-                if output_paths:
-                    logger.debug(f"Imagen de debug de clahe para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")
+            logger.info(f"Procesamiento CLAHE completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
         except Exception as e:
-            logger.error(f"Error en manejo de  {e}")
+            logger.error(f"Error en el procesamiento por lotes de ClaherEnhancer: {e}", exc_info=True)
             return False
 
-    def _estimate_contrast_single(self, cropped_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-        """Aplica mejora de contraste."""
-        global_clahe_corrects = self.config.get('global', {})
-        contrast_threshold = global_clahe_corrects.get('contrast_threshold', 50.0)
-        clip_limit = global_clahe_corrects.get('clahe_clip_limit', 2.0)
-        page_dimensions = global_clahe_corrects.get('dimension_thresholds_px', [1000, 2500])
-        grid_maps = global_clahe_corrects.get('grid_sizes_map', [[6, 6], [8, 8], [10, 10]])
+    def _analyze_image_for_contrast(self, cropped_img: np.ndarray[Any, Any]) -> Dict[str, Any]:
+        """Calcula métricas de contraste para una imagen."""
+        h, w = cropped_img.shape[:2]
+        return {
+            "original_img": cropped_img,
+            "h": h, "w": w,
+            "std": np.std(cropped_img),
+            "var": np.var(cropped_img),
+            "dyn_range": np.max(cropped_img) - np.min(cropped_img)
+        }
 
-        try:
-            # Convertir a formato exacto que requiere OpenCV CLAHE
-            if cropped_img.dtype != np.uint8:
-                img_min = np.min(cropped_img)
-                img_max = np.max(cropped_img)
-                if img_max > img_min:
-                    # Normalizar a [0, 255] y convertir a uint8 (CV_8UC1)
-                    normalized = ((cropped_img - img_min) / (img_max - img_min) * 255).astype(np.uint8)
-                else:
-                    normalized = cropped_img.astype(np.uint8)
-            else:
-                normalized = cropped_img
+    def _apply_clahe_correction(self, original_img: np.ndarray[Any, Any], clip_limit: float, grid_size: Tuple[ Any, ...]) -> np.ndarray[Any, Any]:
+        """Aplica el filtro CLAHE a una imagen."""
+        clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
+        return clahe.apply(original_img)
 
-            # Cálculo de estadísticos sobre la imagen normalizada
-            contrast_std = np.std(normalized) 
-            global_var = np.var(normalized)
-            max_value = np.max(normalized)
-            min_value = np.min(normalized)
-            dynamic_range = max_value - min_value
-            dynamic_interval = max(30.0, global_var * 0.6)
-            adaptative_threshold = dynamic_interval if dynamic_range > contrast_threshold else 20
-                    
-            if contrast_std < adaptative_threshold:
-                img_h, img_w = normalized.shape
-                max_dim = max(img_h, img_w)
-                if max_dim < page_dimensions[0]:
-                    grid_size = grid_maps[0]
-                elif max_dim < page_dimensions[1]:
-                    grid_size = grid_maps[1]
-                else:
-                    grid_size = grid_maps[2]
-                clip_limit = min(3.0, max(1.0, dynamic_range * 0.01))
-
-                clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
-                processed_img = clahe.apply(normalized)  # Ahora funciona con CV_8UC1
-                
-                # Convertir de vuelta al formato original si es necesario
-                if cropped_img.dtype != np.uint8:
-                    return (processed_img.astype(np.float32) / 255.0 * (img_max - img_min) + img_min).astype(cropped_img.dtype)
-                    
-            else: 
-                processed_img = cropped_img
-
-            return processed_img
-            
-        except cv2.error as e:
-            logger.warning(f"OpenCV CLAHE falló: {e}, manteniendo imagen original")
-            
-            processed_img = cropped_img
-            return processed_img
+    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
+        """Guarda una imagen de depuración si la salida está habilitada."""
+        from services.output_service import save_image
+        import os
+        
+        output_paths = context.get("output_paths", [])
+        for path in output_paths:
+            output_dir = os.path.join(path, "clahe")
+            file_name = f"{poly_id}_clahe_debug.png"
+            save_image(image, output_dir, file_name)
+        
+        if output_paths:
+            logger.debug(f"Imagen de debug de CLAHE para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")

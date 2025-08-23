@@ -27,7 +27,6 @@ class DensityScanner(VectorizationAbstractWorker):
             img_dims = manager.get_metadata().get("img_dims")
             if not img_dims:
                 logger.warning("Sin dimensiones de imagen")
-
             
             # Obtener líneas codificadas del DataFormatter
             encoded_lines: Dict[str, List[int]] = manager.get_encode_lines()
