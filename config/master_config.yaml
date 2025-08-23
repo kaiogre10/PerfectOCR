@@ -151,7 +151,12 @@ modules:
     
     dbscan:
       min_cluster_size: 2
-      eps: 2
+      eps: 2.0
+      max_numbers_header: 2
+      min_density_header: 50
+      max_word_ratio_header: 0.8
+      width_tolerance_header: 0.15
+      max_search_lines_up: 2
       
     math_max:
       total_mtl_abs_tolerance: 0.05

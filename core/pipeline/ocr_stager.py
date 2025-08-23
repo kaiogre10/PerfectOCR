@@ -23,7 +23,6 @@ class OCRStager:
             logger.debug(f"OCRStager: Ejecutando worker OCR Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
             context: Dict[str, Any] = {
-                    # "poly_id": poly_id,
                     "config": self.config,
                     "output_paths": self.output_paths,
                     "project_root": self.project_root

@@ -1,8 +1,7 @@
 # PerfectOCR/core/workers/vectorial_transformation/linal_reconstructor.py
 import logging
 import time
-import numpy as np
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
@@ -42,7 +41,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             logger.error(f"error {e}")
             return False
         
-    def _reconstruct_lines(self, polygons: Dict[str, Any]) -> Dict[str, Any]:
+    def _reconstruct_lines(self, polygons: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Reconstruye líneas agrupando polígonos y devuelve un dict con la info completa de cada línea,
         incluyendo los textos OCR concatenados.
@@ -53,7 +52,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         )
         lines_info: Dict[str, Any] = {}
         current_line_polys: List[Dict[str, Any]] = []
-        current_line_bbox = None
+        current_line_bbox = []
         line_counter = 1
         
         for poly in prepared_sorted:
@@ -86,14 +85,15 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     line_id = f"line_{line_counter:04d}"
                     polygon_ids = [p.get("polygon_id") for p in current_line_polys if p.get("polygon_id")]
                     texts = [p.get("ocr_text", "") for p in current_line_polys]
+                    # El centroide de la línea se calcula como el centroide del bounding box de la línea
+                    line_centroid = [           
+                            (current_line_bbox[0] + current_line_bbox[2]) / 2,
+                            (current_line_bbox[1] + current_line_bbox[3]) / 2
+                        ] if current_line_bbox else [0, 0]
 
                     lines_info[line_id] = {
                         "line_bbox": current_line_bbox,
-                        # El centroide de la línea se calcula como el centroide del bounding box de la línea
-                        "line_bbox": [
-                            (current_line_bbox[0] + current_line_bbox[2]) / 2,
-                            (current_line_bbox[1] + current_line_bbox[3]) / 2
-                        ] if current_line_bbox else [0, 0],
+                        "line_centroid": line_centroid,
                         "polygon_ids": polygon_ids,
                         "text": " ".join(texts).strip()
                     }
@@ -107,16 +107,17 @@ class LinealReconstructor(VectorizationAbstractWorker):
             line_id = f"line_{line_counter:04d}"
             polygon_ids = [p.get("polygon_id") for p in current_line_polys if p.get("polygon_id")]
             texts = [p.get("ocr_text", "") for p in current_line_polys]
+            line_centroid = [
+                (current_line_bbox[0] + current_line_bbox[2]) / 2,
+                (current_line_bbox[1] + current_line_bbox[3]) / 2
+            ] if current_line_bbox else [0, 0]
 
             lines_info[line_id] = {
                 "line_bbox": current_line_bbox,
-                "line_centroid": [
-                    (current_line_bbox[0] + current_line_bbox[2]) / 2,
-                    (current_line_bbox[1] + current_line_bbox[3]) / 2
-                    ] if current_line_bbox else [0, 0],
+                "line_centroid": line_centroid,
                 "polygon_ids": polygon_ids,
                 "text": " ".join(texts).strip()
-            }
-
-        self.lines_info = lines_info
-        return lines_info
+                }
+            
+            self.lines_info = lines_info
+            return lines_info

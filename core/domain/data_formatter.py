@@ -1,4 +1,4 @@
-# core/domain/workflow_manager.py
+# core/domain/data_formatter.py
 from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable
 import numpy as np
 import jsonschema
@@ -274,31 +274,22 @@ class DataFormatter:
                     logger.warning(f"line_data es None para {line_id}, omitiendo línea.")
                     continue
                     
-                # Obtener line_geometry de forma segura
-                line_geometry = line_data.get("line_geometry", {})
-                if not line_geometry:
-                    # Usar valores alternativos si line_geometry no existe
-                    line_bbox = line_data.get("bounding_box", [])
-                    line_centroid = line_data.get("centroid", [0, 0])
-                else:
-                    line_bbox = line_geometry.get("line_bbox", [])
-                    line_centroid = line_geometry.get("line_centroid", [0, 0])
-                
                 all_lines[line_id] = {
                     "lineal_id": line_id,
                     "text": line_data.get("text", ""),
                     "polygon_ids": line_data.get("polygon_ids", []),
-                    "line_bbox": line_bbox,
-                    "line_centroid": line_centroid
+                    "line_bbox": line_data.get("line_bbox", []),
+                    "line_centroid": line_data.get("line_centroid", [])
                 }
                 
             self.workflow_dict["all_lines"] = all_lines
             num_lines = len(all_lines)
-            logger.info(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
-                
+            logger.debug(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
+            for line_id, line_data in all_lines.items():
+                logger.info(f"Línea {line_id}: {line_data.get('text', '')}")
             return True
         except Exception as e:
-            logger.error(f"Error guardando líneas de texto: {e}")
+            logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
             return False
         
     def save_tabular_lines(self, table_detection_result: Dict[str, Any]) -> bool:
@@ -330,19 +321,20 @@ class DataFormatter:
                 if line_id in self.workflow_dict["all_lines"]:
                     line_data = self.workflow_dict["all_lines"][line_id]
                     tabular_lines[line_id] = {
-                        "texto": line_data.get("text", "")
+                        "texto": line_data.get("text", ""),
+                        "header_line": line_id == header_line_id  # True si es encabezado
                     }
             
             # Guardar en workflow_dict
             self.workflow_dict["tabular_lines"] = tabular_lines
             num_tab_lines = len(tabular_lines)
             logger.debug(f"Guardadas {num_tab_lines} líneas tabulares en tabular_lines (incluyendo encabezado si corresponde)")
-            # for line_id, data in tabular_lines.items():
-                #logger.info(f"Línea tabular: {line_id} - Texto: {data.get('texto', '')}")
+            for line_id, data in tabular_lines.items():
+                logger.info(f"Línea tabular: {line_id} - Texto: {data.get('texto', '')}")
             return True
             
         except Exception as e:
-            logger.error(f"Error guardando líneas tabulares: {e}")
+            logger.error(f"Error guardando líneas tabulares: {e}", exc_info=True)
             return False
             
     def save_structured_table(self, df: pd.DataFrame, columns: List[str], semantic_types: Optional[List[str]] = None) -> bool:

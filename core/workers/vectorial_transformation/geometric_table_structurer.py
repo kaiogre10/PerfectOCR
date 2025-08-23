@@ -90,7 +90,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 df.columns = df.iloc[0]
                 df = df[1:].reset_index(drop=True)
 
-            logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.6f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}")
+            # logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.6f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}")
 
             # Guardar en memoria (DataFormatter) para etapas posteriores
             saved = manager.save_structured_table(df=df, columns=list(df.columns))
