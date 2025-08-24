@@ -25,7 +25,7 @@ class ImageCleaner(ImagePrepAbstractWorker):
         clahe_grid = tuple(corrections.get("clahe_grid", (8, 8)))
         
         try:
-            full_img: Optional[np.ndarray[Any, Any]] = context.get("full_img")
+            full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]] = context.get("full_img")
             size = context.get("metadata", {}).get("size")
             if full_img is None:
                 logger.error("Cleaner: full_img no encontrado en contexto")

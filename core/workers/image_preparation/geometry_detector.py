@@ -34,26 +34,31 @@ class GeometryDetector(ImagePrepAbstractWorker):
         return self._engine
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        img: Optional[np.ndarray[Any, Any]] = context.get("full_img")
-        if img is None:
-            logger.error("GeometryDetector: full_img no encontrado en el contexto.")
+        try:
+            img: Optional[np.ndarray[Any, np.dtype[np.uint8]]] = context.get("full_img")
+            if img is None:
+                logger.error("GeometryDetector: full_img no encontrado en el contexto.")
+                return False
+
+            engine = self.engine
+            if engine is None:
+                logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")
+                return False
+
+            results: Optional[List[Any]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
+            logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
+
+            if not (results and len(results) > 0 and results[0] is not None):
+                logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
+                return False
+
+            success = manager.create_polygon_dicts(results)
+            if not success:
+                logger.error("GeometryDetector: Fallo al estructurar polígonos.")
+                return False
+
+            return True
+        
+        except Exception as e:
+            logger.error(f"Error en procesamiento vectorizado de geometría: {e}")
             return False
-
-        engine = self.engine
-        if engine is None:
-            logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")
-            return False
-
-        results: Optional[List[Any]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
-        logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
-
-        if not (results and len(results) > 0 and results[0] is not None):
-            logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
-            return False
-
-        success = manager.create_polygon_dicts(results)
-        if not success:
-            logger.error("GeometryDetector: Fallo al estructurar polígonos.")
-            return False
-
-        return True

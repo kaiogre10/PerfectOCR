@@ -65,7 +65,7 @@ class DensityScanner(VectorizationAbstractWorker):
             # Guardar resultados si hay tablas detectadas
             if table_detection_result["status"] == "success" and table_detection_result["table_lines"]:
                 total_time: float = time.time() - start_time
-                logger.info(f"Detección de tablas completada en {total_time:.4f}s")
+                logger.debug(f"Detección de tablas completada en {total_time:.4f}s")
                 
                 success: bool = manager.save_tabular_lines(table_detection_result)
                 if not success:
@@ -306,24 +306,24 @@ class DensityScanner(VectorizationAbstractWorker):
                     aggregate_stats.get('aspect_ratio', 0.0)
                 ])
             
-            feature_names = [
-                'count', 'mean', 'std_dev', 'iqr', 'p50', 'skewness',
-                'bbox_width', 'align_prev', #'align_next', 'var_alignment',
-                'ratio_area', 'aspect_ratio',
-            ]
+            # feature_names = [
+            #     'count', 'mean', 'std_dev', 'iqr', 'p50', 'skewness',
+            #     'bbox_width', 'align_prev', #'align_next', 'var_alignment',
+            #     'ratio_area', 'aspect_ratio',
+            # ]
             features_array = np.array(features)
-            col_widths = [8, 10, 10, 10, 10, 10, 11, 11, 11, 13, 11, 10]
-            # Encabezado alineado
-            header = "Índice".rjust(6) + " | " + " | ".join(
-                name.rjust(width) for name, width in zip(feature_names, col_widths)
-            )
-            print(header)
-            print("-" * len(header))
-            for idx, row in enumerate(features_array):
-                row_str = " | ".join(
-                    f"{v:>{w}.4f}" for v, w in zip(row, col_widths)
-                )
-                print(f"{idx:6} | {row_str}")
+            # col_widths = [8, 10, 10, 10, 10, 10, 11, 11, 11, 13, 11, 10]
+            # # Encabezado alineado
+            # header = "Índice".rjust(6) + " | " + " | ".join(
+            #     name.rjust(width) for name, width in zip(feature_names, col_widths)
+            # )
+            # print(header)
+            # print("-" * len(header))
+            # for idx, row in enumerate(features_array):
+            #     row_str = " | ".join(
+            #         f"{v:>{w}.4f}" for v, w in zip(row, col_widths)
+            #     )
+            #     print(f"{idx:6} | {row_str}")
 
             # Escalar features
             scaler: StandardScaler = StandardScaler()
@@ -331,7 +331,7 @@ class DensityScanner(VectorizationAbstractWorker):
             
             # Aplicar DBSCAN
             clustering: DBSCAN = DBSCAN(eps=eps, min_samples=min_cluster_size)
-            labels  = clustering.fit_predict(features_scaled)
+            labels: List[int] = clustering.fit_predict(features_scaled)
             
             logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
             

@@ -44,7 +44,7 @@ enabled_outputs:
   angle_corrected: false
   preprocessed_image: false
   ocr_raw: false
-  cropped_words: false
+  cropped_img: false
   moire_poly: false
   sp_poly: false
   gauss_poly: false

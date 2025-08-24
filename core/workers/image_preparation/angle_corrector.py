@@ -41,7 +41,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
         return True
 
-    def correct_angle(self, full_img: np.ndarray[Any, Any], img_dims: Dict[str, int]) -> Tuple[np.ndarray[Any, Any], Any]:
+    def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]], img_dims: Dict[str, int]) -> Tuple[np.ndarray[Any, np.dtype[np.uint8]], Any]:
         """
         Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no).
         """
@@ -85,7 +85,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             logger.info(f"-> Aplicando corrección de inclinación: {angle:.6f} grados.")
             rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
             deskewed_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-            full_img = deskewed_img
+            full_img = np.array(deskewed_img, dtype=np.uint8)
             # logger.info(f"Imagen rotada en {time.perf_counter() - total_time:.6f}s")
             return full_img, lines
         else:

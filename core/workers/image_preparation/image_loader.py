@@ -17,7 +17,7 @@ class ImageLoader:
         self.project_root = project_root
         self.image_info = image_info
                 
-    def load_image_and_metadata(self) -> Tuple[Optional[np.ndarray[ Any, Any]], Dict[str, Any]]:
+    def load_image_and_metadata(self) -> Tuple[Optional[np.ndarray[Any, np.dtype[np.uint8]]], Dict[str, Any]]:
         """
         Carga imagen y crea job dict completo usando DataFormatter.
         """
@@ -27,7 +27,7 @@ class ImageLoader:
 
         return gray_image, metadata
                 
-    def _resolutor(self, image_info: Dict[str, Any]) -> Tuple[Optional[np.ndarray[ Any, Any]], Dict[str, Any]]:
+    def _resolutor(self, image_info: Dict[str, Any]) -> Tuple[Optional[np.ndarray[Any, np.dtype[np.uint8]]], Dict[str, Any]]:
         """Carga la imagen y extrae metadatos.
         Devuelve (None, metadata_con_error) si falla."""
         start_time = time.perf_counter()
@@ -55,7 +55,7 @@ class ImageLoader:
             return None, metadata
         logger.debug(f"Imagen cargada correctamente desde: {input_path}")
 
-        image_array = np.array(img_array)
+        image_array = np.array(img_array, dtype=np.uint8)
         cv2_size:float = image_array.size
         if cv2_size == 0:
             error_msg = f"Imagen vacía o corrupta en '{input_path}'"

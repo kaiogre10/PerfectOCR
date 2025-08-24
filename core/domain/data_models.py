@@ -54,8 +54,8 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                                     "items": {
                                         "type": "array",
                                         "items": {"type": "number"},
-                                        "minItems": 3,
-                                        "maxItems": 4
+                                        "minItems": 2,
+                                        "maxItems": 2
                                     },
                                 },
                                 "bounding_box": {
@@ -288,20 +288,19 @@ class StructuredTable:
     
 @dataclass
 class CroppedGeometry:
-    padd_centroid: List[float]
-    padding_coords: List[List[int]]
+    padd_centroid: np.ndarray[Any, Any]  # shape: (2,)
+    padding_coords: np.ndarray[Any, Any]  # shape: (4,) 
     poly_dims: Dict[str, int]
     
 @dataclass
 class CroppedImage:
-    cropped_img: np.ndarray[Any, Any]
-    polygon_id: str
+    cropped_img: np.ndarray[Any, np.dtype[np.uint8]]
             
 @dataclass(frozen=True)
 class Geometry:
-    polygon_coords: List[List[float]]
-    bounding_box: List[float]
-    centroid: List[float]    
+    polygon_coords: np.ndarray[Any, Any]  # shape: (n_points, 2)
+    bounding_box: np.ndarray[Any, Any]    # shape: (4,)
+    centroid: np.ndarray[Any, Any]        # shape: (2,)    
     
 @dataclass
 class Polygons:
@@ -348,7 +347,7 @@ class Metadata:
 @dataclass
 class WorkflowDict:
     dict_id: str
-    full_img: Optional[np.ndarray[Any, Any]]
+    full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
     metadata:  Metadata
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
