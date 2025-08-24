@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            polygons = context.get("polygons", {})
+            polygons: Dict[str, Polygons] = context.get("polygons", {})
             if not polygons:
                 return True
 
@@ -39,8 +40,8 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
             analysis_results: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
 
-            for poly_id, poly_data in polygons.items():
-                cropped_img = poly_data.get("cropped_img")
+            for poly_id, polygon in polygons.items():
+                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 if cropped_img is None:
                     logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
@@ -67,14 +68,14 @@ class GaussianDenoiser(PreprossesingAbstractWorker):
                 if not needs_correction[idx]:
                     continue
 
-                poly_data = polygons[poly_id]
+                polygon = polygons[poly_id]
                 original_img = analysis_results[idx]['original_img']
 
                 logger.debug(f"Poly '{poly_id}': Aplicando filtro bilateral (Varianza: {laplacian_variances[idx]:.2f})")
 
                 corrected_img = self._apply_gauss_correction(original_img)
                 
-                poly_data["cropped_img"] = corrected_img
+                polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
                     self._save_debug_image(context, poly_id, corrected_img)

@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            polygons = context.get("polygons", {})
+            polygons: Dict[str, Polygons] = context.get("polygons", {})
             if not polygons:
                 return True
 
@@ -39,9 +40,10 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
             analysis_results: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
 
-            for poly_id, poly_data in polygons.items():
-                cropped_img = poly_data.get("cropped_img")
+            for poly_id, polygon in polygons.items():
+                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 if cropped_img is None:
+                    logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
                 
                 cropped_img_np = np.array(cropped_img, dtype=np.uint8)
@@ -86,7 +88,7 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
                 if not needs_correction[idx]:
                     continue
 
-                poly_data = polygons[poly_id]
+                polygon = polygons[poly_id]
                 original_img = analysis_results[idx]['original_img']
                 grid_size = tuple(grid_sizes[idx])
                 clip_limit = clip_limits[idx]
@@ -94,7 +96,7 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
                 logger.debug(f"Poly '{poly_id}': Aplicando CLAHE (Grid: {grid_size}, Clip: {clip_limit:.2f})")
 
                 corrected_img = self._apply_clahe_correction(original_img, clip_limit, grid_size)
-                poly_data["cropped_img"] = corrected_img
+                polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
                     self._save_debug_image(context, poly_id, corrected_img)
@@ -106,7 +108,7 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
             logger.error(f"Error en el procesamiento por lotes de ClaherEnhancer: {e}", exc_info=True)
             return False
 
-    def _analyze_image_for_contrast(self, cropped_img: np.ndarray[Any, Any]) -> Dict[str, Any]:
+    def _analyze_image_for_contrast(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> Dict[str, Any]:
         """Calcula métricas de contraste para una imagen."""
         h, w = cropped_img.shape[:2]
         return {
@@ -117,12 +119,12 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
             "dyn_range": np.max(cropped_img) - np.min(cropped_img)
         }
 
-    def _apply_clahe_correction(self, original_img: np.ndarray[Any, Any], clip_limit: float, grid_size: Tuple[ Any, ...]) -> np.ndarray[Any, Any]:
+    def _apply_clahe_correction(self, original_img: np.ndarray[Any, np.dtype[np.uint8]], clip_limit: float, grid_size: Tuple[ Any, ...]) -> np.ndarray[Any, Any]:
         """Aplica el filtro CLAHE a una imagen."""
         clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
         return clahe.apply(original_img)
 
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
+    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, np.dtype[np.uint8]]):
         """Guarda una imagen de depuración si la salida está habilitada."""
         from services.output_service import save_image
         import os

@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, Tuple, List
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -20,41 +21,40 @@ class MoireDenoiser(PreprossesingAbstractWorker):
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
-        Analyzes all polygons in a batch, determines the required moiré correction via vectorized operations,
-        and applies the correction in-place.
+        Analiza y corrige el moiré modificando los polígonos directamente en el contexto.
         """
         try:
             start_time = time.time()
-            polygons = context.get("polygons", {})
+            # 1. Obtener polígonos (dataclasses) del contexto
+            polygons: Dict[str, Polygons] = context.get("polygons", {})
             if not polygons:
                 return True
 
-            # 1. Analysis Phase: Gather metrics from all polygons
+            # 2. Fase de Análisis: Recopilar métricas
             metrics: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
-            for poly_id, poly_data in polygons.items():
-                cropped_img = poly_data.get("cropped_img")
+            for poly_id, polygon in polygons.items():
+                # Acceso correcto a la imagen desde la dataclass
+                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 if cropped_img is None:
                     logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
                 
-                cropped_img_np = np.array(cropped_img, dtype=np.uint8)
-                if cropped_img_np.size == 0:
+                if cropped_img.size == 0:
                     logger.warning(f"Imagen vacía o corrupta en '{poly_id}'")
                     continue
                 
-                h, w = cropped_img_np.shape[:2]
-                img_dims = (h, w)
-                analysis = self._analyze_image_for_moire(cropped_img_np, img_dims)
+                h, w = cropped_img.shape[:2]
+                analysis = self._analyze_image_for_moire(cropped_img, (h, w))
                 if analysis:
                     metrics.append(analysis)
                     poly_ids_order.append(poly_id)
 
             if not metrics:
-                logger.debug("No valid images found for moiré analysis.")
+                logger.debug("No se encontraron imágenes válidas para el análisis de moiré.")
                 return True
 
-            # 2. Vectorized Decision Phase
+            # 3. Fase de Decisión Vectorizada (sin cambios)
             spectrum_vars = np.array([m['spectrum_var'] for m in metrics], dtype=np.float32)
             mean_energies = np.array([m['mean_energy'] for m in metrics], dtype=np.float32)
             std_energies = np.array([m['std_energy'] for m in metrics], dtype=np.float32)
@@ -82,32 +82,29 @@ class MoireDenoiser(PreprossesingAbstractWorker):
                 default=np.maximum(1000, np.minimum(5000000, 2000000.0 * (spectrum_vars / 100.0)))
             )
 
-            # 3. Application Phase
+            # 4. Fase de Aplicación (modificando el contexto "in-line")
             for idx, poly_id in enumerate(poly_ids_order):
-                poly_data = polygons[poly_id]
+                polygon = polygons[poly_id]
                 analysis_results = metrics[idx]
-                cropped_img_np = np.array(poly_data.get("cropped_img"), dtype=np.uint8)
                 
-                # Obtener el umbral específico para esta imagen
+                # Obtener la imagen original de la dataclass para la corrección
+                original_img_np = polygon.cropped_img.cropped_img
+                
                 mode = correction_modes[idx]
                 threshold = adaptive_thresholds[idx]
-
                 logger.debug(f"Poly '{poly_id}': Modo de corrección '{mode}', Threshold: {threshold:.2f}")
 
-                # Aplicar la corrección de moiré
                 corrected_img = self._apply_moire_correction(
-                    cropped_img_np,
+                    original_img_np,
                     analysis_results,
                     threshold
                 )
 
-                # Actualizar la imagen en el contexto principal
-                poly_data["cropped_img"] = corrected_img
+                # **MODIFICACIÓN IN-LINE: Actualizar el atributo de la dataclass directamente**
+                polygon.cropped_img.cropped_img = corrected_img
                 
-                # Guardar imagen de depuración si está habilitado
                 if self.output:
                     self._save_debug_image(context, poly_id, corrected_img)
-
 
             total_time = time.time() - start_time
             logger.info(f"Moire batch completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
@@ -116,7 +113,7 @@ class MoireDenoiser(PreprossesingAbstractWorker):
             logger.error(f"Error en el procesamiento por lotes de Moire: {e}", exc_info=True)
             return False
 
-    def _analyze_image_for_moire(self, cropped_img: np.ndarray[Any, Any], img_dims: Tuple[int, int]) -> Dict[str, Any]:
+    def _analyze_image_for_moire(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], img_dims: Tuple[int, int]) -> Dict[str, Any]:
         h, w = img_dims
         
         img_float = np.float32(cropped_img)
@@ -148,7 +145,7 @@ class MoireDenoiser(PreprossesingAbstractWorker):
             "valid_spectrum": valid_spectrum
         }
 
-    def _apply_moire_correction(self, cropped_img: np.ndarray[Any, Any], analysis: Dict[str, Any], adaptive_threshold: float) -> np.ndarray[Any, Any]:
+    def _apply_moire_correction(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], analysis: Dict[str, Any], adaptive_threshold: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
         h, w = analysis['img_dims']
         max_dim = max(h, w)
         spectrum_var = analysis['spectrum_var']
@@ -180,9 +177,11 @@ class MoireDenoiser(PreprossesingAbstractWorker):
             if spectrum_var > 1000:
                 moire_img = cv2.bilateralFilter(moire_img, d=5, sigmaColor=50, sigmaSpace=50)
             
-            return moire_img
+            corrected_img =np.array(moire_img, dtype=np.uint8)
+            return corrected_img 
         else:
-            return cropped_img
+            corrected_img = np.array(cropped_img, dtype=np.uint8)
+            return corrected_img
 
     def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
         from services.output_service import save_image

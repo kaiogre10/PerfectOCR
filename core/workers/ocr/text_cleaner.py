@@ -4,6 +4,7 @@ import re
 from typing import Dict, Any, List, Optional
 from cleantext import clean
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class TextCleaner(OCRAbstractWorker):
         self.min_word_len_for_frag = self.config.get("min_confidence", 70.0)
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        polygons: Dict[str, Any] = manager.get_polygons()
+        polygons: Dict[str, Polygons] = manager.get_polygons()
         polygon_ids = list(polygons.keys())
         
         logger.info(f"Polígonos de entrada: {len(polygon_ids)}")
@@ -37,9 +38,11 @@ class TextCleaner(OCRAbstractWorker):
         valid_polygon_ids: List[str] = []
         eliminated_count = 0
         
-        for poly_id in polygon_ids:
-            text = polygons[poly_id].get("ocr_text", "").strip()
-            confidence = polygons[poly_id].get("ocr_confidence", 0.0)
+        # Iterar sobre una lista de claves para evitar modificar el dict durante iteración
+        for poly_id in list(polygons.keys()):
+            polygon = polygons[poly_id]
+            text = polygon.ocr_text or ""
+            confidence = polygon.ocr_confidence or 0.0
             
             # Criterio de basura
             if (
@@ -47,10 +50,13 @@ class TextCleaner(OCRAbstractWorker):
                 (confidence < 70.0 and not self._is_likely_numeric_or_code(text)) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)
             ):
-                # Eliminar del workflow_dict
-                del manager.workflow_dict["polygons"][poly_id]
+                # Eliminar del workflow_dict y las dataclasses
+                if poly_id in manager.workflow_dict["polygons"]:
+                    del manager.workflow_dict["polygons"][poly_id]
+                if manager.workflow and poly_id in manager.workflow.polygons:
+                    del manager.workflow.polygons[poly_id]
                 eliminated_count += 1
-                # logger.info(f"Eliminados: ID: {poly_id} | Texto: '{text}' | Confianza: {confidence}")
+                logger.debug(f"Eliminado: ID: {poly_id} | Texto: '{text}' | Confianza: {confidence}")
             else:
                 # Conservar válido
                 result = {

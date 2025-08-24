@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 from skimage.filters import unsharp_mask
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            polygons = context.get("polygons", {})
+            polygons: Dict[str, Polygons] = context.get("polygons", {})
             if not polygons:
                 return True
 
@@ -34,9 +35,10 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
             analysis_results: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
 
-            for poly_id, poly_data in polygons.items():
-                cropped_img = poly_data.get("cropped_img")
+            for poly_id, polygon in polygons.items():
+                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 if cropped_img is None:
+                    logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
                 
                 cropped_img_np = np.array(cropped_img, dtype=np.uint8)
@@ -66,7 +68,7 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
                 if not needs_correction[idx]:
                     continue
 
-                poly_data = polygons[poly_id]
+                polygon = polygons[poly_id]
                 cropped_img_np = analysis_results[idx]['cropped_img_np']
                 radius = radii[idx]
                 amount = amounts[idx]
@@ -74,7 +76,7 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
                 logger.debug(f"Poly '{poly_id}': Aplicando Sharpen (Radius: {radius:.2f}, Amount: {amount:.2f})")
 
                 corrected_img = self._apply_sharpening_correction(cropped_img_np, radius, amount)
-                poly_data["cropped_img"] = corrected_img
+                polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
                     self._save_debug_image(context, poly_id, corrected_img)

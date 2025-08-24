@@ -92,7 +92,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 crop_x2, crop_y2 = px2[idx], py2[idx]
                 
                 # Extraer imagen
-                cropped = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
+                cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
                 
                 if cropped.size == 0:
                     logger.warning(f"PolygonExtractor: Imagen recortada vacía para {poly_id}")

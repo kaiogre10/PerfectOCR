@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
     
@@ -24,25 +25,25 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
         """
         try:
             start_time = time.time()
-            polygons = context.get("polygons", {})
+            polygons: Dict[str, Polygons] = context.get("polygons", {})
             if not polygons:
                 return True
 
             # 1. Analysis Phase
             metrics: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
-            for poly_id, poly_data in polygons.items():
-                cropped_img = poly_data.get("cropped_img")
+            for poly_id, polygon in polygons.items():
+                # Acceso correcto a la imagen desde la dataclass
+                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 if cropped_img is None:
-                    logger.warning(f"Imagen no encontrada para '{poly_id}'")
+                    logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
                 
-                cropped_img_np = np.array(cropped_img, dtype=np.uint8)
-                if cropped_img_np.size == 0:
-                    logger.warning(f"Imagen vacía para '{poly_id}'")
+                if cropped_img.size == 0:
+                    logger.warning(f"Imagen vacía o corrupta en '{poly_id}'")
                     continue
-                
-                analysis = self._analyze_image_for_sp(cropped_img_np)
+                                
+                analysis = self._analyze_image_for_sp(cropped_img)
                 if analysis:
                     metrics.append(analysis)
                     poly_ids_order.append(poly_id)
@@ -73,7 +74,7 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
                 if not needs_correction[idx]:
                     continue
 
-                poly_data = polygons[poly_id]
+                polygon = polygons[poly_id]
                 analysis_results = metrics[idx]
                 ksize = int(ksizes[idx])
 
@@ -84,7 +85,7 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
                     ksize
                 )
                 
-                poly_data["cropped_img"] = corrected_img
+                polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
                     self._save_debug_image(context, poly_id, corrected_img)
@@ -96,7 +97,7 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
             logger.error(f"Error en el procesamiento por lotes de S&P: {e}", exc_info=True)
             return False
 
-    def _analyze_image_for_sp(self, cropped_img: np.ndarray[Any, Any]) -> Dict[str, Any]:
+    def _analyze_image_for_sp(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> Dict[str, Any]:
         h, w = cropped_img.shape[:2]
         area = h * w
         if area == 0:
@@ -122,7 +123,7 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
             "sobel_before": np.mean(np.abs(cv2.Sobel(cropped_img, cv2.CV_64F, 1, 1, ksize=3)))
         }
 
-    def _apply_sp_correction(self, analysis: Dict[str, Any], ksize: int) -> np.ndarray[Any, Any]:
+    def _apply_sp_correction(self, analysis: Dict[str, Any], ksize: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
         original_img = analysis['original_img']
         filtered = cv2.medianBlur(original_img, ksize)
         
@@ -137,7 +138,7 @@ class DoctorSaltPepper(PreprossesingAbstractWorker):
         
         return result
 
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
+    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, np.dtype[np.uint8]]):
         from services.output_service import save_image
         import os
         

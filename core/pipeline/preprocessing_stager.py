@@ -1,9 +1,9 @@
 # PerfectOCR/core/coordinators/preprocessing_coordinator.py
 import logging
 import time
-import numpy as np
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -24,20 +24,13 @@ class PreprocessingStager:
         
         # Obtener datos
         metadata = manager.get_metadata()
-        polygons = manager.get_polygons_with_cropped_img()
+        polygons = manager.get_polygons()
         
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.time()
             worker_name = worker.__class__.__name__
             logger.debug(f"[PreprocessingStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
-
-            # # Procesar cada polígono con este worker
-            # for poly_id, poly_data in polygons.items():
-            #     cropped_img = poly_data.get("cropped_img")
-            #     if cropped_img is None:
-            #         logger.warning(f"Imagen recortada no encontrada para {poly_id}")
-            #         continue
                     
                 # Contexto individual para cada polígono
             context: Dict[str, Any] = {
@@ -54,6 +47,16 @@ class PreprocessingStager:
 
             worker_time = time.time() - worker_start
             logger.debug(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
+
+            # Sincronizar resultados de preprocesamiento al manager
+            for poly_id, polygon in context["polygons"].items():
+                # Obtener posible imagen modificada o None
+                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
+                manager.update_preprocessing_result(poly_id, cropped_img, worker_name, True)
+            # Refrescar polígonos desde el manager para la siguiente etapa
+            polygons = manager.get_polygons()
+            context["polygons"] = polygons
+
         
         elapsed = time.time() - start_time
         logger.info(f"[PreprocessingStager] Pipeline completado en: {elapsed:.3f}s; polígonos: {len(polygons)}")

@@ -8,7 +8,7 @@ class ConfigWithNumpy(BaseModel):
 class OutputFlag(ConfigWithNumpy):
     preprocessed_image: bool
     ocr_raw: bool
-    cropped_words: bool
+    cropped_img: bool
     moire_poly: bool
     sp_poly: bool
     gauss_poly: bool

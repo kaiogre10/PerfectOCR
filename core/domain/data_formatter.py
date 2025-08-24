@@ -82,16 +82,16 @@ class DataFormatter:
             # Validar estructura
             jsonschema.validate(poly_data, poly_schema)
             
-            # Crear dataclasses anidadas
+            # Crear dataclasses anidadas con conversión a np.ndarray
             geometry = Geometry(
-                polygon_coords=poly_data["geometry"]["polygon_coords"],
-                bounding_box=poly_data["geometry"]["bounding_box"],
-                centroid=poly_data["geometry"]["centroid"]
+                polygon_coords=np.array(poly_data["geometry"]["polygon_coords"]),
+                bounding_box=np.array(poly_data["geometry"]["bounding_box"]),
+                centroid=np.array(poly_data["geometry"]["centroid"])
             )
             
             cropped_geo = CroppedGeometry(
-                padd_centroid=poly_data["cropped_geometry"]["padd_centroid"],
-                padding_coords=poly_data["cropped_geometry"]["padding_coords"],
+                padd_centroid=np.array(poly_data["cropped_geometry"]["padd_centroid"]) if poly_data["cropped_geometry"]["padd_centroid"] else np.array([]),
+                padding_coords=np.array(poly_data["cropped_geometry"]["padding_coords"]) if poly_data["cropped_geometry"]["padding_coords"] else np.array([]),
                 poly_dims=poly_data["cropped_geometry"].get("poly_dims", {})
             )
             
@@ -124,7 +124,7 @@ class DataFormatter:
             if results is None:
                 return False
             
-            polygons_dict: Dict[str, Dict[str, Any]] = {}
+            polygons_dict: Dict[str, Dict[str, Polygons]] = {}
             polygons_dataclass: Dict[str, Polygons] = {}
             
             for idx, poly_pts in enumerate(results[0]):
@@ -201,14 +201,46 @@ class DataFormatter:
     def get_all_lines(self) -> Dict[str, Any]:
         return self.workflow_dict["all_lines"] if self.workflow_dict else {}
         
-    def get_polygons_with_cropped_img(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Devuelve el diccionario de polígonos con sus imágenes recortadas listas para el contexto de los workers.
-        """
-        if not self.workflow_dict:
-            return {}
-        return self.workflow_dict["polygons"]
-        
+    def clear_cropped_images(self, polygon_ids: List[str]) -> bool:
+        """Libera las imágenes recortadas de polígonos específicos para ahorrar memoria"""
+        try:
+            if not self.workflow:
+                logger.error("No hay workflow inicializado para limpiar imágenes.")
+                return False
+                
+            cleared_count = 0
+            for poly_id in polygon_ids:
+                if poly_id in self.workflow.polygons:
+                    polygon = self.workflow.polygons[poly_id]
+                    if polygon.cropped_img is not None:
+                        # Crear nuevo polígono sin imagen para mantener immutabilidad
+                        updated_polygon = Polygons(
+                            polygon_id=polygon.polygon_id,
+                            geometry=polygon.geometry,
+                            cropedd_geometry=polygon.cropedd_geometry,
+                            cropped_img=None,  # Limpiar imagen
+                            perimeter=polygon.perimeter,
+                            line_id=polygon.line_id,
+                            ocr_text=polygon.ocr_text,
+                            ocr_confidence=polygon.ocr_confidence,
+                            was_fragmented=polygon.was_fragmented,
+                            status=polygon.status,
+                            stage=polygon.stage
+                        )
+                        self.workflow.polygons[poly_id] = updated_polygon
+                        cleared_count += 1
+                        
+            # También limpiar del dict serializado
+            for poly_id in polygon_ids:
+                if poly_id in self.workflow_dict["polygons"]:
+                    self.workflow_dict["polygons"][poly_id]["cropped_img"] = None
+                    
+            logger.debug(f"Liberadas {cleared_count} imágenes recortadas de memoria.")
+            return True
+        except Exception as e:
+            logger.error(f"Error liberando imágenes recortadas: {e}")
+            return False
+            
     def get_encode_lines(self, line_ids: Optional[List[str]] = None) -> Dict[str, List[int]]:
         """
         Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
@@ -266,14 +298,14 @@ class DataFormatter:
             return False
             
     def save_cropped_images(
-        self,
-        cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]],
-        cropped_geometries: Dict[str, Dict[str, Any]]
-    ) -> bool:
-        """Guarda imágenes recortadas, line_ids y geometría de recorte en los polígonos del workflow_dict"""
+    self,
+    cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]],
+    cropped_geometries: Dict[str, Dict[str, Any]]
+) -> bool:
+        """Guarda imágenes recortadas y geometría de recorte en los polígonos del workflow_dict y las dataclasses"""
         try:
-            if not self.workflow_dict:
-                logger.error("No hay workflow_dict inicializado para guardar imágenes recortadas.")
+            if not self.workflow_dict or not self.workflow:
+                logger.error("No hay workflow_dict o workflow inicializado para guardar imágenes recortadas.")
                 return False
 
             for poly_id, img in cropped_images.items():
@@ -282,7 +314,38 @@ class DataFormatter:
                     if poly_id in cropped_geometries:
                         self.workflow_dict["polygons"][poly_id]["cropped_geometry"] = cropped_geometries[poly_id]
 
-            logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte.")
+                # Actualizar también la dataclass
+                if poly_id in self.workflow.polygons:
+                    polygon = self.workflow.polygons[poly_id]
+                    cropped_geo = cropped_geometries.get(poly_id)
+                    
+                    # Crear nuevo objeto CroppedImage
+                    cropped_image_obj = CroppedImage(img)
+                    
+                    # Crear nuevo objeto CroppedGeometry
+                    cropped_geometry_obj = CroppedGeometry(
+                        padd_centroid=np.array(cropped_geo["padd_centroid"]) if cropped_geo and cropped_geo["padd_centroid"] else np.array([]),
+                        padding_coords=np.array(cropped_geo["padding_coords"]) if cropped_geo and cropped_geo["padding_coords"] else np.array([]),
+                        poly_dims=cropped_geo.get("poly_dims", {}) if cropped_geo else {}
+                    )
+                    
+                    # Crear nuevo polígono con la imagen recortada y la geometría
+                    updated_polygon = Polygons(
+                        polygon_id=polygon.polygon_id,
+                        geometry=polygon.geometry,
+                        cropedd_geometry=cropped_geometry_obj,
+                        cropped_img=cropped_image_obj,
+                        perimeter=polygon.perimeter,
+                        line_id=polygon.line_id,
+                        ocr_text=polygon.ocr_text,
+                        ocr_confidence=polygon.ocr_confidence,
+                        was_fragmented=polygon.was_fragmented,
+                        status=polygon.status,
+                        stage=polygon.stage
+                    )
+                    self.workflow.polygons[poly_id] = updated_polygon
+
+            logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte en workflow_dict y dataclasses.")
             return True
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}")
@@ -319,6 +382,24 @@ class DataFormatter:
             # Actualizar metadatos
             self.workflow_dict["polygons"][poly_id]["stage"] = worker_name
             self.workflow_dict["polygons"][poly_id]["status"] = success
+            
+        # También actualizar la dataclass
+        if self.workflow and poly_id in self.workflow.polygons:
+            polygon = self.workflow.polygons[poly_id]
+            updated_polygon = Polygons(
+                polygon_id=polygon.polygon_id,
+                geometry=polygon.geometry,
+                cropedd_geometry=polygon.cropedd_geometry,
+                cropped_img=CroppedImage(cropped_img) if cropped_img is not None else None,
+                perimeter=polygon.perimeter,
+                line_id=polygon.line_id,
+                ocr_text=polygon.ocr_text,
+                ocr_confidence=polygon.ocr_confidence,
+                was_fragmented=polygon.was_fragmented,
+                status=success,
+                stage=worker_name
+            )
+            self.workflow.polygons[poly_id] = updated_polygon
             
     def update_ocr_results(self, final_results: List[Optional[Dict[str, Any]]], polygon_ids: List[str]) -> bool:
         """
