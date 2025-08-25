@@ -4,6 +4,7 @@ import time
 from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +21,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
         
         try:
             start_time = time.time()
-            polygons = context.get("polygons", {})
+            polygons: Dict[str, Polygons] = context.get("polygons", {})
             if not polygons:
-                logger.warning("No hay polígonos para reconstruir líneas.")
                 return False
                 
             lines_info: Dict[str, Any] = self._reconstruct_lines(polygons)
@@ -38,31 +38,31 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
             return True
         except Exception as e:
-            logger.error(f"error {e}")
+            logger.error(f"error {e}", exc_info=True)
             return False
         
-    def _reconstruct_lines(self, polygons: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _reconstruct_lines(self, polygons: Dict[str, Polygons]) -> Optional[Dict[str, Any]]:
         """
         Reconstruye líneas agrupando polígonos y devuelve un dict con la info completa de cada línea,
         incluyendo los textos OCR concatenados.
         """
         prepared_sorted = sorted(
             polygons.values(),
-            key=lambda p: p.get("geometry", {}).get("centroid", [0, 0])[1]
-        )
+            key=lambda p: p.geometry.centroid[1])
+        
         lines_info: Dict[str, Any] = {}
-        current_line_polys: List[Dict[str, Any]] = []
-        current_line_bbox = []
+        current_line_polys: List[Polygons] = []
+        current_line_bbox: Optional[List[float]] = None
         line_counter = 1
         
         for poly in prepared_sorted:
-            bbox = poly.get("geometry", {}).get("bounding_box")
-            if not bbox:
+            bbox = poly.geometry.bounding_box
+            if bbox.size == 0:
                 continue
 
             if not current_line_polys or current_line_bbox is None:
                 current_line_polys = [poly]
-                current_line_bbox: List[float] = list(bbox)
+                current_line_bbox = list(bbox)
             else:
                 y1_min, y1_max = current_line_bbox[1], current_line_bbox[3]
                 y2_min, y2_max = bbox[1], bbox[3]
@@ -72,7 +72,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
                 if overlap > 0.3:
                     current_line_polys.append(poly)
-                    all_bboxes = [p.get("geometry", {}).get("bounding_box") for p in current_line_polys if p.get("geometry", {}).get("bounding_box")]
+                    all_bboxes = [p.geometry.bounding_box for p in current_line_polys]
                     if all_bboxes:
                         all_xs = [b[0] for b in all_bboxes] + [b[2] for b in all_bboxes]
                         all_y_mins = [b[1] for b in all_bboxes]
@@ -83,8 +83,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 else:
                     # Finaliza la línea actual y guarda la info
                     line_id = f"line_{line_counter:04d}"
-                    polygon_ids = [p.get("polygon_id") for p in current_line_polys if p.get("polygon_id")]
-                    texts = [p.get("ocr_text", "") for p in current_line_polys]
+                    polygon_ids = [p.polygon_id for p in current_line_polys]
+                    texts = [p.ocr_text or "" for p in current_line_polys]
                     # El centroide de la línea se calcula como el centroide del bounding box de la línea
                     line_centroid = [           
                             (current_line_bbox[0] + current_line_bbox[2]) / 2,
@@ -105,8 +105,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
         # Finaliza la última línea
         if current_line_polys:
             line_id = f"line_{line_counter:04d}"
-            polygon_ids = [p.get("polygon_id") for p in current_line_polys if p.get("polygon_id")]
-            texts = [p.get("ocr_text", "") for p in current_line_polys]
+            polygon_ids = [p.polygon_id for p in current_line_polys]
+            texts = [p.ocr_text or "" for p in current_line_polys]
             line_centroid = [
                 (current_line_bbox[0] + current_line_bbox[2]) / 2,
                 (current_line_bbox[1] + current_line_bbox[3]) / 2
@@ -117,7 +117,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 "line_centroid": line_centroid,
                 "polygon_ids": polygon_ids,
                 "text": " ".join(texts).strip()
-                }
+            }
             
             self.lines_info = lines_info
             return lines_info

@@ -1,0 +1,73 @@
+﻿Hoja/Tabla: RegistrosCompra,,,
+"Propósito: Almacena la información general (encabezado) por cada documento original de compra (ticket, nota, factura) procesado para un cliente de consultoría. Una fila representa un documento único.",,,
+Nombre Columna,Tipo de Dato (Excel / SQL),Restricciones / Notas,Explicación del Contenido
+IDRegistro,Texto / VARCHAR(60-80),"Llave Primaria (PK), No Nulo.","Identificador único del registro, generado por script. Formato: [IDProv]-[IDCliente]-[Fecha impresa en el documento[AAAAMMDD])-[FechaDigitalización[MMSSFFF]]. DetallesCompra y TransaccionesCompra."
+IDClienteConsultoria,Texto / VARCHAR(10),No Nulo.,ID (00001-99999) asignado manualmente a su cliente de consultoría. Proporcionado al script.
+FolioDocumento,Texto / VARCHAR(50),Puede ser Nulo.,"Folio/Número extraído del documento físico. Usado para generar IDRegistro. Usar placeholder (ej. ""SINFOLIO"") si falta."
+FechaDocumento,Fecha / DATE,No Nulo.,Fecha principal extraída del documento (formato AAAAMMDD). Usada para generar IDRegistro.
+IDProveedor,Texto / VARCHAR(4),Llave Foránea (FK) a Proveedores. Puede ser Nulo temporalmente.,"ID (AAAA-ZZZZ) del proveedor obtenido de Proveedores. Si es nuevo, el script genera el siguiente ID y marca para revisión. Usado para generar IDRegistro."
+ProveedorEstandarizado,Texto / VARCHAR(255),Puede ser Nulo.,"Nombre del proveedor limpio, completo y estandarizado, conexión con Proveedores."
+RFCProveedor,Texto / VARCHAR(13),Puede ser Nulo.,RFC del proveedor limpio y normalizado
+MontoTotalDocumento,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,Importe total original que figura en el documento. Siempre positivo.
+TipoDocumento,Texto / VARCHAR(20),No Nulo.,"Clasificación del documento original ('Ticket', 'Nota', 'Factura')."
+UUID,Texto / VARCHAR(36),Puede ser Nulo.,Folio Fiscal (UUID) de 36 caracteres si es una factura CFDI formal.
+RequiereRevisionManual,Booleano / BIT,No Nulo.,"Indicador (VERDADERO/FALSO ó 1/0) si el registro requiere validación humana (nuevo proveedor, posible coincidencia producto, etc.)."
+NotasRegistro,Texto / TEXT,Puede ser Nulo.,"Campo libre para comentarios automáticos o manuales sobre el registro (detección de anomalías, errores, etc.)."
+FechaDigitalizacion,Fecha y Hora / TIMESTAMP,No Nulo.,Marca de tiempo de cuándo se digitalizo este registro en Python. AAAAMMDDHHMMSSFFF. Usada para generar IDRegistro
+TasaIVAGeneral,"Número (Porcentaje) / DECIMAL(4, 2)",Puede ser Nulo.,Tasa de IVA general aplicable al documento original (ej. 0.16). Opcional.
+MontoIVAGeneral,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo.,Monto de IVA total del documento original. Opcional.
+MontoSubtotalGeneral,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo.,Subtotal (antes de IVA) del documento original. Opcional.
+,,,
+Hoja/Tabla: DetallesCompra,,,
+Propósito: Almacena cada línea de producto/servicio del documento de compra original. Una fila por línea de detalle.,,,
+IDDetalle,Número Entero / INTEGER,"Llave Primaria (PK), No Nulo.",ID único secuencial para esta línea de detalle específica.
+IDRegistro,Texto / VARCHAR(60-80),Llave Foránea (FK) a RegistrosCompra. No Nulo.,El IDRegistro del documento al que pertenece esta línea.
+Cantidad,"Número / DECIMAL(10, 3)",No Nulo.,Cantidad original comprada del producto (siempre positiva). Ajustar precisión decimal si es necesario.
+SKU,Número Entero / INTEGER,Llave Foránea (FK) a Productos. Puede ser Nulo temporalmente ('PENDIENTE_SKU').,"ID numérico secuencial del producto normalizado obtenido de Productos. Se ajusta automaticamente con el SKU de ""Productos"""
+ProductoEstandarizado,Texto / VARCHAR(255),Puede ser Nulo.,"Nombre limpio, completo, único y descriptivo del producto, extraído de Productos."
+PrecioUnitario,"Número (Moneda) / DECIMAL(12, 4)",Puede ser Nulo.,Precio original por unidad del producto (siempre positivo). Ajustar precisión decimal si es necesario.
+ImporteRaw,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,"Cantidad total extraída como aparece en el OCR, sin limpiar."
+ImporteCalculado,"Número (Moneda) / DECIMAL(12, 2)",No Nulo. Calculado por Fórmula en Excel o por script.,Importe total calculado con python (=Cantidad * PrecioUnitario). Siempre positivo para corroboración y validación de discrepancias en datos
+,,,
+Hoja/Tabla: TransaccionesCompra,,,
+"Propósito: Registra eventos financieros posteriores a la compra original (pagos, abonos, ajustes, descuentos) asociados a un documento de RegistrosCompra. Solo si existen notas a crédito o deudas. Una fila por evento.",,,
+IDTransaccion,Número Entero / INTEGER,"Llave Primaria (PK), No Nulo.",ID único secuencial para este evento de transacción específico.
+IDRegistro,Texto / VARCHAR(60-80),Llave Foránea (FK) a RegistrosCompra. No Nulo.,El IDRegistro del documento original al que afecta esta transacción.
+FechaTransaccion,Fecha / DATE,No Nulo.,Fecha en que ocurrió o se registró el pago/ajuste (AAAAMMDD).
+TipoTransaccion,Booleano/BIT,No Nulo.,Clasifica el evento en el Pago en Efectivo o con Tarjeta. Define cómo afecta el MontoTransaccion.
+MontoTransaccion,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,Monto del evento. Convención: Siempre Positivo. El TipoTransaccion indica si reduce o afecta el saldo.
+SaldoPendiente,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo,Saldo restante de la transacción al después de aplicar el MontoTransaccion. Se agrega manualmente debido a factores diversos
+ReferenciaTransaccion,Texto / TEXT,Puede ser Nulo.,"Descripción o nota adicional sobre esta transacción ('Pago', 'Abono', 'AjusteCredito', 'Descuento', 'Cancelacion', etc.) influye en el MontoTransaccion"
+,,,
+Hoja/Tabla: Productos,,,
+"Propósito: Catálogo maestro, normalizado y único de los productos/servicios comprados. Una fila por producto/SKU. Gestionado manualmente.",,,
+SKU,Número Entero / INTEGER,"Llave Primaria (PK), No Nulo, Único.",ID único numérico secuencial asignado manualmente a cada producto conceptual en sistema hexadécimal de 6 digitos.
+Presentacion,Texto / VARCHAR(255),Puede ser Nulo.,"Cantidad en la que viene embalaje de los productos, puede ser caja, paquete, etc."
+ProductoEstandarizado,Texto / VARCHAR(255),"No Nulo, Único.","Nombre limpio, completo, único y descriptivo del producto, definido manualmente"
+ProductoRAW,Texto / VARCHAR(255),No Nulo,Nombre o descripción del producto tal y como aparece en el documento.
+Marca,Texto / VARCHAR(255),"No Nulo, Único.",Marca Comercial del Fabricante
+Contenido,Texto / VARCHAR(255),"No Nulo, Único.",Cantidad de paquetes que conforman el contenido total de la presentación.
+UMC,Texto / VARCHAR(20),Puede ser Nulo.,"Unidad de Medida Contenido (Pz, Kg, Lt, etc.)"
+Unidades,Texto/VARCODE,"No Nulo, Igual o Mayor que 1",Cantidad total de unidades contenidas por paquete.
+UME,Texto / VARCHAR(20),"No Nulo, Igual o Mayor que 1","Unidad de Medida Estándar para este producto (ej. Pieza, Kg, Litro, Paquete)."
+CategoriaProducto,Texto / VARCHAR(50),"No Nulo, Igual o Mayor que 1","Categoría asignada al producto para análisis (ej. Papelería, Limpieza)."
+,,,
+Hoja/Tabla: Proveedores,,,
+"Propósito: Catálogo maestro, normalizado y único de los proveedores. Una fila por proveedor. Gestionado manualmente.",,,
+IDProveedor,Texto / VARCHAR(4),"Llave Primaria (PK), No Nulo, Único.",ID único (formato AAAA-ZZZZ) asignado manualmente a cada proveedor.
+ProveedorEstandarizado,Texto / VARCHAR(255),"No Nulo, Único (Idealmente).","Nombre limpio, completo y estandarizado del proveedor, definido por manualmente."
+RFCProveedor,Texto / VARCHAR(13),"Puede ser Nulo, Único (si no es Nulo).",RFC formal del proveedor (si aplica y se conoce).
+EsInformal,Booleano / BIT,No Nulo.,Indicador (VERDADERO/FALSO) si el proveedor opera en la informalidad.
+PActivo,Booleano / BIT,No Nulo.,Indicador (VERDADERO/FALSO ó 1/0) si el proveedor está actualmente activo con sus servicios.
+NotasProveedor,Texto / TEXT,Puede ser Nulo.,Campo libre para comentarios adicionales sobre el proveedor.
+,,,
+Hoja/Tabla: Clientes,,,
+Propósito: Catálogo maestro de sus clientes de consultoría (las PyMEs a las que presta servicio). Una fila por cliente. Gestionado manualmente.,,,
+IDCliente,Texto / VARCHAR(3),"Llave Primaria (PK), No Nulo, Único.",ID único (formato 00001-99999) asignado manualmente a cada cliente. Este es el valor que se usará en la columna IDCliente de RegistrosCompra para vincular.
+NombreCliente,Texto / VARCHAR(255),No Nulo.,Nombre comercial o Razón Social de la empresa cliente.
+TelefonoCliente,Texto / VARCHAR(25),Puede ser Nulo.,Número(s) de teléfono de contacto principal del cliente.
+DireccionCliente,Texto / VARCHAR(255),Puede ser Nulo.,Dirección fiscal o principal del cliente.
+Giro,Texto / VARCHAR(100),No Nulo.,Actividad económica o sector principal del negocio del cliente. Asignado Manualmente
+RFCCliente,Texto / VARCHAR(13),"Puede ser Nulo, Único (si no es Nulo).",RFC del cliente (si aplica y lo tiene).
+Cactivo,Booleano / BIT,No Nulo.,Indicador (VERDADERO/FALSO ó 1/0) si el cliente está actualmente activo con sus servicios.
+NotasCliente,Texto / TEXT,Puede ser Nulo.,Campo libre para cualquier nota o comentario relevante sobre este cliente.

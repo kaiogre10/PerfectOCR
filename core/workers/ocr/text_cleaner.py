@@ -50,9 +50,7 @@ class TextCleaner(OCRAbstractWorker):
                 (confidence < 70.0 and not self._is_likely_numeric_or_code(text)) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)
             ):
-                # Eliminar del workflow_dict y las dataclasses
-                if poly_id in manager.workflow_dict["polygons"]:
-                    del manager.workflow_dict["polygons"][poly_id]
+                # Eliminar y las dataclasses
                 if manager.workflow and poly_id in manager.workflow.polygons:
                     del manager.workflow.polygons[poly_id]
                 eliminated_count += 1

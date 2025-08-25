@@ -5,6 +5,7 @@ import pandas as pd
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import VectorizationAbstractWorker
+from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 

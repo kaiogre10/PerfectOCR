@@ -28,7 +28,7 @@ class MoireDenoiser(PreprossesingAbstractWorker):
             # 1. Obtener polígonos (dataclasses) del contexto
             polygons: Dict[str, Polygons] = context.get("polygons", {})
             if not polygons:
-                return True
+                return False
 
             # 2. Fase de Análisis: Recopilar métricas
             metrics: List[Dict[str, Any]] = []

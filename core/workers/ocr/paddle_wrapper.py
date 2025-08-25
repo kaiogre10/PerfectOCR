@@ -41,7 +41,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         start_time = time.perf_counter()
         polygons: Dict[str, Polygons] = manager.get_polygons()
         
-        logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
+        logger.info(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
         
         # Preparar batch usando dataclasses
         image_list: List[np.ndarray[Any, np.dtype[np.uint8]]] = []

@@ -403,13 +403,11 @@ class DataFormatter:
             
     def update_ocr_results(self, final_results: List[Optional[Dict[str, Any]]], polygon_ids: List[str]) -> bool:
         """
-        Actualiza los resultados de OCR en los polígonos del workflow_dict.
-        batch_results: lista de dicts con 'text' y 'confidence'
-        polygon_ids: lista de ids de los polígonos procesados
+        Actualiza los resultados de OCR en las dataclasses de polígonos.
         """
         try:
-            if not self.workflow_dict:
-                logger.error("No hay workflow_dict inicializado para actualizar resultados OCR.")
+            if not self.workflow:
+                logger.error("No hay workflow inicializado para actualizar resultados OCR.")
                 return False
                 
             logger.info(f"DataFormatter recibe: {len(final_results)} resultados, {len(polygon_ids)} IDs")
@@ -417,11 +415,26 @@ class DataFormatter:
             for idx, res in enumerate(final_results):
                 if idx < len(polygon_ids) and res is not None:
                     poly_id = polygon_ids[idx]
-                    if poly_id in self.workflow_dict["polygons"]:
-                        self.workflow_dict["polygons"][poly_id]["ocr_text"] = res.get("text", "")
-                        self.workflow_dict["polygons"][poly_id]["ocr_confidence"] = res.get("confidence")
+                    if poly_id in self.workflow.polygons:
+                        # Actualizar la dataclass directamente
+                        polygon = self.workflow.polygons[poly_id]
+                        # Crear nuevo polígono con texto actualizado
+                        updated_polygon = Polygons(
+                            polygon_id=polygon.polygon_id,
+                            geometry=polygon.geometry,
+                            cropedd_geometry=polygon.cropedd_geometry,
+                            cropped_img=polygon.cropped_img,
+                            perimeter=polygon.perimeter,
+                            line_id=polygon.line_id,
+                            ocr_text=res.get("text", ""),  
+                            ocr_confidence=res.get("confidence"), 
+                            was_fragmented=polygon.was_fragmented,
+                            status=polygon.status,
+                            stage=polygon.stage
+                        )
+                        self.workflow.polygons[poly_id] = updated_polygon
                         
-            logger.debug("Texto actualizado")
+            logger.info("Texto OCR actualizado en dataclasses")
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}")
