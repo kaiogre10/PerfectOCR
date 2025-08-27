@@ -1,5 +1,5 @@
 # PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN 
 from sklearn.preprocessing import StandardScaler
 import math
 import numpy as np
@@ -8,6 +8,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import AllLines
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class DensityScanner(VectorizationAbstractWorker):
             start_time: float = time.time()
             logger.debug("Scanner iniciado")
 
-            img_dims = manager.get_metadata().get("img_dims")
+            img_dims: Dict[str, Any] = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {}
             if not img_dims:
                 logger.warning("Sin dimensiones de imagen")
             
@@ -35,11 +36,12 @@ class DensityScanner(VectorizationAbstractWorker):
                 return False
                        
             # Obtener geometrías de líneas y medidas del documento original
-            all_lines: Dict[str, Dict[str, Any]] = manager.get_dict_data().get("all_lines", {})
+            all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+
             words: Dict[str, Any] = {
                 line_id: {
-                    "text": line_data.get("text", ""),
-                    "word_count": len(line_data.get("words", []))
+                    "text": line_data.text or "",
+                    "word_count": len(line_data.polygon_ids)
                 } 
                 for line_id, line_data in all_lines.items()
             }
@@ -51,7 +53,7 @@ class DensityScanner(VectorizationAbstractWorker):
             # Verificar que al menos una línea tenga geometría válida
             has_valid_geometry = False
             for line_data in all_lines.values():
-                if line_data.get("line_bbox") and line_data.get("line_centroid"):
+                if line_data.line_geometry and line_data.line_geometry.line_bbox and line_data.line_geometry.line_centroid:
                     has_valid_geometry = True
                     break
             
@@ -80,7 +82,9 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.error(f"Error en DensityScanner: {e}", exc_info=True)
             return False
 
-    def _detect_tables_from_encoded_lines(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, Dict[str, Any]], img_dims: Optional[Dict[str, Any]], words: Dict[str, Any]) -> Dict[str, Any]:
+    # Reemplaza desde la línea 84 hasta la 139
+
+    def _detect_tables_from_encoded_lines(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, AllLines], img_dims: Dict[str, Any], words: Dict[str, Any]) -> Dict[str, Any]:
         """Detecta tablas usando DBSCAN en líneas ya codificadas."""
         try:
             line_ids: List[str] = list(encoded_lines.keys())
@@ -97,8 +101,10 @@ class DensityScanner(VectorizationAbstractWorker):
                 line_values: List[int] = encoded_lines[line_id]
                 
                 geometric_features: Optional[Dict[str, float]] = all_geometric_features.get(line_id)
-                line_bbox = all_lines.get(line_id, {}).get("line_bbox", [])
-                line_centroid = all_lines.get(line_id, {}).get("line_centroid", [])
+                
+                line_obj = all_lines.get(line_id)
+                line_bbox = line_obj.line_geometry.line_bbox if line_obj else []
+                line_centroid = line_obj.line_geometry.line_centroid if line_obj else []
 
                 if len(line_values) >= 2 and line_bbox and line_centroid and geometric_features:
                     analysis: Optional[Dict[str, Dict[str, float]]] = self._analyze_encoded_line(line_id, line_values, geometric_features)
@@ -122,8 +128,8 @@ class DensityScanner(VectorizationAbstractWorker):
                 consecutive_indices: List[int] = self._expand_to_consecutive_interval(table_indices)
                 table_line_ids: List[str] = [line_ids[i] for i in consecutive_indices if i < len(line_ids)]
             else:
-                consecutive_indices: List[int] = []
-                table_line_ids: List[str] = []
+                consecutive_indices = []
+                table_line_ids = []
             
             return {
                 "status": "success",
@@ -203,7 +209,7 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.error(f"Error analizando línea {line_id}: {e}")
             return None
     
-    def _calculate_geometric_features(self, all_lines: Dict[str, Dict[str, Any]], img_dims: Optional[Dict[str, Any]]) -> Optional[Dict[str, Dict[str, float]]]:
+    def _calculate_geometric_features(self, all_lines: Dict[str, AllLines], img_dims: Optional[Dict[str, Any]]) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
@@ -213,15 +219,15 @@ class DensityScanner(VectorizationAbstractWorker):
             if not all_lines:
                 return None
 
-            sorted_lines: List[Tuple[str, Dict[str, Any]]] = sorted(
+            sorted_lines: List[Tuple[str, AllLines]] = sorted(
                 all_lines.items(),
-                key=lambda kv: kv[1].get("line_centroid", [0, 0])[1]
+                key=lambda kv: kv[1].line_geometry.line_centroid[1]
             )
 
             all_geometric_features: Dict[str, Dict[str, float]] = {}
             for i, (line_id, line_data) in enumerate(sorted_lines):
-                bbox: List[float] = line_data.get("line_bbox", [])
-                centroid: List[float] = line_data.get("line_centroid", [])
+                bbox: List[float] = line_data.line_geometry.line_bbox
+                centroid: List[float] = line_data.line_geometry.line_centroid
 
                 if len(bbox) < 4 or len(centroid) < 2:
                     continue
@@ -241,7 +247,7 @@ class DensityScanner(VectorizationAbstractWorker):
                 bbox_width: float = float(bbox[2] - bbox[0])
 
                 # vecinos arriba/abajo
-                prev_centroid: Optional[List[float]] = sorted_lines[i-1][1].get("line_centroid") if i > 0 else None
+                prev_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
                 # next_centroid: Optional[List[float]] = sorted_lines[i+1][1].get("line_centroid") if i < len(sorted_lines)-1 else None
 
                 # función auxiliar para similitud coseno con eje X
@@ -306,24 +312,24 @@ class DensityScanner(VectorizationAbstractWorker):
                     aggregate_stats.get('aspect_ratio', 0.0)
                 ])
             
-            # feature_names = [
-            #     'count', 'mean', 'std_dev', 'iqr', 'p50', 'skewness',
-            #     'bbox_width', 'align_prev', #'align_next', 'var_alignment',
-            #     'ratio_area', 'aspect_ratio',
-            # ]
+            feature_names = [
+                'count', 'mean', 'std_dev', 'iqr', 'p50', 'skewness',
+                'bbox_width', 'align_prev', #'align_next', 'var_alignment',
+                'ratio_area', 'aspect_ratio',
+            ]
             features_array = np.array(features)
-            # col_widths = [8, 10, 10, 10, 10, 10, 11, 11, 11, 13, 11, 10]
-            # # Encabezado alineado
-            # header = "Índice".rjust(6) + " | " + " | ".join(
-            #     name.rjust(width) for name, width in zip(feature_names, col_widths)
-            # )
-            # print(header)
-            # print("-" * len(header))
-            # for idx, row in enumerate(features_array):
-            #     row_str = " | ".join(
-            #         f"{v:>{w}.4f}" for v, w in zip(row, col_widths)
-            #     )
-            #     print(f"{idx:6} | {row_str}")
+            col_widths = [8, 10, 10, 10, 10, 10, 11, 11, 11, 13, 11, 10]
+            # Encabezado alineado
+            header = "Índice".rjust(6) + " | " + " | ".join(
+                name.rjust(width) for name, width in zip(feature_names, col_widths)
+            )
+            print(header)
+            print("-" * len(header))
+            for idx, row in enumerate(features_array):
+                row_str = " | ".join(
+                    f"{v:>{w}.4f}" for v, w in zip(row, col_widths)
+                )
+                print(f"{idx:6} | {row_str}")
 
             # Escalar features
             scaler: StandardScaler = StandardScaler()
@@ -347,17 +353,7 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
             
             # Retornar índices de líneas de tabla
-            table_indices: List[int] = [valid_indices[i] for i, label in enumerate(labels) if label == main_cluster]
-            
-            # Buscar encabezados y adjuntarlos si se encuentran
-            header_result = self._find_headers(table_indices, words)
-            
-            if header_result.get("is_valid") and header_result.get("header_found"):
-                header_idx = header_result.get("line_index")
-                if header_idx is not None and header_idx not in table_indices:
-                    # Insertar encabezado al inicio
-                    table_indices = [header_idx] + table_indices
-                    logger.info(f"Encabezado {header_result.get('line_id')} adjuntado a líneas tabulares")
+            table_indices: List[int] = [valid_indices[i] for i, label in enumerate(labels) if label == main_cluster] 
             
             return table_indices  # Solo retorna la lista de índices
             
@@ -375,137 +371,4 @@ class DensityScanner(VectorizationAbstractWorker):
         start: int = min(indices)
         end: int = max(indices)
         return list(range(start, end + 1))
-    
-    def _find_headers(self, table_indices: List[int], words: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Evalúa la decisión tomada por DBSCAN y encuentra los encabezados.
-        Busca secuencialmente desde la primera línea tabular hacia arriba.
-        """
-        try:
-            # Obtener parámetros configurables
-            max_numbers_threshold = self.worker_config.get("max_numbers_header", 3)
-            min_density_threshold = self.worker_config.get("min_density_header", 50)
-            max_word_ratio = self.worker_config.get("max_word_ratio_header", 0.8)
-            width_tolerance = self.worker_config.get("width_tolerance_header", 0.2)
-            max_search_lines_up = self.worker_config.get("max_search_lines_up", 2)
-            
-            if not table_indices:
-                logger.warning("No hay líneas tabulares para analizar")
-                return {"is_valid": False, "error": "No hay líneas tabulares para analizar"}
-            
-            # Obtener todas las líneas disponibles
-            line_ids = list(words.keys())
-            first_table_idx = min(table_indices)
-            first_table_line_id = line_ids[first_table_idx]
-            
-            logger.info(f"Buscando encabezado para tabla que comienza en línea {first_table_line_id} (índice {first_table_idx})")
-            
-            # 1. VERIFICAR SI LA PRIMERA LÍNEA TABULAR ES EL ENCABEZADO
-            logger.debug(f"Verificando si {first_table_line_id} es encabezado...")
-            if self._is_valid_header(first_table_line_id, words, table_indices, 
-                                   max_numbers_threshold, min_density_threshold, max_word_ratio, width_tolerance):
-                logger.info(f"ENCABEZADO ENCONTRADO: {first_table_line_id} - Es la primera línea tabular")
-                return self._create_header_result(first_table_line_id, words, first_table_idx, True)
-            
-            # 2. BUSCAR HACIA ARRIBA DESDE LA PRIMERA LÍNEA TABULAR (LIMITADO)
-            logger.debug(f"Primera línea tabular no es encabezado. Buscando hacia arriba (máximo {max_search_lines_up} líneas)...")
-            current_idx = first_table_idx - 1
-            lines_searched = 0
-            
-            while current_idx >= 0 and lines_searched < max_search_lines_up:
-                current_line_id = line_ids[current_idx]
-                logger.debug(f"Evaluando línea {current_line_id} (índice {current_idx}) como candidato a encabezado...")
-                
-                # Verificar si esta línea es un encabezado válido
-                if self._is_valid_header(current_line_id, words, table_indices,
-                                       max_numbers_threshold, min_density_threshold, max_word_ratio, width_tolerance):
-                    logger.info(f"ENCABEZADO ENCONTRADO: {current_line_id} - Línea {lines_searched + 1} hacia arriba de la tabla")
-                    return self._create_header_result(current_line_id, words, current_idx, False)
-                
-                current_idx -= 1
-                lines_searched += 1
-            
-            # 3. NO SE ENCONTRÓ ENCABEZADO VÁLIDO (dentro del límite de búsqueda)
-            if lines_searched >= max_search_lines_up:
-                logger.warning(f"No se encontró encabezado válido en las {lines_searched} líneas anteriores a la tabla (límite alcanzado: {max_search_lines_up})")
-            else:
-                logger.warning(f"No se encontró encabezado válido en las {lines_searched} líneas anteriores a la tabla")
-                
-            return {
-                "is_valid": False,
-                "header_found": False,
-                "lines_searched": lines_searched,
-                "max_search_reached": lines_searched >= max_search_lines_up,
-                "message": f"No se encontró encabezado válido en las {lines_searched} líneas anteriores a la tabla (límite: {max_search_lines_up})"
-            }
-            
-        except Exception as e:
-            logger.error(f"Error validando encabezado: {e}")
-            return {"is_valid": False, "error": str(e)}
-
-    def _is_valid_header(self, line_id: str, words: Dict[str, Any], table_indices: List[int], 
-                        max_numbers: int, min_density: float, max_word_ratio: float, width_tolerance: float) -> bool:
-        """Valida si una línea específica es un encabezado válido."""
-        try:
-            line_data = words.get(line_id, {})
-            text = line_data.get("text", "")
-            
-            # 1. VALIDAR CONTENIDO: Contar números
-            number_count = sum(1 for char in text if char.isdigit())
-            numbers_ok = number_count <= max_numbers
-            
-            # 2. VALIDAR LONGITUD: Comparar con líneas tabulares
-            candidate_word_count = line_data.get("word_count", 0)
-            table_word_counts = [words[list(words.keys())[idx]].get("word_count", 0) for idx in table_indices]
-            
-            if table_word_counts:
-                avg_tabular_words = sum(table_word_counts) / len(table_word_counts)
-                word_ratio = candidate_word_count / avg_tabular_words if avg_tabular_words > 0 else 1.0
-                length_ok = word_ratio <= max_word_ratio
-            else:
-                length_ok = True
-                word_ratio = 0.0
-            
-            # 3. VALIDAR DENSIDAD: Usar longitud del texto como proxy
-            density_value = len(text)
-            density_ok = density_value >= min_density
-            
-            # 4. VALIDAR ANCHO: Usar longitud del texto como proxy
-            width_ok = True  # Simplificado por ahora
-            width_diff = 0.0
-            
-            # Log detallado de validación
-            logger.debug(f"Validación de {line_id}: números={numbers_ok}({number_count}/{max_numbers}), "
-                        f"densidad={density_ok}({density_value}/{min_density}), "
-                        f"longitud={length_ok}({word_ratio:.2f}/{max_word_ratio}), "
-                        f"ancho={width_ok}({width_diff:.2f}/{width_tolerance})")
-            
-            # Validación final: TODOS los criterios deben cumplirse
-            is_valid = numbers_ok and density_ok and length_ok and width_ok
-            
-            if is_valid:
-                logger.info(f"Línea {line_id} VALIDADA como encabezado: '{text[:50]}...'")
-            else:
-                logger.debug(f"Línea {line_id} NO válida como encabezado")
-                
-            return is_valid
-            
-        except Exception as e:
-            logger.error(f"Error validando línea {line_id}: {e}")
-            return False
-
-    def _create_header_result(self, line_id: str, words: Dict[str, Any], line_idx: int, is_first_table_line: bool) -> Dict[str, Any]:
-        """Crea el resultado estructurado del encabezado encontrado."""
-        line_data = words.get(line_id, {})
-        text = line_data.get("text", "")
-        
-        return {
-            "is_valid": True,
-            "header_found": True,
-            "line_id": line_id,
-            "text": text,
-            "line_index": line_idx,
-            "is_first_table_line": is_first_table_line,
-            "is_header": True  # <--- SOLO ESTA ENTRADA BOOLEANA
-        }
     

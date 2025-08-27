@@ -28,7 +28,7 @@ class TextCleaner(OCRAbstractWorker):
         self.min_word_len_for_frag = self.config.get("min_confidence", 70.0)
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        polygons: Dict[str, Polygons] = manager.get_polygons()
+        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
         polygon_ids = list(polygons.keys())
         
         logger.info(f"Polígonos de entrada: {len(polygon_ids)}")

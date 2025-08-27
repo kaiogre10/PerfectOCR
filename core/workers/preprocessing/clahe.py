@@ -93,7 +93,7 @@ class ClaherEnhancer(PreprossesingAbstractWorker):
                 grid_size = tuple(grid_sizes[idx])
                 clip_limit = clip_limits[idx]
 
-                logger.debug(f"Poly '{poly_id}': Aplicando CLAHE (Grid: {grid_size}, Clip: {clip_limit:.2f})")
+                # logger.debug(f"Poly '{poly_id}': Aplicando CLAHE (Grid: {grid_size}, Clip: {clip_limit:.2f})")
 
                 corrected_img = self._apply_clahe_correction(original_img, clip_limit, grid_size)
                 polygon.cropped_img.cropped_img = corrected_img

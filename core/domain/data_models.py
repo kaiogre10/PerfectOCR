@@ -1,10 +1,9 @@
 # core/domain/workflow_models.py
 import numpy as np
-import pandas as pd
+import pandas as pd # type: ignore
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from typing import Any
-import pandas as pd
 
 WORKFLOW_SCHEMA: Dict[str , Any] = {
     "type": "object",
@@ -279,7 +278,6 @@ DENSITY_ENCODER: Dict[str, int] = {
     "e": 113
 }
 
-
 @dataclass
 class StructuredTable:
     df: pd.DataFrame
@@ -348,7 +346,7 @@ class Metadata:
 class WorkflowDict:
     dict_id: str
     full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
-    metadata:  Metadata
+    metadata:  Dict[str, Metadata]
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
     tabular_lines: Dict[str, TabularLines]

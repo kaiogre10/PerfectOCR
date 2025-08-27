@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
+from core.domain.data_models import Polygons, Metadata
 from core.factory.abstract_worker import PreprossesingAbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -23,8 +23,8 @@ class PreprocessingStager:
         logger.debug("[PreprocessingManager] Iniciando pipeline secuencial directo")
         
         # Obtener datos
-        metadata = manager.get_metadata()
-        polygons = manager.get_polygons()
+        metadata: Dict[str, Metadata] = manager.workflow.metadata if manager.workflow else {}
+        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
         
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
@@ -54,7 +54,7 @@ class PreprocessingStager:
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 manager.update_preprocessing_result(poly_id, cropped_img, worker_name, True)
             # Refrescar polígonos desde el manager para la siguiente etapa
-            polygons = manager.get_polygons()
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             context["polygons"] = polygons
 
         

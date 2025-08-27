@@ -73,7 +73,7 @@ class SharpeningEnhancer(PreprossesingAbstractWorker):
                 radius = radii[idx]
                 amount = amounts[idx]
 
-                logger.debug(f"Poly '{poly_id}': Aplicando Sharpen (Radius: {radius:.2f}, Amount: {amount:.2f})")
+                # logger.debug(f"Poly '{poly_id}': Aplicando Sharpen (Radius: {radius:.2f}, Amount: {amount:.2f})")
 
                 corrected_img = self._apply_sharpening_correction(cropped_img_np, radius, amount)
                 polygon.cropped_img.cropped_img = corrected_img

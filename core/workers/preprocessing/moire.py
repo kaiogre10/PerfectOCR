@@ -92,7 +92,7 @@ class MoireDenoiser(PreprossesingAbstractWorker):
                 
                 mode = correction_modes[idx]
                 threshold = adaptive_thresholds[idx]
-                logger.debug(f"Poly '{poly_id}': Modo de corrección '{mode}', Threshold: {threshold:.2f}")
+                # logger.debug(f"Poly '{poly_id}': Modo de corrección '{mode}', Threshold: {threshold:.2f}")
 
                 corrected_img = self._apply_moire_correction(
                     original_img_np,

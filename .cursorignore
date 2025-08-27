@@ -3,7 +3,7 @@
 # Para ignorar directorios completos, simplemente agrega el nombre del directorio seguido de una barra inclinada (/) en una línea nueva.
 *.vscode
 *input
-*.cursorignore
+
 *tests
 # Para ignorar un archivo específico, simplemente escribe su nombre o ruta relativa, por ejemplo:
 # ejemplo.txt

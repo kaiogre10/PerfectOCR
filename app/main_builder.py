@@ -105,7 +105,9 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             context)
         
         ocr_factory = worker_factory.get_ocr_factory()
-        ocr_workers = ocr_factory.create_workers(["paddle_wrapper", "text_cleaner"], context)
+        ocr_workers = ocr_factory.create_workers(
+            ["paddle_wrapper", "text_cleaner", "data_finder"], 
+            context)
 
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(

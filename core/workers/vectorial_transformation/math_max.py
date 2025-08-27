@@ -1,5 +1,5 @@
 # PerfectOCR/core/postprocessing/math_max.py
-import pandas as pd
+import pandas as pd # type: ignore
 import logging
 import time
 from itertools import permutations
@@ -56,7 +56,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         if df is None or df.empty: # type: ignore
             return df, []
 
-        columns = list(df.columns)
+        columns: List[str] = list(df.columns)
         basic_types = self._infer_semantic_types_basic(df)
         quant_indices_map = [i for i, t in enumerate(basic_types) if t == "cuantitativo"]
         if len(quant_indices_map) < 3:
@@ -135,13 +135,13 @@ class MatrixSolver(VectorizationAbstractWorker):
         corrected_df = df.copy()
         for j, col_name in enumerate(quant_cols):
             # Formatear como string conservando 2 decimales cuando aplique
-            # def fmt(v):
-            #     if np.isnan(v):
-            #         return corrected_df[col_name]
-            #     try:
-            #         return f"{v:.2f}" if not float(v).is_integer() else str(int(round(v)))
-            #     except Exception:
-            #         return corrected_df[col_name]
+            def fmt(v):
+                if np.isnan(v):
+                    return corrected_df[col_name]
+                try:
+                    return f"{v:.2f}" if not float(v).is_integer() else str(int(round(v)))
+                except Exception:
+                    return corrected_df[col_name]
             # Asignar con cuidado para no romper celdas no numéricas originales
             series_num = pd.Series(reconstructed[:, j], index=corrected_df.index)
             corrected_df[col_name] = series_num.apply(lambda x: (f"{x:.2f}" if not np.isnan(x) and not float(x).is_integer() else (str(int(round(x))) if not np.isnan(x) else None)))
@@ -203,12 +203,13 @@ class MatrixSolver(VectorizationAbstractWorker):
             if c is None or pu is None or mtl is None: # type: ignore
                 continue
 
-            if not all(isinstance(v, (int, int, int)) for v in [c, pu, mtl]):
+            if not all(isinstance(v, (int,float)) for v in [c, pu, mtl]):
                 continue
 
             # Axiomas
             if c <= 0 or pu <= 0 or mtl <= 0: continue
-            if mtl < pu: continue
+            if mtl < c * pu: continue
+            if pu < mtl: continue
 
             if math.isclose(c * pu, mtl, rel_tol=self.arithmetic_tolerance):
                 valid_hypotheses.append(p_indices)

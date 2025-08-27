@@ -5,6 +5,7 @@ import cv2
 import logging
 import numpy as np
 from typing import Dict, Optional, Any
+from core.domain.data_models import Metadata
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def save_ocr_json(manager: Any, output_folder: str, image_name: str) -> None:
             return
 
         # Preparar la estructura de datos para el JSON
-        metadata = manager.get_metadata()
+        metadata: Dict[str, Metadata] = manager.workflow.metadata if manager.workflow else {}
         output_data: Dict[ str, Any] = {
             "doc_name": metadata.get("image_name"),
             "formato": metadata.get("format"),

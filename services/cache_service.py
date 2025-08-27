@@ -58,7 +58,7 @@ def cleanup_project_cache(project_root: str) -> None:
                 try:
                     cache_path = os.path.join(dirpath, d)
                     shutil.rmtree(cache_path)
-                    logger.debug(f"Eliminada carpeta de caché: {cache_path}")
+                    # logger.debug(f"Eliminada carpeta de caché: {cache_path}")
                     dirnames.remove(d)
                     
                 except Exception as e:

@@ -4,8 +4,9 @@ from typing import List, Dict, Any, Tuple, Optional
 import math
 import time
 from core.factory.abstract_worker import VectorizationAbstractWorker
+from core.domain.data_models import Polygons, AllLines, TabularLines
 from core.domain.data_formatter import DataFormatter
-import pandas
+import pandas as pd # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -20,18 +21,42 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:
             start_time = time.time()
-            workflow_data = manager.get_dict_data()
-            all_lines = workflow_data.get("all_lines", {})
-            polygons = workflow_data.get("polygons", {})
-            tabular_line_ids = list(workflow_data.get("tabular_lines", {}).keys())
+            all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
 
-            if not tabular_line_ids or not all_lines or not polygons:
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+
+            tabular_lines: Dict[str, TabularLines] = manager.workflow.tabular_lines if manager.workflow else {}
+
+            if not tabular_lines or not all_lines or not polygons:
                 logger.warning("GeometricTableStructurer: Faltan datos necesarios (líneas tabulares, all_lines o polígonos) para la estructuración.")
                 return False
 
             # 1. Asumir que la primera línea tabular es el encabezado y determinar H
-            header_line_id = tabular_line_ids[0]
-            header_poly_ids = all_lines.get(header_line_id, {}).get("polygon_ids", [])
+            tabular_line_ids = list(tabular_lines.keys())
+            if not tabular_line_ids:
+                logger.warning("No hay líneas tabulares detectadas para determinar el encabezado.")
+                return False
+
+            # Buscar el índice de la primera línea tabular en all_lines
+            all_line_ids = list(all_lines.keys())
+            first_tabular_line_id = tabular_line_ids[0]
+            try:
+                idx = all_line_ids.index(first_tabular_line_id)
+            except ValueError:
+                logger.warning(f"La primera línea tabular con ID {first_tabular_line_id} no se encuentra en all_lines.")
+                return False
+
+            if idx == 0:
+                logger.warning("La primera línea tabular es la primera línea del documento, no hay línea anterior para usar como encabezado.")
+                return False
+
+            header_line_id = all_line_ids[idx - 1]
+            header_line = all_lines.get(header_line_id)
+            if not header_line:
+                logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id}")
+                return False
+            
+            header_poly_ids = header_line.polygon_ids
             H = len(header_poly_ids)
             if H == 0:
                 logger.warning("La línea de encabezado no tiene polígonos. No se puede determinar el número de columnas.")
@@ -41,34 +66,36 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             main_header_line_elements: List[Dict[str, Any]]  = []
             for poly_id in header_poly_ids:
                 poly_data = polygons.get(poly_id)
-                if poly_data and "geometry" in poly_data:
-                    geom = poly_data["geometry"]
+                if poly_data:
+                    geom = poly_data.geometry
                     main_header_line_elements.append({
-                        "text_raw": poly_data.get("ocr_text", ""),
-                        "cx": geom.get("centroid", [0,0])[0],
-                        "cy": geom.get("centroid", [0,0])[1]
+                        "ocr_text": poly_data.ocr_text or "",
+                        "cx": geom.centroid[0],
+                        "cy": geom.centroid[1]
                     })
             
             # 3. Construir 'lines_table_only' (S) para todas las líneas tabulares
             lines_table_only = []
-            for line_id in tabular_line_ids:
-                line_data = all_lines.get(line_id, {})
-                poly_ids_for_line = line_data.get("polygon_ids", [])
+            for line_id in tabular_lines:
+                line_data = all_lines.get(line_id)
+                if not line_data:
+                    continue
+                poly_ids_for_line = line_data.polygon_ids
                 
                 constituent_elements: List[Dict[str, Any]] = []
                 for poly_id in poly_ids_for_line:
                     poly_data = polygons.get(poly_id)
-                    if poly_data and "geometry" in poly_data:
-                        geom = poly_data["geometry"]
-                        bbox = geom.get("bounding_box", [0,0,0,0])
+                    if poly_data:
+                        geom = poly_data.geometry
+                        bbox = geom.bounding_box
                         constituent_elements.append({
-                            "text_raw": poly_data.get("ocr_text", ""),
+                            "ocr_text": poly_data.ocr_text or "",
                             "xmin": bbox[0],
                             "ymin": bbox[1],
                             "xmax": bbox[2],
                             "ymax": bbox[3],
-                            "cx": geom.get("centroid", [0,0])[0],
-                            "cy": geom.get("centroid", [0,0])[1]
+                            "cx": geom.centroid[0],
+                            "cy": geom.centroid[1]
                         })
                 
                 lines_table_only.append({
@@ -81,16 +108,15 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             table_matrix = self.structure_table(lines_table_only, main_header_line_elements)
 
             # Convertir la matriz a DataFrame
-            df = pandas.DataFrame([
+            df = pd.DataFrame([
                 [cell.get('cell_text', '') for cell in row]
                 for row in table_matrix
             ])
             # Usar la primera fila como encabezado si lo deseas
-            if not df.empty:
-                df.columns = df.iloc[0]
-                df = df[1:].reset_index(drop=True)
+            df.columns = [f"col_{i}" for i in range(df.shape[1])]
 
-            # logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.6f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}")
+
+            logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.6f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}") # type: ignore
 
             # Guardar en memoria (DataFormatter) para etapas posteriores
             saved = manager.save_structured_table(df=df, columns=list(df.columns))
@@ -106,14 +132,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         ) -> List[List[Dict[str, Any]]]:
         """
         Transforms a list of text lines from a table area into a 2D cell structure.
-
         Args:
             lines_table_only: List of merged text lines for the table data area.
                               Each line dict has 'constituent_elements_ocr_data' (list of word dicts).
-                              Each word dict requires 'text_raw', 'xmin', 'xmax', 'cx', 'cy'.
+                              Each word dict requires 'ocr_text', 'xmin', 'xmax', 'cx', 'cy'.
             main_header_line_elements: List of word/segment dicts for the main header line.
-                                       Each element requires 'text_raw', 'cx', 'cy'.
-
+                                       Each element requires 'ocr_text', 'cx', 'cy'.
         Returns:
             A 2D list (list of rows, where each row is a list of cell dicts).
             Each cell dict: {'words': List[Dict], 'cell_text': str}.
@@ -132,7 +156,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             if 'cx' in header_elem and 'cy' in header_elem:
                 header_centroids.append((float(header_elem['cx']), float(header_elem['cy'])))
             else:
-                logger.warning(f"Header element missing cx/cy: {header_elem.get('text_raw', 'N/A')}. Cannot use for B.1 centroid matching.")
+                logger.warning(f"Header element missing cx/cy: {header_elem.get('ocr_text', 'N/A')}. Cannot use for B.1 centroid matching.")
                 # Add a placeholder or handle appropriately if this case is critical
                 header_centroids.append(None)
 
@@ -213,7 +237,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     else:
                         # Fallback: if no valid header centroids or other issue, place in first column
                         current_row_cells[0]['words'] = [single_word]
-                        logger.warning(f"Line {k}, Word '{single_word.get('text_raw','N/A')}': Could not determine best column via centroid similarity. Placing in first column.")
+                        logger.warning(f"Line {k}, Word '{single_word.get('ocr_text','N/A')}': Could not determine best column via centroid similarity. Placing in first column.")
 
                 # Subcase B.2: 1 < Lk < H
                 else: # (lk > 1 and lk < H)
@@ -224,7 +248,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             for cell_idx in range(H):
                 cell_words = current_row_cells[cell_idx]['words']
                 if cell_words:
-                    current_row_cells[cell_idx]['cell_text'] = " ".join([w.get('text_raw', '') for w in cell_words]).strip()
+                    current_row_cells[cell_idx]['cell_text'] = " ".join([w.get('ocr_text', '') for w in cell_words]).strip()
             
             table_matrix_T.append(current_row_cells)
 

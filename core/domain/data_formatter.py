@@ -1,12 +1,11 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage
-from dataclasses import asdict
+from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, TabularLines
 import numpy as np
 import jsonschema
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-import pandas as pd
+import pandas as pd 
 
 logger = logging.getLogger(__name__)
 
@@ -165,9 +164,7 @@ class DataFormatter:
                     polygons_dict[poly_id] = poly_data
                     polygons_dataclass[poly_id] = polygon_obj
             
-            # Actualizar ambas estructuras
-            if self.workflow_dict:
-                self.workflow_dict["polygons"] = polygons_dict
+            # Actualizar 
             if self.workflow:
                 self.workflow.polygons = polygons_dataclass
                 
@@ -178,28 +175,11 @@ class DataFormatter:
             logger.error(f"Error en create_polygon_dicts: {e}")
             return False
 
-    def get_dict_data(self) -> Dict[str, Any]:
-        """Devuelve copia completa del dict"""
-        return self.workflow_dict if self.workflow_dict else {}
-    
-    def get_metadata(self) -> Dict[str, Any]:
-        """Devuelve los metadatos del dict"""
-        return self.workflow_dict["metadata"] if self.workflow_dict else {}
-
-    def get_polygons(self) -> Dict[str, Polygons]:
-        return self.workflow.polygons if self.workflow else {}
-        
-    def get_tabular_lines(self) -> Dict[str, Any]:
-        return self.workflow_dict["tabular_lines"] if self.workflow_dict else {}
-        
     def get_structured_table(self) -> Optional[pd.DataFrame]:
         return self.structured_table.df if self.structured_table else None
 
     def get_structured_semantic_types(self) -> Optional[List[str]]:
         return self.structured_table.semantic_types if self.structured_table else None
-
-    def get_all_lines(self) -> Dict[str, Any]:
-        return self.workflow_dict["all_lines"] if self.workflow_dict else {}
         
     def clear_cropped_images(self, polygon_ids: List[str]) -> bool:
         """Libera las imágenes recortadas de polígonos específicos para ahorrar memoria"""
@@ -375,14 +355,7 @@ class DataFormatter:
         
     def update_preprocessing_result(self, poly_id: str, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], 
                                 worker_name: str, success: bool):
-        """Actualiza resultado de preprocesamiento y marca stage/status"""
-        if poly_id in self.workflow_dict["polygons"]:
-            # Actualizar imagen
-            self.workflow_dict["polygons"][poly_id]["cropped_img"] = cropped_img
-            # Actualizar metadatos
-            self.workflow_dict["polygons"][poly_id]["stage"] = worker_name
-            self.workflow_dict["polygons"][poly_id]["status"] = success
-            
+        """Actualiza resultado de preprocesamiento y marca stage/status"""            
         # También actualizar la dataclass
         if self.workflow and poly_id in self.workflow.polygons:
             polygon = self.workflow.polygons[poly_id]
@@ -442,96 +415,104 @@ class DataFormatter:
         
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
-        Guarda las líneas reconstruidas usando operaciones vectorizadas en el workflow_dict bajo la clave 'all_lines'.
-        lines_info debe tener la estructura esperada por el esquema.
+        Guarda las líneas reconstruidas en el workflow_dict y, más importante,
+        crea las dataclasses AllLines y las guarda en el workflow (la fuente de verdad).
         """
         try:
-            if not self.workflow_dict:
-                logger.error("No hay workflow_dict inicializado para guardar líneas de texto.")
+            if not self.workflow:
+                logger.error("No hay workflow_dict o workflow inicializado para guardar líneas de texto.")
                 return False
 
-            # Filtrar líneas válidas
             valid_lines = {k: v for k, v in lines_info.items() if v is not None}
-            
             if not valid_lines:
                 logger.warning("No hay líneas válidas para procesar.")
                 return True
 
-            # Procesar geometría de líneas con arrays NumPy
-            all_lines: Dict[str, Any] = {}
+            # --- LÓGICA NUEVA PARA DATACLASSES ---
+            all_lines_dataclasses: Dict[str, AllLines] = {}
             for line_id, line_data in valid_lines.items():
-                # Procesar bboxes y centroides con NumPy si están disponibles
-                line_bbox = line_data.get("line_bbox", [])
-                line_centroid = line_data.get("line_centroid", [])
+                line_geometry = LineGeometry(
+                    line_centroid=line_data.get("line_centroid", [0, 0]),
+                    line_bbox=line_data.get("line_bbox", [0, 0, 0, 0])
+                )
                 
-                if line_bbox and len(line_bbox) == 4:
-                    # Convertir a array para validación y procesamiento
-                    bbox_array = np.array(line_bbox, dtype=np.float32)
-                    line_bbox = bbox_array.tolist()  # Convertir de vuelta a lista para schema
-                
-                if line_centroid and len(line_centroid) == 2:
-                    # Convertir a array para validación y procesamiento
-                    centroid_array = np.array(line_centroid, dtype=np.float32)
-                    line_centroid = centroid_array.tolist()  # Convertir de vuelta a lista para schema
-                    
-                all_lines[line_id] = {
-                    "lineal_id": line_id,
-                    "text": line_data.get("text", ""),
-                    "polygon_ids": line_data.get("polygon_ids", []),
-                    "line_bbox": line_bbox,
-                    "line_centroid": line_centroid
-                }
-                
-            self.workflow_dict["all_lines"] = all_lines
-            num_lines = len(all_lines)
-            logger.debug(f"Guardadas {num_lines} líneas reconstruidas en el workflow_dict.")
-            for line_id, line_data in all_lines.items():
+                # La codificación de texto se hará después en get_encode_lines
+                all_lines_dataclasses[line_id] = AllLines(
+                    lineal_id=line_id,
+                    text=line_data.get("text", ""),
+                    encoded_text=[], 
+                    polygon_ids=line_data.get("polygon_ids", []),
+                    line_geometry=line_geometry,
+                    tabular_line=False # Se determinará en etapas posteriores
+                )
+            
+            # Actualiza la fuente de verdad (dataclasses)
+            self.workflow.all_lines = all_lines_dataclasses
+            
+            # Mantenemos la actualización del diccionario por ahora para compatibilidad
+            self.workflow_dict["all_lines"] = {
+                line_id: {
+                    "lineal_id": data.lineal_id,
+                    "text": data.text,
+                    "polygon_ids": data.polygon_ids,
+                    "line_bbox": data.line_geometry.line_bbox,
+                    "line_centroid": data.line_geometry.line_centroid
+                } for line_id, data in all_lines_dataclasses.items()
+            }
+
+            num_lines = len(all_lines_dataclasses)
+            logger.debug(f"Guardadas {num_lines} líneas reconstruidas en workflow_dict y dataclasses.")
+            for line_id, line_data in self.workflow_dict["all_lines"].items():
                 logger.debug(f"Línea {line_id}: {line_data.get('text', '')}")
             return True
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
-            return False
-        
+            return False        
+            
+        # Reemplaza la función save_tabular_lines (aprox. línea 501)
+
     def save_tabular_lines(self, table_detection_result: Dict[str, Any]) -> bool:
         """
-        Guarda las líneas tabulares detectadas en el formato correcto, incluyendo el encabezado inmediato superior.
+        Identifica las líneas tabulares y las guarda como dataclasses TabularLines
+        en el workflow. También actualiza el flag en AllLines.
         """
         try:
-            if not self.workflow_dict or "all_lines" not in self.workflow_dict:
-                logger.error("No hay workflow_dict o all_lines para guardar líneas tabulares.")
+            if not self.workflow or not self.workflow.all_lines:
+                logger.error("No hay workflow o all_lines para guardar líneas tabulares.")
                 return False
             
-            # Extraer las líneas detectadas del resultado
             table_line_ids = table_detection_result.get("table_lines", [])
+            if not table_line_ids:
+                logger.info("No se detectaron líneas tabulares.")
+                return True # No es un error, simplemente no hay tablas
+
+            tabular_lines_dataclasses: Dict[str, TabularLines] = {}
             
-            # Crear diccionario de líneas tabulares
-            tabular_lines: Dict[str, Any] = {}
-            header_line_id: Optional[str] = None
-            
-            # Determinar el encabezado si existe
-            if table_line_ids:
-                all_line_keys = list(self.workflow_dict["all_lines"].keys())
-                first_table_idx = all_line_keys.index(table_line_ids[0])
-                if first_table_idx > 0:
-                    header_line_id = all_line_keys[first_table_idx - 1]
-                    # Insertar encabezado al inicio si no está ya incluido
-                    if header_line_id not in table_line_ids:
-                        table_line_ids = [header_line_id] + table_line_ids
-            
+            # 1. Poblar las dataclasses TabularLines y actualizar el flag en AllLines
             for line_id in table_line_ids:
-                if line_id in self.workflow_dict["all_lines"]:
-                    line_data = self.workflow_dict["all_lines"][line_id]
-                    tabular_lines[line_id] = {
-                        "texto": line_data.get("text", ""),
-                        "header_line": line_id == header_line_id if header_line_id else False
-                    }
+                if line_id in self.workflow.all_lines:
+                    line_obj = self.workflow.all_lines[line_id]
+                    line_obj.tabular_line = True  # Actualiza la fuente de verdad
+                    
+                    # Crea la nueva dataclass para la línea tabular
+                    tabular_lines_dataclasses[line_id] = TabularLines(
+                        lineal_id=line_id,
+                        complete_text=line_obj.text
+                    )
+
+            # 2. Asignar las nuevas dataclasses al workflow
+            self.workflow.tabular_lines = tabular_lines_dataclasses
             
-            # Guardar en workflow_dict
-            self.workflow_dict["tabular_lines"] = tabular_lines
-            num_tab_lines = len(tabular_lines)
-            logger.debug(f"Guardadas {num_tab_lines} líneas tabulares en tabular_lines (incluyendo encabezado si corresponde)")
-            for line_id, data in tabular_lines.items():
-                logger.debug(f"Línea tabular: {line_id} - Texto: {data.get('texto', '')}")
+            # 3. Mantener el diccionario sincronizado para compatibilidad
+            self.workflow_dict["tabular_lines"] = {
+                line_id: {"text": data.complete_text} 
+                for line_id, data in tabular_lines_dataclasses.items()
+            }
+
+            num_tab_lines = len(self.workflow.tabular_lines)
+            logger.debug(f"Guardadas {num_tab_lines} líneas tabulares en dataclasses y dict.")
+            for line_id, data in self.workflow.tabular_lines.items():
+                logger.debug(f"Línea tabular: {line_id} - Texto: {data.complete_text}")
             return True
             
         except Exception as e:

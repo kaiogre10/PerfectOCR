@@ -145,13 +145,18 @@ modules:
       density_std_factor: 2.0
       approx_poly_epsilon: 0.005
 
+  data_finder:
+    word_finder_models: 
+      weigth_model: "C:/PerfectOCR/data/models/word_finder/word_finder_model_weighted.pkl"
+      standar_model: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
+
   vectorization:
     lineal:
       overlap: 0.3
     
     dbscan:
       min_cluster_size: 2
-      eps: 2.0
+      eps: 1.0
       max_numbers_header: 2
       min_density_header: 50
       max_word_ratio_header: 0.8
@@ -160,4 +165,4 @@ modules:
       
     math_max:
       total_mtl_abs_tolerance: 0.05
-      row_relative_tolerance: 0.005
+      row_relative_tolerance: 0.05

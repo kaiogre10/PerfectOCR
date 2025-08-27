@@ -5,7 +5,7 @@ import pandas as pd
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import VectorizationAbstractWorker
-from core.domain.data_models import Polygons
+from core.domain.data_models import Polygons, Metadata
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,9 @@ class VectorizationStager:
         """        
         start_time = time.time()
         logger.debug("[VectorStager] Iniciando pipeline de vectorización")
-        metadata = manager.get_metadata()
-        polygons = manager.get_polygons()
-        
+        metadata: Dict[str, Metadata] = manager.workflow.metadata if manager.workflow else {}
+        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+                
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__

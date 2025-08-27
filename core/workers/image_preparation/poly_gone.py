@@ -27,7 +27,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.warning("PolygonExtractor: 'full_img' no encontrado en el contexto.")
                 return False
                 
-            polygons: Dict[str, Polygons] = manager.get_polygons()
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             img_h: int = context.get("metadata", {}).get("img_dims", {}).get("height")
             img_w: int = context.get("metadata", {}).get("img_dims", {}).get("width")
             
@@ -41,7 +41,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             
             for poly_id, polygon in polygons.items():
                 # Acceso directo a arrays NumPy desde la dataclass
-                bbox = polygon.geometry.bounding_box  # Ya es np.ndarray
+                bbox = polygon.geometry.bounding_box 
                 if bbox.size != 4:
                     logger.warning(f"PolygonExtractor: Bounding box inválido para {poly_id}")
                     continue

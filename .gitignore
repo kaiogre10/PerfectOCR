@@ -37,3 +37,6 @@ data/models/
 cursorignore
 *perfectocr.txt
 perfectocr.txt/
+
+# secrets
+.env
