@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.domain.ocr_motor_manager import PaddleManager
+from core.domain.models_manager import PaddleManager
 
 logger = logging.getLogger(__name__)
 

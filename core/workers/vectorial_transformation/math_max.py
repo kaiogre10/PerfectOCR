@@ -1,4 +1,4 @@
-# PerfectOCR/core/postprocessing/math_max.py
+# PerfectOCR/core/workers/vectorial_transformation/math_max.py
 import pandas as pd # type: ignore
 import logging
 import time
@@ -21,9 +21,9 @@ class MatrixSolver(VectorizationAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('math_max', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
-        self.output = self.enabled_outputs.get("table_structured", False)        
-        self.total_mtl_tolerance = self.config.get('total_mtl_abs_tolerance', 0.05) # 5% de tolerancia relativa por defecto
-        self.arithmetic_tolerance = self.config.get('row_relative_tolerance', 0.005) # 0.5% por defecto
+        self.output = self.enabled_outputs.get("table_structured", False)
+        self.total_mtl_tolerance = self.config.get('total_mtl_abs_tolerance', 0.05)
+        self.arithmetic_tolerance = self.config.get('row_relative_tolerance', 0.05)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:

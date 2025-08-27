@@ -2,6 +2,11 @@
 import logging
 import os
 import sys
+
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 # import typer
 # from typing import Optional, List
 from services.cache_service import clear_output_folders
@@ -14,10 +19,6 @@ os.environ.update({
     'MKL_NUM_THREADS': '2',
     'FLAGS_use_mkldnn': '1',     
 })
-
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-if PROJECT_ROOT not in sys.path:
-    sys.path.append(PROJECT_ROOT)
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input")

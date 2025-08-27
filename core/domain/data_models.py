@@ -160,7 +160,6 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
 {"type": "array"}        Debe ser lista 
 """""
 
-
 DENSITY_ENCODER: Dict[str, int] = {
     "0": 0,
     "1": 1,
@@ -318,6 +317,7 @@ class Polygons:
 class TabularLines:
     lineal_id: str
     complete_text: str
+    header_line: bool
 
 @dataclass
 class LineGeometry:

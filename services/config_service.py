@@ -115,22 +115,20 @@ class ConfigService:
         return max(1, workers)
         
     @property
-    def paddle_config(self) -> Dict[str, Any]:
+    def models_config(self) -> Dict[str, Any]:
         """Obtiene la configuración global para Paddle"""
-        return self.config.get('paddle_config', {})
+        return self.config.get('models_config', {})
     
     @property
     def validated_paddle_config(self):
         """Acceso directo al objeto Pydantic validado."""
-        return self.validated_config.paddle_config
+        return self.validated_config.models_config
 
     @property
     def paddle_det_config(self) -> Dict[str, Any]:
-        """
-        Devuelve la configuración fusionada para el modelo de detección de Paddle.
-        Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.
-        """
-        paddle_config = self.paddle_config
+        """Devuelve la configuración fusionada para el modelo de detección de Paddle.
+        Incluye solo los parámetros generales relevantes y la ruta del modelo de detección."""
+        paddle_config = self.models_config
         det_model = paddle_config.get('models', {})
         det_model_path = det_model.get("det_model_dir", "")
         
@@ -142,7 +140,6 @@ class ConfigService:
             "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
             "lang": paddle_config.get("lang", "es"),
         }
-            
         
     @property
     def paddle_rec_config(self) -> Dict[str, Any]:
@@ -150,7 +147,7 @@ class ConfigService:
         Devuelve la configuración fusionada para el modelo de reconocimiento de Paddle.
         Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.
         """
-        paddle_config = self.paddle_config
+        paddle_config = self.models_config
         rec_model = paddle_config.get('models', {})
         rec_model_path = rec_model.get("rec_model_dir", "")
         
@@ -161,4 +158,15 @@ class ConfigService:
             "use_gpu": paddle_config.get("use_gpu", False),
             "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
             "lang": paddle_config.get("lang", "es"),
+        }
+        
+    @property
+    def data_finder_config(self) -> Dict[str, str]:
+        word_finder_config = self.models_config
+        weight_model_path = word_finder_config.get("weigth_model", "")
+        standar_model_path = word_finder_config.get("standar_model", "")
+        
+        return {
+            "weigth_model": weight_model_path,
+            "standar_model": standar_model_path
         }

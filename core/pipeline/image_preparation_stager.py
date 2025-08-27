@@ -1,6 +1,7 @@
 # PerfectOCR/core/pipeline/input_stager.py
 import logging
 import time
+from datetime import datetime 
 from typing import Optional, Tuple, List, Dict, Any
 import numpy as np
 from core.domain.data_formatter import DataFormatter
@@ -25,16 +26,20 @@ class ImagePreparationStager:
         
         # 2) Crear manager y dict una sola vez
         manager = DataFormatter()
-        dict_id = f"dict_{metadata.get('image_name')}_{int(time.time())}"
+        now = datetime.now()
+        fecha = now.strftime("%Y%m%d")
+        decimales = f"{now.microsecond:06d}"
+        IDRegistro = f"dict_{metadata.get('image_name')}_{fecha}{decimales}"
+        logger.info(f"workflow_dict con registro: {IDRegistro}")
 
         full_img = gray_image
-        if not manager.create_dict(dict_id, full_img, metadata):
+        if not manager.create_dict(IDRegistro, full_img, metadata):
             logger.error("InputStager: Fallo al crear dict_job en el manager.")
             return None, 0.0
 
         # 3) Contexto con metadatos necesarios
         context: Dict[str, Any] = {
-            "dict_id": dict_id,
+            "IDRegistro": IDRegistro,
             "full_img": full_img,
             "metadata": metadata,
             "img_dims": metadata.get("img_dims", {}),

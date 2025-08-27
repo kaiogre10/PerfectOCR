@@ -1,5 +1,7 @@
 ﻿Hoja/Tabla: RegistrosCompra,,,
-"Propósito: Almacena la información general (encabezado) por cada documento original de compra (ticket, nota, factura) procesado para un cliente de consultoría. Una fila representa un documento único.",,,
+"Propósito: Almacena la información general (encabezado) por cada documento original de compra (ticket, nota, factura) procesado para un cliente de consultoría. Una fila representa un documento único."
+
+,,,
 Nombre Columna,Tipo de Dato (Excel / SQL),Restricciones / Notas,Explicación del Contenido
 IDRegistro,Texto / VARCHAR(60-80),"Llave Primaria (PK), No Nulo.","Identificador único del registro, generado por script. Formato: [IDProv]-[IDCliente]-[Fecha impresa en el documento[AAAAMMDD])-[FechaDigitalización[MMSSFFF]]. DetallesCompra y TransaccionesCompra."
 IDClienteConsultoria,Texto / VARCHAR(10),No Nulo.,ID (00001-99999) asignado manualmente a su cliente de consultoría. Proporcionado al script.
@@ -17,6 +19,7 @@ FechaDigitalizacion,Fecha y Hora / TIMESTAMP,No Nulo.,Marca de tiempo de cuándo
 TasaIVAGeneral,"Número (Porcentaje) / DECIMAL(4, 2)",Puede ser Nulo.,Tasa de IVA general aplicable al documento original (ej. 0.16). Opcional.
 MontoIVAGeneral,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo.,Monto de IVA total del documento original. Opcional.
 MontoSubtotalGeneral,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo.,Subtotal (antes de IVA) del documento original. Opcional.
+
 ,,,
 Hoja/Tabla: DetallesCompra,,,
 Propósito: Almacena cada línea de producto/servicio del documento de compra original. Una fila por línea de detalle.,,,
@@ -28,6 +31,7 @@ ProductoEstandarizado,Texto / VARCHAR(255),Puede ser Nulo.,"Nombre limpio, compl
 PrecioUnitario,"Número (Moneda) / DECIMAL(12, 4)",Puede ser Nulo.,Precio original por unidad del producto (siempre positivo). Ajustar precisión decimal si es necesario.
 ImporteRaw,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,"Cantidad total extraída como aparece en el OCR, sin limpiar."
 ImporteCalculado,"Número (Moneda) / DECIMAL(12, 2)",No Nulo. Calculado por Fórmula en Excel o por script.,Importe total calculado con python (=Cantidad * PrecioUnitario). Siempre positivo para corroboración y validación de discrepancias en datos
+
 ,,,
 Hoja/Tabla: TransaccionesCompra,,,
 "Propósito: Registra eventos financieros posteriores a la compra original (pagos, abonos, ajustes, descuentos) asociados a un documento de RegistrosCompra. Solo si existen notas a crédito o deudas. Una fila por evento.",,,
@@ -38,6 +42,7 @@ TipoTransaccion,Booleano/BIT,No Nulo.,Clasifica el evento en el Pago en Efectivo
 MontoTransaccion,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,Monto del evento. Convención: Siempre Positivo. El TipoTransaccion indica si reduce o afecta el saldo.
 SaldoPendiente,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo,Saldo restante de la transacción al después de aplicar el MontoTransaccion. Se agrega manualmente debido a factores diversos
 ReferenciaTransaccion,Texto / TEXT,Puede ser Nulo.,"Descripción o nota adicional sobre esta transacción ('Pago', 'Abono', 'AjusteCredito', 'Descuento', 'Cancelacion', etc.) influye en el MontoTransaccion"
+
 ,,,
 Hoja/Tabla: Productos,,,
 "Propósito: Catálogo maestro, normalizado y único de los productos/servicios comprados. Una fila por producto/SKU. Gestionado manualmente.",,,
@@ -51,6 +56,7 @@ UMC,Texto / VARCHAR(20),Puede ser Nulo.,"Unidad de Medida Contenido (Pz, Kg, Lt,
 Unidades,Texto/VARCODE,"No Nulo, Igual o Mayor que 1",Cantidad total de unidades contenidas por paquete.
 UME,Texto / VARCHAR(20),"No Nulo, Igual o Mayor que 1","Unidad de Medida Estándar para este producto (ej. Pieza, Kg, Litro, Paquete)."
 CategoriaProducto,Texto / VARCHAR(50),"No Nulo, Igual o Mayor que 1","Categoría asignada al producto para análisis (ej. Papelería, Limpieza)."
+
 ,,,
 Hoja/Tabla: Proveedores,,,
 "Propósito: Catálogo maestro, normalizado y único de los proveedores. Una fila por proveedor. Gestionado manualmente.",,,
@@ -60,6 +66,7 @@ RFCProveedor,Texto / VARCHAR(13),"Puede ser Nulo, Único (si no es Nulo).",RFC f
 EsInformal,Booleano / BIT,No Nulo.,Indicador (VERDADERO/FALSO) si el proveedor opera en la informalidad.
 PActivo,Booleano / BIT,No Nulo.,Indicador (VERDADERO/FALSO ó 1/0) si el proveedor está actualmente activo con sus servicios.
 NotasProveedor,Texto / TEXT,Puede ser Nulo.,Campo libre para comentarios adicionales sobre el proveedor.
+
 ,,,
 Hoja/Tabla: Clientes,,,
 Propósito: Catálogo maestro de sus clientes de consultoría (las PyMEs a las que presta servicio). Una fila por cliente. Gestionado manualmente.,,,

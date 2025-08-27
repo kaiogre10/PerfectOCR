@@ -3,7 +3,7 @@ from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCOD
 import numpy as np
 import jsonschema
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import pandas as pd 
 
@@ -497,7 +497,8 @@ class DataFormatter:
                     # Crea la nueva dataclass para la línea tabular
                     tabular_lines_dataclasses[line_id] = TabularLines(
                         lineal_id=line_id,
-                        complete_text=line_obj.text
+                        complete_text=line_obj.text,
+                        header_line=getattr(line_obj, 'is_header', False)  # Usa el campo is_header si existe, sino False
                     )
 
             # 2. Asignar las nuevas dataclasses al workflow
@@ -526,3 +527,24 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error guardando structured_table en memoria: {e}")
             return False
+
+    def update_lines_metadata(self, updates: List[Tuple[str, Dict[str, Any]]]):
+        """
+        Actualiza las líneas (AllLines y TabularLines) con nuevos campos de metadatos.
+        """
+        if not self.workflow:
+            return
+
+        for line_id, data_to_update in updates:
+            # Actualiza en TabularLines, que es el objetivo principal
+            if line_id in self.workflow.tabular_lines:
+                tabular_line_obj = self.workflow.tabular_lines[line_id]
+                for key, value in data_to_update.items():
+                    setattr(tabular_line_obj, key, value)
+            
+            # También es buena idea marcar la línea en la lista global (AllLines)
+            if line_id in self.workflow.all_lines:
+                line_obj = self.workflow.all_lines[line_id]
+                # Marcarla como header si la clave existe en la actualización
+                if 'header_line' in data_to_update:
+                    line_obj.is_header = data_to_update['header_line'] # Asumiendo que AllLines tiene un campo 'is_header'

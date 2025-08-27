@@ -4,7 +4,6 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from core.workers.ocr.text_cleaner import TextCleaner
-# from core.workers.ocr.data_finder import DataFinder
 
 class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
     def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], OCRAbstractWorker]]:
@@ -22,6 +21,3 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         
     def _create_text_cleaner(self, context: Dict[str, Any]) -> TextCleaner:
         return TextCleaner(config=self.module_config, project_root=self.project_root)
-
-    # def _create_data_finder(self, context: Dict[str, Any]) -> DataFinder:
-    #     return DataFinder(config=self.module_config, project_root=self.project_root)

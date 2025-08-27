@@ -8,7 +8,7 @@ paths:
   input_folder: "C:/PerfectOCR/input"
   output_folder: "C:/PerfectOCR/output"
   
-paddle_config:
+models_config:
   use_angle_cls: false
   lang: "es"
   show_log: false
@@ -19,8 +19,7 @@ paddle_config:
     det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
     rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
     cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
-  
-
+    
 pipeline_secuence:
   image_preparation:
     - "cleaner"           
@@ -145,11 +144,6 @@ modules:
       density_std_factor: 2.0
       approx_poly_epsilon: 0.005
 
-  data_finder:
-    word_finder_models: 
-      weigth_model: "C:/PerfectOCR/data/models/word_finder/word_finder_model_weighted.pkl"
-      standar_model: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
-
   vectorization:
     lineal:
       overlap: 0.3
@@ -162,7 +156,11 @@ modules:
       max_word_ratio_header: 0.8
       width_tolerance_header: 0.15
       max_search_lines_up: 2
+      wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
+
       
     math_max:
       total_mtl_abs_tolerance: 0.05
       row_relative_tolerance: 0.05
+      
+      

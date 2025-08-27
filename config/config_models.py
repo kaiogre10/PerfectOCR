@@ -39,7 +39,7 @@ class PaddlePaths(ConfigWithNumpy):
     rec_model_dir: str
     cls_model_dir: str
 
-class PaddleOCRConfig(ConfigWithNumpy):
+class ModelsConfig(ConfigWithNumpy):
     use_angle_cls: bool
     lang: str
     show_log: bool
@@ -146,14 +146,15 @@ class PreprocessingConfig(ConfigWithNumpy):
     bilateral_params: GaussianConfig  
     contrast: ContrastConfig  
     sharpening: SharpeningConfig
-    
+                
 class OCRConfig(ConfigWithNumpy):
     text_cleaner: TextualConfig
     binarize: Binarization  
-    fragmentation: Fragmentador  
+    fragmentation: Fragmentador
 
 class DBSCAN(ConfigWithNumpy):
     min_cluster_size: int
+    wordfinder_model_path: str
     
 class Lineal(ConfigWithNumpy):
     overlap: float
@@ -162,7 +163,7 @@ class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
     dbscan: DBSCAN
     math_max: MathMaxConfig
-
+    
 class ModulesConfig(ConfigWithNumpy):
     image_loader: ImageLoader
     preprocessing: PreprocessingConfig
@@ -174,5 +175,5 @@ class MasterConfig(ConfigWithNumpy):
     paths: PathsConfig
     enabled_outputs: OutputFlag
     processing: Processing
-    paddle_config: PaddleOCRConfig
+    models_config: ModelsConfig
     modules: ModulesConfig

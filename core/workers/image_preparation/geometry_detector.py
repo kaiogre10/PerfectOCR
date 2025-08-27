@@ -22,7 +22,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
     @property
     def engine(self) -> Optional[Any]:
         if self._engine is None:
-            from core.domain.ocr_motor_manager import PaddleManager
+            from core.domain.models_manager import PaddleManager
             paddle_manager = PaddleManager.get_instance()
             self._engine = paddle_manager.detection_engine
             

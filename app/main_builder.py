@@ -11,7 +11,7 @@ from core.pipeline.vectorization_stager import VectorizationStager
 from core.factory.main_factory import MainFactory
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.domain.data_formatter import DataFormatter
-from core.domain.ocr_motor_manager import PaddleManager
+from core.domain.models_manager import PaddleManager
 from services.config_service import ConfigService
 from services.cache_service import cleanup_project_cache
 
@@ -45,7 +45,7 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
         # 4. Iniciar Paddle Singleton
         # t21 = time.perf_counter()
         paddle_manager = PaddleManager.get_instance()
-        paddle_config = config_services.paddle_config
+        paddle_config = config_services.models_config
         paddle_manager.initialize_engines(paddle_config)
         # logging.info(f"PaddleManager iniciado en {time.perf_counter()-t21:.6f}s")
 
@@ -106,7 +106,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         
         ocr_factory = worker_factory.get_ocr_factory()
         ocr_workers = ocr_factory.create_workers(
-            ["paddle_wrapper", "text_cleaner", "data_finder"], 
+            ["paddle_wrapper", "text_cleaner"], 
             context)
 
         vectorizing_factory = worker_factory.get_vectorizing_factory()
