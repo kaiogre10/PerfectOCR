@@ -227,40 +227,38 @@ class DataFormatter:
         Si no se especifican line_ids, codifica todas las líneas existentes.
         """
         try:
-            if not self.workflow_dict or "all_lines" not in self.workflow_dict:
+            if not self.workflow or not hasattr(self.workflow, "all_lines") or not self.workflow.all_lines:
                 logger.warning("No hay líneas disponibles para codificar.")
                 return {}
                 
             encoded_lines: Dict[str, List[int]] = {}
-            all_lines = self.workflow_dict["all_lines"]
+            all_lines: Dict[str, Any] = self.workflow.all_lines
             lines_to_encode = line_ids if line_ids is not None else list(all_lines.keys())
             
-            # Codificación optimizada para todas las líneas
             for line_id in lines_to_encode:
                 if line_id in all_lines:
-                    line_text = all_lines[line_id].get("text", "")
+                    line_obj = all_lines[line_id]
+                    line_text = getattr(line_obj, "text", "")
                     if line_text:
                         compact_text = ''.join(line_text.split())
-                        # Usar list comprehension para codificación más eficiente
                         encoded_text = [self.encoder.get(char, 0) for char in compact_text]
                         encoded_lines[line_id] = encoded_text
-                        all_lines[line_id]["encoded_text"] = encoded_text
                     else:
                         logger.warning(f"Línea {line_id} no tiene texto para codificar.")
                 else:
                     logger.warning(f"Línea {line_id} no encontrada en all_lines.")
-                
+            
             logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
             return encoded_lines
         except Exception as e:
-            logger.error(f"Error codificando líneas: {e}")
+            logger.error(f"Error codificando líneas: {e}", exc_info=True)
             return {}
 
     def update_full_img(self, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
-        """Actualiza o vacía la imagen completa en el workflow_dict"""
+        """Actualiza o vacía la imagen completa en el workflow"""
         try:
             if not self.workflow_dict:
-                logger.error("No hay workflow_dict inicializado para actualizar full_img.")
+                logger.error("No hay workflow inicializado para actualizar full_img.")
                 return False
                 
             if full_img is None:
@@ -282,19 +280,13 @@ class DataFormatter:
     cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]],
     cropped_geometries: Dict[str, Dict[str, Any]]
 ) -> bool:
-        """Guarda imágenes recortadas y geometría de recorte en los polígonos del workflow_dict y las dataclasses"""
+        """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""
         try:
-            if not self.workflow_dict or not self.workflow:
-                logger.error("No hay workflow_dict o workflow inicializado para guardar imágenes recortadas.")
+            if not self.workflow:
+                logger.error("No hay workflow inicializado para guardar imágenes recortadas.")
                 return False
 
             for poly_id, img in cropped_images.items():
-                if poly_id in self.workflow_dict["polygons"]:
-                    self.workflow_dict["polygons"][poly_id]["cropped_img"] = img
-                    if poly_id in cropped_geometries:
-                        self.workflow_dict["polygons"][poly_id]["cropped_geometry"] = cropped_geometries[poly_id]
-
-                # Actualizar también la dataclass
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
                     cropped_geo = cropped_geometries.get(poly_id)
@@ -325,33 +317,11 @@ class DataFormatter:
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
-            logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte en workflow_dict y dataclasses.")
+            logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte en dataclasses.")
             return True
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}")
             return False
-             
-    def get_cropped_images_for_preprocessing(self) -> Dict[str, np.ndarray[Any, np.dtype[np.uint8]]]:
-        """
-        Devuelve un diccionario de imágenes recortadas listas para preprocesamiento.
-        cropped_images = {
-            "poly_0000": np.ndarray,  # Imagen numpy del polígono
-            "poly_0001": np.ndarray,  # Imagen numpy del polígono
-            ...
-        }
-        """
-        cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]] = {}
-        if not self.workflow_dict or not self.workflow_dict:
-            return cropped_images
-
-        for poly_id, poly_data in self.workflow_dict["polygons"].items():
-            cropped_img = poly_data.get("cropped_img")
-            if cropped_img is not None:
-                # Si la imagen está en formato lista, conviértela a np.ndarray
-                if isinstance(cropped_img, list):
-                    cropped_img = np.array(cropped_img, np.uint8)
-                cropped_images[poly_id] = cropped_img
-        return cropped_images
         
     def update_preprocessing_result(self, poly_id: str, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], 
                                 worker_name: str, success: bool):
@@ -443,28 +413,17 @@ class DataFormatter:
                     encoded_text=[], 
                     polygon_ids=line_data.get("polygon_ids", []),
                     line_geometry=line_geometry,
-                    tabular_line=False # Se determinará en etapas posteriores
+                    tabular_line=False,
+                    header_line=False # Se determinará en etapas posteriores
                 )
             
             # Actualiza la fuente de verdad (dataclasses)
             self.workflow.all_lines = all_lines_dataclasses
             
-            # Mantenemos la actualización del diccionario por ahora para compatibilidad
-            self.workflow_dict["all_lines"] = {
-                line_id: {
-                    "lineal_id": data.lineal_id,
-                    "text": data.text,
-                    "polygon_ids": data.polygon_ids,
-                    "line_bbox": data.line_geometry.line_bbox,
-                    "line_centroid": data.line_geometry.line_centroid
-                } for line_id, data in all_lines_dataclasses.items()
-            }
-
             num_lines = len(all_lines_dataclasses)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas en workflow_dict y dataclasses.")
-            for line_id, line_data in self.workflow_dict["all_lines"].items():
-                logger.debug(f"Línea {line_id}: {line_data.get('text', '')}")
-            return True
+            for line_id, line_data in self.workflow.all_lines.items():
+                return True
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
             return False        
@@ -498,18 +457,11 @@ class DataFormatter:
                     tabular_lines_dataclasses[line_id] = TabularLines(
                         lineal_id=line_id,
                         complete_text=line_obj.text,
-                        header_line=getattr(line_obj, 'is_header', False)  # Usa el campo is_header si existe, sino False
                     )
 
             # 2. Asignar las nuevas dataclasses al workflow
             self.workflow.tabular_lines = tabular_lines_dataclasses
             
-            # 3. Mantener el diccionario sincronizado para compatibilidad
-            self.workflow_dict["tabular_lines"] = {
-                line_id: {"text": data.complete_text} 
-                for line_id, data in tabular_lines_dataclasses.items()
-            }
-
             num_tab_lines = len(self.workflow.tabular_lines)
             logger.debug(f"Guardadas {num_tab_lines} líneas tabulares en dataclasses y dict.")
             for line_id, data in self.workflow.tabular_lines.items():
@@ -547,4 +499,4 @@ class DataFormatter:
                 line_obj = self.workflow.all_lines[line_id]
                 # Marcarla como header si la clave existe en la actualización
                 if 'header_line' in data_to_update:
-                    line_obj.is_header = data_to_update['header_line'] # Asumiendo que AllLines tiene un campo 'is_header'
+                    line_obj.header_line = data_to_update['header_line'] # Asumiendo que AllLines tiene un campo 'is_header')

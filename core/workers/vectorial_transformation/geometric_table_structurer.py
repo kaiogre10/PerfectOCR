@@ -31,30 +31,38 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 logger.warning("GeometricTableStructurer: Faltan datos necesarios (líneas tabulares, all_lines o polígonos) para la estructuración.")
                 return False
 
-            # 1. Asumir que la primera línea tabular es el encabezado y determinar H
-            tabular_line_ids = list(tabular_lines.keys())
-            if not tabular_line_ids:
-                logger.warning("No hay líneas tabulares detectadas para determinar el encabezado.")
-                return False
+            # Obtener la línea de encabezado detectada por el data_finder a través del contexto
+            header_line_id = context.get('header_line_ids', [])
+            if header_line_id:
+                # Se asume que solo hay un encabezado detectado, tomar el primero
+                header_line = all_lines.get(header_line_id)
+                if not header_line:
+                    logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id} en all_lines.")
+                    return False
+            else:
+                # Si no hay encabezado detectado, fallback: usar la línea anterior a la primera tabular
+                tabular_line_ids = list(tabular_lines.keys())
+                if not tabular_line_ids:
+                    logger.warning("No hay líneas tabulares detectadas para determinar el encabezado.")
+                    return False
 
-            # Buscar el índice de la primera línea tabular en all_lines
-            all_line_ids = list(all_lines.keys())
-            first_tabular_line_id = tabular_line_ids[0]
-            try:
-                idx = all_line_ids.index(first_tabular_line_id)
-            except ValueError:
-                logger.warning(f"La primera línea tabular con ID {first_tabular_line_id} no se encuentra en all_lines.")
-                return False
+                all_line_ids = list(all_lines.keys())
+                first_tabular_line_id = tabular_line_ids[0]
+                try:
+                    idx = all_line_ids.index(first_tabular_line_id)
+                except ValueError:
+                    logger.warning(f"La primera línea tabular con ID {first_tabular_line_id} no se encuentra en all_lines.")
+                    return False
 
-            if idx == 0:
-                logger.warning("La primera línea tabular es la primera línea del documento, no hay línea anterior para usar como encabezado.")
-                return False
+                if idx == 0:
+                    logger.warning("La primera línea tabular es la primera línea del documento, no hay línea anterior para usar como encabezado.")
+                    return False
 
-            header_line_id = all_line_ids[idx - 1]
-            header_line = all_lines.get(header_line_id)
-            if not header_line:
-                logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id}")
-                return False
+                header_line_id = all_line_ids[idx - 1]
+                header_line = all_lines.get(header_line_id)
+                if not header_line:
+                    logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id}")
+                    return False
             
             header_poly_ids = header_line.polygon_ids
             H = len(header_poly_ids)
@@ -112,11 +120,9 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 [cell.get('cell_text', '') for cell in row]
                 for row in table_matrix
             ])
-            # Usar la primera fila como encabezado si lo deseas
             df.columns = [f"col_{i}" for i in range(df.shape[1])]
 
-
-            logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.6f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}") # type: ignore
+            logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.10f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}") # type: ignore
 
             # Guardar en memoria (DataFormatter) para etapas posteriores
             saved = manager.save_structured_table(df=df, columns=list(df.columns))
@@ -146,7 +152,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.warning("GeometricTableStructurer: No header elements provided, cannot determine column count (H).")
             return []
         
-        H = len(main_header_line_elements) # Number of columns
+        H = len(main_header_line_elements)
         if H == 0:
             logger.warning("GeometricTableStructurer: Number of columns (H) is 0 based on header elements.")
             return []

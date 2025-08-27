@@ -1,7 +1,6 @@
 # PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
 from sklearn.cluster import DBSCAN 
 from sklearn.preprocessing import StandardScaler
-import os
 import math
 import numpy as np
 import time
@@ -9,8 +8,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines, Polygons
-from data.scripts.word_finder import WordFinder
+from core.domain.data_models import AllLines
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +24,8 @@ class DensityScanner(VectorizationAbstractWorker):
         try:
             start_time: float = time.time()
             logger.debug("Scanner iniciado")
-
-            img_dims: Dict[str, Any] = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {}
+            
+            img_dims = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {} # type: ignore
             if not img_dims:
                 logger.warning("Sin dimensiones de imagen")
             
@@ -65,17 +63,7 @@ class DensityScanner(VectorizationAbstractWorker):
         
             # Analizar líneas y detectar tablas - PASAR words como parámetro
             table_detection_result: Dict[str, Any] = self._detect_tables_from_encoded_lines(encoded_lines, all_lines, img_dims, words)
-            
-            try:
-                line_ids: List[str] = list(encoded_lines.keys())
-                header_indices: List[int] = self._find_headers(manager, line_ids)
-                table_detection_result["header_line_indices"] = header_indices
-                # también mantener lista de ids de línea
-                table_detection_result["header_line_ids"] = [line_ids[i] for i in header_indices if i < len(line_ids)]
-                logger.debug(f"Encabezados detectados (por palabra): {table_detection_result['header_line_ids']}")
-            except Exception as e:
-                logger.debug(f"Error detectando encabezados por palabra: {e}")
-            
+                                        
             # Guardar resultados si hay tablas detectadas
             if table_detection_result["status"] == "success" and table_detection_result["table_lines"]:
                 total_time: float = time.time() - start_time
@@ -94,7 +82,7 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.error(f"Error en DensityScanner: {e}", exc_info=True)
             return False
 
-    def _detect_tables_from_encoded_lines(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, AllLines], img_dims: Dict[str, Any], words: Dict[str, Any]) -> Dict[str, Any]:
+    def _detect_tables_from_encoded_lines(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, AllLines], img_dims: Dict[str, int], words: Dict[str, Any]) -> Dict[str, Any]:
         """Detecta tablas usando DBSCAN en líneas ya codificadas."""
         try:
             line_ids: List[str] = list(encoded_lines.keys())
@@ -219,7 +207,7 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.error(f"Error analizando línea {line_id}: {e}")
             return None
     
-    def _calculate_geometric_features(self, all_lines: Dict[str, AllLines], img_dims: Optional[Dict[str, Any]]) -> Optional[Dict[str, Dict[str, float]]]:
+    def _calculate_geometric_features(self, all_lines: Dict[str, AllLines], img_dims: Dict[str, int]) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
@@ -243,7 +231,7 @@ class DensityScanner(VectorizationAbstractWorker):
                     continue
 
                 # Proporción del área respecto del total
-                if img_dims is None or "size" not in img_dims:
+                if not img_dims or "size" not in img_dims:
                     return None
                 
                 total_size = img_dims.get("size")
@@ -347,7 +335,7 @@ class DensityScanner(VectorizationAbstractWorker):
             
             # Aplicar DBSCAN
             clustering: DBSCAN = DBSCAN(eps=eps, min_samples=min_cluster_size)
-            labels: List[int] = clustering.fit_predict(features_scaled)
+            labels: Dict[int, int] = clustering.fit_predict(features_scaled)
             
             logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
             
@@ -385,90 +373,4 @@ class DensityScanner(VectorizationAbstractWorker):
         end: int = max(indices)
         return list(range(start, end + 1))
         
-    def _find_headers(self, manager: DataFormatter, line_ids: List[str]) -> List[int]:
-        """
-        Busca encabezados por palabra usando polygons:
-         - construye mapping polygon_id -> line_id desde all_lines.polygon_ids
-         - itera polygons, llama a WordFinder.find_keywords() por cada palabra
-         - retorna lista de índices (posición en line_ids) de líneas que contienen posibles encabezados
-        """
-        logger.info("_find_headers: inicio de búsqueda de encabezados")
-        if not manager or not getattr(manager, "workflow", None):
-            logger.info("_find_headers: manager o workflow ausente, saliendo")
-            return []
-
-        # ruta al modelo configurable (worker_config o config), fallback a data/wordfinder_model.pkl
-        model_path = None
-        try:
-            model_path = self.worker_config.get("wordfinder_model_path") or self.config.get("wordfinder_model_path")
-        except Exception:
-            model_path = None
-        if not model_path:
-            model_path = os.path.join(self.project_root or ".", "data", "wordfinder_model.pkl")
-        logger.info(f"_find_headers: ruta modelo WordFinder -> {model_path}")
-
-        try:
-            wf = WordFinder(model_path)
-            logger.info("_find_headers: WordFinder inicializado correctamente")
-        except Exception as e:
-            logger.warning(f"WordFinder no pudo inicializarse con {model_path}: {e}")
-            return []
-
-        workflow = manager.workflow
-        polygons: Dict[str, Polygons] = getattr(workflow, "polygons", {}) or {}
-        all_lines: Dict[str, Any] = getattr(workflow, "all_lines", {}) or {}
-
-        logger.info(f"_find_headers: cantidad polygons={len(polygons)}, cantidad all_lines={len(all_lines)}")
-
-        # construir mapping polygon_id -> line_id
-        polygon_to_line: Dict[str, str] = {}
-        for lid, lobj in all_lines.items():
-            for pid in getattr(lobj, "polygon_ids", []) or []:
-                polygon_to_line[str(pid)] = lid
-        logger.info(f"_find_headers: mapping polygon->line construido (entradas={len(polygon_to_line)})")
-
-        header_line_ids_set: set = set()
-
-        # iterar por cada polygon (palabra/fragmento) y preguntar a WordFinder
-        processed = 0
-        matched = 0
-        for pid, poly in polygons.items():
-            processed += 1
-            # obtener texto del polygon (soporta object o dict)
-            text = ""
-            try:
-                if isinstance(poly, dict):
-                    text = str(poly.get("text", "") or "")
-                else:
-                    text = str(getattr(poly, "text", "") or "")
-            except Exception:
-                text = ""
-            text = text.strip()
-            if not text:
-                continue
-
-            try:
-                matches = wf.find_keywords(text)
-            except Exception as e:
-                logger.info(f"_find_headers: WordFinder error con polygon {pid}: {e}")
-                matches = []
-
-            if matches:
-                matched += 1
-                line_id = polygon_to_line.get(str(pid))
-                logger.info(f"_find_headers: match encontrado en polygon={pid} text='{text}' matches={matches} -> line_id={line_id}")
-                if line_id:
-                    header_line_ids_set.add(line_id)
-
-        logger.info(f"_find_headers: polygons procesados={processed}, matches={matched}, lineas candidatas={len(header_line_ids_set)}")
-
-        if not header_line_ids_set:
-            logger.info("_find_headers: no se encontraron encabezados, retornando []")
-            return []
-
-        # convertir a índices relativos a line_ids (lista en el mismo orden que encoded_lines)
-        index_map: Dict[str, int] = {lid: i for i, lid in enumerate(line_ids)}
-        header_indices: List[int] = [index_map[lid] for lid in header_line_ids_set if lid in index_map]
-        header_indices.sort()
-        logger.info(f"_find_headers: header_indices finales (ordenados) = {header_indices}")
-        return header_indices
+    

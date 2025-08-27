@@ -152,9 +152,11 @@ class OCRConfig(ConfigWithNumpy):
     binarize: Binarization  
     fragmentation: Fragmentador
 
+class DataFinder(ConfigWithNumpy):
+    wordfinder_model_path: str
+
 class DBSCAN(ConfigWithNumpy):
     min_cluster_size: int
-    wordfinder_model_path: str
     
 class Lineal(ConfigWithNumpy):
     overlap: float
@@ -163,6 +165,7 @@ class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
     dbscan: DBSCAN
     math_max: MathMaxConfig
+    data_finder: DataFinder
     
 class ModulesConfig(ConfigWithNumpy):
     image_loader: ImageLoader

@@ -132,6 +132,7 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                             "maxItems": 2,
                         },
                         "tabular_line": {"type": "boolean"},
+                        "header_line": {"type": "boolean"},
                     },
                 },
             },
@@ -145,7 +146,6 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                 "texto": {"type": "string"}
                 },
             },
-            "header_line": {"type": "boolean"},
             },
         },
     },
@@ -317,8 +317,7 @@ class Polygons:
 class TabularLines:
     lineal_id: str
     complete_text: str
-    header_line: bool
-
+    
 @dataclass
 class LineGeometry:
     line_centroid: List[float]
@@ -332,6 +331,7 @@ class AllLines:
     polygon_ids: List[str]
     line_geometry: LineGeometry
     tabular_line: bool
+    header_line: bool
 
 @dataclass(frozen=True)
 class Metadata:

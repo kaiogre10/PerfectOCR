@@ -156,9 +156,10 @@ modules:
       max_word_ratio_header: 0.8
       width_tolerance_header: 0.15
       max_search_lines_up: 2
-      wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
-
       
+    data_finder:
+      wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
+    
     math_max:
       total_mtl_abs_tolerance: 0.05
       row_relative_tolerance: 0.05
