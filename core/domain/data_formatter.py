@@ -1,11 +1,13 @@
 # core/domain/data_formatter.py
 from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, TabularLines
 import numpy as np
+import time
 import jsonschema
 import logging
+import json
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
-import pandas as pd 
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -500,3 +502,104 @@ class DataFormatter:
                 # Marcarla como header si la clave existe en la actualización
                 if 'header_line' in data_to_update:
                     line_obj.header_line = data_to_update['header_line'] # Asumiendo que AllLines tiene un campo 'is_header')
+
+    def _parse_number(self, s: Any):
+        try:
+            if s is None:
+                return None
+            if isinstance(s, (int, float)):
+                return s
+            sstr = str(s).replace(",", "").strip()
+            if sstr == "":
+                return None
+            if "." in sstr:
+                return float(sstr)
+            return int(sstr)
+        except Exception:
+            try:
+                return float(str(s).replace(",", ""))
+            except Exception:
+                return None
+
+    def _row_to_detalle(self, row: List[str]) -> Dict[str, Any]:
+    # Mapea columnas esperadas al esquema de DetallesCompra
+        return {
+            "IDDetalle": None,  # Se generará automáticamente en la BD
+            "IDRegistro": None,  # Se vinculará con el registro principal
+            "Cantidad": self._parse_number(row.get("cantidad") or row.get("c")),
+            "SKU": row.get("sku"),
+            "ProductoEstandarizado": str(row.get("descripcion") or row.get("desc") or "").strip(),
+            "PrecioUnitario": self._parse_number(row.get("precio_unitario") or row.get("pu")),
+            "ImporteRaw": self._parse_number(row.get("precio_total") or row.get("mtl")),
+            "ImporteCalculado": self._parse_number(row.get("precio_total") or row.get("mtl"))
+        }
+    
+    def to_db_payload(self) -> dict:
+        """
+        Construye un payload JSON-serializable:
+        { registro: {...}, detalles: [...], provenance: {...}, raw_table: [...] }
+        """
+        if not self.workflow:
+            return {}
+
+        wf = self.workflow
+        md = wf.metadata if hasattr(wf, "metadata") else (wf.get("metadata") if isinstance(wf, dict) else {})
+        dict_id = getattr(wf, "dict_id", None) or (md.get("dict_id") if isinstance(md, dict) else None) or f"UNK-{int(time.time()*1000)}"
+
+        registro = {
+            "IDRegistro": dict_id,
+            "FolioDocumento": md.get("FolioDocumento") if isinstance(md, dict) else getattr(md, "FolioDocumento", None),
+            "FechaDocumento": md.get("FechaDocumento") if isinstance(md, dict) else getattr(md, "FechaDocumento", None),
+            "ProveedorEstandarizado": md.get("ProveedorEstandarizado"),
+            "RFCProveedor": md.get("RFCProveedor") if isinstance(md, dict) else getattr(md, "RFCProveedor", None),
+            "MontoTotalDocumento": self._parse_number(md.get("MontoTotalDocumento") if isinstance(md, dict) else None),
+            "TipoDocumento": md.get("TipoDocumento") if isinstance(md, dict) else getattr(md, "TipoDocumento", None),
+            "FechaDigitalizacion": time.strftime("%Y%m%d%H%M%S")
+        }
+
+        detalles = []
+        # si tienes structured_table la usamos
+        if self.structured_table and hasattr(self.structured_table, "df"):
+            df = self.structured_table.df
+            cols = self.structured_table.columns if self.structured_table.columns else list(df.columns)
+            for _, r in df.iterrows():
+                row = {}
+                # mapear por índice de columnas a col_0..col_n para _row_to_detalle
+                for i, c in enumerate(cols):
+                    row[f"col_{i}"] = r.get(c) if c in df.columns else r[i]
+                detalles.append(self._row_to_detalle(row))
+        else:
+            # fallback: usar polygons/text lines como detalle descriptivo
+            polygons = getattr(wf, "polygons", {}) or {}
+            for pid, p in (polygons.items() if isinstance(polygons, dict) else []):
+                text = getattr(p, "ocr_text", None) if hasattr(p, "ocr_text") else (p.get("ocr_text") if isinstance(p, dict) else "")
+                detalles.append({
+                    "cantidad": None, "descripcion": text, "precio_unitario": None, "precio_total": None, "unidad": None, "sku": None
+                })
+
+        provenance = {
+            "dict_id": dict_id,
+            "image_name": md.get("image_name") if isinstance(md, dict) else getattr(md, "image_name", None),
+            "formatter_version": "v1",
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S")
+        }
+
+        payload = {"registro": registro, "detalles": detalles, "provenance": provenance}
+        # opcional: raw_table para auditoría
+        if self.structured_table and hasattr(self.structured_table, "df"):
+            payload["raw_table"] = {"columns": list(self.structured_table.df.columns), "rows": self.structured_table.df.fillna("").astype(str).values.tolist()}
+
+        return payload
+
+    def export_payload_json(self, path: str) -> bool:
+        """Escribe el payload en disco para auditoría/revisión manual"""
+        try:
+            payload = self.to_db_payload()
+            if not payload:
+                return False
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(payload, fh, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            logger.error(f"Error exportando payload json: {e}")
+            return False

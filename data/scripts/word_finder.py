@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class WordFinder:
     def __init__(self, model_path: str):
-        self.active = "standard"
+        self._active = "standard"
         self.model_path = model_path
         self.model: Dict[str, Any] = self._load_model(model_path)
         self._apply_active_model()
@@ -42,7 +42,7 @@ class WordFinder:
 
     def set_active_model(self, name: str) -> bool:
         if name == "standard":
-            self.active = "standard"
+            self._active = "standard"
             return True
         logger.warning("Modelo solicitado no disponible: %s", name)
         return False
@@ -51,8 +51,10 @@ class WordFinder:
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Modelo no encontrado en {model_path}")
         with open(model_path, "rb") as f:
-            self.model = pickle.load(f)
-        return self.model
+            model = pickle.load(f)
+        if not isinstance(model, dict):
+            raise ValueError("El pickle no tiene el formato esperado (dict).")
+        return model
 
     def _apply_active_model(self):
         # listas
@@ -288,7 +290,7 @@ class WordFinder:
                 continue
         
         # Patrones de palabras "fecha" y "hora" con ruido
-        word_patterns: List[Any] = [
+        word_patterns = [
             (r"f.{0,2}e.{0,2}c.{0,2}h.{0,2}a", "fecha"),
             (r"h.{0,2}o.{0,2}r.{0,2}a", "hora"),
             (r"[fh].{0,3}[eo].{0,3}[cr].{0,3}[ha]", None),  # ambiguo
