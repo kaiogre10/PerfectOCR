@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, TabularLines
+from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry
 import numpy as np
 import time
 import jsonschema
@@ -43,8 +43,7 @@ class DataFormatter:
                 "color": str(metadata.get("color", "")) if metadata.get("color") is not None else None
             },
             "polygons": {},
-            "all_lines": {},
-            "tabular_lines": {}
+            "all_lines": {}
         }
 
         try:
@@ -64,7 +63,6 @@ class DataFormatter:
                 metadata=metadata_obj,
                 polygons={},
                 all_lines={},
-                tabular_lines={}
             )
 
             self.workflow_dict = self.temp_dict
@@ -416,7 +414,7 @@ class DataFormatter:
                     polygon_ids=line_data.get("polygon_ids", []),
                     line_geometry=line_geometry,
                     tabular_line=False,
-                    header_line=False # Se determinará en etapas posteriores
+                    header_line=False 
                 )
             
             # Actualiza la fuente de verdad (dataclasses)
@@ -430,50 +428,43 @@ class DataFormatter:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
             return False        
             
-        # Reemplaza la función save_tabular_lines (aprox. línea 501)
 
-    def save_tabular_lines(self, table_detection_result: Dict[str, Any]) -> bool:
+    def save_tabular_lines(self, line_ids: List[str]) -> bool:
         """
         Identifica las líneas tabulares y las guarda como dataclasses TabularLines
         en el workflow. También actualiza el flag en AllLines.
+        Además, loguea las líneas tabulares con su texto.
         """
         try:
-            if not self.workflow or not self.workflow.all_lines:
-                logger.error("No hay workflow o all_lines para guardar líneas tabulares.")
+            if not self.workflow or not line_ids:
                 return False
-            
-            table_line_ids = table_detection_result.get("table_lines", [])
-            if not table_line_ids:
-                logger.info("No se detectaron líneas tabulares.")
-                return True # No es un error, simplemente no hay tablas
 
-            tabular_lines_dataclasses: Dict[str, TabularLines] = {}
-            
-            # 1. Poblar las dataclasses TabularLines y actualizar el flag en AllLines
-            for line_id in table_line_ids:
+            marked_count = 0
+            tabular_lines_info = []
+            for line_id in line_ids:
                 if line_id in self.workflow.all_lines:
+                    self.workflow.all_lines[line_id].tabular_line = True
+                    marked_count += 1
+                    # Guardar info para log
                     line_obj = self.workflow.all_lines[line_id]
-                    line_obj.tabular_line = True  # Actualiza la fuente de verdad
-                    
-                    # Crea la nueva dataclass para la línea tabular
-                    tabular_lines_dataclasses[line_id] = TabularLines(
-                        lineal_id=line_id,
-                        complete_text=line_obj.text,
-                    )
+                    tabular_lines_info.append({
+                        "line_id": line_id,
+                        "text": line_obj.text,
+                        "polygon_ids": line_obj.polygon_ids
+                    })
 
-            # 2. Asignar las nuevas dataclasses al workflow
-            self.workflow.tabular_lines = tabular_lines_dataclasses
-            
-            num_tab_lines = len(self.workflow.tabular_lines)
-            logger.debug(f"Guardadas {num_tab_lines} líneas tabulares en dataclasses y dict.")
-            for line_id, data in self.workflow.tabular_lines.items():
-                logger.debug(f"Línea tabular: {line_id} - Texto: {data.complete_text}")
-            return True
-            
+            logger.info(f"Marcadas {marked_count} líneas como tabulares")
+            if tabular_lines_info:
+                logger.info("Líneas tabulares detectadas (id, texto, encoded_text, polygon_ids):")
+                for log_info in tabular_lines_info:
+                    logger.info(f"  {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+
+            return marked_count > 0
+
         except Exception as e:
-            logger.error(f"Error guardando líneas tabulares: {e}", exc_info=True)
+            logger.error(f"Error marcando líneas como tabulares: {e}")
             return False
-            
+                
     def save_structured_table(self, df: pd.DataFrame, columns: List[str], semantic_types: Optional[List[str]] = None) -> bool:
         try:
             self.structured_table = StructuredTable(df=df, columns=columns, semantic_types=semantic_types)

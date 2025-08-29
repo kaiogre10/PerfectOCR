@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Tuple, Optional
 import math
 import time
 from core.factory.abstract_worker import VectorizationAbstractWorker
-from core.domain.data_models import Polygons, AllLines, TabularLines
+from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
 import pandas as pd # type: ignore
 
@@ -16,7 +16,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('table_structurer', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
-        self.output = self.enabled_outputs.get("table_structured", False)        
+        self.output = self.enabled_outputs.get("table_structured", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:
@@ -25,23 +25,24 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
 
-            tabular_lines: Dict[str, TabularLines] = manager.workflow.tabular_lines if manager.workflow else {}
+            tabular_line_ids: List[str] = [lid for lid, l in all_lines.items() if getattr(l, "tabular_line", False)]
 
-            if not tabular_lines or not all_lines or not polygons:
+            if not tabular_line_ids or not all_lines or not polygons:
                 logger.warning("GeometricTableStructurer: Faltan datos necesarios (líneas tabulares, all_lines o polígonos) para la estructuración.")
                 return False
 
             # Obtener la línea de encabezado detectada por el data_finder a través del contexto
-            header_line_id = context.get('header_line_ids', [])
+            hdr_ids = context.get('header_line_ids', [])
+            header_line_id = hdr_ids[0] if isinstance(hdr_ids, list) and hdr_ids else None
+            
             if header_line_id:
-                # Se asume que solo hay un encabezado detectado, tomar el primero
                 header_line = all_lines.get(header_line_id)
+            
                 if not header_line:
                     logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id} en all_lines.")
                     return False
             else:
                 # Si no hay encabezado detectado, fallback: usar la línea anterior a la primera tabular
-                tabular_line_ids = list(tabular_lines.keys())
                 if not tabular_line_ids:
                     logger.warning("No hay líneas tabulares detectadas para determinar el encabezado.")
                     return False
@@ -84,7 +85,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             # 3. Construir 'lines_table_only' (S) para todas las líneas tabulares
             lines_table_only = []
-            for line_id in tabular_lines:
+            for line_id in tabular_line_ids:
                 line_data = all_lines.get(line_id)
                 if not line_data:
                     continue

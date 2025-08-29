@@ -68,8 +68,11 @@ class DensityScanner(VectorizationAbstractWorker):
             if table_detection_result["status"] == "success" and table_detection_result["table_lines"]:
                 total_time: float = time.time() - start_time
                 logger.debug(f"Detección de tablas completada en {total_time:.4f}s")
+            
+            line_ids = table_detection_result.get("table_lines", [])
+            if line_ids:
                 
-                success: bool = manager.save_tabular_lines(table_detection_result)
+                success: bool = manager.save_tabular_lines(line_ids)
                 if not success:
                     logger.error("Error al guardar líneas tabulares en el workflow_dict")
                     return False

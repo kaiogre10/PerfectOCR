@@ -137,17 +137,6 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                 },
             },
         },
-        "tabular_lines": {
-           "type": "object",
-            "patternProperties": {
-            "line_id": {
-                "type": "object",
-                "properties": {
-                "texto": {"type": "string"}
-                },
-            },
-            },
-        },
     },
 }
 
@@ -312,11 +301,6 @@ class Polygons:
     was_fragmented: bool
     status: bool
     stage: str
-
-@dataclass
-class TabularLines:
-    lineal_id: str
-    complete_text: str
     
 @dataclass
 class LineGeometry:
@@ -349,4 +333,3 @@ class WorkflowDict:
     metadata:  Dict[str, Metadata]
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
-    tabular_lines: Dict[str, TabularLines]
