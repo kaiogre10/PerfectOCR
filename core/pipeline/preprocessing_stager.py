@@ -4,7 +4,7 @@ import time
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, Metadata
-from core.factory.abstract_worker import PreprossesingAbstractWorker
+from core.factory.abstract_worker import PreprocessingAbstractWorker
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ class PreprocessingStager:
     """
     Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
     """
-    def __init__(self, workers: List[PreprossesingAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
+    def __init__(self, workers: List[PreprocessingAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
         self.project_root = project_root
         self.workers = workers
         self.stage_config = stage_config

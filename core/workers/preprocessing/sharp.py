@@ -5,13 +5,13 @@ import numpy as np
 import logging
 from typing import Dict, Any, List
 from skimage.filters import unsharp_mask
-from core.factory.abstract_worker import PreprossesingAbstractWorker
+from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
-class SharpeningEnhancer(PreprossesingAbstractWorker):
+class SharpeningEnhancer(PreprocessingAbstractWorker):
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)

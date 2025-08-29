@@ -4,13 +4,13 @@ import numpy as np
 import logging
 import time
 from typing import Dict, Any, Tuple, List
-from core.factory.abstract_worker import PreprossesingAbstractWorker
+from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
-class MoireDenoiser(PreprossesingAbstractWorker):
+class MoireDenoiser(PreprocessingAbstractWorker):
     """Detecta y corrige patrones de moiré."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)

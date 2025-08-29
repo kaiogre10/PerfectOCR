@@ -19,7 +19,7 @@ class ImagePrepAbstractWorker(BaseWorker):
         """
         pass
     
-class PreprossesingAbstractWorker(BaseWorker):
+class PreprocessingAbstractWorker(BaseWorker):
     @abstractmethod
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """

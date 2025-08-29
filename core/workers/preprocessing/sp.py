@@ -4,13 +4,13 @@ import numpy as np
 import logging
 import time
 from typing import Dict, Any, List
-from core.factory.abstract_worker import PreprossesingAbstractWorker
+from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
     
-class DoctorSaltPepper(PreprossesingAbstractWorker):    
+class DoctorSaltPepper(PreprocessingAbstractWorker):    
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
