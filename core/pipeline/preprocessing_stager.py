@@ -32,7 +32,6 @@ class PreprocessingStager:
             worker_name = worker.__class__.__name__
             logger.debug(f"[PreprocessingStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
                     
-                # Contexto individual para cada polígono
             context: Dict[str, Any] = {
                 "polygons": polygons,
                 "metadata": metadata,

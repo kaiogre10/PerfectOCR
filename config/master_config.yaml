@@ -54,7 +54,7 @@ enabled_outputs:
   reconstructed_lines: false
   table_lines: false
   table_structured: false
-  math_max_corrected: false
+  math_max_corrected: true
 
 # Configuración de procesamiento
 processing:

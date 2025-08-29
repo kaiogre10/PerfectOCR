@@ -21,7 +21,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('math_max', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
-        self.output = self.enabled_outputs.get("table_structured", False)
+        self.output = self.enabled_outputs.get("math_max_corrected", False)
         self.total_mtl_tolerance = self.config.get('total_mtl_abs_tolerance', 0.05)
         self.arithmetic_tolerance = self.config.get('row_relative_tolerance', 0.05)
         
@@ -36,6 +36,8 @@ class MatrixSolver(VectorizationAbstractWorker):
                 return False
 
             corrected_df, final_semantic_types = self.solve(df)
+            if self.output:
+                self._save_debug_table(manager, context, corrected_df)
 
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
@@ -228,3 +230,24 @@ class MatrixSolver(VectorizationAbstractWorker):
     def to_float(self, v: Any) -> float:
 
         return float(v)
+
+    def _save_debug_table(self, manager: DataFormatter, context: Dict[str, Any], corrected_df: pd.DataFrame):
+        from services.output_service import save_table
+        import os
+        header_line: List[str] = []
+        if manager and manager.workflow and manager.workflow.all_lines:
+            for line_obj in manager.workflow.all_lines.values():
+                if line_obj.header_line:
+                    header_line.append(line_obj.text)
+        if not header_line:
+            header_line = list(corrected_df.columns)
+        
+        file_name = context.get("image_name")
+        output_paths = context.get("output_paths", [])
+        for path in output_paths:
+            output_dir = os.path.join(path, "math_max")
+            file_name = (f"{file_name}math_max_corrected.csv")
+            save_table(corrected_df, output_dir, file_name, header_line)
+        
+        if output_paths:
+            logger.info(f"Tabla corregida matemáticamente '{file_name}' guardada en {len(output_paths)} ubicaciones.")

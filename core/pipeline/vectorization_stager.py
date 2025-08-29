@@ -26,6 +26,7 @@ class VectorizationStager:
         logger.debug("[VectorStager] Iniciando pipeline de vectorización")
         metadata: Dict[str, Metadata] = manager.workflow.metadata if manager.workflow else {}
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+        image_name: str = metadata.image_name if manager.workflow else {}
                 
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
@@ -37,6 +38,7 @@ class VectorizationStager:
                 "metadata": metadata,
                 "output_paths": self.output_paths,
                 "project_root": self.project_root,
+                "image_name": image_name
             }
                 
             result = worker.vectorize(context, manager)

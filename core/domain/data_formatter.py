@@ -483,25 +483,17 @@ class DataFormatter:
             return False
 
     def update_lines_metadata(self, updates: List[Tuple[str, Dict[str, Any]]]):
-        """
-        Actualiza las líneas (AllLines y TabularLines) con nuevos campos de metadatos.
-        """
+        """Actualiza las líneas (AllLines y TabularLines) con nuevos campos de metadatos."""
         if not self.workflow:
             return
-
-        for line_id, data_to_update in updates:
-            # Actualiza en TabularLines, que es el objetivo principal
-            if line_id in self.workflow.tabular_lines:
-                tabular_line_obj = self.workflow.tabular_lines[line_id]
-                for key, value in data_to_update.items():
-                    setattr(tabular_line_obj, key, value)
             
+        for line_id, data_to_update in updates:
             # También es buena idea marcar la línea en la lista global (AllLines)
             if line_id in self.workflow.all_lines:
                 line_obj = self.workflow.all_lines[line_id]
                 # Marcarla como header si la clave existe en la actualización
                 if 'header_line' in data_to_update:
-                    line_obj.header_line = data_to_update['header_line'] # Asumiendo que AllLines tiene un campo 'is_header')
+                    line_obj.header_line = data_to_update['header_line']
 
     def _parse_number(self, s: Any):
         try:
