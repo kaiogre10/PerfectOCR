@@ -51,40 +51,50 @@ class WordFinder:
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Modelo no encontrado en {model_path}")
         with open(model_path, "rb") as f:
-            model = pickle.load(f)
-        if not isinstance(model, dict):
+            self.model = pickle.load(f)
+        if not isinstance(self.model, dict):
             raise ValueError("El pickle no tiene el formato esperado (dict).")
-        return model
+        return self.model
 
     def _apply_active_model(self):
         # listas
-        self.global_words: List[str] = [self._normalize(str(w)) for w in self.model.get("global_words", []) or []]
+        self.key_words: List[str] = [self._normalize(str(w)) for w in self.model.get("key_words", []) or []]
         self.header_words: List[str] = [self._normalize(str(w)) for w in self.model.get("header_words", []) or []]
-        self.combined_words: List[str] = self.model.get("combined_words") or list(dict.fromkeys(self.global_words + self.header_words))
+        self.combined_words: List[str] = self.model.get("combined_words") or list(dict.fromkeys(self.key_words + self.header_words))
         
-        # mapping
-        vt: Dict[str, str] = self.model.get("variant_to_field", {}) or {}
-        self.variant_to_field: Dict[str, Any] = {self._normalize(str(k)): v for k, v in vt.items()}
+        # mapping headers
+        self.vt_header: Dict[str, str] = self.model.get("variant_to_header_category", {}) or {}
+        self.variant_to_header_category: Dict[str, str] = {self._normalize(str(k)): v for k, v in self.vt_header.items()}
+        
+        # mapping para key_fields
+        vt_field: Dict[str, str] = self.model.get("variant_to_field", {}) or {}
+        self.variant_to_field: Dict[str, str] = {self._normalize(str(k)): v for k, v in vt_field.items()}
         
         # params
-        params: Dict[str, Any] = self.model.get("params", {}) or {}
-        ngr = params.get("char_ngram_range", [2, 5]) or [2, 5]
+        self.params: Dict[str, Any] = self.model.get("params", {}) or {}
+        self.ngr = self.params.get("char_ngram_range", [2, 5]) or [2, 5]
+        # Cargar estadísticas del modelo
+        self.density_encoder: Dict[str, float] = self.model.get("density_encoder", {})
+        self.field_stats: Dict[str, Dict[str, List[float]]] = self.model.get("field_stats", {})
+        self.normalized_stats: Dict[str, Dict[str, float]] = self.model.get("normalized_stats", {})
+        self.MAX_CHAR_COUNT = 20.0
+        self.MAX_MEAN = 113.0
         try:
-            self.n_min, self.n_max = int(ngr[0]), int(ngr[1])
+            self.n_min, self.n_max = int(self.ngr[0]), int(self.ngr[1])
         except Exception:
             self.n_min, self.n_max = 2, 5
         if self.n_min < 1 or self.n_max < self.n_min:
             self.n_min, self.n_max = 2, 5
             
-        self.threshold = float(params.get("threshold_similarity", 0.60))
-        self.thresholds_by_len: Dict[Any, Any] = params.get("thresholds_by_len", {}) or {}
+        self.threshold = float(self.params.get("threshold_similarity", 0.60))
+        self.thresholds_by_len: Dict[Any, Any] = self.params.get("thresholds_by_len", {}) or {}
         
         # pesos por n-grama (inversos)
-        wb = params.get("weights_by_n", {})
+        self.wb = self.params.get("weights_by_n", {})
         self.weights_by_n: Dict[int, float] = {}
-        if wb and isinstance(wb, dict):
+        if self.wb and isinstance(self.wb, dict):
             for n in range(self.n_min, self.n_max + 1):
-                self.weights_by_n[n] = float(wb.get(str(n), 1.0))
+                self.weights_by_n[n] = float(self.wb.get(str(n), 1.0))
         else:
             # pesos por defecto inversos
             for n in range(self.n_min, self.n_max + 1):
@@ -95,17 +105,17 @@ class WordFinder:
                 else: self.weights_by_n[n] = 1.0
 
         # índice precomputado desde el pickle
-        grams_index = self.model.get("grams_index")
+        self.grams_index = self.model.get("grams_index")
         self.grams: List[Dict[int, set[str]]] = []
         self.lengths: List[int] = []
         
-        if grams_index:
-            for entry in grams_index:
+        if self.grams_index:
+            for entry in self.grams_index:
                 length = int(entry.get("len", 0))
-                gmap_raw: Dict[int, List[str]] = entry.get("grams", {}) or {}
+                self.gmap_raw: Dict[int, List[str]] = entry.get("grams", {}) or {}
                 gmap_sets: Dict[int, set[str]] = {}
                 for n in range(self.n_min, self.n_max + 1):
-                    gmap_sets[n] = set(gmap_raw.get(n, []) or [])
+                    gmap_sets[n] = set(self.gmap_raw.get(n, []) or [])
                 self.lengths.append(length)
                 self.grams.append(gmap_sets)
         else:
@@ -113,16 +123,16 @@ class WordFinder:
             self.grams = []
             self.lengths = []
             for w in self.combined_words:
-                length = len(w)
-                self.lengths.append(length)
+                self.length = len(w)
+                self.lengths.append(self.length)
                 gmap_sets: Dict[int, set[str]] = {}
                 for n in range(self.n_min, self.n_max + 1):
                     gmap_sets[n] = set(self._ngrams(w, n))
                 self.grams.append(gmap_sets)
 
         # buckets por longitud
-        buckets: Dict[int, List[int]] = self.model.get("buckets_by_len") or {}
-        self.buckets_by_len: Dict[int, List[int]] = {int(k): list(v) for k, v in buckets.items()}
+        self.buckets: Dict[int, List[int]] = self.model.get("buckets_by_len") or {}
+        self.buckets_by_len: Dict[int, List[int]] = {int(k): list(v) for k, v in self.buckets.items()}
         if not self.buckets_by_len:
             for i, length in enumerate(self.lengths):
                 self.buckets_by_len.setdefault(length, []).append(i)
@@ -130,8 +140,8 @@ class WordFinder:
     def _len_threshold(self, length: int) -> float:
         """Obtiene umbral por longitud del candidato"""
         if self.thresholds_by_len:
-            int_keys = sorted([int(k) for k in self.thresholds_by_len.keys() if str(k).isdigit()])
-            for k in int_keys:
+            self.int_keys = sorted([int(k) for k in self.thresholds_by_len.keys() if str(k).isdigit()])
+            for k in self.int_keys:
                 if length <= k:
                     try:
                         return float(self.thresholds_by_len.get(str(k), self.thresholds_by_len.get(k, self.threshold)))
@@ -172,6 +182,47 @@ class WordFinder:
         if den <= 0.0:
             return 0.0
         return num / den
+        
+    def _calculate_query_stats(self, query: str, field: str) -> Dict[str, float]:
+        """Calcula estadísticas normalizadas para la query"""
+        chars = list(query)
+        values = [self.density_encoder.get(c, 0) for c in chars]
+        char_count = float(len(query))
+        mean_val = sum(values) / char_count if char_count else 0.0
+        variance = sum((v - mean_val) ** 2 for v in values) / char_count if char_count else 0.0
+        std_dev = variance ** 0.5
+        
+        # Normalizar igual que en el modelo
+        norm_stats = {}
+        norm_stats["char_count_n"] = min(char_count / self.MAX_CHAR_COUNT, 1.0)
+        norm_stats["mean_n"] = mean_val / self.MAX_MEAN
+        
+        # Normalización por campo para variance y std_dev
+        if field in self.field_stats:
+            var_min, var_max = min(self.field_stats[field]["variance"]), max(self.field_stats[field]["variance"])
+            std_min, std_max = min(self.field_stats[field]["std_dev"]), max(self.field_stats[field]["std_dev"])
+            norm_stats["variance_n"] = (variance - var_min) / (var_max - var_min) if var_max != var_min else 1.0
+            norm_stats["std_dev_n"] = (std_dev - std_min) / (std_max - std_min) if std_max != std_min else 1.0
+        else:
+            norm_stats["variance_n"] = 0.0
+            norm_stats["std_dev_n"] = 0.0
+        
+        return norm_stats
+
+    def _stats_similarity(self, stats_a: Dict[str, float], stats_b: Dict[str, float]) -> float:
+        """Calcula similitud coseno entre vectores de estadísticas"""
+        vector_a = [stats_a.get("char_count_n", 0), stats_a.get("mean_n", 0), 
+                    stats_a.get("variance_n", 0), stats_a.get("std_dev_n", 0)]
+        vector_b = [stats_b.get("char_count_n", 0), stats_b.get("mean_n", 0), 
+                    stats_b.get("variance_n", 0), stats_b.get("std_dev_n", 0)]
+        
+        dot_product = sum(a * b for a, b in zip(vector_a, vector_b))
+        norm_a = sum(a * a for a in vector_a) ** 0.5
+        norm_b = sum(b * b for b in vector_b) ** 0.5
+        
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return dot_product / (norm_a * norm_b)
 
     def _build_query_grams(self, q: str) -> Dict[int, set[str]]:
         """Construye n-gramas de la consulta"""
@@ -201,21 +252,40 @@ class WordFinder:
             best_idx = None
             best_score = 0.0
 
-            # Comparar contra TODOS los candidatos (sin filtrar por longitud)
+            # Comparar contra TODOS los candidatos
             for i in range(len(self.combined_words)):
-                score = self._score_binary_cosine_multi_n(self.grams[i], grams_q)
-                if score > best_score:
-                    best_score = score
+                cand = self.combined_words[i]
+                
+                # Score de n-gramas
+                ngram_score = self._score_binary_cosine_multi_n(self.grams[i], grams_q)
+                
+                # Score de estadísticas (si están disponibles)
+                stats_score = 0.0
+                field = self.variant_to_field.get(cand)
+                if field and cand in self.normalized_stats:
+                    query_stats = self._calculate_query_stats(q, field)
+                    candidate_stats = self.normalized_stats[cand]
+                    stats_score = self._stats_similarity(query_stats, candidate_stats)
+                
+                # Score combinado (70% n-gramas, 30% estadísticas)
+                combined_score = 0.7 * ngram_score + 0.3 * stats_score
+                
+                if combined_score > best_score:
+                    best_score = combined_score
                     best_idx = i
 
+            # FUERA DEL LOOP - Procesar mejor candidato
             if best_idx is not None:
                 cand = self.combined_words[best_idx]
                 thr = self._len_threshold(len(cand))
                 
                 if best_score >= thr:
-                    field = self.variant_to_field.get(cand)
+                    key_field = self.variant_to_field.get(cand)
+                    header_category = self.variant_to_header_category.get(cand)
+                    
                     results.append({
-                        "field": field,
+                        "key_field": key_field,
+                        "header_category": header_category,
                         "word_found": cand,
                         "similarity": float(best_score),
                         "query": q
@@ -226,14 +296,20 @@ class WordFinder:
     def get_model_info(self):
         return {
             "total_words": len(self.combined_words),
-            "vocabulario_size": None,
             "threshold_similarity": self.threshold,
-            "global_words": len(self.global_words),
-            "header_words": len(self.header_words),
+            "variant_to_field_mappings": len(self.variant_to_field),
+            "variant_to_header_mappings": len(self.variant_to_header_category),
             "combined_words": len(getattr(self, "combined_words", [])),
-            "campos_disponibles": list(self.model.get("key_fields", {}).keys())
+            "campos_disponibles": list(self.model.get("key_words", {}).keys()) if isinstance(self.model.get("key_words"), dict) else [],
+            "header_categories": list(self.model.get("header_words", {}).keys()) if isinstance(self.model.get("header_words"), dict) else [],
+            "density_encoder_loaded": len(self.density_encoder) > 0,
+            "fields_with_stats": len(self.field_stats),
+            "words_with_normalized_stats": len(self.normalized_stats),
+            "statistics_enabled": len(self.normalized_stats) > 0,
+            "char_ngram_range": self.ngr,
+            "weights_by_n": self.weights_by_n
         }
-
+        
     def _regex_patterns_rfc(self, query: str) -> float:
         """Patrones regex específicos para RFC con formato real"""
         # RFC real: 4 letras + 6 números + 3 alfanuméricos (13 chars total)
@@ -265,7 +341,6 @@ class WordFinder:
                     return 0.80
                 else:
                     return 0.70
-        
         return 0.0
 
     def _regex_patterns_fecha(self, query: str) -> tuple[float, str]:

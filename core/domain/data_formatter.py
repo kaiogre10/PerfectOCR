@@ -397,8 +397,7 @@ class DataFormatter:
             if not valid_lines:
                 logger.warning("No hay líneas válidas para procesar.")
                 return True
-
-            # --- LÓGICA NUEVA PARA DATACLASSES ---
+                
             all_lines_dataclasses: Dict[str, AllLines] = {}
             for line_id, line_data in valid_lines.items():
                 line_geometry = LineGeometry(
@@ -406,7 +405,6 @@ class DataFormatter:
                     line_bbox=line_data.get("line_bbox", [0, 0, 0, 0])
                 )
                 
-                # La codificación de texto se hará después en get_encode_lines
                 all_lines_dataclasses[line_id] = AllLines(
                     lineal_id=line_id,
                     text=line_data.get("text", ""),
@@ -417,7 +415,6 @@ class DataFormatter:
                     header_line=False 
                 )
             
-            # Actualiza la fuente de verdad (dataclasses)
             self.workflow.all_lines = all_lines_dataclasses
             
             num_lines = len(all_lines_dataclasses)
@@ -428,36 +425,34 @@ class DataFormatter:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
             return False        
             
-
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
         """
         Identifica las líneas tabulares y las guarda como dataclasses TabularLines
         en el workflow. También actualiza el flag en AllLines.
-        Además, loguea las líneas tabulares con su texto.
         """
         try:
             if not self.workflow or not line_ids:
                 return False
 
             marked_count = 0
-            tabular_lines_info = []
+            # tabular_lines_info = []
             for line_id in line_ids:
                 if line_id in self.workflow.all_lines:
                     self.workflow.all_lines[line_id].tabular_line = True
                     marked_count += 1
                     # Guardar info para log
-                    line_obj = self.workflow.all_lines[line_id]
-                    tabular_lines_info.append({
-                        "line_id": line_id,
-                        "text": line_obj.text,
-                        "polygon_ids": line_obj.polygon_ids
-                    })
+                    # line_obj = self.workflow.all_lines[line_id]
+                    # tabular_lines_info.append({
+                    #     "line_id": line_id,
+                    #     "text": line_obj.text,
+                    #     "polygon_ids": line_obj.polygon_ids
+                    # })
 
-            logger.info(f"Marcadas {marked_count} líneas como tabulares")
-            if tabular_lines_info:
-                logger.info("Líneas tabulares detectadas (id, texto, encoded_text, polygon_ids):")
-                for log_info in tabular_lines_info:
-                    logger.info(f"  {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+            # # logger.info(f"Marcadas {marked_count} líneas como tabulares")
+            # if tabular_lines_info:
+            #     logger.info("Líneas tabulares detectadas (id, texto, encoded_text, polygon_ids):")
+            #     for log_info in tabular_lines_info:
+            #         logger.info(f"  {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
 
             return marked_count > 0
 

@@ -83,7 +83,6 @@ def save_ocr_json(manager: DataFormatter, output_folder: str, image_name: str) -
     except Exception as e:
         logger.error(f"Error guardando resultados OCR en JSON: {e}")
         
-
 def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, header_text: List[str]) -> Optional[str]:
     """
     Guarda una tabla estructurada en formato CSV (compatible con Excel).
@@ -103,8 +102,39 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
             writer.writerow(header_text)
             # Escribimos las filas del DataFrame, no solo los nombres de columnas
             for row in corrected_df.itertuples(index=False, name=None):
-                writer.writerow(row)
+                writer.writerow(row)                
+        try:
+            _append_table_to_master(
+                corrected_df=corrected_df,
+                output_dir=output_dir,
+                section_title=os.path.splitext(os.path.basename(file_name))[0],
+                header_text=header_text,
+                master_filename="tables_master.csv"
+            )
+        except Exception as e:
+            logger.error(f"error generando el tables_master: {e}", exc_info=True)
+                        
         return output_file
     except Exception as e:
-        logger.error(f"Error guardando CSV: {e}")
+        logger.error(f"Error guardando CSV: {e}", exc_info=True)
         return None
+        
+def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section_title: str, header_text: List[str], master_filename: str = "tables_master.csv") -> Optional[str]:
+    """
+    Appendea una tabla a un único CSV maestro con secciones, manteniendo headers por tabla.
+    Formato:
+      # --- <section_title> ---
+      <header>
+      <rows...>
+      <blank line>
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    master_path = os.path.join(output_dir, master_filename)
+    with open(master_path, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow([f"# --- {section_title} ---"])
+        writer.writerow(header_text if (header_text and len(header_text) > 0) else list(corrected_df.columns))
+        for row in corrected_df.itertuples(index=False, name=None):
+            writer.writerow(row)
+        writer.writerow([])  # separador entre tablas
+    return master_path

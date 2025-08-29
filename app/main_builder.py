@@ -1,4 +1,4 @@
-# PerfectOCR/activate_main.py
+# PerfectOCR/main_builder.py
 import time
 import logging
 from typing import Optional, List, Dict, Any
@@ -162,13 +162,24 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
     """Ejecuta el procesamiento para cada builder."""
     results: Dict[str, Any] = {}
     image_info_list = workflow_report.get('image_info', [])
+    total_processing_time = 0.0
 
     for i, builder in enumerate(builders):
         if i < len(image_info_list):
-            image_data = image_info_list[i] 
+            image_data = image_info_list[i]
+            start_time = time.perf_counter()
             result = builder.process_single_image()
-            results[image_data.get('name', f'imagen_{i}')] = result
+            end_time = time.perf_counter()
+            total_processing_time += (end_time - start_time)
 
+            results[image_data.get('name', f'imagen_{i}')] = result
+            
+    logger.info(f"=== RESUMEN FINAL ===")
+    logger.info(f"Total de imágenes procesadas: {len(results)}")
+    logger.info(f"Tiempo total acumulado: {total_processing_time:.6f}s")
+    logger.info(f"Tiempo promedio por imagen: {total_processing_time/len(results):.6f}s")
+
+    
     return {
         "mode": workflow_report.get('mode', 'unknown'),
         "processed": len(results),

@@ -42,7 +42,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
             total_time = time.time() - start_time
-            logger.info(f"[MatrixSolver] Corrección matemática completada en {total_time:.6f}s,  Se encontraron {len(corrected_df)} filas.")
+            logger.info(f"[MatrixSolver] Corrección matemática completada en {total_time:.6f}s, Se encontraron {len(corrected_df)} filas.")
             return True
         except Exception as e:
             logger.error(f"Error en MatrixSolver.vectorize: {e}", exc_info=True)

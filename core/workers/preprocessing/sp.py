@@ -78,7 +78,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 analysis_results = metrics[idx]
                 ksize = int(ksizes[idx])
 
-                logger.debug(f"Poly '{poly_id}': Aplicando filtro S&P con k-size: {ksize}")
+                # logger.debug(f"Poly '{poly_id}': Aplicando filtro S&P con k-size: {ksize}")
 
                 corrected_img = self._apply_sp_correction(
                     analysis_results,
