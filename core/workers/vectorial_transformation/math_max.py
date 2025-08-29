@@ -234,20 +234,25 @@ class MatrixSolver(VectorizationAbstractWorker):
     def _save_debug_table(self, manager: DataFormatter, context: Dict[str, Any], corrected_df: pd.DataFrame):
         from services.output_service import save_table
         import os
-        header_line: List[str] = []
+        header_text: List[str] = []
         if manager and manager.workflow and manager.workflow.all_lines:
             for line_obj in manager.workflow.all_lines.values():
                 if line_obj.header_line:
-                    header_line.append(line_obj.text)
-        if not header_line:
-            header_line = list(corrected_df.columns)
-        
+                    for poly_id in line_obj.polygon_ids:
+                        if poly_id in manager.workflow.polygons:
+                            poly_text = manager.workflow.polygons[poly_id].ocr_text
+                            if poly_text:        
+                                header_text.append(poly_text)
+                    break
+        if not header_text:
+            header_text = list(corrected_df.columns)
+            
         file_name = context.get("image_name")
         output_paths = context.get("output_paths", [])
         for path in output_paths:
             output_dir = os.path.join(path, "math_max")
             file_name = (f"{file_name}math_max_corrected.csv")
-            save_table(corrected_df, output_dir, file_name, header_line)
+            save_table(corrected_df, output_dir, file_name, header_text)
         
         if output_paths:
             logger.info(f"Tabla corregida matemáticamente '{file_name}' guardada en {len(output_paths)} ubicaciones.")

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Optional, Any, List
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Metadata, AllLines
+from core.domain.data_models import Metadata
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ def save_ocr_json(manager: DataFormatter, output_folder: str, image_name: str) -
         logger.error(f"Error guardando resultados OCR en JSON: {e}")
         
 
-def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, header_line: List[str]) -> Optional[str]:
+def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, header_text: List[str]) -> Optional[str]:
     """
     Guarda una tabla estructurada en formato CSV (compatible con Excel).
     Args:
@@ -100,7 +100,7 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
         output_file = os.path.join(output_dir, file_name)
         with open(output_file, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(header_line)
+            writer.writerow(header_text)
             # Escribimos las filas del DataFrame, no solo los nombres de columnas
             for row in corrected_df.itertuples(index=False, name=None):
                 writer.writerow(row)
