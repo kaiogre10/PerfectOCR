@@ -419,8 +419,10 @@ class DataFormatter:
             
             num_lines = len(all_lines_dataclasses)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas en workflow_dict y dataclasses.")
+            # Mostrar todas las líneas de texto completas
             for line_id, line_data in self.workflow.all_lines.items():
-                return True
+                logger.info(f"Línea {line_id}: '{line_data.text}'")
+            return True
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
             return False        

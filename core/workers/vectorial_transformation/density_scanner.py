@@ -23,7 +23,7 @@ class DensityScanner(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time: float = time.time()
-            logger.debug("Scanner iniciado")
+            logger.info("Scanner iniciado")
             
             img_dims = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {} # type: ignore
             if not img_dims:
@@ -124,7 +124,6 @@ class DensityScanner(VectorizationAbstractWorker):
             # Aplicar DBSCAN
             table_indices: List[int] = self._apply_dbscan_clustering(valid_analyses, valid_indices, words)
             
-            # Expandir a intervalo consecutivo
             if table_indices:
                 consecutive_indices: List[int] = self._expand_to_consecutive_interval(table_indices)
                 table_line_ids: List[str] = [line_ids[i] for i in consecutive_indices if i < len(line_ids)]
@@ -132,10 +131,15 @@ class DensityScanner(VectorizationAbstractWorker):
                 consecutive_indices = []
                 table_line_ids = []
             
+            # Añadir retorno con índices 0-based (programático), posiciones 1-based (humanas)
+            table_indices_1based: List[int] = [i + 1 for i in consecutive_indices]
+            table_line_map: Dict[str, int] = {line_ids[i]: (i + 1) for i in consecutive_indices if i < len(line_ids)}
+
             return {
                 "status": "success",
-                "table_lines": table_line_ids,
-                "table_indices": consecutive_indices,
+                "table_lines": table_line_ids,        # lista de line_ids (sin cambios)
+                "table_indices": table_indices_1based, # índices empezando en 1 (1-based)
+                "table_line_map": table_line_map,     # { line_id: index_1based }
                 "total_lines_analyzed": len(line_ids),
                 "table_lines_count": len(table_line_ids)
             }
@@ -143,6 +147,7 @@ class DensityScanner(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"Error detectando tablas: {e}")
             return {"status": "error", "table_lines": []}
+# ...existing code...
         
     def _analyze_encoded_line(self, line_id: str, line_values: List[int], geometric_features: Dict[str, float]) -> Optional[Dict[str, Dict[str, float]]]:
         """Analiza una línea codificada y retorna estadísticas."""
