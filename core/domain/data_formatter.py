@@ -35,10 +35,6 @@ class DataFormatter:
                     "height": int(metadata.get("img_dims", {}).get("height")),
                     "size": int(metadata.get("img_dims", {}).get("size")),
                 },
-                "dpi": (
-                    metadata.get("dpi") if isinstance(metadata.get("dpi"), dict)
-                    else {"x": float(metadata.get("dpi", 0)), "y": None}
-                ),
                 "date_creation": metadata.get("date_creation", datetime.now().isoformat()),
                 "color": str(metadata.get("color", "")) if metadata.get("color") is not None else None
             },
@@ -52,7 +48,6 @@ class DataFormatter:
                 image_name=self.temp_dict["metadata"]["image_name"],
                 format=self.temp_dict["metadata"]["format"],
                 img_dims=self.temp_dict["metadata"]["img_dims"],
-                dpi=self.temp_dict["metadata"]["dpi"],
                 date_creation=self.temp_dict["metadata"]["date_creation"],
                 color=self.temp_dict["metadata"]["color"]
             )

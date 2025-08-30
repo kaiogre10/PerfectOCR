@@ -150,6 +150,9 @@ class DataFinder(VectorizationAbstractWorker):
             logger.info("_find_headers: no se encontraron encabezados, retornando []")
             return []
         
+        model_info = wf.get_model_info()
+        logger.info(f"{model_info}")
+        
         # Seleccionar solo la línea más arriba (menor índice)
         header_line_id = min(lines_with_headers, key=lambda x: int(x.split('_')[1]))
         header_index = line_ids.index(header_line_id)

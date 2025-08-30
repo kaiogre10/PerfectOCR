@@ -43,7 +43,6 @@ class ImageLoader:
                     "height": None,
                     "size": None
                 },
-            "dpi": None,
             "color": None,
         }
 
@@ -80,21 +79,11 @@ class ImageLoader:
         
         try:
             with Image.open(input_path) as img:
-
                 metadata["color"] = img.mode
-                dpi_info: Optional[Dict[str, Optional[float]]] = img.info['dpi']
-            if dpi_info and isinstance(dpi_info, tuple) and len(dpi_info) == 2: 
-                metadata["dpi"] = float(dpi_info[0]) 
-            elif dpi_info and isinstance(dpi_info, (int, float)):
-                metadata["dpi"] = float(dpi_info)
-            else:
-                metadata["dpi"] = None
             logger.info(f"Loader completado en en {time.perf_counter() - start_time:.6f}s para {image_name}")
             logger.debug(f" metadata: {metadata}")
             return gray_image, metadata
 
         except Exception as e:
-            error_msg = f"Error al  la imagen '{input_path}': {e}"
-            logger.error(error_msg)
-            metadata['error'] = error_msg
+            logger.info(f"Error al  la imagen '{input_path}': {e}", exc_info=True)
             return None, metadata

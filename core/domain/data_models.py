@@ -23,17 +23,6 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                         "size": {"type": "integer"},
                     },
                 },
-                "dpi": {
-                    "anyOf": [
-                        {
-                        "type": "object",
-                        "properties": {
-                            "x": {"type": "number"},
-                            "y": {"type": "null"}
-                            }
-                        },
-                    ],
-                },
                 "date_creation": {"type": "string"},
                 "color": {"type": ["string", "null"]}
             },
@@ -320,16 +309,15 @@ class AllLines:
 @dataclass(frozen=True)
 class Metadata:
     image_name: str
-    format: str
+    format: Optional[str]
     img_dims: Dict[str, int]
-    dpi: Optional[Dict[str, Optional[float]]]
-    date_creation: str
+    date_creation: Optional[str]
     color: Optional[str]
 
 @dataclass
 class WorkflowDict:
     dict_id: str
     full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
-    metadata:  Dict[str, Metadata]
+    metadata: Metadata
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
