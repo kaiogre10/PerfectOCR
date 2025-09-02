@@ -294,7 +294,7 @@ class WordFinder:
         return results if not single else (results[0:1] if results else [])
 
     def get_model_info(self):
-        return {
+        model_info: Dict[str, Any] = {
             "total_words": len(self.combined_words),
             "threshold_similarity": self.threshold,
             "variant_to_field_mappings": len(self.variant_to_field),
@@ -309,6 +309,8 @@ class WordFinder:
             "char_ngram_range": self.ngr,
             "weights_by_n": self.weights_by_n
         }
+
+        return model_info
         
     def _regex_patterns_rfc(self, query: str) -> float:
         """Patrones regex específicos para RFC con formato real"""

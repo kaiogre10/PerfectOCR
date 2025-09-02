@@ -99,8 +99,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                     analysis_results,
                     threshold
                 )
-
-                # **MODIFICACIÓN IN-LINE: Actualizar el atributo de la dataclass directamente**
+                
                 polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:

@@ -149,7 +149,7 @@ class PreprocessingConfig(ConfigWithNumpy):
                 
 class OCRConfig(ConfigWithNumpy):
     text_cleaner: TextualConfig
-    binarize: Binarization  
+    binarizator: Binarization  
     fragmentation: Fragmentador
 
 class DataFinder(ConfigWithNumpy):

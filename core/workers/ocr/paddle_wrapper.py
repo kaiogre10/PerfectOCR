@@ -39,7 +39,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.perf_counter()
-        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}        
+        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
         logger.info(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
         
         # Preparar batch usando dataclasses

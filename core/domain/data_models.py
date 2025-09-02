@@ -9,7 +9,18 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
     "type": "object",
     "properties": {
         "dict_id": {"type": "string"},
-        "full_img": {"anyOf": [{"type": "array"}, {"type": "object", "hasOwnProperty": "shape"}]}, 
+        "full_img": {"anyOf": [{"type": "array"}, {"type": "object", "hasOwnProperty": "shape"}]},
+        "global_data": {
+            "type": "object",
+            "properties": {
+                "rfc": {"type": ["string", "null"]},
+                "date": {"type": ["string", "null"]},
+                "total": {"type": ["string", "null"]},
+                "subtotal": {"type": ["string", "null"]},
+                "iva": {"type": ["string", "null"]},
+                "folio": {"type": ["string", "null"]},
+            }
+        },
         "metadata": {
             "type": "object",
             "properties": {
@@ -21,6 +32,7 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                         "width": {"type": "integer"},
                         "height": {"type": "integer"},
                         "size": {"type": "integer"},
+
                     },
                 },
                 "date_creation": {"type": "string"},
@@ -262,6 +274,15 @@ class StructuredTable:
     semantic_types: Optional[List[str]] = None
     
 @dataclass
+class GlobalData:
+    rfc: Optional[str]
+    date: Optional[str]
+    total: Optional[str]
+    subtotal: Optional[str]
+    iva: Optional[str]
+    folio: Optional[str]
+
+@dataclass
 class CroppedGeometry:
     padd_centroid: np.ndarray[Any, Any]  # shape: (2,)
     padding_coords: np.ndarray[Any, Any]  # shape: (4,) 
@@ -316,8 +337,10 @@ class Metadata:
 
 @dataclass
 class WorkflowDict:
-    dict_id: str
+    IDRegistro: str
     full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
+    global_data: Dict[str, GlobalData]
     metadata: Metadata
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
+

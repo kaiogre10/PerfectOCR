@@ -59,6 +59,8 @@ class ProcessingBuilder:
                 else:
                     vect_total = vect_time  # vect_time ya es la duración
                     logger.info(f"Vectorización time {vect_total:.6f}s")
+            
+            results = manager.to_db_payload()
                                     
             total_workflow_time = time.perf_counter() - workflow_start
             logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.6f}s")

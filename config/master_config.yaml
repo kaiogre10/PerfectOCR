@@ -130,7 +130,7 @@ modules:
     text_cleaner:
       min_confidence: 70.0
     
-    binarize:
+    binarizator:
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]

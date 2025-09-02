@@ -29,7 +29,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         try:
             start_time = time.time()
 
-            # Recupera el DataFrame estructurado directamente de memoria
             df = manager.get_structured_table()
             if df is None or df.empty:
                 logger.warning("[MatrixSolver] No hay tabla estructurada para procesar")
@@ -107,7 +106,6 @@ class MatrixSolver(VectorizationAbstractWorker):
                 rows_with_two_missing.append(i)
                 continue
 
-            # Completar un faltante si es posible
             try:
                 if np.isnan(mtl) and (not np.isnan(c)) and (not np.isnan(pu)):
                     reconstructed[i, mtl_idx] = c * pu
@@ -130,7 +128,6 @@ class MatrixSolver(VectorizationAbstractWorker):
                         else:
                             reconstructed[i, mtl_idx] = c * pu
             except ZeroDivisionError:
-                # Si ocurre, deja la fila como está
                 pass
 
         # --- FASE 3: Integración al DF original ---

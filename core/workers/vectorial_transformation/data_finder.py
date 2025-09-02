@@ -132,9 +132,9 @@ class DataFinder(VectorizationAbstractWorker):
                 continue
 
             try:    
-                matches: List[Dict[str, Any]] = wf.find_keywords(text)
+                results: List[Dict[str, Any]] = wf.find_keywords(text)
                 
-                if matches:
+                if results:
                     matched += 1
                     line_id = polygon_to_line.get(str(pid))
                     if line_id:
@@ -144,14 +144,14 @@ class DataFinder(VectorizationAbstractWorker):
             except Exception as e:
                 logger.exception(f"_find_headers: WordFinder error con polygon {pid}: {e}", exc_info=True)
 
-        logger.debug(f"_find_headers: processed={processed}, matches={matched}, lines_with_headers={len(lines_with_headers)}")
+        logger.debug(f"_find_headers: processed={processed}, matches={results}, lines_with_headers={len(lines_with_headers)}")
 
         if not lines_with_headers:
             logger.info("_find_headers: no se encontraron encabezados, retornando []")
             return []
         
-        model_info = wf.get_model_info()
-        logger.info(f"{model_info}")
+        # model_info = wf.get_model_info()
+        # logger.info(f"{model_info}")
         
         # Seleccionar solo la línea más arriba (menor índice)
         header_line_id = min(lines_with_headers, key=lambda x: int(x.split('_')[1]))

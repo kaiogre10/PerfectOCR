@@ -2,7 +2,7 @@
 import logging
 import re
 from typing import Dict, Any, List, Optional
-from cleantext import clean
+from cleantext import clean # type: ignore
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -57,7 +57,7 @@ class TextCleaner(OCRAbstractWorker):
                 logger.debug(f"Eliminado: ID: {poly_id} | Texto: '{text}' | Confianza: {confidence}")
             else:
                 # Conservar válido
-                result = {
+                result: Dict[str, Any] = {
                     "text": self._process_single_text(text),
                     "confidence": confidence,
                     "status": True
@@ -96,7 +96,6 @@ class TextCleaner(OCRAbstractWorker):
                     safe_word = self._safe_normalize_numeric_separators(cleaned_token)
                     processed_words.append(safe_word)
                 else:
-                # --- RUTA DE LIMPIEZA GENERAL PARA TEXTO ---
                     try:
                         cleaned_token = clean(
                             token,
@@ -111,7 +110,6 @@ class TextCleaner(OCRAbstractWorker):
                         )
                         processed_words.append(cleaned_token)
                     except Exception:
-                # Si clean() falla, usar el token original
                         processed_words.append(cleaned_token)
         
         return ' '.join(processed_words)

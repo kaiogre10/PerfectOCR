@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry
+from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, GlobalData
 import numpy as np
 import time
 import jsonschema
@@ -22,11 +22,12 @@ class DataFormatter:
         self.encoder = DENSITY_ENCODER
         self.structured_table: Optional[StructuredTable] = None
 
-    def create_dict(self, dict_id: str, full_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
+    def create_dict(self, IDRegistro: str, full_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo dict"""
         self.temp_dict: Dict[str, Any] = {
-            "dict_id": dict_id,
+            "IDRegistro": IDRegistro,
             "full_img": [full_img.tolist() if hasattr(full_img, 'tolist') else full_img],
+            "global_data": {},
             "metadata": {
                 "image_name": str(metadata.get("image_name", "")),
                 "format": str(metadata.get("format", "")),
@@ -39,7 +40,7 @@ class DataFormatter:
                 "color": str(metadata.get("color", "")) if metadata.get("color") is not None else None
             },
             "polygons": {},
-            "all_lines": {}
+            "all_lines": {},
         }
 
         try:
@@ -53,8 +54,9 @@ class DataFormatter:
             )
 
             self.workflow = WorkflowDict(
-                dict_id=dict_id,
+                IDRegistro=IDRegistro,
                 full_img=full_img,
+                global_data={},
                 metadata=metadata_obj,
                 polygons={},
                 all_lines={},
@@ -466,8 +468,7 @@ class DataFormatter:
     def update_lines_metadata(self, updates: List[Tuple[str, Dict[str, Any]]]):
         """Actualiza las líneas (AllLines y TabularLines) con nuevos campos de metadatos."""
         if not self.workflow:
-            return
-            
+            return            
         for line_id, data_to_update in updates:
             # También es buena idea marcar la línea en la lista global (AllLines)
             if line_id in self.workflow.all_lines:
@@ -495,19 +496,18 @@ class DataFormatter:
                 return None
 
     def _row_to_detalle(self, row: List[str]) -> Dict[str, Any]:
-    # Mapea columnas esperadas al esquema de DetallesCompra
+        # Mapea columnas esperadas al esquema de DetallesCompra
         return {
             "IDDetalle": None,  # Se generará automáticamente en la BD
-            "IDRegistro": None,  # Se vinculará con el registro principal
-            "Cantidad": self._parse_number(row.get("cantidad") or row.get("c")),
+            "IDRegistro": None,
+            "Cantidad": self._parse_number(row.get("c")),
             "SKU": row.get("sku"),
-            "ProductoEstandarizado": str(row.get("descripcion") or row.get("desc") or "").strip(),
-            "PrecioUnitario": self._parse_number(row.get("precio_unitario") or row.get("pu")),
-            "ImporteRaw": self._parse_number(row.get("precio_total") or row.get("mtl")),
-            "ImporteCalculado": self._parse_number(row.get("precio_total") or row.get("mtl"))
+            "ProductoEstandarizado": None,
+            "PrecioUnitario": self._parse_number(row.get("pu")),
+            "ImporteRaw": self._parse_number(row.get("mtl")),
         }
     
-    def to_db_payload(self) -> dict:
+    def to_db_payload(self) -> Dict[str, Any]:
         """
         Construye un payload JSON-serializable:
         { registro: {...}, detalles: [...], provenance: {...}, raw_table: [...] }
@@ -515,43 +515,37 @@ class DataFormatter:
         if not self.workflow:
             return {}
 
-        wf = self.workflow
-        md = wf.metadata if hasattr(wf, "metadata") else (wf.get("metadata") if isinstance(wf, dict) else {})
-        dict_id = getattr(wf, "dict_id", None) or (md.get("dict_id") if isinstance(md, dict) else None) or f"UNK-{int(time.time()*1000)}"
+        wf: WorkflowDict = self.workflow
+        md: Metadata = wf.metadata 
+        dict_id: str = wf.IDRegistro
+        global_data: Dict[str, GlobalData] = wf.global_data if self.workflow else {}
 
-        registro = {
+
+        registro: Dict[str, Any] = {
             "IDRegistro": dict_id,
-            "FolioDocumento": md.get("FolioDocumento") if isinstance(md, dict) else getattr(md, "FolioDocumento", None),
-            "FechaDocumento": md.get("FechaDocumento") if isinstance(md, dict) else getattr(md, "FechaDocumento", None),
-            "ProveedorEstandarizado": md.get("ProveedorEstandarizado"),
-            "RFCProveedor": md.get("RFCProveedor") if isinstance(md, dict) else getattr(md, "RFCProveedor", None),
-            "MontoTotalDocumento": self._parse_number(md.get("MontoTotalDocumento") if isinstance(md, dict) else None),
-            "TipoDocumento": md.get("TipoDocumento") if isinstance(md, dict) else getattr(md, "TipoDocumento", None),
-            "FechaDigitalizacion": time.strftime("%Y%m%d%H%M%S")
+            "FolioDocumento": global_data.get("folio") if isinstance(global_data, dict) else getattr(global_data, "folio", None),
+            "FechaDocumento": global_data.get("date") if isinstance(global_data, dict) else getattr(global_data, "date", None),
+            "RFCProveedor": global_data.get("rfc") if isinstance(global_data, dict) else getattr(global_data, "rfc", None),
+            "MontoTotalDocumento": self._parse_number(global_data.get("total") if isinstance(global_data, dict) else None),
+            "TipoDocumento": global_data.get("TipoDocumento") if isinstance(global_data, dict) else getattr(global_data, "TipoDocumento", None),
         }
+        try:
+            detalles: List[List[int]] = []
+            if self.structured_table and hasattr(self.structured_table, "df"):
+                df = self.structured_table.df
+                cols = self.structured_table.columns if self.structured_table.columns else list(df.columns)
+                for _, r in df.iterrows():
+                    row = {}
+                    # mapear por índice de columnas a col_0..col_n para _row_to_detalle
+                    for i, c in enumerate(cols):
+                        row[f"col_{i}"] = r.get(c) if c in df.columns else r[i]
+                    detalles.append(self._row_to_detalle(row))
 
-        detalles = []
-        # si tienes structured_table la usamos
-        if self.structured_table and hasattr(self.structured_table, "df"):
-            df = self.structured_table.df
-            cols = self.structured_table.columns if self.structured_table.columns else list(df.columns)
-            for _, r in df.iterrows():
-                row = {}
-                # mapear por índice de columnas a col_0..col_n para _row_to_detalle
-                for i, c in enumerate(cols):
-                    row[f"col_{i}"] = r.get(c) if c in df.columns else r[i]
-                detalles.append(self._row_to_detalle(row))
-        else:
-            # fallback: usar polygons/text lines como detalle descriptivo
-            polygons = getattr(wf, "polygons", {}) or {}
-            for pid, p in (polygons.items() if isinstance(polygons, dict) else []):
-                text = getattr(p, "ocr_text", None) if hasattr(p, "ocr_text") else (p.get("ocr_text") if isinstance(p, dict) else "")
-                detalles.append({
-                    "cantidad": None, "descripcion": text, "precio_unitario": None, "precio_total": None, "unidad": None, "sku": None
-                })
-
-        provenance = {
-            "dict_id": dict_id,
+        except Exception as e:
+            logger.info(f"No hay tabla estructurada{e}", exc_info=True)
+                        
+        provenance: Dict[str, Any] = {
+            "IDRegistro": dict_id,
             "image_name": md.get("image_name") if isinstance(md, dict) else getattr(md, "image_name", None),
             "formatter_version": "v1",
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S")
@@ -564,7 +558,7 @@ class DataFormatter:
 
         return payload
 
-    def export_payload_json(self, path: str) -> bool:
+    def export_payload_json(self, db_path: str) -> str:
         """Escribe el payload en disco para auditoría/revisión manual"""
         try:
             payload = self.to_db_payload()
