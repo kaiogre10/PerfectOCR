@@ -90,7 +90,7 @@ class ConfigService:
     @property
     def ocr_config(self) -> Dict[str, Any]:
         """Obtiene configuración específica del OCR."""
-        return self.modules_config.get('ocr', {})
+        return self.modules_config.get('ocr', {})    
     
     @property
     def vectorization_config(self) -> Dict[str, Any]:
@@ -163,10 +163,8 @@ class ConfigService:
     @property
     def data_finder_config(self) -> Dict[str, str]:
         word_finder_config = self.models_config
-        weight_model_path = word_finder_config.get("weigth_model", "")
         standar_model_path = word_finder_config.get("standar_model", "")
         
         return {
-            "weigth_model": weight_model_path,
             "standar_model": standar_model_path
         }

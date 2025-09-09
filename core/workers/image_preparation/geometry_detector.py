@@ -9,9 +9,8 @@ logger = logging.getLogger(__name__)
 
 class GeometryDetector(ImagePrepAbstractWorker):
     """
-    Detecta geometría con PaddleOCR y escribe resultados en el workflow_dict:
-    workflow_dict['polygons'][poly_id] = { polygon_id, geometry, ... }
-    No usa WorkflowJob.
+    Detecta geometría con PaddleOCR:
+    workflow['polygons'][poly_id] = { polygon_id, geometry, ... }
     """
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
@@ -30,7 +29,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.error("GeometryDetector: Motor de detección no disponible en PaddleManager")
             else:
                 logger.debug("GeometryDetector: Motor de detección obtenido del PaddleManager")
-        
+    
         return self._engine
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -46,7 +45,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             results: Optional[List[Any]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
-            logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
+            logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
 
             if not (results and len(results) > 0 and results[0] is not None):
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
@@ -60,5 +59,5 @@ class GeometryDetector(ImagePrepAbstractWorker):
             return True
         
         except Exception as e:
-            logger.error(f"Error en procesamiento vectorizado de geometría: {e}")
+            logger.error(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
             return False

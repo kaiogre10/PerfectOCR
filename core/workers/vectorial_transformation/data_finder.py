@@ -139,12 +139,16 @@ class DataFinder(VectorizationAbstractWorker):
                     line_id = polygon_to_line.get(str(pid))
                     if line_id:
                         lines_with_headers.add(line_id)
-                        logger.info(f"MATCH: polygon={pid}, line_id={line_id}, text='{text}'")
+                        for result in results:
+                            key_field = result.get('key_field', 'unknown')
+                            header_type = result.get('header_type')
+                            match_type = f"header-{header_type}" if header_type else key_field
+                            logger.info(f"MATCH: polygon={pid}, line_id={line_id}, text='{text}', type={match_type}")
                         
             except Exception as e:
                 logger.exception(f"_find_headers: WordFinder error con polygon {pid}: {e}", exc_info=True)
 
-        logger.debug(f"_find_headers: processed={processed}, matches={results}, lines_with_headers={len(lines_with_headers)}")
+        logger.debug(f"_find_headers: processed={processed}, matches={matched}, lines_with_headers={len(lines_with_headers)}")
 
         if not lines_with_headers:
             logger.info("_find_headers: no se encontraron encabezados, retornando []")

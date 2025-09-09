@@ -80,7 +80,7 @@ class ImageLoader:
         try:
             with Image.open(input_path) as img:
                 metadata["color"] = img.mode
-            logger.info(f"Loader completado en en {time.perf_counter() - start_time:.6f}s para {image_name}")
+            logger.debug(f"Loader completado en en {time.perf_counter() - start_time:.6f}s para {image_name}")
             logger.debug(f" metadata: {metadata}")
             return gray_image, metadata
 

@@ -56,7 +56,6 @@ class PreprocessingStager:
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             context["polygons"] = polygons
 
-        
         elapsed = time.time() - start_time
-        logger.info(f"[PreprocessingStager] Pipeline completado en: {elapsed:.3f}s; polígonos: {len(polygons)}")
+        logger.info(f"[PreprocessingStager] Preprocesamiento completado en: {elapsed:.3f}s; polígonos: {len(polygons)}")
         return manager, elapsed

@@ -21,7 +21,7 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
     def _create_paddle_wrapper(self, context: Dict[str, Any]) -> PaddleOCRWrapper:
         # ESPERA recibir la config de paddle en el context
         paddle_rec_config = context.get('paddle_rec_config', {})
-        return PaddleOCRWrapper(config=paddle_rec_config, project_root=self.project_root)
+        return PaddleOCRWrapper(config=paddle_rec_config, cfg=self.module_config, project_root=self.project_root)
         
     def _create_text_cleaner(self, context: Dict[str, Any]) -> TextCleaner:
         return TextCleaner(config=self.module_config, project_root=self.project_root)

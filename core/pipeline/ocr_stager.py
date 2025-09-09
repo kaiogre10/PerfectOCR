@@ -9,10 +9,11 @@ logger = logging.getLogger(__name__)
 
 class OCRStager:
     def __init__(self, workers: List[OCRAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
+        self.config = stage_config
         self.project_root = project_root
         self.workers = workers
-        self.config = stage_config
-        self.output_paths = output_paths if output_paths is not None else []
+        self.stage_config = stage_config
+        self.output_paths = output_paths
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()

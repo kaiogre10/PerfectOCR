@@ -19,8 +19,7 @@ class Binarizator(OCRAbstractWorker):
     - Realiza un análisis visual para detectar agrupaciones incorrectas.
     - Combina su análisis visual con las sugerencias basadas en texto (del TextCleaner)
       para crear una lista definitiva de polígonos que necesitan ser fragmentados.
-    """
-    
+    """    
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -89,7 +88,7 @@ class Binarizator(OCRAbstractWorker):
                 # Guardar solo metadatos ligeros de contorno en el manager (sin imágenes)
                 context['contours_meta'] = contours_meta
 
-            logger.info(f"Binarizator: contornos extraídos para {len(contours_meta)} polígonos en {time.time()-start:.3f}s")
+            logger.debug(f"Binarizator: contornos extraídos para {len(contours_meta)} polígonos en {time.time()-start:.3f}s")
             return True
 
         except Exception as e:

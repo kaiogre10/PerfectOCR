@@ -82,7 +82,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         angle = np.median(filtered_angles)
 
         if abs(angle) > min_angle_for_correction:
-            logger.info(f"-> Aplicando corrección de inclinación: {angle:.6f} grados.")
+            logger.debug(f"-> Aplicando corrección de inclinación: {angle:.6f} grados.")
             rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
             deskewed_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
             full_img = np.array(deskewed_img, dtype=np.uint8)

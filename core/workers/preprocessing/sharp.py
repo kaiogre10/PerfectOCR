@@ -82,7 +82,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
                     self._save_debug_image(context, poly_id, corrected_img)
 
             total_time = time.time() - start_time
-            logger.info(f"Procesamiento Sharpening completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
+            logger.debug(f"Procesamiento Sharpening completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
         except Exception as e:
             logger.error(f"Error en el procesamiento por lotes de SharpeningEnhancer: {e}", exc_info=True)

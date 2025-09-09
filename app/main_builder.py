@@ -96,8 +96,8 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
 
         image_load_factory = worker_factory.get_image_preparation_factory()
         image_prep_workers = image_load_factory.create_workers([
-            "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"
-        ], context)
+            "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"], 
+            context)
 
         preprocessing_factory = worker_factory.get_preprocessing_factory()
         preprocessing_workers = preprocessing_factory.create_workers(

@@ -17,10 +17,13 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     de texto en imágenes pre-recortadas (polígonos).
     Utiliza carga perezosa para el motor de PaddleOCR.
     """
-    def __init__(self, config: Dict[str, Any], project_root: str):
+    def __init__(self, config: Dict[str, Any], cfg: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.config = config
+        self.cfg = cfg
+        self.enabled_outputs = self.cfg.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("ocr_raw", False)  
         self._engine = None
         
     @property
@@ -73,7 +76,11 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             
             # Usar método del DataFormatter para liberar memoria
             manager.clear_cropped_images(polygon_ids)
-            logger.debug("Cropped_img liberadas usando DataFormatter")
+            logger.info("Cropped_img liberadas usando DataFormatter")
+            file_name: str = manager.workflow.metadata.image_name
+            
+            if self.output:
+                self._save_ocr_raw(context, final_results, file_name)
         
         total_time = time.perf_counter() - start_time
         logger.debug(f"[PaddleWrapper] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
@@ -104,7 +111,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             if not valid_images:
                 logger.error("No hay imágenes válidas para el reconocimiento por lotes.")
                 return []
-            batch_result: List[List[Any]] = self.engine.ocr(valid_images, cls=False, det=False)  # type: ignore
+            batch_result: List[List[str]] = self.engine.ocr(valid_images, cls=False, det=False, rec=True) 
                                     
             if len(batch_result) == 1 and isinstance(batch_result[0], list):
                 consolidated_results = batch_result[0]
@@ -128,3 +135,17 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         except Exception as e:
             logger.error(f"Error crítico durante el reconocimiento de texto en lote: {e}", exc_info=True)
             return [None] * len(image_list)
+
+    def _save_ocr_raw(self, context: Dict[str, Any], final_results: List[Optional[Dict[str, Any]]], file_name: str):
+        from services.output_service import save_json
+        import os
+        
+        output_paths = context.get("output_paths", [])
+        output_paths = context.get("output_paths", [])
+        for path in output_paths:
+            output_dir: str = os.path.join(path, "ocr_raw")
+            json_file_name = f"{os.path.splitext(file_name)[0]}.json"
+            save_json(final_results, output_dir, json_file_name)
+        
+        if output_paths:
+            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

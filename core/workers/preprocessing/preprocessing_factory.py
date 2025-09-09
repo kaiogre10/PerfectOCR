@@ -1,4 +1,4 @@
-# core/workers/factory/preprocessing_factory.py
+# core/workers/preprocessing/preprocessing_factory.py
 from typing import Dict, Callable, Any
 from core.factory.abstract_worker import  PreprocessingAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory

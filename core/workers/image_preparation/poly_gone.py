@@ -118,7 +118,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             
             total_time = time.time() - start_time
             extracted_count = len(cropped_images)
-            logger.info(f"PolygonExtractor batch completado: {extracted_count} recortes en {total_time:.3f}s. 'full_img' liberada.")
+            logger.debug(f"PolygonExtractor batch completado: {extracted_count} recortes en {total_time:.3f}s. 'full_img' liberada.")
             
             return True
 

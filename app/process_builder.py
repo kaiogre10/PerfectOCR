@@ -11,10 +11,8 @@ from core.domain.data_formatter import DataFormatter
 logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
-    """
-    Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y
-    coordina el procesamiento técnico de una sola imagen.
-    """
+    """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados ycoordina el procesamiento técnico de una sola imagen."""
+    
     def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
         self.manager = manager
         self.input_stager = input_stager
@@ -33,10 +31,10 @@ class ProcessingBuilder:
             manager, time_poly = self.input_stager.generate_polygons(manager)
             
             if manager is None:
-                logger.error("[ProcessingBuilder] No se pudo procesar la fase de entrada.")
+                logger.error("[ProcessingBuilder] No se pudo procesar la Fase de preparación.")
                 return None
             
-            logger.debug(f"Fase de entrada completada en: {time_poly:.6f}s")
+            logger.debug(f"Fase de preparación completada en: {time_poly:.6f}s")
 
             # Fase 2: Corregir y preparar la imagen para el OCR
             manager, elapsed = self.preprocessing_stager.apply_preprocessing_pipelines(manager)

@@ -274,44 +274,47 @@ class WordFinder:
                     best_score = combined_score
                     best_idx = i
 
-            # FUERA DEL LOOP - Procesar mejor candidato
-            if best_idx is not None:
-                cand = self.combined_words[best_idx]
-                thr = self._len_threshold(len(cand))
-                
-                if best_score >= thr:
-                    key_field = self.variant_to_field.get(cand)
-                    header_category = self.variant_to_header_category.get(cand)
+                if best_idx is not None:
+                    cand = self.combined_words[best_idx]
+                    thr = self._len_threshold(len(cand))
                     
-                    results.append({
-                        "key_field": key_field,
-                        "header_category": header_category,
-                        "word_found": cand,
-                        "similarity": float(best_score),
-                        "query": q
-                    })
+                    if best_score >= thr:
+                        key_field = self.variant_to_field.get(cand)
+                        header_category = self.variant_to_header_category.get(cand)
 
-        return results if not single else (results[0:1] if results else [])
+                        if key_field:
+                            final_key_field = key_field
+                            header_type = None
+                        else:
+                            final_key_field = "header"
+                            header_type = header_category
+
+                        results.append({
+                            "key_field": final_key_field,
+                            "header_type": header_type,
+                            "word_found": cand,
+                            "similarity": float(best_score),
+                            "query": q
+                        })
+
+            return results if not single else (results[0:1] if results else [])
 
     def get_model_info(self):
-        model_info: Dict[str, Any] = {
-            "total_words": len(self.combined_words),
-            "threshold_similarity": self.threshold,
-            "variant_to_field_mappings": len(self.variant_to_field),
-            "variant_to_header_mappings": len(self.variant_to_header_category),
-            "combined_words": len(getattr(self, "combined_words", [])),
-            "campos_disponibles": list(self.model.get("key_words", {}).keys()) if isinstance(self.model.get("key_words"), dict) else [],
-            "header_categories": list(self.model.get("header_words", {}).keys()) if isinstance(self.model.get("header_words"), dict) else [],
-            "density_encoder_loaded": len(self.density_encoder) > 0,
-            "fields_with_stats": len(self.field_stats),
-            "words_with_normalized_stats": len(self.normalized_stats),
-            "statistics_enabled": len(self.normalized_stats) > 0,
-            "char_ngram_range": self.ngr,
-            "weights_by_n": self.weights_by_n
-        }
+        return {
+        "total_words": len(self.combined_words),
+        "threshold_similarity": self.threshold,
+        "key_words": len(self.key_words),
+        "header_words": len(self.header_words),
+        "combined_words": len(getattr(self, "combined_words", [])),
+        "campos_disponibles": list(self.model.get("key_words", {}).keys()),
+        "density_encoder_loaded": len(self.density_encoder) > 0,
+        "fields_with_stats": len(self.field_stats),
+        "words_with_normalized_stats": len(self.normalized_stats),
+        "statistics_enabled": len(self.normalized_stats) > 0,
+        "char_ngram_range": self.ngr,
+        "weights_by_n": self.weights_by_n
+    }
 
-        return model_info
-        
     def _regex_patterns_rfc(self, query: str) -> float:
         """Patrones regex específicos para RFC con formato real"""
         # RFC real: 4 letras + 6 números + 3 alfanuméricos (13 chars total)
@@ -343,6 +346,7 @@ class WordFinder:
                     return 0.80
                 else:
                     return 0.70
+        
         return 0.0
 
     def _regex_patterns_fecha(self, query: str) -> tuple[float, str]:
@@ -417,3 +421,26 @@ class WordFinder:
             }
         
         return {}
+
+    def debug_find_keywords(self, text: str | List[str]) -> Dict[str, Any]:
+        """Versión debug que muestra paso a paso lo que hace find_keywords"""
+        print(f"\n=== DEBUG find_keywords ===")
+        print(f"Input: {text} (type: {type(text)})")
+        
+        result = self.find_keywords(text)
+        
+        print(f"Output type: {type(result)}")
+        print(f"Output length: {len(result)}")
+        print(f"Output value: {result}")
+        
+        if result:
+            for i, item in enumerate(result):
+                print(f"\nResult item {i}:")
+                print(f"  Type: {type(item)}")
+                print(f"  Content: {item}")
+                if isinstance(item, dict):
+                    for k, v in item.items():
+                        print(f"    {k}: {v} ({type(v).__name__})")
+        
+        print(f"=== END DEBUG ===\n")
+        return {"debug_info": "complete", "original_result": result}
