@@ -179,7 +179,6 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
     logger.info(f"Tiempo total acumulado: {total_processing_time:.6f}s")
     logger.info(f"Tiempo promedio por imagen: {total_processing_time/len(results):.6f}s")
 
-    
     return {
         "mode": workflow_report.get('mode', 'unknown'),
         "processed": len(results),

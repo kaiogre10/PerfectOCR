@@ -36,5 +36,4 @@ class OCRStager:
             worker_time = time.time() - worker_start
             logger.info(f"[OCRStager] Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
         ocr_time = time.time() - start_time
-        logger.info(f"OCR completado en {ocr_time:.6f}s")
         return manager, ocr_time

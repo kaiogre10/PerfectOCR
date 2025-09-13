@@ -103,6 +103,7 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                         "was_fragmented": {"type": "boolean"},
                         "stage": {"type": "string"},
                         "status": {"type": "boolean"},
+                        "key_field": {"type": "string"},
                     },
                 },
             },
@@ -264,7 +265,7 @@ DENSITY_ENCODER: Dict[str, int] = {
     "s": 110,
     "r": 111,
     "a": 112,
-    "e": 113
+    "e": 113,
 }
 
 @dataclass
@@ -311,6 +312,7 @@ class Polygons:
     was_fragmented: bool
     status: bool
     stage: str
+    key_field: str
     
 @dataclass
 class LineGeometry:

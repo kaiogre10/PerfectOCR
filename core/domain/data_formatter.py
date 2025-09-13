@@ -103,7 +103,8 @@ class DataFormatter:
                 ocr_confidence=poly_data.get("ocr_confidence"),
                 was_fragmented=poly_data.get("was_fragmented", False),
                 status=poly_data.get("status", True),
-                stage=poly_data.get("stage", "")
+                stage=poly_data.get("stage", ""),
+                key_field=poly_data.get("key_field", "global")
             )
             
             return polygon
@@ -152,7 +153,8 @@ class DataFormatter:
                     "ocr_confidence": None,
                     "was_fragmented": False,
                     "status": True,
-                    "stage": ""
+                    "stage": "",
+                    "key_field": "",
                 }
                 
                 # Validar y crear dataclass
@@ -202,7 +204,8 @@ class DataFormatter:
                             ocr_confidence=polygon.ocr_confidence,
                             was_fragmented=polygon.was_fragmented,
                             status=polygon.status,
-                            stage=polygon.stage
+                            stage=polygon.stage,
+                            key_field=polygon.key_field,
                         )
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_count += 1
@@ -269,14 +272,14 @@ class DataFormatter:
                 logger.debug("full_img actualizada en el workflow_dict.")
             return True
         except Exception as e:
-            logger.error(f"Error actualizando full_img: {e}")
+            logger.error(f"Error actualizando full_img: {e}", exc_info=True)
             return False
             
     def save_cropped_images(
     self,
     cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]],
     cropped_geometries: Dict[str, Dict[str, Any]]
-) -> bool:
+    ) -> bool:
         """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""
         try:
             if not self.workflow:
@@ -310,14 +313,15 @@ class DataFormatter:
                         ocr_confidence=polygon.ocr_confidence,
                         was_fragmented=polygon.was_fragmented,
                         status=polygon.status,
-                        stage=polygon.stage
+                        stage=polygon.stage,
+                        key_field=polygon.key_field,
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
             logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte en dataclasses.")
             return True
         except Exception as e:
-            logger.error(f"Error guardando imágenes recortadas y geometría: {e}")
+            logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
             return False
         
     def update_preprocessing_result(self, poly_id: str, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], 
@@ -337,7 +341,8 @@ class DataFormatter:
                 ocr_confidence=polygon.ocr_confidence,
                 was_fragmented=polygon.was_fragmented,
                 status=success,
-                stage=worker_name
+                stage=worker_name,
+                key_field=polygon.key_field,
             )
             self.workflow.polygons[poly_id] = updated_polygon
             
@@ -350,7 +355,7 @@ class DataFormatter:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
                 return False
                 
-            logger.info(f"DataFormatter recibe: {len(final_results)} resultados, {len(polygon_ids)} IDs")
+            logger.debug(f"DataFormatter recibe: {len(final_results)} resultados, {len(polygon_ids)} IDs")
 
             for idx, res in enumerate(final_results):
                 if idx < len(polygon_ids) and res is not None:
@@ -370,14 +375,65 @@ class DataFormatter:
                             ocr_confidence=res.get("confidence"), 
                             was_fragmented=polygon.was_fragmented,
                             status=polygon.status,
-                            stage=polygon.stage
+                            stage=polygon.stage,
+                            key_field=polygon.key_field,
                         )
                         self.workflow.polygons[poly_id] = updated_polygon
                         
             logger.info("Texto OCR actualizado en dataclasses")
             return True
         except Exception as e:
-            logger.error(f"Error actualizando resultados OCR: {e}")
+            logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
+            return False
+
+    def update_polygon_data(self, polygon_updates: Dict[str, str]) -> bool:
+        """
+        Actualiza los datos de los polígonos en las dataclasses de polígonos.
+        """
+        try:
+            if not self.workflow:
+                logger.error("No hay workflow inicializado para actualizar resultados OCR.")
+                return False
+
+            updated_count = 0
+            polygons_info: List[Dict[str, str]] = []
+
+            for poly_id, key_field in polygon_updates.items():
+                if poly_id in self.workflow.polygons:
+                    polygon = self.workflow.polygons[poly_id]
+
+                    polygons_info.append({
+                    "poly_id": poly_id,
+                    "text": polygon.ocr_text or "",
+                    "key_field": key_field
+                    })
+
+                    updated_polygon = Polygons(
+                        polygon_id=polygon.polygon_id,
+                        geometry=polygon.geometry,
+                        cropedd_geometry=polygon.cropedd_geometry,
+                        cropped_img=polygon.cropped_img,
+                        perimeter=polygon.perimeter,
+                        line_id=polygon.line_id,
+                        ocr_text=polygon.ocr_text,
+                        ocr_confidence=polygon.ocr_confidence,
+                        was_fragmented=polygon.was_fragmented,
+                        status=polygon.status,
+                        stage=polygon.stage,
+                        key_field=key_field,
+                    )
+                    self.workflow.polygons[poly_id] = updated_polygon
+                    updated_count += 1
+            
+            if polygons_info:
+                for info in polygons_info:
+                    logger.info(f"UPDATED: poly_id={info['poly_id']}, key_field={info['key_field']}, text='{info['text'][:50]}'")
+            
+            logger.info(f"Actualizados {updated_count} polígonos con key_fields")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
             return False
         
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
@@ -396,6 +452,7 @@ class DataFormatter:
                 return True
                 
             all_lines_dataclasses: Dict[str, AllLines] = {}
+            tabular_lines_info: List[Dict[str, Any]] = []
             for line_id, line_data in valid_lines.items():
                 line_geometry = LineGeometry(
                     line_centroid=line_data.get("line_centroid", [0, 0]),
@@ -413,6 +470,18 @@ class DataFormatter:
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
+
+            for line_id in self.workflow.all_lines:
+                if line_id in self.workflow.all_lines:
+                    line_obj = self.workflow.all_lines[line_id]
+                    tabular_lines_info.append({
+                                "line_id": line_id,
+                                "text": line_obj.text,
+                            })
+
+            if tabular_lines_info:
+                for log_info in tabular_lines_info:
+                    logger.info(f"{log_info['line_id']}: '{log_info['text']}'")
             
             num_lines = len(all_lines_dataclasses)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas en workflow_dict y dataclasses.")
@@ -432,29 +501,28 @@ class DataFormatter:
                 return False
 
             marked_count = 0
-            # tabular_lines_info = []
+            tabular_lines_info: List[Dict[str, Any]] = []
             for line_id in line_ids:
                 if line_id in self.workflow.all_lines:
                     self.workflow.all_lines[line_id].tabular_line = True
                     marked_count += 1
                     # Guardar info para log
-                    # line_obj = self.workflow.all_lines[line_id]
-                    # tabular_lines_info.append({
-                    #     "line_id": line_id,
-                    #     "text": line_obj.text,
-                    #     "polygon_ids": line_obj.polygon_ids
-                    # })
+                    line_obj = self.workflow.all_lines[line_id]
+                    tabular_lines_info.append({
+                        "line_id": line_id,
+                        "text": line_obj.text,
+                        "polygon_ids": line_obj.polygon_ids
+                    })
 
-            # # logger.info(f"Marcadas {marked_count} líneas como tabulares")
-            # if tabular_lines_info:
-            #     logger.info("Líneas tabulares detectadas (id, texto, encoded_text, polygon_ids):")
-            #     for log_info in tabular_lines_info:
-            #         logger.info(f"  {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+            logger.debug(f"Marcadas {marked_count} líneas como tabulares")
+            if tabular_lines_info:
+                for log_info in tabular_lines_info:
+                    logger.debug(f"  {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
 
             return marked_count > 0
 
         except Exception as e:
-            logger.error(f"Error marcando líneas como tabulares: {e}")
+            logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)
             return False
                 
     def save_structured_table(self, df: pd.DataFrame, columns: List[str], semantic_types: Optional[List[str]] = None) -> bool:
@@ -462,20 +530,8 @@ class DataFormatter:
             self.structured_table = StructuredTable(df=df, columns=columns, semantic_types=semantic_types)
             return True
         except Exception as e:
-            logger.error(f"Error guardando structured_table en memoria: {e}")
+            logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
             return False
-
-    def update_lines_metadata(self, updates: List[Tuple[str, Dict[str, Any]]]):
-        """Actualiza las líneas (AllLines y TabularLines) con nuevos campos de metadatos."""
-        if not self.workflow:
-            return            
-        for line_id, data_to_update in updates:
-            # También es buena idea marcar la línea en la lista global (AllLines)
-            if line_id in self.workflow.all_lines:
-                line_obj = self.workflow.all_lines[line_id]
-                # Marcarla como header si la clave existe en la actualización
-                if 'header_line' in data_to_update:
-                    line_obj.header_line = data_to_update['header_line']
 
     def _parse_number(self, s: Any):
         try:
@@ -520,7 +576,6 @@ class DataFormatter:
         dict_id: str = wf.IDRegistro
         global_data: Dict[str, GlobalData] = wf.global_data if self.workflow else {}
 
-
         registro: Dict[str, Any] = {
             "IDRegistro": dict_id,
             "FolioDocumento": global_data.get("folio") if isinstance(global_data, dict) else getattr(global_data, "folio", None),
@@ -558,15 +613,15 @@ class DataFormatter:
 
         return payload
 
-    def export_payload_json(self, db_path: str) -> str:
+    def export_payload_json(self, db_path: str) -> Optional[str]:
         """Escribe el payload en disco para auditoría/revisión manual"""
         try:
             payload = self.to_db_payload()
             if not payload:
                 return False
-            with open(path, "w", encoding="utf-8") as fh:
+            with open(db_path, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            logger.error(f"Error exportando payload json: {e}")
+            logger.error(f"Error exportando payload json: {e}", exc_info=True)
             return False

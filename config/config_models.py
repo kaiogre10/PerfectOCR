@@ -154,6 +154,7 @@ class OCRConfig(ConfigWithNumpy):
 
 class DataFinder(ConfigWithNumpy):
     wordfinder_model_path: str
+    min_similarity: float
 
 class DBSCAN(ConfigWithNumpy):
     min_cluster_size: int

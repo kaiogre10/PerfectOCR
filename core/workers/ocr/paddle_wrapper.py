@@ -76,7 +76,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             
             # Usar método del DataFormatter para liberar memoria
             manager.clear_cropped_images(polygon_ids)
-            logger.info("Cropped_img liberadas usando DataFormatter")
+            logger.debug("Cropped_img liberadas usando DataFormatter")
             file_name: str = manager.workflow.metadata.image_name
             
             if self.output:
@@ -117,7 +117,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 consolidated_results = batch_result[0]
                 
                 if len(consolidated_results) == len(valid_images):
-                    logger.info(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(valid_images)} imágenes por orden.")
+                    logger.debug(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(valid_images)} imágenes por orden.")
                     final_results: List[Optional[Dict[str, Any]]] = []
                     for text, confidence in consolidated_results:
                         processed_result: Dict[str, Any] = {

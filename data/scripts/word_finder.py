@@ -3,7 +3,7 @@ import re
 import logging
 import pickle
 import unicodedata
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -14,29 +14,16 @@ class WordFinder:
         self.model_path = model_path
         self.model: Dict[str, Any] = self._load_model(model_path)
         self._apply_active_model()
-
-    def _normalize(self, s: str) -> str:
-        if not s:
-            return ""
-        s = s.strip().lower()
-        s = unicodedata.normalize("NFKD", s)
-        s = "".join(ch for ch in s if not unicodedata.combining(ch))
-        s = re.sub(r"[^a-zA-Z0-9]", "", s)  # quita espacios, signos y también _
-        return s
-
-    def _ngrams(self, s: str, n: int) -> List[str]:
-        if n <= 0 or not s:
-            return []
-        if len(s) < n:
-            return []
-        return [s[i:i+n] for i in range(len(s) - n + 1)]
-
-    def _binary_cosine(self, size_a: int, size_b: int, inter_size: int) -> float:
-        """Calcula coseno binario entre dos conjuntos"""
-        if size_a == 0 or size_b == 0:
-            return 0.0
-        return inter_size / ((size_a * size_b) ** 0.5)
-
+        
+    def _load_model(self, model_path: str) -> Dict[str, Any]:
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Modelo no encontrado en {model_path}")
+        with open(model_path, "rb") as f:
+            self.model = pickle.load(f)
+        if not isinstance(self.model, dict):
+            raise ValueError("El pickle no tiene el formato esperado (dict).")
+        return self.model
+        
     def available_models(self) -> List[str]:
         return ["standard"]
 
@@ -47,38 +34,20 @@ class WordFinder:
         logger.warning("Modelo solicitado no disponible: %s", name)
         return False
 
-    def _load_model(self, model_path: str) -> Dict[str, Any]:
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Modelo no encontrado en {model_path}")
-        with open(model_path, "rb") as f:
-            self.model = pickle.load(f)
-        if not isinstance(self.model, dict):
-            raise ValueError("El pickle no tiene el formato esperado (dict).")
-        return self.model
-
     def _apply_active_model(self):
-        # listas
         self.key_words: List[str] = [self._normalize(str(w)) for w in self.model.get("key_words", []) or []]
-        self.header_words: List[str] = [self._normalize(str(w)) for w in self.model.get("header_words", []) or []]
-        self.combined_words: List[str] = self.model.get("combined_words") or list(dict.fromkeys(self.key_words + self.header_words))
-        
-        # mapping headers
-        self.vt_header: Dict[str, str] = self.model.get("variant_to_header_category", {}) or {}
-        self.variant_to_header_category: Dict[str, str] = {self._normalize(str(k)): v for k, v in self.vt_header.items()}
-        
-        # mapping para key_fields
         vt_field: Dict[str, str] = self.model.get("variant_to_field", {}) or {}
         self.variant_to_field: Dict[str, str] = {self._normalize(str(k)): v for k, v in vt_field.items()}
         
         # params
         self.params: Dict[str, Any] = self.model.get("params", {}) or {}
         self.ngr = self.params.get("char_ngram_range", [2, 5]) or [2, 5]
-        # Cargar estadísticas del modelo
         self.density_encoder: Dict[str, float] = self.model.get("density_encoder", {})
         self.field_stats: Dict[str, Dict[str, List[float]]] = self.model.get("field_stats", {})
         self.normalized_stats: Dict[str, Dict[str, float]] = self.model.get("normalized_stats", {})
-        self.MAX_CHAR_COUNT = 20.0
+        self.MAX_CHAR_COUNT = 25.0
         self.MAX_MEAN = 113.0
+        
         try:
             self.n_min, self.n_max = int(self.ngr[0]), int(self.ngr[1])
         except Exception:
@@ -86,7 +55,7 @@ class WordFinder:
         if self.n_min < 1 or self.n_max < self.n_min:
             self.n_min, self.n_max = 2, 5
             
-        self.threshold = float(self.params.get("threshold_similarity", 0.60))
+        self.threshold = float(self.params.get("threshold_similarity", 0.70))
         self.thresholds_by_len: Dict[Any, Any] = self.params.get("thresholds_by_len", {}) or {}
         
         # pesos por n-grama (inversos)
@@ -113,7 +82,7 @@ class WordFinder:
             for entry in self.grams_index:
                 length = int(entry.get("len", 0))
                 self.gmap_raw: Dict[int, List[str]] = entry.get("grams", {}) or {}
-                gmap_sets: Dict[int, set[str]] = {}
+                gmap_sets= {}
                 for n in range(self.n_min, self.n_max + 1):
                     gmap_sets[n] = set(self.gmap_raw.get(n, []) or [])
                 self.lengths.append(length)
@@ -122,7 +91,7 @@ class WordFinder:
             # fallback: construir en tiempo de carga
             self.grams = []
             self.lengths = []
-            for w in self.combined_words:
+            for w in self.key_words:
                 self.length = len(w)
                 self.lengths.append(self.length)
                 gmap_sets: Dict[int, set[str]] = {}
@@ -161,6 +130,102 @@ class WordFinder:
             return max(self.threshold, 0.65)
         return max(self.threshold, 0.60)
 
+    def find_keywords(self, text: str | List[str]) -> Optional[List[Dict[str, Any]]]:
+        """Busca palabras clave usando coseno binario de n-gramas"""
+        try: 
+            single = False
+            if isinstance(text, str):
+                text = [text]
+                single = True
+
+            results: List[Dict[str, Any]] = []
+            
+            for s in text:
+                q = self._normalize(s)
+                if not q:
+                    continue
+                    
+                grams_q = self._build_query_grams(q)
+                best_idx = None
+                best_score = 0.0
+
+                # Comparar contra TODOS los candidatos
+                for i in range(len(self.key_words)):
+                    cand = self.key_words[i]
+                    
+                    # Score de n-gramas
+                    ngram_score = self._score_binary_cosine_multi_n(self.grams[i], grams_q)
+                    
+                    # Score de estadísticas (si están disponibles)
+                    stats_score = 0.0
+                    field = self.variant_to_field.get(cand)
+                    if field and cand in self.normalized_stats:
+                        query_stats = self._calculate_query_stats(q, field)
+                        candidate_stats = self.normalized_stats[cand]
+                        stats_score = self._stats_similarity(query_stats, candidate_stats)
+                    
+                    combined_score = 0.6 * ngram_score + 0.4 * stats_score
+                    
+                    if combined_score > best_score:
+                        best_score = combined_score
+                        best_idx = i
+
+                if best_idx is not None:
+                    cand = self.key_words[best_idx]
+                    thr: float = self._len_threshold(len(cand))
+                        
+                    if best_score >= thr:
+                        key_field = self.variant_to_field.get(cand)
+
+                        results.append({
+                            "key_field": key_field,
+                            "word_found": cand,
+                            "similarity": float(best_score),
+                            "query": q
+                        })
+
+            return results if not single else (results[0:1] if results else [])
+            
+        except Exception as e:
+                logger.error(f"Error en find_keywords: {e}", exc_info=True)
+
+    def _normalize(self, s: str) -> str:
+        if not s:
+            return ""
+        s = s.strip().lower()
+        s = unicodedata.normalize("NFKD", s)
+        s = "".join(ch for ch in s if not unicodedata.combining(ch))
+        s = re.sub(r"[^a-zA-Z0-9]", "", s)  # quita espacios, signos y también _
+        return s
+        
+    def _build_query_grams(self, q: str) -> Dict[int, set[str]]:
+        """Construye n-gramas de la consulta"""
+        gq: Dict[int, set[str]] = {}
+        for n in range(self.n_min, self.n_max + 1):
+            gq[n] = set(self._ngrams(q, n))
+        return gq
+        
+    def _ngrams(self, s: str, n: int) -> List[str]:
+        if n <= 0 or not s:
+            return []
+        if len(s) < n:
+            return []
+        return [s[i:i+n] for i in range(len(s) - n + 1)]
+        
+    def _ngram_similarity(self, a: str, b: str) -> float:
+        """Calcula la similitud entre dos n-gramas como la proporción de caracteres iguales."""
+        if not a or not b:
+            return 0.0
+        matches = sum(1 for x, y in zip(a, b) if x == y)
+        # Normaliza por la longitud máxima para manejar n-gramas de longitudes distintas si fuera el caso.
+        return matches / max(len(a), len(b))
+
+    def _binary_cosine(self, size_a: int, size_b: int, inter_size: float) -> float:
+        """Calcula coseno binario entre dos conjuntos"""
+        if size_a == 0 or size_b == 0:
+            return 0.0
+        return inter_size / ((size_a * size_b) ** 0.5)
+
     def _score_binary_cosine_multi_n(self, grams_a: Dict[int, set[str]], grams_b: Dict[int, set[str]]) -> float:
         """Calcula score ponderado por coseno binario multi-n-grama"""
         num = 0.0
@@ -175,8 +240,19 @@ class WordFinder:
                 den += w
                 continue
                 
-            inter = len(A.intersection(B))
-            num += w * self._binary_cosine(len(A), len(B), inter)
+            soft_intersection = 0.0
+            for gram_a in A:
+                max_sim = 0.0
+                for gram_b in B:
+                    sim = self._ngram_similarity(gram_a, gram_b)
+                    if sim > max_sim:
+                        max_sim = sim
+                    if max_sim == 1.0:  # Optimización: si ya encontró un match perfecto, no necesita seguir.
+                        break
+                soft_intersection += max_sim
+            
+            # Usamos la misma fórmula de coseno, pero con la "intersección suave".
+            num += w * self._binary_cosine(len(A), len(B), soft_intersection)
             den += w
             
         if den <= 0.0:
@@ -193,7 +269,7 @@ class WordFinder:
         std_dev = variance ** 0.5
         
         # Normalizar igual que en el modelo
-        norm_stats = {}
+        norm_stats: Dict[str, float] = {}
         norm_stats["char_count_n"] = min(char_count / self.MAX_CHAR_COUNT, 1.0)
         norm_stats["mean_n"] = mean_val / self.MAX_MEAN
         
@@ -224,88 +300,11 @@ class WordFinder:
             return 0.0
         return dot_product / (norm_a * norm_b)
 
-    def _build_query_grams(self, q: str) -> Dict[int, set[str]]:
-        """Construye n-gramas de la consulta"""
-        gq: Dict[int, set[str]] = {}
-        for n in range(self.n_min, self.n_max + 1):
-            gq[n] = set(self._ngrams(q, n))
-        return gq
-
-    def find_keywords(self, text: str | List[str]) -> List[Dict[str, Any]]:
-        """Busca palabras clave usando coseno binario de n-gramas"""
-        if not text:
-            return []
-            
-        single = False
-        if isinstance(text, str):
-            text = [text]
-            single = True
-
-        results: List[Dict[str, Any]] = []
-        
-        for s in text:
-            q = self._normalize(s)
-            if not q:
-                continue
-                
-            grams_q = self._build_query_grams(q)
-            best_idx = None
-            best_score = 0.0
-
-            # Comparar contra TODOS los candidatos
-            for i in range(len(self.combined_words)):
-                cand = self.combined_words[i]
-                
-                # Score de n-gramas
-                ngram_score = self._score_binary_cosine_multi_n(self.grams[i], grams_q)
-                
-                # Score de estadísticas (si están disponibles)
-                stats_score = 0.0
-                field = self.variant_to_field.get(cand)
-                if field and cand in self.normalized_stats:
-                    query_stats = self._calculate_query_stats(q, field)
-                    candidate_stats = self.normalized_stats[cand]
-                    stats_score = self._stats_similarity(query_stats, candidate_stats)
-                
-                # Score combinado (70% n-gramas, 30% estadísticas)
-                combined_score = 0.7 * ngram_score + 0.3 * stats_score
-                
-                if combined_score > best_score:
-                    best_score = combined_score
-                    best_idx = i
-
-                if best_idx is not None:
-                    cand = self.combined_words[best_idx]
-                    thr = self._len_threshold(len(cand))
-                    
-                    if best_score >= thr:
-                        key_field = self.variant_to_field.get(cand)
-                        header_category = self.variant_to_header_category.get(cand)
-
-                        if key_field:
-                            final_key_field = key_field
-                            header_type = None
-                        else:
-                            final_key_field = "header"
-                            header_type = header_category
-
-                        results.append({
-                            "key_field": final_key_field,
-                            "header_type": header_type,
-                            "word_found": cand,
-                            "similarity": float(best_score),
-                            "query": q
-                        })
-
-            return results if not single else (results[0:1] if results else [])
-
-    def get_model_info(self):
+    def get_model_info(self) -> Dict[str, Any]:
         return {
-        "total_words": len(self.combined_words),
+        "total_words": len(self.key_words),
         "threshold_similarity": self.threshold,
         "key_words": len(self.key_words),
-        "header_words": len(self.header_words),
-        "combined_words": len(getattr(self, "combined_words", [])),
         "campos_disponibles": list(self.model.get("key_words", {}).keys()),
         "density_encoder_loaded": len(self.density_encoder) > 0,
         "fields_with_stats": len(self.field_stats),
@@ -402,22 +401,20 @@ class WordFinder:
         rfc_score = self._regex_patterns_rfc(query)
         if rfc_score > 0:
             return {
-                "field": "RFCProveedor",
+                "key_field": "RFCProveedor",
                 "word_found": "rfc" if len(query) <= 5 else "registrofederaldecontribuyentes",
                 "similarity": float(rfc_score),
                 "query": query,
-                "method": "regex_rfc"
             }
         
         # Probar fecha/hora
         fecha_score, fecha_type = self._regex_patterns_fecha(query)
         if fecha_score > 0:
             return {
-                "field": "FechaDocumento",
+                "key_field": "FechaDocumento",
                 "word_found": fecha_type,
                 "similarity": float(fecha_score),
                 "query": query,
-                "method": "regex_fecha"
             }
         
         return {}
@@ -425,22 +422,17 @@ class WordFinder:
     def debug_find_keywords(self, text: str | List[str]) -> Dict[str, Any]:
         """Versión debug que muestra paso a paso lo que hace find_keywords"""
         print(f"\n=== DEBUG find_keywords ===")
-        print(f"Input: {text} (type: {type(text)})")
+        print(f"Input: {text}")
         
-        result = self.find_keywords(text)
+        results = self.find_keywords(text)
         
-        print(f"Output type: {type(result)}")
-        print(f"Output length: {len(result)}")
-        print(f"Output value: {result}")
+        print(f"Output length: {len(results)}")
+        print(f"Output value: {results}")
         
-        if result:
-            for i, item in enumerate(result):
+        if results:
+            for i, item in enumerate(results):
                 print(f"\nResult item {i}:")
-                print(f"  Type: {type(item)}")
-                print(f"  Content: {item}")
-                if isinstance(item, dict):
-                    for k, v in item.items():
-                        print(f"    {k}: {v} ({type(v).__name__})")
+                print(f"Content: {item}")
         
         print(f"=== END DEBUG ===\n")
-        return {"debug_info": "complete", "original_result": result}
+        return {"debug_info": "complete", "original_result": results}

@@ -50,11 +50,11 @@ enabled_outputs:
   sharp_poly: false
   binarized_polygons: false
   problematic_polygons: false
-  ocr_raw: true
+  ocr_raw: false
   reconstructed_lines: false
   table_lines: false
   table_structured: false
-  math_max_corrected: false
+  math_max_corrected: true
 
 # Configuración de procesamiento
 processing:
@@ -159,6 +159,7 @@ modules:
       
     data_finder:
       wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
+      min_similarity: 0.90
     
     math_max:
       total_mtl_abs_tolerance: 0.05
