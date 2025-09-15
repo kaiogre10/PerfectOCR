@@ -139,6 +139,7 @@ class MathMaxConfig(ConfigWithNumpy):
 
 class TextualConfig(ConfigWithNumpy):
     min_confidence: float
+    min_contours_for_frag: int
 
 class PreprocessingConfig(ConfigWithNumpy):
     moire: MoireConfig  
@@ -162,11 +163,15 @@ class DBSCAN(ConfigWithNumpy):
 class Lineal(ConfigWithNumpy):
     overlap: float
 
+class TableStructurer(ConfigWithNumpy):
+    min_h: int
+
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
     dbscan: DBSCAN
     math_max: MathMaxConfig
     data_finder: DataFinder
+    table_structurer: TableStructurer
     
 class ModulesConfig(ConfigWithNumpy):
     image_loader: ImageLoader

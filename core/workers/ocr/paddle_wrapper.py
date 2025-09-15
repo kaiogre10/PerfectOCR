@@ -74,8 +74,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             success = manager.update_ocr_results(final_results, polygon_ids)
             processed_count = len(final_results) if success else 0
             
-            # Usar método del DataFormatter para liberar memoria
-            manager.clear_cropped_images(polygon_ids)
             logger.debug("Cropped_img liberadas usando DataFormatter")
             file_name: str = manager.workflow.metadata.image_name
             
@@ -139,8 +137,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     def _save_ocr_raw(self, context: Dict[str, Any], final_results: List[Optional[Dict[str, Any]]], file_name: str):
         from services.output_service import save_json
         import os
-        
-        output_paths = context.get("output_paths", [])
+
         output_paths = context.get("output_paths", [])
         for path in output_paths:
             output_dir: str = os.path.join(path, "ocr_raw")

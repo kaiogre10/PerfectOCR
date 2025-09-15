@@ -29,11 +29,6 @@ class Binarizator(OCRAbstractWorker):
         self.height_thresholds = bin_config.get('height_thresholds_px', [100, 800, 1500, 2500])
         self.block_sizes_map = bin_config.get('block_sizes_map', [15, 21, 25, 35, 41])
 
-        # frag_config = self.config.get('fragmentation', {})
-        # self.min_area_factor = frag_config.get('min_area_factor', 0.01)
-        # self.min_contours_for_frag = frag_config.get('min_contours_for_frag', 3)
-        # self.approx_poly_epsilon = frag_config.get('approx_poly_epsilon', 0.02)
-
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Binarización y extracción ligera de contornos -> guardamos solo boxes."""
         try:
@@ -87,6 +82,14 @@ class Binarizator(OCRAbstractWorker):
             if contours_meta:
                 # Guardar solo metadatos ligeros de contorno en el manager (sin imágenes)
                 context['contours_meta'] = contours_meta
+                polygon_ids: List[str] = []
+
+                for poly_id, polygon in polygons.items():
+                    polygon_ids.append(poly_id)
+                # Acceso correcto a imagen desde dataclass
+                    cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
+
+                manager.clear_cropped_images(polygon_ids)
 
             logger.debug(f"Binarizator: contornos extraídos para {len(contours_meta)} polígonos en {time.time()-start:.3f}s")
             return True

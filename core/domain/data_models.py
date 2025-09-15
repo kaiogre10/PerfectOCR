@@ -36,7 +36,6 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                     },
                 },
                 "date_creation": {"type": "string"},
-                "color": {"type": ["string", "null"]}
             },
         }, 
         "polygons": {
@@ -134,7 +133,6 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                             "maxItems": 2,
                         },
                         "tabular_line": {"type": "boolean"},
-                        "header_line": {"type": "boolean"},
                     },
                 },
             },
@@ -327,15 +325,13 @@ class AllLines:
     polygon_ids: List[str]
     line_geometry: LineGeometry
     tabular_line: bool
-    header_line: bool
-
+    
 @dataclass(frozen=True)
 class Metadata:
     image_name: str
     format: Optional[str]
     img_dims: Dict[str, int]
     date_creation: Optional[str]
-    color: Optional[str]
 
 @dataclass
 class WorkflowDict:

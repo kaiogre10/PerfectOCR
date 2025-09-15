@@ -40,7 +40,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             all_bboxes: List[np.ndarray[Any, Any]] = []
             
             for poly_id, polygon in polygons.items():
-                # Acceso directo a arrays NumPy desde la dataclass
                 bbox = polygon.geometry.bounding_box 
                 if bbox.size != 4:
                     logger.warning(f"PolygonExtractor: Bounding box inválido para {poly_id}")

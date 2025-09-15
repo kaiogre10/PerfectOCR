@@ -48,12 +48,6 @@ class DataFinder(VectorizationAbstractWorker):
             return False
 
     def _find_data(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Optional[Dict[str, str]]:
-        """
-        Busca encabezados por palabra usando polygons:
-        - Encuentra todas las líneas con palabras de encabezado
-        - Selecciona la línea más arriba (menor índice)
-        - retorna lista con solo esa línea
-        """
         min_similarity = self.worker_config.get("min_similarity", 0.90)
         try:
 
@@ -107,6 +101,7 @@ class DataFinder(VectorizationAbstractWorker):
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
+                        logger.info(f"Similitud por palabra{best_result}")
 
             return polygon_updates
                     

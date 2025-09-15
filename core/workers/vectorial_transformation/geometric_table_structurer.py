@@ -19,28 +19,146 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         self.output = self.enabled_outputs.get("table_structured", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
+        start_time = time.time()
+        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+        tabular_line_ids: List[str] = [lid for lid, l in all_lines.items() if getattr(l, "tabular_line", False)]
         try:
-            start_time = time.time()
-            all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-
-            tabular_line_ids: List[str] = [lid for lid, l in all_lines.items() if getattr(l, "tabular_line", False)]
-
             if not tabular_line_ids or not all_lines or not polygons:
                 logger.warning("GeometricTableStructurer: Faltan datos necesarios (líneas tabulares, all_lines o polígonos) para la estructuración.")
                 return False
 
-            # Obtener la línea de encabezado detectada por el data_finder a través del contexto
-            hdr_ids = context.get('header_line_ids', [])
-            header_line_id = hdr_ids[0] if isinstance(hdr_ids, list) and hdr_ids else None
-            
-            if header_line_id:
-                header_line = all_lines.get(header_line_id)
-            
+            header_poly_ids: List[str] = self.find_header_line(polygons, all_lines)
+
+            h = len(header_poly_ids)
+            if h == 0 or h == 1:
+                logger.info("Usando paramétro H del yaml")
+                h: int = self.worker_config.get("min_h", {})
+            H = h
+
+            # 2. Construir 'main_header_line_elements' (H*) con la geometría requerida
+            main_header_line_elements: List[Dict[str, Any]] = []
+            for poly_id in header_poly_ids:
+                poly_data = polygons.get(poly_id)
+                if poly_data:
+                    geom = poly_data.geometry
+                    main_header_line_elements.append({
+                        "ocr_text": poly_data.ocr_text or "",
+                        "cx": geom.centroid[0],
+                        "cy": geom.centroid[1]
+                    })
+
+            # 3. Construir 'lines_table_only' (S) para todas las líneas tabulares
+            lines_table_only = []
+            for line_id in tabular_line_ids:
+                line_data = all_lines.get(line_id)
+                if not line_data:
+                    continue
+                poly_ids_for_line = line_data.polygon_ids
+
+                constituent_elements: List[Dict[str, Any]] = []
+                for poly_id in poly_ids_for_line:
+                    poly_data = polygons.get(poly_id)
+                    if poly_data:
+                        geom = poly_data.geometry
+                        bbox = geom.bounding_box
+                        constituent_elements.append({
+                            "ocr_text": poly_data.ocr_text or "",
+                            "xmin": bbox[0],
+                            "ymin": bbox[1],
+                            "xmax": bbox[2],
+                            "ymax": bbox[3],
+                            "cx": geom.centroid[0],
+                            "cy": geom.centroid[1]
+                        })
+
+                lines_table_only.append({
+                    "line_id": line_id,
+                    "constituent_elements_ocr_data": constituent_elements
+                })
+
+            logger.info(f"Iniciando estructuración de tabla con H={H} columnas.")
+
+            lines_table_only: List[Dict[str, Any]]
+            table_matrix: List[List[Dict[str, Any]]] = self.structure_table(lines_table_only, main_header_line_elements, H)
+
+            # Convertir la matriz a DataFrame
+            df = pd.DataFrame([
+                [cell.get('cell_text', '') for cell in row]
+                for row in table_matrix
+            ])
+            df.columns = [f"col_{i}" for i in range(df.shape[1])]
+
+            logger.info(
+                f"Estructuración de tabla completada en {time.time() - start_time:.10f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}")  # type: ignore
+
+            # Guardar en memoria (DataFormatter) para etapas posteriores
+            saved = manager.save_structured_table(df=df, columns=list(df.columns))
+            return bool(saved)
+
+        except Exception as e:
+            logger.error(f"Error fatal en GeometricTableStructurer.vectorize: {e}", exc_info=True)
+            return False
+
+    def find_header_line(self, polygons: Dict[ str, Polygons], all_lines: Dict[str, AllLines]) -> List[str]:
+            hdr_poly_ids: List[str] = []
+            for pid, pdata in polygons.items():
+                # Comparamos con el string 'HeaderWords'
+                if getattr(pdata, "key_field", None) == 'HeaderWords':
+                    hdr_poly_ids.append(pid)
+
+            header_line_id = None
+            if hdr_poly_ids:
+                # Contar cuántos header-polygons hay por línea y elegir la mejor línea
+                line_counts: Dict[str, int] = {}
+                hdr_set = set(hdr_poly_ids)
+                for line_id, line_obj in all_lines.items():
+                    line_polys = set(getattr(line_obj, "polygon_ids", []) or [])
+                    count = len(line_polys.intersection(hdr_set))
+                    if count > 0:
+                        line_counts[line_id] = count
+                
+                # 3. Elegir la línea con la mayor cantidad de polígonos de encabezado.
+                if line_counts:
+                    # sorted() devuelve una lista de tuplas (key, value). Tomamos el primero.
+                    best_line_id = sorted(line_counts.items(), key=lambda item: item[1], reverse=True)[0][0]
+                    header_line_id = best_line_id
+                    logger.info(f"Línea de encabezado detectada por 'HeaderWords': {header_line_id} (con {line_counts[best_line_id]} elementos)")
+
+                # 4. Obtener la línea de encabezado (ya sea la detectada o el fallback).
+                header_line = None
+                if header_line_id:
+                    header_line = all_lines.get(header_line_id)
+                    if not header_line:
+                        logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id} en all_lines.")
+                        # Podríamos continuar con el fallback aquí si es necesario
+                
+                # 5. Fallback: si no se encontró una línea de encabezado, usar la línea anterior a la primera tabular.
                 if not header_line:
-                    logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id} en all_lines.")
+                    logger.warning("No se detectó una línea de encabezado explícita. Usando fallback (línea anterior a la primera tabular).")
+                    if not tabular_line_ids:
+                        logger.warning("No hay líneas tabulares para determinar el encabezado por fallback.")
+                        return False
+
+                    all_line_ids = list(all_lines.keys())
+                    first_tabular_line_id = tabular_line_ids[0]
+                    try:
+                        idx = all_line_ids.index(first_tabular_line_id)
+                        if idx > 0:
+                            header_line_id = all_line_ids[idx - 1]
+                            header_line = all_lines.get(header_line_id)
+                        else:
+                            logger.warning("La primera línea tabular es la primera del documento, no hay encabezado anterior.")
+                            return False
+                    except ValueError:
+                        logger.warning(f"La primera línea tabular con ID {first_tabular_line_id} no se encuentra en all_lines.")
+                        return False
+
+                if not header_line:
+                    logger.error("Fallo crítico: no se pudo determinar una línea de encabezado.")
                     return False
+                
+                header_poly_ids = header_line.polygon_ids
             else:
                 # Si no hay encabezado detectado, fallback: usar la línea anterior a la primera tabular
                 if not tabular_line_ids:
@@ -64,78 +182,14 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if not header_line:
                     logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id}")
                     return False
-            
+
             header_poly_ids = header_line.polygon_ids
-            H = len(header_poly_ids)
-            if H == 0:
-                logger.warning("La línea de encabezado no tiene polígonos. No se puede determinar el número de columnas.")
-                return False
-
-            # 2. Construir 'main_header_line_elements' (H*) con la geometría requerida
-            main_header_line_elements: List[Dict[str, Any]]  = []
-            for poly_id in header_poly_ids:
-                poly_data = polygons.get(poly_id)
-                if poly_data:
-                    geom = poly_data.geometry
-                    main_header_line_elements.append({
-                        "ocr_text": poly_data.ocr_text or "",
-                        "cx": geom.centroid[0],
-                        "cy": geom.centroid[1]
-                    })
-            
-            # 3. Construir 'lines_table_only' (S) para todas las líneas tabulares
-            lines_table_only = []
-            for line_id in tabular_line_ids:
-                line_data = all_lines.get(line_id)
-                if not line_data:
-                    continue
-                poly_ids_for_line = line_data.polygon_ids
-                
-                constituent_elements: List[Dict[str, Any]] = []
-                for poly_id in poly_ids_for_line:
-                    poly_data = polygons.get(poly_id)
-                    if poly_data:
-                        geom = poly_data.geometry
-                        bbox = geom.bounding_box
-                        constituent_elements.append({
-                            "ocr_text": poly_data.ocr_text or "",
-                            "xmin": bbox[0],
-                            "ymin": bbox[1],
-                            "xmax": bbox[2],
-                            "ymax": bbox[3],
-                            "cx": geom.centroid[0],
-                            "cy": geom.centroid[1]
-                        })
-                
-                lines_table_only.append({
-                    "line_id": line_id,
-                    "constituent_elements_ocr_data": constituent_elements
-                })
-
-            logger.debug(f"Iniciando estructuración de tabla con H={H} columnas.")
-            lines_table_only: List[Dict[str, Any]]
-            table_matrix = self.structure_table(lines_table_only, main_header_line_elements)
-
-            # Convertir la matriz a DataFrame
-            df = pd.DataFrame([
-                [cell.get('cell_text', '') for cell in row]
-                for row in table_matrix
-            ])
-            df.columns = [f"col_{i}" for i in range(df.shape[1])]
-
-            logger.info(f"Estructuración de tabla completada en {time.time() - start_time:.10f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}") # type: ignore
-
-            # Guardar en memoria (DataFormatter) para etapas posteriores
-            saved = manager.save_structured_table(df=df, columns=list(df.columns))
-            return bool(saved)
-
-        except Exception as e:
-            logger.error(f"Error fatal en GeometricTableStructurer.vectorize: {e}", exc_info=True)
-            return False
+            return header_poly_ids
     
     def structure_table(self,
                         lines_table_only: List[Dict[str, Any]],
-                        main_header_line_elements: List[Dict[str, Any]]
+                        main_header_line_elements: List[Dict[str, Any]],
+                        H: int
                         ) -> List[List[Dict[str, Any]]]:
         """
         Transforms a list of text lines from a table area into a 2D cell structure.
@@ -145,19 +199,14 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                               Each word dict requires 'ocr_text', 'xmin', 'xmax', 'cx', 'cy'.
             main_header_line_elements: List of word/segment dicts for the main header line.
                                        Each element requires 'ocr_text', 'cx', 'cy'.
-        Returns:
+            Returns:
             A 2D list (list of rows, where each row is a list of cell dicts).
             Each cell dict: {'words': List[Dict], 'cell_text': str}.
         """
         if not main_header_line_elements:
             logger.warning("GeometricTableStructurer: No header elements provided, cannot determine column count (H).")
             return []
-        
-        H = len(main_header_line_elements)
-        if H == 0:
-            logger.warning("GeometricTableStructurer: Number of columns (H) is 0 based on header elements.")
-            return []
-        
+            
         header_centroids = []
         for header_elem in main_header_line_elements:
             if 'cx' in header_elem and 'cy' in header_elem:
@@ -215,7 +264,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         current_row_cells[col_idx]['words'] = words_pk[start_idx:end_idx]
                         start_idx = end_idx
                         if start_idx >= lk and col_idx < H -1 : # Ran out of words before filling all H-1 cuts
-                            logger.debug(f"Line {k}: Ran out of words ({lk}) while trying to fill {H} columns based on {H-1} cuts. Remaining columns will be empty.")
+                            logger.info(f"Linea {k}: sin palabras ({lk}) mientras intenó completar {H} columnas basado en {H-1} cortes. Columnas restantes estarán vacías.")
                             break
 
             # Case B: Lk < H (Insufficient words)

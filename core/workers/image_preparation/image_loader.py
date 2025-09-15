@@ -4,7 +4,6 @@ import time
 import numpy as np
 import logging
 from typing import Dict, Any, Tuple, Optional
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -43,45 +42,40 @@ class ImageLoader:
                     "height": None,
                     "size": None
                 },
-            "color": None,
         }
-
-        img_array = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
-        if img_array is None:
-            error_msg = f"No se pudo leer la imagen en '{input_path}'"
-            logger.error(error_msg)
-            metadata['error'] = error_msg
-            return None, metadata
-        logger.debug(f"Imagen cargada correctamente desde: {input_path}")
-
-        image_array = np.array(img_array, dtype=np.uint8)
-        cv2_size:float = image_array.size
-        if cv2_size == 0:
-            error_msg = f"Imagen vacía o corrupta en '{input_path}'"
-            logger.error(error_msg)
-            metadata['error'] = error_msg
-            return None, metadata
-        
-        # logger.info(f"Size de la imagen completa: {cv2_size}")
-
-        cv2_height, cv2_width = image_array.shape[:2]
-        if len(image_array.shape) == 3:
-            gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
-        else:
-            gray_image = image_array
-        
-        metadata["img_dims"] = {
-                    "width": (cv2_width), 
-                    "height": (cv2_height),
-                    "size": (cv2_size)
-                }
-        logger.debug(f"Dimensiones imagen:{cv2_width, cv2_height}")
-        
         try:
-            with Image.open(input_path) as img:
-                metadata["color"] = img.mode
+            img_array = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
+            if img_array is None:
+                error_msg = f"No se pudo leer la imagen en '{input_path}'"
+                logger.error(error_msg)
+                metadata['error'] = error_msg
+                return None, metadata
+            logger.debug(f"Imagen cargada correctamente desde: {input_path}")
+
+            image_array = np.array(img_array, dtype=np.uint8)
+            cv2_size:float = image_array.size
+            if cv2_size == 0:
+                error_msg = f"Imagen vacía o corrupta en '{input_path}'"
+                logger.error(error_msg)
+                metadata['error'] = error_msg
+                return None, metadata
+            
+            logger.debug(f"Size de la imagen completa: {cv2_size}")
+
+            cv2_height, cv2_width = image_array.shape[:2]
+            if len(image_array.shape) == 3:
+                gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+            else:
+                gray_image = image_array
+            
+            metadata["img_dims"] = {
+                        "width": (cv2_width), 
+                        "height": (cv2_height),
+                        "size": (cv2_size)
+                    }
+            logger.debug(f"Dimensiones imagen:{cv2_width, cv2_height}")
             logger.debug(f"Loader completado en en {time.perf_counter() - start_time:.6f}s para {image_name}")
-            logger.debug(f" metadata: {metadata}")
+        
             return gray_image, metadata
 
         except Exception as e:

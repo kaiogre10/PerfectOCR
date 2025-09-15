@@ -36,6 +36,11 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
                 return False
 
+
+            if self.output:
+                file_name: str = manager.workflow.metadata.image_name
+                self._save_json(context, lines_info, file_name)
+
             return True
         except Exception as e:
             logger.error(f"error {e}", exc_info=True)
@@ -121,3 +126,16 @@ class LinealReconstructor(VectorizationAbstractWorker):
             
             self.lines_info = lines_info
             return lines_info
+
+    def _save_json(self, context: Dict[str, Any], final_results: List[Optional[Dict[str, Any]]], file_name: str):
+        from services.output_service import save_json
+        import os
+
+        output_paths = context.get("output_paths", [])
+        for path in output_paths:
+            output_dir: str = os.path.join(path, "reconstructed_lines")
+            json_file_name = f"{os.path.splitext(file_name)[0]}.json"
+            save_json(final_results, output_dir, json_file_name)
+
+        if output_paths:
+            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

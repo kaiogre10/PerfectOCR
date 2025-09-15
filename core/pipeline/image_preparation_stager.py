@@ -29,7 +29,7 @@ class ImagePreparationStager:
         now = datetime.now()
         fecha = now.strftime("%Y%m%d")
         decimales = f"{now.microsecond:06d}"
-        IDRegistro = f"dict_{metadata.get('image_name')}_{fecha}{decimales}"
+        IDRegistro = f"{metadata.get('image_name')}_{fecha}{decimales}"
         logger.info(f"workflow_dict con registro: {IDRegistro}")
 
         full_img = gray_image

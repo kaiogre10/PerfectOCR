@@ -2,12 +2,13 @@
 from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, GlobalData
 import numpy as np
 import time
+import dataclasses
 import jsonschema
 import logging
 import json
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List
 from datetime import datetime
-import pandas as pd
+import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,6 @@ class DataFormatter:
                     "size": int(metadata.get("img_dims", {}).get("size")),
                 },
                 "date_creation": metadata.get("date_creation", datetime.now().isoformat()),
-                "color": str(metadata.get("color", "")) if metadata.get("color") is not None else None
             },
             "polygons": {},
             "all_lines": {},
@@ -50,7 +50,6 @@ class DataFormatter:
                 format=self.temp_dict["metadata"]["format"],
                 img_dims=self.temp_dict["metadata"]["img_dims"],
                 date_creation=self.temp_dict["metadata"]["date_creation"],
-                color=self.temp_dict["metadata"]["color"]
             )
 
             self.workflow = WorkflowDict(
@@ -396,40 +395,19 @@ class DataFormatter:
                 return False
 
             updated_count = 0
-            polygons_info: List[Dict[str, str]] = []
 
             for poly_id, key_field in polygon_updates.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
-                    polygons_info.append({
-                    "poly_id": poly_id,
-                    "text": polygon.ocr_text or "",
-                    "key_field": key_field
-                    })
-
-                    updated_polygon = Polygons(
-                        polygon_id=polygon.polygon_id,
-                        geometry=polygon.geometry,
-                        cropedd_geometry=polygon.cropedd_geometry,
-                        cropped_img=polygon.cropped_img,
-                        perimeter=polygon.perimeter,
-                        line_id=polygon.line_id,
-                        ocr_text=polygon.ocr_text,
-                        ocr_confidence=polygon.ocr_confidence,
-                        was_fragmented=polygon.was_fragmented,
-                        status=polygon.status,
-                        stage=polygon.stage,
-                        key_field=key_field,
-                    )
+                    updated_polygon = dataclasses.replace(polygon, key_field=key_field)
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-            if polygons_info:
-                for info in polygons_info:
-                    logger.info(f"UPDATED: poly_id={info['poly_id']}, key_field={info['key_field']}, text='{info['text'][:50]}'")
-            
-            logger.info(f"Actualizados {updated_count} polígonos con key_fields")
+                    logger.info(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
+
+            if updated_count > 0:
+                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
             return True
             
         except Exception as e:
@@ -466,7 +444,6 @@ class DataFormatter:
                     polygon_ids=line_data.get("polygon_ids", []),
                     line_geometry=line_geometry,
                     tabular_line=False,
-                    header_line=False 
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
@@ -481,7 +458,7 @@ class DataFormatter:
 
             if tabular_lines_info:
                 for log_info in tabular_lines_info:
-                    logger.info(f"{log_info['line_id']}: '{log_info['text']}'")
+                    logger.debug(f"{log_info['line_id']}: '{log_info['text']}'")
             
             num_lines = len(all_lines_dataclasses)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas en workflow_dict y dataclasses.")
