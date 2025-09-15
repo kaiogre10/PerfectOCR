@@ -20,6 +20,7 @@ __pycache__/
 input/
 output/
 data/models/
+input2/
 
 # Excepción
 !density_encoder.json

@@ -103,6 +103,7 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                         "stage": {"type": "string"},
                         "status": {"type": "boolean"},
                         "key_field": {"type": "string"},
+                        "semantic_type": {"type": "string"},
                     },
                 },
             },
@@ -311,6 +312,7 @@ class Polygons:
     status: bool
     stage: str
     key_field: str
+    semantic_type: str
     
 @dataclass
 class LineGeometry:

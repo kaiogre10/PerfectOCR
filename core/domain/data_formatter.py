@@ -103,7 +103,8 @@ class DataFormatter:
                 was_fragmented=poly_data.get("was_fragmented", False),
                 status=poly_data.get("status", True),
                 stage=poly_data.get("stage", ""),
-                key_field=poly_data.get("key_field", "global")
+                key_field=poly_data.get("key_field", "global"),
+                semantic_type=poly_data.get("semantic_type", "")
             )
             
             return polygon
@@ -154,6 +155,7 @@ class DataFormatter:
                     "status": True,
                     "stage": "",
                     "key_field": "",
+                    "semantic_type": ""
                 }
                 
                 # Validar y crear dataclass
@@ -205,6 +207,7 @@ class DataFormatter:
                             status=polygon.status,
                             stage=polygon.stage,
                             key_field=polygon.key_field,
+                            semantic_type=polygon.semantic_type,
                         )
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_count += 1
@@ -314,6 +317,7 @@ class DataFormatter:
                         status=polygon.status,
                         stage=polygon.stage,
                         key_field=polygon.key_field,
+                        semantic_type=polygon.semantic_type,
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
@@ -342,6 +346,7 @@ class DataFormatter:
                 status=success,
                 stage=worker_name,
                 key_field=polygon.key_field,
+                semantic_type=polygon.semantic_type,
             )
             self.workflow.polygons[poly_id] = updated_polygon
             
@@ -376,7 +381,9 @@ class DataFormatter:
                             status=polygon.status,
                             stage=polygon.stage,
                             key_field=polygon.key_field,
+                            semantic_type=polygon.semantic_type,
                         )
+                        
                         self.workflow.polygons[poly_id] = updated_polygon
                         
             logger.info("Texto OCR actualizado en dataclasses")

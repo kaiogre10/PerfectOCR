@@ -50,9 +50,9 @@ enabled_outputs:
   sharp_poly: false
   binarized_polygons: false
   problematic_polygons: false
-  ocr_raw: true
-  clean_text: true
-  reconstructed_lines: false
+  ocr_raw: false
+  clean_text: false
+  reconstructed_lines: true
   table_lines: false
   table_structured: false
   math_max_corrected: false

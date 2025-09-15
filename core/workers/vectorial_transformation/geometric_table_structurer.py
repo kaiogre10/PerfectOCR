@@ -28,16 +28,18 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 logger.warning("GeometricTableStructurer: Faltan datos necesarios (líneas tabulares, all_lines o polígonos) para la estructuración.")
                 return False
 
-            header_poly_ids: List[str] = self.find_header_line(polygons, all_lines)
-
-            h = len(header_poly_ids)
-            if h == 0 or h == 1:
-                logger.info("Usando paramétro H del yaml")
-                h: int = self.worker_config.get("min_h", {})
-            H = h
+            header_info = self._find_header_line(polygons, all_lines, tabular_line_ids)
+            if not header_info or not header_info.get('line_id'):
+                logger.warning("No se pudo determinar header_line_id; no se filtrarán líneas por encabezado.")
+                header_line_id = None
+                header_poly_ids: List[str] = header_info.get('poly_ids', []) if header_info else []
+            else:
+                header_line_id = header_info['line_id']
+                header_poly_ids = header_info['poly_ids']
 
             # 2. Construir 'main_header_line_elements' (H*) con la geometría requerida
             main_header_line_elements: List[Dict[str, Any]] = []
+            all_header_words: List[str] = []
             for poly_id in header_poly_ids:
                 poly_data = polygons.get(poly_id)
                 if poly_data:
@@ -47,10 +49,44 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         "cx": geom.centroid[0],
                         "cy": geom.centroid[1]
                     })
+                    words_in_poly = poly_data.ocr_text.strip().split()
+                    all_header_words.extend(words_in_poly)
 
-            # 3. Construir 'lines_table_only' (S) para todas las líneas tabulares
+            words = [el["ocr_text"] for el in main_header_line_elements]
+            polygon_count = len(words)
+            word_count = len(all_header_words)
+            logger.info(f"Polígonos en encabezado: {polygon_count}, Palabras reales: {word_count}")
+            
+            h = word_count
+            logger.info(f"Paramétro H encontrado con texto: {h}")
+            if h == 0 or h == 1:
+                logger.info("Usando paramétro H del yaml")
+                h: int = self.worker_config.get("min_h", 3)
+            H = int(h)
+
+            # 3) Filtrar líneas tabulares desde el encabezado hacia abajo
+            all_line_ids = list(all_lines.keys())
+            line_order = {lid: idx for idx, lid in enumerate(all_line_ids)}
+
+            if header_line_id and header_line_id in line_order:
+                header_idx = line_order[header_line_id]
+                
+            # Excluir la línea de encabezado: comenzar en la siguiente línea
+                tabular_line_ids_filtered = [lid for lid in tabular_line_ids
+                                             if line_order.get(lid, float('inf')) > header_idx]
+                logger.debug(f"Header line '{header_line_id}' excluded from table. Starting from index {header_idx + 1}.")
+            else:
+                logger.warning("header_line_id no encontrado en all_lines; se usarán todas las líneas tabulares.")
+                tabular_line_ids_filtered = tabular_line_ids
+
+            # 4. Construir 'lines_table_only' (S) para todas las líneas tabulares
             lines_table_only = []
-            for line_id in tabular_line_ids:
+            for line_id in tabular_line_ids_filtered:
+                # Seguridad: no incluir la línea de encabezado aunque aparezca
+                if header_line_id and line_id == header_line_id:
+                    logger.debug(f"Skipping header line during table construction: {line_id}")
+                    continue
+                
                 line_data = all_lines.get(line_id)
                 if not line_data:
                     continue
@@ -100,91 +136,63 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error fatal en GeometricTableStructurer.vectorize: {e}", exc_info=True)
             return False
 
-    def find_header_line(self, polygons: Dict[ str, Polygons], all_lines: Dict[str, AllLines]) -> List[str]:
-            hdr_poly_ids: List[str] = []
-            for pid, pdata in polygons.items():
-                # Comparamos con el string 'HeaderWords'
-                if getattr(pdata, "key_field", None) == 'HeaderWords':
-                    hdr_poly_ids.append(pid)
+    def _find_header_line(self, polygons: Dict[str, Polygons], all_lines: Dict[str, AllLines], tabular_line_ids: List[str]) -> Dict[str, Any]:
+        hdr_poly_ids: List[str] = []
+        for pid, pdata in polygons.items():
+            # Comparamos con el string 'HeaderWords'
+            if getattr(pdata, "key_field", None) == 'HeaderWords':
+                hdr_poly_ids.append(pid)
 
-            header_line_id = None
-            if hdr_poly_ids:
-                # Contar cuántos header-polygons hay por línea y elegir la mejor línea
-                line_counts: Dict[str, int] = {}
-                hdr_set = set(hdr_poly_ids)
-                for line_id, line_obj in all_lines.items():
-                    line_polys = set(getattr(line_obj, "polygon_ids", []) or [])
-                    count = len(line_polys.intersection(hdr_set))
-                    if count > 0:
-                        line_counts[line_id] = count
-                
-                # 3. Elegir la línea con la mayor cantidad de polígonos de encabezado.
-                if line_counts:
-                    # sorted() devuelve una lista de tuplas (key, value). Tomamos el primero.
-                    best_line_id = sorted(line_counts.items(), key=lambda item: item[1], reverse=True)[0][0]
-                    header_line_id = best_line_id
-                    logger.info(f"Línea de encabezado detectada por 'HeaderWords': {header_line_id} (con {line_counts[best_line_id]} elementos)")
-
-                # 4. Obtener la línea de encabezado (ya sea la detectada o el fallback).
-                header_line = None
-                if header_line_id:
-                    header_line = all_lines.get(header_line_id)
-                    if not header_line:
-                        logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id} en all_lines.")
-                        # Podríamos continuar con el fallback aquí si es necesario
-                
-                # 5. Fallback: si no se encontró una línea de encabezado, usar la línea anterior a la primera tabular.
-                if not header_line:
-                    logger.warning("No se detectó una línea de encabezado explícita. Usando fallback (línea anterior a la primera tabular).")
-                    if not tabular_line_ids:
-                        logger.warning("No hay líneas tabulares para determinar el encabezado por fallback.")
-                        return False
-
-                    all_line_ids = list(all_lines.keys())
-                    first_tabular_line_id = tabular_line_ids[0]
-                    try:
-                        idx = all_line_ids.index(first_tabular_line_id)
-                        if idx > 0:
-                            header_line_id = all_line_ids[idx - 1]
-                            header_line = all_lines.get(header_line_id)
-                        else:
-                            logger.warning("La primera línea tabular es la primera del documento, no hay encabezado anterior.")
-                            return False
-                    except ValueError:
-                        logger.warning(f"La primera línea tabular con ID {first_tabular_line_id} no se encuentra en all_lines.")
-                        return False
-
-                if not header_line:
-                    logger.error("Fallo crítico: no se pudo determinar una línea de encabezado.")
-                    return False
-                
-                header_poly_ids = header_line.polygon_ids
-            else:
-                # Si no hay encabezado detectado, fallback: usar la línea anterior a la primera tabular
-                if not tabular_line_ids:
-                    logger.warning("No hay líneas tabulares detectadas para determinar el encabezado.")
-                    return False
-
-                all_line_ids = list(all_lines.keys())
-                first_tabular_line_id = tabular_line_ids[0]
-                try:
-                    idx = all_line_ids.index(first_tabular_line_id)
-                except ValueError:
-                    logger.warning(f"La primera línea tabular con ID {first_tabular_line_id} no se encuentra en all_lines.")
-                    return False
-
-                if idx == 0:
-                    logger.warning("La primera línea tabular es la primera línea del documento, no hay línea anterior para usar como encabezado.")
-                    return False
-
-                header_line_id = all_line_ids[idx - 1]
+        header_line_id = None
+        header_line = None
+        if hdr_poly_ids:
+            # Buscar línea con más polígonos de encabezado
+            hdr_set = set(hdr_poly_ids)
+            line_counts: Dict[str, int] = {}
+            for line_id, line_obj in all_lines.items():
+                line_polys = set(getattr(line_obj, "polygon_ids", []) or [])
+                count = len(line_polys.intersection(hdr_set))
+                if count > 0:
+                    line_counts[line_id] = count
+            if line_counts:
+                header_line_id = max(line_counts.items(), key=lambda kv: kv[1])[0]
+                logger.info(
+                    f"Línea de encabezado detectada por 'HeaderWords': {header_line_id} (con {line_counts[header_line_id]} elementos)"
+                )
                 header_line = all_lines.get(header_line_id)
                 if not header_line:
-                    logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id}")
-                    return False
+                    logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id} en all_lines.")
+                    header_line_id = None
 
-            header_poly_ids = header_line.polygon_ids
-            return header_poly_ids
+            # Fallback: línea anterior a la primera tabular
+        if not header_line:
+            if not tabular_line_ids:
+                logger.warning("No hay líneas tabulares para determinar encabezado por fallback.")
+                return {}
+            all_line_ids = list(all_lines.keys())
+            first_tabular_line_id = tabular_line_ids[0]
+            try:
+                idx = all_line_ids.index(first_tabular_line_id)
+                if idx > 0:
+                    header_line_id = all_line_ids[idx - 1]
+                    header_line = all_lines.get(header_line_id)
+                else:
+                    logger.warning(
+                        "La primera línea tabular es la primera del documento, no hay encabezado anterior.")
+                    return {}
+            except ValueError:
+                logger.warning(
+                    f"La primera línea tabular con ID {first_tabular_line_id} no se encuentra en all_lines.")
+                return {}
+
+        if not header_line:
+            logger.error("Fallo crítico: no se pudo determinar una línea de encabezado.")
+            return {}
+
+        return {
+            'line_id': header_line_id,
+            'poly_ids': getattr(header_line, 'polygon_ids', []) or []
+        }
     
     def structure_table(self,
                         lines_table_only: List[Dict[str, Any]],
@@ -199,6 +207,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                               Each word dict requires 'ocr_text', 'xmin', 'xmax', 'cx', 'cy'.
             main_header_line_elements: List of word/segment dicts for the main header line.
                                        Each element requires 'ocr_text', 'cx', 'cy'.
+            H: parameter
             Returns:
             A 2D list (list of rows, where each row is a list of cell dicts).
             Each cell dict: {'words': List[Dict], 'cell_text': str}.
