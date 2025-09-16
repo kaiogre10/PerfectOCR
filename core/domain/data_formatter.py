@@ -138,7 +138,7 @@ class DataFormatter:
                     "geometry": {
                         "polygon_coords": coords.tolist(),
                         "bounding_box": bbox.tolist(),
-                        "centroid": centroid.tolist()
+                        "centroid": centroid.tolist(),
                     },
                     "cropped_geometry": {
                         "padd_centroid": [],
@@ -264,7 +264,7 @@ class DataFormatter:
                 
             if full_img is None:
                 # Si se pasa None, vaciamos la imagen para liberar memoria
-                sucess = dataclasses.replace(self.workflow, full_img=None)
+                dataclasses.replace(self.workflow, full_img=None)
                 logger.debug(f"Imagen liberada con éxito: {full_img}")
             return True
         except Exception as e:
@@ -521,7 +521,7 @@ class DataFormatter:
             logger.debug(f"Marcadas {marked_count} líneas como tabulares")
             if tabular_lines_info:
                 for log_info in tabular_lines_info:
-                    logger.debug(f"  {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+                    logger.debug(f"{log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
 
             return marked_count > 0
         except Exception as e:
@@ -656,7 +656,7 @@ class DataFormatter:
             payload["raw_table"] = {"columns": list(self.structured_table.df.columns), "rows": self.structured_table.df.fillna("").astype(str).values.tolist()}
         
         logger.info(f"Estructuración de datos completada en {time.perf_counter()-t0:.6f}s")
-        logger.info(f"Resultados: {payload}")
+        logger.debug(f"Resultados: {payload}")
 
         return payload
 

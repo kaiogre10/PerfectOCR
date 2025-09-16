@@ -153,7 +153,8 @@ class TextCleaner(OCRAbstractWorker):
                     perimeter=None,
                     status=True,
                     stage="TextCleaner",
-                    key_field=polygon.key_field
+                    key_field=polygon.key_field,
+                    semantic_type=polygon.semantic_type
                 )
                 fragments.append(new_fragment)
         except Exception as e:

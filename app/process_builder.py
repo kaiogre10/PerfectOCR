@@ -65,9 +65,9 @@ class ProcessingBuilder:
 
             db_path = self.config.get("db_path", "")
             
-            data_base_path: Optional[str] = manager.export_payload_json(db_path)
+            results = manager.to_db_payload()
 
-            return data_base_path
+            return manager
             
         except Exception as e:
             logger.error(f"[ProcessingBuilder] Error fatal procesando la imagen: {e}", exc_info=True)

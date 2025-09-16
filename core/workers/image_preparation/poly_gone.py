@@ -99,10 +99,16 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 
                 cropped_images[poly_id] = cropped
                 
+                poly_height, poly_width = cropped.shape[:2]
+                
                 # Guardar geometría usando resultados vectorizados
                 cropped_geometries[poly_id] = {
                     "padd_centroid": [float(padded_centroids_x[i]), float(padded_centroids_y[i])],
                     "padding_coords": [int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)],
+                    "poly_dims": {
+                        "poly_height": poly_height, 
+                        "poly_width":  poly_width,
+                    }
                 }
 
             # Guardar resultados
