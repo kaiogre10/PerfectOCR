@@ -7,6 +7,7 @@ system:
 paths:
   input_folder: "C:/PerfectOCR/input"
   output_folder: "C:/PerfectOCR/output"
+  db_path: "C:/PerfectOCR/data_base/data_base.json"
   
 models_config:
   use_angle_cls: false
@@ -51,7 +52,7 @@ enabled_outputs:
   sharp_poly: false
   binarized_polygons: false
   problematic_polygons: false
-  ocr_raw: true
+  ocr_raw: false
   semantic_words: false
   clean_text: false
   reconstructed_lines: false

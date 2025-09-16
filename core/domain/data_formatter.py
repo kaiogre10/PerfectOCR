@@ -1,11 +1,11 @@
 # core/domain/data_formatter.py
 from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, GlobalData
 import numpy as np
-import time
 import dataclasses
 import jsonschema
 import logging
 import json
+import time
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import pandas as pd #type: ignore
@@ -60,12 +60,11 @@ class DataFormatter:
                 polygons={},
                 all_lines={},
             )
-
             self.workflow_dict = self.temp_dict
 
             return True
         except Exception as e:
-            logger.error(f"Error validando workflow_dict: {e}")
+            logger.error(f"Error validando workflow_dict: {e}", exc_info=True)
             return False
         
     def _validate_and_create_polygon(self, poly_data: Dict[str, Any]) -> Optional[Polygons]:
@@ -109,10 +108,10 @@ class DataFormatter:
             
             return polygon
         except jsonschema.ValidationError as e:
-            logger.error(f"Polígono no válido: {e}")
+            logger.error(f"Polígono no válido: {e}", exc_info=True)
             return None
         except Exception as e:
-            logger.error(f"Error creando polígono: {e}")
+            logger.error(f"Error creando polígono: {e}", exc_info=True)
             return None
 
     def create_polygon_dicts(self, results: Optional[List[Any]]) -> bool:
@@ -220,7 +219,7 @@ class DataFormatter:
             logger.debug(f"Liberadas {cleared_count} imágenes recortadas de memoria.")
             return True
         except Exception as e:
-            logger.error(f"Error liberando imágenes recortadas: {e}")
+            logger.error(f"Error liberando imágenes recortadas: {e}", exc_info=True)
             return False
             
     def get_encode_lines(self, line_ids: Optional[List[str]] = None) -> Dict[str, List[int]]:
@@ -259,19 +258,14 @@ class DataFormatter:
     def update_full_img(self, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""
         try:
-            if not self.workflow_dict:
+            if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar full_img.")
                 return False
                 
             if full_img is None:
                 # Si se pasa None, vaciamos la imagen para liberar memoria
-                self.workflow_dict["full_img"] = None
-                logger.debug("full_img liberada del workflow_dict.")
-                return True
-            else:
-                # Si se pasa una imagen, la actualizamos
-                self.workflow_dict["full_img"] = full_img.tolist()
-                logger.debug("full_img actualizada en el workflow_dict.")
+                sucess = dataclasses.replace(self.workflow, full_img=None)
+                logger.debug(f"Imagen liberada con éxito: {full_img}")
             return True
         except Exception as e:
             logger.error(f"Error actualizando full_img: {e}", exc_info=True)
@@ -360,7 +354,7 @@ class DataFormatter:
                 return False
                 
             logger.debug(f"DataFormatter recibe: {len(final_results)} resultados, {len(polygon_ids)} IDs")
-
+ 
             for idx, res in enumerate(final_results):
                 if idx < len(polygon_ids) and res is not None:
                     poly_id = polygon_ids[idx]
@@ -392,7 +386,6 @@ class DataFormatter:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
 
-
     def update_semantic_type(self, final_results: Dict[str, str]) -> bool:
         try:
             if not self.workflow:
@@ -409,8 +402,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.info(f"UPDATED: poly_id={poly_id}, semantic_type={semantic_type}, text='{polygon.ocr_text or ''}'")
-            logger.info(f"Resiltados finales{final_results}, text='{polygon.ocr_text}")
+                    logger.debug(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
                 logger.info(f"Actualizados {updated_count} polígonos con semantic_types")
@@ -532,7 +524,6 @@ class DataFormatter:
                     logger.debug(f"  {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
 
             return marked_count > 0
-
         except Exception as e:
             logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)
             return False
@@ -563,10 +554,10 @@ class DataFormatter:
             except Exception:
                 return None
 
-    def _row_to_detalle(self, row: List[str]) -> Dict[str, Any]:
+    def _row_to_detalle(self, row: Dict[str, Any]) -> Dict[str, Any]:
         # Mapea columnas esperadas al esquema de DetallesCompra
         return {
-            "IDDetalle": None,  # Se generará automáticamente en la BD
+            "IDDetalle": None,  
             "IDRegistro": None,
             "Cantidad": self._parse_number(row.get("c")),
             "SKU": row.get("sku"),
@@ -580,24 +571,63 @@ class DataFormatter:
         Construye un payload JSON-serializable:
         { registro: {...}, detalles: [...], provenance: {...}, raw_table: [...] }
         """
+        t0 = time.perf_counter()
+        logger.info("Estructuración de datos iniciada")
         try:
-            
             if not self.workflow:
                 return {}
 
             wf: WorkflowDict = self.workflow
-            md: Metadata = wf.metadata 
+            md: Metadata = wf.metadata
+            polygons: Dict[str, Polygons] = wf.polygons or {}
             dict_id: str = wf.IDRegistro
-            global_data: Dict[str, GlobalData] = wf.global_data if self.workflow else {}
+            folio: Optional[str] = None
+            fecha: Optional[str] = None
+            rfc: Optional[str] = None
+            monto: Optional[Any] = None
+            tipo: Optional[str] = None
+            nombre_cliente: Optional[str] = None
 
-            registro: Dict[str, Any] = {
+            # Buscar polígonos por key_field (comparación por string) y extraer ocr_text
+            for pid, pdata in polygons.items():
+                try:
+                    key = getattr(pdata, "key_field", None)
+                    text = getattr(pdata, "ocr_text", None)
+                    if not key or not text:
+                        continue
+                    key = str(key).strip()
+                    txt = str(text).strip()
+                    if key == "FolioDocumento" and not folio:
+                        folio = txt
+                    elif key == "FechaDocumento" and not fecha:
+                        # Intentar normalizar fecha si es posible, sino dejar el texto crudo
+                        try:
+                            parsed = datetime.fromisoformat(txt)
+                            fecha = parsed.isoformat()
+                        except Exception:
+                            fecha = txt
+                    elif key == "RFCProveedor" and not rfc:
+                        rfc = txt
+                    elif key == "MontoTotalDocumento" and monto is None:
+                        monto = self._parse_number(txt)
+                    elif key == "TipoDocumento" and not tipo:
+                        tipo = txt
+                    elif key == "NombreCliente" and not nombre_cliente:
+                        nombre_cliente = txt
+                except Exception:
+                    # No bloquear la construcción del payload por un polígonos con problemas
+                    logger.debug(f"Ignorando polígono {pid} al construir registro", exc_info=True)
+
+            registro: Optional[Dict[str, Any]] = {
                 "IDRegistro": dict_id,
-                "FolioDocumento": global_data.get("folio") if isinstance(global_data, dict) else getattr(global_data, "folio", None),
-                "FechaDocumento": global_data.get("date") if isinstance(global_data, dict) else getattr(global_data, "date", None),
-                "RFCProveedor": global_data.get("rfc") if isinstance(global_data, dict) else getattr(global_data, "rfc", None),
-                "MontoTotalDocumento": self._parse_number(global_data.get("total") if isinstance(global_data, dict) else None),
-                "TipoDocumento": global_data.get("TipoDocumento") if isinstance(global_data, dict) else getattr(global_data, "TipoDocumento", None),
+                "FolioDocumento": folio,
+                "FechaDocumento": fecha,
+                "RFCProveedor": rfc,
+                "MontoTotalDocumento": monto,
+                "TipoDocumento": tipo,
+                "NombreCliente": nombre_cliente,
             }
+
         except Exception as e:
             logger.info(f"fallo en dbpayload{e}", exc_info=True)
         try:
@@ -606,7 +636,7 @@ class DataFormatter:
                 df = self.structured_table.df
                 cols = self.structured_table.columns if self.structured_table.columns else list(df.columns)
                 for _, r in df.iterrows():
-                    row = {}
+                    row: Dict[str, Any] = {}
                     # mapear por índice de columnas a col_0..col_n para _row_to_detalle
                     for i, c in enumerate(cols):
                         row[f"col_{i}"] = r.get(c) if c in df.columns else r[i]
@@ -617,27 +647,29 @@ class DataFormatter:
                         
         provenance: Dict[str, Any] = {
             "IDRegistro": dict_id,
-            "image_name": md.get("image_name") if isinstance(md, dict) else getattr(md, "image_name", None),
-            "formatter_version": "v1",
-            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S")
+            "IDProveedor": md.get("image_name") if isinstance(md, dict) else getattr(md, "image_name", None)
         }
 
-        payload = {"registro": registro, "detalles": detalles, "provenance": provenance}
+        payload: Dict[str, Any] = {"registro": registro, "detalles": detalles, "provenance": provenance}
         # opcional: raw_table para auditoría
         if self.structured_table and hasattr(self.structured_table, "df"):
             payload["raw_table"] = {"columns": list(self.structured_table.df.columns), "rows": self.structured_table.df.fillna("").astype(str).values.tolist()}
+        
+        logger.info(f"Estructuración de datos completada en {time.perf_counter()-t0:.6f}s")
+        logger.info(f"Resultados: {payload}")
 
         return payload
 
     def export_payload_json(self, db_path: str) -> Optional[str]:
         """Escribe el payload en disco para auditoría/revisión manual"""
         try:
-            payload = self.to_db_payload()
+            payload: Dict[str, Any] = self.to_db_payload()
             if not payload:
-                return False
+                return None
             with open(db_path, "w", encoding="utf-8") as fh:
                 json.dump(payload, fh, ensure_ascii=False, indent=2)
-            return True
+                
+            return data_base_path
         except Exception as e:
             logger.error(f"Error exportando payload json: {e}", exc_info=True)
-            return False
+            return None

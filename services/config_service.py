@@ -42,9 +42,9 @@ class ConfigService:
         }
     
     @property
-    def paths_config(self) -> Dict[str, Any]:
+    def paths_config(self) -> Dict[str, str]:
         """Obtiene todas las rutas del sistema."""
-        return self.config.get('paths', {})
+        return self.config.get('paths', "")
     
     @property
     def enabled_outputs(self) -> Dict[str, bool]:

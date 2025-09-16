@@ -67,26 +67,7 @@ class DataFinder(VectorizationAbstractWorker):
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
             return None
         try:
-
             logger.debug("DataFinder: inicio de búsqueda de encabezados")
-
-            # ruta al modelo configurable
-            # model_path = None
-            # try:
-            #     model_path = self.worker_config.get("wordfinder_model_path") or self.config.get("wordfinder_model_path")
-            # except Exception:
-            #     model_path = None
-            # if not model_path:
-            #     model_path = os.path.join(self.project_root or ".", "data", "wordfinder_model.pkl")
-            # logger.debug(f"_find_headers: ruta modelo WordFinder -> {model_path}")
-
-            # try:
-            #     wf = WordFinder(model_path)
-            #     logger.info("_find_headers: WordFinder inicializado correctamente")
-            # except Exception as e:
-            #     logger.warning(f"WordFinder no pudo inicializarse con {model_path}: {e}", exc_info=True)
-            #     return []
-
             if not polygons:
                 logger.info("No hay polígonos para procesar")
                 return None

@@ -71,7 +71,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             if header_line_id and header_line_id in line_order:
                 header_idx = line_order[header_line_id]
                 
-            # Excluir la línea de encabezado: comenzar en la siguiente línea
+                # Excluir la línea de encabezado: comenzar en la siguiente línea
                 tabular_line_ids_filtered = [lid for lid in tabular_line_ids
                                              if line_order.get(lid, float('inf')) > header_idx]
                 logger.debug(f"Header line '{header_line_id}' excluded from table. Starting from index {header_idx + 1}.")

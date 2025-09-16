@@ -1,19 +1,21 @@
 # PerfectOCR/app/process_builder.py
 import time
 import logging
-from typing import Optional
+from typing import Optional, Dict
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
 from core.domain.data_formatter import DataFormatter
+from services.database_service import DatabaseService
 
 logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
     """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados ycoordina el procesamiento técnico de una sola imagen."""
     
-    def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
+    def __init__(self, config: Dict[str, str] , input_stager: ImagePreparationStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
+        self.config = config
         self.manager = manager
         self.input_stager = input_stager
         self.preprocessing_stager = preprocessing_stager
@@ -58,12 +60,14 @@ class ProcessingBuilder:
                     vect_total = vect_time  # vect_time ya es la duración
                     logger.info(f"Vectorización time {vect_total:.6f}s")
             
-            results = manager.to_db_payload()
-                                    
             total_workflow_time = time.perf_counter() - workflow_start
             logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.6f}s")
+
+            db_path = self.config.get("db_path", "")
             
-            return manager
+            data_base_path: Optional[str] = manager.export_payload_json(db_path)
+
+            return data_base_path
             
         except Exception as e:
             logger.error(f"[ProcessingBuilder] Error fatal procesando la imagen: {e}", exc_info=True)

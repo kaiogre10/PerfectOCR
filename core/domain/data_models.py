@@ -13,13 +13,14 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
         "global_data": {
             "type": "object",
             "properties": {
-                "rfc": {"type": ["string", "null"]},
-                "date": {"type": ["string", "null"]},
-                "total": {"type": ["string", "null"]},
-                "subtotal": {"type": ["string", "null"]},
-                "iva": {"type": ["string", "null"]},
-                "folio": {"type": ["string", "null"]},
-            }
+                "Subtotal": {"type": ["string", "null"]},
+                "total_productos": {"type": ["string", "null"]},
+                "MontoIVAGeneral": {"type": ["string", "null"]},
+                "RFCProveedor": {"type": ["string", "null"]},
+                "FolioDocumento": {"type": ["string", "null"]},
+                "FechaDocumento": {"type": ["string", "null"]},
+                "NombreCliente": {"type": ["string", "null"]},
+            },
         },
         "metadata": {
             "type": "object",
@@ -32,7 +33,6 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                         "width": {"type": "integer"},
                         "height": {"type": "integer"},
                         "size": {"type": "integer"},
-
                     },
                 },
                 "date_creation": {"type": "string"},
@@ -272,15 +272,6 @@ class StructuredTable:
     df: pd.DataFrame
     columns: List[str]
     semantic_types: Optional[List[str]] = None
-    
-@dataclass
-class GlobalData:
-    rfc: Optional[str]
-    date: Optional[str]
-    total: Optional[str]
-    subtotal: Optional[str]
-    iva: Optional[str]
-    folio: Optional[str]
 
 @dataclass
 class CroppedGeometry:
@@ -296,7 +287,7 @@ class CroppedImage:
 class Geometry:
     polygon_coords: np.ndarray[Any, Any]  # shape: (n_points, 2)
     bounding_box: np.ndarray[Any, Any]    # shape: (4,)
-    centroid: np.ndarray[Any, Any]        # shape: (2,)    
+    centroid: np.ndarray[Any, Any]        # shape: (2,)
     
 @dataclass
 class Polygons:
@@ -336,11 +327,20 @@ class Metadata:
     date_creation: Optional[str]
 
 @dataclass
+class GlobalData:
+    Subtotal: Optional[str]
+    total_productos: Optional[str]
+    MontoIVAGeneral: Optional[str]
+    RFCProveedor: Optional[str]
+    FolioDocumento: Optional[str]
+    FechaDocumento: Optional[str]
+    NombreCliente: Optional[str]
+
+@dataclass
 class WorkflowDict:
     IDRegistro: str
     full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
-    global_data: Dict[str, GlobalData]
     metadata: Metadata
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
-
+    global_data: Dict[str, GlobalData]

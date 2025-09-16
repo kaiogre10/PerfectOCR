@@ -30,8 +30,6 @@ class WorkFlowBuilder:
     def _extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, str]]:
         """Extrae lista de rutas y nombres de imágenes válidas de forma recursiva."""
         image_info: List[Dict[str, str]] = []
-        
-        # Recorrer recursivamente todas las subcarpetas
         for root, dirs, files in os.walk(input_folder):
             for filename in files:
                 if filename.lower().endswith(valid_extensions):
@@ -48,10 +46,9 @@ class WorkFlowBuilder:
                         "path": full_path,
                         "name": image_name,
                         "extension": image_extension,
-                        "relative_folder": relative_path  # Nueva clave para tracking
+                        "relative_folder": relative_path
                     })
-                    
-        # Log para debug
+
         if image_info:
             logger.debug(f"Encontradas {len(image_info)} imágenes en {input_folder} y subcarpetas")
             # Mostrar estructura de carpetas encontradas

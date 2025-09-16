@@ -92,7 +92,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         mtl_name = quant_cols[mtl_idx]
         logger.info(f"[MatrixSolver] Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
         # --- FASE 2: Reconstrucción ---
-        reconstructed: np.ndarray[np.float64, Any] = numeric_df.to_numpy(copy=True)
+        reconstructed: np.ndarray[np.float32, Any] = numeric_df.to_numpy(copy=True)
+        reconstructed: np.ndarray = numeric_df.to_numpy(dtype=np.float32, copy=True)
                 
         col_medians = {i: np.nanmedian(reconstructed[:, i]) for i in col_indices_in_numeric_matrix}
 

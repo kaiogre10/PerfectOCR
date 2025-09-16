@@ -90,10 +90,10 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         paddle_wrapper = config_services.paddle_rec_config
         data_finder = config_services.data_finder_config
 
-        context = {
+        context: Dict[str, Any] = {
            "geometry_detector": geometry_detector,
             "paddle_wrapper": paddle_wrapper,
-            "data_finder": data_finder
+            "data_finder": data_finder,
         }
 
         image_load_factory = worker_factory.get_image_preparation_factory()
@@ -102,8 +102,8 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             context)
 
         preprocessing_factory = worker_factory.get_preprocessing_factory()
-        preprocessing_workers = preprocessing_factory.create_workers(
-            ["moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
+        preprocessing_workers = preprocessing_factory.create_workers([
+            "moire", "sp", "gauss", "clahe", "sharp", "binarization", "fragmentator"],
             context)
         
         ocr_factory = worker_factory.get_ocr_factory()
@@ -150,11 +150,12 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         )
         
         builder = ProcessingBuilder(
+            config = config_services.paths_config,
             manager=manager,
             input_stager=input_stager,
             preprocessing_stager=preprocessing_stager,
             ocr_stager=ocr_stager,
-            vectorization_stager=vectorization_stager
+            vectorization_stager=vectorization_stager,
         )
         builders.append(builder)
         

@@ -1,6 +1,6 @@
 # semantic_clasificator
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -17,8 +17,9 @@ class SemanticClasificator(OCRAbstractWorker):
         self.output = self.enabled_outputs.get("semantic_words", False)  
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        
+        logger.info("Clasificador inciado")
         try:
-            
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para preocesar")
                 
@@ -26,6 +27,8 @@ class SemanticClasificator(OCRAbstractWorker):
             
             final_results: Dict[str, str] = self._clasify_words(polygons)
             
+            manager.update_semantic_type(final_results)
+
             file_name: str = manager.workflow.metadata.image_name
             
             if self.output:
