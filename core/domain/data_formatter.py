@@ -393,7 +393,33 @@ class DataFormatter:
             return False
 
 
-    def update_semantic_type(self, )
+    def update_semantic_type(self, final_results: Dict[str, str]) -> bool:
+        try:
+            if not self.workflow:
+                logger.error("No hay workflow inicializado para actualizar resultados OCR.")
+                return False
+
+            updated_count = 0
+
+            for poly_id, semantic_type in final_results.items():
+                if poly_id in self.workflow.polygons:
+                    polygon = self.workflow.polygons[poly_id]
+
+                    updated_polygon = dataclasses.replace(polygon, semantic_type=semantic_type)
+                    self.workflow.polygons[poly_id] = updated_polygon
+                    updated_count += 1
+            
+                    logger.info(f"UPDATED: poly_id={poly_id}, semantic_type={semantic_type}, text='{polygon.ocr_text or ''}'")
+            logger.info(f"Resiltados finales{final_results}, text='{polygon.ocr_text}")
+
+            if updated_count > 0:
+                logger.info(f"Actualizados {updated_count} polígonos con semantic_types")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
+            return False
+        
     def update_polygon_data(self, polygon_updates: Optional[Dict[str, str]]) -> bool:
         """
         Actualiza los datos de los polígonos en las dataclasses de polígonos.

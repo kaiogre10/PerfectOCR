@@ -5,6 +5,7 @@ from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.ocr.binarization import Binarizator
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from core.workers.ocr.text_cleaner import TextCleaner
+from core.workers.ocr.semantic_clasificator import SemanticClasificator
 
 class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
     def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], OCRAbstractWorker]]:
@@ -13,6 +14,7 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
             "paddle_wrapper": self._create_paddle_wrapper,
             "binarizator": self._create_binarizator,
             "text_cleaner": self._create_text_cleaner,
+            "semantic_clasificator": self._create_clasificator,
         }
         
     def _create_paddle_wrapper(self, context: Dict[str, Any]) -> PaddleOCRWrapper:
@@ -24,3 +26,6 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         
     def _create_text_cleaner(self, context: Dict[str, Any]) -> TextCleaner:
         return TextCleaner(config=self.module_config, project_root=self.project_root)
+        
+    def _create_clasificator(self, context: Dict[str, Any]) -> SemanticClasificator:
+        return SemanticClasificator(config=self.module_config, project_root=self.project_root)

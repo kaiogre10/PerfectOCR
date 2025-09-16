@@ -17,17 +17,23 @@ class SemanticClasificator(OCRAbstractWorker):
         self.output = self.enabled_outputs.get("semantic_words", False)  
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        if not manager.workflow or not manager.workflow.polygons:
-            logger.warning("Semantic Clasificator no tiene polígonos para preocesar")
+        try:
             
-        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-        
-        final_results: Dict[str, str] = self._clasify_words(polygons)
-        
-        file_name: str = manager.workflow.metadata.image_name
-        
-        if self.output:
-            self._save_ocr_raw(context, final_results, file_name)
+            if not manager.workflow or not manager.workflow.polygons:
+                logger.warning("Semantic Clasificator no tiene polígonos para preocesar")
+                
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            
+            final_results: Dict[str, str] = self._clasify_words(polygons)
+            
+            file_name: str = manager.workflow.metadata.image_name
+            
+            if self.output:
+                self._save_ocr_raw(context, final_results, file_name)
+            return True
+            
+        except Exception as e:
+            logger.info(f"Error en el clasiicador{e}", exc_info=True)
             
     def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
     
@@ -41,7 +47,7 @@ class SemanticClasificator(OCRAbstractWorker):
             
         n_min, n_max = norm(numeric_range)
         c_min, c_max = norm(code_range)
-        d_min, d_max = norm(descriptive_range)
+        d_min, d_max = norm(descriptive_range) # type: ignore
             
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
 
@@ -70,7 +76,7 @@ class SemanticClasificator(OCRAbstractWorker):
         except Exception as e:
             logger.info(f"Fallo en el mapeo de las letras semánticas {e}", exc_info=True )
                 
-    def _save_ocr_raw(self, context: Dict[str, Any], final_results: List[Optional[Dict[str, Any]]], file_name: str):
+    def _save_ocr_raw(self, context: Dict[str, Any], final_results: Dict[str, str], file_name: str):
         from services.output_service import save_json
         import os
 
