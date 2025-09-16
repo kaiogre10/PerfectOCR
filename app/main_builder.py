@@ -11,7 +11,7 @@ from core.pipeline.vectorization_stager import VectorizationStager
 from core.factory.main_factory import MainFactory
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.domain.data_formatter import DataFormatter
-from core.domain.models_manager import PaddleManager
+from core.domain.models_manager import ModelsManager
 from services.config_service import ConfigService
 from services.cache_service import cleanup_project_cache
 
@@ -44,9 +44,9 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
         
         # 4. Iniciar Paddle Singleton
         # t21 = time.perf_counter()
-        paddle_manager = PaddleManager.get_instance()
-        paddle_config = config_services.models_config
-        paddle_manager.initialize_engines(paddle_config)
+        models_manager = ModelsManager.get_instance()
+        models_config = config_services.models_config
+        models_manager.initialize_models(models_config, project_root)
         # logging.info(f"PaddleManager iniciado en {time.perf_counter()-t21:.6f}s")
 
         # 5. Main crea builders según el reporte
@@ -88,10 +88,12 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         manager = DataFormatter()
         geometry_detector = config_services.paddle_det_config
         paddle_wrapper = config_services.paddle_rec_config
+        data_finder = config_services.data_finder_config
 
         context = {
            "geometry_detector": geometry_detector,
-            "paddle_wrapper": paddle_wrapper
+            "paddle_wrapper": paddle_wrapper,
+            "data_finder": data_finder
         }
 
         image_load_factory = worker_factory.get_image_preparation_factory()
@@ -106,7 +108,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         
         ocr_factory = worker_factory.get_ocr_factory()
         ocr_workers = ocr_factory.create_workers(
-            ["paddle_wrapper", "text_cleaner"], 
+            ["paddle_wrapper", "text_cleaner", "semantic_clasificator"], 
             context)
 
         vectorizing_factory = worker_factory.get_vectorizing_factory()

@@ -29,6 +29,10 @@ class ConfigService:
             raise
     
     @property
+    def system_config(self) -> Dict[str, str]:
+        return self.config.get("system", {})
+    
+    @property
     def manager_config(self) -> Dict[str, Any]:
         """Devuelve el paquete estándar de configuraciones de los managers"""
         return {
@@ -163,8 +167,12 @@ class ConfigService:
     @property
     def data_finder_config(self) -> Dict[str, str]:
         word_finder_config = self.models_config
-        standar_model_path = word_finder_config.get("standar_model", "")
+        find_model = word_finder_config.get("models", {})
+        model_path = find_model.get("wordfinder_model_path", "")
+        system_config = self.system_config
+        project_root = system_config.get("project_root", "")
         
         return {
-            "standar_model": standar_model_path
+            "model_path": model_path,
+            "project_root": project_root
         }

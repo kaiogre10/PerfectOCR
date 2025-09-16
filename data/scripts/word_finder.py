@@ -9,20 +9,25 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 class WordFinder:
-    def __init__(self, model_path: str):
-        self._active = "standard"
+    def __init__(self, model_path: str, project_root: str):
+        self.project_root = project_root
         self.model_path = model_path
-        self.model: Dict[str, Any] = self._load_model(model_path)
+        self._active = "standard"
+        self.model: Dict[str, Any] = self._load_model(self.model_path)
         self._apply_active_model()
         
     def _load_model(self, model_path: str) -> Dict[str, Any]:
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Modelo no encontrado en {model_path}")
-        with open(model_path, "rb") as f:
-            self.model = pickle.load(f)
-        if not isinstance(self.model, dict):
-            raise ValueError("El pickle no tiene el formato esperado (dict).")
-        return self.model
+        try:
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"Modelo no encontrado en {model_path}")            
+            with open(model_path, "rb") as f:
+                self.model = pickle.load(f)
+            if not isinstance(self.model, dict):
+                raise ValueError("El pickle no tiene el formato esperado (dict).")
+            return self.model
+        except Exception as e:
+            logger.info(f"Error al cargar el modelo{e}", exc_info=True)
+            
         
     def available_models(self) -> List[str]:
         return ["standard"]
@@ -300,7 +305,7 @@ class WordFinder:
             return 0.0
         return dot_product / (norm_a * norm_b)
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self):
         return {
         "total_words": len(self.key_words),
         "threshold_similarity": self.threshold,

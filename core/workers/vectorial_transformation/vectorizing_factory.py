@@ -26,7 +26,8 @@ class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
         return DensityScanner(config=self.module_config, project_root=self.project_root)
         
     def _create_finder(self, context: Dict[str, Any]) -> DataFinder:
-        return DataFinder(config=self.module_config, project_root=self.project_root)
+        data_finder_config = context.get("data_finder_config", {})
+        return DataFinder(config=data_finder_config, cfg=self.module_config, project_root=self.project_root)
 
     def _create_structurer(self, context: Dict[str, Any]) -> GeometricTableStructurer:
         return GeometricTableStructurer(config=self.module_config, project_root=self.project_root)

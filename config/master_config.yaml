@@ -19,6 +19,7 @@ models_config:
     det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
     rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
     cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
+    wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
     
 pipeline_secuence:
   image_preparation:
@@ -50,9 +51,10 @@ enabled_outputs:
   sharp_poly: false
   binarized_polygons: false
   problematic_polygons: false
-  ocr_raw: false
+  ocr_raw: true
+  semantic_words: false
   clean_text: false
-  reconstructed_lines: true
+  reconstructed_lines: false
   table_lines: false
   table_structured: false
   math_max_corrected: false
@@ -131,6 +133,11 @@ modules:
     text_cleaner:
       min_confidence: 85.0
       min_contours_for_frag: 2
+    
+    semantic_clasificator:
+      numeric: [100.0, 70.0]
+      code: [31.0, 69.0]
+      descriptive: [0.0, 30.0]
     
     binarizator:
       c_value: 7

@@ -34,10 +34,11 @@ class Processing(ConfigWithNumpy):
     batch_mode: bool
     batch_processing: BatchProcessing
 
-class PaddlePaths(ConfigWithNumpy):
+class ModelsPaths(ConfigWithNumpy):
     det_model_dir: str
     rec_model_dir: str
     cls_model_dir: str
+    wordfinder_model_path: str
 
 class ModelsConfig(ConfigWithNumpy):
     use_angle_cls: bool
@@ -45,7 +46,7 @@ class ModelsConfig(ConfigWithNumpy):
     show_log: bool
     use_gpu: bool
     enable_mkldnn: bool
-    models: PaddlePaths
+    models: ModelsPaths
 
 class PathsConfig(ConfigWithNumpy):
     input_folder: str
@@ -147,10 +148,16 @@ class PreprocessingConfig(ConfigWithNumpy):
     bilateral_params: GaussianConfig  
     contrast: ContrastConfig  
     sharpening: SharpeningConfig
-                
+    
+class SemanticClasificator(ConfigWithNumpy):
+    numeric: List[float]
+    code: List[float]
+    descriptive: List[float]
+    
 class OCRConfig(ConfigWithNumpy):
     text_cleaner: TextualConfig
-    binarizator: Binarization  
+    binarizator: Binarization
+    semantic_clasificator: SemanticClasificator
     fragmentation: Fragmentador
 
 class DataFinder(ConfigWithNumpy):

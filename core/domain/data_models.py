@@ -102,7 +102,7 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                         "was_fragmented": {"type": "boolean"},
                         "stage": {"type": "string"},
                         "status": {"type": "boolean"},
-                        "key_field": {"type": "string"},
+                        "key_field": {"type": ["string", "null"]},
                         "semantic_type": {"type": "string"},
                     },
                 },
@@ -311,7 +311,7 @@ class Polygons:
     was_fragmented: bool
     status: bool
     stage: str
-    key_field: str
+    key_field: Optional[str]
     semantic_type: str
     
 @dataclass

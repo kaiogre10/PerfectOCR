@@ -1,50 +1,76 @@
 # core/domain/ocr_motor_manager.py
 import logging
+import threading
 import time
 from typing import Dict, Any, Optional
-from paddleocr import PaddleOCR
+from paddleocr import PaddleOCR # type: ignore
+from data.scripts.word_finder import WordFinder
 
 logger = logging.getLogger(__name__)
 
-class PaddleManager:
+class ModelsManager:
     _instance = None
+    _lock = threading.Lock()
     
     def __init__(self):
-        if PaddleManager._instance is not None:
-            raise Exception("PaddleManager es un singleton. Usa get_instance()")
-        self._detection_engine = None
-        self._recognition_engine = None
-        self._shared_engine = None
-        self._initialized = False
+        try:
+            if ModelsManager._instance is not None:
+                raise Exception("ModelsManager es un singleton. Usa get_instance()")
+            self._detection_engine = None
+            self._recognition_engine = None
+            self._shared_engine = None
+            self._initialized = False
+            self._model = False
+            self._word_finder = None
+            self.project_root = None
+            self._active = False
+        except Exception as e:
+            logger.info(f"Error Manager{e}", exc_info=True)
     
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls()
         return cls._instance
     
-    def initialize_engines(self, paddle_config: Dict[str, Any]):
+    def initialize_models(self, models_config: Dict[str, Any], project_root: str):
         init_time = time.perf_counter()
-        if not self._initialized:
-            self._shared_engine = PaddleOCR(
-                det=True, rec=True, cls=False,
-                det_model_dir=paddle_config['models']['det_model_dir'],
-                rec_model_dir=paddle_config['models']['rec_model_dir'],
-                use_angle_cls=paddle_config.get('use_angle_cls', False),
-                show_log=paddle_config.get('show_log', False),
-                use_gpu=paddle_config.get('use_gpu', False),
-                enable_mkldnn=paddle_config.get('enable_mkldnn', True),
-                lang=paddle_config.get('lang', 'es'),
-                rec_batch_num = paddle_config.get('rec_batch_num', 64)
+        self.project_root = project_root
+        try:
+            models_section = models_config.get("models", {})
+            model_path = models_section.get("wordfinder_model_path")
+            self._word_finder = WordFinder(
+                model_path=model_path,    
+                project_root=project_root
             )
+            self._active = True
+            logger.info(f"Finder iniciado en {time.perf_counter() - init_time:.6f}s")
+        except Exception as e:
+            logger.info(f"No se pudo iniciar WordFinder{e}", exc_info=True)
             
-            # Compartir la MISMA instancia
-            self._detection_engine = self._shared_engine
-            self._recognition_engine = self._shared_engine
-            self._initialized = True
-            logging.info(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
-            # logger.info(f"PaddleManager: Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
-    
+        try:    
+                self._shared_engine = PaddleOCR(
+                    det=True, rec=True, cls=False,
+                    det_model_dir=models_config['models']['det_model_dir'],
+                    rec_model_dir=models_config['models']['rec_model_dir'],
+                    use_angle_cls=models_config.get('use_angle_cls', False),
+                    show_log=models_config.get('show_log', False),
+                    use_gpu=models_config.get('use_gpu', False),
+                    enable_mkldnn=models_config.get('enable_mkldnn', True),
+                    lang=models_config.get('lang', 'es'),
+                    rec_batch_num = models_config.get('rec_batch_num', 64)
+                )        
+                # Compartir la MISMA instancia
+                self._detection_engine = self._shared_engine
+                self._recognition_engine = self._shared_engine
+                self._initialized = True
+                logger.info(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
+                logger.debug(f"ModelsManager: Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
+        except Exception as e:
+            logger.info(f"No se pudo iniciar Paddle{e}", exc_info=True)
+            
     @property
     def detection_engine(self) -> Optional[PaddleOCR]:
         return self._detection_engine
@@ -52,8 +78,7 @@ class PaddleManager:
     @property  
     def recognition_engine(self) -> Optional[PaddleOCR]:
         return self._recognition_engine
-            
-    
-    
-    
-    
+        
+    @property    
+    def word_finder(self) -> Optional[WordFinder]:
+        return self._word_finder

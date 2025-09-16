@@ -392,7 +392,9 @@ class DataFormatter:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
 
-    def update_polygon_data(self, polygon_updates: Dict[str, str]) -> bool:
+
+    def update_semantic_type(self, )
+    def update_polygon_data(self, polygon_updates: Optional[Dict[str, str]]) -> bool:
         """
         Actualiza los datos de los polígonos en las dataclasses de polígonos.
         """
@@ -420,7 +422,7 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
             return False
-        
+            
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
         Guarda las líneas reconstruidas en el workflow_dict y, más importante,
@@ -552,22 +554,26 @@ class DataFormatter:
         Construye un payload JSON-serializable:
         { registro: {...}, detalles: [...], provenance: {...}, raw_table: [...] }
         """
-        if not self.workflow:
-            return {}
+        try:
+            
+            if not self.workflow:
+                return {}
 
-        wf: WorkflowDict = self.workflow
-        md: Metadata = wf.metadata 
-        dict_id: str = wf.IDRegistro
-        global_data: Dict[str, GlobalData] = wf.global_data if self.workflow else {}
+            wf: WorkflowDict = self.workflow
+            md: Metadata = wf.metadata 
+            dict_id: str = wf.IDRegistro
+            global_data: Dict[str, GlobalData] = wf.global_data if self.workflow else {}
 
-        registro: Dict[str, Any] = {
-            "IDRegistro": dict_id,
-            "FolioDocumento": global_data.get("folio") if isinstance(global_data, dict) else getattr(global_data, "folio", None),
-            "FechaDocumento": global_data.get("date") if isinstance(global_data, dict) else getattr(global_data, "date", None),
-            "RFCProveedor": global_data.get("rfc") if isinstance(global_data, dict) else getattr(global_data, "rfc", None),
-            "MontoTotalDocumento": self._parse_number(global_data.get("total") if isinstance(global_data, dict) else None),
-            "TipoDocumento": global_data.get("TipoDocumento") if isinstance(global_data, dict) else getattr(global_data, "TipoDocumento", None),
-        }
+            registro: Dict[str, Any] = {
+                "IDRegistro": dict_id,
+                "FolioDocumento": global_data.get("folio") if isinstance(global_data, dict) else getattr(global_data, "folio", None),
+                "FechaDocumento": global_data.get("date") if isinstance(global_data, dict) else getattr(global_data, "date", None),
+                "RFCProveedor": global_data.get("rfc") if isinstance(global_data, dict) else getattr(global_data, "rfc", None),
+                "MontoTotalDocumento": self._parse_number(global_data.get("total") if isinstance(global_data, dict) else None),
+                "TipoDocumento": global_data.get("TipoDocumento") if isinstance(global_data, dict) else getattr(global_data, "TipoDocumento", None),
+            }
+        except Exception as e:
+            logger.info(f"fallo en dbpayload{e}", exc_info=True)
         try:
             detalles: List[List[int]] = []
             if self.structured_table and hasattr(self.structured_table, "df"):

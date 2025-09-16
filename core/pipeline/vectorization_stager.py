@@ -14,7 +14,7 @@ class VectorizationStager:
     def __init__(self, workers: List[VectorizationAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
         self.project_root = project_root
         self.workers = workers
-        self.stage_config = stage_config
+        self.config = stage_config
         self.output_paths = output_paths
     
     def vectorize_results(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
@@ -34,6 +34,7 @@ class VectorizationStager:
             logger.debug(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
                                 
             context: Dict[str, Any] = {
+                "config": self.config,
                 "polygons": polygons,
                 "metadata": metadata,
                 "output_paths": self.output_paths,
