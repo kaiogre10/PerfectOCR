@@ -51,7 +51,7 @@ class PreprocessingStager:
             for poly_id, polygon in context["polygons"].items():
                 # Obtener posible imagen modificada o None
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                manager.update_preprocessing_result(poly_id, cropped_img, worker_name, True)
+                manager.update_preprocessing_result(poly_id, cropped_img, worker_name)
             # Refrescar polígonos desde el manager para la siguiente etapa
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             context["polygons"] = polygons

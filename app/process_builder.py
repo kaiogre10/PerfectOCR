@@ -7,7 +7,6 @@ from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
 from core.domain.data_formatter import DataFormatter
-from services.database_service import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class ProcessingBuilder:
         self.ocr_stager = ocr_stager
         self.vectorization_stager = vectorization_stager
         
-    def process_single_image(self) -> Optional[DataFormatter]:
+    def process_single_image(self) -> Optional[str]:
         """
         Procesa una sola imagen. El ProcessingBuilder SOLO COORDINA, no convierte.
         """
@@ -63,11 +62,10 @@ class ProcessingBuilder:
             total_workflow_time = time.perf_counter() - workflow_start
             logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.6f}s")
 
-            db_path = self.config.get("db_path", "")
-            
-            results = manager.to_db_payload()
+            data_base_path: str = self.config.get("db_path", "")
+            db_path: str = manager.to_db_payload(data_base_path)
 
-            return manager
+            return db_path
             
         except Exception as e:
             logger.error(f"[ProcessingBuilder] Error fatal procesando la imagen: {e}", exc_info=True)

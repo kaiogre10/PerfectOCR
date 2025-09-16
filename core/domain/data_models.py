@@ -344,3 +344,70 @@ class WorkflowDict:
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
     global_data: Dict[str, GlobalData]
+
+# DB_SCHEMA: Dict[str, Any] = {
+#   "RegistrosCompra": {
+#     "IDRegistro": null,
+#     "IDClienteConsultoria": null,
+#     "FolioDocumento": null,
+#     "FechaDocumento": null,
+#     "ProveedorEstandarizado": null,
+#     "RFCProveedor": null,
+#     "MontoTotalDocumento": null,
+#     "TipoDocumento": null,
+#     "UUID": null,
+#     "FechaDigitalizacion": null,
+#     "TasaIVAGeneral": null,
+#     "MontoIVAGeneral": null,
+#     "MontoSubtotalGeneral": null
+#   },
+#   "DetallesCompra": {
+#     "IDDetalle": null,
+#     "IDRegistro": null,
+#     "Cantidad": null,
+#     "SKU": null,
+#     "ProductoEstandarizado": null,
+#     "PrecioUnitario": null,
+#     "ImporteRaw": null,
+#     "ImporteCalculado": null
+#   },
+#   "TransaccionesCompra":{
+#     "IDTransaccion": null,
+#     "IDRegistro": null,
+#     "FechaTransaccion": null,
+#     "TipoTransaccion": null,
+#     "MontoTransaccion": null,
+#     "SaldoPendiente": null,
+#     "ReferenciaTransaccion": null
+#   },
+#   "Productos":{
+#     "SKU": null,
+#     "Presentacion": null,
+#     "ProductoEstandarizado": null,
+#     "ProductoRAW": null,
+#     "Marca": null,
+#     "Contenido": null,
+#     "UMC": null,
+#     "Unidades": null,
+#     "UME": null,
+#     "CategoriaProducto": null
+#   },
+#   "Proveedores":{
+#     "IDProveedor": null,
+#     "ProveedorEstandarizado": null,
+#     "RFCProveedor": null,
+#     "EsInformal": null,
+#     "PActivo": null,
+#     "NotasProveedor": null
+#   },
+#   "Clientes":{
+#     "IDCliente": null,
+#     "NombreCliente": null,
+#     "TelefonoCliente": null,
+#     "DireccionCliente": null,
+#     "Giro": null,
+#     "RFCCliente": null,
+#     "Cactivo": null,
+#     "NotasCliente": null
+#   }
+# }

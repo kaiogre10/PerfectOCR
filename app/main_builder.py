@@ -13,6 +13,7 @@ from core.workers.image_preparation.image_loader import ImageLoader
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
 from services.config_service import ConfigService
+# from app.database_builder import DataBaseBuilder
 from services.cache_service import cleanup_project_cache
 
 logger = logging.getLogger(__name__)
@@ -59,8 +60,16 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
         t4 = time.perf_counter()
         # logging.debug("Iniciando procesamiento...")
         results = execute_processing(builders, workflow_report)
-        logging.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
-        logging.info(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
+        logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
+        logger.info(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
+
+        # 7 Inicio de la fase 2, ingreso de datos a la bd
+        # db_builder = DataBaseBuilder(config_services.paths_config, project_root)
+        # data_base_phase(db_builder)
+        logger.info("Resultados guardados en la base de datos.")
+        # logger.error(f"No se pudieron guardar los resultados en BD: {db_err}", exc_info=True)
+
+        logger.info(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
         return results
         
     except Exception as e:
@@ -114,8 +123,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
             ["lineal", "data_finder", "dbscan", "table_structurer", "math_max"], 
-            context
-        )
+            context)
         
         image_loader = ImageLoader(
             image_info=image_data,
@@ -161,9 +169,9 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         
     return builders
 
-def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dict[str, Any]) -> Dict[str, Any]:
+def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dict[str, Any]) -> Optional[List[str]]:
     """Ejecuta el procesamiento para cada builder."""
-    results: Dict[str, Any] = {}
+    db_paths: Dict[str, Any] = {}
     image_info_list = workflow_report.get('image_info', [])
     total_processing_time = 0.0
 
@@ -171,20 +179,21 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
         if i < len(image_info_list):
             image_data = image_info_list[i]
             start_time = time.perf_counter()
-            result = builder.process_single_image()
+            db_path = builder.process_single_image()
             end_time = time.perf_counter()
             total_processing_time += (end_time - start_time)
 
-            results[image_data.get('name', f'imagen_{i}')] = result
+            db_paths[image_data.get('name', f'imagen_{i}')] = db_path
             
     logger.info(f"=== RESUMEN FINAL ===")
-    logger.info(f"Total de imágenes procesadas: {len(results)}")
+    logger.info(f"Total de imágenes procesadas: {len(db_paths)}")
     logger.info(f"Tiempo total acumulado: {total_processing_time:.6f}s")
-    logger.info(f"Tiempo promedio por imagen: {total_processing_time/len(results):.6f}s")
+    logger.info(f"Tiempo promedio por imagen: {total_processing_time/len(db_paths):.6f}s")
 
-    return {
-        "mode": workflow_report.get('mode', 'unknown'),
-        "processed": len(results),
-        "results": results
-    }
-    
+    return [
+        "db_path"
+    ]
+
+# def data_base_phase(db_builder: DataBaseBuilder):
+
+#     db_result = db_builder
