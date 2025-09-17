@@ -167,7 +167,15 @@ class DataFinder(ConfigWithNumpy):
     max_q_lenght: int
 
 class DBSCAN(ConfigWithNumpy):
+    eps: float
+    eps_similarity: float
+    similarity_threshold: float
     min_cluster_size: int
+    max_numbers_header: int
+    min_density_header: int
+    max_word_ratio_header: float
+    width_tolerance_header: float
+    max_search_lines_up: int
     
 class Lineal(ConfigWithNumpy):
     overlap: float

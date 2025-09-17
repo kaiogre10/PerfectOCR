@@ -159,8 +159,10 @@ modules:
       overlap: 0.3
     
     dbscan:
-      min_cluster_size: 2
-      eps: 1.0
+      eps: 2.0
+      eps_similarity: 1.0 # Parámetro para DBSCAN (Plan A fallback)
+      similarity_threshold: 0.95 # Nuevo parámetro para Similitud Coseno
+      min_cluster_size: 1
       max_numbers_header: 2
       min_density_header: 50
       max_word_ratio_header: 0.8
