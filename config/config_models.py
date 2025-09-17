@@ -90,11 +90,6 @@ class Binarization(ConfigWithNumpy):
     block_sizes_map: List[int]
     quality: BinarizeQuality
 
-class Fragmentador(ConfigWithNumpy):
-    min_contour_area: float
-    density_std_factor: float
-    approx_poly_epsilon: float
-
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
     salt_pepper_threshold: float
@@ -156,16 +151,20 @@ class SemanticClasificator(ConfigWithNumpy):
     numeric: List[float]
     code: List[float]
     descriptive: List[float]
+
+class Fragmenter(ConfigWithNumpy):
+    fragment_on_text: bool
     
 class OCRConfig(ConfigWithNumpy):
     text_cleaner: TextualConfig
     binarizator: Binarization
     semantic_clasificator: SemanticClasificator
-    fragmentation: Fragmentador
+    fragmenter: Fragmenter
 
 class DataFinder(ConfigWithNumpy):
     wordfinder_model_path: str
     min_similarity: float
+    max_q_lenght: int
 
 class DBSCAN(ConfigWithNumpy):
     min_cluster_size: int

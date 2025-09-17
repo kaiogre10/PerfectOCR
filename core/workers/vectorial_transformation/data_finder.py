@@ -62,6 +62,7 @@ class DataFinder(OCRAbstractWorker):
 
     def _find_data(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, str]:
         min_similarity = self.worker_config.get("min_similarity", 0.90)
+        max_q_lenght = self.worker_config.get("max_q_lenght", 12)
         
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
@@ -78,6 +79,7 @@ class DataFinder(OCRAbstractWorker):
             processed_count = 0
             polygon_updates: Dict[str, str] = {}
             skipped_numeric = 0
+            skipped_len = 0
 
             for pid, poly in polygons.items():
                 processed_count += 1
@@ -86,10 +88,26 @@ class DataFinder(OCRAbstractWorker):
                 semantic = getattr(poly, "semantic_type", "") or ""
                 if semantic == "numeric":
                     skipped_numeric += 1
+                    continue
                 
                 # Obtener texto del polígono
                 text = getattr(poly, "ocr_text", "") or ""
                 if not text:
+                    continue
+
+                try: 
+                    lenght = len(text.replace(" ", ""))
+                except Exception:
+                    lenght = len(text)
+
+                try:
+                    max_len_cfg = int(max_q_lenght) if max_q_lenght is not None else None
+                except Exception:
+                    max_len_cfg = None
+
+                if max_len_cfg is not None and lenght > max_len_cfg:
+                    skipped_len += 1
+                    logger.debug(f"DataFinder: Polígono {pid} omitido por largo ({lenght} > {max_len_cfg})")
                     continue
                 
                 # Buscar con WordFinder

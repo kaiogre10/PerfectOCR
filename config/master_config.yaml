@@ -151,6 +151,9 @@ modules:
         quality_min: 0.05
         quality_max: 0.95
 
+    fragmenter:
+      fragment_on_text: True
+
   vectorization:
     lineal:
       overlap: 0.3
@@ -170,7 +173,7 @@ modules:
     data_finder:
       wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
       min_similarity: 0.90
-      max_q_lenght: 10
+      max_q_lenght: 15
     
     math_max:
       total_mtl_abs_tolerance: 0.05

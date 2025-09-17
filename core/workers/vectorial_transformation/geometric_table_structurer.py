@@ -52,12 +52,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     words_in_poly = poly_data.ocr_text.strip().split()
                     all_header_words.extend(words_in_poly)
 
-            words = [el["ocr_text"] for el in main_header_line_elements]
-            polygon_count = len(words)
+            # words = [el["ocr_text"] for el in main_header_line_elements]
+            polygon_count = len(main_header_line_elements)
             word_count = len(all_header_words)
             logger.info(f"Polígonos en encabezado: {polygon_count}, Palabras reales: {word_count}")
             
-            h = word_count
+            h = polygon_count
             logger.info(f"Paramétro H encontrado con texto: {h}")
             if h == 0 or h == 1:
                 logger.info("Usando paramétro H del yaml")

@@ -1,4 +1,4 @@
-# PerfectOCR/core/workers/ocr/interceptor.py
+# PerfectOCR/core/workers/preprocessing/binarization.py
 import cv2
 import time
 import numpy as np
@@ -28,16 +28,20 @@ class Binarizator(OCRAbstractWorker):
         self.c_value = bin_config.get('c_value', 7)
         self.height_thresholds = bin_config.get('height_thresholds_px', [100, 800, 1500, 2500])
         self.block_sizes_map = bin_config.get('block_sizes_map', [15, 21, 25, 35, 41])
+        # Nuevos parámetros para la detección de fragmentación
+        self.min_area_factor = bin_config.get('min_area_factor', 0.005)
+        self.min_blobs_for_frag = bin_config.get('min_blobs_for_frag', 2)
+        self.gap_threshold_norm = bin_config.get('gap_threshold_norm', 0.05)
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """Binarización y extracción ligera de contornos -> guardamos solo boxes."""
+        """Binariza, mide blobs (componentes conectados) y guarda sus métricas."""
         try:
             start = time.time()
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
 
-            contours_meta: Dict[str, Dict[str, Any]] = {}
+            blob_metrics: Dict[str, Dict[str, Any]] = {}
 
             for poly_id, polygon in polygons.items():
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
@@ -57,41 +61,49 @@ class Binarizator(OCRAbstractWorker):
                 else:
                     bin_img = self._adaptive_mean_fallback(cropped_img, block)
 
-                # Contornos y filtrado por área relativa
                 contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 if not contours:
                     continue
 
                 poly_area = float(bin_img.shape[0] * bin_img.shape[1])
-                min_area = max(1.0, poly_area * getattr(self, "min_area_factor", 0.005))
+                min_area = max(1.0, poly_area * self.min_area_factor)
                 valid_boxes_norm: List[List[float]] = []
 
                 for c in contours:
-                    a = cv2.contourArea(c)
-                    if a < min_area:
+                    if cv2.contourArea(c) < min_area:
                         continue
                     x, y, w, h = cv2.boundingRect(c)
                     x2, y2 = x + w, y + h
                     valid_boxes_norm.append([x / bin_img.shape[1], y / bin_img.shape[0], x2 / bin_img.shape[1], y2 / bin_img.shape[0]])
 
                 if valid_boxes_norm:
-                    contours_meta[poly_id] = {
-                        "contour_boxes_norm": valid_boxes_norm
+                    sorted_boxes = sorted(valid_boxes_norm, key=lambda box: box[0])
+                    num_blobs = len(sorted_boxes)
+                    
+                    gaps_x_norm: List[float] = []
+                    if num_blobs > 1:
+                        for i in range(num_blobs - 1):
+                            gap = sorted_boxes[i+1][0] - sorted_boxes[i][2]
+                            gaps_x_norm.append(max(0, gap))
+
+                    needs_fragmentation = (
+                        num_blobs >= self.min_blobs_for_frag and
+                        (max(gaps_x_norm) if gaps_x_norm else 0) >= self.gap_threshold_norm
+                    )
+                    
+                    blob_metrics[poly_id] = {
+                        "needs_fragmentation": needs_fragmentation,
+                        "num_blobs": num_blobs,
+                        "blobs_norm_boxes": sorted_boxes,
+                        "gaps_x_norm": gaps_x_norm
                     }
 
-            if contours_meta:
-                # Guardar solo metadatos ligeros de contorno en el manager (sin imágenes)
-                context['contours_meta'] = contours_meta
-                polygon_ids: List[str] = []
-
-                for poly_id, polygon in polygons.items():
-                    polygon_ids.append(poly_id)
-                # Acceso correcto a imagen desde dataclass
-                    cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-
+            if blob_metrics:
+                context['blob_metrics'] = blob_metrics
+                polygon_ids = list(blob_metrics.keys())
                 manager.clear_cropped_images(polygon_ids)
 
-            logger.debug(f"Binarizator: contornos extraídos para {len(contours_meta)} polígonos en {time.time()-start:.3f}s")
+            logger.debug(f"Binarizator: métricas de blobs extraídas para {len(blob_metrics)} polígonos en {time.time()-start:.3f}s")
             return True
 
         except Exception as e:
