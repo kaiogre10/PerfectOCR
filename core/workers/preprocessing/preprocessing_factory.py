@@ -5,6 +5,7 @@ from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
+from core.workers.preprocessing.ink_enhancer import InkEnhancer
 from core.workers.preprocessing.clahe import ClaherEnhancer
 from core.workers.preprocessing.sharp import SharpeningEnhancer
 
@@ -15,6 +16,7 @@ class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):
             "moire": self._create_moire,
             "sp": self._create_sp,
             "gauss": self._create_gauss,
+            "ink_enhancement": self._create_inker,
             "clahe": self._create_clahe,
             "sharp": self._create_sharp,
         }
@@ -27,6 +29,9 @@ class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):
 
     def _create_gauss(self, context: Dict[str, Any]) -> GaussianDenoiser:
         return GaussianDenoiser(config=self.module_config, project_root=self.project_root)
+
+    def _create_inker(self, context: Dict[str, Any]) -> InkEnhancer:
+        return InkEnhancer(config=self.module_config, project_root=self.project_root)
 
     def _create_clahe(self, context: Dict[str, Any]) -> ClaherEnhancer:
         return ClaherEnhancer(config=self.module_config, project_root=self.project_root)

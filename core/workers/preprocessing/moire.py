@@ -94,10 +94,10 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                 threshold = adaptive_thresholds[idx]
                 # logger.debug(f"Poly '{poly_id}': Modo de corrección '{mode}', Threshold: {threshold:.2f}")
 
-                corrected_img = self._apply_moire_correction(
+                corrected_img: np.ndarray[Any, np.dtype[np.uint8]] = self._apply_moire_correction(
                     original_img_np,
                     analysis_results,
-                    threshold
+                    threshold,
                 )
                 
                 polygon.cropped_img.cropped_img = corrected_img
@@ -182,7 +182,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             corrected_img = np.array(cropped_img, dtype=np.uint8)
             return corrected_img
 
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
+    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, np.dtype[np.uint8]]):
         from services.output_service import save_image
         import os
         

@@ -12,10 +12,10 @@ class OutputFlag(ConfigWithNumpy):
     moire_poly: bool
     sp_poly: bool
     gauss_poly: bool
+    ink_poly: bool
     clahe_poly: bool
     sharp_poly: bool
     binarized_polygons: bool
-    problematic_polygons: bool
     reconstructed_lines: bool
     table_lines: bool
     table_structured: bool
@@ -140,10 +140,15 @@ class TextualConfig(ConfigWithNumpy):
     min_probability: float
     min_char: int
 
+class InkConfig(ConfigWithNumpy):
+    faded_detection_threshold: float
+    contrast_boost_factor: float
+
 class PreprocessingConfig(ConfigWithNumpy):
     moire: MoireConfig  
     median_filter: SaltPepper 
-    bilateral_params: GaussianConfig  
+    bilateral_params: GaussianConfig
+    ink_enhancement: InkConfig
     contrast: ContrastConfig  
     sharpening: SharpeningConfig
     
@@ -168,15 +173,9 @@ class DataFinder(ConfigWithNumpy):
 
 class DBSCAN(ConfigWithNumpy):
     eps: float
-    eps_similarity: float
     similarity_threshold: float
     min_cluster_size: int
-    max_numbers_header: int
-    min_density_header: int
-    max_word_ratio_header: float
-    width_tolerance_header: float
-    max_search_lines_up: int
-    
+
 class Lineal(ConfigWithNumpy):
     overlap: float
 

@@ -48,10 +48,10 @@ enabled_outputs:
   moire_poly: false
   sp_poly: false
   gauss_poly: false
+  ink_poly: false
   clahe_poly: false
   sharp_poly: false
   binarized_polygons: false
-  problematic_polygons: false
   ocr_raw: false
   semantic_words: false
   clean_text: false
@@ -115,7 +115,11 @@ modules:
       d: 9
       sigma_color: 75
       sigma_space: 75
-      
+
+    ink_enhancement:
+      faded_detection_threshold: 0.4
+      contrast_boost_factor: 1.5
+
     contrast:
       general:
         clahe_clip_limit: 2.0
@@ -160,14 +164,8 @@ modules:
     
     dbscan:
       eps: 2.0
-      eps_similarity: 1.0 # Parámetro para DBSCAN (Plan A fallback)
       similarity_threshold: 0.95 # Nuevo parámetro para Similitud Coseno
       min_cluster_size: 1
-      max_numbers_header: 2
-      min_density_header: 50
-      max_word_ratio_header: 0.8
-      width_tolerance_header: 0.15
-      max_search_lines_up: 2
 
     table_structurer:
       min_h: 4

@@ -38,7 +38,7 @@ class DensityScanner(VectorizationAbstractWorker):
                 logger.info("Plan A: Intentando clustering por similitud al encabezado.")
                 table_detection_result = self._detect_by_header_similarity(all_lines, polygons, img_dims, manager)
 
-                min_required_lines = self.worker_config.get("min_cluster_size", 2)
+                min_required_lines = self.worker_config.get("min_cluster_size", 1)
                 if len(table_detection_result.get("table_lines", [])) < min_required_lines:
                     logger.info(f"Plan A no concluyente (encontró < {min_required_lines} líneas). Usando Plan B (fallback a densidad general).")
                     table_detection_result = self._detect_by_general_density(all_lines, polygons, img_dims, manager)
@@ -92,7 +92,6 @@ class DensityScanner(VectorizationAbstractWorker):
                 return {"status": "error", "table_lines": []}
 
             # 2. Obtener características de las líneas candidatas y calcular similitud
-                        # 2. Obtener características de las líneas candidatas y calcular similitud
             line_ids_order = sorted(all_lines.keys(), key=lambda k: all_lines[k].line_geometry.line_centroid[1])
             hdr_idx = line_ids_order.index(header_line_id)
             candidate_line_ids = line_ids_order[hdr_idx+1:]
@@ -103,7 +102,7 @@ class DensityScanner(VectorizationAbstractWorker):
             encoded_lines = manager.get_encode_lines(candidate_line_ids)
             
             table_line_ids: List[str] = []
-            similarity_threshold = self.worker_config.get("similarity_threshold", 0.7)  # Bajé el threshold
+            similarity_threshold = self.worker_config.get("similarity_threshold", 0.90)
 
             # Usar el header como vector de referencia (normalizado a 1)
             header_features_normalized = header_features_vector / header_norm

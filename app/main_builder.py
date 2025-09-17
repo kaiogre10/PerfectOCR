@@ -112,7 +112,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
 
         preprocessing_factory = worker_factory.get_preprocessing_factory()
         preprocessing_workers = preprocessing_factory.create_workers([
-            "moire", "sp", "gauss", "clahe", "sharp"],
+            "moire", "sp", "gauss", "ink_enhancement", "clahe", "sharp"],
             context)
         
         ocr_factory = worker_factory.get_ocr_factory()
