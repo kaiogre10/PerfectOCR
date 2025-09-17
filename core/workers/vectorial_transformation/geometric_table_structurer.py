@@ -58,7 +58,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.info(f"Polígonos en encabezado: {polygon_count}, Palabras reales: {word_count}")
             
             h = polygon_count
-            logger.info(f"Paramétro H encontrado con texto: {h}")
+            logger.info(f"Paramétro H encontrado en polígonos: {h}")
             if h == 0 or h == 1:
                 logger.info("Usando paramétro H del yaml")
                 h: int = self.worker_config.get("min_h", 3)

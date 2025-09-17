@@ -37,10 +37,8 @@ class TextCleaner(OCRAbstractWorker):
             return True
 
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
-        
         list_of_final_polygons: List[Polygons] = []
         eliminated_count = 0
-        fragmented_count = 0
 
         # Ordenar polígonos por posición vertical (y luego horizontal) para un procesamiento secuencial
         sorted_poly_ids = sorted(
@@ -86,7 +84,7 @@ class TextCleaner(OCRAbstractWorker):
             file_name: str = manager.workflow.metadata.image_name
             self._save_json(context, final_polygons_dict, file_name)
 
-        logger.info(f"Limpieza/Fragmentación: {fragmented_count} polígonos fragmentados, {eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
+        logger.info(f"Limpieza/{eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
         return True
 
     def _process_single_text(self, text: str, polygon: Polygons, semantic_type :str) -> str:

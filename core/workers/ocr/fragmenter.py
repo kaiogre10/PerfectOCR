@@ -42,14 +42,29 @@ class Fragmenter(OCRAbstractWorker):
                 " " in (polygon.ocr_text or "").strip()
             )
 
+            punctuation_needs_frag = (
+                self.fragment_on_text and
+                polygon.semantic_type != "numeric" and
+                not text_needs_frag and  # Solo si no hay espacios
+                any(punct in (polygon.ocr_text or "") for punct in [".", ",", ";", ":", "!", "?"])
+            )
+
             poly_blob_metrics = blob_metrics.get(poly_id, {})
             visual_needs_frag = poly_blob_metrics.get('needs_fragmentation', False)
 
-            if text_needs_frag or visual_needs_frag:
-                reason = "texto y visual" if text_needs_frag and visual_needs_frag else "texto" if text_needs_frag else "visual"
-                logger.debug(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
+            if text_needs_frag or visual_needs_frag or punctuation_needs_frag:
+                if visual_needs_frag and text_needs_frag:
+                    reason = "visual y texto"
+                elif visual_needs_frag:
+                    reason = "visual"
+                elif text_needs_frag:
+                    reason = "texto"
+                else:
+                    reason = "puntuación"
                 
-                fragments = self._fragment_polygon(polygon, poly_blob_metrics)
+                logger.info(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
+                
+                fragments = self._fragment_polygon(polygon, poly_blob_metrics, punctuation_needs_frag)
                 final_polygons.extend(fragments)
                 if len(fragments) > 1:
                     fragmented_count += 1
@@ -69,11 +84,20 @@ class Fragmenter(OCRAbstractWorker):
         
         return True
 
-    def _fragment_polygon(self, polygon: Polygons, poly_blob_metrics: Dict[str, Any]) -> List[Polygons]:
+    def _fragment_polygon(self, polygon: Polygons, poly_blob_metrics: Dict[str, Any], punctuation_needs_frag: bool = False) -> List[Polygons]:
+        # Prioridad 1: Si hay información visual fiable, se usa para los cortes
         if poly_blob_metrics.get('needs_fragmentation', False):
             return self._fragment_by_blobs(polygon, poly_blob_metrics)
         
-        return self._fragment_by_text(polygon)
+        # Prioridad 2: Si hay espacios, se usa la información textual
+        if " " in (polygon.ocr_text or "").strip():
+            return self._fragment_by_text(polygon)
+        
+        # Prioridad 3: Si hay puntuación, se usa como delimitador
+        if punctuation_needs_frag:
+            return self._fragment_by_punctuation(polygon)
+        
+        return [polygon]
 
     def _fragment_by_blobs(self, polygon: Polygons, poly_blob_metrics: Dict[str, Any]) -> List[Polygons]:
         new_polys: List[Polygons] = []
@@ -113,7 +137,7 @@ class Fragmenter(OCRAbstractWorker):
             
             frag_text = text_parts[i] if i < len(text_parts) else ""
             
-            logger.debug(f"  -> Fragmento visual: texto='{frag_text}', bbox={new_bbox.tolist()}")
+            logger.info(f"-> Fragmento visual: texto='{frag_text}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -164,7 +188,78 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"  -> Fragmento por texto: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por texto: texto='{part}', bbox={new_bbox.tolist()}")
+
+            new_poly = dataclasses.replace(
+                polygon,
+                geometry=new_geom,
+                ocr_text=part,
+                was_fragmented=True
+            )
+            new_polys.append(new_poly)
+            current_x = new_xmax
+
+        return new_polys
+
+    def _fragment_by_punctuation(self, polygon: Polygons) -> List[Polygons]:
+        """
+        Fragmenta un polígono dividiendo por puntuación (.,;:!?) y creando polígonos separados.
+        """
+        text = (polygon.ocr_text or "").strip()
+        if not text:
+            return [polygon]
+
+        # Dividir por puntuación pero mantener la puntuación en cada parte
+        import re
+        parts = re.split(r'([.,;:!?])', text)
+        
+        # Filtrar partes vacías y reconstruir con puntuación
+        filtered_parts = []
+        for i, part in enumerate(parts):
+            if part.strip():
+                # Si la siguiente parte es puntuación, incluirla
+                if i + 1 < len(parts) and parts[i + 1] in [".", ",", ";", ":", "!", "?"]:
+                    filtered_parts.append(part + parts[i + 1])
+                elif part not in [".", ",", ";", ":", "!", "?"]:
+                    filtered_parts.append(part)
+        
+        if len(filtered_parts) <= 1:
+            return [polygon]
+
+        # Longitud de caracteres visibles para el cálculo proporcional
+        char_lengths = [len(p) for p in filtered_parts]
+        total_chars = sum(char_lengths)
+        if total_chars == 0:
+            return [polygon]
+
+        xmin, ymin, xmax, ymax = polygon.geometry.bounding_box
+        width = xmax - xmin
+        
+        new_polys: List[Polygons] = []
+        current_x = xmin
+
+        for i, part in enumerate(filtered_parts):
+            part_ratio = char_lengths[i] / total_chars
+            part_width = part_ratio * width
+            
+            new_xmax = current_x + part_width
+            
+            new_bbox = np.array([current_x, ymin, new_xmax, ymax])
+            new_centroid = np.array([(current_x + new_xmax) / 2, (ymin + ymax) / 2])
+
+            new_geom = dataclasses.replace(
+                polygon.geometry,
+                bounding_box=new_bbox,
+                centroid=new_centroid,
+                polygon_coords=np.array([
+                    [new_bbox[0], new_bbox[1]],
+                    [new_bbox[2], new_bbox[1]],
+                    [new_bbox[2], new_bbox[3]],
+                    [new_bbox[0], new_bbox[3]],
+                ])
+            )
+            
+            logger.info(f"-> Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
