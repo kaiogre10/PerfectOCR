@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, GlobalData
+from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry
 import numpy as np
 import dataclasses
 import jsonschema
@@ -21,6 +21,7 @@ class DataFormatter:
         self.workflow: Optional[WorkflowDict] = None
         self.schema = WORKFLOW_SCHEMA
         self.encoder = DENSITY_ENCODER
+        self.frecuency = CHAR_FRECUENCY
         self.structured_table: Optional[StructuredTable] = None
 
     def create_dict(self, IDRegistro: str, full_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
@@ -254,6 +255,14 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error codificando líneas: {e}", exc_info=True)
             return {}
+
+    def get_frecuency_char(self) -> Optional[Dict[str, int]]:
+        """Obtiene los valores de frecuencia para letras"""
+        try:
+            if self.frecuency:
+                return self.frecuency
+        except Exception as e:
+            logger.info(f"Error entregando frecuencias: {e}", exc_info=True)
 
     def update_full_img(self, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""

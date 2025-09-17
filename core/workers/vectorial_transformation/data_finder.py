@@ -2,12 +2,12 @@ import time
 from typing import Dict, Any, Optional, List
 import logging
 from core.domain.data_models import Polygons
-from core.factory.abstract_worker import VectorizationAbstractWorker
+from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
-class DataFinder(VectorizationAbstractWorker):
+class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, str], cfg: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -30,7 +30,7 @@ class DataFinder(VectorizationAbstractWorker):
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
             return None
 
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time = time.time()
             logger.debug("Data Finder iniciado")
@@ -58,7 +58,7 @@ class DataFinder(VectorizationAbstractWorker):
             return success  # Siempre retorna True para continuar con el pipeline
         except Exception as e:
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
-            return success  # Retorna True para continuar con fallbacks
+            return True  # Retorna True para continuar con fallbacks
 
     def _find_data(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, str]:
         min_similarity = self.worker_config.get("min_similarity", 0.90)
@@ -77,9 +77,15 @@ class DataFinder(VectorizationAbstractWorker):
 
             processed_count = 0
             polygon_updates: Dict[str, str] = {}
+            skipped_numeric = 0
 
             for pid, poly in polygons.items():
                 processed_count += 1
+
+                # Omitir numéricos
+                semantic = getattr(poly, "semantic_type", "") or ""
+                if semantic == "numeric":
+                    skipped_numeric += 1
                 
                 # Obtener texto del polígono
                 text = getattr(poly, "ocr_text", "") or ""
@@ -103,9 +109,11 @@ class DataFinder(VectorizationAbstractWorker):
 
             if polygon_updates:
                 logger.info(f"DataFinder: Encontradas {len(polygon_updates)} coincidencias de palabras clave")
+                logger.info(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
                 return polygon_updates
             else:
                 logger.info("DataFinder: No se encontraron coincidencias de palabras clave - usando fallback")
+                logger.info(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
                 return self._create_fallback_updates(polygons)
                     
         except Exception as e:

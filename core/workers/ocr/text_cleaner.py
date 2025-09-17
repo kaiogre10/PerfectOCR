@@ -1,12 +1,11 @@
 # PerfectOCR/core/workers/ocr/text_cleaner.py
 import logging
 import re
-import numpy as np
 import dataclasses
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from cleantext import clean # type: ignore
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons, Geometry, CroppedGeometry
+from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,8 @@ class TextCleaner(OCRAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.config.get("clean_text", False)
         self.min_confidence_for_elimination = self.config.get("min_confidence_for_elimination", 75.0)
-        self.min_contours_for_frag = self.config.get("min_contours_for_frag", 2)
+        self.min_char = config.get("min_char", 2)
+        self.min_probability = config.get("min_probability", 80.0)
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         if not manager.workflow or not manager.workflow.polygons:
@@ -37,7 +37,6 @@ class TextCleaner(OCRAbstractWorker):
             return True
 
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
-        contours_meta: Dict[str, Any] = context.get('contours_meta', {})
         
         list_of_final_polygons: List[Polygons] = []
         eliminated_count = 0
@@ -48,43 +47,30 @@ class TextCleaner(OCRAbstractWorker):
             polygons_in.keys(), 
             key=lambda p_id: (polygons_in[p_id].geometry.centroid[1], polygons_in[p_id].geometry.centroid[0])
         )
-
+        
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
             text = polygon.ocr_text or ""
             confidence = polygon.ocr_confidence or 0.0
+            semantic_type = polygon.semantic_type or ""
+    
+            text = self._filter_low_prob_tokens(text, polygon, manager)
+            text = text or ""
 
-            # 1. Criterio de eliminación de basura
             if (not text.strip() or
-                (confidence < self.min_confidence_for_elimination and not self._is_likely_numeric_or_code(text)) or
+                (confidence < self.min_confidence_for_elimination and polygon.semantic_type != "numeric") or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)):
-                eliminated_count += 1
                 logger.debug(f"Eliminado (basura): ID: {poly_id} | Texto: '{text}'")
                 continue
 
-            # 2. Lógica de fragmentación
-            words = text.split()
-            contour_boxes = contours_meta.get(poly_id, {}).get("contour_boxes_norm", [])
-            
-            # Condición para fragmentar: Múltiples palabras y un número coincidente de contornos visuales
-            if len(words) > 1 and len(words) == len(contour_boxes) and len(words) >= self.min_contours_for_frag:
-                logger.debug(f"Fragmentando Polígono {poly_id}: '{text}' en {len(words)} partes.")
-                
-                new_fragments = self._create_fragments(polygon, words, contour_boxes)
-                if new_fragments:
-                    list_of_final_polygons.extend(new_fragments)
-                    fragmented_count += 1
-                else: # Si todos los fragmentos son basura, no añadir nada
-                    eliminated_count +=1
+            # 3. Ruta Normal: Limpiar texto del polígono sin fragmentar
+            cleaned_text = self._process_single_text(text, polygon, semantic_type)
+            if cleaned_text:
+                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
+                list_of_final_polygons.append(updated_polygon)
             else:
-                # 3. Ruta Normal: Limpiar texto del polígono sin fragmentar
-                cleaned_text = self._process_single_text(text)
-                if cleaned_text:
-                    updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
-                    list_of_final_polygons.append(updated_polygon)
-                else:
-                    eliminated_count += 1
-                    logger.debug(f"Eliminado (texto vacío post-limpieza): ID: {poly_id} | Texto: '{text}'")
+                eliminated_count += 1
+                logger.debug(f"Eliminado (texto vacío post-limpieza): ID: {poly_id} | Texto: '{text}'")
 
         # 4. Reconstrucción y reindexación final
         final_polygons_dict: Dict[str, Polygons] = {}
@@ -100,69 +86,10 @@ class TextCleaner(OCRAbstractWorker):
             file_name: str = manager.workflow.metadata.image_name
             self._save_json(context, final_polygons_dict, file_name)
 
-        
         logger.info(f"Limpieza/Fragmentación: {fragmented_count} polígonos fragmentados, {eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
         return True
 
-    def _create_fragments(self, polygon: Polygons, words: List[str], contour_boxes: List[List[float]]) -> List[Polygons]:
-        """Crea y devuelve una lista de nuevos objetos Polygons para cada fragmento válido."""
-        fragments = []
-        try:
-            crop_w = float(polygon.cropedd_geometry.poly_dims.get('poly_width'))
-            crop_h = float(polygon.cropedd_geometry.poly_dims.get('poly_height'))
-            orig_x_min = float(polygon.geometry.bounding_box[0])
-            orig_y_min = float(polygon.geometry.bounding_box[1])
-
-            if not all([crop_w, crop_h]):
-                 logger.warning(f"Dimensiones de recorte no válidas para poly_id {polygon.polygon_id}. Saltando fragmentación.")
-                 return []
-
-            for i, word in enumerate(words):
-                processed_word = self._process_single_text(word)
-                if not processed_word or re.fullmatch(r'[\s\.\-_,;:]+', processed_word):
-                    continue
-                
-                norm_box = contour_boxes[i]
-                abs_x1 = float((norm_box[0] * crop_w)) + orig_x_min
-                abs_y1 = float((norm_box[1] * crop_h)) + orig_y_min
-                abs_x2 = float((norm_box[2] * crop_w)) + orig_x_min
-                abs_y2 = float((norm_box[3] * crop_h)) + orig_y_min
-
-                new_bbox: List[List[Tuple[float]]] = np.array([abs_x1, abs_y1, abs_x2, abs_y2])
-                new_poly_coords = np.array([
-                    [abs_x1, abs_y1], [abs_x2, abs_y1],
-                    [abs_x2, abs_y2], [abs_x1, abs_y2]
-                ])
-                new_centroid = np.mean(new_poly_coords, axis=0)
-
-                new_geometry = Geometry(
-                    polygon_coords=new_poly_coords,
-                    bounding_box=new_bbox,
-                    centroid=new_centroid
-                )
-                
-                new_fragment = Polygons(
-                    polygon_id="", # Se asignará en la reindexación final
-                    geometry=new_geometry,
-                    ocr_text=processed_word,
-                    ocr_confidence=polygon.ocr_confidence,
-                    was_fragmented=True,
-                    line_id=polygon.line_id,
-                    cropedd_geometry=CroppedGeometry(padd_centroid=np.array([]), padding_coords=np.array([]), poly_dims={}),
-                    cropped_img=None,
-                    perimeter=None,
-                    status=True,
-                    stage="TextCleaner",
-                    key_field=polygon.key_field,
-                    semantic_type=polygon.semantic_type
-                )
-                fragments.append(new_fragment)
-        except Exception as e:
-            logger.error(f"Error creando fragmentos para el polígono {polygon.polygon_id}: {e}", exc_info=True)
-            return [] # Devuelve lista vacía en caso de error
-        return fragments
-
-    def _process_single_text(self, text: str) -> str:
+    def _process_single_text(self, text: str, polygon: Polygons, semantic_type :str) -> str:
         """
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
         y seguro a los valores que parecen numéricos.
@@ -179,17 +106,16 @@ class TextCleaner(OCRAbstractWorker):
             # Limpieza de caracteres ANTES de decidir si es numérico
             cleaned_token = self._clean_characters_in_word(token)
             
-            if self._is_likely_numeric_or_code(cleaned_token):
-                # --- RUTA DE ALTA SEGURIDAD PARA NÚMEROS ---
-                safe_word = self._safe_normalize_numeric_separators(cleaned_token)
-                processed_words.append(safe_word)
+            if self._is_likely_numeric_or_code(cleaned_token, polygon):
+            
+                processed_words.append(cleaned_token)
             else:
-                # --- RUTA NORMAL PARA TEXTO ---
                 try:
-                    # Se utiliza la librería clean-text para una limpieza general
                     cleaned_token_lib = clean(
                         cleaned_token, # Usar el token ya pre-limpiado
-                        clean_all=False, extra_spaces=True, stemming=False,
+                        clean_all=False, 
+                        extra_spaces=True, 
+                        stemming=False,
                         stopwords=False, # No eliminar stopwords para no perder contexto
                         lowercase=False,
                         numbers=False,
@@ -202,40 +128,53 @@ class TextCleaner(OCRAbstractWorker):
         
         return ' '.join(processed_words)
         
-    def _is_likely_numeric_or_code(self, token: str) -> bool:
+    def _is_likely_numeric_or_code(self, cleaned_token: str, polygon: Polygons) -> bool:
         """
-        Determina si un token es probablemente un número, moneda o código.
-        Es muy inclusivo para evitar la pérdida de datos.
+        Determina si un token es probablemente un número o código
+        usando únicamente la clasificación semántica del polígono.
         """
-        if not token:
-            return False
-        # Si contiene al menos un dígito, es candidato
-        if re.search(r'\d', token):
-            return True
-        # Símbolos monetarios comunes
-        if any(c in token for c in ['$', '€', '£']):
-            return True
-        # Patrones que contienen números y separadores comunes
-        monetary_patterns = [
-            r'^\$?\d{1,3}(,\d{3})*(\.\d+)?$', # $1,234.56
-            r'^\d+[\.,]\d{2}$', # 123.45 o 123,45
-            r'^\d+(\.\d{3})+(,\d+)?$', # 1.234,56
-        ]
-        for pattern in monetary_patterns:
-            if re.match(pattern, token):
-                return True
-        return False
+        return getattr(polygon, "semantic_type", None) in ("numeric", "code")
 
-    def _safe_normalize_numeric_separators(self, token: str) -> str:
-        """
-        Normaliza DE FORMA SEGURA los separadores en un token numérico.
-        Convierte comas a puntos solo si están entre dígitos.
-        """
-        # Reemplaza comas por puntos solo cuando están entre dos dígitos para decimales
-        safe_word = re.sub(r'(\d),(\d)', r'\1.\2', token)
-        # Elimina caracteres no numéricos excepto el punto decimal
-        safe_word = re.sub(r'[^\d\.]', '', safe_word)
-        return safe_word
+    def _filter_low_prob_tokens(self, text: str, polygon: Polygons, manager: DataFormatter) -> str:
+        try:
+            if getattr(polygon, "semantic_type", None) == "numeric":
+                return text
+
+            tokens = text.split(' ')
+            kept: List[str] = []
+            removed = 0
+            total = 0
+            for tok in tokens:
+                t = tok.strip()
+                if not t:
+                    kept.append(tok)
+                    continue
+
+                total += 1
+
+                if any(ch.isdigit() for ch in t):
+                    kept.append(tok)
+                    continue
+
+                eff_len = len(''.join(ch for ch in t if not ch.isspace()))
+                if eff_len <= int(getattr(self, "min_char", 2)):
+                    score = self._token_freq_score(t, manager)
+                    threshold = float(getattr(self, "min_probability", 5.0))
+                    if score < threshold:
+                        removed += 1
+                        logger.debug(f"Eliminado (basura): ID: {polygon.polygon_id} | Texto:'{t}' | Score: {score:.2f} ")
+                        continue
+                    kept.append(tok)
+                else:
+                    kept.append(tok)
+
+            out = ' '.join(kept)
+            if removed > 0:
+                logger.info(f"Corrección: ID:={polygon.polygon_id} | Texto: '{text}' => '{out}'")
+            return out
+        except Exception as e:
+            logger.info(f"Error eliminando tokens por frecuencia: {e}", exc_info=True)
+            return text
 
     def _clean_characters_in_word(self, token: str) -> str:
         """Limpieza de caracteres específicos en palabras individuales."""
@@ -253,11 +192,52 @@ class TextCleaner(OCRAbstractWorker):
         for wrong_char, correct_char in char_replacements.items():
             token = token.replace(wrong_char, correct_char)
         
-        # Limpiar caracteres de ruido OCR que no son letras, números o puntuación común.
-        # Se mantiene: letras, números, espacios, punto, coma, guion, arroba, etc.
-        token = re.sub(r'[^\w\s\.,\-_@$€£]', '', token)
+        # Limpiar caracteres de ruido OCR que no son letras, números, espacios, punto o coma.
+        # Se eliminan guiones, arroba y divisas.
+        token = re.sub(r'[^\w\s\.,]', '', token)
         
         return token
+
+    def _normalize_char_for_freq(self, ch: str, manager: DataFormatter) -> str:
+        # Mantén tildes/ñ si existen en la tabla; si no, haz fallback a su base
+        if ch in self._get_frecuency_norm(manager):
+            return ch
+        base_map = {
+            "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
+            "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
+            "ü": "u", "Ü": "U",
+        }
+        return base_map.get(ch, ch)
+
+    def _get_frecuency_norm(self, manager: DataFormatter) -> Optional[Dict[str, float]]:
+        try:
+            if not manager or not getattr(manager, "workflow", None):
+                logger.warning("Manager o workflow ausente")
+                return None
+
+            frecuency_char: Dict[str, int] = manager.get_frecuency_char()
+            max_val = float(max(frecuency_char.values()))
+
+            freq_norm: Dict[str, float] = {char: (val / max_val) * 100 for char, val in frecuency_char.items()}
+            return freq_norm
+        except Exception as e:
+            logger.info(f"Error al obtener frecuencias normalizadas: {e}", exc_info=True)
+
+    def _token_freq_score(self, token: str, manager: DataFormatter) -> float:
+        freq_norm = self._get_frecuency_norm(manager)
+        if not freq_norm:
+            return 100.0  # si no hay tabla, no castigues
+        letters: List[float] = []
+        for ch in token:
+            if ch.isalpha():
+                norm = self._normalize_char_for_freq(ch.lower(), manager)
+                if norm in freq_norm:
+                    letters.append(freq_norm[norm])
+                elif norm.isalpha():
+                    letters.append(0.0)
+        if not letters:
+            return 100.0  # tokens sin letras no se filtran por frecuencia
+        return sum(letters) / float(len(letters))
 
     def _save_json(self, context: Dict[str, Any], final_polygons_dict: List[Optional[Dict[str, Any]]], file_name: str):
         from services.output_service import save_json

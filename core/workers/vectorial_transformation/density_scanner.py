@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines
+from core.domain.data_models import AllLines, Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ class DensityScanner(VectorizationAbstractWorker):
                        
             # Obtener geometrías de líneas y medidas del documento original
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
 
             words: Dict[str, Any] = {
                 line_id: {

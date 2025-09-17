@@ -52,8 +52,9 @@ class PathsConfig(ConfigWithNumpy):
     input_folder: str
     output_folder: str
 
-class PipelineSecuence(ConfigWithNumpy):
+class PipelineConfig(ConfigWithNumpy):
     image_preparation: List[str]
+    preprocessing_stage: List[str]
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
@@ -141,6 +142,8 @@ class MathMaxConfig(ConfigWithNumpy):
 class TextualConfig(ConfigWithNumpy):
     min_confidence: float
     min_contours_for_frag: int
+    min_probability: float
+    min_char: int
 
 class PreprocessingConfig(ConfigWithNumpy):
     moire: MoireConfig  
@@ -189,6 +192,7 @@ class ModulesConfig(ConfigWithNumpy):
 class MasterConfig(ConfigWithNumpy):
     system: Dict[str, Any]
     paths: PathsConfig
+    pipeline_secuence: PipelineConfig
     enabled_outputs: OutputFlag
     processing: Processing
     models_config: ModelsConfig

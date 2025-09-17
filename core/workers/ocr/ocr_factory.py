@@ -2,9 +2,10 @@
 from typing import Dict, Callable, Any
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
-from core.workers.ocr.binarization import Binarizator
+#from core.workers.ocr.binarization import Binarizator
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from core.workers.ocr.text_cleaner import TextCleaner
+from core.workers.vectorial_transformation.data_finder import DataFinder
 from core.workers.ocr.semantic_clasificator import SemanticClasificator
 
 class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
@@ -12,8 +13,9 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         
         return {
             "paddle_wrapper": self._create_paddle_wrapper,
-            "binarizator": self._create_binarizator,
+ #           "binarizator": self._create_binarizator,
             "text_cleaner": self._create_text_cleaner,
+            "data_finder": self._create_finder,
             "semantic_clasificator": self._create_clasificator,
         }
         
@@ -21,11 +23,15 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         paddle_rec_config = context.get('paddle_rec_config', {})
         return PaddleOCRWrapper(config=paddle_rec_config, cfg=self.module_config, project_root=self.project_root)
 
-    def _create_binarizator(self, context: Dict[str, Any]) -> Binarizator:
-        return Binarizator(config=self.module_config, project_root=self.project_root)
+  #  def _create_binarizator(self, context: Dict[str, Any]) -> Binarizator:
+   #     return Binarizator(config=self.module_config, project_root=self.project_root)
         
     def _create_text_cleaner(self, context: Dict[str, Any]) -> TextCleaner:
         return TextCleaner(config=self.module_config, project_root=self.project_root)
+
+    def _create_finder(self, context: Dict[str, Any]) -> DataFinder:
+        data_finder_config = context.get("data_finder_config", {})
+        return DataFinder(config=data_finder_config, cfg=self.module_config, project_root=self.project_root)
         
     def _create_clasificator(self, context: Dict[str, Any]) -> SemanticClasificator:
         return SemanticClasificator(config=self.module_config, project_root=self.project_root)

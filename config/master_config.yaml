@@ -134,11 +134,13 @@ modules:
     text_cleaner:
       min_confidence: 85.0
       min_contours_for_frag: 2
+      min_probability: 80.0
+      min_char: 2
     
     semantic_clasificator:
-      numeric: [100.0, 70.0]
-      code: [31.0, 69.0]
-      descriptive: [0.0, 30.0]
+      numeric: [100.0, 60.0]
+      code: [41.0, 59.9]
+      descriptive: [0.0, 40.9]
     
     binarizator:
       c_value: 7
@@ -148,11 +150,6 @@ modules:
       quality:
         quality_min: 0.05
         quality_max: 0.95
-    
-    fragmentation:
-      min_contour_area: 0.001
-      density_std_factor: 2.0
-      approx_poly_epsilon: 0.005
 
   vectorization:
     lineal:
@@ -168,11 +165,12 @@ modules:
       max_search_lines_up: 2
 
     table_structurer:
-      min_h: 3
+      min_h: 4
       
     data_finder:
       wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
       min_similarity: 0.90
+      max_q_lenght: 10
     
     math_max:
       total_mtl_abs_tolerance: 0.05

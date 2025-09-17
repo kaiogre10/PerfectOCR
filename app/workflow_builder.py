@@ -18,7 +18,6 @@ class WorkFlowBuilder:
         self.processing_config = config_services.processing_config
         self.batch_config = self.processing_config.get('batch_processing', {})
         self.small_batch_limit = self.batch_config.get('small_batch_limit', 5)
-        self.max_physical_cores = config_services.max_workers_for_cpu
         self.input_paths = input_paths or []
         self.output_path = output_path
         

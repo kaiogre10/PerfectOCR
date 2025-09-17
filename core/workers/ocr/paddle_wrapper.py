@@ -75,6 +75,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             processed_count = len(final_results) if success else 0
             
             logger.debug("Cropped_img liberadas usando DataFormatter")
+            logger.debug(f"{final_results}")
             file_name: str = manager.workflow.metadata.image_name
             
             if self.output:
