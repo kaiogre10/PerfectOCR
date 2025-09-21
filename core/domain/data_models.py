@@ -380,6 +380,7 @@ class AllLines:
     polygon_ids: List[str]
     line_geometry: LineGeometry
     tabular_line: bool
+    header_line: bool
     
 @dataclass(frozen=True)
 class Metadata:

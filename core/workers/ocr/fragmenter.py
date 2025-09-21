@@ -62,7 +62,7 @@ class Fragmenter(OCRAbstractWorker):
                 else:
                     reason = "puntuación"
                 
-                logger.info(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
+                logger.debug(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
                 
                 fragments = self._fragment_polygon(polygon, poly_blob_metrics, punctuation_needs_frag)
                 final_polygons.extend(fragments)
@@ -188,7 +188,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.info(f"Fragmento por texto: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.debug(f"Fragmento por texto: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -259,7 +259,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.info(f"-> Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.debug(f"-> Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,

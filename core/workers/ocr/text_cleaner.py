@@ -84,7 +84,7 @@ class TextCleaner(OCRAbstractWorker):
             file_name: str = manager.workflow.metadata.image_name
             self._save_json(context, final_polygons_dict, file_name)
 
-        logger.info(f"Limpieza/{eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
+        logger.debug(f"Limpieza/{eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
         return True
 
     def _process_single_text(self, text: str, polygon: Polygons, semantic_type :str) -> str:
@@ -168,10 +168,10 @@ class TextCleaner(OCRAbstractWorker):
 
             out = ' '.join(kept)
             if removed > 0:
-                logger.info(f"Corrección: ID:={polygon.polygon_id} | Texto: '{text}' => '{out}'")
+                logger.debug(f"Corrección: ID:={polygon.polygon_id} | Texto: '{text}' => '{out}'")
             return out
         except Exception as e:
-            logger.info(f"Error eliminando tokens por frecuencia: {e}", exc_info=True)
+            logger.debug(f"Error eliminando tokens por frecuencia: {e}", exc_info=True)
             return text
 
     def _clean_characters_in_word(self, token: str) -> str:

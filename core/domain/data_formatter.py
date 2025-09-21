@@ -262,7 +262,7 @@ class DataFormatter:
             if self.frecuency:
                 return self.frecuency
         except Exception as e:
-            logger.info(f"Error entregando frecuencias: {e}", exc_info=True)
+            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
 
     def update_full_img(self, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""
@@ -388,7 +388,7 @@ class DataFormatter:
                         
                         self.workflow.polygons[poly_id] = updated_polygon
                         
-            logger.info("Texto OCR actualizado en dataclasses")
+            logger.debug("Texto OCR actualizado en dataclasses")
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
@@ -426,7 +426,7 @@ class DataFormatter:
         """
         try:
             if not self.workflow:
-                logger.error("No hay workflow inicializado para actualizar resultados OCR.")
+                logger.error("No hay workflow inicializado para actualizar polígonos.")
                 return False
 
             updated_count = 0
@@ -439,10 +439,10 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.info(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
+                    logger.debug(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
-                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
+                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
             return True
             
         except Exception as e:
@@ -479,6 +479,7 @@ class DataFormatter:
                     polygon_ids=line_data.get("polygon_ids", []),
                     line_geometry=line_geometry,
                     tabular_line=False,
+                    header_line=False,
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
@@ -501,8 +502,31 @@ class DataFormatter:
                 return True
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
-            return False        
+            return False
+        
+    def update_header(self, header_line_id: str) -> bool:
+        try:
+            if not self.workflow:
+                logger.error("No hay workflow inicializado para actualizar encabezado.")
+                return False
             
+            # verificar que la línea existe
+            if header_line_id not in self.workflow.all_lines:
+                logger.error(f"Línea {header_line_id} no encontrada en all_lines.")
+                return False
+            
+            # actualizar el flag header_line a True para la línea especificada
+            current_line = self.workflow.all_lines[header_line_id]
+            updated_line = dataclasses.replace(current_line, header_line=True)
+            self.workflow.all_lines[header_line_id] = updated_line
+            
+            logger.info(f"Línea {header_line_id} marcada como header.")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error actualizando header: {e}", exc_info=True)
+            return False
+
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
         """
         Identifica las líneas tabulares y las guarda como dataclasses TabularLines
@@ -518,7 +542,6 @@ class DataFormatter:
                 if line_id in self.workflow.all_lines:
                     self.workflow.all_lines[line_id].tabular_line = True
                     marked_count += 1
-                    # Guardar info para log
                     line_obj = self.workflow.all_lines[line_id]
                     tabular_lines_info.append({
                         "line_id": line_id,
@@ -526,10 +549,10 @@ class DataFormatter:
                         "polygon_ids": line_obj.polygon_ids
                     })
 
-            logger.info(f"Marcadas {marked_count} líneas como tabulares")
+            logger.debug(f"Marcadas {marked_count} líneas como tabulares")
             if tabular_lines_info:
                 for log_info in tabular_lines_info:
-                    logger.info(f"{log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+                    logger.debug(f"{log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
 
             return marked_count > 0
         except Exception as e:
@@ -685,4 +708,4 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error exportando payload json: {e}", exc_info=True)
             return False
-        
+

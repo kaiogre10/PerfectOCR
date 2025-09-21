@@ -125,7 +125,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             ])
             df.columns = [f"col_{i}" for i in range(df.shape[1])]
 
-            logger.info(
+            logger.debug(
                 f"Estructuración de tabla completada en {time.time() - start_time:.10f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}")  # type: ignore
 
             # Guardar en memoria (DataFormatter) para etapas posteriores

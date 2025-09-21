@@ -42,8 +42,6 @@ class WordFinder:
         self.key_words: List[str] = [self._normalize(str(w)) for w in self.model.get("key_words", []) or []]
         vt_field: Dict[str, str] = self.model.get("variant_to_field", {}) or {}
         self.variant_to_field: Dict[str, str] = {self._normalize(str(k)): v for k, v in vt_field.items()}
-
-        # params
         self.params: Dict[str, Any] = self.model.get("params", {}) or {}
         self.ngr = self.params.get("char_ngram_range", [2, 5]) or [2, 5]
         self.density_encoder: Dict[str, float] = self.model.get("density_encoder", {})
@@ -92,7 +90,6 @@ class WordFinder:
                 self.lengths.append(length)
                 self.grams.append(gmap_sets)
         else:
-            # fallback: construir en tiempo de carga
             self.grams = []
             self.lengths = []
             for w in self.key_words:
@@ -135,11 +132,7 @@ class WordFinder:
         return max(self.threshold, 0.60)
 
     def find_keywords(self, text: str | List[str]) -> Optional[List[Dict[str, Any]]]:
-        """Busca palabras clave usando coseno binario de n-gramas con ventana deslizante.
-        - Mantiene exactamente los mismos campos de retorno que antes.
-        - Si recibe un string: devuelve como antes 0 o 1 resultado.
-        - Si recibe una lista: devuelve como antes un resultado por elemento que supere el umbral.
-        """
+        """Busca palabras clave usando coseno binario de n-gramas con ventana deslizante."""
         try:
             single = False
             if isinstance(text, str):
@@ -147,11 +140,14 @@ class WordFinder:
                 single = True
 
             results: List[Dict[str, Any]] = []
-            window_flex = int(self.params.get("window_flexibility", 2))  # configurable en config.yaml si quieres
+            window_flex = int(self.params.get("window_flexibility", 2)) 
 
             for s in text:
                 q = self._normalize(s)
                 if not q:
+                    continue
+                
+                if not self._is_potential_keyword(q):
                     continue
 
                 best_idx = None
@@ -190,7 +186,7 @@ class WordFinder:
                                 candidate_stats = self.normalized_stats[cand]
                                 stats_score = self._stats_similarity(query_stats, candidate_stats)
 
-                            combined_score = 0.6 * ngram_score + 0.4 * stats_score
+                            combined_score = 0.5 * ngram_score + 0.5 * stats_score
 
                             if combined_score > best_score:
                                 best_score = combined_score
@@ -325,9 +321,27 @@ class WordFinder:
         if norm_a == 0 or norm_b == 0:
             return 0.0
         return dot_product / (norm_a * norm_b)
+        
+    def _is_potential_keyword(self, query: str) -> bool:
+        """Filtro súper rápido: intersección de n-gramas"""
+        global_filter = self.model.get("global_filter", {})
+        if not global_filter:
+            return True
+        
+        global_ngrams = global_filter.get("global_ngrams", set())
+        if not global_ngrams:
+            return True
+        
+        # Generar n-gramas del query
+        query_ngrams = set()
+        for n in range(self.n_min, self.n_max + 1):
+            query_ngrams.update(self._ngrams(query, n))
+        
+        # Si hay intersección, es potencial keyword
+        return bool(query_ngrams & global_ngrams)
 
-    def get_model_info(self):
-        return {
+    def get_model_info(self) -> Dict[str, Any]:
+        return{
         "total_words": len(self.key_words),
         "threshold_similarity": self.threshold,
         "key_words": len(self.key_words),

@@ -8,7 +8,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines, Polygons
+from core.domain.data_models import AllLines
 
 logger = logging.getLogger(__name__)
 
@@ -22,151 +22,40 @@ class DensityScanner(VectorizationAbstractWorker):
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            start_time: float = time.time()
-            logger.debug("Scanner iniciado")
-            
-            img_dims = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {}
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-
-            hdr_poly_ids = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == "HeaderWords"]
-            has_header_words = len(hdr_poly_ids) > 0
-            
-            table_detection_result: Dict[str, Any] = {"status": "no_result", "table_lines": []}
-
-            if has_header_words:
-                logger.info("Plan A: Intentando clustering por similitud al encabezado.")
-                table_detection_result = self._detect_by_header_similarity(all_lines, polygons, img_dims, manager)
-
-                min_required_lines = self.worker_config.get("min_cluster_size", 1)
-                if len(table_detection_result.get("table_lines", [])) < min_required_lines:
-                    logger.info(f"Plan A no concluyente (encontró < {min_required_lines} líneas). Usando Plan B (fallback a densidad general).")
-                    table_detection_result = self._detect_by_general_density(all_lines, polygons, img_dims, manager)
-            else:
-                logger.info("No hay HeaderWords. Usando Plan B (densidad general).")
-                table_detection_result = self._detect_by_general_density(all_lines, polygons, img_dims, manager)
-                                        
-            if table_detection_result.get("table_lines"):
-                total_time: float = time.time() - start_time
-                logger.debug(f"Detección de tablas completada en {total_time:.4f}s")
-            
-            line_ids: List[str] = table_detection_result.get("table_lines", [])
-            if line_ids:
-                success: bool = manager.save_tabular_lines(line_ids)
-                if not success:
-                    logger.error("Error al guardar líneas tabulares en el workflow_dict")
+            tabular_lines = all_lines.get("tabular_lines", [])
+            if not tabular_lines:
+                start_time: float = time.time()
+                logger.info("DBSCScanner iniciado")
+                
+                img_dims = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {}                
+                encoded_lines = manager.get_encode_lines()
+                
+                table_detection_result = self._detect_tables_from_encoded_lines(encoded_lines, all_lines, img_dims)
+                                            
+                if table_detection_result.get("table_lines"):
+                    total_time = time.time() - start_time
+                    logger.debug(f"Detección de tablas completada en {total_time:.4f}s")
+                
+                line_ids: List[str] = table_detection_result.get("table_lines", [])
+                if line_ids:
+                    success: bool = manager.save_tabular_lines(line_ids)
+                    if success:
+                        logger.info("Lineas guardadas en el manager desde DBSCAN")
+                        return True
+                    else:
+                        logger.error("Error al guardar líneas tabulares en el workflow")
+                        return False
+                else:
+                    logger.info("DBSCAN no detecto tablas en el documento")
                     return False
             else:
-                logger.info("No se detectaron tablas en el documento")
-            
-            return True
+                logger.info("Lineas tabulares existentes omitiendo DSBSCANNER")
+                return True
             
         except Exception as e:
             logger.error(f"Error en DensityScanner: {e}", exc_info=True)
             return False
-
-    def _detect_by_header_similarity(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], img_dims: Dict[str, int], manager: DataFormatter) -> Dict[str, Any]:
-        """Estrategia de similitud al encabezado (Plan A) usando Similitud Coseno."""
-        try:
-            # 1. Encontrar línea de encabezado y sus características
-            header_line_id = self._find_header_line_id(polygons, all_lines)
-            if not header_line_id:
-                return {"status": "error", "table_lines": []}
-
-            all_geometric_features = self._calculate_geometric_features(all_lines, img_dims)
-            if not all_geometric_features:
-                return {"status": "error", "table_lines": []}
-
-            header_encoded = manager.get_encode_lines([header_line_id])
-            if not header_encoded or header_line_id not in header_encoded:
-                return {"status": "error", "table_lines": []}
-
-            header_analysis = self._analyze_encoded_line(header_line_id, header_encoded[header_line_id], all_geometric_features[header_line_id])
-            if not header_analysis:
-                return {"status": "error", "table_lines": []}
-            
-            header_features_vector = np.array(list(header_analysis['aggregate_stats'].values()))
-            # Normalizar el vector del encabezado para el cálculo del coseno
-            header_norm = np.linalg.norm(header_features_vector)
-            if header_norm == 0:
-                return {"status": "error", "table_lines": []}
-
-            # 2. Obtener características de las líneas candidatas y calcular similitud
-            line_ids_order = sorted(all_lines.keys(), key=lambda k: all_lines[k].line_geometry.line_centroid[1])
-            hdr_idx = line_ids_order.index(header_line_id)
-            candidate_line_ids = line_ids_order[hdr_idx+1:]
-
-            if not candidate_line_ids:
-                return {"status": "insufficient_data", "table_lines": []}
-
-            encoded_lines = manager.get_encode_lines(candidate_line_ids)
-            
-            table_line_ids: List[str] = []
-            similarity_threshold = self.worker_config.get("similarity_threshold", 0.90)
-
-            # Usar el header como vector de referencia (normalizado a 1)
-            header_features_normalized = header_features_vector / header_norm
-            
-            logger.info(f"Header normalizado como referencia: {header_features_normalized}")
-
-            for line_id in candidate_line_ids:
-                if line_id in encoded_lines and line_id in all_geometric_features:
-                    analysis = self._analyze_encoded_line(line_id, encoded_lines[line_id], all_geometric_features[line_id])
-                    if analysis:
-                        line_vector = np.array(list(analysis['aggregate_stats'].values()))
-                        
-                        # Normalizar la línea usando la norma del header como referencia
-                        line_vector_normalized = line_vector / header_norm
-                        
-                        # Calcular similitud coseno entre vectores normalizados
-                        dot_product = np.dot(header_features_normalized, line_vector_normalized)
-                        # Como ambos están normalizados con la misma base, el coseno es simplemente el dot product
-                        similarity = dot_product / (np.linalg.norm(header_features_normalized) * np.linalg.norm(line_vector_normalized))
-                        
-                        logger.info(f"Línea {line_id}: Similitud = {similarity:.4f}")
-                        logger.debug(f"  Header norm ref: {header_features_normalized}")
-                        logger.debug(f"  Line norm: {line_vector_normalized}")
-                        
-                        if similarity >= similarity_threshold:
-                            table_line_ids.append(line_id)
-                        else:
-                            # La línea actual ya no se parece al header,
-                            # por lo tanto, la tabla ha terminado.
-                            logger.info(f"Línea {line_id} no cumple el umbral. Deteniendo la búsqueda contigua.")
-                            break # <-- ¡Esta es la instrucción clave!
-                    else:
-                        # Si una línea no puede ser analizada, también es una ruptura en la tabla.
-                        logger.info(f"Línea {line_id} no pudo ser analizada. Deteniendo la búsqueda contigua.")
-                        break
-
-            return {"status": "success", "table_lines": table_line_ids}
-
-        except Exception as e:
-            logger.error(f"Error en detección por similitud de encabezado: {e}", exc_info=True)
-            return {"status": "error", "table_lines": []}
-
-    def _find_header_line_id(self, polygons: Dict[str, Polygons], all_lines: Dict[str, AllLines]) -> Optional[str]:
-        """Localiza la line_id del encabezado basada en HeaderWords."""
-        hdr_poly_ids = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == "HeaderWords"]
-        if not hdr_poly_ids: 
-            return None
-        
-        hdr_set = set(hdr_poly_ids)
-        counts = {lid: len(set(lobj.polygon_ids).intersection(hdr_set)) for lid, lobj in all_lines.items() if lobj.polygon_ids}
-        
-        if not counts: 
-            return None
-        
-        header_line_id = max(counts, key=counts.get)
-        logger.info(f"DensityScanner: header_line_id={header_line_id} (via HeaderWords)")
-        return header_line_id
-
-    def _detect_by_general_density(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], img_dims: Dict[str, int], manager: DataFormatter) -> Dict[str, Any]:
-        """Estrategia estándar cuando NO hay HeaderWords: analizar todas las líneas (lógica original)."""
-        encoded_lines = manager.get_encode_lines()
-        if not encoded_lines:
-            return {"status": "error", "table_lines": []}
-        return self._detect_tables_from_encoded_lines(encoded_lines, all_lines, img_dims)
 
     def _detect_tables_from_encoded_lines(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, AllLines], img_dims: Dict[str, int]) -> Dict[str, Any]:
         """Detecta tablas usando DBSCAN en líneas ya codificadas."""
@@ -222,7 +111,7 @@ class DensityScanner(VectorizationAbstractWorker):
         """Analiza una línea codificada y retorna estadísticas."""
         try:
             # Las características geométricas ahora se reciben como parámetro.
-            line_area: float = geometric_features.get("perimeter", 0.0)
+            line_area: float = geometric_features.get("line_area", 0.0)
             bbox_width: float = geometric_features.get("bbox_width", 0.0)
             align_prev: float = geometric_features.get("align_prev", 0.0)
             # align_next: float = geometric_features.get("align_next", 0.0)
@@ -326,8 +215,9 @@ class DensityScanner(VectorizationAbstractWorker):
                 line_area: float = float((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
                 ratio_area = (100.0 / float(total_size)) * line_area
                 aspect_ratio = (bbox[2] - bbox[0]) / (bbox[3] - bbox[1])
-                perimeter: float = bbox[2] + bbox[0] + bbox[3] + bbox[1]
+                height: float = bbox[3] - bbox[1]
                 bbox_width: float = float(bbox[2] - bbox[0])                
+                perimeter: float = 2 * (bbox_width + height)
                 prev_bbox: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_bbox if i > 0 else None
                 # vecinos arriba/abajo
                 prev_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
@@ -340,7 +230,7 @@ class DensityScanner(VectorizationAbstractWorker):
                     vec = np.array([other_c[0] - ref_c[0], other_c[1] - ref_c[1]])
                     axis = np.array([1, 0])  # eje X
                     if np.linalg.norm(vec) == 0: 
-                        return 1.0
+                        return 0.0
                     return float(np.dot(vec, axis) / (np.linalg.norm(vec) * np.linalg.norm(axis)))
 
                 def bbox_alignment(current_coord: float, prev_bbox: Optional[List[float]], coord_idx: int) -> Optional[float]:
@@ -361,7 +251,7 @@ class DensityScanner(VectorizationAbstractWorker):
                 xmax_align: Optional[float] = bbox_alignment(current_xmax, prev_bbox, 2)
 
                 align_prev: Optional[float] = alignment(centroid, prev_centroid)
-                # align_next: Optional[float] = alignment(centroid, next_centroid)
+                align_next: Optional[float] = alignment(centroid, next_centroid)
 
                 # varianza entre alineaciones válidas
                 # align_values: List[float] = [v for v in [align_prev, align_next] if v is not None]
@@ -371,7 +261,7 @@ class DensityScanner(VectorizationAbstractWorker):
                     "line_area": line_area,
                     "bbox_width": bbox_width,
                     "align_prev": align_prev if align_prev is not None else 0.0,
-                    # "align_next": align_next if align_next is not None else 0.0,
+                    "align_next": align_next if align_next is not None else 0.0,
                     # "var_alignment": var_alignment,
                     "ratio_area": ratio_area,
                     "aspect_ratio": aspect_ratio,
@@ -395,24 +285,26 @@ class DensityScanner(VectorizationAbstractWorker):
             aggregate_stats: Dict[str, float] = analysis.get('aggregate_stats', {})
             features.append(list(aggregate_stats.values()))
         
-        features_array = np.array(features)
-        scaler: StandardScaler = StandardScaler()
-        features_scaled = scaler.fit_transform(features_array)
+        features_array = np.asarray(features, dtype=np.float32)
+
+        scaler = StandardScaler()
+        features_scaled = scaler.fit_transform(features_array) # type: ignore
+
+        X = features_scaled.astype(np.float32, copy=False)
+        clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
+        labels: List[int] = clustering.fit_predict(X) # type: ignore
         
-        clustering: DBSCAN = DBSCAN(eps=eps, min_samples=min_cluster_size)
-        labels = clustering.fit_predict(features_scaled)
-        
-        logger.info(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
+        logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:
-            logger.info("DBSCAN: No se encontraron clusters válidos.")
+            logger.warning("DBSCAN: No se encontraron clusters válidos.")
             return []
         
         cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
-        main_cluster = max(cluster_sizes, key=cluster_sizes.get)
+        main_cluster = max(cluster_sizes, key=cluster_sizes.get) # type: ignore
         
-        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
+        logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
         
         table_indices: List[int] = [valid_indices[i] for i, label in enumerate(labels) if label == main_cluster] 
         

@@ -161,11 +161,15 @@ modules:
   vectorization:
     lineal:
       overlap: 0.3
-    
+
+    cos_sim:
+      min_cluster: 2
+      similarity_threshold: 0.85
+      interval: 1
+      
     dbscan:
       eps: 2.0
-      similarity_threshold: 0.95 # Nuevo parámetro para Similitud Coseno
-      min_cluster_size: 1
+      min_cluster_size: 2
 
     table_structurer:
       min_h: 4

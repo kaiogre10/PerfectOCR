@@ -173,7 +173,6 @@ class DataFinder(ConfigWithNumpy):
 
 class DBSCAN(ConfigWithNumpy):
     eps: float
-    similarity_threshold: float
     min_cluster_size: int
 
 class Lineal(ConfigWithNumpy):
@@ -182,9 +181,15 @@ class Lineal(ConfigWithNumpy):
 class TableStructurer(ConfigWithNumpy):
     min_h: int
 
+class CosineSimilarity(ConfigWithNumpy):
+    min_cluster: int
+    similarity_threshold: float
+    interval: int
+
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
     dbscan: DBSCAN
+    cos_sim: CosineSimilarity
     math_max: MathMaxConfig
     data_finder: DataFinder
     table_structurer: TableStructurer
