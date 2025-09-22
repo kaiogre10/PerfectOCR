@@ -116,7 +116,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         try:
             feature_keys = [
                 'count','mean','std_dev','iqr','p50','skewness',
-                'line_area','bbox_width','align_prev', 'align_next', 'ratio_area',
+                'line_area','bbox_width','align_prev', 'align_next', "var_alignment",'ratio_area',
                 'aspect_ratio','perimeter','xmin_align','xmax_align'
             ]
 
@@ -152,15 +152,14 @@ class MatricialCusine(VectorizationAbstractWorker):
                 dtype=np.float32
             )
 
-            # Imprimir valores de manera legible y estructurada
             # Mostrar la matriz de candidatos en formato de tabla: filas = líneas, columnas = features
-            header = ["Idx", "Tabla idx", "Line ID"] + feature_keys
-            row_format = "{:<5} {:<10} {:<20} " + " ".join(["{:>10.4f}"] * len(feature_keys))
-            logger.info("Valores de la matriz de candidatos (cada fila es una línea, columnas = features):")
-            logger.info("{:<5} {:<10} {:<20} ".format("Idx", "Tabla idx", "Line ID") + " ".join([f"{k:>10}" for k in feature_keys]))
-            for idx, (orig_idx, row) in enumerate(zip(candidate_indices, mat)):
-                line_id = line_ids[orig_idx] if orig_idx < len(line_ids) else f"idx_{orig_idx}"
-                logger.info(row_format.format(idx, orig_idx, line_id, *row))
+            # header = ["Idx", "Tabla idx", "Line ID"] + feature_keys
+            # row_format = "{:<5} {:<10} {:<20} " + " ".join(["{:>10.4f}"] * len(feature_keys))
+            # logger.info("Valores de la matriz de candidatos (cada fila es una línea, columnas = features):")
+            # logger.info("{:<5} {:<10} {:<20} ".format("Idx", "Tabla idx", "Line ID") + " ".join([f"{k:>10}" for k in feature_keys]))
+            # for idx, (orig_idx, row) in enumerate(zip(candidate_indices, mat)):
+            #     line_id = line_ids[orig_idx] if orig_idx < len(line_ids) else f"idx_{orig_idx}"
+            #     logger.info(row_format.format(idx, orig_idx, line_id, *row))
 
             # Combinar header y candidatos para un escalado consistente
             full_mat = np.vstack([header_vec, mat])
@@ -170,15 +169,13 @@ class MatricialCusine(VectorizationAbstractWorker):
             scaled_mat = scaler.fit_transform(full_mat)
 
             # Log de los valores escalados, mismo formato que el log anterior
-            logger.info("Valores ESCALADOS de la matriz de candidatos (cada fila es una línea, columnas = features):")
-            logger.info("{:<5} {:<10} {:<20} ".format("Idx", "Tabla idx", "Line ID") + " ".join([f"{k:>10}" for k in feature_keys]))
-            # El primer elemento de scaled_mat es el header, los siguientes son los candidatos
-            for idx, (orig_idx, row) in enumerate(zip(candidate_indices, scaled_mat[1:])):
-                line_id = line_ids[orig_idx] if orig_idx < len(line_ids) else f"idx_{orig_idx}"
-                logger.info(row_format.format(idx, orig_idx, line_id, *row))
-
-
-            
+            # logger.info("Valores ESCALADOS de la matriz de candidatos (cada fila es una línea, columnas = features):")
+            # logger.info("{:<5} {:<10} {:<20} ".format("Idx", "Tabla idx", "Line ID") + " ".join([f"{k:>10}" for k in feature_keys]))
+            # # El primer elemento de scaled_mat es el header, los siguientes son los candidatos
+            # for idx, (orig_idx, row) in enumerate(zip(candidate_indices, scaled_mat[1:])):
+            #     line_id = line_ids[orig_idx] if orig_idx < len(line_ids) else f"idx_{orig_idx}"
+            #     logger.info(row_format.format(idx, orig_idx, line_id, *row))
+        
             # Separar header y candidatos escalados
             scaled_header_vec = scaled_mat[0].reshape(1, -1)
             scaled_candidates_mat = scaled_mat[1:]
@@ -253,13 +250,10 @@ class MatricialCusine(VectorizationAbstractWorker):
                 line_area: float = float((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
                 ratio_area = (100.0 / float(total_size)) * line_area
                 aspect_ratio = (bbox[2] - bbox[0]) / (bbox[3] - bbox[1])
-                # El perímetro de un rectángulo se calcula como 2*(ancho + alto)
-                width: float = bbox[2] - bbox[0]
                 height: float = bbox[3] - bbox[1]
-                perimeter: float = 2 * (width + height)
-                bbox_width: float = float(bbox[2] - bbox[0])                
+                bbox_width: float = float(bbox[2] - bbox[0])
+                perimeter: float = 2 * (bbox_width + height)
                 prev_bbox: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_bbox if i > 0 else None
-                # vecinos arriba/abajo
                 prev_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
                 next_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
 
@@ -294,15 +288,15 @@ class MatricialCusine(VectorizationAbstractWorker):
                 align_next: Optional[float] = alignment(centroid, next_centroid)
 
                 # varianza entre alineaciones válidas
-                # align_values: List[float] = [v for v in [align_prev, align_next] if v is not None]
-                # var_alignment: float = float(np.var(align_values)) if len(align_values) > 1 else 0.0
+                align_values: List[float] = [v for v in [align_prev, align_next] if v is not None]
+                var_alignment: float = float(np.var(align_values)) if len(align_values) > 1 else 0.0
 
                 all_geometric_features[line_id] = {
                     "line_area": line_area,
                     "bbox_width": bbox_width,
                     "align_prev": align_prev if align_prev is not None else 0.0,
                     "align_next": align_next if align_next is not None else 0.0,
-                    # "var_alignment": var_alignment,
+                    "var_alignment": var_alignment,
                     "ratio_area": ratio_area,
                     "aspect_ratio": aspect_ratio,
                     "perimeter": perimeter,
@@ -323,7 +317,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             bbox_width: float = geometric_features.get("bbox_width", 0.0)
             align_prev: float = geometric_features.get("align_prev", 0.0)
             align_next: float = geometric_features.get("align_next", 0.0)
-            # var_alignment: float = geometric_features.get("var_alignment", 0.0)
+            var_alignment: float = geometric_features.get("var_alignment", 0.0)
             ratio_area: float = geometric_features.get("ratio_area", 0.0) 
             aspect_ratio: float = geometric_features.get("aspect_ratio", 0.0)
             perimeter: float = geometric_features.get("perimeter", 0.0)
@@ -375,7 +369,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 "bbox_width": bbox_width,
                 "align_prev": align_prev,
                 "align_next": align_next,
-                # "var_alignment": var_alignment,
+                "var_alignment": var_alignment,
                 "ratio_area": ratio_area,
                 "aspect_ratio": aspect_ratio,
                 "perimeter": perimeter,
@@ -390,9 +384,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             return None
 
     def _expand_to_consecutive_interval(self, indices: List[int]) -> List[int]:
-        """
-        Expande lista de índices a intervalo consecutivo.
-        """
+        """Expande lista de índices a intervalo consecutivo."""
         interval_expand = self.worker_config.get("interval", {})
 
         if not indices:

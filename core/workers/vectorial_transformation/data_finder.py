@@ -31,8 +31,8 @@ class DataFinder(OCRAbstractWorker):
             return None
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        start_time = time.time()
         try:
-            start_time = time.time()
             logger.debug("Data Finder iniciado")
             
             if not manager or not getattr(manager, "workflow", None):
@@ -123,11 +123,11 @@ class DataFinder(OCRAbstractWorker):
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Similitud por palabra{best_result}")
+                        logger.info(f"Similitud por palabra{best_result}")
 
             if polygon_updates:
-                logger.debug(f"DataFinder: Encontradas {len(polygon_updates)} coincidencias de palabras clave")
-                logger.debug(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
+                logger.info(f"DataFinder: Encontradas {len(polygon_updates)} coincidencias de palabras clave")
+                logger.info(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
                 return polygon_updates
             else:
                 logger.info("DataFinder: No se encontraron coincidencias de palabras clave - usando fallback")

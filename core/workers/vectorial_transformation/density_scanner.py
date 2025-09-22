@@ -22,36 +22,31 @@ class DensityScanner(VectorizationAbstractWorker):
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
+            start_time: float = time.time()
+            logger.info("DBSCScanner iniciado")
+            
+            img_dims = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {}                
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-            tabular_lines = all_lines.get("tabular_lines", [])
-            if not tabular_lines:
-                start_time: float = time.time()
-                logger.info("DBSCScanner iniciado")
-                
-                img_dims = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {}                
-                encoded_lines = manager.get_encode_lines()
-                
-                table_detection_result = self._detect_tables_from_encoded_lines(encoded_lines, all_lines, img_dims)
-                                            
-                if table_detection_result.get("table_lines"):
-                    total_time = time.time() - start_time
-                    logger.debug(f"Detección de tablas completada en {total_time:.4f}s")
-                
-                line_ids: List[str] = table_detection_result.get("table_lines", [])
-                if line_ids:
-                    success: bool = manager.save_tabular_lines(line_ids)
-                    if success:
-                        logger.info("Lineas guardadas en el manager desde DBSCAN")
-                        return True
-                    else:
-                        logger.error("Error al guardar líneas tabulares en el workflow")
-                        return False
+            encoded_lines = manager.get_encode_lines()
+            
+            table_detection_result = self._detect_tables_from_encoded_lines(encoded_lines, all_lines, img_dims)
+                                        
+            if table_detection_result.get("table_lines"):
+                total_time = time.time() - start_time
+                logger.debug(f"Detección de tablas completada en {total_time:.4f}s")
+            
+            line_ids: List[str] = table_detection_result.get("table_lines", [])
+            if line_ids:
+                success: bool = manager.save_tabular_lines(line_ids)
+                if success:
+                    logger.info("Lineas guardadas en el manager desde DBSCAN")
+                    return True
                 else:
-                    logger.info("DBSCAN no detecto tablas en el documento")
+                    logger.error("Error al guardar líneas tabulares en el workflow")
                     return False
             else:
-                logger.info("Lineas tabulares existentes omitiendo DSBSCANNER")
-                return True
+                logger.info("DBSCAN no detecto tablas en el documento")
+                return False
             
         except Exception as e:
             logger.error(f"Error en DensityScanner: {e}", exc_info=True)
@@ -114,8 +109,8 @@ class DensityScanner(VectorizationAbstractWorker):
             line_area: float = geometric_features.get("line_area", 0.0)
             bbox_width: float = geometric_features.get("bbox_width", 0.0)
             align_prev: float = geometric_features.get("align_prev", 0.0)
-            # align_next: float = geometric_features.get("align_next", 0.0)
-            # var_alignment: float = geometric_features.get("var_alignment", 0.0)
+            align_next: float = geometric_features.get("align_next", 0.0)
+            var_alignment: float = geometric_features.get("var_alignment", 0.0)
             ratio_area: float = geometric_features.get("ratio_area", 0.0) 
             aspect_ratio: float = geometric_features.get("aspect_ratio", 0.0)
             perimeter: float = geometric_features.get("perimeter", 0.0)
@@ -166,8 +161,8 @@ class DensityScanner(VectorizationAbstractWorker):
                 "line_area": line_area,
                 "bbox_width": bbox_width,
                 "align_prev": align_prev,
-                # "align_next": align_next,
-                # "var_alignment": var_alignment,
+                "align_next": align_next,
+                "var_alignment": var_alignment,
                 "ratio_area": ratio_area,
                 "aspect_ratio": aspect_ratio,
                 "perimeter": perimeter,
@@ -221,7 +216,7 @@ class DensityScanner(VectorizationAbstractWorker):
                 prev_bbox: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_bbox if i > 0 else None
                 # vecinos arriba/abajo
                 prev_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
-                # next_centroid: Optional[List[float]] = sorted_lines[i+1][1].get("line_centroid") if i < len(sorted_lines)-1 else None
+                next_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
 
                 # función auxiliar para similitud coseno con eje X
                 def alignment(ref_c: List[float], other_c: Optional[List[float]]) -> Optional[float]:
@@ -254,15 +249,15 @@ class DensityScanner(VectorizationAbstractWorker):
                 align_next: Optional[float] = alignment(centroid, next_centroid)
 
                 # varianza entre alineaciones válidas
-                # align_values: List[float] = [v for v in [align_prev, align_next] if v is not None]
-                # var_alignment: float = float(np.var(align_values)) if len(align_values) > 1 else 0.0
+                align_values: List[float] = [v for v in [align_prev, align_next] if v is not None]
+                var_alignment: float = float(np.var(align_values)) if len(align_values) > 1 else 0.0
 
                 all_geometric_features[line_id] = {
                     "line_area": line_area,
                     "bbox_width": bbox_width,
                     "align_prev": align_prev if align_prev is not None else 0.0,
                     "align_next": align_next if align_next is not None else 0.0,
-                    # "var_alignment": var_alignment,
+                    "var_alignment": var_alignment,
                     "ratio_area": ratio_area,
                     "aspect_ratio": aspect_ratio,
                     "perimeter": perimeter,

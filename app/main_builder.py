@@ -106,23 +106,23 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         }
 
         image_load_factory = worker_factory.get_image_preparation_factory()
-        image_prep_workers = image_load_factory.create_workers([
-            "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"],
+        image_prep_workers = image_load_factory.create_workers(
+            ["cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"],
             context)
 
         preprocessing_factory = worker_factory.get_preprocessing_factory()
-        preprocessing_workers = preprocessing_factory.create_workers([
-            "moire", "sp", "gauss", "ink_enhancement", "clahe", "sharp"],
+        preprocessing_workers = preprocessing_factory.create_workers(
+            ["moire", "sp", "gauss", "ink_enhancement", "clahe", "sharp"],
             context)
         
         ocr_factory = worker_factory.get_ocr_factory()
         ocr_workers = ocr_factory.create_workers(
-            ["paddle_wrapper", "binarizator","semantic_clasificator", "text_cleaner", "fragmenter","data_finder"],
+            ["paddle_wrapper", "binarizator", "semantic_clasificator", "text_cleaner", "fragmenter","data_finder"],
             context)
 
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
-            ["lineal", "cos_sim", "dbscan", "table_structurer", "math_max"],
+            ["lineal", "dbscan", "cos_sim", "table_structurer", "math_max"],
             context)
         
         image_loader = ImageLoader(

@@ -58,9 +58,9 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.info(f"Polígonos en encabezado: {polygon_count}, Palabras reales: {word_count}")
             
             h = polygon_count
-            logger.info(f"Paramétro H encontrado en polígonos: {h}")
+            logger.debug(f"Paramétro H encontrado en polígonos: {h}")
             if h == 0 or h == 1:
-                logger.info("Usando paramétro H del yaml")
+                logger.debug("Usando paramétro H del yaml")
                 h: int = self.worker_config.get("min_h", 3)
             H = int(h)
 
@@ -125,7 +125,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             ])
             df.columns = [f"col_{i}" for i in range(df.shape[1])]
 
-            logger.debug(
+            logger.info(
                 f"Estructuración de tabla completada en {time.time() - start_time:.10f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}")  # type: ignore
 
             # Guardar en memoria (DataFormatter) para etapas posteriores

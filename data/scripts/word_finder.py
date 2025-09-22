@@ -126,9 +126,9 @@ class WordFinder:
         if length <= 3:
             return max(self.threshold, 0.70)
         if length <= 6:
-            return max(self.threshold, 0.70)
+            return max(self.threshold, 0.60)
         if length <= 10:
-            return max(self.threshold, 0.65)
+            return max(self.threshold, 0.50)
         return max(self.threshold, 0.60)
 
     def find_keywords(self, text: str | List[str]) -> Optional[List[Dict[str, Any]]]:
