@@ -163,7 +163,7 @@ modules:
       overlap: 0.3
 
     cos_sim:
-      min_cluster: 2
+      min_cluster: 1
       similarity_threshold: 0.85
       interval: 1
       

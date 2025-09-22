@@ -518,7 +518,8 @@ class DataFormatter:
 
             if tabular_lines_info:
                 for log_info in tabular_lines_info:
-                    logger.info(f"{log_info['line_id']}: '{log_info['text']}'")
+                    logger.info(f"Linea textual: {log_info['line_id']}: '{log_info['text']}'")
+                    return True
             
             num_lines = len(all_lines_dataclasses)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas en dataclasses.")
@@ -555,30 +556,60 @@ class DataFormatter:
         """
         Identifica las líneas tabulares y las guarda como dataclasses TabularLines
         en el workflow. También actualiza el flag en AllLines.
+
+        Comportamiento: cada llamada primero borra todos los flags tabular_line
+        y después marca únicamente los line_ids provistos.
         """
         try:
-            if not self.workflow or not line_ids:
+            if not self.workflow:
                 return False
 
+            # 1) Limpiar todos los flags tabular_line existentes
+            cleared_count = 0
+            for lid, line_obj in self.workflow.all_lines.items():
+                try:
+                    if getattr(line_obj, "tabular_line", False):
+                        updated = dataclasses.replace(line_obj, tabular_line=False)
+                        self.workflow.all_lines[lid] = updated
+                        cleared_count += 1
+                except Exception:
+                    # Fallback: intentar asignar directamente si dataclasses.replace falla
+                    try:
+                        line_obj.tabular_line = False
+                        cleared_count += 1
+                    except Exception:
+                        continue
+
+            logger.info(f"Limpiados {cleared_count} flags tabular_line previos.")
+
+            # 2) Marcar los nuevos line_ids provistos (si los hay)
             marked_count = 0
             tabular_lines_info: List[Dict[str, Any]] = []
+            marked_ids: List[str] = []
             for line_id in line_ids:
                 if line_id in self.workflow.all_lines:
-                    self.workflow.all_lines[line_id].tabular_line = True
-                    marked_count += 1
                     line_obj = self.workflow.all_lines[line_id]
+
+                    updated_line = dataclasses.replace(line_obj, tabular_line=True)
+                    self.workflow.all_lines[line_id] = updated_line
+                    marked_count += 1
+                    marked_ids.append(line_id)
                     tabular_lines_info.append({
                         "line_id": line_id,
-                        "text": line_obj.text,
-                        "polygon_ids": line_obj.polygon_ids
+                        "text": getattr(self.workflow.all_lines[line_id], "text", ""),
+                        "polygon_ids": getattr(self.workflow.all_lines[line_id], "polygon_ids", [])
                     })
 
-            logger.debug(f"Marcadas {marked_count} líneas como tabulares")
-            if tabular_lines_info:
+            if marked_ids:
+                logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_info in tabular_lines_info:
-                    logger.info(f"{log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+                    logger.info(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+            else:
+                # Si no se marcaron líneas, lo dejamos en DEBUG
+                logger.debug("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 
-            return marked_count > 0
+            # Operación completada (se limpió y se marcaron las nuevas líneas)
+            return True
         except Exception as e:
             logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)
             return False

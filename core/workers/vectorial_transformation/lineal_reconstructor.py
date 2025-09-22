@@ -58,7 +58,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         lines_info: Dict[str, Any] = {}
         current_line_polys: List[Polygons] = []
         current_line_bbox: Optional[List[float]] = None
-        line_counter = 1
+        line_counter = 0
         
         for poly in prepared_sorted:
             bbox = poly.geometry.bounding_box

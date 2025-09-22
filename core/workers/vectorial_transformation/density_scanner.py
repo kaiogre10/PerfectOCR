@@ -1,6 +1,6 @@
 # PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
 from sklearn.cluster import DBSCAN #type: ignore
-from sklearn.preprocessing import MinMaxScaler #type: ignore
+from sklearn.preprocessing import StandardScaler #type: ignore
 import math
 import numpy as np
 import time
@@ -29,11 +29,11 @@ class DensityScanner(VectorizationAbstractWorker):
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             encoded_lines = manager.get_encode_lines()
             
-            table_detection_result = self._detect_tables_from_encoded_lines(encoded_lines, all_lines, img_dims)
+            table_detection_result = self._detect_tables_from_encoded_lines(encoded_lines, all_lines, img_dims, manager)
                                         
             if table_detection_result.get("table_lines"):
                 total_time = time.time() - start_time
-                logger.debug(f"Detección de tablas completada en {total_time:.4f}s")
+                logger.info(f"Detección de tablas completada en {total_time:.4f}s")
             
             line_ids: List[str] = table_detection_result.get("table_lines", [])
             if line_ids:
@@ -52,13 +52,13 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.error(f"Error en DensityScanner: {e}", exc_info=True)
             return False
 
-    def _detect_tables_from_encoded_lines(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, AllLines], img_dims: Dict[str, int]) -> Dict[str, Any]:
+    def _detect_tables_from_encoded_lines(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, AllLines], img_dims: Dict[str, int], manager: DataFormatter) -> Dict[str, Any]:
         """Detecta tablas usando DBSCAN en líneas ya codificadas."""
         try:
             line_ids: List[str] = list(encoded_lines.keys())
             line_analyses: List[Optional[Dict[str, Dict[str, float]]]] = []
             
-            all_geometric_features: Optional[Dict[str, Dict[str, float]]] = self._calculate_geometric_features(all_lines, img_dims)
+            all_geometric_features: Optional[Dict[str, Dict[str, float]]] = self._calculate_geometric_features(all_lines, img_dims, manager)
             if not all_geometric_features:
                 logger.warning("No se pudieron calcular las características geométricas para ninguna línea.")
                 return {"status": "error", "table_lines": []}
@@ -108,14 +108,23 @@ class DensityScanner(VectorizationAbstractWorker):
             # Las características geométricas ahora se reciben como parámetro.
             line_area: float = geometric_features.get("line_area", 0.0)
             bbox_width: float = geometric_features.get("bbox_width", 0.0)
-            align_prev: float = geometric_features.get("align_prev", 0.0)
-            align_next: float = geometric_features.get("align_next", 0.0)
+            align_prev: float = geometric_features.get("align_prev", 1.0)
+            align_next: float = geometric_features.get("align_next", 1.0)
             var_alignment: float = geometric_features.get("var_alignment", 0.0)
             ratio_area: float = geometric_features.get("ratio_area", 0.0) 
             aspect_ratio: float = geometric_features.get("aspect_ratio", 0.0)
             perimeter: float = geometric_features.get("perimeter", 0.0)
-            xmin_align: float = geometric_features.get("xmin_align", 0.0)
-            xmax_align: float = geometric_features.get("xmax_align", 0.0)
+            prev_xmin_align: float = geometric_features.get("prev_xmin_align", 1.0)
+            prev_xmax_align: float = geometric_features.get("prev_xmax_align", 1.0)
+            next_xmin_align: float = geometric_features.get("next_xmin_align", 1.0)
+            next_xmax_align: float = geometric_features.get("next_xmax_align", 1.0)
+            var_xmin_bbox_alignment: float = geometric_features.get("var_xmin_bbox_alignment", 0.0)
+            var_xmax_bbox_alignment: float = geometric_features.get("var_xmax_bbox_alignment", 0.0)
+            numeric_count: float = geometric_features.get("numeric_count", 0.0)
+            code_count: float = geometric_features.get("code_count", 0.0)
+            descriptive_count: float = geometric_features.get("descriptive_count", 0.0)
+            numeric_ratio: float = geometric_features.get("numeric_ratio", 0.0)
+            desc_ratio: float = geometric_features.get("desc_ratio", 0.0)
             
             # Convertir valores codificados a numéricos
             numeric_values: List[float] = [float(x) for x in line_values]
@@ -166,8 +175,17 @@ class DensityScanner(VectorizationAbstractWorker):
                 "ratio_area": ratio_area,
                 "aspect_ratio": aspect_ratio,
                 "perimeter": perimeter,
-                "xmin_align": xmin_align,
-                "xmax_align": xmax_align,
+                "prev_xmin_align": prev_xmin_align,
+                "prev_xmax_align": prev_xmax_align, 
+                "next_xmin_align": next_xmin_align ,
+                "next_xmax_align": next_xmax_align ,
+                "var_xmin_bbox_alignment": var_xmin_bbox_alignment,
+                "var_xmax_bbox_alignment": var_xmax_bbox_alignment,
+                "numeric_count": numeric_count,
+                "code_count": code_count,
+                "descriptive_count": descriptive_count,
+                "numeric_ratio": numeric_ratio,
+                "desc_ratio": desc_ratio,
             }
 
             return {"aggregate_stats": feature_dict}
@@ -176,14 +194,13 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.error(f"Error analizando línea {line_id}: {e}", exc_info=True)
             return None
     
-    def _calculate_geometric_features(self, all_lines: Dict[str, AllLines], img_dims: Dict[str, int]) -> Optional[Dict[str, Dict[str, float]]]:
+    def _calculate_geometric_features(self, all_lines: Dict[str, AllLines], img_dims: Dict[str, int], manager: DataFormatter) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
         """
         try:
-            # Ordenar líneas por coordenada Y del centroide
-            if not all_lines:
+            if not manager.workflow.all_lines if manager.workflow else {}:
                 return None
 
             sorted_lines: List[Tuple[str, AllLines]] = sorted(
@@ -193,9 +210,32 @@ class DensityScanner(VectorizationAbstractWorker):
 
             all_geometric_features: Dict[str, Dict[str, float]] = {}
             for i, (line_id, line_data) in enumerate(sorted_lines):
+                numeric_count = 0.0
+                code_count = 0.0
+                descriptive_count = 0.0
+
+                poly_ids_line = getattr(line_data, "polygon_ids", []) or []
+                if manager.workflow and manager.workflow.polygons and poly_ids_line:
+                    polygons_dict = manager.workflow.polygons
+                    for pid in poly_ids_line:
+                        if pid in polygons_dict:
+                            semantic = getattr(polygons_dict[pid], "semantic_type", "") or ""
+                            if semantic == "numeric":
+                                numeric_count += 1.0
+                            elif semantic == "code":
+                                code_count += 1.0
+                            else:
+                                descriptive_count += 1.0
+
+                total_polygons: float = numeric_count + code_count + descriptive_count
+                numeric_ratio: Optional[float] = (numeric_count / total_polygons) * 100.0
+                desc_ratio: Optional[float] = (descriptive_count / total_polygons) * 100.0
+
+                logger.info(f"Ratio numerico: {numeric_ratio}%, ratio descriptivo: {desc_ratio}%")
+                    
                 bbox: List[float] = line_data.line_geometry.line_bbox
                 centroid: List[float] = line_data.line_geometry.line_centroid
-
+                
                 if len(bbox) < 4 or len(centroid) < 2:
                     continue
 
@@ -211,58 +251,74 @@ class DensityScanner(VectorizationAbstractWorker):
                 ratio_area = (100.0 / float(total_size)) * line_area
                 aspect_ratio = (bbox[2] - bbox[0]) / (bbox[3] - bbox[1])
                 height: float = bbox[3] - bbox[1]
-                bbox_width: float = float(bbox[2] - bbox[0])                
+                bbox_width: float = float(bbox[2] - bbox[0])
                 perimeter: float = 2 * (bbox_width + height)
                 prev_bbox: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_bbox if i > 0 else None
-                # vecinos arriba/abajo
+                next_bbox: Optional[List[float]] = sorted_lines[i+1][1].line_geometry.line_bbox if i < len(sorted_lines) - 1 else None
                 prev_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
-                next_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
+                next_centroid: Optional[List[float]] = sorted_lines[i+1][1].line_geometry.line_centroid if i < len(sorted_lines) - 1 else None
 
                 # función auxiliar para similitud coseno con eje X
                 def alignment(ref_c: List[float], other_c: Optional[List[float]]) -> Optional[float]:
                     if other_c is None: 
-                        return None
+                        return 1.0
                     vec = np.array([other_c[0] - ref_c[0], other_c[1] - ref_c[1]])
                     axis = np.array([1, 0])  # eje X
                     if np.linalg.norm(vec) == 0: 
-                        return 0.0
+                        return 1.0
                     return float(np.dot(vec, axis) / (np.linalg.norm(vec) * np.linalg.norm(axis)))
 
-                def bbox_alignment(current_coord: float, prev_bbox: Optional[List[float]], coord_idx: int) -> Optional[float]:
-                    if prev_bbox is None or len(prev_bbox) < 4:
-                        return None
-                    prev_coord = prev_bbox[coord_idx]
-                    diff = abs(current_coord - prev_coord)
-                    # Normalizar: menor diferencia = mayor alineación (0-1)
+                def bbox_alignment(current_coord: float, other_bbox: Optional[List[float]], coord_idx: int) -> Optional[float]:
+                    if other_bbox is None or len(other_bbox) < 4:
+                        return 1.0
+                    other_coord = other_bbox[coord_idx]
+                    diff = abs(current_coord - other_coord)
                     max_tolerance = bbox_width if bbox_width > 0 else 100.0
                     alignment_score = max(0.0, 1.0 - (diff / max_tolerance))
                     return float(alignment_score)
 
-                # Alineación ortogonal para xmin y xmax
+                # Alineación ortogonal para xmin y xmax con prev y next
                 current_xmin = bbox[0]
                 current_xmax = bbox[2]
-                
-                xmin_align: Optional[float] = bbox_alignment(current_xmin, prev_bbox, 0)
-                xmax_align: Optional[float] = bbox_alignment(current_xmax, prev_bbox, 2)
+
+                prev_xmin_align: Optional[float] = bbox_alignment(current_xmin, prev_bbox, 0)
+                prev_xmax_align: Optional[float] = bbox_alignment(current_xmax, prev_bbox, 2)
+                next_xmin_align: Optional[float] = bbox_alignment(current_xmin, next_bbox, 0)
+                next_xmax_align: Optional[float] = bbox_alignment(current_xmax, next_bbox, 2)
 
                 align_prev: Optional[float] = alignment(centroid, prev_centroid)
                 align_next: Optional[float] = alignment(centroid, next_centroid)
 
-                # varianza entre alineaciones válidas
+                # varianza entre alineaciones válidas de centroides
                 align_values: List[float] = [v for v in [align_prev, align_next] if v is not None]
                 var_alignment: float = float(np.var(align_values)) if len(align_values) > 1 else 0.0
+
+                # varianza entre alineaciones válidas de bbox (xmin/xmax con prev/next)
+                xmin_align_values: List[float] = [v for v in [prev_xmin_align, next_xmin_align] if v is not None]
+                xmax_align_values: List[float] = [v for v in [prev_xmax_align, next_xmax_align] if v is not None]
+                var_xmin_bbox_alignment: float = float(np.var(xmin_align_values)) if len(xmin_align_values) > 1 else 0.0
+                var_xmax_bbox_alignment: float = float(np.var(xmax_align_values)) if len(xmax_align_values) > 1 else 0.0
 
                 all_geometric_features[line_id] = {
                     "line_area": line_area,
                     "bbox_width": bbox_width,
-                    "align_prev": align_prev if align_prev is not None else 0.0,
-                    "align_next": align_next if align_next is not None else 0.0,
+                    "align_prev": align_prev if align_prev is not None else 1.0,
+                    "align_next": align_next if align_next is not None else 1.0,
                     "var_alignment": var_alignment,
                     "ratio_area": ratio_area,
                     "aspect_ratio": aspect_ratio,
                     "perimeter": perimeter,
-                    "xmin_align": xmin_align if xmin_align is not None else 0.0,
-                    "xmax_align": xmax_align if xmax_align is not None else 0.0,
+                    "prev_xmin_align": prev_xmin_align if prev_xmin_align is not None else 1.0,
+                    "prev_xmax_align": prev_xmax_align if prev_xmax_align is not None else 1.0,
+                    "next_xmin_align": next_xmin_align if next_xmin_align is not None else 1.0,
+                    "next_xmax_align": next_xmax_align if next_xmax_align is not None else 1.0,
+                    "var_xmin_bbox_alignment": var_xmin_bbox_alignment,
+                    "var_xmax_bbox_alignment": var_xmax_bbox_alignment,
+                    "numeric_count": numeric_count,
+                    "code_count": code_count,
+                    "descriptive_count": descriptive_count,
+                    "numeric_ratio": numeric_ratio,
+                    "desc_ratio": desc_ratio,
                 }
             return all_geometric_features
 
@@ -272,22 +328,21 @@ class DensityScanner(VectorizationAbstractWorker):
                                                 
     def _apply_dbscan_clustering(self, valid_analyses: List[Dict[str, Dict[str, float]]], valid_indices: List[int]) -> List[int]:
         """Aplica DBSCAN para agrupar líneas similares."""
-        min_cluster_size = self.worker_config.get("min_cluster_size", 2)
-        eps = self.worker_config.get("eps", 2.0)
+        min_cluster_size = int(self.worker_config.get("min_cluster_size", 2))
+        eps = float(self.worker_config.get("eps", 2.0))
         
         features: List[List[float]] = []
         for analysis in valid_analyses:
             aggregate_stats: Dict[str, float] = analysis.get('aggregate_stats', {})
             features.append(list(aggregate_stats.values()))
         
-        features_array = np.asarray(features, dtype=np.float32)
+        features_array = np.asarray(features, dtype=np.float64)
 
-        scaler = MinMaxScaler()
-        features_scaled = scaler.fit_transform(features_array) # type: ignore
+        scaler = StandardScaler()
+        features_scaled: np.ndarray[Any, np.dtype[np.float64]]  = scaler.fit_transform(features_array)
 
-        X = features_scaled.astype(np.float32, copy=False)
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
-        labels: List[int] = clustering.fit_predict(X) # type: ignore
+        labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_scaled)
         
         logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
         
@@ -297,7 +352,7 @@ class DensityScanner(VectorizationAbstractWorker):
             return []
         
         cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
-        main_cluster = max(cluster_sizes, key=cluster_sizes.get) # type: ignore
+        main_cluster = max(cluster_sizes, key=cluster_sizes.get)
         
         logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
         
