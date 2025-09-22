@@ -46,7 +46,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 # Si hay resultado del scanner, VALIDAR usando estrategia all-vs-all en el intervalo header+1 .. última del scanner
                 if tabular_lines:
                     logger.info(f"Validando resultado del scanner con validación coseno all-vs-all ({len(tabular_lines)} líneas reportadas)")
-                    validated = self._validate_scanner_interval_all_vs_all(encoded_lines, all_lines, img_dims, header_line_id, tabular_lines)
+                    validated = self._validate_scanner_interval_all_vs_all(encoded_lines, all_lines, img_dims, header_line_id, tabular_lines, manager)
                     if validated:
                         total_time = time.time() - start_time
                         logger.info(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(validated)}")
@@ -361,7 +361,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
 
-    def _validate_scanner_interval_all_vs_all(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, AllLines], img_dims: Dict[str, int], header_line_id: str, scanned_line_ids: List[str]) -> List[str]:
+    def _validate_scanner_interval_all_vs_all(self, encoded_lines: Dict[str, List[int]], all_lines: Dict[str, AllLines], img_dims: Dict[str, int], header_line_id: str, scanned_line_ids: List[str], manager: DataFormatter) -> List[str]:
         """
         Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado por el scanner.
         No usa el header como referencia para el intervalo; el header sólo se añade si el intervalo es válido.
@@ -402,7 +402,42 @@ class MatricialCusine(VectorizationAbstractWorker):
                 line_text = line_obj.text if line_obj else "SIN TEXTO"
                 logger.info(f"  [{start_idx + i}] {line_id}: '{line_text}'")
 
-            feature_keys = [
+            # BLOQUEAR líneas que contienen key_field
+            # MontoTotalDocumento, Subtotal, TotalProductos, MontoIVAGeneral, RFCProveedor, FolioDocumento, FechaDocumento, NombreCliente
+     
+            blocked_line_ids = set()
+            if manager.workflow and manager.workflow.polygons:
+                logger.info(f"Total de polígonos disponibles: {len(manager.workflow.polygons)}")
+                
+                # Obtener IDs de polígonos con key_field (excluyendo HeaderWords)
+                blocked_polygon_ids = set()
+                for poly_id, polygon in manager.workflow.polygons.items():
+                    if polygon.key_field and polygon.key_field != "HeaderWords": 
+                        blocked_polygon_ids.add(poly_id)
+                        logger.info(f"Polígono {poly_id}: key_field='{polygon.key_field}'")
+                
+                # Buscar líneas que contengan estos polígonos
+                for line_id, line_obj in all_lines.items():
+                    if line_obj.polygon_ids:
+                        line_polygon_ids = set(line_obj.polygon_ids)
+                        if line_polygon_ids.intersection(blocked_polygon_ids):
+                            blocked_line_ids.add(line_id)
+                            logger.info(f"Línea {line_id} bloqueada por contener polígonos con key_field")
+            
+            logger.info(f"Líneas bloqueadas por key_field: {sorted(blocked_line_ids)}")
+            
+            # Filtrar el intervalo excluyendo líneas bloqueadas
+            filtered_interval_indices = []
+            for idx in range(start_idx, end_idx + 1):
+                lid = line_ids[idx]
+                if lid not in blocked_line_ids:
+                    filtered_interval_indices.append(idx)
+                else:
+                    logger.debug(f"Línea {lid} bloqueada por contener key_field")
+            
+            logger.info(f"Intervalo filtrado: {len(filtered_interval_indices)} líneas (de {end_idx - start_idx + 1} originales)")
+
+            feature_keys: List[str] = [
                 'count','mean','std_dev','iqr','p50','skewness',
                 'line_area','bbox_width','align_prev', 'align_next', "var_alignment",'ratio_area',
                 'aspect_ratio','perimeter','xmin_align','xmax_align'
@@ -413,11 +448,11 @@ class MatricialCusine(VectorizationAbstractWorker):
                 logger.warning("No se pudieron calcular las características geométricas para la validación.")
                 return []
 
-            mat_rows = []
-            candidate_indices = []
-            candidate_line_ids = []
-            for idx in range(start_idx, end_idx + 1):
-                lid = line_ids[idx]
+            mat_rows: List[float] = []
+            candidate_indices: List[int] = []
+            candidate_line_ids: List[str] = []
+            for idx in filtered_interval_indices:
+                lid = line_ids[idx]  # ✅ Usar el índice filtrado directamente
                 vals = encoded_lines.get(lid, [])
                 geom = all_geometric_features.get(lid)
                 if not vals or geom is None:
@@ -430,7 +465,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 agg = analysis.get('aggregate_stats', {})
                 row = [float(agg.get(k, 0.0)) for k in feature_keys]
                 mat_rows.append(row)
-                candidate_indices.append(idx)
+                candidate_indices.append(idx)  # ✅ Usar el índice original
                 candidate_line_ids.append(lid)
 
             n = len(mat_rows)
@@ -444,10 +479,7 @@ class MatricialCusine(VectorizationAbstractWorker):
 
             # matriz todos contra todos (n x n)
             sims_mat = cosine_similarity(mat_scaled)
-            
-            # Para facilitar la lectura del log y saber a qué línea corresponde cada valor de la matriz,
-            # se imprime la matriz junto con los IDs de línea en el mismo orden de las filas/columnas.
-            logger.info(
+            logger.debug(
                 "Matriz de similitud (cosine_similarity):\nFilas/Columnas (en orden): %s\n%s",
                 candidate_line_ids,
                 np.array2string(sims_mat, precision=4, suppress_small=True)

@@ -1,6 +1,6 @@
 # PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
 from sklearn.cluster import DBSCAN #type: ignore
-from sklearn.preprocessing import StandardScaler #type: ignore
+from sklearn.preprocessing import MinMaxScaler #type: ignore
 import math
 import numpy as np
 import time
@@ -282,7 +282,7 @@ class DensityScanner(VectorizationAbstractWorker):
         
         features_array = np.asarray(features, dtype=np.float32)
 
-        scaler = StandardScaler()
+        scaler = MinMaxScaler()
         features_scaled = scaler.fit_transform(features_array) # type: ignore
 
         X = features_scaled.astype(np.float32, copy=False)

@@ -576,7 +576,7 @@ class DataFormatter:
             logger.debug(f"Marcadas {marked_count} líneas como tabulares")
             if tabular_lines_info:
                 for log_info in tabular_lines_info:
-                    logger.debug(f"{log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+                    logger.info(f"{log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
 
             return marked_count > 0
         except Exception as e:
