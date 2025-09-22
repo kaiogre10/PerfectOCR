@@ -159,17 +159,18 @@ class SemanticClasificator(ConfigWithNumpy):
 
 class Fragmenter(ConfigWithNumpy):
     fragment_on_text: bool
-    
-class OCRConfig(ConfigWithNumpy):
-    text_cleaner: TextualConfig
-    binarizator: Binarization
-    semantic_clasificator: SemanticClasificator
-    fragmenter: Fragmenter
-
+        
 class DataFinder(ConfigWithNumpy):
     wordfinder_model_path: str
     min_similarity: float
     max_q_lenght: int
+
+class OCRConfig(ConfigWithNumpy):
+    text_cleaner: TextualConfig
+    binarizator: Binarization
+    semantic_clasificator: SemanticClasificator
+    data_finder: DataFinder
+    fragmenter: Fragmenter
 
 class DBSCAN(ConfigWithNumpy):
     eps: float
@@ -191,7 +192,6 @@ class VectorConfig(ConfigWithNumpy):
     dbscan: DBSCAN
     cos_sim: CosineSimilarity
     math_max: MathMaxConfig
-    data_finder: DataFinder
     table_structurer: TableStructurer
     
 class ModulesConfig(ConfigWithNumpy):

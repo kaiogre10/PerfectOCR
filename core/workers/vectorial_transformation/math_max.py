@@ -90,7 +90,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         c_name = quant_cols[c_idx]
         pu_name = quant_cols[pu_idx]
         mtl_name = quant_cols[mtl_idx]
-        logger.info(f"[MatrixSolver] Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
+        logger.debug(f"[MatrixSolver] Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
         # --- FASE 2: Reconstrucción ---
         reconstructed: np.ndarray[np.float32, Any] = numeric_df.to_numpy(copy=True)
         reconstructed: np.ndarray = numeric_df.to_numpy(dtype=np.float32, copy=True)

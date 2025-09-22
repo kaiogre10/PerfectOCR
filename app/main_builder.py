@@ -61,7 +61,6 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
         # logging.debug("Iniciando procesamiento...")
         results = execute_processing(builders, workflow_report)
         logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
-        logger.info(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
 
         # 7 Inicio de la fase 2, ingreso de datos a la bd
         # db_builder = DataBaseBuilder(config_services.paths_config, project_root)
@@ -185,9 +184,8 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
 
             db_paths[image_data.get('name', f'imagen_{i}')] = db_path
             
-    logger.info(f"=== RESUMEN FINAL ===")
-    logger.info(f"Total de imágenes procesadas: {len(db_paths)}")
-    logger.info(f"Tiempo total acumulado: {total_processing_time:.6f}s")
+    logger.debug(f"Total de imágenes procesadas: {len(db_paths)}")
+    logger.debug(f"Tiempo total acumulado: {total_processing_time:.6f}s")
     logger.info(f"Tiempo promedio por imagen: {total_processing_time/len(db_paths):.6f}s")
 
     return [

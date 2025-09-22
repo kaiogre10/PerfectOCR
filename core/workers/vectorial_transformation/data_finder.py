@@ -123,10 +123,10 @@ class DataFinder(OCRAbstractWorker):
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Similitud por palabra{best_result}")
+                        logger.info(f"Similitud por palabra{best_result}")
 
             if polygon_updates:
-                logger.debug(f"DataFinder: Encontradas {len(polygon_updates)} coincidencias de palabras clave")
+                logger.info(f"DataFinder: Encontradas {len(polygon_updates)} coincidencias de palabras clave")
                 logger.debug(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
                 return polygon_updates
             else:

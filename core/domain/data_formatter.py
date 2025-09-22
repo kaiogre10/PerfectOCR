@@ -580,7 +580,7 @@ class DataFormatter:
                     except Exception:
                         continue
 
-            logger.info(f"Limpiados {cleared_count} flags tabular_line previos.")
+            logger.debug(f"Limpiados {cleared_count} flags tabular_line previos.")
 
             # 2) Marcar los nuevos line_ids provistos (si los hay)
             marked_count = 0
@@ -603,10 +603,10 @@ class DataFormatter:
             if marked_ids:
                 logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_info in tabular_lines_info:
-                    logger.info(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+                    logger.debug(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
             else:
                 # Si no se marcaron líneas, lo dejamos en DEBUG
-                logger.debug("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
+                logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 
             # Operación completada (se limpió y se marcaron las nuevas líneas)
             return True

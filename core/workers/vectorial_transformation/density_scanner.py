@@ -230,8 +230,6 @@ class DensityScanner(VectorizationAbstractWorker):
                 total_polygons: float = numeric_count + code_count + descriptive_count
                 numeric_ratio: Optional[float] = (numeric_count / total_polygons) * 100.0
                 desc_ratio: Optional[float] = (descriptive_count / total_polygons) * 100.0
-
-                logger.info(f"Ratio numerico: {numeric_ratio}%, ratio descriptivo: {desc_ratio}%")
                     
                 bbox: List[float] = line_data.line_geometry.line_bbox
                 centroid: List[float] = line_data.line_geometry.line_centroid
