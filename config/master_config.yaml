@@ -172,7 +172,7 @@ modules:
       min_cluster_size: 2
 
     table_structurer:
-      min_h: 4
+      min_h: 3
       
     data_finder:
       wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"

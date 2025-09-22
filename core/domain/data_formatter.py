@@ -255,7 +255,31 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error codificando líneas: {e}", exc_info=True)
             return {}
+            
+    def get_tabular_lines(self) -> List[str]:
+        """
+        Retorna la lista de line_id marcadas como tabulares en workflow.all_lines.
+        Devuelve lista vacía si no hay workflow o no hay líneas marcadas.
+        """
+        try:
+            if not self.workflow or not getattr(self.workflow, "all_lines", None):
+                logger.debug("get_tabular_lines: No hay workflow o all_lines vacío.")
+                return []
 
+            tabular_ids: List[str] = []
+            for line_id, line_obj in self.workflow.all_lines.items():
+                try:
+                    if getattr(line_obj, "tabular_line", False):
+                        tabular_ids.append(line_id)
+                except Exception:
+                    continue
+
+            logger.debug(f"get_tabular_lines: encontradas {len(tabular_ids)} líneas tabulares.")
+            return tabular_ids
+        except Exception as e:
+            logger.error(f"Error obteniendo lineas tabulares: {e}", exc_info=True)
+            return []
+                
     def get_frecuency_char(self) -> Optional[Dict[str, int]]:
         """Obtiene los valores de frecuencia para letras"""
         try:
