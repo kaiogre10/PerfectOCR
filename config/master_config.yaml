@@ -20,7 +20,7 @@ models_config:
     det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
     rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
     cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
-    wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
+    wordfinder_model_path: "C:/word_finder_model/data/word_finder_model.pkl"
     
 pipeline_secuence:
   image_preparation:
@@ -156,8 +156,8 @@ modules:
         quality_max: 0.95
         
     data_finder:
-      wordfinder_model_path: "C:/PerfectOCR/data/models/word_finder/word_finder_model.pkl"
-      min_similarity: 0.95
+      wordfinder_model_path: C:/word_finder_model/data/word_finder_model.pkl
+      min_similarity: 0.90
       max_q_lenght: 15
 
     fragmenter:
@@ -169,7 +169,7 @@ modules:
 
     cos_sim:
       min_cluster: 1
-      similarity_threshold: 0.85
+      similarity_threshold: 0.80
       interval: 1
       
     dbscan:
@@ -182,5 +182,3 @@ modules:
     math_max:
       total_mtl_abs_tolerance: 0.05
       row_relative_tolerance: 0.05
-      
-      

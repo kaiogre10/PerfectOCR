@@ -486,7 +486,7 @@ class DataFormatter:
             valid_lines = {k: v for k, v in lines_info.items() if v is not None}
             if not valid_lines:
                 logger.warning("No hay líneas válidas para procesar.")
-                return True
+                return False
                 
             all_lines_dataclasses: Dict[str, AllLines] = {}
             tabular_lines_info: List[Dict[str, Any]] = []
@@ -517,12 +517,11 @@ class DataFormatter:
                             })
 
             if tabular_lines_info:
-                for log_info in tabular_lines_info:
-                    logger.info(f"Linea textual: {log_info['line_id']}: '{log_info['text']}'")
-                    return True
+                for all_lines in tabular_lines_info:
+                    logger.info(f"Linea textual: {all_lines['line_id']}: '{all_lines['text']}'")
             
             num_lines = len(all_lines_dataclasses)
-            logger.debug(f"Guardadas {num_lines} líneas reconstruidas en dataclasses.")
+            logger.info(f"Guardadas {num_lines} líneas reconstruidas en dataclasses.")
             for line_id, line_data in self.workflow.all_lines.items():
                 return True
         except Exception as e:
@@ -601,9 +600,9 @@ class DataFormatter:
                     })
 
             if marked_ids:
-                logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
+                logger.info(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_info in tabular_lines_info:
-                    logger.debug(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+                    logger.info(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
             else:
                 # Si no se marcaron líneas, lo dejamos en DEBUG
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")

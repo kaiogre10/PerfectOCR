@@ -30,7 +30,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             success = manager.create_text_lines(lines_info)
             total_time = time.time() - start_time
 
-            logger.info(f"Armado de líneas completado en {total_time:.6f}")
+            logger.info(f"Armado de líneas completado en {total_time:.10f}")
 
             if not success:
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")

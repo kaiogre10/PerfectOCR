@@ -110,7 +110,6 @@ class DensityScanner(VectorizationAbstractWorker):
             bbox_width: float = geometric_features.get("bbox_width", 0.0)
             align_prev: float = geometric_features.get("align_prev", 1.0)
             align_next: float = geometric_features.get("align_next", 1.0)
-            var_alignment: float = geometric_features.get("var_alignment", 0.0)
             ratio_area: float = geometric_features.get("ratio_area", 0.0) 
             aspect_ratio: float = geometric_features.get("aspect_ratio", 0.0)
             perimeter: float = geometric_features.get("perimeter", 0.0)
@@ -118,13 +117,8 @@ class DensityScanner(VectorizationAbstractWorker):
             prev_xmax_align: float = geometric_features.get("prev_xmax_align", 1.0)
             next_xmin_align: float = geometric_features.get("next_xmin_align", 1.0)
             next_xmax_align: float = geometric_features.get("next_xmax_align", 1.0)
-            var_xmin_bbox_alignment: float = geometric_features.get("var_xmin_bbox_alignment", 0.0)
-            var_xmax_bbox_alignment: float = geometric_features.get("var_xmax_bbox_alignment", 0.0)
             numeric_count: float = geometric_features.get("numeric_count", 0.0)
-            code_count: float = geometric_features.get("code_count", 0.0)
-            descriptive_count: float = geometric_features.get("descriptive_count", 0.0)
             numeric_ratio: float = geometric_features.get("numeric_ratio", 0.0)
-            desc_ratio: float = geometric_features.get("desc_ratio", 0.0)
             
             # Convertir valores codificados a numéricos
             numeric_values: List[float] = [float(x) for x in line_values]
@@ -171,7 +165,6 @@ class DensityScanner(VectorizationAbstractWorker):
                 "bbox_width": bbox_width,
                 "align_prev": align_prev,
                 "align_next": align_next,
-                "var_alignment": var_alignment,
                 "ratio_area": ratio_area,
                 "aspect_ratio": aspect_ratio,
                 "perimeter": perimeter,
@@ -179,13 +172,8 @@ class DensityScanner(VectorizationAbstractWorker):
                 "prev_xmax_align": prev_xmax_align, 
                 "next_xmin_align": next_xmin_align ,
                 "next_xmax_align": next_xmax_align ,
-                "var_xmin_bbox_alignment": var_xmin_bbox_alignment,
-                "var_xmax_bbox_alignment": var_xmax_bbox_alignment,
                 "numeric_count": numeric_count,
-                "code_count": code_count,
-                "descriptive_count": descriptive_count,
                 "numeric_ratio": numeric_ratio,
-                "desc_ratio": desc_ratio,
             }
 
             return {"aggregate_stats": feature_dict}
@@ -294,15 +282,12 @@ class DensityScanner(VectorizationAbstractWorker):
                 # varianza entre alineaciones válidas de bbox (xmin/xmax con prev/next)
                 xmin_align_values: List[float] = [v for v in [prev_xmin_align, next_xmin_align] if v is not None]
                 xmax_align_values: List[float] = [v for v in [prev_xmax_align, next_xmax_align] if v is not None]
-                var_xmin_bbox_alignment: float = float(np.var(xmin_align_values)) if len(xmin_align_values) > 1 else 0.0
-                var_xmax_bbox_alignment: float = float(np.var(xmax_align_values)) if len(xmax_align_values) > 1 else 0.0
 
                 all_geometric_features[line_id] = {
                     "line_area": line_area,
                     "bbox_width": bbox_width,
                     "align_prev": align_prev if align_prev is not None else 1.0,
                     "align_next": align_next if align_next is not None else 1.0,
-                    "var_alignment": var_alignment,
                     "ratio_area": ratio_area,
                     "aspect_ratio": aspect_ratio,
                     "perimeter": perimeter,
@@ -310,13 +295,8 @@ class DensityScanner(VectorizationAbstractWorker):
                     "prev_xmax_align": prev_xmax_align if prev_xmax_align is not None else 1.0,
                     "next_xmin_align": next_xmin_align if next_xmin_align is not None else 1.0,
                     "next_xmax_align": next_xmax_align if next_xmax_align is not None else 1.0,
-                    "var_xmin_bbox_alignment": var_xmin_bbox_alignment,
-                    "var_xmax_bbox_alignment": var_xmax_bbox_alignment,
                     "numeric_count": numeric_count,
-                    "code_count": code_count,
-                    "descriptive_count": descriptive_count,
                     "numeric_ratio": numeric_ratio,
-                    "desc_ratio": desc_ratio,
                 }
             return all_geometric_features
 

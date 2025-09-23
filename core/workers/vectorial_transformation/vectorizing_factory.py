@@ -13,8 +13,8 @@ class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
         
         return {
             "lineal": self._create_lineal,
-            "cos_sim": self._create_cosmatrix,
             "dbscan": self._create_scanner,
+            "cos_sim": self._create_cosmatrix,
             "table_structurer": self._create_structurer,
             "math_max": self._create_mathmax,
         }

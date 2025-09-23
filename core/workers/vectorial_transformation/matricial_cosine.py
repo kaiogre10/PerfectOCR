@@ -107,13 +107,13 @@ class MatricialCusine(VectorizationAbstractWorker):
             logger.info(f"Error en feaures de lineas: {e}", exc_info=True)
         
             
-    def _calculate_features(self, all_lines: Dict[str, AllLines], img_dims: Dict[str, int], manager: DataFormatter, line_features: Dict[str, float], line_values: List[int]) -> Optional[Dict[str, Dict[str, float]]]:
+    def _calculate_features(self, line_id: str, line_data: AllLines, all_lines: Dict[str, AllLines], img_dims: Dict[str, int], manager: DataFormatter, line_features: Dict[str, float], line_values: List[int]) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
         """
         try:
-            if not all_lines:
+            if not all_lines or not line_data:
                 return None
 
             if not line_features:
@@ -123,178 +123,201 @@ class MatricialCusine(VectorizationAbstractWorker):
                 all_lines.items(),
                 key=lambda kv: kv[1].line_geometry.line_centroid[1]
             )
-            for i, (line_id, line_data) in enumerate(sorted_lines):
-                numeric_count = 0.0
+            
+            # Encontrar el índice de la línea actual en la lista ordenada
+            current_index = -1
+            for i, (lid, _) in enumerate(sorted_lines):
+                if lid == line_id:
+                    current_index = i
+                    break
+            
+            if current_index == -1:
+                logger.error(f"No se pudo encontrar la línea {line_id} en las líneas ordenadas.")
+                return None
 
-                poly_ids_line = getattr(line_data, "polygon_ids", []) or []
-                if manager.workflow and manager.workflow.polygons and poly_ids_line:
-                    polygons_dict = manager.workflow.polygons
-                    for pid in poly_ids_line:
-                        if pid in polygons_dict:
-                            semantic = getattr(polygons_dict[pid], "semantic_type", "") or ""
-                            if semantic == "numeric":
-                                numeric_count += 1.0
+            numeric_count = 0.0
+
+            poly_ids_line = getattr(line_data, "polygon_ids", []) or []
+            if manager.workflow and manager.workflow.polygons and poly_ids_line:
+                polygons_dict = manager.workflow.polygons
+                for pid in poly_ids_line:
+                    if pid in polygons_dict:
+                        semantic = getattr(polygons_dict[pid], "semantic_type", "") or ""
+                        if semantic == "numeric":
+                            numeric_count += 1.0
+            
+            all_numerics = line_features.get("total_numerics_global")
+            if all_numerics is None:
+                return None # O un valor por defecto apropiado
                 
-                all_numerics = line_features.get("total_numerics_global")
-                if all_numerics is None:
-                    return 0.0
+            max_numeric_count = line_features.get("max_numeric_count_global")
+            if max_numeric_count is None:
+                return None # O un valor por defecto apropiado
+
+            numeric_mean = line_features.get("numeric_mean_global")
+            if numeric_mean is None:
+                return None # O un valor por defecto apropiado
+            
+            line_text = getattr(line_data, "text", "") or ""
+            
+            numeric_count_norm = numeric_count / max_numeric_count if max_numeric_count > 0 else 0.0
+            numeric_frec_rel: float = max_numeric_count - numeric_count 
+            numeric_ratio_frec: float = numeric_count_norm + numeric_frec_rel
+            num_above: float = 1.0 if numeric_count > numeric_mean else 0.0
+            # Normaliza num_margin en el intervalo [-1, 1] usando el promedio global como base 0.
+            if max_numeric_count > 0:
+                num_margin = (numeric_count - numeric_mean) / (max_numeric_count / 2)
+                # Limita el valor al rango [-1, 1]
+                num_margin = max(-1.0, min(1.0, num_margin))
+            else:
+                num_margin = 0.0
+            
+            digit_char_count: float = float(sum(ch.isdigit() for ch in line_text))
+            
+            bbox: List[float] = line_data.line_geometry.line_bbox
+            centroid: List[float] = line_data.line_geometry.line_centroid
+
+            if len(bbox) < 4 or len(centroid) < 2:
+                return None
+
+            # Proporción del área respecto del total
+            if not img_dims or "size" not in img_dims:
+                return None
+            
+            total_size = img_dims.get("size")
+            if not total_size:
+                return None
+            
+            line_area: float = float((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
+            bbox_width: float = float(bbox[2] - bbox[0])
+            ratio_area: float = line_area / float(total_size) 
+            aspect_ratio = ((bbox[2] - bbox[0]) / (bbox[3] - bbox[1])) / 100 if (bbox[3] - bbox[1]) > 0 else 0
+            height: float = bbox[3] - bbox[1]
+            perimeter: float = 2 * (bbox_width + height)
+            diagonal = float(np.sqrt((bbox[2] - bbox[0])**2 + (bbox[3] - bbox[1])**2))
+            compact = ((perimeter**2) / line_area) / 100 if line_area > 0 else 0
+            
+            prev_bbox: Optional[List[float]] = sorted_lines[current_index-1][1].line_geometry.line_bbox if current_index > 0 else None
+            next_bbox: Optional[List[float]] = sorted_lines[current_index+1][1].line_geometry.line_bbox if current_index < len(sorted_lines) - 1 else None
+            prev_centroid: Optional[List[float]] = sorted_lines[current_index-1][1].line_geometry.line_centroid if current_index > 0 else None
+            next_centroid: Optional[List[float]] = sorted_lines[current_index+1][1].line_geometry.line_centroid if current_index < len(sorted_lines) - 1 else None
+            
+            # función auxiliar para similitud coseno con eje X
+            def alignment(ref_c: List[float], other_c: Optional[List[float]]) -> Optional[float]:
+                if other_c is None: 
+                    return 1.0
+                vec = np.array([other_c[0] - ref_c[0], other_c[1] - ref_c[1]])
+                axis = np.array([1, 0])  # eje X
+                if np.linalg.norm(vec) == 0: 
+                    return 1.0
+                return float(np.dot(vec, axis) / (np.linalg.norm(vec) * np.linalg.norm(axis)))
+
+            def bbox_alignment(current_coord: float, other_bbox: Optional[List[float]], coord_idx: int) -> float:
+                """
+                Mide alineación usando similitud coseno.
+                Punto de referencia: [current_coord, 0] en el eje X
+                Vector hacia otra línea: [other_coord - current_coord, other_y - 0]
+                """
+                if other_bbox is None:
+                    return 1.0
+                
+                # Punto de referencia en el eje X
+                ref_point = np.array([current_coord, 0])
+                
+                # Coordenada de la otra línea
+                other_coord = other_bbox[coord_idx]
+                other_y = other_bbox[1]  # Coordenada Y de la otra línea
+                
+                # Vector desde el punto de referencia hacia la otra línea
+                vec_to_other = np.array([other_coord - current_coord, other_y - 0])
+                
+                # Vector de referencia (eje X positivo)
+                ref_vec = np.array([1, 0])
+                
+                # Similitud coseno
+                if np.linalg.norm(vec_to_other) == 0:
+                    return 1.0
+                
+                cosine_sim = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
+                
+                return cosine_sim
+
+            # Alineación ortogonal para xmin y xmax con prev y next
+            current_xmin = bbox[0]
+            current_xmax = bbox[2]
+            
+            prev_xmin_align: Optional[float] = bbox_alignment(current_xmin, prev_bbox, 0) if prev_bbox else 1.0
+            prev_xmax_align: Optional[float] = bbox_alignment(current_xmax, prev_bbox, 2) if prev_bbox else 1.0
+            next_xmin_align: Optional[float] = bbox_alignment(current_xmin, next_bbox, 0) if next_bbox else 1.0
+            next_xmax_align: Optional[float] = bbox_alignment(current_xmax, next_bbox, 2) if next_bbox else 1.0
+
+            align_prev: Optional[float] = alignment(centroid, prev_centroid)
+            align_next: Optional[float] = alignment(centroid, next_centroid)
+            
+            numeric_values: List[float] = [float(x) for x in line_values]
+            if len(numeric_values) < 2:
+                return None
+                
+                # Calcular estadísticos básicos
+            count: float = float(len(numeric_values))
+            mean: float = sum(numeric_values) / len(numeric_values)
+            variance: float = sum((x - mean) ** 2 for x in numeric_values) / (len(numeric_values) - 1) if len(numeric_values) > 1 else 0.0
+            std_dev: float = math.sqrt(variance)
+                
+                # Calcular percentiles
+            sorted_values: List[float] = sorted(numeric_values)
+            n: int = len(sorted_values)
+                
+            def percentile(p: float) -> float:
+                index: float = (p / 100) * (n - 1)
+                lower: int = int(index)
+                upper: int = min(lower + 1, n - 1)
+                weight: float = index - lower
+                return sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
+            
+            p25: float = percentile(25)
+            p50: float = percentile(50)
+            p75: float = percentile(75)
+            iqr: float = p75 - p25
+                
+                # Calcular skewness
+            skewness: float = 0.0
+            if std_dev > 0:
+                moment3: float = sum(((x - mean) / std_dev) ** 3 for x in numeric_values)
+                skewness = moment3 / n
                     
-                max_numeric_count = line_features.get("max_numeric_count_global")
-                if max_numeric_count is None:
-                    return 0.0
-
-                numeric_mean = line_features.get("numeric_mean_global")
-                if numeric_mean is None:
-                    return 0.0
-                
-                line_text = getattr(line_data, "text", "") or ""
-                # total_lines = float(len(all_lines))
-                
-                numeric_rel_ratio: float = numeric_count / max_numeric_count if max_numeric_count > 0 else 0.0
-                numeric_frec_rel: float = numeric_count - max_numeric_count
-                numeric_ratio_frec: float = numeric_rel_ratio + numeric_frec_rel
-                num_above: float = 1.0 if numeric_count > numeric_mean else 0.0
-                num_margin = numeric_count - numeric_mean
-                digit_char_count: float = float(sum(ch.isdigit() for ch in line_text))
-                
-                # logger.debug(f"{line_id}: Conteo numerico: {numeric_count}, maximo num: {max_numeric_count}, Ratio relativo: {numeric_rel_ratio}, Above: {num_above}, margin: {num_margin}, digitos: {digit_char_count}, Frecuencia rel: {numeric_frec_rel}, Ratio Frec: {numeric_ratio_frec}")
-                
-                bbox: List[float] = line_data.line_geometry.line_bbox
-                centroid: List[float] = line_data.line_geometry.line_centroid
-
-                if len(bbox) < 4 or len(centroid) < 2:
-                    continue
-
-                # Proporción del área respecto del total
-                if not img_dims or "size" not in img_dims:
-                    return None
-                
-                total_size = img_dims.get("size")
-                if not total_size:
-                    return None
-                
-                line_area: float = float((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
-                bbox_width: float = float(bbox[2] - bbox[0])
-                ratio_area = (100.0 / float(total_size)) * line_area
-                aspect_ratio = (bbox[2] - bbox[0]) / (bbox[3] - bbox[1])
-                height: float = bbox[3] - bbox[1]
-                perimeter: float = 2 * (bbox_width + height)
-                diagonal = float(np.sqrt((bbox[2] - bbox[0])**2 + (bbox[3] - bbox[1])**2))
-                compact = (perimeter**2) / line_area
-                prev_bbox: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_bbox if i > 0 else None
-                next_bbox: Optional[List[float]] = sorted_lines[i+1][1].line_geometry.line_bbox if i < len(sorted_lines) - 1 else None
-                prev_centroid: Optional[List[float]] = sorted_lines[i-1][1].line_geometry.line_centroid if i > 0 else None
-                next_centroid: Optional[List[float]] = sorted_lines[i+1][1].line_geometry.line_centroid if i < len(sorted_lines) - 1 else None
-                
-                # función auxiliar para similitud coseno con eje X
-                def alignment(ref_c: List[float], other_c: Optional[List[float]]) -> Optional[float]:
-                    if other_c is None: 
-                        return 1.0
-                    vec = np.array([other_c[0] - ref_c[0], other_c[1] - ref_c[1]])
-                    axis = np.array([1, 0])  # eje X
-                    if np.linalg.norm(vec) == 0: 
-                        return 1.0
-                    return float(np.dot(vec, axis) / (np.linalg.norm(vec) * np.linalg.norm(axis)))
-
-                def bbox_alignment(current_coord: float, other_bbox: Optional[List[float]], coord_idx: int) -> Optional[float]:
-                    if other_bbox is None or len(other_bbox) < 4:
-                        return 1.0
-                    other_coord = other_bbox[coord_idx]
-                    diff = abs(current_coord - other_coord)
-                    max_tolerance = bbox_width if bbox_width > 0 else 100.0
-                    alignment_score = max(0.0, 1.0 - (diff / max_tolerance))
-                    return float(alignment_score)
-
-                # Alineación ortogonal para xmin y xmax con prev y next
-                current_xmin = bbox[0]
-                current_xmax = bbox[2]
-                
-                prev_xmin_align: Optional[float] = bbox_alignment(current_xmin, prev_bbox, 0)
-                prev_xmax_align: Optional[float] = bbox_alignment(current_xmax, prev_bbox, 2)
-                next_xmin_align: Optional[float] = bbox_alignment(current_xmin, next_bbox, 0)
-                next_xmax_align: Optional[float] = bbox_alignment(current_xmax, next_bbox, 2)
-
-                align_prev: Optional[float] = alignment(centroid, prev_centroid)
-                align_next: Optional[float] = alignment(centroid, next_centroid)
-
-                # varianza entre alineaciones válidas de centroides
-                align_values: List[float] = [v for v in [align_prev, align_next] if v is not None]
-                var_alignment: float = float(np.var(align_values)) if len(align_values) > 1 else 0.0
-
-                # varianza entre alineaciones válidas de bbox (xmin/xmax con prev/next)
-                xmin_align_values: List[float] = [v for v in [prev_xmin_align, next_xmin_align] if v is not None]
-                xmax_align_values: List[float] = [v for v in [prev_xmax_align, next_xmax_align] if v is not None]
-                var_xmin_bbox_alignment: float = float(np.var(xmin_align_values)) if len(xmin_align_values) > 1 else 0.0
-                var_xmax_bbox_alignment: float = float(np.var(xmax_align_values)) if len(xmax_align_values) > 1 else 0.0
-                
-                numeric_values: List[float] = [float(x) for x in line_values]
-                if len(numeric_values) < 2:
-                    return None
-                    
-                    # Calcular estadísticos básicos
-                count: float = float(len(numeric_values))
-                mean: float = sum(numeric_values) / len(numeric_values)
-                variance: float = sum((x - mean) ** 2 for x in numeric_values) / (len(numeric_values) - 1) if len(numeric_values) > 1 else 0.0
-                std_dev: float = math.sqrt(variance)
-                    
-                    # Calcular percentiles
-                sorted_values: List[float] = sorted(numeric_values)
-                n: int = len(sorted_values)
-                    
-                def percentile(p: float) -> float:
-                    index: float = (p / 100) * (n - 1)
-                    lower: int = int(index)
-                    upper: int = min(lower + 1, n - 1)
-                    weight: float = index - lower
-                    return sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
-                
-                p25: float = percentile(25)
-                p50: float = percentile(50)
-                p75: float = percentile(75)
-                iqr: float = p75 - p25
-                    
-                    # Calcular skewness
-                skewness: float = 0.0
-                if std_dev > 0:
-                    moment3: float = sum(((x - mean) / std_dev) ** 3 for x in numeric_values)
-                    skewness = moment3 / n
-                        
-                    # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
-                all_features: Dict[str, float] = {
-                    'count': count,
-                    'mean': mean,
-                    'std_dev': std_dev,
-                    'p25': p25,
-                    'p50': p50,
-                    'p75': p75,
-                    'iqr': iqr,
-                    'skewness': skewness,
-                    "numeric_count": numeric_count,
-                    "numeric_rel_ratio": numeric_rel_ratio,
-                    "numeric_frec_rel": numeric_frec_rel,
-                    "numeric_ratio_frec": numeric_ratio_frec,
-                    "num_above": num_above,
-                    "num_margin": num_margin,
-                    "digit_char_count": digit_char_count,
-                    "line_area": line_area,
-                    "bbox_width": bbox_width,
-                    "ratio_area": ratio_area,
-                    "aspect_ratio": aspect_ratio,
-                    "height": height,
-                    "perimeter": perimeter,
-                    "diagonal": diagonal,
-                    "compact": compact,
-                    "prev_xmin_align": prev_xmin_align if prev_xmin_align is not None else 1.0,
-                    "prev_xmax_align": prev_xmax_align if prev_xmax_align is not None else 1.0,
-                    "next_xmin_align": next_xmin_align if next_xmin_align is not None else 1.0,
-                    "next_xmax_align": next_xmax_align if next_xmax_align is not None else 1.0,
-                    "align_prev": align_prev if align_prev is not None else 1.0,
-                    "align_next": align_next if align_next is not None else 1.0,
-                    "var_alignment": var_alignment,
-                    "var_xmin_bbox_alignment": var_xmin_bbox_alignment,
-                    "var_xmax_bbox_alignment": var_xmax_bbox_alignment,
-                }
-                return {"aggregate_stats": all_features}
+                # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
+            all_features: Dict[str, float] = {
+                'count': count,
+                'mean': mean,
+                'std_dev': std_dev,
+                'p25': p25,
+                'p50': p50,
+                'p75': p75,
+                'iqr': iqr,
+                'skewness': skewness,
+                "numeric_count_norm": numeric_count_norm,
+                "numeric_frec_rel": numeric_frec_rel,
+                "numeric_ratio_frec": numeric_ratio_frec,
+                "num_above": num_above,
+                "num_margin": num_margin,
+                "digit_char_count": digit_char_count,
+                "line_area": line_area,
+                "bbox_width": bbox_width,
+                "ratio_area": ratio_area,
+                "aspect_ratio": aspect_ratio,
+                "height": height,
+                "perimeter": perimeter,
+                "diagonal": diagonal,
+                "compact": compact,
+                "prev_xmin_align": prev_xmin_align,
+                "prev_xmax_align": prev_xmax_align,
+                "next_xmin_align": next_xmin_align,
+                "next_xmax_align": next_xmax_align,
+                "align_prev": align_prev if align_prev is not None else 1.0,
+                "align_next": align_next if align_next is not None else 1.0,
+            }
+            return {"aggregate_stats": all_features}
 
         except Exception as e:
             logger.error(f"Error calculando tabular features: {e}", exc_info=True)
@@ -383,15 +406,14 @@ class MatricialCusine(VectorizationAbstractWorker):
 
             feature_keys: List[str] = [
                 'count',
-                'mean', 
-                'variance', 
+                'mean',
+                'std_dev',
                 'p25', 
                 'p50',
                 'p75',
                 'iqr',
                 'skewness',
-                'numeric_count',
-                "numeric_rel_ratio",
+                'numeric_count_norm',
                 "numeric_frec_rel",
                 "numeric_ratio_frec",
                 "num_above",
@@ -411,9 +433,6 @@ class MatricialCusine(VectorizationAbstractWorker):
                 'next_xmax_align',
                 'align_prev',
                 'align_next',
-                'var_alignment',
-                'var_xmin_bbox_alignment',
-                'var_xmax_bbox_alignment',
                 ]
             
             line_features: Dict[str, float] = self._calculate_line_featrues(all_lines, manager)            
@@ -421,39 +440,47 @@ class MatricialCusine(VectorizationAbstractWorker):
             mat_rows: List[List[float]] = []
             candidate_indices: List[str] = []
             candidate_line_ids: List[str] = []
-            
-            for idx in filtered_interval_indices:
-                lid = line_ids[idx]
-                line_values = encoded_lines.get(lid, [])
-                if not line_values:
-                    logger.warning(f"Línea {lid} en intervalo sin codificación o sin features geométricos; será ignorada.")
-                    continue
-                analysis = self._calculate_features(all_lines, img_dims, manager, line_features, line_values)
-                col_width = 10
-                header = "line_id".ljust(col_width) + " | " + " | ".join(k[:col_width].ljust(col_width) for k in feature_keys)
-                logger.info(header)
-                if analysis and isinstance(analysis, dict):
-                    all_features = analysis.get("aggregate_stats", {})
-                    if all_features and isinstance(all_features, dict):
-                        row_values: List[str] = []
-                        for k in feature_keys:
-                            val = all_features.get(k)
-                            try:
-                                row_values.append(f"{float(val):.3f}".rjust(col_width) if val is not None else "N/A".rjust(col_width))
-                            except Exception:
-                                row_values.append("N/A".rjust(col_width))
-                        row = str(lid).ljust(col_width) + " | " + " | ".join(row_values)
-                        logger.info(row)
-                else:
-                    logger.warning("No se pudieron calcular las características para la línea actual.")
-                if not analysis:
-                    logger.warning("No se pudieron calcular las características geométricas para la validación.")
-                    return []
-                if not analysis:
-                    logger.warning(f"No se pudo analizar línea {lid}; será ignorada.")
-                    continue
-                agg = analysis.get('aggregate_stats', {})
-                # logger.info(f"Features por línea (aggregate_stats): {len(analysis.get('aggregate_stats', {}))}, {agg}")
+            try:
+                for idx in filtered_interval_indices:
+                    lid = line_ids[idx]
+                    line_values = encoded_lines.get(lid, [])
+                    if not line_values:
+                        logger.warning(f"Línea {lid} en intervalo sin codificación o sin features geométricos; será ignorada.")
+                        continue
+
+                    line_data = all_lines.get(lid)
+                    if not line_data:
+                        logger.warning(f"No se encontraron datos para la línea {lid}; será ignorada.")
+                        continue
+
+                    try:
+                        analysis = self._calculate_features(lid, line_data, all_lines, img_dims, manager, line_features, line_values)
+                        # col_width = 10
+                        # header = "line_id".ljust(col_width) + " | " + " | ".join(k[:col_width].ljust(col_width) for k in feature_keys)
+                        # logger.debug(header)
+                        # if analysis and isinstance(analysis, dict):
+                        #     all_features = analysis.get("aggregate_stats", {})
+                        #     if all_features and isinstance(all_features, dict):
+                        #         row_values: List[str] = []
+                        #         for k in feature_keys:
+                        #             val = all_features.get(k)
+                        #             try:
+                        #                 row_values.append(f"{float(val):.3f}".rjust(col_width) if val is not None else "N/A".rjust(col_width))
+                        #             except Exception:
+                        #                 row_values.append("N/A".rjust(col_width))
+                        #         row = str(lid).ljust(col_width) + " | " + " | ".join(row_values)
+                        #         logger.debug(row)
+                        # else:
+                        #     logger.warning("No se pudieron calcular las características para la línea actual.")
+                        
+                        agg = analysis.get('aggregate_stats', {})
+                        # logger.info(f"Features por línea (aggregate_stats): {len(analysis.get('aggregate_stats', {}))}, {agg}")
+
+                    except Exception as e:
+                        logger.info(f"Error en similitud: {e}", exc_info=True)
+
+            except Exception as e:
+                logger.info(f"Error en similitud: {e}", exc_info=True)
                 
                 row: List[float] = [float(agg.get(k, 0.0)) for k in feature_keys]
                 mat_rows.append(row)
@@ -463,11 +490,16 @@ class MatricialCusine(VectorizationAbstractWorker):
             n = len(mat_rows)
             if n < min_cluster:
                 logger.warning("No hay suficientes líneas válidas en el intervalo para validación coseno.")
-                return []
+                # Tomar como línea tabular el intervalo entre el encabezado y la línea bloqueada inmediata
+                logger.info("Tomando intervalo entre encabezado y línea bloqueada inmediata como líneas tabulares.")
+                interval_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
+                return interval_line_ids
 
             mat = np.asarray(mat_rows, dtype=np.float64)
-            scaler = MinMaxScaler()
-            mat_scaled: np.ndarray[Any, np.dtype[np.float64]] = scaler.fit_transform(mat)
+            mat_scaled = self._normalize_features_for_cosine_similarity(mat, feature_keys)
+
+            X = np.array(mat_scaled)
+            logger.info(f"{X}")
 
             # matriz todos contra todos (n x n)
             sims_mat: np.ndarray[Any, np.dtype[np.float64]] = cosine_similarity(mat_scaled, dense_output=True)
@@ -493,16 +525,11 @@ class MatricialCusine(VectorizationAbstractWorker):
 
             matched_original_indices: List[int] = []
             consecutive_failures = 0
-            # iterar en el orden original del intervalo
             for mean_sim, orig_idx, lid in zip(mean_sims, candidate_indices, candidate_line_ids):
                 if mean_sim >= similarity_threshold:
                     matched_original_indices.append(int(orig_idx))
                     consecutive_failures +=1
                 logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
-
-            if not matched_original_indices:
-                logger.info("Validación all-vs-all no encontró líneas consistentes en el intervalo.")
-                return []
 
             # incluir header (aunque no participó en la similitud)
             final_indices = [header_idx] + matched_original_indices
@@ -511,6 +538,67 @@ class MatricialCusine(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"Error validando intervalo del scanner (all-vs-all): {e}", exc_info=True)
             return []
+
+            
+    def _normalize_features_for_cosine_similarity(self, mat: np.ndarray[Any, np.dtype[np.float64]], feature_keys: List[str]) -> np.ndarray[Any, np.dtype[np.float64]]:
+        """
+        Normalización específica para similitud coseno que agrupa features similares.
+        """
+        mat_normalized = mat.copy()
+        
+        # 1. FEATURES ESTADÍSTICOS - Normalizar por z-score para mantener distribución
+        statistical_features = ['count', 'mean', 'std_dev', 'p25', 'p50', 'p75', 'iqr', 'skewness']
+        for i, feature in enumerate(feature_keys):
+            if feature in statistical_features:
+                scaler = MinMaxScaler()
+                mat_normalized[:, i] = scaler.fit_transform(mat[:, i:i+1]).flatten()
+        
+        # 2. FEATURES GEOMÉTRICOS - Normalizar por percentiles para reducir outliers
+        geometric_features = ['line_area', 'bbox_width', 'height', 'perimeter', 'diagonal']
+        for i, feature in enumerate(feature_keys):
+            if feature in geometric_features:
+                # Usar percentiles 5-95 para reducir impacto de outliers
+                p5 = np.percentile(mat[:, i], 5)
+                p95 = np.percentile(mat[:, i], 95)
+                if p95 > p5:
+                    mat_normalized[:, i] = np.clip((mat[:, i] - p5) / (p95 - p5), 0, 1)
+                else:
+                    mat_normalized[:, i] = 0.5  # valor neutro si no hay variación
+        
+        # 3. FEATURES DE RATIO - MinMax normalización
+        ratio_features = ['ratio_area', 'aspect_ratio', 'compact']
+        for i, feature in enumerate(feature_keys):
+            if feature in ratio_features:
+                scaler = MinMaxScaler()
+                mat_normalized[:, i] = scaler.fit_transform(mat[:, i:i+1]).flatten()
+        
+        # 4. FEATURES DE ALINEACIÓN - Mantener valores originales (ya están en [-1,1])
+        alignment_features = ['align_prev', 'align_next', 'prev_xmin_align', 'prev_xmax_align', 
+                            'next_xmin_align', 'next_xmax_align']
+        # No normalizar, ya están en rango apropiado
+        
+        # 5. FEATURES CONSTANTES - Eliminar o reemplazar por variación
+        constant_features = ['numeric_count_norm', 'numeric_frec_rel', 'numeric_ratio_frec', 
+                            'num_above', 'num_margin']
+        for i, feature in enumerate(feature_keys):
+            if feature in constant_features:
+                # Si todos los valores son iguales, usar variación pequeña aleatoria
+                if np.std(mat[:, i]) < 1e-6:
+                    mat_normalized[:, i] = np.random.normal(0.5, 0.1, len(mat[:, i]))
+                else:
+                    scaler = MinMaxScaler()
+                    mat_normalized[:, i] = scaler.fit_transform(mat[:, i:i+1]).flatten()
+        
+        # 6. FEATURES DE CARACTERES - Log normalización para reducir impacto de valores altos
+        char_features = ['digit_char_count']
+        for i, feature in enumerate(feature_keys):
+            if feature in char_features:
+                # Aplicar log(1 + x) para suavizar valores altos
+                log_values = np.log1p(mat[:, i])
+                scaler = MinMaxScaler()
+                mat_normalized[:, i] = scaler.fit_transform(log_values.reshape(-1, 1)).flatten()
+        
+        return mat_normalized
 
     def _find_header_line_id(self, polygons: Dict[str, Polygons], all_lines: Dict[str, AllLines]) -> Optional[str]:
         """Localiza la line_id del encabezado basada en HeaderWords."""
@@ -535,4 +623,3 @@ class MatricialCusine(VectorizationAbstractWorker):
         
         except Exception as e:
             logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
-            
