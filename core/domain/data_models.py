@@ -403,7 +403,7 @@ class GlobalData:
 class WorkflowDict:
     IDRegistro: str
     full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
-    metadata: Metadata
+    metadata: Dict[str, Metadata]
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
     global_data: Dict[str, GlobalData]

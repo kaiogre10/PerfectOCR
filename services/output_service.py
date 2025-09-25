@@ -7,12 +7,14 @@ import csv
 import numpy as np
 import pandas as pd
 from typing import Dict, Optional, Any, List
+from core.domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
-def save_json(final_results: List[Optional[Dict[str, Any]]], output_dir: str, file_name: str) -> Optional[str]:
+def save_json(final_results: List[Dict[str, Any]], output_dir: str, file_name: str, project_root: str) -> Optional[str]:
     """Guarda un JSON en disco."""
     try:
+        project_root = project_root
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, file_name)
         with open(output_file, 'w', encoding='utf-8') as f:
@@ -21,6 +23,40 @@ def save_json(final_results: List[Optional[Dict[str, Any]]], output_dir: str, fi
     except Exception as e:
         logger.error(f"Error guardando JSON: {e}", exc_info=True)
         return None
+    
+def save_tabjson(line_ids: List[str], manager: DataFormatter, output_dir: str, file_name: str, project_root: str) -> Optional[str]:
+    """Guarda un TABJSON en disco."""
+    project_root = project_root
+    try:
+        marked_count = 0
+        tabular_lines_info: List[Dict[str, Any]] = []
+        marked_ids: List[str] = []
+        for line_id in line_ids:
+            if line_id in manager.workflow.all_lines if manager.workflow else {}:
+                line_obj = manager.workflow.all_lines[line_id]
+                line_obj.tabular_line = True
+                manager.workflow.all_lines[line_id] = line_obj
+                marked_count += 1
+                marked_ids.append(line_id)
+                tabular_lines_info.append({
+                    "line_id": line_id,
+                    "text": getattr(manager.workflow.all_lines[line_id], "text", ""),
+                    "polygon_ids": getattr(manager.workflow.all_lines[line_id], "polygon_ids", [])
+                })
+
+        if marked_ids:
+            logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
+            for log_info in tabular_lines_info:
+                logger.debug(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+
+    except Exception as e:
+        logger.error(f"Error guardando JSON: {e}", exc_info=True)
+
+        output_file = os.path.join(output_dir, file_name)
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(tabular_lines_info, f, indent=4, ensure_ascii=False)
+        return output_file
+    
 
 def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name_with_extension: str) -> Optional[str]:
     """Guarda una única imagen en disco."""

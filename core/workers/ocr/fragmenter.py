@@ -1,12 +1,13 @@
+# PerfectOCr/core/workers/ocr/fragmenter.py
 import dataclasses
 import logging
+import re
 from typing import Dict, Any, List
-
 import numpy as np
-
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
+from dataclasses import asdict
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +18,10 @@ class Fragmenter(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        fragmenter_config = self.config.get('fragmenter', {})
-        self.fragment_on_text = fragmenter_config.get('fragment_on_text', True)
+        self.config = config
+        self.worker_config = self.config.get('fragmenter', {})
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get('separated_text', False)
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         if not manager.workflow or not manager.workflow.polygons:
@@ -37,16 +40,16 @@ class Fragmenter(OCRAbstractWorker):
             polygon = polygons_in[poly_id]
             
             text_needs_frag = (
-                self.fragment_on_text and
+                self.worker_config and
                 polygon.semantic_type != "numeric" and
                 " " in (polygon.ocr_text or "").strip()
             )
 
             punctuation_needs_frag = (
-                self.fragment_on_text and
+                self.worker_config and
                 polygon.semantic_type != "numeric" and
                 not text_needs_frag and  # Solo si no hay espacios
-                any(punct in (polygon.ocr_text or "") for punct in [".", ",", ";", ":", "!", "?"])
+                any(punct in (polygon.ocr_text or "") for punct in [";", ":", "!", "?"])
             )
 
             poly_blob_metrics = blob_metrics.get(poly_id, {})
@@ -61,7 +64,6 @@ class Fragmenter(OCRAbstractWorker):
                     reason = "texto"
                 else:
                     reason = "puntuación"
-                
                 logger.debug(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
                 
                 fragments = self._fragment_polygon(polygon, poly_blob_metrics, punctuation_needs_frag)
@@ -77,12 +79,17 @@ class Fragmenter(OCRAbstractWorker):
             final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
             final_polygons_dict[new_id] = final_poly_obj
         
-        manager.workflow.polygons = final_polygons_dict
+            manager.workflow.polygons = final_polygons_dict
         
         if fragmented_count > 0:
+            if self.output:
+                self._save_ocr_raw(context, manager)
+
             logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
-        
-        return True
+            return True
+        else:
+            logger.info(f"No se fragmentaron polígonos")
+            return True
 
     def _fragment_polygon(self, polygon: Polygons, poly_blob_metrics: Dict[str, Any], punctuation_needs_frag: bool = False) -> List[Polygons]:
         # Prioridad 1: Si hay información visual fiable, se usa para los cortes
@@ -150,7 +157,7 @@ class Fragmenter(OCRAbstractWorker):
         return new_polys
 
     def _fragment_by_text(self, polygon: Polygons) -> List[Polygons]:
-        text = (polygon.ocr_text or "").strip()
+        text: str = (polygon.ocr_text or "").strip()
         parts = [p for p in text.split(' ') if p]
         
         if len(parts) <= 1:
@@ -210,17 +217,16 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
 
         # Dividir por puntuación pero mantener la puntuación en cada parte
-        import re
         parts = re.split(r'([.,;:!?])', text)
         
         # Filtrar partes vacías y reconstruir con puntuación
-        filtered_parts = []
+        filtered_parts: List[str] = []
         for i, part in enumerate(parts):
             if part.strip():
                 # Si la siguiente parte es puntuación, incluirla
-                if i + 1 < len(parts) and parts[i + 1] in [".", ",", ";", ":", "!", "?"]:
+                if i + 1 < len(parts) and parts[i + 1] in [";", ":", "!", "?"]:
                     filtered_parts.append(part + parts[i + 1])
-                elif part not in [".", ",", ";", ":", "!", "?"]:
+                elif part not in [";", ":", "!", "?"]:
                     filtered_parts.append(part)
         
         if len(filtered_parts) <= 1:
@@ -259,7 +265,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"-> Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.debug(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -271,3 +277,23 @@ class Fragmenter(OCRAbstractWorker):
             current_x = new_xmax
 
         return new_polys
+
+    def _save_ocr_raw(self, context: Dict[str, Any], manager: DataFormatter):
+        logger.info("OUTPUT PARA FRAGMENTADOR INICIADO")
+        from services.output_service import save_json
+        import os
+        try:
+            project_root = self.project_root
+            file_name: str = manager.workflow.metadata.image_name
+            output_paths = context.get("output_paths", [])
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            polygons_list = [asdict(poly) for poly in polygons.values()]
+            logger.info(f"{polygons_list}")
+        except Exception as e:
+            logger.info(f"Error generando output: {e}", exc_info=True)
+            for path in output_paths:
+                output_dir: str = os.path.join(path, "separated_text")
+                json_file_name = f"{os.path.splitext(file_name)[0]}.json"
+                save_json(polygons_list, output_dir, json_file_name, project_root)
+                if output_paths:
+                    logger.info(f"Texto Fragmentado para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

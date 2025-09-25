@@ -61,8 +61,8 @@ class DataFinder(OCRAbstractWorker):
             return True  # Retorna True para continuar con fallbacks
 
     def _find_data(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, str]:
-        min_similarity = self.worker_config.get("min_similarity", 0.90)
-        max_q_lenght = self.worker_config.get("max_q_lenght", 12)
+        threshold = self.worker_config.get("min_similarity", 0.90)
+        max_q_lenght = self.worker_config.get("max_q_lenght", 15)
         
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
@@ -111,12 +111,12 @@ class DataFinder(OCRAbstractWorker):
                     continue
                 
                 # Buscar con WordFinder
-                results: List[str] = self.model.find_keywords(text)
-                if not results:
+                valid_results: List[str] = self.model.find_keywords(text, threshold)
+                if not valid_results:
                     continue
                 
                 # Filtrar por similitud mínima
-                valid_results = [r for r in results if r.get('similarity', 0.0) >= min_similarity]
+                #valid_results = [r for r in results if r.get('similarity', 0.0) >= min_similarity]
                 
                 if valid_results:
                     best_result = max(valid_results, key=lambda x: x.get('similarity', 0.0))

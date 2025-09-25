@@ -52,9 +52,10 @@ enabled_outputs:
   clahe_poly: false
   sharp_poly: false
   binarized_polygons: false
-  ocr_raw: false
+  ocr_raw: true
   semantic_words: false
   clean_text: false
+  separated_text: false
   reconstructed_lines: false
   table_lines: false
   table_structured: false
@@ -64,7 +65,6 @@ enabled_outputs:
 processing:
   max_workers: 4
   valid_image_extensions: [.png, .jpg, .jpeg, .bmp, .tif, .tiff, .webp, .gif, .pbm, .pgm, .ppm, .jp2, .ico]
-  
   batch_mode: true
   batch_processing:
     small_batch_limit: 5
@@ -87,7 +87,7 @@ modules:
     cleaning:
       std_low: 15.0
       sp_thr: 0.015
-      clahe_clip: 2.0    
+      clahe_clip: 2.0
       clahe_grid: [8, 8]
       
     cutting:
@@ -95,19 +95,19 @@ modules:
 
   preprocessing:
     moire:
-        mode:
-          percentile:
-            percentile_threshold: 98
-            notch_radius: 2
-            min_distance_from_center: 200
-          factor:
-            mean_factor_threshold: 4
-          absolute:
-            absolute_threshold: 200000000
+      percentile:
+        percentile_threshold: 95
+        notch_radius: 2
+        min_distance_from_center: 200
+      factor:
+        mean_factor_threshold: 4
+      absolute:
+        absolute_threshold: 200000000
+
     median_filter:
-      kernel_size: 3
-      salt_pepper_threshold: 0.0010
-      salt_pepper_low: 2
+      kernel_size: 5
+      salt_pepper_threshold: 0.0025
+      salt_pepper_low: 3
       salt_pepper_high: 253
 
     bilateral_params:
@@ -152,8 +152,8 @@ modules:
       block_sizes_map: [15, 21, 25, 35, 41]
       
       quality:
-        quality_min: 0.05
-        quality_max: 0.95
+        quality_min: 0.10
+        quality_max: 0.90
         
     data_finder:
       wordfinder_model_path: C:/word_finder_model/data/word_finder_model.pkl
@@ -169,11 +169,11 @@ modules:
 
     cos_sim:
       min_cluster: 1
-      similarity_threshold: 0.80
+      similarity_threshold: 0.90
       interval: 1
       
     dbscan:
-      eps: 2.0
+      eps: 1.5
       min_cluster_size: 2
 
     table_structurer:

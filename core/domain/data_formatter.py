@@ -749,7 +749,6 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error exportando payload json: {e}", exc_info=True)
 
-
     def export_payload_json(self, payload: Dict[str, Any], data_base_path: str) -> bool:
         """Escribe el payload en disco para auditoría/revisión manual"""
         try:

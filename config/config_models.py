@@ -72,14 +72,11 @@ class MoireFactor(ConfigWithNumpy):
 class MoireAbsolute(ConfigWithNumpy):
     absolute_threshold: int
 
-class MoireMode(ConfigWithNumpy):
+class MoireConfig(ConfigWithNumpy):
     percentile: MoirePercentile
     factor: MoireFactor
     absolute: MoireAbsolute
-
-class MoireConfig(ConfigWithNumpy):
-    mode: MoireMode
-
+    
 class BinarizeQuality(ConfigWithNumpy):
     quality_min: float
     quality_max: float

@@ -1,7 +1,7 @@
 # PerfectOCR/coordinators/tensoring_coordinator.py
 import logging
 import time
-import pandas as pd
+import pandas as pd # type: ignore
 from typing import Any, Dict, Tuple, List, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import VectorizationAbstractWorker
@@ -26,12 +26,11 @@ class VectorizationStager:
         logger.debug("[VectorStager] Iniciando pipeline de vectorización")
         metadata: Dict[str, Metadata] = manager.workflow.metadata if manager.workflow else {}
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-        image_name: str = metadata.image_name if manager.workflow else {}
                 
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
-            logger.debug(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            logger.info(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
                                 
             context: Dict[str, Any] = {
                 "config": self.config,
@@ -39,13 +38,10 @@ class VectorizationStager:
                 "metadata": metadata,
                 "output_paths": self.output_paths,
                 "project_root": self.project_root,
-                "image_name": image_name
             }
                 
             result = worker.vectorize(context, manager)
             if result is None or (isinstance(result, pd.DataFrame) and result.empty):
-                # El resultado es None o un DataFrame vacío
-                # Maneja el caso de error o datos insuficientes
                 logger.error(f"Worker {worker_name} falló o devolvió resultados vacíos")
                 return None, 0.0
             else:

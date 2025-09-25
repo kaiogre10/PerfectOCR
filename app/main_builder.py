@@ -83,7 +83,6 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
 
 def create_builders(config_services: ConfigService, project_root: str, workflow_report: Dict[str, Any], output_paths: Optional[List[str]])-> List[ProcessingBuilder]:
     """Crea builders para cada imagen encontrada usando inyecciones en cascada."""
-    context = {}
     builders: List[ProcessingBuilder] = []
     image_info_list = workflow_report.get('image_info', [])
         
@@ -107,23 +106,21 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         image_load_factory = worker_factory.get_image_preparation_factory()
         image_prep_workers = image_load_factory.create_workers(
             ["cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"],
-            context)
+            context) #
 
         preprocessing_factory = worker_factory.get_preprocessing_factory()
         preprocessing_workers = preprocessing_factory.create_workers(
             ["moire", "sp", "gauss", "ink_enhancement", "clahe", "sharp"],
-            context)
+            context) #
         
         ocr_factory = worker_factory.get_ocr_factory()
         ocr_workers = ocr_factory.create_workers(
-            ["paddle_wrapper", "binarizator", "semantic_clasificator", "text_cleaner", "fragmenter","data_finder"],
-            context)
-
+            ["paddle_wrapper", "binarizator", "semantic_clasificator", "data_finder", "text_cleaner", "fragmenter"],
+            context) # 
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
             ["lineal", "dbscan", "cos_sim", "table_structurer", "math_max"],
-            context)
-        
+            context) # 
         image_loader = ImageLoader(
             image_info=image_data,
             project_root=project_root,
@@ -183,10 +180,10 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
             total_processing_time += (end_time - start_time)
 
             db_paths[image_data.get('name', f'imagen_{i}')] = db_path
+
+        promedio = total_processing_time / len(db_paths)
             
-    logger.debug(f"Total de imágenes procesadas: {len(db_paths)}")
-    logger.debug(f"Tiempo total acumulado: {total_processing_time:.6f}s")
-    logger.info(f"Tiempo promedio por imagen: {total_processing_time/len(db_paths):.6f}s")
+        logger.info(f"Total de imágenes: {len(db_paths)} en: {total_processing_time:.6f}s, promedio: {promedio:.6f}s")
 
     return [
         "db_path"

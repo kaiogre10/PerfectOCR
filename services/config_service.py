@@ -157,7 +157,7 @@ class ConfigService:
             word_finder_config = self.models_config
             find_model = word_finder_config.get("models", {})
             path = find_model.get("wordfinder_model_path", "")
-            model_path = path.get("C:/word_finder_model/data/word_finder_model.pkl")
+            model_path = word_finder_config.get("C:/word_finder_model/data/word_finder_model.pkl")
             system_config = self.system_config
             project_root = system_config.get("project_root", "")
 

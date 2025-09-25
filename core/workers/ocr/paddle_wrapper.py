@@ -29,7 +29,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     @property
     def engine(self) -> Optional[Any]:
         if self._engine is None:
-            # Obtener engine del PaddleManager en 
             paddle_manager = ModelsManager.get_instance()
             self._engine = paddle_manager.recognition_engine
             
@@ -44,20 +43,16 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         start_time = time.perf_counter()
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
         logger.info(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
-        
-        # Preparar batch usando dataclasses
         image_list: List[np.ndarray[Any, np.dtype[np.uint8]]] = []
         polygon_ids: List[str] = []
         
         for poly_id, polygon in polygons.items():
-            # Acceso correcto a imagen desde dataclass
             cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
             
             if cropped_img is not None:
-                # CONVERTIR A 3 CANALES para PaddleOCR
-                if len(cropped_img.shape) == 2:  # Escala de grises
+                if len(cropped_img.shape) == 2:
                     cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
-                elif cropped_img.shape[2] == 1:  # 1 canal
+                elif cropped_img.shape[2] == 1:
                     cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
                 
                 image_list.append(cropped_img)
@@ -110,6 +105,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             if not valid_images:
                 logger.error("No hay imágenes válidas para el reconocimiento por lotes.")
                 return []
+            
             batch_result: List[List[str]] = self.engine.ocr(valid_images, cls=False, det=False, rec=True) 
                                     
             if len(batch_result) == 1 and isinstance(batch_result[0], list):
@@ -138,12 +134,11 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     def _save_ocr_raw(self, context: Dict[str, Any], final_results: List[Optional[Dict[str, Any]]], file_name: str):
         from services.output_service import save_json
         import os
-
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
+        project_root = self.project_root
+        output_file = context.get("output_paths", [])
+        for path in output_file:
             output_dir: str = os.path.join(path, "ocr_raw")
             json_file_name = f"{os.path.splitext(file_name)[0]}.json"
-            save_json(final_results, output_dir, json_file_name)
-        
-        if output_paths:
-            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
+            output_file = save_json(final_results, output_dir, json_file_name, project_root)
+        if output_file:
+            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")

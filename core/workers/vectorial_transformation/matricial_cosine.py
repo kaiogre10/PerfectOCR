@@ -1,5 +1,6 @@
 # PerfectOCR/core/workflow/vectorial_transformation/matricial_cosine.py
 import math
+from unittest import result
 import numpy as np
 import time
 import logging
@@ -229,7 +230,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 other_y = other_bbox[1]  # Coordenada Y de la otra línea
                 
                 # Vector desde el punto de referencia hacia la otra línea
-                vec_to_other = np.array([other_coord - current_coord, other_y - 0])
+                vec_to_other = np.array([other_coord - current_coord, other_y - ref_point[1]])
                 
                 # Vector de referencia (eje X positivo)
                 ref_vec = np.array([1, 0])
@@ -286,7 +287,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 moment3: float = sum(((x - mean) / std_dev) ** 3 for x in numeric_values)
                 skewness = moment3 / n
                     
-                # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
+            # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
             all_features: Dict[str, float] = {
                 'count': count,
                 'mean': mean,
@@ -435,7 +436,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 'align_next',
                 ]
             
-            line_features: Dict[str, float] = self._calculate_line_featrues(all_lines, manager)            
+            line_features: Dict[str, float] = self._calculate_line_featrues(all_lines, manager)
                 
             mat_rows: List[List[float]] = []
             candidate_indices: List[str] = []
@@ -455,26 +456,9 @@ class MatricialCusine(VectorizationAbstractWorker):
 
                     try:
                         analysis = self._calculate_features(lid, line_data, all_lines, img_dims, manager, line_features, line_values)
-                        # col_width = 10
-                        # header = "line_id".ljust(col_width) + " | " + " | ".join(k[:col_width].ljust(col_width) for k in feature_keys)
-                        # logger.debug(header)
-                        # if analysis and isinstance(analysis, dict):
-                        #     all_features = analysis.get("aggregate_stats", {})
-                        #     if all_features and isinstance(all_features, dict):
-                        #         row_values: List[str] = []
-                        #         for k in feature_keys:
-                        #             val = all_features.get(k)
-                        #             try:
-                        #                 row_values.append(f"{float(val):.3f}".rjust(col_width) if val is not None else "N/A".rjust(col_width))
-                        #             except Exception:
-                        #                 row_values.append("N/A".rjust(col_width))
-                        #         row = str(lid).ljust(col_width) + " | " + " | ".join(row_values)
-                        #         logger.debug(row)
-                        # else:
-                        #     logger.warning("No se pudieron calcular las características para la línea actual.")
                         
                         agg = analysis.get('aggregate_stats', {})
-                        # logger.info(f"Features por línea (aggregate_stats): {len(analysis.get('aggregate_stats', {}))}, {agg}")
+                        logger.debug(f"Features por línea (aggregate_stats): {len(analysis.get('aggregate_stats', {}))}, {agg}")
 
                     except Exception as e:
                         logger.info(f"Error en similitud: {e}", exc_info=True)

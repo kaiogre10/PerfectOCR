@@ -18,14 +18,13 @@ class DensityScanner(VectorizationAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('dbscan', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
-        self.output = self.enabled_outputs.get("table_lines", False)        
+        self.output = self.enabled_outputs.get("table_lines", False)
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time: float = time.time()
             logger.info("DBSCScanner iniciado")
-            
-            img_dims = manager.workflow.metadata.img_dims if manager.workflow and hasattr(manager.workflow.metadata, "img_dims") else {}                
+            img_dims: Dict[str, int] = manager.workflow.metadata.img_dims if manager.workflow else {}
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             encoded_lines = manager.get_encode_lines()
             
@@ -36,6 +35,10 @@ class DensityScanner(VectorizationAbstractWorker):
                 logger.info(f"Detección de tablas completada en {total_time:.4f}s")
             
             line_ids: List[str] = table_detection_result.get("table_lines", [])
+            if self.output:
+                file_name: str = manager.workflow.metadata.image_name if manager.workflow else {}
+                self._save_output(context, line_ids, file_name, manager)
+
             if line_ids:
                 success: bool = manager.save_tabular_lines(line_ids)
                 if success:
@@ -158,8 +161,10 @@ class DensityScanner(VectorizationAbstractWorker):
                 'count': count,
                 'mean': mean,
                 'std_dev': std_dev,
-                'iqr': iqr,
+                'p25': p25,
                 'p50': p50,
+                'p75': p75,
+                'iqr': iqr,
                 'skewness': skewness,
                 "line_area": line_area,
                 "bbox_width": bbox_width,
@@ -169,9 +174,9 @@ class DensityScanner(VectorizationAbstractWorker):
                 "aspect_ratio": aspect_ratio,
                 "perimeter": perimeter,
                 "prev_xmin_align": prev_xmin_align,
-                "prev_xmax_align": prev_xmax_align, 
-                "next_xmin_align": next_xmin_align ,
-                "next_xmax_align": next_xmax_align ,
+                "prev_xmax_align": prev_xmax_align,
+                "next_xmin_align": next_xmin_align,
+                "next_xmax_align": next_xmax_align,
                 "numeric_count": numeric_count,
                 "numeric_ratio": numeric_ratio,
             }
@@ -217,7 +222,6 @@ class DensityScanner(VectorizationAbstractWorker):
 
                 total_polygons: float = numeric_count + code_count + descriptive_count
                 numeric_ratio: Optional[float] = (numeric_count / total_polygons) * 100.0
-                desc_ratio: Optional[float] = (descriptive_count / total_polygons) * 100.0
                     
                 bbox: List[float] = line_data.line_geometry.line_bbox
                 centroid: List[float] = line_data.line_geometry.line_centroid
@@ -250,7 +254,7 @@ class DensityScanner(VectorizationAbstractWorker):
                         return 1.0
                     vec = np.array([other_c[0] - ref_c[0], other_c[1] - ref_c[1]])
                     axis = np.array([1, 0])  # eje X
-                    if np.linalg.norm(vec) == 0: 
+                    if np.linalg.norm(vec) == 0:
                         return 1.0
                     return float(np.dot(vec, axis) / (np.linalg.norm(vec) * np.linalg.norm(axis)))
 
@@ -274,14 +278,6 @@ class DensityScanner(VectorizationAbstractWorker):
 
                 align_prev: Optional[float] = alignment(centroid, prev_centroid)
                 align_next: Optional[float] = alignment(centroid, next_centroid)
-
-                # varianza entre alineaciones válidas de centroides
-                align_values: List[float] = [v for v in [align_prev, align_next] if v is not None]
-                var_alignment: float = float(np.var(align_values)) if len(align_values) > 1 else 0.0
-
-                # varianza entre alineaciones válidas de bbox (xmin/xmax con prev/next)
-                xmin_align_values: List[float] = [v for v in [prev_xmin_align, next_xmin_align] if v is not None]
-                xmax_align_values: List[float] = [v for v in [prev_xmax_align, next_xmax_align] if v is not None]
 
                 all_geometric_features[line_id] = {
                     "line_area": line_area,
@@ -317,7 +313,7 @@ class DensityScanner(VectorizationAbstractWorker):
         features_array = np.asarray(features, dtype=np.float64)
 
         scaler = StandardScaler()
-        features_scaled: np.ndarray[Any, np.dtype[np.float64]]  = scaler.fit_transform(features_array)
+        features_scaled: np.ndarray[Any, np.dtype[np.float64]] = scaler.fit_transform(features_array)
 
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
         labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_scaled)
@@ -333,9 +329,7 @@ class DensityScanner(VectorizationAbstractWorker):
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
         
         logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
-        
         table_indices: List[int] = [valid_indices[i] for i, label in enumerate(labels) if label == main_cluster] 
-        
         return table_indices
 
     def _expand_to_consecutive_interval(self, indices: List[int]) -> List[int]:
@@ -344,8 +338,18 @@ class DensityScanner(VectorizationAbstractWorker):
         """
         if not indices:
             return []
-        
         start: int = min(indices)
         end: int = max(indices)
         return list(range(start, end + 1))
 
+    def _save_output(self, context: Dict[str, Any], line_ids: List[str], file_name: str, manager: DataFormatter):
+        from services.output_service import save_tabjson
+        import os
+        project_root = self.project_root
+        output_file = context.get("output_paths", [])
+        for path in output_file:
+            output_dir: str = os.path.join(path, "dbscan")
+            json_file_name = f"{os.path.splitext(file_name)[0]}.json"
+            output_file = save_tabjson(line_ids, manager, output_dir, json_file_name, project_root)
+        if output_file:
+            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")
