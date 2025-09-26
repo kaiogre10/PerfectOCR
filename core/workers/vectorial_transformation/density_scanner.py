@@ -68,7 +68,7 @@ class DensityScanner(VectorizationAbstractWorker):
         for line_data in valid_analyses.values():
             features.append(list(line_data.values()))
             
-        features_array = np.array(features, dtype=np.float64)
+        features_array = np.array(features, dtype=np.float32)
 
         # scaler = StandardScaler()
         # features_scaled: np.ndarray[Any, np.dtype[np.float64]] = scaler.fit_transform(features_array)
