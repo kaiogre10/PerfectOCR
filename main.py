@@ -19,7 +19,7 @@ os.environ.update({
 })
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
-DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input2")
+DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input")
 DEFAULT_OUTPUT_PATH = os.path.join(PROJECT_ROOT, "output")
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 

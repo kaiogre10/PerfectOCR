@@ -1,6 +1,5 @@
 # PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
 from sklearn.cluster import DBSCAN #type: ignore
-from sklearn.preprocessing import StandardScaler, MinMaxScaler #type: ignore
 import numpy as np
 import time
 import logging
@@ -31,14 +30,17 @@ class DensityScanner(VectorizationAbstractWorker):
                 return False
                 
             table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
-        
+            logger.debug(f"{len(table_line_ids)} table_line_ids: {table_line_ids}")
             if table_line_ids:
-                consecutive_indices: List[str] = self._get_consecutive_indices(table_line_ids, list(valid_analyses.keys()))
+                consecutive_indices: List[int] = self._get_consecutive_indices(table_line_ids, list(valid_analyses.keys()))
+                logger.debug(f"{len(consecutive_indices)} consecutive_indices: {consecutive_indices}")
                 expanded_line_ids: List[str] = self._expand_to_consecutive_interval_by_ids(consecutive_indices, list(valid_analyses.keys()))
+                logger.debug(f"{len(expanded_line_ids)} expanded_line_ids: {expanded_line_ids}")
+                success: bool = manager.save_tabular_lines(expanded_line_ids)
+
                 total_time = time.time() - start_time
                 logger.info(f"Detección de tablas en: {total_time:.6f}s. Encontradas {len(expanded_line_ids)}, {expanded_line_ids} ")
 
-                success: bool = manager.save_tabular_lines(expanded_line_ids)
                 if success:
                     logger.info("Líneas guardadas en el manager desde DBSCAN")
                     return True
@@ -87,28 +89,28 @@ class DensityScanner(VectorizationAbstractWorker):
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
         
         logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
-        table_indices: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
-        return table_indices
+        table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
+        return table_line_ids
 
-    def _get_consecutive_indices(self, table_line_ids: List[str], all_line_ids: List[str]) -> List[str]:
+    def _get_consecutive_indices(self, table_line_ids: List[str], all_line_ids: List[str]) -> List[int]:
         """Convierte line_ids a índices en la lista ordenada."""
-        indices: List[str] = []
+        indices: List[int] = []
         for line_id in table_line_ids:
             if line_id in all_line_ids:
                 indices.append(all_line_ids.index(line_id))
         return sorted(indices)
 
-    def _expand_to_consecutive_interval_by_ids(self, table_line_ids: List[str], all_line_ids: List[str]) -> List[str]:
+    def _expand_to_consecutive_interval_by_ids(self, consecutive_indices: List[int], all_line_ids: List[str]) -> List[str]:
         """Expande los line_ids detectados a un intervalo consecutivo."""
-        if not table_line_ids:
+        if not consecutive_indices:
             return []
         
-        indices: List[str] = self._get_consecutive_indices(table_line_ids, all_line_ids)
-        if not indices:
-            return table_line_ids
+        # CAMBIO: Recibe los índices directamente, no los calcula de nuevo
+        if not consecutive_indices:
+            return []
         
-        start_idx = min(indices)
-        end_idx = max(indices)
+        start_idx = min(consecutive_indices)
+        end_idx = max(consecutive_indices)
         
         consecutive_line_ids: List[str] = []
         for i in range(start_idx, end_idx + 1):

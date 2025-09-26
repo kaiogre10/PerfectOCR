@@ -30,9 +30,9 @@ WORKFLOW_SCHEMA: Dict[str , Any] = {
                 "img_dims": {
                     "type": "object",
                     "properties": {
-                        "width": {"type": "integer"},
-                        "height": {"type": "integer"},
-                        "size": {"type": "integer"},
+                        "width": {"type": "number"},
+                        "height": {"type": "number"},
+                        "size": {"type": "number"},
                     },
                 },
                 "date_creation": {"type": "string"},
@@ -386,7 +386,7 @@ class AllLines:
 class Metadata:
     image_name: str
     format: Optional[str]
-    img_dims: Dict[str, int]
+    img_dims: Dict[str, float]
     date_creation: Optional[str]
 
 @dataclass

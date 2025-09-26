@@ -34,9 +34,9 @@ class DataFormatter:
                 "image_name": str(metadata.get("image_name", "")),
                 "format": str(metadata.get("format", "")),
                 "img_dims": {
-                    "width": int(metadata.get("img_dims", {}).get("width")),
-                    "height": int(metadata.get("img_dims", {}).get("height")),
-                    "size": int(metadata.get("img_dims", {}).get("size")),
+                    "width": float(metadata.get("img_dims", {}).get("width")),
+                    "height": float(metadata.get("img_dims", {}).get("height")),
+                    "size": float(metadata.get("img_dims", {}).get("size")),
                 },
                 "date_creation": metadata.get("date_creation", datetime.now().isoformat()),
             },
@@ -582,6 +582,8 @@ class DataFormatter:
             logger.debug(f"Limpiados {cleared_count} flags tabular_line previos.")
 
             # 2) Marcar los nuevos line_ids provistos (si los hay)
+            if not line_ids:
+                logger.warning("No se recibieron line_ids en el manager.")
             marked_count = 0
             tabular_lines_info: List[Dict[str, Any]] = []
             marked_ids: List[str] = []
@@ -604,7 +606,6 @@ class DataFormatter:
                 for log_info in tabular_lines_info:
                     logger.info(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
             else:
-                # Si no se marcaron líneas, lo dejamos en DEBUG
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 
             # Operación completada (se limpió y se marcaron las nuevas líneas)

@@ -115,8 +115,8 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
         
         ocr_factory = worker_factory.get_ocr_factory()
         ocr_workers = ocr_factory.create_workers(
-            ["paddle_wrapper", "semantic_clasificator", "text_cleaner", "fragmenter"],
-            context) # "binarizator",  "data_finder", 
+            ["paddle_wrapper", "semantic_clasificator", "text_cleaner", "fragmenter", "data_finder",],
+            context) # "binarizator",   
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
             ["lineal", "vectorizer", "dbscan", "cos_sim", ],

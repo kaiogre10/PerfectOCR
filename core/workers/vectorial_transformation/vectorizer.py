@@ -211,6 +211,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 total_size = img_dims.get("size")
                 total_width = img_dims.get("width")
+                total_height = img_dims.get("height") 
                 max_width = geoline_features.get("max_count_width")
                 max_area = geoline_features.get("max_count_area")
                 max_perimeter = geoline_features.get("max_count_perimeter") 
@@ -221,6 +222,9 @@ class Vectorizer(VectorizationAbstractWorker):
                 bbox_width: float = float(bbox[2] - bbox[0])
                 norm_wid = (bbox_width / max_width) if max_width is not None else 0.0
                 width_rel = bbox_width / total_width if total_width is not None else 0.0
+                cw: float = (total_width / 2.0) if total_width is not None else 0.0
+                ch: float = (total_height / 2.0) if total_height is not None else 0.0
+                main_centroid: List[float] = cw, ch if img_dims is not None else 0.0
                 line_area: float = float(bbox_width * bbox_height)
                 area_norm: float = (line_area / max_area) if max_area is not None else 0.0
                 ratio_area: float = (line_area / float(total_size)) if total_size is not None else 0.0
@@ -318,6 +322,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 align_prev: Optional[float] = _alignment(centroid, prev_centroid)
                 align_next: Optional[float] = _alignment(centroid, next_centroid)
                 
+                center_aling: float = _alignment(centroid, main_centroid)
+                
                 # max_size_num_vals: float = 114.0
                 numeric_values: List[float] = [float(x) for x in line_values]
                 if len(numeric_values) < 2:
@@ -371,6 +377,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     "next_xmax_align": next_xmax_align if next_xmax_align is not None else 1.0,
                     "align_prev": align_prev,
                     "align_next": align_next,
+                    "center_aling": center_aling,
                 }
                 all_lines_features[line_id] = line_all_features
 
