@@ -70,11 +70,11 @@ class DensityScanner(VectorizationAbstractWorker):
             
         features_array = np.array(features, dtype=np.float64)
 
-        scaler = StandardScaler()
-        features_scaled: np.ndarray[Any, np.dtype[np.float64]] = scaler.fit_transform(features_array)
+        # scaler = StandardScaler()
+        # features_scaled: np.ndarray[Any, np.dtype[np.float64]] = scaler.fit_transform(features_array)
 
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
-        labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_scaled)
+        labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_array).astype(dtype=np.uint8)
         
         logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
         
