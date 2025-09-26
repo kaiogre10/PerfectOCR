@@ -19,8 +19,8 @@ class ImagePreparationStager:
     def generate_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
         # 1) Cargar datos crudos (sin manager)
-        gray_image, metadata = self._image_loader.load_image_and_metadata()
-        if gray_image is None or not isinstance(gray_image, np.ndarray) or gray_image.size == 0:
+        full_img, metadata = self._image_loader.load_image_and_metadata()
+        if full_img is None or not isinstance(full_img, np.ndarray) or full_img.size == 0:
             logger.error(f"InputStager: Imagen no válida para '{metadata.get('image_name')}")
             return None, 0.0
         
@@ -32,7 +32,6 @@ class ImagePreparationStager:
         IDRegistro = f"{metadata.get('image_name')}_{fecha}{decimales}"
         logger.info(f"workflow_dict con registro: {IDRegistro}")
 
-        full_img = gray_image
         if not manager.create_dict(IDRegistro, full_img, metadata):
             logger.error("InputStager: Fallo al crear dict_job en el manager.")
             return None, 0.0
@@ -51,7 +50,7 @@ class ImagePreparationStager:
                 logger.error(f"InputStager: Fallo en el worker {worker.__class__.__name__}")
                 return None, 0.0
             worker_time = time.time() - worker_start
-            logger.info(f"[InputStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
+            logger.debug(f"[InputStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
 
         total_time = time.time() - start_time
         logger.info(f"[InputStager] Módulo 1 completado en: {total_time:.3f}s")

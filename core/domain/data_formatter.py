@@ -87,7 +87,7 @@ class DataFormatter:
             cropped_geo = CroppedGeometry(
                 padd_centroid=np.array(poly_data["cropped_geometry"]["padd_centroid"]) if poly_data["cropped_geometry"]["padd_centroid"] else np.array([]),
                 padding_coords=np.array(poly_data["cropped_geometry"]["padding_coords"]) if poly_data["cropped_geometry"]["padding_coords"] else np.array([]),
-                poly_dims=poly_data["cropped_geometry"].get("poly_dims", {})
+                croppy_dims=poly_data["cropped_geometry"].get("croppy_dims", {})
             )
             
             # Crear polígono completo
@@ -327,7 +327,7 @@ class DataFormatter:
                     cropped_geometry_obj = CroppedGeometry(
                         padd_centroid=np.array(cropped_geo["padd_centroid"]) if cropped_geo and cropped_geo["padd_centroid"] else np.array([]),
                         padding_coords=np.array(cropped_geo["padding_coords"]) if cropped_geo and cropped_geo["padding_coords"] else np.array([]),
-                        poly_dims=cropped_geo.get("poly_dims", {}) if cropped_geo else {}
+                        croppy_dims=cropped_geo.get("croppy_dims", {}) if cropped_geo else {}
                     )
                     
                     # Crear nuevo polígono con la imagen recortada y la geometría

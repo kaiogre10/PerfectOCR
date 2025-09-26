@@ -39,7 +39,7 @@ class VectorizationStager:
                 
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
-            logger.info(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            logger.debug(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
             result = worker.vectorize(context, manager)
             if result is None or (isinstance(result, pd.DataFrame) and result.empty):

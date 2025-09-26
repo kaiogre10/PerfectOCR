@@ -105,8 +105,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             
         except Exception as e:
             logger.info(f"Error en feaures de lineas: {e}", exc_info=True)
-        
-            
+
     def _calculate_features(self, line_id: str, line_data: AllLines, all_lines: Dict[str, AllLines], img_dims: Dict[str, int], manager: DataFormatter, line_features: Dict[str, float], line_values: List[int]) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
@@ -187,20 +186,19 @@ class MatricialCusine(VectorizationAbstractWorker):
             total_size = img_dims.get("size")
             if not total_size:
                 return None
-            
-            line_area: float = float((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
-            bbox_width: float = float(bbox[2] - bbox[0])
-            ratio_area: float = line_area / float(total_size) 
-            aspect_ratio = ((bbox[2] - bbox[0]) / (bbox[3] - bbox[1])) / 100 if (bbox[3] - bbox[1]) > 0 else 0
+
             height: float = bbox[3] - bbox[1]
+            bbox_width: float = float(bbox[2] - bbox[0])
+            line_area: float = float(bbox_width * height)
+            ratio_area: float = line_area / float(total_size)
+            aspect_ratio = (line_area / 100) if height > 0 else 1.0
             perimeter: float = 2 * (bbox_width + height)
-            diagonal = float(np.sqrt((bbox[2] - bbox[0])**2 + (bbox[3] - bbox[1])**2))
-            compact = ((perimeter**2) / line_area) / 100 if line_area > 0 else 0
-            
-            prev_bbox: Optional[List[float]] = sorted_lines[current_index-1][1].line_geometry.line_bbox if current_index > 0 else None
-            next_bbox: Optional[List[float]] = sorted_lines[current_index+1][1].line_geometry.line_bbox if current_index < len(sorted_lines) - 1 else None
-            prev_centroid: Optional[List[float]] = sorted_lines[current_index-1][1].line_geometry.line_centroid if current_index > 0 else None
-            next_centroid: Optional[List[float]] = sorted_lines[current_index+1][1].line_geometry.line_centroid if current_index < len(sorted_lines) - 1 else None
+            diagonal = float(np.sqrt(bbox_width) ** 2 + (height ** 2))
+            compact = ((perimeter ** 2) / line_area) / 100 if line_area > 0 else 0.0
+            prev_bbox: Optional[List[float]] = sorted_lines[current_index-1][1].line_geometry.line_bbox if current_index > 0 else 1.0
+            next_bbox: Optional[List[float]] = sorted_lines[current_index+1][1].line_geometry.line_bbox if current_index < len(sorted_lines) - 1 else 1.0
+            prev_centroid: Optional[List[float]] = sorted_lines[current_index-1][1].line_geometry.line_centroid if current_index > 0 else 1.0
+            next_centroid: Optional[List[float]] = sorted_lines[current_index+1][1].line_geometry.line_centroid if current_index < len(sorted_lines) - 1 else 1.0
             
             # función auxiliar para similitud coseno con eje X
             def alignment(ref_c: List[float], other_c: Optional[List[float]]) -> Optional[float]:

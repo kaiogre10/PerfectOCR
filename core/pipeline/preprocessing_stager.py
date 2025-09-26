@@ -45,7 +45,7 @@ class PreprocessingStager:
                 return None, 0.0
 
             worker_time = time.time() - worker_start
-            logger.info(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
+            logger.debug(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
 
             # Sincronizar resultados de preprocesamiento al manager
             for poly_id, polygon in context["polygons"].items():
@@ -57,5 +57,5 @@ class PreprocessingStager:
             context["polygons"] = polygons
 
         elapsed = time.time() - start_time
-        logger.info(f"[PreprocessingStager] Preprocesamiento completado en: {elapsed:.3f}s; polígonos: {len(polygons)}")
+        logger.info(f"[PreprocessingStager] Preprocesamiento completado en: {elapsed:.6f}s; polígonos: {len(polygons)}")
         return manager, elapsed

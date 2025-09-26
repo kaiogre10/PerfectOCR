@@ -6,7 +6,7 @@ import logging
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines
+from core.domain.data_models import AllLines, Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -54,22 +54,23 @@ class Vectorizer(VectorizationAbstractWorker):
         """
         try:            
             feature_keys: List[str] = [
-                'count',
-                'mean',
+                'count_rel',
+                'mean_rel',
+                'mean_margin',
                 'std_dev',
                 'p25', 
                 'p50',
-                'p75',
-                'iqr',
+                # 'p75',
+                # 'iqr',
                 'skewness',
                 'numeric_count_norm',
                 "numeric_frec_rel",
                 "numeric_ratio_frec",
                 "num_above",
                 "num_margin",
-                "digit_char_count",
+                "digit_char_frec",
                 'line_area',
-                'bbox_width',
+                'width_rel',
                 'ratio_area',
                 'aspect_ratio',
                 'height',
@@ -160,45 +161,63 @@ class Vectorizer(VectorizationAbstractWorker):
         try:
             if not manager.workflow.all_lines if manager.workflow else {}:
                 return {}
-            
+
+            # polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+
             sorted_lines: List[Tuple[str, AllLines]] = sorted(
                 all_lines.items(),
                 key=lambda kv: kv[1].line_geometry.line_centroid[1]
             )
-    
+
             line_features: Dict[str, float] = {}
+            # Cálculo global de numerics (promedio y máximo)
+            char_count_by_line: Dict[str, float] = {}
+            digit_count_by_line: Dict[str, float] = {}
             numeric_counts_by_line: Dict[str, float] = {}
             for i, (line_id, line_data) in enumerate(sorted_lines):
+                chcount = 0.0
+                dcount = 0.0
                 ncount = 0.0
                 poly_ids_line = getattr(line_data, "polygon_ids", []) or []
                 if manager.workflow and manager.workflow.polygons and poly_ids_line:
-                    polygons_dict = manager.workflow.polygons
+                    polygons_dict: Dict[str, Polygons] = manager.workflow.polygons
                     for pid in poly_ids_line:
                         if pid in polygons_dict and getattr(polygons_dict[pid], "semantic_type", "") == "numeric":
                             ncount += 1.0
                 numeric_counts_by_line[line_id] = ncount
+                
+                line_text = getattr(line_data, "text", "") or ""
+
+                chcount = len(line_text)                
+                char_count_by_line[line_id] = chcount
+
+                dcount = sum(ch.isdigit() for ch in line_text)
+                dcount += 1.0
+                digit_count_by_line[line_id] = dcount
 
             if numeric_counts_by_line:
                 total_numerics_global = float(sum(numeric_counts_by_line.values()))
                 total_lines_global = float(len(numeric_counts_by_line))
-                numeric_mean_global = total_numerics_global / total_lines_global if total_lines_global > 0 else 0.0
+                numeric_mean_global = total_numerics_global / total_lines_global if total_lines_global > 0 else 1.0
                 max_numeric_line_id = max(numeric_counts_by_line, key=numeric_counts_by_line.get) # type: ignore
                 max_numeric_count_global = float(numeric_counts_by_line[max_numeric_line_id])
-                
+                max_digit_count_global = max(digit_count_by_line.values()) if digit_count_by_line else 0.0
+                max_char_count_global = max(char_count_by_line.values()) if char_count_by_line else 0.0
+
                 line_features = {
                     "total_numerics_global": total_numerics_global,
                     "numeric_mean_global": numeric_mean_global,
                     "max_numeric_count_global": max_numeric_count_global,
+                    "max_digit_count_global": max_digit_count_global,
+                    "max_char_count_global": max_char_count_global,
                 }
-                return line_features
-            else:
-                return {}
-            
+
+            return line_features
+
         except Exception as e:
             logger.info(f"Error en feaures de lineas: {e}", exc_info=True)
-            return {}
                     
-    def _calculate_features(self, line_id: str, line_data: AllLines, all_lines: Dict[str, AllLines], img_dims: Dict[str, int], manager: DataFormatter, line_features: Dict[str, float], line_values: List[int]) -> Dict[str, Dict[str, float]]:
+    def _calculate_features(self, line_id: str, line_data: AllLines, all_lines: Dict[str, AllLines], img_dims: Dict[str, int], manager: DataFormatter, line_features: Dict[str, float], line_values: List[int]) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
@@ -248,21 +267,30 @@ class Vectorizer(VectorizationAbstractWorker):
             numeric_mean = line_features.get("numeric_mean_global")
             if numeric_mean is None:
                 return {}
-            
+
+            max_digit_count = line_features.get("max_digit_count_global")
+            if max_digit_count is None:
+                return {}
+
+            max_char_count = line_features.get("max_char_count_global")
+            if max_char_count is None:
+                return {}
+
             line_text = getattr(line_data, "text", "") or ""
             
             numeric_count_norm = numeric_count / max_numeric_count if max_numeric_count > 0 else 0.0
-            numeric_frec_rel: float = max_numeric_count - numeric_count 
+            numeric_frec_rel: float = numeric_count - max_numeric_count 
             numeric_ratio_frec: float = numeric_count_norm + numeric_frec_rel
             num_above: float = 1.0 if numeric_count > numeric_mean else 0.0
+            digit_char_count: float = float(sum(ch.isdigit() for ch in line_text))
+            digit_char_frec: float = digit_char_count / max_digit_count if digit_char_count > 0 else 0.0
+
             # Normaliza num_margin en el intervalo [-1, 1] usando el promedio global como base 0.
             if max_numeric_count > 0:
                 num_margin = (numeric_count - numeric_mean) / (max_numeric_count / 2)
                 num_margin = max(-1.0, min(1.0, num_margin))
             else:
                 num_margin = 0.0
-            
-            digit_char_count: float = float(sum(ch.isdigit() for ch in line_text))
             
             bbox: List[float] = line_data.line_geometry.line_bbox
             centroid: List[float] = line_data.line_geometry.line_centroid
@@ -271,138 +299,183 @@ class Vectorizer(VectorizationAbstractWorker):
                 return {}
 
             # Proporción del área respecto del total
-            if not img_dims or "size" not in img_dims:
+            if not img_dims:
                 return {}
             
             total_size = img_dims.get("size")
             if not total_size:
                 return {}
-            
-            line_area: float = float((bbox[2] - bbox[0]) * (bbox[3] - bbox[1]))
-            bbox_width: float = float(bbox[2] - bbox[0])
-            ratio_area: float = line_area / float(total_size) 
-            aspect_ratio = ((bbox[2] - bbox[0]) / (bbox[3] - bbox[1])) / 100 if (bbox[3] - bbox[1]) > 0 else 1.0
-            height: float = bbox[3] - bbox[1]
-            perimeter: float = 2 * (bbox_width + height)
-            diagonal = float(np.sqrt((bbox[2] - bbox[0])**2 + (bbox[3] - bbox[1])**2))
-            compact = ((perimeter**2) / line_area) / 100 if line_area > 0 else 0.0
-            
-            prev_bbox: List[float] = sorted_lines[current_index-1][1].line_geometry.line_bbox if current_index > 0 else 1.0
-            next_bbox: List[float] = sorted_lines[current_index+1][1].line_geometry.line_bbox if current_index < len(sorted_lines) - 1 else 1.0
-            prev_centroid: List[float] = sorted_lines[current_index-1][1].line_geometry.line_centroid if current_index > 0 else 1.0
-            next_centroid: List[float] = sorted_lines[current_index+1][1].line_geometry.line_centroid if current_index < len(sorted_lines) - 1 else 1.0
-            
-            def alignment(ref_c: List[float], other_c: List[float]) -> float:
-                if other_c is None: 
-                    return 1.0
-                vec = np.array([other_c[0] - ref_c[0], other_c[1] - ref_c[1]])
-                axis = np.array([1, 0])  # eje X
-                if np.linalg.norm(vec) == 0: 
-                    return 1.0
-                return float(np.dot(vec, axis) / (np.linalg.norm(vec) * np.linalg.norm(axis)))
 
-            def bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int) -> float:
+            total_width = img_dims.get("width")
+            if not total_width:
+                return {} 
+
+            bbox_height: float = bbox[3] - bbox[1]
+            bbox_width: float = float(bbox[2] - bbox[0])
+            width_rel = bbox_width / total_width if bbox_width > 0.0 else 0.0
+            line_area: float = float(bbox_width * bbox_height)
+            ratio_area: float = (line_area / float(total_size)) if line_area > 0.0 else 0.0
+            aspect_ratio = (bbox_height / bbox_width)  if bbox_width or bbox_height > 0 else 0.0
+            perimeter: float = 2 * (bbox_width + bbox_height)
+            diagonal = float(np.sqrt((bbox_width**2.0) + (bbox_height**2.0)))
+            compact = ((perimeter**2) / line_area) / 100.0 if line_area > 0 else 0.0
+
+            def _calculate_line_coords(sorted_lines: List[Tuple[str, AllLines]], current_index: int) -> Tuple[List[float], List[float], List[float], List[float]]:
+                """Calcula coordenadas de líneas anterior y siguiente, retorna listas vacías si no existen"""
+                lines_num = len(sorted_lines)
+                
+                # Línea anterior
+                if current_index > 0:
+                    prev_bbox = sorted_lines[current_index-1][1].line_geometry.line_bbox
+                    prev_centroid = sorted_lines[current_index-1][1].line_geometry.line_centroid
+                else:
+                    prev_bbox = []
+                    prev_centroid = []
+                
+                # Línea siguiente
+                if current_index < lines_num - 1:
+                    next_bbox = sorted_lines[current_index+1][1].line_geometry.line_bbox
+                    next_centroid = sorted_lines[current_index+1][1].line_geometry.line_centroid
+                else:
+                    next_bbox = []
+                    next_centroid = []
+                
+                return prev_bbox, next_bbox, prev_centroid, next_centroid            
+
+            def _alignment(ref_c: List[float], other_c: List[float]) -> float:
+                """
+                Mide alineación usando similitud coseno, tomando como referencia (X,0) del centroide.
+                Vector desde (ref_c[0], 0) hacia (other_c[0], other_c[1]).
+                """
+                if not other_c:
+                    return 1.0
+                ref_point = np.array([ref_c[0], 0.0])
+                vec_to_other = np.array([other_c[0] - ref_point[0], other_c[1] - ref_point[1]]).astype(np.float32)
+                ref_vec = np.array([1, 0]).astype(np.float32)  # eje X positivo
+                if np.linalg.norm(vec_to_other) == 0.0:
+                    return 1.0
+                cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
+                return 1.0 - abs(float(cosine))
+
+            def _bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int) -> Optional[float]:
                 """
                 Mide alineación usando similitud coseno.
                 Punto de referencia: [current_coord, 0] en el eje X
                 Vector hacia otra línea: [other_coord - current_coord, other_y - 0]
                 """
-                if not other_bbox:
-                    return 1.0
-                
-                # Punto de referencia en el eje X
-                ref_point = np.array([current_coord, 0])
-                
-                # Coordenada de la otra línea
-                other_coord = other_bbox[coord_idx]
-                other_y = other_bbox[1]  # Coordenada Y de la otra línea
-                
-                # Vector desde el punto de referencia hacia la otra línea
-                vec_to_other = np.array([other_coord - current_coord, other_y - ref_point[1]])
-                
-                # Vector de referencia (eje X positivo)
-                ref_vec = np.array([1, 0])
-                
-                # Similitud coseno
-                if np.linalg.norm(vec_to_other) == 0:
-                    return 1.0
-                
-                cosine_sim = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
-                
-                return cosine_sim
+                try:
+                    if other_bbox:
+                        # Punto de referencia en el eje X
+                        ref_point = np.array([current_coord, 0.0])
+
+                        # Coordenada de la otra línea
+                        other_coord = other_bbox[coord_idx]  # Acceso correcto por índice
+                        other_y = other_bbox[1]  # Coordenada Y de la otra línea
+
+                        # Vector desde el punto de referencia hacia la otra línea
+                        vec_to_other = np.array([other_coord - current_coord, other_y - ref_point[1]])
+                        
+                        # Vector de referencia (eje X positivo)
+                        ref_vec = np.array([1, 0])
+                        
+                        # Similitud coseno
+                        if np.linalg.norm(vec_to_other) == 0:
+                            return 1.0
+                        
+                        cosine_sim = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
+                        return 1.0 - abs(float(cosine_sim))   
+
+                    else:
+                        return 1.0
+
+                except Exception as e:
+                    logger.error(f"Error calculando similitud coseno: {e}", exc_info=True)
 
             # Alineación ortogonal para xmin y xmax con prev y next
             current_xmin = bbox[0]
             current_xmax = bbox[2]
-            
-            prev_xmin_align: float = bbox_alignment(current_xmin, prev_bbox, 0) if prev_bbox else 1.0
-            prev_xmax_align: float = bbox_alignment(current_xmax, prev_bbox, 2) if prev_bbox else 1.0
-            next_xmin_align: float = bbox_alignment(current_xmin, next_bbox, 0) if next_bbox else 1.0
-            next_xmax_align: float = bbox_alignment(current_xmax, next_bbox, 2) if next_bbox else 1.0
 
-            align_prev: float = alignment(centroid, prev_centroid)
-            align_next: float = alignment(centroid, next_centroid)
+            prev_bbox, next_bbox, prev_centroid, next_centroid = _calculate_line_coords(sorted_lines, current_index)
             
+            prev_xmin_align: Optional[float] = _bbox_alignment(current_xmin, prev_bbox, 0) if prev_bbox else 1.0
+            prev_xmax_align: Optional[float] = _bbox_alignment(current_xmax, prev_bbox, 2) if prev_bbox else 1.0
+            next_xmin_align: Optional[float] = _bbox_alignment(current_xmin, next_bbox, 0) if next_bbox else 1.0
+            next_xmax_align: Optional[float] = _bbox_alignment(current_xmax, next_bbox, 2) if next_bbox else 1.0
+
+            align_prev: Optional[float] = _alignment(centroid, prev_centroid)
+            align_next: Optional[float] = _alignment(centroid, next_centroid)
+            
+            max_size_num_vals: float = 114.0
             numeric_values: List[float] = [float(x) for x in line_values]
             if len(numeric_values) < 2:
                 return {}
-                
-                # Calcular estadísticos básicos
+            
+            # Calcular estadísticos básicos
             count: float = float(len(numeric_values))
-            mean: float = sum(numeric_values) / len(numeric_values)
-            variance: float = sum((x - mean) ** 2 for x in numeric_values) / (len(numeric_values) - 1) if len(numeric_values) > 1 else 0.0
+            mean: float = sum(numeric_values) / count
+            variance: float = sum((x - mean) ** 2 for x in numeric_values) / (count - 1) if count > 1 else 0.0
             std_dev: float = math.sqrt(variance)
-                
+
+            # Calcular etadisticos especiales
+            mean_rel: float = mean / max_size_num_vals if mean > 0.0 else 0.0
+            count_rel: float = count / max_char_count if count > 0.0 else 0.0
+            if mean > 0.0:
+                mean_ref: float = max_size_num_vals / 2
+                mean_margin: float = (mean - mean_ref) / (mean_ref)
+                mean_margin = max(-1.0, min(1.0, mean_margin))
+            else: 
+                mean_margin = 0.0
+
             # Calcular percentiles
             sorted_values: List[float] = sorted(numeric_values)
-            n: int = len(sorted_values)
                 
-            def percentile(p: float) -> float:
-                index: float = (p / 100) * (n - 1)
+            def _percentile(p: int) -> float:
+                index: float = (p / 100) * (int(count) - 1)
                 lower: int = int(index)
-                upper: int = min(lower + 1, n - 1)
-                weight: float = index - lower
+                upper: int = min(lower + 1, int(count) - 1)
+                weight: float = float(index - lower)
                 return sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
             
-            p25: float = percentile(25)
-            p50: float = percentile(50)
-            p75: float = percentile(75)
-            iqr: float = p75 - p25
+            p25: float = _percentile(25)
+            p50: float = _percentile(50)
+            # p75: float = _percentile(75)
+            # iqr: float = p75 - p25
                 
                 # Calcular skewness
             skewness: float = 0.0
             if std_dev > 0:
                 moment3: float = sum(((x - mean) / std_dev) ** 3 for x in numeric_values)
-                skewness = moment3 / n
+                skewness = moment3 / count
                     
             # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
             all_features: Dict[str, float] = {
-                'count': count,
-                'mean': mean,
+                'count_rel': count_rel,
+                'mean_rel': mean_rel,
                 'std_dev': std_dev,
+                'mean_margin': mean_margin,
                 'p25': p25,
                 'p50': p50,
-                'p75': p75,
-                'iqr': iqr,
+                # 'p75': p75,
+                # 'iqr': iqr,
                 'skewness': skewness,
                 "numeric_count_norm": numeric_count_norm,
                 "numeric_frec_rel": numeric_frec_rel,
                 "numeric_ratio_frec": numeric_ratio_frec,
                 "num_above": num_above,
                 "num_margin": num_margin,
-                "digit_char_count": digit_char_count,
+                "digit_char_frec": digit_char_frec,
                 "line_area": line_area,
-                "bbox_width": bbox_width,
+                "width_rel": width_rel,
                 "ratio_area": ratio_area,
                 "aspect_ratio": aspect_ratio,
-                "height": height,
+                "bbox_height": bbox_height,
                 "perimeter": perimeter,
                 "diagonal": diagonal,
                 "compact": compact,
-                "prev_xmin_align": prev_xmin_align,
-                "prev_xmax_align": prev_xmax_align,
-                "next_xmin_align": next_xmin_align,
-                "next_xmax_align": next_xmax_align,
+                "prev_xmin_align": prev_xmin_align if prev_xmin_align is not None else 1.0,
+                "prev_xmax_align": prev_xmax_align if prev_xmax_align is not None else 1.0,
+                "next_xmin_align": next_xmin_align if next_xmin_align is not None else 1.0,
+                "next_xmax_align": next_xmax_align if next_xmax_align is not None else 1.0,
                 "align_prev": align_prev,
                 "align_next": align_next,
             }
@@ -410,4 +483,4 @@ class Vectorizer(VectorizationAbstractWorker):
 
         except Exception as e:
             logger.error(f"Error calculando tabular features: {e}", exc_info=True)
-            return {}
+        return {}

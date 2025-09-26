@@ -339,7 +339,7 @@ class StructuredTable:
 class CroppedGeometry:
     padd_centroid: np.ndarray[Any, Any]  # shape: (2,)
     padding_coords: np.ndarray[Any, Any]  # shape: (4,) 
-    poly_dims: Dict[str, int]
+    croppy_dims: Dict[str, int]
     
 @dataclass
 class CroppedImage:

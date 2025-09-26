@@ -44,30 +44,18 @@ class ImageLoader:
                 },
         }
         try:
-            img_array = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
-            if img_array is None:
-                error_msg = f"No se pudo leer la imagen en '{input_path}'"
-                logger.error(error_msg)
-                metadata['error'] = error_msg
+            image_array = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
+            if image_array is None:
+                logger.error(f"No se cargó:'{image_name}', {e}", exc_info=True)
                 return None, metadata
             logger.debug(f"Imagen cargada correctamente desde: {input_path}")
-
-            image_array = np.array(img_array, dtype=np.uint8)
-            cv2_size:float = image_array.size
+            cv2_height, cv2_width = image_array.shape[:2]
+            cv2_size: float = image_array.size
             if cv2_size == 0:
-                error_msg = f"Imagen vacía o corrupta en '{input_path}'"
-                logger.error(error_msg)
-                metadata['error'] = error_msg
-                return None, metadata
-            
+                logger.error(f"Imagen vacía o corrupta en '{input_path}'")
+                return None, {}
             logger.debug(f"Size de la imagen completa: {cv2_size}")
 
-            cv2_height, cv2_width = image_array.shape[:2]
-            if len(image_array.shape) == 3:
-                gray_image = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
-            else:
-                gray_image = image_array
-            
             metadata["img_dims"] = {
                         "width": (cv2_width), 
                         "height": (cv2_height),
@@ -76,8 +64,8 @@ class ImageLoader:
             logger.debug(f"Dimensiones imagen:{cv2_width, cv2_height}")
             logger.debug(f"Loader completado en en {time.perf_counter() - start_time:.6f}s para {image_name}")
         
-            return gray_image, metadata
+            return image_array, metadata
 
         except Exception as e:
             logger.info(f"Error al  la imagen '{input_path}': {e}", exc_info=True)
-            return None, metadata
+        return None, metadata

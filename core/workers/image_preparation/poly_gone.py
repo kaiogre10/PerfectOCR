@@ -56,7 +56,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             padding = int(self.config.get("cropping_padding", 5))
             
             # Convertir a array NumPy para operaciones vectorizadas
-            bboxes_array = np.array(all_bboxes, dtype=np.int32)  # shape: (n_polygons, 4)
+            bboxes_array = np.array(all_bboxes, dtype=np.uint32)  # shape: (n_polygons, 4)
             
             # Calcular coordenadas con padding usando operaciones vectorizadas
             x1, y1, x2, y2 = bboxes_array[:, 0], bboxes_array[:, 1], bboxes_array[:, 2], bboxes_array[:, 3]
@@ -105,7 +105,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 cropped_geometries[poly_id] = {
                     "padd_centroid": [float(padded_centroids_x[i]), float(padded_centroids_y[i])],
                     "padding_coords": [int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)],
-                    "poly_dims": {
+                    "croppy_dims": {
                         "poly_height": poly_height, 
                         "poly_width":  poly_width,
                     }

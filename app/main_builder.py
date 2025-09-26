@@ -110,17 +110,17 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
 
         preprocessing_factory = worker_factory.get_preprocessing_factory()
         preprocessing_workers = preprocessing_factory.create_workers(
-            ["moire", "sp", "gauss", "ink_enhancement", "clahe", "sharp"],
-            context) #
+            ["ink_enhancement",],
+            context) # "moire", "sp", "gauss",  "clahe", "sharp"
         
         ocr_factory = worker_factory.get_ocr_factory()
         ocr_workers = ocr_factory.create_workers(
-            ["paddle_wrapper", "binarizator", "semantic_clasificator", "data_finder", "text_cleaner", "fragmenter"],
-            context) # 
+            ["paddle_wrapper", "semantic_clasificator", "text_cleaner", "fragmenter"],
+            context) # "binarizator",  "data_finder", 
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
-            ["lineal", "vectorizer", "dbscan", "cos_sim", "table_structurer", "math_max"],
-            context) # 
+            ["lineal", "vectorizer", "dbscan", "cos_sim", ],
+            context) # "table_structurer", "math_max"
         image_loader = ImageLoader(
             image_info=image_data,
             project_root=project_root,

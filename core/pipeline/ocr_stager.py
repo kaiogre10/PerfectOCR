@@ -16,12 +16,11 @@ class OCRStager:
         self.output_paths = output_paths
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
-        start_time = time.time()
-                
+        start_time = time.time()                
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.time()
-            worker_name = worker.__class__.__name__
-            logger.debug(f"OCRStager: Ejecutando worker OCR Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            # worker_name = worker.__class__.__name__
+            # logger.debug(f"OCRStager: Ejecutando worker OCR Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
             context: Dict[str, Any] = {
                     "config": self.config,
@@ -34,6 +33,6 @@ class OCRStager:
                 return None, 0.0
 
             worker_time = time.time() - worker_start
-            logger.info(f"[OCRStager] Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
+            logger.debug(f"[OCRStager] Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
         ocr_time = time.time() - start_time
         return manager, ocr_time
