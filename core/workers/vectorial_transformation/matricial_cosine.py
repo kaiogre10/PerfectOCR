@@ -1,6 +1,5 @@
 # PerfectOCR/core/workflow/vectorial_transformation/matricial_cosine.py
 import math
-from unittest import result
 import numpy as np
 import time
 import logging

@@ -1,16 +1,14 @@
 # PerfectOCR/main.py
-import logging
 import os
 import sys
-
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-
 # import typer
 # from typing import Optional, List
 from services.cache_service import clear_output_folders
 from app.main_builder import activate_main
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +32,7 @@ CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 # Formato para el archivo: incluye fecha/hora, --nivel--, --nombre del logger--, --línea--, --módulo-- y mensaje
 FILE_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(module)s - %(message)s"
 # Formato de fecha/hora utilizado en los logs
-DATE_FORMAT = "%Y-%m-%d %H:%M:%S" #"%Y-%m-%d %H:%M:%S"
+DATE_FORMAT = "%Y-%m-%d %H:%M" #"%Y-%m-%d %H:%M:%S"
 
 logger_root = logging.getLogger()
 logger_root.setLevel(logging.DEBUG)

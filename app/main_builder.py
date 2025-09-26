@@ -119,7 +119,7 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
             context) # 
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
-            ["lineal", "dbscan", "cos_sim", "table_structurer", "math_max"],
+            ["lineal", "vectorizer", "dbscan", "cos_sim", "table_structurer", "math_max"],
             context) # 
         image_loader = ImageLoader(
             image_info=image_data,

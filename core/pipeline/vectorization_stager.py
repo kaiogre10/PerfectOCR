@@ -28,25 +28,30 @@ class VectorizationStager:
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
                 
         # Para cada worker, procesar todos los polígonos
+                                
+        context: Dict[str, Any] = {
+            "config": self.config,
+            "polygons": polygons,
+            "metadata": metadata,
+            "output_paths": self.output_paths,
+            "project_root": self.project_root,
+        }
+                
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
             logger.info(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
-                                
-            context: Dict[str, Any] = {
-                "config": self.config,
-                "polygons": polygons,
-                "metadata": metadata,
-                "output_paths": self.output_paths,
-                "project_root": self.project_root,
-            }
-                
+            
             result = worker.vectorize(context, manager)
             if result is None or (isinstance(result, pd.DataFrame) and result.empty):
                 logger.error(f"Worker {worker_name} falló o devolvió resultados vacíos")
                 return None, 0.0
             else:
+                # El worker puede haber modificado el contexto, mantenerlo para el siguiente
+                # Actualizar polígonos del manager si han sido modificados
+                if manager.workflow:
+                    context["polygons"] = manager.workflow.polygons
                 continue
-        
+    
         vect_time = time.time() - start_time
         logger.info(f"[VectorStager] Pipeline completado en: {vect_time:.6f}s")
         return manager, vect_time

@@ -3,6 +3,7 @@ from typing import Dict, Callable, Any
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.vectorial_transformation.lineal_reconstructor import LinealReconstructor
+from core.workers.vectorial_transformation.vectorizer import Vectorizer
 from core.workers.vectorial_transformation.matricial_cosine import MatricialCusine
 from core.workers.vectorial_transformation.density_scanner import DensityScanner
 from core.workers.vectorial_transformation.geometric_table_structurer import GeometricTableStructurer
@@ -13,6 +14,7 @@ class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
         
         return {
             "lineal": self._create_lineal,
+            "vectorizer": self._create_vectorizer,
             "dbscan": self._create_scanner,
             "cos_sim": self._create_cosmatrix,
             "table_structurer": self._create_structurer,
@@ -21,6 +23,9 @@ class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
 
     def _create_lineal(self, context: Dict[str, Any]) -> LinealReconstructor:
         return LinealReconstructor(config=self.module_config, project_root=self.project_root)
+        
+    def _create_vectorizer(self, context: Dict[str, Any]) -> Vectorizer:
+        return Vectorizer(config=self.module_config, project_root=self.project_root)
     
     def _create_cosmatrix(self, context: Dict[str, Any]) -> MatricialCusine:
         return MatricialCusine(config=self.module_config, project_root=self.project_root)

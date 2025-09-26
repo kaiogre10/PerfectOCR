@@ -5,7 +5,7 @@ system:
   
 # Todas las rutas del sistema
 paths:
-  input_folder: "C:/PerfectOCR/input"
+  input_folder: "C:/PerfectOCR/input2"
   output_folder: "C:/PerfectOCR/output"
   db_path: "C:/PerfectOCR/data_base/data_base.json"
   
@@ -166,6 +166,9 @@ modules:
   vectorization:
     lineal:
       overlap: 0.3
+      
+    vectorizer:
+      vectotize: True
 
     cos_sim:
       min_cluster: 1
