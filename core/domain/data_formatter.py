@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry
+from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, HeaderLine
 import numpy as np
 import dataclasses
 import jsonschema
@@ -469,11 +469,60 @@ class DataFormatter:
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
-            return True
+                # Si detectamos polígonos con key_field == "HeaderWords",
+                # localizamos la línea header y la marcamos automáticamente.
+                header_line = self._find_and_mark_header()
+                if header_line:
+                    logger.info(f"Header marcado automáticamente: {header_line}")
+                return True
             
         except Exception as e:
             logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
             return False
+
+    def _find_and_mark_header(self) -> Optional[str]:
+        """Localiza la line_id del encabezado basada en HeaderWords y marca header_line=True."""
+        try:
+            if not self.workflow:
+                return None
+            polygons = self.workflow.polygons or {}
+            all_lines = self.workflow.all_lines or {}
+
+            hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == "HeaderWords"]
+            if not hdr_poly_ids:
+                return None
+
+            hdr_set = set(hdr_poly_ids)
+            counts = {}
+            for lid, lobj in all_lines.items():
+                poly_ids = getattr(lobj, "polygon_ids", []) or []
+                counts[lid] = len(set(poly_ids).intersection(hdr_set))
+
+            if not counts:
+                return None
+
+            header_line_id: Optional[str] = max(counts, key=counts.get)
+            if not header_line_id:
+                return None
+
+            # Limpiar flags previos y marcar el header encontrado
+            for lid, lobj in list(all_lines.items()):
+                try:
+                    if getattr(lobj, "header_line", False):
+                        self.workflow.all_lines[lid] = dataclasses.replace(lobj, header_line=False)
+                except Exception:
+                    continue
+
+            current = self.workflow.all_lines.get(header_line_id)
+            if current:
+                self.workflow.all_lines[header_line_id] = dataclasses.replace(current, header_line=True)
+                logger.info(f"Header_line_id={header_line_id} (via HeaderWords)")
+                return header_line_id
+
+            return None
+        except Exception as e:
+            logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
+            return None
             
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
@@ -508,7 +557,7 @@ class DataFormatter:
                     polygon_ids=line_data.get("polygon_ids", []),
                     line_geometry=line_geometry,
                     tabular_line=False,
-                    header_line=False,
+                    header_line=Heade,
                 )
             
             self.workflow.all_lines = all_lines_dataclasses

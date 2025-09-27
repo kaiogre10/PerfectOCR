@@ -373,6 +373,14 @@ class LineGeometry:
     line_bbox: List[float]
     
 @dataclass
+class HeaderLine:
+    lineal_id: str
+    text: str
+    encoded_text: List[int]
+    polygon_ids: List[str]
+    line_geometry: LineGeometry
+
+@dataclass
 class AllLines:
     lineal_id: str
     text: str
@@ -380,7 +388,7 @@ class AllLines:
     polygon_ids: List[str]
     line_geometry: LineGeometry
     tabular_line: bool
-    header_line: bool
+    header_line: HeaderLine
     
 @dataclass(frozen=True)
 class Metadata:
@@ -403,7 +411,7 @@ class GlobalData:
 class WorkflowDict:
     IDRegistro: str
     full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
-    metadata: Dict[str, Metadata]
+    metadata: Metadata
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
     global_data: Dict[str, GlobalData]
