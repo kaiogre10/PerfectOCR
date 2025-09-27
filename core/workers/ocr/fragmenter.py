@@ -85,10 +85,10 @@ class Fragmenter(OCRAbstractWorker):
             if self.output:
                 self._save_ocr_raw(context, manager)
 
-            logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
+            logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
             return True
         else:
-            logger.info(f"No se fragmentaron polígonos")
+            logger.debug(f"No se fragmentaron polígonos")
             return True
 
     def _fragment_polygon(self, polygon: Polygons, poly_blob_metrics: Dict[str, Any], punctuation_needs_frag: bool = False) -> List[Polygons]:
@@ -144,7 +144,7 @@ class Fragmenter(OCRAbstractWorker):
             
             frag_text = text_parts[i] if i < len(text_parts) else ""
             
-            logger.info(f"-> Fragmento visual: texto='{frag_text}', bbox={new_bbox.tolist()}")
+            logger.debug(f"-> Fragmento visual: texto='{frag_text}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -279,7 +279,7 @@ class Fragmenter(OCRAbstractWorker):
         return new_polys
 
     def _save_ocr_raw(self, context: Dict[str, Any], manager: DataFormatter):
-        logger.info("OUTPUT PARA FRAGMENTADOR INICIADO")
+        logger.debug("OUTPUT PARA FRAGMENTADOR INICIADO")
         from services.output_service import save_json
         import os
         try:
@@ -288,12 +288,12 @@ class Fragmenter(OCRAbstractWorker):
             output_paths = context.get("output_paths", [])
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             polygons_list = [asdict(poly) for poly in polygons.values()]
-            logger.info(f"{polygons_list}")
+            logger.debug(f"{polygons_list}")
         except Exception as e:
-            logger.info(f"Error generando output: {e}", exc_info=True)
+            logger.debug(f"Error generando output: {e}", exc_info=True)
             for path in output_paths:
                 output_dir: str = os.path.join(path, "separated_text")
                 json_file_name = f"{os.path.splitext(file_name)[0]}.json"
                 save_json(polygons_list, output_dir, json_file_name, project_root)
                 if output_paths:
-                    logger.info(f"Texto Fragmentado para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
+                    logger.debug(f"Texto Fragmentado para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

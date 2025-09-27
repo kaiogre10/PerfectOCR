@@ -53,5 +53,5 @@ class VectorizationStager:
                 continue
     
         vect_time = time.time() - start_time
-        logger.info(f"[VectorStager] Pipeline completado en: {vect_time:.6f}s")
+        logger.debug(f"[VectorStager] Pipeline completado en: {vect_time:.6f}s")
         return manager, vect_time

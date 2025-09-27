@@ -26,13 +26,18 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 return False
                 
             lines_info: Dict[str, Any] = self._reconstruct_lines(polygons)
-            
+            if not lines_info:
+                logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
+                return False
+            total_time1 = time.time() - start_time
+            logger.debug(f"Armado de líneas completado en {total_time1:.10f}")
+
             success = manager.create_text_lines(lines_info)
-            total_time = time.time() - start_time
-
-            logger.info(f"Armado de líneas completado en {total_time:.10f}")
-
-            if not success:
+            if success:
+                
+                logger.debug(f"Lineas guardads correctamente en el manage")
+                
+            else:
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
                 return False
 
@@ -47,13 +52,13 @@ class LinealReconstructor(VectorizationAbstractWorker):
         
     def _reconstruct_lines(self, polygons: Dict[str, Polygons]) -> Optional[Dict[str, Any]]:
         """
-        Reconstruye líneas agrupando polígonos y devuelve un dict con la info completa de cada línea,
+        Reconstruye líneas agrupando polígonos y devuelve un dict con la debug completa de cada línea,
         incluyendo los textos OCR concatenados.
         """
         prepared_sorted = sorted(
             polygons.values(),
             key=lambda p: p.geometry.centroid[1])
-        
+                
         lines_info: Dict[str, Any] = {}
         current_line_polys: List[Polygons] = []
         current_line_bbox: Optional[List[float]] = None
@@ -84,8 +89,11 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         avg_y_min = sum(all_y_mins) / len(all_y_mins)
                         avg_y_max = sum(all_y_maxs) / len(all_y_maxs)
                         current_line_bbox = [min(all_xs), avg_y_min, max(all_xs), avg_y_max]
+                        
+                        # Antes de cerrar la línea, ordena los polígonos actuales de la línea por el eje X (centroide[0])
+                        current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
                 else:
-                    # Finaliza la línea actual y guarda la info
+                    # Finaliza la línea actual y guarda la debug
                     line_id = f"line_{line_counter:04d}"
                     polygon_ids = [p.polygon_id for p in current_line_polys]
                     texts = [p.ocr_text or "" for p in current_line_polys]
@@ -115,7 +123,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 (current_line_bbox[0] + current_line_bbox[2]) / 2,
                 (current_line_bbox[1] + current_line_bbox[3]) / 2
             ] if current_line_bbox else [0, 0]
-
+            current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
             lines_info[line_id] = {
                 "line_bbox": current_line_bbox,
                 "line_centroid": line_centroid,
@@ -137,4 +145,4 @@ class LinealReconstructor(VectorizationAbstractWorker):
             save_json(lines_info, output_dir, json_file_name, project_root)
 
         if output_paths:
-            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
+            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

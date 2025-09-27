@@ -178,6 +178,7 @@ class Lineal(ConfigWithNumpy):
 
 class TableStructurer(ConfigWithNumpy):
     min_h: int
+    min_cosine_similarity: float
 
 class CosineSimilarity(ConfigWithNumpy):
     min_cluster: int

@@ -45,7 +45,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             results: Optional[List[Any]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
-            logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
+            logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
 
             if not (results and len(results) > 0 and results[0] is not None):
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")

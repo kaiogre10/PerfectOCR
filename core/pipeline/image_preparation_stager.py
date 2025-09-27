@@ -30,7 +30,7 @@ class ImagePreparationStager:
         fecha = now.strftime("%Y%m%d")
         decimales = f"{now.microsecond:06d}"
         IDRegistro = f"{metadata.get('image_name')}_{fecha}{decimales}"
-        logger.info(f"workflow_dict con registro: {IDRegistro}")
+        logger.debug(f"workflow_dict con registro: {IDRegistro}")
 
         if not manager.create_dict(IDRegistro, full_img, metadata):
             logger.error("InputStager: Fallo al crear dict_job en el manager.")
@@ -53,5 +53,5 @@ class ImagePreparationStager:
             logger.debug(f"[InputStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
 
         total_time = time.time() - start_time
-        logger.info(f"[InputStager] Módulo 1 completado en: {total_time:.3f}s")
+        logger.debug(f"[InputStager] Módulo 1 completado en: {total_time:.3f}s")
         return manager, total_time

@@ -20,10 +20,10 @@ class DensityScanner(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.time()
         try:
-            logger.info("DBSCScanner iniciado")
+            logger.debug("DBSCScanner iniciado")
             valid_analyses: Dict[str, Dict[str, float]] = context.get("all_features", {})
-            logger.info(f"Features recibidos por Scanner: {len(valid_analyses)} líneas")
-            # logger.info(f"Features: {valid_analyses}")
+            logger.debug(f"Features recibidos por Scanner: {len(valid_analyses)} líneas")
+            # logger.debug(f"Features: {valid_analyses}")
             
             if not valid_analyses:
                 logger.warning("No se recibieron features del Vectorizer")
@@ -32,21 +32,21 @@ class DensityScanner(VectorizationAbstractWorker):
             table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
             logger.debug(f"{len(table_line_ids)} table_line_ids: {table_line_ids}")
             if table_line_ids:
-                consecutive_indices: List[int] = self._get_consecutive_indices(table_line_ids, list(valid_analyses.keys()))
-                logger.debug(f"{len(consecutive_indices)} consecutive_indices: {consecutive_indices}")
-                expanded_line_ids: List[str] = self._expand_to_consecutive_interval_by_ids(consecutive_indices, list(valid_analyses.keys()))
-                logger.debug(f"{len(expanded_line_ids)} expanded_line_ids: {expanded_line_ids}")
-                success: bool = manager.save_tabular_lines(expanded_line_ids)
+                # consecutive_indices = self._get_consecutive_indices(table_line_ids, list(valid_analyses.keys()))
+                # logger.debug(f"{len(consecutive_indices)} consecutive_indices: {consecutive_indices}")
+                # expanded_line_ids: List[str] = self._expand_to_consecutive_interval_by_ids(consecutive_indices, list(valid_analyses.keys()))
+                # logger.debug(f"{len(expanded_line_ids)} expanded_line_ids: {expanded_line_ids}")
+                success: bool = manager.save_tabular_lines(table_line_ids)
 
                 total_time = time.time() - start_time
-                logger.info(f"Detección de tablas en: {total_time:.6f}s. Encontradas {len(expanded_line_ids)}, {expanded_line_ids} ")
+                logger.debug(f"Detección de tablas en: {total_time:.6f}s. Encontradas {len(table_line_ids)}, {table_line_ids}")
 
                 if success:
-                    logger.info("Líneas guardadas en el manager desde DBSCAN")
+                    logger.debug("Líneas guardadas en el manager desde DBSCAN")
                     return True
                 if self.output:
                     file_name: str = context.get("image_name", "")
-                    self._save_output(context, expanded_line_ids, file_name, manager)
+                    self._save_output(context, table_line_ids, file_name, manager)
                     return True
                 else:
                     logger.error("Error al guardar líneas tabulares en el workflow")
@@ -62,7 +62,7 @@ class DensityScanner(VectorizationAbstractWorker):
         if len(valid_analyses) < min_cluster_size:
             logger.warning("No hay suficientes líneas válidas para clustering.")
             return []
-        # logger.info(f"Features RECIBIDOS PARA CLUSTER: {valid_analyses}")
+        # logger.debug(f"Features RECIBIDOS PARA CLUSTER: {valid_analyses}")
         
         line_ids = list(valid_analyses.keys())
         features: List[List[float]] = []
@@ -76,9 +76,9 @@ class DensityScanner(VectorizationAbstractWorker):
         # features_scaled: np.ndarray[Any, np.dtype[np.float64]] = scaler.fit_transform(features_array)
 
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
-        labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_array).astype(dtype=np.uint8)
+        labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_array).astype(np.float32)
         
-        logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
+        logger.info(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:
@@ -129,4 +129,4 @@ class DensityScanner(VectorizationAbstractWorker):
             json_file_name = f"{os.path.splitext(file_name)[0]}.json"
             output_file = save_tabjson(expanded_line_ids, manager, output_dir, json_file_name, project_root)
         if output_file:
-            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")
+            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")

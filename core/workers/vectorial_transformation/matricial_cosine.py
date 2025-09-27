@@ -1,14 +1,13 @@
 # PerfectOCR/core/workflow/vectorial_transformation/matricial_cosine.py
-import math
 import numpy as np
 import time
 import logging
-from typing import Dict, Any, List, Optional, Tuple, Set
+from typing import Dict, Any, List, Optional, Set
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, normalize # type: ignore
+from scipy.sparse import csr_matrix # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -20,66 +19,80 @@ class MatricialCusine(VectorizationAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)        
                 
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool: # type: ignore
+        start_time: float = time.time()
+        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
         try:
-            start_time: float = time.time()
-            logger.info("Calculando matriz de similitud")
+            logger.debug("Calculando matriz de similitud")
+            
+            tabular_lines: List[str] = manager.get_tabular_lines()
+            analysis: Dict[str, Dict[str, float]] = context.get("all_features", {})
+            logger.debug(f"Features recibidos por Scanner: {len(analysis)} líneas")
 
-            all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-
-            header_line_id = self._find_header_line_id(polygons, all_lines)
-            if header_line_id is not None:
-                manager.update_header(header_line_id)
-                logger.info(f"Linea de encabezado actualizada desde Coseno")
-                
-                # intentar obtener líneas detectadas por el scanner (DBSCAN)
-                tabular_lines: List[str] = manager.get_tabular_lines()
-                # normalizar: si manager devuelve lista de dicts extraer ids
-                analysis: Dict[str, Dict[str, float]] = context.get("all_features", {})
-                logger.info(f"Features recibidos por Scanner: {len(analysis)} líneas")
-
-                # Si hay resultado del scanner, VALIDAR usando estrategia all-vs-all en el intervalo header+1 .. última del scanner
-                if tabular_lines:
-                    logger.info(f"Validando resultado del scanner con validación coseno all-vs-all ({len(tabular_lines)} líneas reportadas)")
-                    validated = self._validate_scanner_interval_all_vs_all(analysis, all_lines, header_line_id, tabular_lines, manager)
-                    if validated:
-                        total_time = time.time() - start_time
-                        logger.info(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(validated)}")
-                        success = manager.save_tabular_lines(validated)
-                        if success:
-                            logger.info("Lineas guardadas en el manager desde COSENO (validación all-vs-all)")
-                            return True
-                        else:
-                            logger.error("Error al guardar líneas tabulares validadas en el workflow")
-                            return False
+            if tabular_lines:
+                logger.debug(f"Validando resultado del scanner con validación coseno all-vs-all ({len(tabular_lines)} líneas reportadas)")
+                validated = self._validate_scanner_interval_all_vs_all(analysis, all_lines, tabular_lines, manager)
+                if validated:
+                    total_time = time.time() - start_time
+                    logger.debug(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(validated)}: {validated}")
+                    success = manager.save_tabular_lines(validated)
+                    if success:
+                        logger.debug("Lineas guardadas en el manager desde COSENO (validación all-vs-all)")
+                        return True
                     else:
-                        logger.info("Validación coseno rechazó las líneas detectadas por el scanner")
+                        logger.error("Error al guardar líneas tabulares validadas en el workflow")
                         return False
+                else:
+                    logger.debug("Validación coseno rechazó las líneas detectadas por el scanner")
+                    return False
             else:
-                logger.info("Error detectando encabezado")
+                logger.debug("Error detectando encabezado")
                 return True
         except Exception as e:
-            logger.info(f"Error en matriz de similitud coseno: {e}", exc_info=True)
+            logger.debug(f"Error en matriz de similitud coseno: {e}", exc_info=True)
             return False
-        
-    def _validate_scanner_interval_all_vs_all(self, analysis: Dict[str, Dict[str, float]], all_lines: Dict[str, AllLines], header_line_id: str, tabular_lines: List[str], manager: DataFormatter) -> List[str]:
+            
+    def _validate_scanner_interval_all_vs_all(self, analysis: Dict[str, Dict[str, float]], all_lines: Dict[str, AllLines], tabular_lines: List[str], manager: DataFormatter) -> List[str]:
         """
         Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado por el scanner.
         No usa el header como referencia para el intervalo; el header sólo se añade si el intervalo es válido.
         """
-        try:
-            similarity_threshold = float(self.worker_config.get("similarity_threshold", 0.85))
-            min_cluster = int(self.worker_config.get("min_cluster", 2))
+        polygons = manager.workflow.polygons if manager.workflow else {}
 
-            line_ids: List[str] = list(all_lines.keys())
-            if header_line_id not in line_ids:
-                logger.error("Header no encontrado entre las líneas codificadas")
-                return []
-            header_idx = line_ids.index(header_line_id)
+        similarity_threshold: float = self.worker_config.get("similarity_threshold", 0.85)
+        min_cluster = int(self.worker_config.get("min_cluster", 2))
+        
+        header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
+        logger.debug(f"header_line_id: {header_line_ids}")
+
+        header_line_id = header_line_ids[0] if header_line_ids else None
+        if header_line_ids and header_line_id in all_lines:
+            logger.debug(f"Usando header_line_id proporcionado por manager: {header_line_id}")
+        
+        
+        line_ids: List[str] = list(all_lines.keys())
+        if header_line_id not in line_ids:
+            logger.debug("Header no encontrado en el manager")
+        
+        header_line_id = self._find_header_line_id(polygons, all_lines)
+        
+        if not header_line_id:
+            logger.error(f"Error buscando encabezado en coseno")
+            return []
+        else:
+            logger.debug(f"Encabezado encontrado en coseno: {header_line_id}")
             
+            success: bool = manager.update_header(header_line_id)
+            if success:
+                logger.debug(f"Encabzado actualizado en el manager desde coseno")
+                
+            else:
+                logger.warning("Error al guardar encabezado en manager")
+                
+        
+            header_idx = line_ids.index(header_line_id)                    
             # Convertir tabular_lines (IDs de línea) a índices numéricos
-            tabular_indices = []
+            tabular_indices: List[int] = []
             for line_id in tabular_lines:
                 if line_id in line_ids:
                     tabular_indices.append(line_ids.index(line_id))
@@ -94,12 +107,12 @@ class MatricialCusine(VectorizationAbstractWorker):
             end_idx = last_scanner_idx
 
             if start_idx > end_idx:
-                logger.info("Intervalo para validar vacío (header al final o scanner produjo líneas anteriores al header).")
+                logger.debug("Intervalo para validar vacío (header al final o scanner produjo líneas anteriores al header).")
                 return []
 
             # LOG: Mostrar el intervalo de líneas a validar
             interval_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
-            logger.info(f"Intervalo de validación: líneas {start_idx} a {end_idx} (total: {len(interval_line_ids)} líneas)")
+            logger.debug(f"Intervalo de validación: líneas {start_idx} a {end_idx} (total: {len(interval_line_ids)} líneas)")
             for i, line_id in enumerate(interval_line_ids):
                 line_obj = all_lines.get(line_id)
                 line_text = line_obj.text if line_obj else "SIN TEXTO"
@@ -125,7 +138,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                         line_polygon_ids = set(line_obj.polygon_ids)
                         if line_polygon_ids.intersection(blocked_polygon_ids):
                             blocked_line_ids.add(line_id)
-                            logger.info(f"Línea {line_id} bloqueada por contener polígonos con key_field")
+                            logger.debug(f"Línea {line_id} bloqueada por contener polígonos con key_field")
             
             logger.info(f"Líneas bloqueadas por key_field: {sorted(blocked_line_ids)}")
             
@@ -134,16 +147,16 @@ class MatricialCusine(VectorizationAbstractWorker):
             if blocked_in_interval:
                 first_blocked = min(blocked_in_interval)
                 new_end = first_blocked - 1
-                logger.info(f"Cortando intervalo en la primera línea bloqueada: bloqueada_idx={first_blocked}, nuevo end_idx={new_end}")
+                logger.debug(f"Cortando intervalo en la primera línea bloqueada: bloqueada_idx={first_blocked}, nuevo end_idx={new_end}")
                 end_idx = new_end
 
             # reconstruir intervalo y comprobar si quedó vacío tras el corte
             if start_idx > end_idx:
-                logger.info("Intervalo quedó vacío tras cortar por líneas bloqueadas.")
+                logger.debug("Intervalo quedó vacío tras cortar por líneas bloqueadas.")
                 return []
 
             filtered_interval_indices: List[int] = [i for i in range(start_idx, end_idx + 1)]
-            logger.info(f"Intervalo filtrado: {len(filtered_interval_indices)} líneas (de {end_idx - start_idx + 1} originales)")
+            logger.debug(f"Intervalo filtrado: {len(filtered_interval_indices)} líneas (de {end_idx - start_idx + 1} originales)")
 
             feature_keys: List[str] = [
                 'count_rel',
@@ -151,7 +164,6 @@ class MatricialCusine(VectorizationAbstractWorker):
                 'mean_margin',
                 'skewness',
                 "numeric_count_norm",
-                "numeric_frec_rel",
                 "numeric_ratio_frec",
                 "num_above",
                 "num_margin",
@@ -172,15 +184,16 @@ class MatricialCusine(VectorizationAbstractWorker):
                 "align_next",
                 "center_aling",
             ]
-            
                 
             mat_rows: List[List[float]] = []
-            candidate_indices: List[int] = []  # Cambio: debe ser List[int] para índices
+            candidate_indices: List[int] = []  
             candidate_line_ids: List[str] = []
 
-            for idx in filtered_interval_indices:  # Cambio: usar filtered_interval_indices en lugar de interval_line_ids
-                line_id = line_ids[idx]  # Obtener el line_id del índice
-                features = analysis.get(line_id, {})  # Cambio: buscar por line_id, no por 'aggregate_stats'
+            for idx in filtered_interval_indices:  
+                line_id = line_ids[idx] 
+                if not analysis:
+                    logger.error("Error extrayendo features")
+                features = analysis.get(line_id, {}) 
                 
                 if not features:
                     logger.warning(f"No se encontraron features para línea {line_id}")
@@ -189,27 +202,27 @@ class MatricialCusine(VectorizationAbstractWorker):
                 row: List[float] = [float(features.get(k, 0.0)) for k in feature_keys]
                 mat_rows.append(row)
                 candidate_indices.append(idx)
-                candidate_line_ids.append(line_id)  # Cambio: usar line_id definido
+                candidate_line_ids.append(line_id)
 
             n = len(mat_rows)
             if n < min_cluster:
                 logger.warning("No hay suficientes líneas válidas en el intervalo para validación coseno.")
-                # Tomar como línea tabular el intervalo entre el encabezado y la línea bloqueada inmediata
-                logger.info("Tomando intervalo entre encabezado y línea bloqueada inmediata como líneas tabulares.")
+                logger.debug("Tomando intervalo entre encabezado y línea bloqueada inmediata como líneas tabulares.")
                 interval_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
                 return interval_line_ids
+                
             try:
-                X = np.array(mat_rows, dtype=np.float64)
-                logger.info(f"{X}")
-
-                # matriz todos contra todos (n x n)
-                sims_mat: np.ndarray[Any, np.dtype[np.float64]] = cosine_similarity(X, dense_output=True).astype(dtype=np.float64)
+                X = csr_matrix(mat_rows, dtype=np.float64)
+                timecos0 = time.perf_counter()
+                sims_mat = cosine_similarity(X, dense_output=False)
+                logger.info(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
             except Exception as e:
                 logger.error(f"Error calculando matriz se similitud: {e}", exc_info=True)
             # Para mejorar la legibilidad, separamos filas y columnas y mostramos la matriz línea por línea
-            mean = np.array(sims_mat)
+            
+            mean = np.array(sims_mat, dtype=np.uint8)
             mean_log = np.mean(mean)
-            logger.info(f"Promedio matriz: {mean_log}")
+            logger.debug(f"Promedio matriz: {mean_log}")
             logger.debug("Matriz de similitud (cosine_similarity):")
             logger.info("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
             matriz_str = "\n".join(
@@ -234,13 +247,8 @@ class MatricialCusine(VectorizationAbstractWorker):
                     consecutive_failures +=1
                 logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
 
-            # incluir header (aunque no participó en la similitud)
-            final_indices = [header_idx] + matched_original_indices
-            table_line_ids = [line_ids[i] for i in final_indices if i < len(line_ids)]
-            return table_line_ids
-        except Exception as e:
-            logger.error(f"Error validando intervalo del scanner (all-vs-all): {e}", exc_info=True)
-            return []
+        table_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
+        return table_line_ids
 
     def _find_header_line_id(self, polygons: Dict[str, Polygons], all_lines: Dict[str, AllLines]) -> Optional[str]:
         """Localiza la line_id del encabezado basada en HeaderWords."""
@@ -260,7 +268,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             if not header_line_id:
                 return None
             else:
-                logger.info(f"Header_line_id={header_line_id} (via HeaderWords)")
+                logger.debug(f"Header_line_id={header_line_id} (via HeaderWords)")
                 return header_line_id
         
         except Exception as e:

@@ -57,5 +57,5 @@ class PreprocessingStager:
             context["polygons"] = polygons
 
         elapsed = time.time() - start_time
-        logger.info(f"[PreprocessingStager] Preprocesamiento completado en: {elapsed:.6f}s; polígonos: {len(polygons)}")
+        logger.debug(f"[PreprocessingStager] Preprocesamiento completado en: {elapsed:.6f}s; polígonos: {len(polygons)}")
         return manager, elapsed

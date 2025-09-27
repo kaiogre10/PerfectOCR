@@ -437,7 +437,7 @@ class DataFormatter:
                     logger.debug(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
-                logger.info(f"Actualizados {updated_count} polígonos con semantic_types")
+                logger.debug(f"Actualizados {updated_count} polígonos con semantic_types")
             return True
             
         except Exception as e:
@@ -451,6 +451,8 @@ class DataFormatter:
         try:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar polígonos.")
+                return False
+            if not polygon_updates:
                 return False
 
             updated_count = 0
@@ -481,6 +483,9 @@ class DataFormatter:
         try:
             if not self.workflow:
                 logger.error("No hay workflow_dict o workflow inicializado para guardar líneas de texto.")
+                return False
+            
+            if not lines_info:
                 return False
 
             valid_lines = {k: v for k, v in lines_info.items() if v is not None}
@@ -521,7 +526,7 @@ class DataFormatter:
                     logger.info(f"Linea textual: {all_lines['line_id']}: '{all_lines['text']}'")
             
             num_lines = len(all_lines_dataclasses)
-            logger.info(f"Guardadas {num_lines} líneas reconstruidas en dataclasses.")
+            logger.debug(f"Guardadas {num_lines} líneas reconstruidas en dataclasses.")
             for line_id, line_data in self.workflow.all_lines.items():
                 return True
         except Exception as e:
@@ -562,7 +567,7 @@ class DataFormatter:
         try:
             if not self.workflow:
                 return False
-
+    
             # 1) Limpiar todos los flags tabular_line existentes
             cleared_count = 0
             for lid, line_obj in self.workflow.all_lines.items():
@@ -602,7 +607,7 @@ class DataFormatter:
                     })
 
             if marked_ids:
-                logger.info(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
+                logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_info in tabular_lines_info:
                     logger.info(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
             else:
@@ -659,7 +664,7 @@ class DataFormatter:
         """
         try:
             t0 = time.perf_counter()
-            logger.info("Estructuración de datos iniciada")
+            logger.debug("Estructuración de datos iniciada")
             try:
                 if not self.workflow:
                     return {}
@@ -714,7 +719,7 @@ class DataFormatter:
                 }
 
             except Exception as e:
-                logger.info(f"fallo en dbpayload{e}", exc_info=True)
+                logger.debug(f"fallo en dbpayload{e}", exc_info=True)
             try:
                 detalles: List[List[int]] = []
                 if self.structured_table and hasattr(self.structured_table, "df"):
@@ -728,7 +733,7 @@ class DataFormatter:
                         detalles.append(self._row_to_detalle(row))
 
             except Exception as e:
-                logger.info(f"No hay tabla estructurada{e}", exc_info=True)
+                logger.debug(f"No hay tabla estructurada{e}", exc_info=True)
                             
             provenance: Dict[str, Any] = {
                 "IDRegistro": dict_id,
@@ -742,7 +747,7 @@ class DataFormatter:
 
             success: bool = self.export_payload_json(payload, data_base_path)
             if success is not False:
-                logger.info(f"Estructuración de datos completada en {time.perf_counter()-t0:.6f}s")
+                logger.debug(f"Estructuración de datos completada en {time.perf_counter()-t0:.6f}s")
                 logger.debug(f"Resultados: {payload}")
                 db_path = data_base_path
                 return db_path
@@ -760,6 +765,6 @@ class DataFormatter:
                 
             return True
         except Exception as e:
-            logger.error(f"Error exportando payload json: {e}", exc_info=True)
+            logger.debug(f"Error exportando payload json: {e}", exc_info=True)
             return False
 

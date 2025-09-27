@@ -67,5 +67,5 @@ class ImageLoader:
             return image_array, metadata
 
         except Exception as e:
-            logger.info(f"Error al  la imagen '{input_path}': {e}", exc_info=True)
+            logger.debug(f"Error al  la imagen '{input_path}': {e}", exc_info=True)
         return None, metadata

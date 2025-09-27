@@ -10,9 +10,10 @@ logger = logging.getLogger(__name__)
 
 class WordFinder:
     def __init__(self, model_path: str, project_root: str):
-        self.project_root = project_root
-        self.model_path = model_path
         self.model: Dict[str, Any] = self._load_model(model_path)
+
+        # self.project_root = project_root
+        # self.model_path = model_path
         self._active = "standard"
         self._apply_active_model()
 
@@ -45,8 +46,7 @@ class WordFinder:
         self.gngr: Tuple[int, int] = params.get("char_ngram_global", [])
         self.ngr: Tuple[int, int] = params.get("char_ngram_range", [])
         self.threshold = params.get("threshold_similarity", [])
-        self.thresholds_by_len: List[Tuple[int, int, float]] = [tuple(item) for item in
-                                                                params.get("thresholds_by_len", [])]
+        self.thresholds_by_len: List[Tuple[int, int, float]] = [tuple(item) for item in params.get("thresholds_by_len", [])]
         self.weights_by_n: List[Tuple[int, int, float]] = [tuple(item) for item in params.get("weights_by_n", [])]
         self.window_flex = params.get("window_flexibility", 3)
         self.global_filter_threshold = float(params.get("global_filter_threshold", []))
@@ -83,7 +83,7 @@ class WordFinder:
         if self.grams_index:
             for entry in self.grams_index:
                 length = int(entry.get("len", 0))
-                self.gmap_raw: Dict[int, List[str]] = entry.get("grams", {})
+                self.gmap_raw: Dict[int, List[str]] = entry.get("grams", {}) 
                 self.gmap_sets = {}
                 for n in range(self.ngr[0], self.ngr[1] + 1):
                     self.gmap_sets[n] = set(self.gmap_raw.get(n, []))
@@ -91,7 +91,7 @@ class WordFinder:
                 self.grams.append(self.gmap_sets)
         else:
             self.grams = []
-            self.lengths: List[int] = []
+            self.lengths: List[int]  = []
             for w in self.global_words:
                 self.length = len(w)
                 self.lengths.append(self.length)
@@ -122,7 +122,7 @@ class WordFinder:
         try:
             # Usar el threshold proporcionado o el del modelo como filtro final
             final_threshold = threshold if threshold is not None else self.threshold
-
+            
             single = False
             if isinstance(text, str):
                 text = [text]
@@ -157,8 +157,10 @@ class WordFinder:
                                     ngram_score: float = 1.0
                                 else:
                                     ngram_score: float = self._score_binary_cosine_multi_n(grams_cand, grams_sub)
-
-                                # FILTRO FINAL: usar threshold_similarity como filtro definitivo
+                                    len_ratio = max(len(sub), cand_len) / max(1, min(len(sub), cand_len))
+                                    if len_ratio >= 2.0:
+                                        penalizacion = min(len(sub), cand_len) / max(len(sub), cand_len)
+                                        ngram_score *= penalizacion                                
                                 if ngram_score >= final_threshold:
                                     key_field = self.variant_to_field.get(cand)
                                     results.append({
@@ -202,7 +204,7 @@ class WordFinder:
                 return []
             if len(q) < n:
                 return []
-            return [q[i:i + n] for i in range(len(q) - n + 1)]
+            return [q[i:i+n] for i in range(len(q) - n + 1)]
         except Exception as e:
             logger.info(f"Error construyendo n-gramas: {e}", exc_info=True)
             return []
@@ -211,7 +213,7 @@ class WordFinder:
         """Calcula la similitud entre dos n-gramas como la proporción de caracteres iguales."""
         try:
             matches = float(sum(1 for x, y in zip(a, b) if x == y))
-            # Normaliza por la longitud máxima para manejar n-gramas de longitudes distintas si fuera el caso.
+        # Normaliza por la longitud máxima para manejar n-gramas de longitudes distintas si fuera el caso.
             return matches / float(max(len(a), len(b)))
         except Exception as e:
             logger.info(f"Error comprobando texto: {e}", exc_info=True)
@@ -252,13 +254,13 @@ class WordFinder:
         if den <= 0.0:
             return 0.0
         return num / den
-
+    
     def _get_weight_by_n(self, n: int, default: float = 1.0) -> float:
         for start, end, value in self.weights_by_n:
             if start <= n <= end:
                 return value
         return default
-
+        
     def _is_potential_keyword(self, q: str) -> bool:
         """Filtro rápido: suma de frecuencias normalizadas de n-gramas globales.
         Opcional: combinar con peso por n-grama (weights_by_n)."""
@@ -286,10 +288,10 @@ class WordFinder:
             return False
 
     def get_model_info(self) -> Dict[str, Any]:
-        return {
-            "total_words": len(self.global_words),
-            "threshold_similarity": self.threshold,
-            "char_ngram_range": self.ngr,
-            "weights_by_n": self.weights_by_n
+        return{
+        "total_words": len(self.global_words),
+        "threshold_similarity": self.threshold,
+        "char_ngram_range": self.ngr,
+        "weights_by_n": self.weights_by_n
         }
 

@@ -18,7 +18,7 @@ class SemanticClasificator(OCRAbstractWorker):
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         
-        logger.info("Clasificador inciado")
+        logger.debug("Clasificador inciado")
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para preocesar")
@@ -36,7 +36,7 @@ class SemanticClasificator(OCRAbstractWorker):
             return True
             
         except Exception as e:
-            logger.info(f"Error en el clasiicador{e}", exc_info=True)
+            logger.debug(f"Error en el clasiicador{e}", exc_info=True)
             
     def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
     
@@ -77,7 +77,7 @@ class SemanticClasificator(OCRAbstractWorker):
                             
             return final_results
         except Exception as e:
-            logger.info(f"Fallo en el mapeo de las letras semánticas {e}", exc_info=True )
+            logger.debug(f"Fallo en el mapeo de las letras semánticas {e}", exc_info=True )
                 
     def _save_ocr_raw(self, context: Dict[str, Any], final_results: Dict[str, str], file_name: str):
         from services.output_service import save_json
@@ -90,4 +90,4 @@ class SemanticClasificator(OCRAbstractWorker):
             save_json(final_results, output_dir, json_file_name)
         
         if output_paths:
-            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
+            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

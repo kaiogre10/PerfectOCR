@@ -23,7 +23,7 @@ class DataFinder(OCRAbstractWorker):
                 from core.domain.models_manager import ModelsManager
                 model_manager = ModelsManager.get_instance()
                 self._model = model_manager.word_finder
-                logger.info("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
+                logger.debug("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
             
             return self._model
         except Exception as e:
@@ -43,7 +43,7 @@ class DataFinder(OCRAbstractWorker):
             polygons: Dict[str, Polygons] = getattr(workflow, "polygons", {}) or {}
                 
             if not polygons:
-                logger.info("No hay polygons para procesar")
+                logger.debug("No hay polygons para procesar")
                 return False
             
             # Llamar al método original que funciona
@@ -54,7 +54,7 @@ class DataFinder(OCRAbstractWorker):
             
             # Guardar resultados en el contexto
             total_time = time.time() - start_time
-            logger.info(f"Key Fields detectados en {total_time:.4f}s")
+            logger.debug(f"Key Fields detectados en {total_time:.4f}s")
             return success  # Siempre retorna True para continuar con el pipeline
         except Exception as e:
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
@@ -70,11 +70,11 @@ class DataFinder(OCRAbstractWorker):
         try:
             logger.debug("DataFinder: inicio de búsqueda de encabezados")
             if not polygons:
-                logger.info("No hay polígonos para procesar")
+                logger.debug("No hay polígonos para procesar")
                 return None
             else:
 
-                logger.info(f"Data_finder: cantidad polygons={len(polygons)}")
+                logger.debug(f"Data_finder: cantidad polygons={len(polygons)}")
 
             processed_count = 0
             polygon_updates: Dict[str, str] = {}
@@ -115,37 +115,21 @@ class DataFinder(OCRAbstractWorker):
                 if not valid_results:
                     continue
                 
-                # Filtrar por similitud mínima
-                #valid_results = [r for r in results if r.get('similarity', 0.0) >= min_similarity]
-                
                 if valid_results:
                     best_result = max(valid_results, key=lambda x: x.get('similarity', 0.0))
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.info(f"Similitud por palabra{best_result}")
+                        logger.debug(f"Similitud por palabra: {pid}: {best_result}")
 
             if polygon_updates:
-                logger.info(f"DataFinder: Encontradas {len(polygon_updates)} coincidencias de palabras clave")
+                logger.debug(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")
                 logger.debug(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
                 return polygon_updates
             else:
-                logger.info("DataFinder: No se encontraron coincidencias de palabras clave - usando fallback")
-                logger.info(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
-                return self._create_fallback_updates(polygons)
+                logger.debug("DataFinder: No se encontraron coincidencias de palabras clave - usando fallback")
+                logger.debug(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
                     
         except Exception as e:
             logger.warning(f"Fallo en búsqueda de datos globales{e}", exc_info=True)
-            return self._create_fallback_updates(polygons)
-            
-    def _create_fallback_updates(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
-        """
-        Crea un fallback marcando el primer polígono como 'general' para satisfacer al sistema
-        sin generar datos innecesarios.
-        """
-        # Tomar el primer polígono disponible y marcarlo como 'general'
-        first_poly_id = next(iter(polygons.keys()))
-        polygon_updates = {first_poly_id: "general"}
         
-        logger.info(f"DataFinder: Fallback aplicado - polígono {first_poly_id} marcado como 'general'")
-        return polygon_updates

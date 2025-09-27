@@ -26,11 +26,11 @@ LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 """Configura el logging global usando parámetros definidos manualmente aquí."""
 
 CONSOLE_LEVEL = "INFO"
-FILE_LEVEL = "INFO"
+FILE_LEVEL = "DEBUG"
 # Formato para la consola: muestra el nivel, nombre del logger, línea y mensaje
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 # Formato para el archivo: incluye fecha/hora, --nivel--, --nombre del logger--, --línea--, --módulo-- y mensaje
-FILE_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(module)s - %(message)s"
+FILE_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(funcName)s - %(module)s - %(message)s"
 # Formato de fecha/hora utilizado en los logs
 DATE_FORMAT = "%Y-%m-%d %H:%M" #"%Y-%m-%d %H:%M:%S"
 
@@ -56,6 +56,22 @@ console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(console_formatter)
 console_handler.setLevel(CONSOLE_LEVEL.upper())
 logger_root.addHandler(console_handler)
+
+# import functools
+
+# def trace_calls(func):
+#     @functools.wraps(func)
+#     def wrapper(*args, **kwargs):
+#         logger.debug(f"→ {func.__name__}()")
+#         try:
+#             result = func(*args, **kwargs)
+#             logger.debug(f"{func.__name__}")
+#             return result
+#         except Exception:
+#             logger.error(f"{func.__name__}", exc_info=True)
+#             raise
+#     return wrapper
+
 
 # app = typer.Typer(help="PerfectOCR - Sistema de OCR optimizado")
 

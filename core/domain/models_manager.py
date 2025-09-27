@@ -25,7 +25,7 @@ class ModelsManager:
             self.project_root = None
             self._active = False
         except Exception as e:
-            logger.info(f"Error Manager{e}", exc_info=True)
+            logger.debug(f"Error Manager{e}", exc_info=True)
     
     @classmethod
     def get_instance(cls):
@@ -46,9 +46,9 @@ class ModelsManager:
                 project_root=project_root
             )
             self._active = True
-            logger.info(f"Finder iniciado en {time.perf_counter() - init_time:.6f}s")
+            logger.debug(f"Finder iniciado en {time.perf_counter() - init_time:.6f}s")
         except Exception as e:
-            logger.info(f"No se pudo iniciar WordFinder{e}", exc_info=True)
+            logger.debug(f"No se pudo iniciar WordFinder{e}", exc_info=True)
             
         try:    
                 self._shared_engine = PaddleOCR(
@@ -66,10 +66,10 @@ class ModelsManager:
                 self._detection_engine = self._shared_engine
                 self._recognition_engine = self._shared_engine
                 self._initialized = True
-                logger.info(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
+                logger.debug(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
                 logger.debug(f"ModelsManager: Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
         except Exception as e:
-            logger.info(f"No se pudo iniciar Paddle{e}", exc_info=True)
+            logger.debug(f"No se pudo iniciar Paddle{e}", exc_info=True)
             
     @property
     def detection_engine(self) -> Optional[PaddleOCR]:

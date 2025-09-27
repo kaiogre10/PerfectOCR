@@ -1,12 +1,12 @@
-# PerfectOCR/core/table_structure/geometric_table_structurer.py
+# PerfectOCR/core/workers/vectorial_transformation/geometric_table_structurer.py
 import logging
-from typing import List, Dict, Any, Tuple, Optional
-import math
 import time
+from typing import List, Dict, Any
+import pandas as pd # type: ignore
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
-import pandas as pd # type: ignore
+from core.utils.cosine_similarity import alignment
 
 logger = logging.getLogger(__name__)
 
@@ -18,325 +18,249 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_structured", False)
 
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
-        start_time = time.time()
-        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-        tabular_line_ids: List[str] = [lid for lid, l in all_lines.items() if getattr(l, "tabular_line", False)]
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        """
+        Implementa el algoritmo geométrico de estructuración tabular en ℝ²
+        basado en el modelo matemático riguroso de distancias horizontales y similitud coseno.
+        """
         try:
+            start_time = time.time()
+            logger.debug("GeometricTableStructurer iniciado")
+            
+            if not manager.workflow:
+                logger.warning("No hay workflow disponible")
+                return False
+                
+            # Obtener datos usando data classes modernas
+            all_lines: Dict[str, AllLines] = manager.workflow.all_lines
+            polygons: Dict[str, Polygons] = manager.workflow.polygons
+            
+            # Filtrar líneas tabulares usando propiedades de data class
+            tabular_line_ids = [lid for lid, line_obj in all_lines.items() if line_obj.tabular_line]
+            
             if not tabular_line_ids or not all_lines or not polygons:
-                logger.warning("GeometricTableStructurer: Faltan datos necesarios (líneas tabulares, all_lines o polígonos) para la estructuración.")
+                logger.warning("Faltan datos necesarios para estructuración tabular")
                 return False
 
-            header_info = self._find_header_line(polygons, all_lines, tabular_line_ids)
-            if not header_info or not header_info.get('line_id'):
-                logger.warning("No se pudo determinar header_line_id; no se filtrarán líneas por encabezado.")
-                header_line_id = None
-                header_poly_ids: List[str] = header_info.get('poly_ids', []) if header_info else []
-            else:
-                header_line_id = header_info['line_id']
-                header_poly_ids = header_info['poly_ids']
-
-            # 2. Construir 'main_header_line_elements' (H*) con la geometría requerida
-            main_header_line_elements: List[Dict[str, Any]] = []
-            all_header_words: List[str] = []
-            for poly_id in header_poly_ids:
-                poly_data = polygons.get(poly_id)
-                if poly_data:
-                    geom = poly_data.geometry
-                    main_header_line_elements.append({
-                        "ocr_text": poly_data.ocr_text or "",
-                        "cx": geom.centroid[0],
-                        "cy": geom.centroid[1]
-                    })
-                    words_in_poly = poly_data.ocr_text.strip().split()
-                    all_header_words.extend(words_in_poly)
-
-            # words = [el["ocr_text"] for el in main_header_line_elements]
-            polygon_count = len(main_header_line_elements)
-            word_count = len(all_header_words)
-            logger.info(f"Polígonos en encabezado: {polygon_count}, Palabras reales: {word_count}")
+            # 1. Detectar encabezado H* usando data classes
+            header_line_ids = [lid for lid, line_obj in all_lines.items() if line_obj.header_line]
+            header_line_id = header_line_ids[0] if header_line_ids else None
             
-            h = polygon_count
-            logger.debug(f"Paramétro H encontrado en polígonos: {h}")
-            if h == 0 or h == 1:
-                logger.debug("Usando paramétro H del yaml")
-                h: int = self.worker_config.get("min_h", 3)
-            H = int(h)
-
-            # 3) Filtrar líneas tabulares desde el encabezado hacia abajo
-            all_line_ids = list(all_lines.keys())
-            line_order = {lid: idx for idx, lid in enumerate(all_line_ids)}
-
-            if header_line_id and header_line_id in line_order:
-                header_idx = line_order[header_line_id]
+            if not header_line_id:
+                logger.error("No se encontró línea de encabezado")
+                return False
                 
-                # Excluir la línea de encabezado: comenzar en la siguiente línea
-                tabular_line_ids_filtered = [lid for lid in tabular_line_ids
-                                             if line_order.get(lid, float('inf')) > header_idx]
-                logger.debug(f"Header line '{header_line_id}' excluded from table. Starting from index {header_idx + 1}.")
-            else:
-                logger.warning("header_line_id no encontrado en all_lines; se usarán todas las líneas tabulares.")
-                tabular_line_ids_filtered = tabular_line_ids
-
-            # 4. Construir 'lines_table_only' (S) para todas las líneas tabulares
-            lines_table_only = []
-            for line_id in tabular_line_ids_filtered:
-                # Seguridad: no incluir la línea de encabezado aunque aparezca
-                if header_line_id and line_id == header_line_id:
-                    logger.debug(f"Skipping header line during table construction: {line_id}")
-                    continue
+            # 2. Extraer centroides de referencia c_j del encabezado
+            header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons)
+            H = len(header_centroids)  # Número de columnas
+            
+            if H == 0:
+                logger.error("No se pudieron extraer centroides del encabezado")
+                return False
                 
-                line_data = all_lines.get(line_id)
-                if not line_data:
-                    continue
-                poly_ids_for_line = line_data.polygon_ids
+            logger.info(f"Encabezado detectado: {header_line_id}, H={H} columnas")
 
-                constituent_elements: List[Dict[str, Any]] = []
-                for poly_id in poly_ids_for_line:
-                    poly_data = polygons.get(poly_id)
-                    if poly_data:
-                        geom = poly_data.geometry
-                        bbox = geom.bounding_box
-                        constituent_elements.append({
-                            "ocr_text": poly_data.ocr_text or "",
-                            "xmin": bbox[0],
-                            "ymin": bbox[1],
-                            "xmax": bbox[2],
-                            "ymax": bbox[3],
-                            "cx": geom.centroid[0],
-                            "cy": geom.centroid[1]
-                        })
+            # 3. Seleccionar filas S para procesamiento
+            selected_lines = self._select_table_rows(header_line_id, tabular_line_ids, all_lines)
+            
+            # 4. Aplicar algoritmo geométrico de asignación a celdas
+            table_matrix = self._apply_geometric_assignment(selected_lines, all_lines, polygons, header_centroids, H)
 
-                lines_table_only.append({
-                    "line_id": line_id,
-                    "constituent_elements_ocr_data": constituent_elements
-                })
-
-            logger.info(f"Iniciando estructuración de tabla con H={H} columnas.")
-
-            lines_table_only: List[Dict[str, Any]]
-            table_matrix: List[List[Dict[str, Any]]] = self.structure_table(lines_table_only, main_header_line_elements, H)
-
-            # Convertir la matriz a DataFrame
-            df = pd.DataFrame([
-                [cell.get('cell_text', '') for cell in row]
-                for row in table_matrix
-            ])
-            df.columns = [f"col_{i}" for i in range(df.shape[1])]
-
-            logger.info(
-                f"Estructuración de tabla completada en {time.time() - start_time:.10f} s. Se encontraron {len(table_matrix)} filas.: \n{df.to_string(index=False)}")  # type: ignore
-
-            # Guardar en memoria (DataFormatter) para etapas posteriores
-            saved = manager.save_structured_table(df=df, columns=list(df.columns))
-            return bool(saved)
+            # 5. Generar DataFrame estructurado
+            df = self._create_structured_dataframe(table_matrix, H)
+            
+            # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
+            total_time = time.time() - start_time
+            logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}")
+            logger.info(f"Estructuración de tabla completada en {total_time:.10f} s.")
+            
+            # 7. Guardar usando DataFormatter moderno
+            success = manager.save_structured_table(df=df, columns=list(df.columns))
+            
+            return success
 
         except Exception as e:
-            logger.error(f"Error fatal en GeometricTableStructurer.vectorize: {e}", exc_info=True)
+            logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
             return False
 
-    def _find_header_line(self, polygons: Dict[str, Polygons], all_lines: Dict[str, AllLines], tabular_line_ids: List[str]) -> Dict[str, Any]:
-        hdr_poly_ids: List[str] = []
-        for pid, pdata in polygons.items():
-            # Comparamos con el string 'HeaderWords'
-            if getattr(pdata, "key_field", None) == 'HeaderWords':
-                hdr_poly_ids.append(pid)
-
-        header_line_id = None
-        header_line = None
-        if hdr_poly_ids:
-            # Buscar línea con más polígonos de encabezado
-            hdr_set = set(hdr_poly_ids)
-            line_counts: Dict[str, int] = {}
-            for line_id, line_obj in all_lines.items():
-                line_polys = set(getattr(line_obj, "polygon_ids", []) or [])
-                count = len(line_polys.intersection(hdr_set))
-                if count > 0:
-                    line_counts[line_id] = count
-            if line_counts:
-                header_line_id = max(line_counts.items(), key=lambda kv: kv[1])[0]
-                logger.info(
-                    f"Línea de encabezado detectada por 'HeaderWords': {header_line_id} (con {line_counts[header_line_id]} elementos)"
-                )
-                header_line = all_lines.get(header_line_id)
-                if not header_line:
-                    logger.warning(f"No se encontró la línea de encabezado con ID: {header_line_id} en all_lines.")
-                    header_line_id = None
-
-            # Fallback: línea anterior a la primera tabular
-        if not header_line:
-            if not tabular_line_ids:
-                logger.warning("No hay líneas tabulares para determinar encabezado por fallback.")
-                return {}
-            all_line_ids = list(all_lines.keys())
-            first_tabular_line_id = tabular_line_ids[0]
-            try:
-                idx = all_line_ids.index(first_tabular_line_id)
-                if idx > 0:
-                    header_line_id = all_line_ids[idx - 1]
-                    header_line = all_lines.get(header_line_id)
-                else:
-                    logger.warning(
-                        "La primera línea tabular es la primera del documento, no hay encabezado anterior.")
-                    return {}
-            except ValueError:
-                logger.warning(
-                    f"La primera línea tabular con ID {first_tabular_line_id} no se encuentra en all_lines.")
-                return {}
-
-        if not header_line:
-            logger.error("Fallo crítico: no se pudo determinar una línea de encabezado.")
-            return {}
-
-        return {
-            'line_id': header_line_id,
-            'poly_ids': getattr(header_line, 'polygon_ids', []) or []
-        }
-    
-    def structure_table(self,
-                        lines_table_only: List[Dict[str, Any]],
-                        main_header_line_elements: List[Dict[str, Any]],
-                        H: int
-                        ) -> List[List[Dict[str, Any]]]:
+    def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], 
+                                 polygons: Dict[str, Polygons]) -> List[List[float]]:
         """
-        Transforms a list of text lines from a table area into a 2D cell structure.
-        Args:
-            lines_table_only: List of merged text lines for the table data area.
-                              Each line dict has 'constituent_elements_ocr_data' (list of word dicts).
-                              Each word dict requires 'ocr_text', 'xmin', 'xmax', 'cx', 'cy'.
-            main_header_line_elements: List of word/segment dicts for the main header line.
-                                       Each element requires 'ocr_text', 'cx', 'cy'.
-            H: parameter
-            Returns:
-            A 2D list (list of rows, where each row is a list of cell dicts).
-            Each cell dict: {'words': List[Dict], 'cell_text': str}.
+        Extrae centroides de referencia c_j = (c_x,h_j, c_y,h_j) del encabezado H*
+        usando acceso directo a data classes.
         """
-        if not main_header_line_elements:
-            logger.warning("GeometricTableStructurer: No header elements provided, cannot determine column count (H).")
-            return []
+        header_centroids: List[List[float]] = []
+        header_line = all_lines[header_line_id]
+        
+        for poly_id in header_line.polygon_ids:
+            poly_data = polygons.get(poly_id)
+            if poly_data and poly_data.geometry:
+                # Acceso directo a centroide usando data class
+                centroid = poly_data.geometry.centroid.tolist()
+                header_centroids.append(centroid)
+                
+        return header_centroids
+
+    def _select_table_rows(self, header_line_id: str, tabular_line_ids: List[str], 
+                          all_lines: Dict[str, AllLines]) -> List[str]:
+        """
+        Selecciona filas S_k del conjunto P \ H* para procesamiento tabular.
+        """
+        all_line_ids = list(all_lines.keys())
+        line_order = {lid: idx for idx, lid in enumerate(all_line_ids)}
+        
+        if header_line_id in line_order and tabular_line_ids:
+            header_idx = line_order[header_line_id]
+            last_tabular_idx = max([line_order[lid] for lid in tabular_line_ids if lid in line_order])
+            selected_lines = all_line_ids[header_idx + 1:last_tabular_idx + 1]
+        else:
+            selected_lines = tabular_line_ids
             
-        header_centroids = []
-        for header_elem in main_header_line_elements:
-            if 'cx' in header_elem and 'cy' in header_elem:
-                header_centroids.append((float(header_elem['cx']), float(header_elem['cy'])))
-            else:
-                logger.warning(f"Header element missing cx/cy: {header_elem.get('ocr_text', 'N/A')}. Cannot use for B.1 centroid matching.")
-                # Add a placeholder or handle appropriately if this case is critical
-                header_centroids.append(None)
+        return selected_lines
 
-        table_matrix_T: List[List[Dict[str, Any]]] = []
-
-        for k, line_sk in enumerate(lines_table_only):
-            # Initialize row with H empty cells
-            current_row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
+    def _apply_geometric_assignment(self, selected_lines: List[str], all_lines: Dict[str, AllLines],
+                                   polygons: Dict[str, Polygons], header_centroids: List[List[float]], 
+                                   H: int) -> List[List[Dict[str, Any]]]:
+        """
+        Implementa el algoritmo geométrico de asignación a celdas T[k][j]
+        según los Casos A y B del modelo matemático.
+        """
+        table_matrix: List[List[Dict[str, Any]]] = []
+        min_cosine_similarity = self.worker_config.get("min_cosine_similarity", 0.7)
+        
+        for line_id in selected_lines:
+            line_obj = all_lines[line_id]
             
-            words_pk: List[Any] = line_sk.get('constituent_elements_ocr_data', [])
-            # Ensure words are sorted by xmin, which should be the case from LineReconstructor
+            # Extraer elementos P_i de la fila S_k usando data classes
+            row_elements = self._extract_row_elements(line_obj, polygons)
+            L_k = len(row_elements)  # Cardinalidad |S_k|
             
-            words_pk.sort(key=lambda w: float(w.get('xmin', float('inf'))))
-
-            lk = len(words_pk)
-
-            if lk == 0:
-                table_matrix_T.append(current_row_cells) # Add empty row
+            # Inicializar fila de celdas vacías
+            row_cells = [{'words': [], 'cell_text': ''} for _ in range(H)]
+            
+            if L_k == 0:
+                table_matrix.append(row_cells)
                 continue
-
-            # Case A: Lk >= H (Sufficient words for column cuts)
-            if lk >= H:
-                if H == 1:
-                    current_row_cells[0]['words'] = words_pk
-                else: # H > 1
-                    horizontal_distances: List[Tuple[float, int]] = []
-                    for i in range(lk - 1):
-                        word1_xmax = safe_float(words_pk[i].get('xmax', 0))
-                        word2_xmin = safe_float(words_pk[i+1].get('xmin', 0))
-                        dist = word2_xmin - word1_xmax
-                        if dist < 0: # Overlapping words, treat as small distance
-                            dist = 0.001 
-                        horizontal_distances.append((dist, i))
-                    
-                    # Sort distances in descending order to find largest gaps
-                    horizontal_distances.sort(key=lambda x: x[0], reverse=True)
-                    
-                    # Select H-1 largest distances as cut points (indices of the word *before* the cut)
-                    # The cut occurs *after* words_pk[cut_indices[j]]
-                    cut_indices_sorted = sorted([dist_info[1] for dist_info in horizontal_distances[:H-1]])
-                    
-                    start_idx = 0
-                    for col_idx in range(H):
-                        if col_idx < len(cut_indices_sorted):
-                            end_idx = cut_indices_sorted[col_idx] + 1 # Words up to and including this index
-                        else: # Last column
-                            end_idx = lk
-                        
-                        current_row_cells[col_idx]['words'] = words_pk[start_idx:end_idx]
-                        start_idx = end_idx
-                        if start_idx >= lk and col_idx < H -1 : # Ran out of words before filling all H-1 cuts
-                            logger.info(f"Linea {k}: sin palabras ({lk}) mientras intenó completar {H} columnas basado en {H-1} cortes. Columnas restantes estarán vacías.")
-                            break
-
-            # Case B: Lk < H (Insufficient words)
-            else: 
-                # Subcase B.1: Lk == 1 (Single word on the line)
-                if lk == 1:
-                    single_word = words_pk[0]
-                    word_centroid_x = float(single_word.get('cx', 0))
-                    word_centroid_y = float(single_word.get('cy', 0))
-                    word_centroid = (word_centroid_x, word_centroid_y)
-                    
-                    best_col_j_star = -1
-                    max_cosine_similarity = -2.0 # Cosine similarity ranges from -1 to 1
-
-                    if all(header_cent is not None for header_cent in header_centroids):
-                        header_centroids: List[Optional[Tuple[float, float]]]
-                        for j, header_cent in enumerate(header_centroids):
-                            if header_cent: # Check if header_cent is not None
-                                cosine_similarity = self._calculate_centroid_cosine_similarity(word_centroid, header_cent)
-                                if cosine_similarity > max_cosine_similarity:
-                                    max_cosine_similarity = cosine_similarity
-                                    best_col_j_star = j
-                    
-                    if best_col_j_star != -1:
-                        current_row_cells[best_col_j_star]['words'] = [single_word]
-                    else:
-                        # Fallback: if no valid header centroids or other issue, place in first column
-                        current_row_cells[0]['words'] = [single_word]
-                        logger.warning(f"Line {k}, Word '{single_word.get('ocr_text','N/A')}': Could not determine best column via centroid similarity. Placing in first column.")
-
-                # Subcase B.2: 1 < Lk < H
-                else: # (lk > 1 and lk < H)
-                    for i in range(lk):
-                        current_row_cells[i]['words'] = [words_pk[i]]
             
-            # Populate cell_text for the current row
+            # CASO A: L_k ≥ H (Más palabras que columnas)
+            if L_k >= H:
+                row_cells = self._case_a_assignment(row_elements, H, L_k)
+            
+            # CASO B: L_k < H (Menos palabras que columnas)  
+            else:
+                row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids, min_cosine_similarity)
+            
+            # Generar texto de celda
             for cell_idx in range(H):
-                cell_words = current_row_cells[cell_idx]['words']
-                if cell_words:
-                    current_row_cells[cell_idx]['cell_text'] = " ".join([w.get('ocr_text', '') for w in cell_words]).strip()
+                cell_elements = row_cells[cell_idx]['words']
+                if cell_elements:
+                    row_cells[cell_idx]['cell_text'] = " ".join([elem.get('ocr_text', '') for elem in cell_elements]).strip()
             
-            table_matrix_T.append(current_row_cells)
+            table_matrix.append(row_cells)
+            
+        return table_matrix
 
-        logger.info(f"GeometricTableStructurer: Successfully structured {len(table_matrix_T)} lines into {H} columns.")
-        return table_matrix_T
+    def _extract_row_elements(self, line_obj: AllLines, polygons: Dict[str, Polygons]) -> List[Dict[str, Any]]:
+        """
+        Extrae elementos P_i con atributos geométricos de una fila S_k.
+        """
+        row_elements: List[Dict[str, Any]] = []
         
-    def _calculate_centroid_cosine_similarity(self, word_centroid: Tuple[float, float], header_cent: Tuple[float, float]) -> float:
-        """Calculates cosine similarity between two centroid vectors relative to origin (0,0)."""
-        c1_x, c1_y = word_centroid
-        c2_x, c2_y = header_cent
+        for poly_id in line_obj.polygon_ids:
+            poly_data = polygons.get(poly_id)
+            if poly_data and poly_data.geometry:
+                geom = poly_data.geometry
+                element = {
+                    "xmin": geom.bounding_box[0],
+                    "xmax": geom.bounding_box[2], 
+                    "cx": geom.centroid[0],
+                    "cy": geom.centroid[1],
+                    "ocr_text": poly_data.ocr_text or ""
+                }
+                row_elements.append(element)
+                
+        return row_elements
 
-        dot_product = c1_x * c2_x + c1_y * c2_y
-        magnitude1 = math.sqrt(c1_x**2 + c1_y**2)
-        magnitude2 = math.sqrt(c2_x**2 + c2_y**2)
-
-        if magnitude1 == 0 or magnitude2 == 0:
-            return 0.0  # Avoid division by zero; no similarity if one vector is zero
+    def _case_a_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int) -> List[Dict[str, Any]]:
+        """
+        CASO A: L_k ≥ H - Algoritmo de distancias horizontales Δ_i
+        Calcula Δ_i = x_{i+1}^min - x_i^max y selecciona H-1 mayores espacios.
+        """
+        row_cells = [{'words': [], 'cell_text': ''} for _ in range(H)]
         
-        cosine_similarity = dot_product / (magnitude1 * magnitude2)
-        return cosine_similarity
+        if H == 1:
+            row_cells[0]['words'] = row_elements
+            return row_cells
+        
+        # 1. Calcular distancias horizontales Δ_i
+        horizontal_distances: List[tuple[float, int]] = []
+        for i in range(L_k - 1):
+            x_i_max = float(row_elements[i].get('xmax', 0))
+            x_i1_min = float(row_elements[i + 1].get('xmin', 0))
+            delta_i = max(0.001, x_i1_min - x_i_max)  # ε = 0.001 para solapamientos
+            horizontal_distances.append((delta_i, i))
+        
+        # 2. Seleccionar H-1 mayores Δ_i como puntos de corte J
+        horizontal_distances.sort(key=lambda x: x[0], reverse=True)
+        cut_indices = sorted([idx for _, idx in horizontal_distances[:H-1]])
+        
+        # 3. Asignación a intervalos T[k][j]
+        start_idx = 0
+        for col_idx in range(H):
+            if col_idx < len(cut_indices):
+                end_idx = cut_indices[col_idx] + 1
+            else:
+                end_idx = L_k
+                
+            row_cells[col_idx]['words'] = row_elements[start_idx:end_idx]
+            start_idx = end_idx
+            
+            if start_idx >= L_k:
+                break
+                
+        return row_cells
 
-def safe_float(val: Any, default: float = 0.0) -> float:
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return default
+    def _case_b_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int,
+                          header_centroids: List[List[float]], min_cosine_similarity: float) -> List[Dict[str, Any]]:
+        """
+        CASO B: L_k < H - Asignación por similitud coseno o secuencial
+        """
+        row_cells = [{'words': [], 'cell_text': ''} for _ in range(H)]
+        
+        # Subcaso B.1: L_k = 1 - Similitud coseno con centroides de encabezado
+        if L_k == 1:
+            element = row_elements[0]
+            element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
+            
+            # Calcular j* = argmax_j (c_1 · c_j) / (||c_1|| ||c_j||)
+            best_col = 0
+            best_similarity = 0.0
+            
+            for j, header_centroid in enumerate(header_centroids):
+                similarity = alignment(header_centroid, element_centroid)
+                if similarity > best_similarity and similarity >= min_cosine_similarity:
+                    best_similarity = similarity
+                    best_col = j
+            
+            row_cells[best_col]['words'] = [element]
+        
+        # Subcaso B.2: 1 < L_k < H - Asignación secuencial
+        else:
+            for i in range(min(L_k, H)):
+                row_cells[i]['words'] = [row_elements[i]]
+                
+        return row_cells
+
+    def _create_structured_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> pd.DataFrame:
+        """
+        Genera DataFrame estructurado a partir de la matriz de celdas T[k][j].
+        """
+        df_data = []
+        for row in table_matrix:
+            row_data = [cell.get('cell_text', '') for cell in row[:H]]
+            df_data.append(row_data)
+            
+        df = pd.DataFrame(df_data)
+        df.columns = [f"col_{i}" for i in range(H)]
+        
+        return df

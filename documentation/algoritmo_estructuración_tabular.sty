@@ -1,0 +1,147 @@
+### **Modelo Matemático Ajustado para Extracción de Tablas en {R}^2 (Versión Rigurosa-Geométrica)**
+
+---
+
+#### **1. Definición del Espacio y Objetos**
+Sea \(Ω⊂R^((2\)) ) ) un rectángulo compacto con:
+\[
+\Omega = [0, W] \times [0, H] \quad \text{(ancho \(W\), alto \(H\))}
+\]
+- **Palabras**: Cada palabra \(P_i\) es un cuadrilátero convexo en \(\Omega\) con atributos:
+  \[
+  P_i = \big( \text{text\_raw}, [x_i^{\min}, x_i^{\max}] \times [y_i^{\min}, y_i^{\max}], (c_{x,i}, c_{y,i}) \big)
+  \]
+  donde \((c_{x,i}, c_{y,i})\) es el centroide calculado como:
+  \[
+  c_{x,i} = \frac{x_i^{\min} + x_i^{\max}}{2}, \quad c_{y,i} = \frac{y_i^{\min} + y_i^{\max}}{2}
+  \]
+
+- **Disposición**:  
+  \[
+  \forall i \neq j, \quad P_i \cap P_j = \emptyset \quad \text{(sin solapamiento significativo)}
+  \]
+
+---
+
+#### **2. Estructura de Tabla**
+- **Encabezados \(\mathcal{H}^*\)**:  
+  Conjunto de \(H\) palabras alineadas horizontalmente que definen las columnas:
+  \[
+  \mathcal{H}^* = \{P_{h_1}, \dots, P_{h_H}\}, \quad \text{ordenadas por } x_{h_j}^{\min} \text{ creciente}
+  \]
+  - **Centroides de referencia**:  
+    \[
+    \mathbf{c}_j = (c_{x,h_j}, c_{y,h_j}) \quad \forall j \in \{1, \dots, H\}
+    \]
+
+- **Filas \(\mathcal{S}\)**:  
+  Partición de \(\mathcal{P} \setminus \mathcal{H}^*\) en líneas horizontales:
+  \[
+  \mathcal{S} = \{S_1, \dots, S_m\}, \quad \text{donde } S_k = \{P_i \mid |c_{y,i} - \bar{y}_k| \leq \varepsilon_y \}
+  \]
+  con \(\bar{y}_k\) como la coordenada \(y\) media de la línea \(k\) y \(\varepsilon_y\) un umbral pequeño.
+
+---
+
+#### **3. Algoritmo de Asignación a Celdas**
+Para cada fila \(S_k \in \mathcal{S}\) con \(L_k = |S_k|\):
+
+##### **Caso A: \(L_k \geq H\) (Más palabras que columnas)**
+1. **Distancias horizontales**:  
+   Para cada par consecutivo \((P_i, P_{i+1})\) en \(S_k\):
+   \[
+   \Delta_i = x_{i+1}^{\min} - x_i^{\max}
+   \]
+   - Si \(\Delta_i < 0\) (solapamiento), \(\Delta_i \leftarrow \epsilon\) (ej. \(\epsilon = 0.001\)).
+
+2. **Puntos de corte**:  
+   Seleccionar los \(H-1\) mayores \(\Delta_i\):
+   \[
+   \mathcal{J} = \left\{ i \mid \Delta_i \text{ está en el top } H-1 \text{ de } \{\Delta_i\}_{i=1}^{L_k-1} \right\}
+   \]
+
+3. **Asignación**:  
+   Dividir \(S_k\) en \(H\) grupos usando \(\mathcal{J}\):
+   \[
+   \mathcal{T}[k][j] = \left\{ P_i \in S_k \mid i \in \text{intervalo}_j \right\}
+   \]
+
+##### **Caso B: \(L_k < H\) (Menos palabras que columnas)**
+1. **Subcaso B.1 (\(L_k = 1\))**:
+   - Calcular similitud coseno entre \(\mathbf{c}_1\) (centroide de \(P_1\)) y \(\mathbf{c}_j\) de los encabezados:
+     \[
+     j^* = \argmax_{j} \frac{\mathbf{c}_1 \cdot \mathbf{c}_j}{\|\mathbf{c}_1\| \|\mathbf{c}_j\|}
+     \]
+   - Asignar:
+     \[
+     \mathcal{T}[k][j^*] = \{P_1\}
+     \]
+
+2. **Subcaso B.2 (\(1 < L_k < H\))**:
+   - Asignación secuencial:
+     \[
+     \mathcal{T}[k][i] = \{P_i\} \quad \forall i \in \{1, \dots, L_k\}
+     \]
+
+---
+
+#### **4. Teorema de Consistencia Geométrica**
+**Hipótesis**:  
+1. **Separabilidad vertical**:  
+   \[
+   \min_{k \neq l} |\bar{y}_k - \bar{y}_l| > 2\varepsilon_y
+   \]
+2. **Separabilidad horizontal (encabezados)**:  
+   \[
+   \min_{j \neq j'} |c_{x,h_j} - c_{x,h_{j'}}| > \gamma \quad \text{(\(\gamma\) umbral de columna)}
+   \]
+
+**Tesis**:  
+1. **Preservación de encabezados**:  
+   \[
+   \mathcal{T}[\text{índice}(S_*)][j] = P_{h_j} \quad \forall j
+   \]
+2. **Optimalidad de cortes (Caso A)**:  
+   Los \(H-1\) mayores \(\Delta_i\) corresponden a los límites naturales entre columnas.  
+3. **Monotonía posicional**:  
+   Si \(P_a \in \mathcal{T}[k][j]\), \(P_b \in \mathcal{T}[k][j']\) con \(j < j'\), entonces:
+   \[
+   x_a^{\max} < x_b^{\min}
+   \]
+
+---
+
+#### **5. Ejemplo en \(\mathbb{R}^2\)**
+- **Encabezados**:  
+  \[
+  \mathcal{H}^* = \left\{
+  \left(\text{"Producto"}, [1.0, 3.0] \times [5.0, 6.0], (2.0, 5.5)\right), \\
+  \left(\text{"Cant"}, [4.0, 5.0] \times [5.0, 6.0], (4.5, 5.5)\right), \\
+  \left(\text{"Precio"}, [6.0, 8.0] \times [5.0, 6.0], (7.0, 5.5)\right)
+  \right\}, \quad H = 3
+  \]
+
+- **Fila \(S_k\) (\(L_k = 4\))**:  
+  \[
+  S_k = \left\{
+  \left(\text{"Lápiz"}, [1.2, 2.8] \times [3.0, 4.0], (2.0, 3.5)\right), \\
+  \left(\text{"2"}, [4.1, 4.9] \times [3.0, 4.0], (4.5, 3.5)\right), \\
+  \left(\text{"1.50"}, [6.1, 7.9] \times [3.0, 4.0], (7.0, 3.5)\right)
+  \right\}
+  \]
+  - **Distancias**: \(\Delta_1 = 1.3\), \(\Delta_2 = 1.2\)  
+  - **Asignación**:  
+    \[
+    \mathcal{T}[k][1] = \{\text{"Lápiz"}\}, \quad \mathcal{T}[k][2] = \{\text{"2"}\}, \quad \mathcal{T}[k][3] = \{\text{"1.50"}\}
+    \]
+
+---
+
+### **Conclusión**  
+El modelo ajustado:  
+1. **Abstrae fielmente** el código implementado en \(\mathbb{R}^2\).  
+2. **Combina geometría euclidiana** (centroides, distancias) con **heurísticas prácticas** (cortes por espacios).  
+3. **Preserva invariantes** clave (alineación, monotonía) sin asumir condiciones ideales.  
+4. **Es robusto** a variaciones en densidad de palabras y desalineaciones menores.  
+
+**Nota**: La imagen del ticket es un plano en \(\mathbb{R}^2\), pero el algoritmo opera sobre sus proyecciones geométricas (bounding boxes y centroides), garantizando coherencia entre el modelo formal y la implementación.

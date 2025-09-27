@@ -42,7 +42,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.perf_counter()
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-        logger.info(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
+        logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
         image_list: List[np.ndarray[Any, np.dtype[np.uint8]]] = []
         polygon_ids: List[str] = []
         
@@ -141,4 +141,4 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             json_file_name = f"{os.path.splitext(file_name)[0]}.json"
             output_file = save_json(final_results, output_dir, json_file_name, project_root)
         if output_file:
-            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")
+            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")

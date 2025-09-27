@@ -172,15 +172,16 @@ modules:
 
     cos_sim:
       min_cluster: 1
-      similarity_threshold: 0.90
+      similarity_threshold: 0.85
       interval: 1
       
     dbscan:
-      eps: 1.0
+      eps: 0.5
       min_cluster_size: 2
 
     table_structurer:
       min_h: 3
+      min_cosine_similarity: 0.75
     
     math_max:
       total_mtl_abs_tolerance: 0.05

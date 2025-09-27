@@ -1,5 +1,4 @@
 # PerfectOCR/core/workflow/vectorial_transformation/vectorizer.py
-import math
 import numpy as np
 import time
 import logging
@@ -7,6 +6,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
+from core.utils.cosine_similarity import alignment
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +21,12 @@ class Vectorizer(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:   
             start_time: float = time.time()
-            logger.info("Calculando Features")
+            logger.debug("Calculando Features")
 
             all_features = self._vectorize_text(manager)
             if all_features:
                 total_time = time.time() - start_time
-                logger.info(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
+                logger.debug(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
                 context["all_features"] = all_features
                 
                 return True
@@ -108,8 +108,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 tabla.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 tabla_str = "\n".join(tabla)
                 logger.info(f"\nTabla unificada de características:\n{tabla_str}")
-                logger.info(f"Se calcularon features para {len(all_features)} líneas")
-                # logger.info(f"Features: {all_features} líneas")
+                logger.debug(f"Se calcularon features para {len(all_features)} líneas")
+                # logger.debug(f"Features: {all_features} líneas")
                 return all_features
             else:
                 logger.warning("No se pudieron calcular features para ninguna línea")
@@ -224,10 +224,12 @@ class Vectorizer(VectorizationAbstractWorker):
                 width_rel = bbox_width / total_width if total_width is not None else 0.0
                 cw: float = (total_width / 2.0) if total_width is not None else 0.0
                 ch: float = (total_height / 2.0) if total_height is not None else 0.0
-                main_centroid: List[float] = cw, ch if img_dims is not None else 0.0
-                line_area: float = float(bbox_width * bbox_height)
+                main_centroid: List[float] = cw, ch if ch or cw > 0.0 else 0.0 # type: ignore
+                line_area: float = float(bbox_width * bbox_height) if bbox_height or bbox_width > 0.0  else 0.0
                 area_norm: float = (line_area / max_area) if max_area is not None else 0.0
                 ratio_area: float = (line_area / float(total_size)) if total_size is not None else 0.0
+                max_ratio: float = (max_area / total_size) if total_size is not None and max_area is not None else 0.0
+                ratio_area_norm = float(ratio_area / max_ratio )
                 aspect_ratio = ((bbox_height / bbox_width) * 100) if bbox_width or bbox_height > 0 else 0.0
                 aspcrat_inv_norm = 1 - abs(aspect_ratio / max_asptrat) if max_asptrat is not None else 0
                 perimeter: float = 2 * (bbox_width + bbox_height) if bbox_width or bbox_height > 0 else 0.0
@@ -257,21 +259,6 @@ class Vectorizer(VectorizationAbstractWorker):
                         next_centroid = []
                     
                     return prev_bbox, next_bbox, prev_centroid, next_centroid            
-
-                def _alignment(ref_c: List[float], other_c: List[float]) -> float:
-                    """
-                    Mide alineación usando similitud coseno, tomando como referencia (X,0) del centroide.
-                    Vector desde (ref_c[0], 0) hacia (other_c[0], other_c[1]).
-                    """
-                    if not other_c:
-                        return 1.0
-                    ref_point = np.array([ref_c[0], 0.0])
-                    vec_to_other = np.array([other_c[0] - ref_point[0], other_c[1] - ref_point[1]]).astype(np.float32)
-                    ref_vec = np.array([1, 0]).astype(np.float32)  # eje X positivo
-                    if np.linalg.norm(vec_to_other) == 0.0:
-                        return 1.0
-                    cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
-                    return 1.0 - abs(float(cosine))
 
                 def _bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int) -> Optional[float]:
                     """
@@ -319,10 +306,10 @@ class Vectorizer(VectorizationAbstractWorker):
                 next_xmin_align: Optional[float] = _bbox_alignment(current_xmin, next_bbox, 0) if next_bbox else 1.0
                 next_xmax_align: Optional[float] = _bbox_alignment(current_xmax, next_bbox, 2) if next_bbox else 1.0
 
-                align_prev: Optional[float] = _alignment(centroid, prev_centroid)
-                align_next: Optional[float] = _alignment(centroid, next_centroid)
+                align_prev: Optional[float] = alignment(centroid, prev_centroid)
+                align_next: Optional[float] = alignment(centroid, next_centroid)
                 
-                center_aling: float = _alignment(centroid, main_centroid)
+                center_aling: float = alignment(centroid, main_centroid)
                 
                 # max_size_num_vals: float = 114.0
                 numeric_values: List[float] = [float(x) for x in line_values]
@@ -332,8 +319,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Calcular estadísticos básicos
                 count: float = float(len(numeric_values))
                 mean: float = sum(numeric_values) / count
-                variance: float = sum((x - mean) ** 2 for x in numeric_values) / (count - 1) if count > 1 else 0.0
-                std_dev: float = math.sqrt(variance)
+                std_dev = np.std(numeric_values, ddof=1).astype(float)
 
                 # Calcular etadisticos especiales
                 mean_rel: float = mean / global_max_encoded if mean > 0.0 else 0.0
@@ -358,7 +344,6 @@ class Vectorizer(VectorizationAbstractWorker):
                     'mean_margin': mean_margin,
                     'skewness': skewness,
                     "numeric_count_norm": numeric_count_norm,
-                    "numeric_frec_rel": numeric_frec_rel,
                     "numeric_ratio_frec": numeric_ratio_frec,
                     "num_above": num_above,
                     "num_margin": num_margin,
@@ -367,6 +352,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     "norm_wid": norm_wid,
                     "width_rel": width_rel,
                     "ratio_area": ratio_area,
+                    "ratio_area_norm": ratio_area_norm,
                     "aspcrat_inv_norm": aspcrat_inv_norm,
                     "perimeter_norm": perimeter_norm,
                     "diagonal_norm": diagonal_norm,
@@ -438,7 +424,7 @@ class Vectorizer(VectorizationAbstractWorker):
             return line_features
 
         except Exception as e:
-            logger.info(f"Error en feaures de lineas: {e}", exc_info=True)
+            logger.debug(f"Error en feaures de lineas: {e}", exc_info=True)
             return {}
 
     def _calculate_geometric_line_featrues(self, sorted_lines: List[Tuple[str, AllLines]],  manager: DataFormatter) -> Dict[str, float]:
@@ -487,5 +473,5 @@ class Vectorizer(VectorizationAbstractWorker):
 
             return geoline_features
         except Exception as e:
-                logger.info(f"Error en feaures de lineas: {e}", exc_info=True)
+                logger.debug(f"Error en feaures de lineas: {e}", exc_info=True)
                 return {}
