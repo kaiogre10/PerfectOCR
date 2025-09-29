@@ -58,7 +58,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 logger.error("No se pudieron extraer centroides del encabezado")
                 return False
                 
-            logger.info(f"Encabezado detectado: {header_line_id}, H={H} columnas")
+            logger.debug(f"Encabezado detectado: {header_line_id}, H={H} columnas")
 
             # 3. Seleccionar filas S para procesamiento
             selected_lines = self._select_table_rows(header_line_id, tabular_line_ids, all_lines)
@@ -72,7 +72,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
             total_time = time.time() - start_time
             logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}")
-            logger.info(f"Estructuración de tabla completada en {total_time:.10f} s.")
+            logger.debug(f"Estructuración de tabla completada en {total_time:.10f} s.")
             
             # 7. Guardar usando DataFormatter moderno
             success = manager.save_structured_table(df=df, columns=list(df.columns))
@@ -80,7 +80,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             return success
 
         except Exception as e:
-            logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
+            logger.error(f"Error en estructuración geométrica: {e}", exc_debug=True)
             return False
 
     def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], 
@@ -118,9 +118,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
         return selected_lines
 
-    def _apply_geometric_assignment(self, selected_lines: List[str], all_lines: Dict[str, AllLines],
-                                   polygons: Dict[str, Polygons], header_centroids: List[List[float]], 
-                                   H: int) -> List[List[Dict[str, Any]]]:
+    def _apply_geometric_assignment(self, selected_lines: List[str], all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], header_centroids: List[List[float]], H: int) -> List[List[Dict[str, Any]]]:
         """
         Implementa el algoritmo geométrico de asignación a celdas T[k][j]
         según los Casos A y B del modelo matemático.

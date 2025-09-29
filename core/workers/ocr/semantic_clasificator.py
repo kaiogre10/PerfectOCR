@@ -1,5 +1,6 @@
 # semantic_clasificator
 import logging
+import re
 from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -27,6 +28,19 @@ class SemanticClasificator(OCRAbstractWorker):
             
             final_results: Dict[str, str] = self._clasify_words(polygons)
             
+            classified_count = 0
+
+            for poly_id, semantic_type in final_results.items():
+                if poly_id in polygons:
+                    polygon = polygons[poly_id]
+                    classified_count += 1
+
+            logger.info(f"Total clasificados: {classified_count}")
+            for poly_id, semantic_type in final_results.items():
+                if poly_id in polygons:
+                    polygon = polygons[poly_id]
+                    logger.info(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
+                    
             manager.update_semantic_type(final_results)
 
             file_name: str = manager.workflow.metadata.image_name
@@ -39,45 +53,86 @@ class SemanticClasificator(OCRAbstractWorker):
             logger.debug(f"Error en el clasiicador{e}", exc_info=True)
             
     def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
-    
-        """""Mide la proporción del tipo de carácter para clasificar semánticamente una palabra"""
         numeric_range = self.worker_config.get("numeric", [70.0, 100.0])
         code_range = self.worker_config.get("code", [31.0, 69.9])
-        descriptive_range = self.worker_config.get("descriptive", [0.0, 30.9])
-        
-        def norm(r):
-            return(min(r[0], r[1]), max(r[0], r[1]))
-            
+
+        def norm(r): return (min(r[0], r[1]), max(r[0], r[1]))
         n_min, n_max = norm(numeric_range)
         c_min, c_max = norm(code_range)
-        d_min, d_max = norm(descriptive_range) # type: ignore
-            
+
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
+        final_results: Dict[str, str] = {}
 
-        try:
-            final_results: Dict[str, str] = {}
-            for pid, s in texts.items():
-                s = s or ""
-                chars = [ch for ch in s if not ch.isspace()]
-                total = len(chars)
-                if total == 0:
-                    pct = 0.0
-                else:
-                    digits = sum(1 for ch in chars if ch.isdigit())
-                    pct = (digits / total) * 100.0
+        for pid, s in texts.items():
+            chars = [ch for ch in s if not ch.isspace()]
+            total = len(chars)
+            pct = (sum(1 for ch in chars if ch.isdigit()) / total) * 100.0 if total else 0.0
 
-                if n_min <= pct <= n_max:
-                    semantic = "numeric"
-                elif c_min <= pct <= c_max:
-                    semantic = "code"
-                else:
-                    semantic = "descriptive"
+            if n_min <= pct <= n_max:
+                semantic = "numeric"
+                tokens = [t for t in (s or "").split() if t]
+                if any(self._is_quantitative(t) for t in tokens):
+                    semantic = "quantitative"
+            elif c_min <= pct <= c_max:
+                semantic = "code"
+            else:
+                semantic = "descriptive"
 
-                final_results[pid] = semantic
-                            
-            return final_results
-        except Exception as e:
-            logger.debug(f"Fallo en el mapeo de las letras semánticas {e}", exc_info=True )
+            final_results[pid] = semantic
+
+        return final_results
+            
+    def _is_decimal_number(self, s: str) -> bool:
+        s = (s or "").strip()
+        if not s or "%" in s:
+            return False
+        # casos: 2.98, 39,90, 1,000.00, 1.000,00
+        patterns = [
+            r"^\d+[.,]\d+$",                                # 2.98 / 39,90
+            r"^\d{1,3}(?:[.,]\d{3})+[.,]\d+$",             # 1,000.00 / 1.000,00
+        ]
+        return any(re.match(p, s) for p in patterns)
+
+    def _is_currency_amount(self, s: str) -> bool:
+        s = (s or "").strip()
+        if not s or "%" in s:
+            return False
+        currency = r"[$€£¥¢]"
+        # El símbolo puede estar al inicio o en medio, pero NO al final
+        # Debe estar rodeado enteramente de números (no letras)
+        # No se aceptan cantidades "00" (ni $00 ni 00$ ni 00$00)
+        # Ejemplos válidos: $10.00, 10$00, 1,000$50, $1,000.00, 10$00.50
+        # Ejemplos inválidos: 00$, $00, 00$00, 10.00$
+        # Patrón para símbolo al inicio
+        pattern_start = rf"^{currency}\s*(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?$"
+        # Patrón para símbolo en medio, rodeado de números
+        pattern_middle = (
+            rf"^(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)"
+            rf"\s*{currency}\s*"
+            rf"(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?$"
+        )
+        # No aceptar símbolo al final
+        pattern_end = rf"^(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?\s*{currency}$"
+        # Verificar si hay dos patrones válidos seguidos (ej: "$10.00 $60.00")
+        multi_pattern = (
+            rf"^(\s*{currency}\s*(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?\s*){{2,}}$"
+        )
+        # Rechazar si termina con símbolo de moneda
+        if re.match(pattern_end, s):
+            return False
+        # Rechazar si la cantidad es "00" en cualquier parte
+        cantidades = re.findall(rf"{currency}?\s*(\d+)(?:[.,]\d+)?\s*{currency}?", s)
+        if any(c == "00" for c in cantidades):
+            return False
+        # Aceptar si cumple patrón de inicio, patrón de en medio, o múltiples patrones válidos
+        return (
+            bool(re.match(pattern_start, s)) or
+            bool(re.match(pattern_middle, s)) or
+            bool(re.match(multi_pattern, s))
+        )
+
+    def _is_quantitative(self, token: str) -> bool:
+        return self._is_currency_amount(token) or self._is_decimal_number(token)
                 
     def _save_ocr_raw(self, context: Dict[str, Any], final_results: Dict[str, str], file_name: str):
         from services.output_service import save_json
@@ -91,3 +146,5 @@ class SemanticClasificator(OCRAbstractWorker):
         
         if output_paths:
             logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
+            
+            

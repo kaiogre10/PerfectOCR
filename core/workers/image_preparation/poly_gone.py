@@ -22,15 +22,22 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             import time
             start_time = time.time()
             
-            full_img = context.get("full_img")
+            img_obj = manager.get_full_img()
+            full_img = img_obj.full_img if img_obj is not None else None
             if full_img is None:
-                logger.warning("PolygonExtractor: 'full_img' no encontrado en el contexto.")
+                logger.error(f"No Hay full_img en el Formatter")
                 return False
+            logger.debug("Full_img obtenida con éxito")
                 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            img_h: int = context.get("metadata", {}).get("img_dims", {}).get("height")
-            img_w: int = context.get("metadata", {}).get("img_dims", {}).get("width")
+            img_dims: Dict[str, int] = {}
+            if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
+                img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
+                
+            img_h: np.uint32 = img_dims.get("height")
             
+            img_w: np.uint32  = img_dims.get("width") 
+                        
             if not polygons:
                 logger.warning("PolygonExtractor: No se encontraron polígonos para procesar.")
                 return True
@@ -53,7 +60,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 return True
 
             # 2. Fase de Decisión Vectorizada: Calcular todos los recortes con padding
-            padding = int(self.config.get("cropping_padding", 5))
+            padding: np.uint32 = self.config.get("cropping_padding", 5)
             
             # Convertir a array NumPy para operaciones vectorizadas
             bboxes_array = np.array(all_bboxes, dtype=np.uint32)  # shape: (n_polygons, 4)
@@ -84,11 +91,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             cropped_geometries: Dict[str, Dict[str, Any]] = {}
             
             for i, idx in enumerate(valid_indices):
-                poly_id = poly_ids_order[idx]
+                poly_id: str = poly_ids_order[idx] # type: ignore
                 
                 # Coordenadas calculadas vectorialmente
-                crop_x1, crop_y1 = px1[idx], py1[idx]
-                crop_x2, crop_y2 = px2[idx], py2[idx]
+                crop_x1, crop_y1 = int(px1[idx]), int(py1[idx])
+                crop_x2, crop_y2 = int(px2[idx]), int(py2[idx])
                 
                 # Extraer imagen
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
@@ -128,5 +135,5 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             return True
 
         except Exception as e:
-            logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
+            logger.error(f"Error en PolygonExtractor: {e}", exc_debug=True)
             return False

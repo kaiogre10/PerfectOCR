@@ -49,7 +49,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 logger.debug("Error detectando encabezado")
                 return True
         except Exception as e:
-            logger.debug(f"Error en matriz de similitud coseno: {e}", exc_info=True)
+            logger.debug(f"Error en matriz de similitud coseno: {e}", exc_debug=True)
             return False
             
     def _validate_scanner_interval_all_vs_all(self, analysis: Dict[str, Dict[str, float]], all_lines: Dict[str, AllLines], tabular_lines: List[str], manager: DataFormatter) -> List[str]:
@@ -116,7 +116,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             for i, line_id in enumerate(interval_line_ids):
                 line_obj = all_lines.get(line_id)
                 line_text = line_obj.text if line_obj else "SIN TEXTO"
-                logger.info(f"[{start_idx + i}] {line_id}: '{line_text}'")
+                logger.debug(f"[{start_idx + i}] {line_id}: '{line_text}'")
 
             # BLOQUEAR líneas que contienen key_field
             # MontoTotalDocumento, Subtotal, TotalProductos, MontoIVAGeneral, RFCProveedor, FolioDocumento, FechaDocumento, NombreCliente
@@ -140,7 +140,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                             blocked_line_ids.add(line_id)
                             logger.debug(f"Línea {line_id} bloqueada por contener polígonos con key_field")
             
-            logger.info(f"Líneas bloqueadas por key_field: {sorted(blocked_line_ids)}")
+            logger.debug(f"Líneas bloqueadas por key_field: {sorted(blocked_line_ids)}")
             
             # Filtrar el intervalo excluyendo líneas bloqueadas
             blocked_in_interval = [idx for idx in range(start_idx, end_idx + 1) if line_ids[idx] in blocked_line_ids]
@@ -215,20 +215,20 @@ class MatricialCusine(VectorizationAbstractWorker):
                 X = csr_matrix(mat_rows, dtype=np.float64)
                 timecos0 = time.perf_counter()
                 sims_mat = cosine_similarity(X, dense_output=False)
-                logger.info(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
+                logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
             except Exception as e:
-                logger.error(f"Error calculando matriz se similitud: {e}", exc_info=True)
-            # Para mejorar la legibilidad, separamos filas y columnas y mostramos la matriz línea por línea
-            
-            mean = np.array(sims_mat, dtype=np.uint8)
-            mean_log = np.mean(mean)
+                logger.error(f"Error calculando matriz se similitud: {e}", exc_debug=True)
+
+            # Convertir la matriz dispersa a densa para mostrarla
+            sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray()
+            mean_log = np.mean(sims_mat_dense)
             logger.debug(f"Promedio matriz: {mean_log}")
             logger.debug("Matriz de similitud (cosine_similarity):")
-            logger.info("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
+            logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
             matriz_str = "\n".join(
-                ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat]
+                ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense]
             )
-            logger.info("Matriz:\n%s", matriz_str)
+            logger.debug("Matriz:\n%s", matriz_str)
 
             # para cada fila, calcular similitud media con las demás (excluir self)
             mean_sims: List[float] = []
@@ -245,7 +245,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 if mean_sim >= similarity_threshold:
                     matched_original_indices.append(int(orig_idx))
                     consecutive_failures +=1
-                logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
+                logger.debug(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
 
         table_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
         return table_line_ids
@@ -272,4 +272,4 @@ class MatricialCusine(VectorizationAbstractWorker):
                 return header_line_id
         
         except Exception as e:
-            logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
+            logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_debug=True)

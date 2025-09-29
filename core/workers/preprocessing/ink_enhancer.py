@@ -116,8 +116,7 @@ class InkEnhancer(PreprocessingAbstractWorker):
             "local_contrast": local_contrast
         }
 
-    def _restore_faded_ink(self, img: np.ndarray[Any, np.dtype[np.uint8]], faded_score: float) -> np.ndarray[
-        Any, np.dtype[np.uint8]]:
+    def _restore_faded_ink(self, img: np.ndarray[Any, np.dtype[np.uint8]], faded_score: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """Restaura la intensidad del texto con tinta gastada."""
 
         # 1. Estiramiento adaptativo del histograma

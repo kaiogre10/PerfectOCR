@@ -1,8 +1,7 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WORKFLOW_SCHEMA, WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, HeaderLine
+from core.domain.data_models import WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, HeaderLine, FullImage
 import numpy as np
 import dataclasses
-import jsonschema
 import logging
 import json
 import time
@@ -14,106 +13,45 @@ logger = logging.getLogger(__name__)
 
 class DataFormatter:
     """
-    Válvula de entrada/salida para todas las operaciones del dict.
-    Los workers NO tocan directamente el dict_id, solo pasan por aquí.
+    Válvula de entrada/salida para todas las operaciones del workflow.
+    Los workers NO tocan directamente el workflow, solo pasan por aquí.
     """
     def __init__(self):
         self.workflow: Optional[WorkflowDict] = None
-        self.schema = WORKFLOW_SCHEMA
         self.encoder = DENSITY_ENCODER
         self.frecuency = CHAR_FRECUENCY
         self.structured_table: Optional[StructuredTable] = None
-
-    def create_dict(self, IDRegistro: str, full_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
-        """Crea un nuevo dict"""
-        self.temp_dict: Dict[str, Any] = {
-            "IDRegistro": IDRegistro,
-            "full_img": [full_img.tolist() if hasattr(full_img, 'tolist') else full_img],
-            "global_data": {},
-            "metadata": {
-                "image_name": str(metadata.get("image_name", "")),
-                "format": str(metadata.get("format", "")),
-                "img_dims": {
-                    "width": float(metadata.get("img_dims", {}).get("width")),
-                    "height": float(metadata.get("img_dims", {}).get("height")),
-                    "size": float(metadata.get("img_dims", {}).get("size")),
-                },
-                "date_creation": metadata.get("date_creation", datetime.now().isoformat()),
-            },
-            "polygons": {},
-            "all_lines": {},
-        }
-
+        
+    def create_workflow(self, IDRegistro: str, full_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
+        """Crea un nuevo workflow usando solo dataclasses"""
         try:
-            jsonschema.validate(self.temp_dict, self.schema)
+            
+            full_image = FullImage(
+                full_img=(full_img)
+                )
+            
             metadata_obj = Metadata(
-                image_name=self.temp_dict["metadata"]["image_name"],
-                format=self.temp_dict["metadata"]["format"],
-                img_dims=self.temp_dict["metadata"]["img_dims"],
-                date_creation=self.temp_dict["metadata"]["date_creation"],
+                image_name=str(metadata.get("image_name", "")),
+                format=str(metadata.get("format", "")),
+                img_dims={
+                    "width": float(metadata.get("img_dims", {}).get("width") or 0.0),
+                    "height": float(metadata.get("img_dims", {}).get("height") or 0.0),
+                    "size": float(metadata.get("img_dims", {}).get("size") or 0.0),
+                },
+                date_creation=metadata.get("date_creation", datetime.now().isoformat()),
             )
 
             self.workflow = WorkflowDict(
                 IDRegistro=IDRegistro,
-                full_img=full_img,
-                global_data={},
+                full_img=full_image,
                 metadata=metadata_obj,
                 polygons={},
                 all_lines={},
             )
-            self.workflow_dict = self.temp_dict
-
             return True
         except Exception as e:
-            logger.error(f"Error validando workflow_dict: {e}", exc_info=True)
-            return False
-        
-    def _validate_and_create_polygon(self, poly_data: Dict[str, Any]) -> Optional[Polygons]:
-        """Valida un polígono individual contra el schema y crea la dataclass"""
-        try:
-            # Crear esquema temporal para un polígono
-            poly_schema = self.schema["properties"]["polygons"]["patternProperties"]["^poly_\\d{4}$"]
-            
-            # Validar estructura
-            jsonschema.validate(poly_data, poly_schema)
-            
-            # Crear dataclasses anidadas con conversión a np.ndarray
-            geometry = Geometry(
-                polygon_coords=np.array(poly_data["geometry"]["polygon_coords"]),
-                bounding_box=np.array(poly_data["geometry"]["bounding_box"]),
-                centroid=np.array(poly_data["geometry"]["centroid"])
-            )
-            
-            cropped_geo = CroppedGeometry(
-                padd_centroid=np.array(poly_data["cropped_geometry"]["padd_centroid"]) if poly_data["cropped_geometry"]["padd_centroid"] else np.array([]),
-                padding_coords=np.array(poly_data["cropped_geometry"]["padding_coords"]) if poly_data["cropped_geometry"]["padding_coords"] else np.array([]),
-                croppy_dims=poly_data["cropped_geometry"].get("croppy_dims", {})
-            )
-            
-            # Crear polígono completo
-            polygon = Polygons(
-                polygon_id=poly_data["polygon_id"],
-                geometry=geometry,
-                cropedd_geometry=cropped_geo,
-                cropped_img=CroppedImage(poly_data["cropped_img"]) if poly_data["cropped_img"] else None,
-                perimeter=poly_data.get("perimeter"),
-                line_id=poly_data.get("line_id", ""),
-                ocr_text=poly_data.get("ocr_text"),
-                ocr_confidence=poly_data.get("ocr_confidence"),
-                was_fragmented=poly_data.get("was_fragmented", False),
-                status=poly_data.get("status", True),
-                stage=poly_data.get("stage", ""),
-                key_field=poly_data.get("key_field", "global"),
-                semantic_type=poly_data.get("semantic_type", "")
-            )
-            
-            return polygon
-        except jsonschema.ValidationError as e:
-            logger.error(f"Polígono no válido: {e}", exc_info=True)
-            return None
-        except Exception as e:
-            logger.error(f"Error creando polígono: {e}", exc_info=True)
-            return None
+            logger.error(f"Error creando workflow: {e}", exc_info=True)
+            return False        
 
     def create_polygon_dicts(self, results: Optional[List[Any]]) -> bool:
         """Refactorizado para usar validación + dataclasses"""
@@ -121,59 +59,54 @@ class DataFormatter:
             if results is None:
                 return False
             
-            polygons_dict: Dict[str, Dict[str, Polygons]] = {}
             polygons_dataclass: Dict[str, Polygons] = {}
             
             for idx, poly_pts in enumerate(results[0]):
                 poly_id = f"poly_{idx:04d}"
                 
-                # Cálculos vectorizados (igual que antes)
+                # Cálculos vectorizados
                 coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts])
                 bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), 
                             coords[:, 0].max(), coords[:, 1].max()])
                 centroid = coords.mean(axis=0)
-                
-                # Crear estructura para validación
-                poly_data: Dict[str, Any] = {
-                    "polygon_id": poly_id,
-                    "geometry": {
-                        "polygon_coords": coords.tolist(),
-                        "bounding_box": bbox.tolist(),
-                        "centroid": centroid.tolist(),
-                    },
-                    "cropped_geometry": {
-                        "padd_centroid": [],
-                        "padding_coords": [],
-                        "poly_dims": {}
-                    },
-                    "cropped_img": None,
-                    "perimeter": None,
-                    "line_id": "",
-                    "ocr_text": "",
-                    "ocr_confidence": None,
-                    "was_fragmented": False,
-                    "status": True,
-                    "stage": "",
-                    "key_field": "",
-                    "semantic_type": ""
-                }
-                
-                # Validar y crear dataclass
-                polygon_obj = self._validate_and_create_polygon(poly_data)
-                if polygon_obj:
-                    polygons_dict[poly_id] = poly_data
-                    polygons_dataclass[poly_id] = polygon_obj
-            
+
+                # Crear objeto Geometry
+                geometry = Geometry(
+                    polygon_coords=coords,
+                    bounding_box=bbox,
+                    centroid=centroid
+                )
+
+                # Crear objeto Polygons y agregar al diccionario
+                polygon_obj = Polygons(
+                    polygon_id=poly_id,
+                    geometry=geometry,
+                    cropedd_geometry=None,
+                    cropped_img=None,
+                    perimeter=None,
+                    line_id=None,
+                    ocr_text=None,
+                    ocr_confidence=None,
+                    was_fragmented=False,
+                    status=False,
+                    key_field=None,
+                    semantic_type=None,
+                )
+                polygons_dataclass[poly_id] = polygon_obj
+                                
             # Actualizar 
             if self.workflow:
                 self.workflow.polygons = polygons_dataclass
                 
-            logger.debug(f"Polígonos creados y validados: {len(polygons_dict)}")
+            logger.debug(f"Polígonos creados y validados: {len(polygons_dataclass)}")
             return True
             
         except Exception as e:
             logger.error(f"Error en create_polygon_dicts: {e}")
             return False
+            
+    def get_full_img(self) -> Optional[FullImage]:
+        return self.workflow.full_img if self.workflow else None
 
     def get_structured_table(self) -> Optional[pd.DataFrame]:
         return self.structured_table.df if self.structured_table else None
@@ -205,17 +138,11 @@ class DataFormatter:
                             ocr_confidence=polygon.ocr_confidence,
                             was_fragmented=polygon.was_fragmented,
                             status=polygon.status,
-                            stage=polygon.stage,
                             key_field=polygon.key_field,
                             semantic_type=polygon.semantic_type,
                         )
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_count += 1
-                        
-            # También limpiar del dict serializado
-            for poly_id in polygon_ids:
-                if poly_id in self.workflow_dict["polygons"]:
-                    self.workflow_dict["polygons"][poly_id]["cropped_img"] = None
                     
             logger.debug(f"Liberadas {cleared_count} imágenes recortadas de memoria.")
             return True
@@ -342,7 +269,6 @@ class DataFormatter:
                         ocr_confidence=polygon.ocr_confidence,
                         was_fragmented=polygon.was_fragmented,
                         status=polygon.status,
-                        stage=polygon.stage,
                         key_field=polygon.key_field,
                         semantic_type=polygon.semantic_type,
                     )
@@ -355,7 +281,7 @@ class DataFormatter:
             return False
         
     def update_preprocessing_result(self, poly_id: str, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_name: str) -> bool:
-        """Actualiza resultado de preprocesamiento y marca stage/status"""            
+        """Actualiza resultado de preprocesamiento"""            
         # También actualizar la dataclass
         if self.workflow and poly_id in self.workflow.polygons:
             polygon = self.workflow.polygons[poly_id]
@@ -370,7 +296,6 @@ class DataFormatter:
                 ocr_confidence=polygon.ocr_confidence,
                 was_fragmented=polygon.was_fragmented,
                 status=polygon.status,
-                stage=polygon.stage,
                 key_field=polygon.key_field,
                 semantic_type=polygon.semantic_type,
             )
@@ -405,7 +330,6 @@ class DataFormatter:
                             ocr_confidence=res.get("confidence"), 
                             was_fragmented=polygon.was_fragmented,
                             status=polygon.status,
-                            stage=polygon.stage,
                             key_field=polygon.key_field,
                             semantic_type=polygon.semantic_type,
                         )
@@ -433,8 +357,6 @@ class DataFormatter:
                     updated_polygon = dataclasses.replace(polygon, semantic_type=semantic_type)
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
-            
-                    logger.debug(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con semantic_types")
@@ -473,7 +395,7 @@ class DataFormatter:
                 # localizamos la línea header y la marcamos automáticamente.
                 header_line = self._find_and_mark_header()
                 if header_line:
-                    logger.info(f"Header marcado automáticamente: {header_line}")
+                    logger.debug(f"Header marcado automáticamente: {header_line}")
                 return True
             
         except Exception as e:
@@ -524,7 +446,7 @@ class DataFormatter:
             logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
             return None
             
-    def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
+    def create_text_lines(self, lines_debug: Dict[str, Any]) -> bool:
         """
         Guarda las líneas reconstruidas en el workflow_dict y, más importante,
         crea las dataclasses AllLines y las guarda en el workflow (la fuente de verdad).
@@ -534,16 +456,16 @@ class DataFormatter:
                 logger.error("No hay workflow_dict o workflow inicializado para guardar líneas de texto.")
                 return False
             
-            if not lines_info:
+            if not lines_debug:
                 return False
 
-            valid_lines = {k: v for k, v in lines_info.items() if v is not None}
+            valid_lines = {k: v for k, v in lines_debug.items() if v is not None}
             if not valid_lines:
                 logger.warning("No hay líneas válidas para procesar.")
                 return False
                 
             all_lines_dataclasses: Dict[str, AllLines] = {}
-            tabular_lines_info: List[Dict[str, Any]] = []
+            tabular_lines_debug: List[Dict[str, Any]] = []
             for line_id, line_data in valid_lines.items():
                 line_geometry = LineGeometry(
                     line_centroid=line_data.get("line_centroid", [0, 0]),
@@ -557,7 +479,7 @@ class DataFormatter:
                     polygon_ids=line_data.get("polygon_ids", []),
                     line_geometry=line_geometry,
                     tabular_line=False,
-                    header_line=Heade,
+                    header_line=False,
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
@@ -565,13 +487,13 @@ class DataFormatter:
             for line_id in self.workflow.all_lines:
                 if line_id in self.workflow.all_lines:
                     line_obj = self.workflow.all_lines[line_id]
-                    tabular_lines_info.append({
+                    tabular_lines_debug.append({
                                 "line_id": line_id,
                                 "text": line_obj.text,
                             })
 
-            if tabular_lines_info:
-                for all_lines in tabular_lines_info:
+            if tabular_lines_debug:
+                for all_lines in tabular_lines_debug:
                     logger.info(f"Linea textual: {all_lines['line_id']}: '{all_lines['text']}'")
             
             num_lines = len(all_lines_dataclasses)
@@ -598,7 +520,7 @@ class DataFormatter:
             updated_line = dataclasses.replace(current_line, header_line=True)
             self.workflow.all_lines[header_line_id] = updated_line
             
-            logger.info(f"Línea {header_line_id} marcada como header.")
+            logger.debug(f"Línea {header_line_id} marcada como header.")
             return True
             
         except Exception as e:
@@ -639,7 +561,7 @@ class DataFormatter:
             if not line_ids:
                 logger.warning("No se recibieron line_ids en el manager.")
             marked_count = 0
-            tabular_lines_info: List[Dict[str, Any]] = []
+            tabular_lines_debug: List[Dict[str, Any]] = []
             marked_ids: List[str] = []
             for line_id in line_ids:
                 if line_id in self.workflow.all_lines:
@@ -649,7 +571,7 @@ class DataFormatter:
                     self.workflow.all_lines[line_id] = updated_line
                     marked_count += 1
                     marked_ids.append(line_id)
-                    tabular_lines_info.append({
+                    tabular_lines_debug.append({
                         "line_id": line_id,
                         "text": getattr(self.workflow.all_lines[line_id], "text", ""),
                         "polygon_ids": getattr(self.workflow.all_lines[line_id], "polygon_ids", [])
@@ -657,8 +579,8 @@ class DataFormatter:
 
             if marked_ids:
                 logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
-                for log_info in tabular_lines_info:
-                    logger.info(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
+                for log_debug in tabular_lines_debug:
+                    logger.debug(f"Líneas tabulares: {log_debug['line_id']}: '{log_debug['text']}' | polygons: {log_debug['polygon_ids']}")
             else:
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 

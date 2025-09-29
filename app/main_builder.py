@@ -9,7 +9,6 @@ from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
 from core.factory.main_factory import MainFactory
-from core.workers.image_preparation.image_loader import ImageLoader
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
 from services.config_service import ConfigService
@@ -101,34 +100,32 @@ def create_builders(config_services: ConfigService, project_root: str, workflow_
            "geometry_detector": geometry_detector,
             "paddle_wrapper": paddle_wrapper,
             "data_finder": data_finder,
+            "image_data": image_data,
         }
 
         image_load_factory = worker_factory.get_image_preparation_factory()
         image_prep_workers = image_load_factory.create_workers(
-            [ "geometry_detector", "polygon_extractor"],
-            context) #"cleaner", "angle_corrector",
+            ["image_loader", "cleaner", "angle_corrector","geometry_detector", "polygon_extractor"],
+            context) # 
 
         preprocessing_factory = worker_factory.get_preprocessing_factory()
         preprocessing_workers = preprocessing_factory.create_workers(
-            [],
-            context) # "moire", "sp",  "ink_enhancement", "clahe", "sharp" "gauss",
+            ["moire", "sp", "gauss", "ink_enhancement", "clahe", "sharp", "binarizator",],
+            context) # 
         
         ocr_factory = worker_factory.get_ocr_factory()
         ocr_workers = ocr_factory.create_workers(
-            ["paddle_wrapper" ,"semantic_clasificator", "text_cleaner", "fragmenter", "data_finder",],
-            context) # "binarizator"
+            ["paddle_wrapper", "semantic_clasificator", "data_finder", "text_cleaner", "fragmenter", ],
+            context) # 
         vectorizing_factory = worker_factory.get_vectorizing_factory()
         vectorization_workers = vectorizing_factory.create_workers(
             ["lineal", "vectorizer", "dbscan", "cos_sim", "table_structurer", "math_max"],
             context) # ,   
-        image_loader = ImageLoader(
-            image_info=image_data,
-            project_root=project_root,
-        )
-        
+                    
         input_stager = ImagePreparationStager(
             workers=image_prep_workers,
-            image_loader = image_loader,
+            stage_config=config_services.manager_config,
+            output_paths=output_paths,
             project_root=project_root
         )
             

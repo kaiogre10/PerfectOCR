@@ -41,32 +41,47 @@ class Fragmenter(OCRAbstractWorker):
             
             text_needs_frag = (
                 self.worker_config and
-                polygon.semantic_type != "numeric" and
+                polygon.semantic_type not in ("numeric", "quantitative") and
                 " " in (polygon.ocr_text or "").strip()
             )
 
             punctuation_needs_frag = (
                 self.worker_config and
-                polygon.semantic_type != "numeric" and
+                polygon.semantic_type not in ("numeric", "quantitative") and
                 not text_needs_frag and  # Solo si no hay espacios
-                any(punct in (polygon.ocr_text or "") for punct in [";", ":", "!", "?"])
+                any(punct in (polygon.ocr_text or "") for punct in [";", ":", "!", "?", "'"])
             )
 
             poly_blob_metrics = blob_metrics.get(poly_id, {})
             visual_needs_frag = poly_blob_metrics.get('needs_fragmentation', False)
+            quant_runs = []
+            if polygon.semantic_type == "quantitative":
+                quant_runs = self._quantitative_runs(polygon.ocr_text or "")
+            quant_needs_frag = len(quant_runs) >= 2
 
-            if text_needs_frag or visual_needs_frag or punctuation_needs_frag:
+            if text_needs_frag or visual_needs_frag or punctuation_needs_frag or quant_needs_frag:
                 if visual_needs_frag and text_needs_frag:
                     reason = "visual y texto"
                 elif visual_needs_frag:
                     reason = "visual"
+                elif quant_needs_frag:
+                    reason = "quantitativo"
                 elif text_needs_frag:
                     reason = "texto"
                 else:
                     reason = "puntuación"
+
                 logger.debug(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
                 
-                fragments = self._fragment_polygon(polygon, poly_blob_metrics, punctuation_needs_frag)
+                if visual_needs_frag:
+                    fragments = self._fragment_by_blobs(polygon, poly_blob_metrics)
+                elif quant_needs_frag:
+                    fragments = self._fragment_by_quantitative(polygon, quant_runs)
+                elif text_needs_frag:
+                    fragments = self._fragment_by_text(polygon)
+                else:
+                    fragments = self._fragment_by_punctuation(polygon)
+
                 final_polygons.extend(fragments)
                 if len(fragments) > 1:
                     fragmented_count += 1
@@ -114,8 +129,8 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
 
         pad_xmin, pad_ymin, _, _ = polygon.cropedd_geometry.padding_coords
-        poly_width = polygon.cropedd_geometry.poly_dims['poly_width']
-        poly_height = polygon.cropedd_geometry.poly_dims['poly_height']
+        poly_width = polygon.cropedd_geometry.croppy_dims.get('poly_width', {})
+        poly_height = polygon.cropedd_geometry.croppy_dims.get('poly_height', {})
         
         text_parts = (polygon.ocr_text or "").strip().split()
 
@@ -144,7 +159,7 @@ class Fragmenter(OCRAbstractWorker):
             
             frag_text = text_parts[i] if i < len(text_parts) else ""
             
-            logger.debug(f"-> Fragmento visual: texto='{frag_text}', bbox={new_bbox.tolist()}")
+            logger.debug(f"Fragmento visual: texto='{frag_text}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -277,23 +292,86 @@ class Fragmenter(OCRAbstractWorker):
             current_x = new_xmax
 
         return new_polys
+        
+    def _fragment_by_quantitative(self, polygon: Polygons, runs: List[str]) -> List[Polygons]:
+        parts = [tok for _, _, tok in runs]
+        if len(parts) <= 1:
+            return [polygon]
 
-    def _save_ocr_raw(self, context: Dict[str, Any], manager: DataFormatter):
-        logger.debug("OUTPUT PARA FRAGMENTADOR INICIADO")
-        from services.output_service import save_json
-        import os
-        try:
-            project_root = self.project_root
-            file_name: str = manager.workflow.metadata.image_name
-            output_paths = context.get("output_paths", [])
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            polygons_list = [asdict(poly) for poly in polygons.values()]
-            logger.debug(f"{polygons_list}")
-        except Exception as e:
-            logger.debug(f"Error generando output: {e}", exc_info=True)
-            for path in output_paths:
-                output_dir: str = os.path.join(path, "separated_text")
-                json_file_name = f"{os.path.splitext(file_name)[0]}.json"
-                save_json(polygons_list, output_dir, json_file_name, project_root)
-                if output_paths:
-                    logger.debug(f"Texto Fragmentado para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
+        char_lengths = [len(p) for p in parts]
+        total_chars = sum(char_lengths) or 1
+
+        xmin, ymin, xmax, ymax = polygon.geometry.bounding_box
+        width = xmax - xmin
+
+        new_polys: List[Polygons] = []
+        current_x = xmin
+
+        for i, part in enumerate(parts):
+            part_ratio = char_lengths[i] / total_chars
+            part_width = part_ratio * width
+            new_xmax = current_x + part_width
+
+            new_bbox = np.array([current_x, ymin, new_xmax, ymax])
+            new_centroid = np.array([(current_x + new_xmax) / 2, (ymin + ymax) / 2])
+
+            new_geom = dataclasses.replace(
+                polygon.geometry,
+                bounding_box=new_bbox,
+                centroid=new_centroid,
+                polygon_coords=np.array([
+                    [new_bbox[0], new_bbox[1]],
+                    [new_bbox[2], new_bbox[1]],
+                    [new_bbox[2], new_bbox[3]],
+                    [new_bbox[0], new_bbox[3]],
+                ])
+            )
+
+            new_polys.append(dataclasses.replace(
+                polygon,
+                geometry=new_geom,
+                ocr_text=part,
+                was_fragmented=True
+            ))
+            current_x = new_xmax
+
+        return new_polys
+            
+    def _quantitative_runs(self, s: str) -> List[tuple[int, int, str]]:
+        s = (s or "").strip()
+        if not s:
+            return []
+        currency = r"[$€£¥¢]"
+        amount_body = r"(?:\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,]\d+)?"
+        # cuantitativo: decimales o con símbolo (sin %)
+        quant_token = rf"(?:{currency}\s*{amount_body}|{amount_body}\s*{currency}|{amount_body})"
+        runs: List[tuple[int, int, str]] = []
+        for m in re.finditer(quant_token, s):
+            tok = s[m.start():m.end()]
+            if "%" in tok:
+                continue
+            is_decimal = bool(re.match(r"^\d+[.,]\d+$", tok) or re.match(r"^\d{1,3}(?:[.,]\d{3})+[.,]\d+$", tok))
+            has_currency = bool(re.search(currency, tok))
+            if is_decimal or has_currency:
+                runs.append((m.start(), m.end(), tok))
+        return runs
+
+    # def _save_ocr_raw(self, context: Dict[str, Any], manager: DataFormatter):
+    #     logger.debug("OUTPUT PARA FRAGMENTADOR INICIADO")
+    #     from services.output_service import save_json
+    #     import os
+    #     try:
+    #         project_root = self.project_root
+    #         file_name: str = manager.workflow.metadata.image_name
+    #         output_paths = context.get("output_paths", [])
+    #         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+    #         polygons_list = [asdict(poly) for poly in polygons.values()]
+    #         logger.debug(f"{polygons_list}")
+    #     except Exception as e:
+    #         logger.debug(f"Error generando output: {e}", exc_info=True)
+    #         for path in output_paths:
+    #             output_dir: str = os.path.join(path, "separated_text")
+    #             json_file_name = f"{os.path.splitext(file_name)[0]}.json"
+    #             save_json(polygons_list, output_dir, json_file_name, project_root)
+    #             if output_paths:
+    #                 logger.debug(f"Texto Fragmentado para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

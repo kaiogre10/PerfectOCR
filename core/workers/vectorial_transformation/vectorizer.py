@@ -107,7 +107,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Línea inferior
                 tabla.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 tabla_str = "\n".join(tabla)
-                logger.info(f"\nTabla unificada de características:\n{tabla_str}")
+                logger.debug(f"\nTabla unificada de características:\n{tabla_str}")
                 logger.debug(f"Se calcularon features para {len(all_features)} líneas")
                 # logger.debug(f"Features: {all_features} líneas")
                 return all_features

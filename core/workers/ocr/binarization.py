@@ -6,13 +6,13 @@ import logging
 from typing import Dict, Any, List, Tuple
 from skimage.filters import threshold_sauvola  # type: ignore
 from skimage.util import img_as_ubyte # type: ignore
-from core.factory.abstract_worker import OCRAbstractWorker
+from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
-class Binarizator(OCRAbstractWorker):
+class Binarizator(PreprocessingAbstractWorker):
     """
     Actúa como un centro de decisión para la fragmentación de polígonos.
     - Binariza las imágenes de los polígonos para su análisis.
@@ -33,7 +33,8 @@ class Binarizator(OCRAbstractWorker):
         self.min_blobs_for_frag = bin_config.get('min_blobs_for_frag', 2)
         self.gap_threshold_norm = bin_config.get('gap_threshold_norm', 0.05)
 
-    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+
         """Binariza, mide blobs (componentes conectados) y guarda sus métricas."""
         try:
             start = time.time()
@@ -101,7 +102,6 @@ class Binarizator(OCRAbstractWorker):
             if blob_metrics:
                 context['blob_metrics'] = blob_metrics
                 polygon_ids = list(blob_metrics.keys())
-                manager.clear_cropped_images(polygon_ids)
 
             logger.debug(f"Binarizator: métricas de blobs extraídas para {len(blob_metrics)} polígonos en {time.time()-start:.3f}s")
             return True

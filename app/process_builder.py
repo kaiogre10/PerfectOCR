@@ -35,12 +35,12 @@ class ProcessingBuilder:
                 logger.error("[ProcessingBuilder] No se pudo procesar la Fase de preparación.")
                 return None
             
-            logger.debug(f"Fase de preparación completada en: {time_poly:.6f}s")
+            logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
 
             # Fase 2: Corregir y preparar la imagen para el OCR
             manager, elapsed = self.preprocessing_stager.apply_preprocessing_pipelines(manager)
             
-            logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
+            logger.info(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
             # # FASE 3: OCR (modifica el manager y libera los recortes)
             if manager:
@@ -62,10 +62,10 @@ class ProcessingBuilder:
             total_workflow_time = time.perf_counter() - workflow_start
             logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.6f}s")
 
-            data_base_path: str = self.config.get("db_path", "")
-            db_path: str = manager.to_db_payload(data_base_path)
+            # data_base_path: str = self.config.get("db_path", "")
+            # db_path: str = manager.to_db_payload(data_base_path)
 
-            return db_path
+            return manager
             
         except Exception as e:
             logger.error(f"[ProcessingBuilder] Error fatal procesando la imagen: {e}", exc_info=True)

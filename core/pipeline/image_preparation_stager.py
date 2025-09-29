@@ -1,47 +1,26 @@
 # PerfectOCR/core/pipeline/input_stager.py
 import logging
 import time
-from datetime import datetime 
 from typing import Optional, Tuple, List, Dict, Any
-import numpy as np
 from core.domain.data_formatter import DataFormatter
-from core.workers.image_preparation.image_loader import ImageLoader
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 
 logger = logging.getLogger(__name__)
 
 class ImagePreparationStager:
-    def __init__(self, workers: List[ImagePrepAbstractWorker], image_loader: ImageLoader, project_root: str):
+    def __init__(self, workers: List[ImagePrepAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
         self.project_root = project_root
         self.workers = workers
-        self._image_loader = image_loader
+        self.stage_config = stage_config
+        self.output_paths = output_paths
 
     def generate_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
-        # 1) Cargar datos crudos (sin manager)
-        full_img, metadata = self._image_loader.load_image_and_metadata()
-        if full_img is None or not isinstance(full_img, np.ndarray) or full_img.size == 0:
-            logger.error(f"InputStager: Imagen no válida para '{metadata.get('image_name')}")
-            return None, 0.0
-        
-        # 2) Crear manager y dict una sola vez
-        manager = DataFormatter()
-        now = datetime.now()
-        fecha = now.strftime("%Y%m%d")
-        decimales = f"{now.microsecond:06d}"
-        IDRegistro = f"{metadata.get('image_name')}_{fecha}{decimales}"
-        logger.debug(f"workflow_dict con registro: {IDRegistro}")
-
-        if not manager.create_dict(IDRegistro, full_img, metadata):
-            logger.error("InputStager: Fallo al crear dict_job en el manager.")
-            return None, 0.0
 
         # 3) Contexto con metadatos necesarios
         context: Dict[str, Any] = {
-            "IDRegistro": IDRegistro,
-            "full_img": full_img,
-            "metadata": metadata,
-            "img_dims": metadata.get("img_dims", {}),
+            "output_paths": self.output_paths,
+            "project_root": self.project_root
         }
         # 4) Ejecutar workers (inyectar context y manager) y loguear tiempo de cada uno
         for worker in self.workers:

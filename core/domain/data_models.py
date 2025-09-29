@@ -5,151 +5,85 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass
 from typing import Any
 
-WORKFLOW_SCHEMA: Dict[str , Any] = {
-    "type": "object",
-    "properties": {
-        "dict_id": {"type": "string"},
-        "full_img": {"anyOf": [{"type": "array"}, {"type": "object", "hasOwnProperty": "shape"}]},
-        "global_data": {
-            "type": "object",
-            "properties": {
-                "Subtotal": {"type": ["string", "null"]},
-                "total_productos": {"type": ["string", "null"]},
-                "MontoIVAGeneral": {"type": ["string", "null"]},
-                "RFCProveedor": {"type": ["string", "null"]},
-                "FolioDocumento": {"type": ["string", "null"]},
-                "FechaDocumento": {"type": ["string", "null"]},
-                "NombreCliente": {"type": ["string", "null"]},
-            },
-        },
-        "metadata": {
-            "type": "object",
-            "properties": {
-                "image_name": {"type": "string"},
-                "format": {"type": "string"},
-                "img_dims": {
-                    "type": "object",
-                    "properties": {
-                        "width": {"type": "number"},
-                        "height": {"type": "number"},
-                        "size": {"type": "number"},
-                    },
-                },
-                "date_creation": {"type": "string"},
-            },
-        }, 
-        "polygons": {
-            "type": "object",
-            "patternProperties": {
-                "^poly_\\d{4}$": {
-                    "type": "object",
-                    "properties": {
-                        "polygon_id": {"type": "string"},
-                        "geometry": {
-                            "type": "object",
-                            "properties": {
-                                "polygon_coords": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "array",
-                                        "items": {"type": "number"},
-                                        "minItems": 2,
-                                        "maxItems": 2
-                                    },
-                                },
-                                "bounding_box": {
-                                    "type": "array",
-                                    "items": {"type": "number"},
-                                    "minItems": 4,
-                                    "maxItems": 4
-                                },
-                                "centroid": {
-                                    "type": "array",
-                                    "items": {"type": "number"},
-                                    "minItems": 2,
-                                    "maxItems": 2
-                                },
-                            }, 
-                        },
-                        "cropedd_geometry":{
-                            "type": "object",
-                            "properties": {
-                                "padd_centroid": {
-                                    "type": "array",
-                                    "items": {"type": "number"},
-                                    "minItems": 2,
-                                    "maxItems": 2
-                                },
-                                "padding_coords": {
-                                    "type": "array",
-                                    "items": {"type": "integer"},
-                                    "minItems": 4,
-                                    "maxItems": 4
-                                },
-                                "poly_dims": {"type": "object",
-                                    "properties": {
-                                        "poly_width": {"type": "integer"},
-                                        "poly_height": {"type": "integer"},
-                                    },
-                                },
-                            }, 
-                        },
-                        "cropped_img": {"type": ["object", "null"]},
-                        "perimeter": {"type": ["number", "null"]},
-                        "line_id": {"type": "string"},
-                        "ocr_text": {"type": "string"},
-                        "ocr_confidence": {"type": ["number", "null"]},
-                        "was_fragmented": {"type": "boolean"},
-                        "stage": {"type": "string"},
-                        "status": {"type": "boolean"},
-                        "key_field": {"type": ["string", "null"]},
-                        "semantic_type": {"type": "string"},
-                    },
-                },
-            },
-        },
-        "all_lines": {
-            "type": "object",
-            "patternProperties": {
-                "^line_\\d{4}$": {
-                    "type": "object",
-                    "properties": {
-                        "lineal_id": {"type": "string"},
-                        "text": {"type": "string"},
-                        "encoded_text": {"type": "array", "items": {"type": "integer"}},
-                        "polygon_ids": {
-                            "type": "array",
-                            "items": {"type": "string"}
-                        },
-                        "line_bbox": {
-                            "type": "array",
-                            "items": {"type": "number"},
-                            "minItems": 4,
-                            "maxItems": 4
-                        },
-                        "line_centroid": {
-                            "type": "array",
-                            "items": {"type": "number"},
-                            "minItems": 2,
-                            "maxItems": 2,
-                        },
-                        "tabular_line": {"type": "boolean"},
-                    },
-                },
-            },
-        },
-    },
-}
+@dataclass
+class StructuredTable:
+    df: pd.DataFrame
+    columns: List[str]
+    semantic_types: Optional[List[str]] = None
 
-"""""
-{"type": "string"}       Debe ser texto
-{"type": "integer"}      Debe ser número entero
-{"type": "number"}       Debe ser número (puede ser decimal)
-{"type": "boolean"}      Debe ser True/False
-{"type": "object"}       Debe ser diccionario
-{"type": "array"}        Debe ser lista 
-"""""
+@dataclass
+class CroppedGeometry:
+    padd_centroid: np.ndarray[Any, Any]  # shape: (2,)
+    padding_coords: np.ndarray[Any, Any]  # shape: (4,) 
+    croppy_dims: Dict[str, int]
+    
+@dataclass
+class CroppedImage:
+    cropped_img: np.ndarray[Any, np.dtype[np.uint8]]
+            
+@dataclass(frozen=True)
+class Geometry:
+    polygon_coords: np.ndarray[Any, Any]  # shape: (n_points, 2)
+    bounding_box: np.ndarray[Any, Any]    # shape: (4,)
+    centroid: np.ndarray[Any, Any]        # shape: (2,)
+    
+@dataclass
+class Polygons:
+    polygon_id: str
+    geometry: Geometry
+    cropedd_geometry: CroppedGeometry
+    cropped_img: Optional[CroppedImage]
+    perimeter: Optional[float]
+    line_id: str
+    ocr_text: Optional[str]
+    ocr_confidence: Optional[float]
+    was_fragmented: bool
+    status: bool
+    key_field: Optional[str]
+    semantic_type: str
+    
+@dataclass
+class LineGeometry:
+    line_centroid: List[float]
+    line_bbox: List[float]
+    
+@dataclass
+class HeaderLine:
+    lineal_id: str
+    text: str
+    encoded_text: List[int]
+    polygon_ids: List[str]
+    line_geometry: LineGeometry
 
+@dataclass
+class AllLines:
+    lineal_id: str
+    text: str
+    encoded_text: List[int]
+    polygon_ids: List[str]
+    line_geometry: LineGeometry
+    tabular_line: bool
+    header_line: HeaderLine
+    
+@dataclass(frozen=True)
+class Metadata:
+    image_name: str
+    format: Optional[str]
+    img_dims: Dict[str, float]
+    date_creation: Optional[str]
+
+@dataclass
+class FullImage:
+    full_img:  Optional[np.ndarray[Any, np.dtype[np.uint8]]]
+
+@dataclass
+class WorkflowDict:
+    IDRegistro: str
+    full_img: Optional[FullImage]
+    metadata: Metadata
+    polygons: Dict[str, Polygons]
+    all_lines: Dict[str, AllLines]
+    
 DENSITY_ENCODER: Dict[str, int] = {
     "0": 0,
     "1": 1,
@@ -328,157 +262,3 @@ CHAR_FRECUENCY: Dict[str, int] ={
     "Á": 1,
     "Ó": 1,
 }
-
-@dataclass
-class StructuredTable:
-    df: pd.DataFrame
-    columns: List[str]
-    semantic_types: Optional[List[str]] = None
-
-@dataclass
-class CroppedGeometry:
-    padd_centroid: np.ndarray[Any, Any]  # shape: (2,)
-    padding_coords: np.ndarray[Any, Any]  # shape: (4,) 
-    croppy_dims: Dict[str, int]
-    
-@dataclass
-class CroppedImage:
-    cropped_img: np.ndarray[Any, np.dtype[np.uint8]]
-            
-@dataclass(frozen=True)
-class Geometry:
-    polygon_coords: np.ndarray[Any, Any]  # shape: (n_points, 2)
-    bounding_box: np.ndarray[Any, Any]    # shape: (4,)
-    centroid: np.ndarray[Any, Any]        # shape: (2,)
-    
-@dataclass
-class Polygons:
-    polygon_id: str
-    geometry: Geometry
-    cropedd_geometry: CroppedGeometry
-    cropped_img: Optional[CroppedImage]
-    perimeter: Optional[float]
-    line_id: str
-    ocr_text: Optional[str]
-    ocr_confidence: Optional[float]
-    was_fragmented: bool
-    status: bool
-    stage: str
-    key_field: Optional[str]
-    semantic_type: str
-    
-@dataclass
-class LineGeometry:
-    line_centroid: List[float]
-    line_bbox: List[float]
-    
-@dataclass
-class HeaderLine:
-    lineal_id: str
-    text: str
-    encoded_text: List[int]
-    polygon_ids: List[str]
-    line_geometry: LineGeometry
-
-@dataclass
-class AllLines:
-    lineal_id: str
-    text: str
-    encoded_text: List[int]
-    polygon_ids: List[str]
-    line_geometry: LineGeometry
-    tabular_line: bool
-    header_line: HeaderLine
-    
-@dataclass(frozen=True)
-class Metadata:
-    image_name: str
-    format: Optional[str]
-    img_dims: Dict[str, float]
-    date_creation: Optional[str]
-
-@dataclass
-class GlobalData:
-    Subtotal: Optional[str]
-    total_productos: Optional[str]
-    MontoIVAGeneral: Optional[str]
-    RFCProveedor: Optional[str]
-    FolioDocumento: Optional[str]
-    FechaDocumento: Optional[str]
-    NombreCliente: Optional[str]
-
-@dataclass
-class WorkflowDict:
-    IDRegistro: str
-    full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
-    metadata: Metadata
-    polygons: Dict[str, Polygons]
-    all_lines: Dict[str, AllLines]
-    global_data: Dict[str, GlobalData]
-
-# DB_SCHEMA: Dict[str, Any] = {
-#   "RegistrosCompra": {
-#     "IDRegistro": null,
-#     "IDClienteConsultoria": null,
-#     "FolioDocumento": null,
-#     "FechaDocumento": null,
-#     "ProveedorEstandarizado": null,
-#     "RFCProveedor": null,
-#     "MontoTotalDocumento": null,
-#     "TipoDocumento": null,
-#     "UUID": null,
-#     "FechaDigitalizacion": null,
-#     "TasaIVAGeneral": null,
-#     "MontoIVAGeneral": null,
-#     "MontoSubtotalGeneral": null
-#   },
-#   "DetallesCompra": {
-#     "IDDetalle": null,
-#     "IDRegistro": null,
-#     "Cantidad": null,
-#     "SKU": null,
-#     "ProductoEstandarizado": null,
-#     "PrecioUnitario": null,
-#     "ImporteRaw": null,
-#     "ImporteCalculado": null
-#   },
-#   "TransaccionesCompra":{
-#     "IDTransaccion": null,
-#     "IDRegistro": null,
-#     "FechaTransaccion": null,
-#     "TipoTransaccion": null,
-#     "MontoTransaccion": null,
-#     "SaldoPendiente": null,
-#     "ReferenciaTransaccion": null
-#   },
-#   "Productos":{
-#     "SKU": null,
-#     "Presentacion": null,
-#     "ProductoEstandarizado": null,
-#     "ProductoRAW": null,
-#     "Marca": null,
-#     "Contenido": null,
-#     "UMC": null,
-#     "Unidades": null,
-#     "UME": null,
-#     "CategoriaProducto": null
-#   },
-#   "Proveedores":{
-#     "IDProveedor": null,
-#     "ProveedorEstandarizado": null,
-#     "RFCProveedor": null,
-#     "EsInformal": null,
-#     "PActivo": null,
-#     "NotasProveedor": null
-#   },
-#   "Clientes":{
-#     "IDCliente": null,
-#     "NombreCliente": null,
-#     "TelefonoCliente": null,
-#     "DireccionCliente": null,
-#     "Giro": null,
-#     "RFCCliente": null,
-#     "Cactivo": null,
-#     "NotasCliente": null
-#   }
-# }

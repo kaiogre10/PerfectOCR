@@ -52,7 +52,7 @@ class DensityScanner(VectorizationAbstractWorker):
                     logger.error("Error al guardar líneas tabulares en el workflow")
                     return False
         except Exception as e:
-            logger.error(f"DBSCAN no detectó tablas en el documento: {e}", exc_info=True)
+            logger.error(f"DBSCAN no detectó tablas en el documento: {e}", exc_debug=True)
         return False
 
     def _apply_dbscan_clustering(self, valid_analyses: Dict[str, Dict[str, float]]) -> List[str]:
@@ -62,8 +62,7 @@ class DensityScanner(VectorizationAbstractWorker):
         if len(valid_analyses) < min_cluster_size:
             logger.warning("No hay suficientes líneas válidas para clustering.")
             return []
-        # logger.debug(f"Features RECIBIDOS PARA CLUSTER: {valid_analyses}")
-        
+                
         line_ids = list(valid_analyses.keys())
         features: List[List[float]] = []
         
@@ -72,13 +71,10 @@ class DensityScanner(VectorizationAbstractWorker):
             
         features_array = np.array(features, dtype=np.float32)
 
-        # scaler = StandardScaler()
-        # features_scaled: np.ndarray[Any, np.dtype[np.float64]] = scaler.fit_transform(features_array)
-
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
         labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_array).astype(np.float32)
         
-        logger.info(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
+        logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:

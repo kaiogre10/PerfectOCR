@@ -16,17 +16,21 @@ class AngleCorrector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('moire', {})
+        self.worker_config = self.config.get('deskew', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
        
-        full_img = context.get("full_img")
+        img_obj = manager.get_full_img()
+        full_img = img_obj.full_img if img_obj is not None else None
         if full_img is None:
-            logger.error("AngleCorrector: full_img no encontrado en contexto")
+            logger.error(f"No Hay full_img en el Formatter")
             return False
+        logger.debug("Full_img obtenida con éxito")
         
-        img_dims = context.get("img_dims", {})
+        img_dims: Dict[str, int] = {}
+        if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
+            img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
                     
         full_img, lines = self.correct_angle(full_img, img_dims)
         
@@ -54,8 +58,8 @@ class AngleCorrector(ImagePrepAbstractWorker):
         min_angle_for_correction = corrections.get('min_angle_for_correction', 0.1)
         
         # total_time = time.perf_counter()
-        h = img_dims.get("height")
-        w = img_dims.get("width")
+        h = int(img_dims.get("height"))
+        w = int(img_dims.get("width"))
 
         if h is None or w is None or h == 0 or w == 0:
             logger.warning("Dimensiones de imagen inválidas (None o 0) para la corrección de ángulo.")
@@ -69,14 +73,14 @@ class AngleCorrector(ImagePrepAbstractWorker):
                                 minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
 
         if lines is None or len(lines) == 0:
-            # logger.info(f"No se detectaron líneas para la corrección de inclinación, {time.perf_counter() - total_time:.6f}s")
+            # logger.debug(f"No se detectaron líneas para la corrección de inclinación, {time.perf_counter() - total_time:.6f}s")
             return full_img, None
 
         angles = [math.degrees(math.atan2(l[0][3]-l[0][1], l[0][2]-l[0][0])) for l in lines]
         filtered_angles = [a for a in angles if hough_angle_filter_range_degrees[0] < a < hough_angle_filter_range_degrees[1]]
         
         if not filtered_angles:
-            # logger.info(f"Ninguna línea detectada en el rango de ángulos para corrección, tiempo: {time.perf_counter() - total_time:.6f}s")
+            # logger.debug(f"Ninguna línea detectada en el rango de ángulos para corrección, tiempo: {time.perf_counter() - total_time:.6f}s")
             return full_img, None
 
         angle = np.median(filtered_angles)
@@ -86,10 +90,10 @@ class AngleCorrector(ImagePrepAbstractWorker):
             rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
             deskewed_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
             full_img = np.array(deskewed_img, dtype=np.uint8)
-            # logger.info(f"Imagen rotada en {time.perf_counter() - total_time:.6f}s")
+            # logger.debug(f"Imagen rotada en {time.perf_counter() - total_time:.6f}s")
             return full_img, lines
         else:
-            # logger.info(f"Ángulo de inclinación insignificante. No se aplica corrección, tiempo de medición: {time.perf_counter() - total_time:.6f}s")
+            # logger.debug(f"Ángulo de inclinación insignificante. No se aplica corrección, tiempo de medición: {time.perf_counter() - total_time:.6f}s")
             return full_img, lines
             
 #     def _trim_using_hough(self, full_img: np.ndarray[Any, Any], lines: np.ndarray[Any, Any], img_dims: Dict[str, int]) -> np.ndarray[Any, Any]:
@@ -122,17 +126,17 @@ class AngleCorrector(ImagePrepAbstractWorker):
 #         x2 = min(int(w), int(max_x) + margin)
 #         y2 = min(int(h), int(max_y) + margin)
 
-#         logger.info(f"Recorte usando Hough: x1={x1}, y1={y1}, x2={x2}, y2={y2} (w={w}, h={h})")
+#         logger.debug(f"Recorte usando Hough: x1={x1}, y1={y1}, x2={x2}, y2={y2} (w={w}, h={h})")
 #         # ...existing code...
 #         if x1 == 0 and y1 == 0 and x2 == w and y2 == h:
-#             logger.info("El recorte coincide con la imagen completa. No se realiza recorte adicional.")
+#             logger.debug("El recorte coincide con la imagen completa. No se realiza recorte adicional.")
 #         else:
-#             logger.info("Se detectó región a recortar usando líneas de Hough.")
+#             logger.debug("Se detectó región a recortar usando líneas de Hough.")
 
 #         # Log de las nuevas dimensiones
 #         new_height = y2 - y1
 #         new_width = x2 - x1
-#         logger.info(f"Nuevas dimensiones tras recorte: width={new_width}, height={new_height}")
+#         logger.debug(f"Nuevas dimensiones tras recorte: width={new_width}, height={new_height}")
 
 #         return full_img[y1:y2, x1:x2]
 # #

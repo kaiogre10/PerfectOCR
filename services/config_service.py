@@ -1,6 +1,5 @@
 # services/config_service.py
 import yaml
-import os
 import logging
 from typing import Dict, Any, cast, List
 from config.config_models import MasterConfig
@@ -18,7 +17,7 @@ class ConfigService:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
-                raw = yaml.safe_load(f) or {} 
+                raw = yaml.safe_load(f)
             if not isinstance(raw, dict):
                 raise TypeError(f"Config raíz debe ser dict, recibido: {type(raw).__name__}")
             typed_raw = cast(Dict[str, Any], raw)
@@ -156,7 +155,6 @@ class ConfigService:
         def data_finder_config(self) -> Dict[str, str]:
             word_finder_config = self.models_config
             find_model = word_finder_config.get("models", {})
-            path = find_model.get("wordfinder_model_path", "")
             model_path = word_finder_config.get("C:/word_finder_model/data/word_finder_model.pkl")
             system_config = self.system_config
             project_root = system_config.get("project_root", "")

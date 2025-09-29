@@ -19,8 +19,8 @@ class OCRStager:
         start_time = time.time()                
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.time()
-            # worker_name = worker.__class__.__name__
-            # logger.debug(f"OCRStager: Ejecutando worker OCR Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            worker_name = worker.__class__.__name__
+            logger.debug(f"OCRStager: Ejecutando worker OCR Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
             context: Dict[str, Any] = {
                     "config": self.config,

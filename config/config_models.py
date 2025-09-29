@@ -110,7 +110,7 @@ class DeskewConfig(ConfigWithNumpy):
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
 
-class ImageLoader(ConfigWithNumpy):
+class ImagePreparation(ConfigWithNumpy):
     deskew: DeskewConfig
     cutting: CuttingConfig
 
@@ -133,7 +133,6 @@ class MathMaxConfig(ConfigWithNumpy):
 
 class TextualConfig(ConfigWithNumpy):
     min_confidence: float
-    min_contours_for_frag: int
     min_probability: float
     min_char: int
 
@@ -148,7 +147,8 @@ class PreprocessingConfig(ConfigWithNumpy):
     ink_enhancement: InkConfig
     contrast: ContrastConfig  
     sharpening: SharpeningConfig
-    
+    binarizator: Binarization
+
 class SemanticClasificator(ConfigWithNumpy):
     numeric: List[float]
     code: List[float]
@@ -156,15 +156,19 @@ class SemanticClasificator(ConfigWithNumpy):
 
 class Fragmenter(ConfigWithNumpy):
     fragment_on_text: bool
+    min_contours_for_frag: int
         
 class DataFinder(ConfigWithNumpy):
     wordfinder_model_path: str
     min_similarity: float
     max_q_lenght: int
+    
+class PaddleWrapper(ConfigWithNumpy):
+    min_confidence: float
 
 class OCRConfig(ConfigWithNumpy):
+    paddle_wrapper: PaddleWrapper
     text_cleaner: TextualConfig
-    binarizator: Binarization
     semantic_clasificator: SemanticClasificator
     data_finder: DataFinder
     fragmenter: Fragmenter
@@ -193,7 +197,7 @@ class VectorConfig(ConfigWithNumpy):
     table_structurer: TableStructurer
     
 class ModulesConfig(ConfigWithNumpy):
-    image_loader: ImageLoader
+    image_preparation: ImagePreparation
     preprocessing: PreprocessingConfig
     ocr: OCRConfig
     vectorization: VectorConfig

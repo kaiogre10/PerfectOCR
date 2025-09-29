@@ -16,8 +16,8 @@ class MainFactory:
         nested_modules = self.modules_config.get('modules', {})
         enabled_outputs = self.modules_config.get('enabled_outputs', {})
         
-        img_loader_config = nested_modules.get('image_loader', {}).copy()
-        img_loader_config['enabled_outputs'] = enabled_outputs
+        image_preparation_config = nested_modules.get('image_preparation', {}).copy()
+        image_preparation_config['enabled_outputs'] = enabled_outputs
 
         preprocessing_config = nested_modules.get('preprocessing', {}).copy()
         preprocessing_config['enabled_outputs'] = enabled_outputs
@@ -30,8 +30,8 @@ class MainFactory:
 
         # Registro de fábricas por nombre de módulo
         self.module_factories = {
-            "image_loader": ImagePreparationFactory(
-                img_loader_config,
+            "image_preparation": ImagePreparationFactory(
+                image_preparation_config,
                 project_root
             ),
             "preprocessing": PreprocessingFactory(
@@ -53,7 +53,7 @@ class MainFactory:
         return self.module_factories.get(module_name)
 
     def get_image_preparation_factory(self) -> ImagePreparationFactory:
-        factory = self.module_factories["image_loader"]
+        factory = self.module_factories["image_preparation"]
         assert isinstance(factory, ImagePreparationFactory)
         return factory
 

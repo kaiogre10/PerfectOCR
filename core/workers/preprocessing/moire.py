@@ -24,9 +24,10 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         Analiza y corrige el moiré modificando los polígonos directamente en el contexto.
         """
         try:
+            logger.debug("Moire empezado conéxito")
             start_time = time.time()
             # 1. Obtener polígonos (dataclasses) del contexto
-            polygons: Dict[str, Polygons] = context.get("polygons", {})
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
 
@@ -51,7 +52,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                     poly_ids_order.append(poly_id)
 
             if not metrics:
-                logger.debug("No se encontraron imágenes válidas para el análisis de moiré.")
+                logger.error("No se encontraron imágenes válidas para el análisis de moiré.")
                 return True
 
             # 3. Fase de Decisión Vectorizada (sin cambios)
@@ -113,36 +114,39 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             return False
 
     def _analyze_image_for_moire(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], img_dims: Tuple[int, int]) -> Dict[str, Any]:
-        h, w = img_dims
-        
-        img_float = np.float32(cropped_img)
-        f_transform = cv2.dft(img_float, flags=cv2.DFT_COMPLEX_OUTPUT)
-        f_shifted = np.fft.fftshift(f_transform)
-        
-        magnitude_spectrum = cv2.magnitude(f_shifted[:, :, 0], f_shifted[:, :, 1])
-        magnitude_spectrum = 20 * np.log(magnitude_spectrum + 1)
-        
-        min_dist_conf = self.worker_config.get('min_distance_from_center', 200)
-        adaptive_min_dist = max(50, min(300, int(min_dist_conf * (max(h, w) / 2000.0))))
-        
-        temp_spectrum = magnitude_spectrum.copy()
-        cv2.circle(temp_spectrum, (w // 2, h // 2), adaptive_min_dist, (0.0,), -1)
-        
-        valid_spectrum = temp_spectrum[temp_spectrum > 0]
-        mean_energy = np.mean(valid_spectrum) if valid_spectrum.size > 0 else 0.0
-        std_energy = np.std(valid_spectrum) if valid_spectrum.size > 0 else 0.0
-        skewness = np.mean((valid_spectrum - mean_energy) ** 3) / (std_energy ** 3) if std_energy > 0 else 0.0
+        try:
+            h, w = img_dims
+            img_float: np.ndarray[Any, np.dtype[np.float32]] = np.asanyarray(cropped_img, dtype=np.float32)
+            f_transform  = cv2.dft(img_float, flags=cv2.DFT_COMPLEX_OUTPUT)
+            f_shifted = np.fft.fftshift(f_transform)
+            
+            magnitude_spectrum = cv2.magnitude(f_shifted[:, :, 0], f_shifted[:, :, 1])
+            magnitude_spectrum = 20 * np.log(magnitude_spectrum + 1)
+            
+            min_dist_conf = self.worker_config.get('min_distance_from_center', 200)
+            adaptive_min_dist = max(50, min(300, int(min_dist_conf * (max(h, w) / 2000.0))))
+            
+            temp_spectrum = magnitude_spectrum.copy()
+            cv2.circle(temp_spectrum, (w // 2, h // 2), adaptive_min_dist, (0.0,), -1)
+            
+            valid_spectrum = temp_spectrum[temp_spectrum > 0]
+            mean_energy = np.mean(valid_spectrum) if valid_spectrum.size > 0 else 0.0
+            std_energy = np.std(valid_spectrum) if valid_spectrum.size > 0 else 0.0
+            skewness = np.mean((valid_spectrum - mean_energy) ** 3) / (std_energy ** 3) if std_energy > 0 else 0.0
 
-        return {
-            "spectrum_var": np.var(cropped_img),
-            "mean_energy": mean_energy,
-            "std_energy": std_energy,
-            "skewness": skewness,
-            "magnitude_spectrum": magnitude_spectrum,
-            "f_shifted": f_shifted,
-            "img_dims": img_dims,
-            "valid_spectrum": valid_spectrum
-        }
+            return {
+                "spectrum_var": np.var(cropped_img),
+                "mean_energy": mean_energy,
+                "std_energy": std_energy,
+                "skewness": skewness,
+                "magnitude_spectrum": magnitude_spectrum,
+                "f_shifted": f_shifted,
+                "img_dims": img_dims,
+                "valid_spectrum": valid_spectrum
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analizando poligono para moire: {e}", exc_info=True)
 
     def _apply_moire_correction(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], analysis: Dict[str, Any], adaptive_threshold: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
         h, w = analysis['img_dims']

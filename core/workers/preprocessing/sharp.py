@@ -91,7 +91,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
     def _analyze_image_for_sharpness(self, cropped_img_np: np.ndarray[Any, Any]) -> Dict[str, Any]:
         """Calcula métricas de nitidez para una imagen."""
         try:
-            sobel = cv2.Sobel(cropped_img_np, cv2.CV_64F, 1, 1, ksize=3)
+            sobel: np.ndarray[Any, np.dtype[np.float64]] = cv2.Sobel(cropped_img_np, cv2.CV_64F, 1, 1, ksize=3).astype(dtype=np.float64)
             sharpness = np.mean(np.abs(sobel))
             variance = np.var(cropped_img_np)
             return {
@@ -103,11 +103,12 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
             logger.warning(f"OpenCV Sobel falló durante el análisis de nitidez: {e}. Se omite la imagen.")
             return {}
 
-    def _apply_sharpening_correction(self, cropped_img_np: np.ndarray[Any, Any], radius: float, amount: float) -> np.ndarray[Any, Any]:
+    def _apply_sharpening_correction(self, cropped_img_np: np.ndarray[Any, np.dtype[np.uint8]], radius: float, amount: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """Aplica el filtro unsharp_mask a una imagen."""
-        sharpened_float = unsharp_mask(cropped_img_np, radius=radius, amount=amount)
+        sharpened_float: np.ndarray[Any, np.dtype[np.float32]] = unsharp_mask(cropped_img_np, radius=radius, amount=amount)
         # unsharp_mask devuelve un float en [0, 1], se debe convertir de vuelta a uint8 [0, 255]
-        return (np.clip(sharpened_float, 0, 1) * 255).astype(np.uint8)
+        corrected_img = (np.clip(sharpened_float, 0, 1) * 255).astype(np.uint8)
+        return corrected_img
 
     def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
         """Guarda una imagen de depuración si la salida está habilitada."""

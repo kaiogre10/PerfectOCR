@@ -42,7 +42,7 @@ class WorkFlowBuilder:
                         relative_path = ""
                     
                     image_info.append({
-                        "path": full_path,
+                        "full_path": full_path,
                         "name": image_name,
                         "extension": image_extension,
                         "relative_folder": relative_path

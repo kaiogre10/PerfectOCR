@@ -124,7 +124,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         }
 
     def _apply_sp_correction(self, analysis: Dict[str, Any], ksize: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        original_img = analysis['original_img']
+        original_img: np.ndarray[Any, np.dtype[np.uint8]] = analysis['original_img']
         filtered = cv2.medianBlur(original_img, ksize)
         
         result = original_img.copy()

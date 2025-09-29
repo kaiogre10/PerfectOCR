@@ -1,7 +1,7 @@
 # PerfectOCR/core/workers/image_preparation/cleanner.py
 import cv2
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import numpy as np
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -25,11 +25,18 @@ class ImageCleaner(ImagePrepAbstractWorker):
         clahe_grid = tuple(corrections.get("clahe_grid", (8, 8)))
         
         try:
-            full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]] = context.get("full_img")
-            size = context.get("metadata", {}).get("size")
+            img_obj = manager.get_full_img()
+            full_img = img_obj.full_img if img_obj is not None else None
             if full_img is None:
-                logger.error("Cleaner: full_img no encontrado en contexto")
+                logger.error(f"No Hay full_img en el Formatter")
                 return False
+            logger.debug("Full_img obtenida con éxito")
+            
+            img_dims: Dict[str, int] = {}
+            if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
+                img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
+
+            size = img_dims.get("size")
             if  size is None:
                 size = full_img.size
             else:
@@ -82,5 +89,5 @@ class ImageCleaner(ImagePrepAbstractWorker):
 
             return True
         except Exception as e:
-            logger.error(f"Cleaner: {e}", exc_info=True)
+            logger.error(f"Cleaner: {e}", exc_debug=True)
             return False

@@ -43,7 +43,7 @@ class DataFinder(OCRAbstractWorker):
             polygons: Dict[str, Polygons] = getattr(workflow, "polygons", {}) or {}
                 
             if not polygons:
-                logger.debug("No hay polygons para procesar")
+                logger.error("No hay polygons para procesar")
                 return False
             
             # Llamar al método original que funciona
@@ -68,7 +68,7 @@ class DataFinder(OCRAbstractWorker):
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
             return None
         try:
-            logger.debug("DataFinder: inicio de búsqueda de encabezados")
+            logger.debug("DataFinder: inicio de búsqueda de palabras clave")
             if not polygons:
                 logger.debug("No hay polígonos para procesar")
                 return None
@@ -84,9 +84,9 @@ class DataFinder(OCRAbstractWorker):
             for pid, poly in polygons.items():
                 processed_count += 1
 
-                # Omitir numéricos
+                # Omitir numéricos y cuantitativos
                 semantic = getattr(poly, "semantic_type", "") or ""
-                if semantic == "numeric":
+                if semantic in ("numeric", "quantitative"):
                     skipped_numeric += 1
                     continue
                 
@@ -120,7 +120,7 @@ class DataFinder(OCRAbstractWorker):
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Similitud por palabra: {pid}: {best_result}")
+                        logger.info(f"Similitud por palabra: {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")

@@ -17,12 +17,13 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     de texto en imágenes pre-recortadas (polígonos).
     Utiliza carga perezosa para el motor de PaddleOCR.
     """
-    def __init__(self, config: Dict[str, Any], cfg: Dict[str, Any], project_root: str):
+    def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.config = config
-        self.cfg = cfg
-        self.enabled_outputs = self.cfg.get("enabled_outputs", {})
+        self.worker_config = config.get("paddle_wrapper", {})
+        self.min_confidence = self.worker_config.get("min_confidence", {})
+        self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("ocr_raw", False)  
         self._engine = None
         
@@ -68,7 +69,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         if final_results:
             success = manager.update_ocr_results(final_results, polygon_ids)
             processed_count = len(final_results) if success else 0
-            
+            manager.clear_cropped_images(polygon_ids)
             logger.debug("Cropped_img liberadas usando DataFormatter")
             logger.debug(f"{final_results}")
             file_name: str = manager.workflow.metadata.image_name
@@ -114,10 +115,19 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 if len(consolidated_results) == len(valid_images):
                     logger.debug(f"Resultado consolidado detectado. Mapeando {len(consolidated_results)} textos a {len(valid_images)} imágenes por orden.")
                     final_results: List[Optional[Dict[str, Any]]] = []
+                    
                     for text, confidence in consolidated_results:
+                        confidence_pct = round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
+                        
+                        # Aplicar filtro de confianza mínima
+                        if confidence_pct < self.min_confidence:
+                            logger.debug(f"Resultado filtrado por baja confianza: '{text}' -> {confidence_pct}% < {self.min_confidence}%")
+                            final_results.append(None)  # Resultado filtrado
+                            continue
+                            
                         processed_result: Dict[str, Any] = {
                             "text": str(text).strip(),
-                            "confidence": round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
+                            "confidence": confidence_pct
                         }
                         final_results.append(processed_result)
                     

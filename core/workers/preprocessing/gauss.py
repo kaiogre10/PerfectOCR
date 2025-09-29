@@ -87,13 +87,13 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
             logger.error(f"Error en el procesamiento por lotes de GaussianDenoiser: {e}", exc_info=True)
             return False
 
-    def _analyze_image_for_gauss(self, cropped_img: np.ndarray[Any, Any]) -> Dict[str, Any]:
+    def _analyze_image_for_gauss(self, cropped_img_np: np.ndarray[Any, np.dtype[np.uint8]]) -> Dict[str, np.ndarray[Any, Any]]:
         """Calcula la varianza del Laplaciano para una imagen."""
         try:
             # La varianza del Laplaciano es sensible a la profundidad de bits, CV_64F es estándar.
-            laplacian_var = cv2.Laplacian(cropped_img, cv2.CV_64F).var()
+            laplacian_var = cv2.Laplacian(cropped_img_np, cv2.CV_64F).var()
             return {
-                "original_img": cropped_img,
+                "original_img": cropped_img_np,
                 "laplacian_var": laplacian_var
             }
         except cv2.error as e:

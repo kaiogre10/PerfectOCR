@@ -7,6 +7,7 @@ from cleantext import clean # type: ignore
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
+from core.utils.semantic_classifier import is_numeric
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,12 @@ class TextCleaner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config.get("text_cleaner", {})
+        self.worker_config = config.get("text_cleaner", {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
-        self.output = self.config.get("clean_text", False)
-        self.min_confidence_for_elimination = self.config.get("min_confidence_for_elimination", 75.0)
-        self.min_char = config.get("min_char", 2)
-        self.min_probability = config.get("min_probability", 80.0)
+        self.output = self.worker_config.get("clean_text", False)
+        self.min_confidence = float(self.worker_config.get("min_confidence", {}))
+        self.min_char = int(self.worker_config.get("min_char", {}))
+        self.min_probability = float(self.worker_config.get("min_probability", {}))
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         if not manager.workflow or not manager.workflow.polygons:
@@ -56,13 +57,13 @@ class TextCleaner(OCRAbstractWorker):
             text = text or ""
 
             if (not text.strip() or
-                (confidence < self.min_confidence_for_elimination and polygon.semantic_type != "numeric") or
+                (confidence < self.min_confidence and polygon.semantic_type != "numeric") or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)):
                 logger.debug(f"Eliminado (basura): ID: {poly_id} | Texto: '{text}'")
                 continue
 
-            # 3. Ruta Normal: Limpiar texto del polígono sin fragmentar
-            cleaned_text = self._process_single_text(text, polygon, semantic_type)
+            # 3. Ruta Normal: Limpiar texto del polígono vacío
+            cleaned_text = self._process_single_text(text, polygon, semantic_type, manager)
             if cleaned_text:
                 updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
                 list_of_final_polygons.append(updated_polygon)
@@ -87,7 +88,7 @@ class TextCleaner(OCRAbstractWorker):
         logger.debug(f"Limpieza/{eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
         return True
 
-    def _process_single_text(self, text: str, polygon: Polygons, semantic_type :str) -> str:
+    def _process_single_text(self, text: str, polygon: Polygons, semantic_type :str, manager: DataFormatter) -> str:
         """
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
         y seguro a los valores que parecen numéricos.
@@ -105,6 +106,7 @@ class TextCleaner(OCRAbstractWorker):
             cleaned_token = self._clean_characters_in_word(token)
             
             if self._is_likely_numeric_or_code(cleaned_token, polygon):
+                logger.debug(f"Resultados del text_clenanner{cleaned_token}")
             
                 processed_words.append(cleaned_token)
             else:
@@ -131,11 +133,15 @@ class TextCleaner(OCRAbstractWorker):
         Determina si un token es probablemente un número o código
         usando únicamente la clasificación semántica del polígono.
         """
-        return getattr(polygon, "semantic_type", None) in ("numeric", "code")
+        return is_numeric(cleaned_token, self.config)
 
     def _filter_low_prob_tokens(self, text: str, polygon: Polygons, manager: DataFormatter) -> str:
+        # Si la confianza general del polígono es alta, no tocar sus palabras.
+        if polygon.ocr_confidence and polygon.ocr_confidence >= self.min_confidence:
+            return text
+            
         try:
-            if getattr(polygon, "semantic_type", None) == "numeric":
+            if getattr(polygon, "semantic_type", None) in ("numeric", "quantitative"):
                 return text
 
             tokens = text.split(' ')
@@ -190,9 +196,7 @@ class TextCleaner(OCRAbstractWorker):
         for wrong_char, correct_char in char_replacements.items():
             token = token.replace(wrong_char, correct_char)
         
-        # Limpiar caracteres de ruido OCR que no son letras, números, espacios, punto o coma.
-        # Se eliminan guiones, arroba y divisas.
-        token = re.sub(r'[^\w\s\.,]', '', token)
+        token = re.sub(r'[^\w\s\.,$€£¥¢]', '', token)
         
         return token
 
@@ -219,7 +223,7 @@ class TextCleaner(OCRAbstractWorker):
             freq_norm: Dict[str, float] = {char: (val / max_val) * 100 for char, val in frecuency_char.items()}
             return freq_norm
         except Exception as e:
-            logger.info(f"Error al obtener frecuencias normalizadas: {e}", exc_info=True)
+            logger.warning(f"Error al obtener frecuencias normalizadas: {e}", exc_info=True)
 
     def _token_freq_score(self, token: str, manager: DataFormatter) -> float:
         freq_norm = self._get_frecuency_norm(manager)
@@ -248,4 +252,4 @@ class TextCleaner(OCRAbstractWorker):
             save_json(final_polygons_dict, output_dir, json_file_name)
         
         if output_paths:
-            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
+            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

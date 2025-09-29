@@ -8,6 +8,8 @@ from core.workers.preprocessing.gauss import GaussianDenoiser
 from core.workers.preprocessing.ink_enhancer import InkEnhancer
 from core.workers.preprocessing.clahe import ClaherEnhancer
 from core.workers.preprocessing.sharp import SharpeningEnhancer
+from core.workers.ocr.binarization import Binarizator
+
 
 class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):
     def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], PreprocessingAbstractWorker]]:
@@ -19,6 +21,7 @@ class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):
             "ink_enhancement": self._create_inker,
             "clahe": self._create_clahe,
             "sharp": self._create_sharp,
+            "binarizator": self._create_binarizator,
         }
          
     def _create_moire(self, context: Dict[str, Any]) -> MoireDenoiser:
@@ -38,3 +41,6 @@ class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):
 
     def _create_sharp(self, context: Dict[str, Any]) -> SharpeningEnhancer:
         return SharpeningEnhancer(config=self.module_config, project_root=self.project_root)
+        
+    def _create_binarizator(self, context: Dict[str, Any]) -> Binarizator:
+       return Binarizator(config=self.module_config, project_root=self.project_root)
