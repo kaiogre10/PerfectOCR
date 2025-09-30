@@ -41,7 +41,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
             total_time = time.time() - start_time
-            logger.info(f"[MatrixSolver] Corrección matemática completada en {total_time:.6f}s, Se encontraron {len(corrected_df)} filas.")
+            logger.debug(f"[MatrixSolver] Corrección matemática completada en {total_time:.6f}s, Se encontraron {len(corrected_df)} filas.")
             return True
         except Exception as e:
             logger.error(f"Error en MatrixSolver.vectorize: {e}", exc_info=True)
@@ -253,4 +253,4 @@ class MatrixSolver(VectorizationAbstractWorker):
             save_table(corrected_df, output_dir, file_name, header_text)
         
         if output_paths:
-            logger.info(f"Tabla corregida matemáticamente '{file_name}' guardada en {len(output_paths)} ubicaciones.")
+            logger.debug(f"Tabla corregida matemáticamente '{file_name}' guardada en {len(output_paths)} ubicaciones.")

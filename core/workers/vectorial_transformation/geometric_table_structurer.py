@@ -71,7 +71,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
             total_time = time.time() - start_time
-            logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}")
+            logger.debug(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}")
             logger.debug(f"Estructuración de tabla completada en {total_time:.10f} s.")
             
             # 7. Guardar usando DataFormatter moderno

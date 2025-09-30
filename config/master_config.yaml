@@ -159,8 +159,8 @@ modules:
         
     data_finder:
       wordfinder_model_path: C:/word_finder_model/data/word_finder_model.pkl
-      min_similarity: 0.90
-      max_q_lenght: 15
+      min_similarity: 0.85
+      max_q_lenght: 30
 
     fragmenter:
       fragment_on_text: True

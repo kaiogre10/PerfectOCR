@@ -3,7 +3,6 @@ import re
 import logging
 import pickle
 import unicodedata
-import numpy as np
 from typing import List, Any, Dict, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class WordFinder:
                 raise ValueError("El pickle no tiene el formato esperado (dict).")
             return self.model
         except Exception as e:
-            logger.info(f"Error al cargar el modelo{e}", exc_info=True)
+            logger.error(f"Error al cargar el modelo{e}", exc_info=True)
 
     def available_models(self) -> List[str]:
         return ["standard"]
@@ -52,9 +51,8 @@ class WordFinder:
         self.global_filter_threshold = float(params.get("global_filter_threshold", []))
         self.grams_index = self.model.get("self.grams_index", {})
         raw_global = self.global_filter.get("global_ngrams", [])
-        # posibilidad de que el trainer haya incluido un dict de frecuencias y el counter
         self.global_counter = self.global_filter.get("global_counter")
-        raw_freqs = self.global_filter.get("global_ngram_freqs")
+        raw_freqs: Dict[str, float] | None = self.global_filter.get("global_ngram_freqs")
         try:
             if isinstance(raw_freqs, dict):
                 # trainer devolvió un dict ngram -> freq
@@ -116,6 +114,7 @@ class WordFinder:
                 return 1.0
         except Exception as e:
             logger.error(f"error calculando umrales de largo: {e}", exc_info=True)
+            return 0.0
 
     def find_keywords(self, text: List[str] | str, threshold: Optional[float] = None) -> Optional[List[Dict[str, Any]]]:
         """Busca todas las palabras clave presentes en el string, no solo la mejor."""
@@ -173,7 +172,6 @@ class WordFinder:
                     except Exception as e:
                         logger.error(f"Error en find_keywords: {e}", exc_info=True)
 
-            elapsed = None
             if single:
                 return results if results else []
             return results
@@ -206,7 +204,7 @@ class WordFinder:
                 return []
             return [q[i:i+n] for i in range(len(q) - n + 1)]
         except Exception as e:
-            logger.info(f"Error construyendo n-gramas: {e}", exc_info=True)
+            logger.error(f"Error construyendo n-gramas: {e}", exc_info=True)
             return []
 
     def _ngram_similarity(self, a: str, b: str) -> float:
@@ -216,7 +214,7 @@ class WordFinder:
         # Normaliza por la longitud máxima para manejar n-gramas de longitudes distintas si fuera el caso.
             return matches / float(max(len(a), len(b)))
         except Exception as e:
-            logger.info(f"Error comprobando texto: {e}", exc_info=True)
+            logger.warning(f"Error comprobando texto: {e}", exc_info=True)
             return 0.0
 
     def _binary_cosine(self, size_a: int, size_b: int, soft_intersection: float) -> float:

@@ -494,7 +494,7 @@ class DataFormatter:
 
             if tabular_lines_debug:
                 for all_lines in tabular_lines_debug:
-                    logger.info(f"Linea textual: {all_lines['line_id']}: '{all_lines['text']}'")
+                    logger.debug(f"Linea textual: {all_lines['line_id']}: '{all_lines['text']}'")
             
             num_lines = len(all_lines_dataclasses)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas en dataclasses.")

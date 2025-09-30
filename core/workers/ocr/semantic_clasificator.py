@@ -35,11 +35,11 @@ class SemanticClasificator(OCRAbstractWorker):
                     polygon = polygons[poly_id]
                     classified_count += 1
 
-            logger.info(f"Total clasificados: {classified_count}")
+            logger.debug(f"Total clasificados: {classified_count}")
             for poly_id, semantic_type in final_results.items():
                 if poly_id in polygons:
                     polygon = polygons[poly_id]
-                    logger.info(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
+                    logger.debug(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
                     
             manager.update_semantic_type(final_results)
 

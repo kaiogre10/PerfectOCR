@@ -47,7 +47,6 @@ class ImageLoader(ImagePrepAbstractWorker):
     def _resolutor(self, context: Dict[str, Any]) -> Tuple[Optional[np.ndarray[Any, np.dtype[np.uint8]]], Dict[str, Any]]:
         """Carga la imagen y extrae metadatos.
         Devuelve (None, metadata_con_error) si falla."""
-        start_time = time.perf_counter()
         image_debug = self.image_data
         input_path = image_debug.get('full_path',"")
         image_name = image_debug.get('name', "")
@@ -72,8 +71,7 @@ class ImageLoader(ImagePrepAbstractWorker):
                 logger.error(f"No se cargó:'{image_name}'")
                 return None, metadata
                 
-            logger.debug(f"Imagen cargada correctamente desde: {input_path}")
-            # img es tu array de imagen cargada con cv2.imread(..., cv2.IMREAD_GRAYSCALE)
+            logger.info(f"Imagen: {image_name} cargada correctamente")
             if np.all(full_img == 255):
                 logger.error(f"Imagen {image_name} totalmente en blanco")
                 return None, {}
