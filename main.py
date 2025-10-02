@@ -13,8 +13,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 os.environ.update({
-    'OMP_NUM_THREADS': '1',        
-    'MKL_NUM_THREADS': '2',
+    'OMP_NUM_THREADS': '4',        
+    'MKL_NUM_THREADS': '4',
     'FLAGS_use_mkldnn': '1',     
 })
 
@@ -26,7 +26,7 @@ LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 """Configura el logging global usando parámetros definidos manualmente aquí."""
 
 CONSOLE_LEVEL = "INFO"
-FILE_LEVEL = "INFO"
+FILE_LEVEL = "DEBUG"
 # Formato para la consola: muestra el nivel, nombre del logger, línea y mensaje
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 # Formato para el archivo: incluye fecha/hora, --nivel--, --nombre del logger--, --línea--, --módulo-- y mensaje

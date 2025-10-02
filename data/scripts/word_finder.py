@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 class WordFinder:
     def __init__(self, model_path: str, project_root: str):
         self.model: Dict[str, Any] = self._load_model(model_path)
-
         # self.project_root = project_root
         # self.model_path = model_path
         self._active = "standard"
@@ -35,7 +34,7 @@ class WordFinder:
         if name == "standard":
             self._active = "standard"
             return True
-        logger.warning("Modelo solicitado no disponible: %s", name)
+        logger.error("Modelo solicitado no disponible: %s", name)
         return False
 
     def _apply_active_model(self):
@@ -52,7 +51,10 @@ class WordFinder:
         self.grams_index = self.model.get("self.grams_index", {})
         raw_global = self.global_filter.get("global_ngrams", [])
         self.global_counter = self.global_filter.get("global_counter")
-        raw_freqs: Dict[str, float] | None = self.global_filter.get("global_ngram_freqs")
+        raw_freqs = self.global_filter.get("global_ngram_freqs")
+        self.forbidden_words: List[str] = self.model.get("forbidden_words", [])
+        self.forbidden_grams: List[Dict[int, set[str]]] = []
+
         try:
             if isinstance(raw_freqs, dict):
                 # trainer devolvió un dict ngram -> freq
@@ -104,6 +106,15 @@ class WordFinder:
             for i, length in enumerate(self.lengths):
                 self.buckets_by_len.setdefault(length, []).append(i)
 
+        
+        forbidden_grams_index = self.model.get("forbidden_grams_index", [])
+        for entry in forbidden_grams_index:
+            gmap_sets: Dict[int, set[str]] = {}
+            gmap_raw: Dict[int, List[str]] = entry.get("grams", {})
+            for n in range(self.ngr[0], self.ngr[1] + 1):
+                gmap_sets[n] = set(gmap_raw.get(n, []))
+            self.forbidden_grams.append(gmap_sets)
+
     def _len_threshold(self, length: int) -> float:
         """Obtiene umbral por longitud del candidato"""
         try:
@@ -114,7 +125,6 @@ class WordFinder:
                 return 1.0
         except Exception as e:
             logger.error(f"error calculando umrales de largo: {e}", exc_info=True)
-            return 0.0
 
     def find_keywords(self, text: List[str] | str, threshold: Optional[float] = None) -> Optional[List[Dict[str, Any]]]:
         """Busca todas las palabras clave presentes en el string, no solo la mejor."""
@@ -161,6 +171,10 @@ class WordFinder:
                                         penalizacion = min(len(sub), cand_len) / max(len(sub), cand_len)
                                         ngram_score *= penalizacion                                
                                 if ngram_score >= final_threshold:
+                                    # Verificar si es palabra prohibida
+                                    if self._check_if_forbidden(cand, final_threshold):
+                                        continue  # Saltar este candidato
+                                    
                                     key_field = self.variant_to_field.get(cand)
                                     results.append({
                                         "key_field": key_field,
@@ -172,6 +186,7 @@ class WordFinder:
                     except Exception as e:
                         logger.error(f"Error en find_keywords: {e}", exc_info=True)
 
+            elapsed = None
             if single:
                 return results if results else []
             return results
@@ -282,7 +297,49 @@ class WordFinder:
             score = total / denom
             return score >= self.global_filter_threshold
         except Exception as e:
-            logger.debug("Error en filtro global: %s", e, exc_info=True)
+            logger.error("Error en filtro global: %s", e, exc_info=True)
+            return False
+
+    def _check_if_forbidden(self, candidate: str, threshold: float) -> bool:
+        """Verifica si un candidato coincide con alguna palabra prohibida usando los mismos umbrales"""
+        try:
+            candidate_normalized = self._normalize(candidate)
+            if not candidate_normalized:
+                return False
+                
+            for i, forbidden_word in enumerate(self.forbidden_words):
+                if not forbidden_word:
+                    continue
+                    
+                forbidden_len = len(forbidden_word)
+                min_w = max(1, forbidden_len - self.window_flex)
+                if min_w > len(candidate_normalized):
+                    continue
+                max_w = min(len(candidate_normalized), forbidden_len + self.window_flex)
+                
+                grams_forbidden = self.forbidden_grams[i]
+                
+                for w in range(min_w, max_w + 1):
+                    if w > len(candidate_normalized):
+                        break
+                    for j in range(0, len(candidate_normalized) - w + 1):
+                        sub = candidate_normalized[j:j + w]
+                        grams_sub = self._build_query_grams(sub)
+                        
+                        if sub == forbidden_word and len(sub) == forbidden_len:
+                            similarity = 1.0
+                        else:
+                            similarity = self._score_binary_cosine_multi_n(grams_forbidden, grams_sub)
+                            len_ratio = max(len(sub), forbidden_len) / max(1, min(len(sub), forbidden_len))
+                            if len_ratio >= 2.0:
+                                penalizacion = min(len(sub), forbidden_len) / max(len(sub), forbidden_len)
+                                similarity *= penalizacion
+                        
+                        if similarity >= threshold:
+                            return True
+            return False
+        except Exception as e:
+            logger.error(f"Error verificando palabra prohibida: {e}", exc_info=True)
             return False
 
     def get_model_info(self) -> Dict[str, Any]:

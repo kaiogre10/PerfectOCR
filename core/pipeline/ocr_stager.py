@@ -1,19 +1,23 @@
 # PerfectOCR/core/coordinators/ocr_manager.py
 import time
 import logging
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Optional, Dict, Any, Tuple
 from core.domain.data_formatter import DataFormatter
-from core.factory.abstract_worker import OCRAbstractWorker
+from core.factory.abstract_stager import AbstractStager
 
 logger = logging.getLogger(__name__)
 
-class OCRStager:
-    def __init__(self, workers: List[OCRAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
-        self.config = stage_config
-        self.project_root = project_root
-        self.workers = workers
-        self.stage_config = stage_config
-        self.output_paths = output_paths
+class OCRStager(AbstractStager):
+    """Stager de reconocimiento óptico de caracteres."""
+
+    @property
+    def config(self):
+        """Alias para compatibilidad."""
+        return self.stage_config
+
+    def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+        """Ejecuta la fase de OCR completa."""
+        return self.run_ocr_on_polygons(manager)
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()                

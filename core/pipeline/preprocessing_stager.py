@@ -1,22 +1,21 @@
 # PerfectOCR/core/coordinators/preprocessing_coordinator.py
 import logging
 import time
-from typing import Any, Dict, Tuple, List, Optional
+from typing import Any, Dict, Tuple, Optional
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, Metadata
-from core.factory.abstract_worker import PreprocessingAbstractWorker
+from core.factory.abstract_stager import AbstractStager
 
 logger = logging.getLogger(__name__)
 
-class PreprocessingStager:
+class PreprocessingStager(AbstractStager):
     """
     Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
     """
-    def __init__(self, workers: List[PreprocessingAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
-        self.project_root = project_root
-        self.workers = workers
-        self.stage_config = stage_config
-        self.output_paths = output_paths
+
+    def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+        """Ejecuta la fase de preprocesamiento completa."""
+        return self.apply_preprocessing_pipelines(manager)
 
     def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()

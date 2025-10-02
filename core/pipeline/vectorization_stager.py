@@ -2,20 +2,24 @@
 import logging
 import time
 import pandas as pd # type: ignore
-from typing import Any, Dict, Tuple, List, Optional
+from typing import Any, Dict, Tuple, Optional
 from core.domain.data_formatter import DataFormatter
-from core.factory.abstract_worker import VectorizationAbstractWorker
+from core.factory.abstract_stager import AbstractStager
 from core.domain.data_models import Polygons, Metadata
 
 logger = logging.getLogger(__name__)
 
-class VectorizationStager:
+class VectorizationStager(AbstractStager):
     """Inicializa el coordinador y sus workers. """
-    def __init__(self, workers: List[VectorizationAbstractWorker], stage_config: Dict[str, Any], output_paths: Optional[List[str]], project_root: str):
-        self.project_root = project_root
-        self.workers = workers
-        self.config = stage_config
-        self.output_paths = output_paths
+
+    @property
+    def config(self):
+        """Alias para compatibilidad."""
+        return self.stage_config
+
+    def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+        """Ejecuta la fase de vectorización completa."""
+        return self.vectorize_results(manager)
     
     def vectorize_results(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         """
@@ -24,7 +28,9 @@ class VectorizationStager:
         """        
         start_time = time.time()
         logger.debug("[VectorStager] Iniciando pipeline de vectorización")
-        metadata: Dict[str, Metadata] = manager.workflow.metadata if manager.workflow else {}
+        metadata: Metadata = manager.workflow.metadata
+        if not metadata or not manager.workflow:
+            logger.warning("No metadata")
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
                 
         # Para cada worker, procesar todos los polígonos

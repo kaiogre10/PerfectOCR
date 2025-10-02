@@ -15,7 +15,7 @@ models_config:
   show_log: false
   use_gpu: false
   enable_mkldnn: true
-  rec_batch_num: 64
+  rec_batch_num: 32
   models:
     det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
     rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
@@ -63,7 +63,7 @@ enabled_outputs:
 
 # Configuración de procesamiento
 processing:
-  max_workers: 4
+  max_workers: 1
   valid_image_extensions: [.png, .jpg, .jpeg, .bmp, .tif, .tiff, .webp, .gif, .pbm, .pgm, .ppm, .jp2, .ico]
   batch_mode: true
   batch_processing:
