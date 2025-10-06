@@ -1,3 +1,4 @@
+# core/pipeline/stagers_factory.py
 from typing import Dict, Any, Optional, List
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
@@ -8,63 +9,101 @@ from core.factory.main_factory import MainFactory
 class StagersFactory:
     """
     Fábrica centralizada de stagers.
-    - Reutiliza una única instancia de MainFactory.
-    - Crea workers y ensambla stagers de forma uniforme.
+    Reutiliza una única instancia de MainFactory.
+    Crea workers y ensambla stagers de forma uniforme.
     """
 
-    def __init__(self, modules_config: Dict[str, Any], manager_config: Dict[str, Any], project_root: str):
+    def __init__(self, modules_config: Dict[str, Any], workers_order: Dict[str, List[str]] ,manager_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
+        self.modules_config = modules_config
+        self.workers_order = workers_order
         self.manager_config = manager_config
         self.main_factory = MainFactory(modules_config, project_root)
 
-        # Orden de workers por etapa (editable sin tocar main)
-        self.workers_order = {
-            "image_preparation": ["image_loader", "cleaner", "angle_corrector", "geometry_detector", "polygon_extractor"],
-            "preprocessing": ["moire", "sp", "gauss", "clahe", "sharp"],
-            "ocr": ["paddle_wrapper", "text_cleaner"],
-            "vectorization": ["lineal", "dbscan", "table_structurer", "math_max"]
-        }
+        # Obtener las configuraciones específicas de módulos
+        self.modules_settings = modules_config.get("modules", {})
+        
+        # Obtener los workers de cada pipeline
+        self.image_workers = self.workers_order.get("imagepre_stage" , [])
+        self.preprocessing_workers = self.workers_order.get("preprocessing_stage", [])
+        self.ocr_workers = self.workers_order.get("ocr_stage", [])
+        self.vectorizing_workers = self.workers_order.get("vector_stage", [])
 
     def create_image_prep_stager(self, context: Dict[str, Any], output_paths: Optional[List[str]]) -> ImagePreparationStager:
-        """Crea stager de preparación de imagen con ImageLoader incluido."""
+        """Crea stager de preparación de imagen con configuraciones específicas del master config."""
         factory = self.main_factory.get_image_preparation_factory()
-        workers = factory.create_workers(self.workers_order["image_preparation"], context)
+        
+        # Agregar configuraciones específicas de image_preparation al contexto
+        context_with_config = {
+            **context,
+            "image_preparation_config": self.modules_settings.get("image_preparation", {}),
+            "manager_config": self.manager_config
+        }
+        
+        image_workers = factory.create_workers(self.image_workers, context_with_config)
         
         return ImagePreparationStager(
-            workers=workers,
+            workers=image_workers,
             stage_config=self.manager_config,
             output_paths=output_paths,
             project_root=self.project_root
         )
 
     def create_preprocessing_stager(self, context: Dict[str, Any], output_paths: Optional[List[str]]) -> PreprocessingStager:
+        """Crea stager de preprocessing con configuraciones específicas del master config."""
         factory = self.main_factory.get_preprocessing_factory()
-        workers = factory.create_workers(self.workers_order["preprocessing"], context)
+        
+        # Agregar configuraciones específicas de preprocessing al contexto
+        context_with_config = {
+            **context,
+            "preprocessing_config": self.modules_settings.get("preprocessing", {}),
+            "manager_config": self.manager_config
+        }
+        
+        preprocessing_workers = factory.create_workers(self.preprocessing_workers, context_with_config)
         
         return PreprocessingStager(
-            workers=workers,
+            workers=preprocessing_workers,
             stage_config=self.manager_config,
             output_paths=output_paths,
             project_root=self.project_root
         )
 
     def create_ocr_stager(self, context: Dict[str, Any], output_paths: Optional[List[str]]) -> OCRStager:
+        """Crea stager de OCR con configuraciones específicas del master config."""
         factory = self.main_factory.get_ocr_factory()
-        workers = factory.create_workers(self.workers_order["ocr"], context)
+        
+        # Agregar configuraciones específicas de OCR al contexto
+        context_with_config = {
+            **context,
+            "ocr_config": self.modules_settings.get("ocr", {}),
+            "manager_config": self.manager_config
+        }
+        
+        ocr_workers = factory.create_workers(self.ocr_workers, context_with_config)
         
         return OCRStager(
-            workers=workers,
+            workers=ocr_workers,
             stage_config=self.manager_config,
             output_paths=output_paths,
             project_root=self.project_root
         )
 
     def create_vectorization_stager(self, context: Dict[str, Any], output_paths: Optional[List[str]]) -> VectorizationStager:
+        """Crea stager de vectorización con configuraciones específicas del master config."""
         factory = self.main_factory.get_vectorizing_factory()
-        workers = factory.create_workers(self.workers_order["vectorization"], context)
+        
+        # Agregar configuraciones específicas de vectorización al contexto
+        context_with_config = {
+            **context,
+            "vectorization_config": self.modules_settings.get("vectorization", {}),
+            "manager_config": self.manager_config
+        }
+        
+        vectorizing_workers = factory.create_workers(self.vectorizing_workers, context_with_config)
         
         return VectorizationStager(
-            workers=workers,
+            workers=vectorizing_workers,
             stage_config=self.manager_config,
             output_paths=output_paths,
             project_root=self.project_root

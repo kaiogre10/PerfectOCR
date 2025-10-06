@@ -66,12 +66,12 @@ class DataFinder(OCRAbstractWorker):
         
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
-            return None
+            return {}
         try:
             logger.debug("DataFinder: inicio de búsqueda de palabras clave")
             if not polygons:
                 logger.debug("No hay polígonos para procesar")
-                return None
+                return {}
             else:
 
                 logger.debug(f"Data_finder: cantidad polygons={len(polygons)}")
@@ -132,4 +132,5 @@ class DataFinder(OCRAbstractWorker):
                     
         except Exception as e:
             logger.warning(f"Fallo en búsqueda de datos globales{e}", exc_info=True)
+            return {}
         

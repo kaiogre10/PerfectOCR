@@ -52,10 +52,6 @@ class PathsConfig(ConfigWithNumpy):
     input_folder: str
     output_folder: str
 
-class PipelineConfig(ConfigWithNumpy):
-    image_preparation: List[str]
-    preprocessing_stage: List[str]
-
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
     radius: float
@@ -201,6 +197,12 @@ class ModulesConfig(ConfigWithNumpy):
     preprocessing: PreprocessingConfig
     ocr: OCRConfig
     vectorization: VectorConfig
+
+class PipelineConfig(ConfigWithNumpy):
+    imagepre_stage: List[str]
+    preprocessing_stage: List[str]
+    ocr_stage: List[str]
+    vector_stage: List[str]
 
 class MasterConfig(ConfigWithNumpy):
     system: Dict[str, Any]

@@ -26,6 +26,7 @@ class WordFinder:
             return self.model
         except Exception as e:
             logger.error(f"Error al cargar el modelo{e}", exc_info=True)
+            return {}
 
     def available_models(self) -> List[str]:
         return ["standard"]
@@ -125,6 +126,7 @@ class WordFinder:
                 return 1.0
         except Exception as e:
             logger.error(f"error calculando umrales de largo: {e}", exc_info=True)
+            return 0.0
 
     def find_keywords(self, text: List[str] | str, threshold: Optional[float] = None) -> Optional[List[Dict[str, Any]]]:
         """Busca todas las palabras clave presentes en el string, no solo la mejor."""

@@ -328,7 +328,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     mean_ref: float = global_max_encoded / 2
                     mean_margin: float = (mean - mean_ref) / (mean_ref)
                     mean_margin = max(-1.0, min(1.0, mean_margin))
-                else: 
+                else:
                     mean_margin = 0.0
                     
                 # Calcular skewness

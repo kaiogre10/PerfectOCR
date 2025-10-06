@@ -64,4 +64,4 @@ class ProcessingBuilder:
             
         except Exception as e:
             logger.error(f"[ProcessingBuilder] Error fatal procesando la imagen: {e}", exc_info=True)
-        return None
+            return None

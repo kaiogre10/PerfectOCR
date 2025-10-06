@@ -23,13 +23,13 @@ models_config:
     wordfinder_model_path: "C:/word_finder_model/data/word_finder_model.pkl"
     
 pipeline_secuence:
-  image_preparation:
-    - "cleaner"           
-    - "angle_corrector" 
-    - "geometry_detection"  
-    - "line_reconstructor" 
-    - "polygon_extractor" 
-  
+  imagepre_stage:
+    - "image_loader"
+    - "cleaner"
+    - "angle_corrector"
+    - "geometry_detector"
+    - "polygon_extractor"
+
   preprocessing_stage:
     - "moire"
     - "sp"
@@ -37,7 +37,21 @@ pipeline_secuence:
     - "clahe"
     - "sharp"
     - "binarizator"
-    - "fragmentator"
+
+  ocr_stage:
+    - "paddle_wrapper"
+    - "text_cleaner"
+    - "data_finder"
+    - "semantic_clasificator"
+    - "fragmenter"
+
+  vector_stage:
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
+    - "math_max"
   
 # Configuración de salida (independiente)
 enabled_outputs:
@@ -56,7 +70,7 @@ enabled_outputs:
   semantic_words: false
   clean_text: false
   separated_text: false
-  reconstructed_lines: true
+  reconstructed_lines: false
   table_lines: false
   table_structured: false
   math_max_corrected: false
@@ -72,7 +86,7 @@ processing:
     add_extra_worker: true
     batch_size_factor: 2
     auto_mode: true
-    
+
 # Configuración específica de cada módulo (SIN rutas)
 modules:
   image_preparation:
@@ -99,8 +113,10 @@ modules:
         percentile_threshold: 95
         notch_radius: 2
         min_distance_from_center: 200
+
       factor:
         mean_factor_threshold: 4
+
       absolute:
         absolute_threshold: 200000000
 
@@ -125,6 +141,7 @@ modules:
         clahe_clip_limit: 2.0
         dimension_thresholds_px: [1000, 2500, 4000]
         grid_sizes_map: [[6, 6], [8, 8], [10, 10]]
+
       local:
         window_size: 100
         std_dev_threshold: 15.0
@@ -159,8 +176,8 @@ modules:
         
     data_finder:
       wordfinder_model_path: C:/word_finder_model/data/word_finder_model.pkl
-      min_similarity: 0.85
-      max_q_lenght: 30
+      min_similarity: 0.90
+      max_q_lenght: 20
 
     fragmenter:
       fragment_on_text: True

@@ -57,10 +57,6 @@ class ConfigService:
             return self.config.get('processing', {})
 
         @property
-        def pipeline_config(self) -> Dict[str, List[str]]:
-            return self.config.get("pipeline_secuence", {})
-
-        @property
         def modules_config(self) -> Dict[str, Any]:
             """Obtiene configuración de módulos."""
             return {
@@ -82,28 +78,6 @@ class ConfigService:
         def output_path(self) -> str:
             """Devuelve la ruta de la carpeta de salida."""
             return self.paths_config.get('output_folder', "")
-
-        @property
-        def image_loader_config(self) -> Dict[str, Any]:
-            """Devuelve la configuración del image_loader con la ruta de entrada."""
-            return {
-                "image_loader": self.modules_config.get('image_loader', {}),
-            }
-
-        @property
-        def preprocessing_config(self) -> Dict[str, Any]:
-            """Obtiene configuración específica del preprocesamiento."""
-            return self.modules_config.get('preprocessing', {})
-
-        @property
-        def ocr_config(self) -> Dict[str, Any]:
-            """Obtiene configuración específica del OCR."""
-            return self.modules_config.get('ocr', {})
-
-        @property
-        def vectorization_config(self) -> Dict[str, Any]:
-            """Obtiene configuración específica de vectorización."""
-            return self.modules_config.get('vectorization', {})
 
         @property
         def models_config(self) -> Dict[str, Any]:
@@ -165,8 +139,8 @@ class ConfigService:
             }
 
         @property
-        def image_preparation(self) -> List[str]:
-            return self.pipeline_config["image_preparation"]
+        def workers_order(self) -> Dict[str, List[str]]:
+            return self.config.get("pipeline_secuence", {})
 
     except Exception as e:
         logger.error(f"Error validando configuración {e}", exc_info=True)
