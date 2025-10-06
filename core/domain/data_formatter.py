@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, HeaderLine, FullImage
+from core.domain.data_models import WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage
 import numpy as np
 import dataclasses
 import logging
@@ -102,7 +102,7 @@ class DataFormatter:
             return True
             
         except Exception as e:
-            logger.error(f"Error en create_polygon_dicts: {e}")
+            logger.error(f"Error en create_polygon_dicts: {e}", exc_info=True)
             return False
             
     def get_full_img(self) -> Optional[FullImage]:
@@ -374,6 +374,7 @@ class DataFormatter:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar polígonos.")
                 return False
+            
             if not polygon_updates:
                 return False
 
@@ -390,16 +391,14 @@ class DataFormatter:
                     logger.debug(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
-                # Si detectamos polígonos con key_field == "HeaderWords",
-                # localizamos la línea header y la marcamos automáticamente.
-                header_line = self._find_and_mark_header()
-                if header_line:
-                    logger.debug(f"Header marcado automáticamente: {header_line}")
+                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
+            else:
+                logger.warning("No hubo poligonos con key_field")
+            
         except Exception as e:
-            logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
+            logger.warning(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
             return False
 
     def _find_and_mark_header(self) -> Optional[str]:
@@ -407,44 +406,76 @@ class DataFormatter:
         try:
             if not self.workflow:
                 return None
-            polygons = self.workflow.polygons or {}
-            all_lines = self.workflow.all_lines or {}
+            
+            polygons = self.workflow.polygons if self.workflow else{}
+            all_lines = self.workflow.all_lines if self.workflow else{}
 
             hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == "HeaderWords"]
-            if not hdr_poly_ids:
+            
+            logger.info(f"Header_polys: {hdr_poly_ids}")
+            
+            # LOG CRÍTICO: Verificar si all_lines tiene datos
+            if not all_lines:
+                logger.error("all_lines está vacío! No se puede buscar el header.")
                 return None
+            
+            # Buscar la línea que contiene el mayor número de polígonos de encabezado
+            header_line_id = None
+            max_header_count = 0 
 
-            hdr_set = set(hdr_poly_ids)
-            counts = {}
-            for lid, lobj in all_lines.items():
-                poly_ids = getattr(lobj, "polygon_ids", []) or []
-                counts[lid] = len(set(poly_ids).intersection(hdr_set))
+            for line_id, line_data in all_lines.items():
+                polygon_ids = getattr(line_data, "polygon_ids", [])
+                # Contar cuántos polígonos de encabezado están en esta línea
+                header_count = sum(1 for pid in hdr_poly_ids if pid in polygon_ids)
+                
+                # LOG: Mostrar líneas que tienen al menos un HeaderWord
+                if header_count > 0:
+                    logger.info(f"Línea {line_id} tiene {header_count} HeaderWords: {[pid for pid in hdr_poly_ids if pid in polygon_ids]}")
 
-            if not counts:
-                return None
+                if header_count > max_header_count:
+                    # Si esta línea tiene más polígonos de encabezado, actualizar
+                    header_line_id = line_id
+                    max_header_count = header_count
 
-            header_line_id: Optional[str] = max(counts, key=counts.get)
-            if not header_line_id:
-                return None
-
-            # Limpiar flags previos y marcar el header encontrado
-            for lid, lobj in list(all_lines.items()):
-                try:
-                    if getattr(lobj, "header_line", False):
-                        self.workflow.all_lines[lid] = dataclasses.replace(lobj, header_line=False)
-                except Exception:
-                    continue
-
-            current = self.workflow.all_lines.get(header_line_id)
-            if current:
-                self.workflow.all_lines[header_line_id] = dataclasses.replace(current, header_line=True)
-                logger.info(f"Header_line_id={header_line_id} (via HeaderWords)")
-                return header_line_id
+            if header_line_id is not None:
+                # Marcar la línea como header
+                current = self.workflow.all_lines.get(header_line_id)
+                if current:
+                    updated_line = dataclasses.replace(current, header_line=header_line_id)
+                    self.workflow.all_lines[header_line_id] = updated_line
+                    logger.info(f"Header_line_id={header_line_id} guardado correctamente")
+                    return header_line_id
+            else:
+                logger.warning(f"No se encontró ninguna línea con HeaderWords. hdr_poly_ids={hdr_poly_ids}")
 
             return None
+        
         except Exception as e:
             logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
             return None
+        
+    def update_header(self, header_line_id: str) -> bool:
+        try:
+            if not self.workflow:
+                logger.error("No hay workflow inicializado para actualizar encabezado.")
+                return False
+            
+            # verificar que la línea existe
+            if header_line_id not in self.workflow.all_lines:
+                logger.warning(f"Línea {header_line_id} no encontrada en all_lines.")
+                return False
+            
+            # actualizar el flag header_line a True para la línea especificada
+            current_line = self.workflow.all_lines[header_line_id]
+            updated_line = dataclasses.replace(current_line, header_line=header_line_id)
+            self.workflow.all_lines[header_line_id] = updated_line
+
+            logger.info(f"Línea {header_line_id} marcada como header.")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error actualizando header: {e}", exc_info=True)
+            return False
             
     def create_text_lines(self, lines_debug: Dict[str, Any]) -> bool:
         """
@@ -479,7 +510,7 @@ class DataFormatter:
                     polygon_ids=line_data.get("polygon_ids", []),
                     line_geometry=line_geometry,
                     tabular_line=False,
-                    header_line=False,
+                    header_line=None,
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
@@ -490,41 +521,24 @@ class DataFormatter:
                     tabular_lines_debug.append({
                                 "line_id": line_id,
                                 "text": line_obj.text,
+                                "polygon_ids": line_obj.polygon_ids
                             })
 
             if tabular_lines_debug:
                 for all_lines in tabular_lines_debug:
-                    logger.debug(f"Linea textual: {all_lines['line_id']}: '{all_lines['text']}'")
-            
+                    logger.info(f"Linea textual: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
+
+            header_line = self._find_and_mark_header()
+            if header_line:
+                logger.info(f"Header marcado automáticamente: {header_line}")
+
             num_lines = len(all_lines_dataclasses)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas en dataclasses.")
             for line_id, line_data in self.workflow.all_lines.items():
                 return True
+                        
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
-            return False
-        
-    def update_header(self, header_line_id: str) -> bool:
-        try:
-            if not self.workflow:
-                logger.error("No hay workflow inicializado para actualizar encabezado.")
-                return False
-            
-            # verificar que la línea existe
-            if header_line_id not in self.workflow.all_lines:
-                logger.error(f"Línea {header_line_id} no encontrada en all_lines.")
-                return False
-            
-            # actualizar el flag header_line a True para la línea especificada
-            current_line = self.workflow.all_lines[header_line_id]
-            updated_line = dataclasses.replace(current_line, header_line=True)
-            self.workflow.all_lines[header_line_id] = updated_line
-            
-            logger.debug(f"Línea {header_line_id} marcada como header.")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error actualizando header: {e}", exc_info=True)
             return False
 
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
@@ -560,6 +574,7 @@ class DataFormatter:
             # 2) Marcar los nuevos line_ids provistos (si los hay)
             if not line_ids:
                 logger.warning("No se recibieron line_ids en el manager.")
+
             marked_count = 0
             tabular_lines_debug: List[Dict[str, Any]] = []
             marked_ids: List[str] = []
@@ -582,9 +597,8 @@ class DataFormatter:
                 for log_debug in tabular_lines_debug:
                     logger.debug(f"Líneas tabulares: {log_debug['line_id']}: '{log_debug['text']}' | polygons: {log_debug['polygon_ids']}")
             else:
-                logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
+                logger.error("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 
-            # Operación completada (se limpió y se marcaron las nuevas líneas)
             return True
         except Exception as e:
             logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)

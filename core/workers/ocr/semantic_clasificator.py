@@ -39,7 +39,7 @@ class SemanticClasificator(OCRAbstractWorker):
             for poly_id, semantic_type in final_results.items():
                 if poly_id in polygons:
                     polygon = polygons[poly_id]
-                    logger.debug(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
+                    logger.info(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
                     
             manager.update_semantic_type(final_results)
 
@@ -51,6 +51,7 @@ class SemanticClasificator(OCRAbstractWorker):
             
         except Exception as e:
             logger.debug(f"Error en el clasiicador{e}", exc_info=True)
+            return False
             
     def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
         numeric_range = self.worker_config.get("numeric", [70.0, 100.0])

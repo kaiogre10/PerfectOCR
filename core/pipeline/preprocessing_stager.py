@@ -22,8 +22,8 @@ class PreprocessingStager(AbstractStager):
         logger.debug("[PreprocessingManager] Iniciando pipeline secuencial directo")
         
         # Obtener datos
-        metadata: Dict[str, Metadata] = manager.workflow.metadata if manager.workflow else {}
-        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+        metadata: Metadata = manager.workflow.metadata if manager.workflow else {}
+        polygons = manager.workflow.polygons if manager.workflow else {}
         
         # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
@@ -44,14 +44,14 @@ class PreprocessingStager(AbstractStager):
                 return None, 0.0
 
             worker_time = time.time() - worker_start
-            logger.debug(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.3f}s")
+            logger.debug(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
 
             # Sincronizar resultados de preprocesamiento al manager
             for poly_id, polygon in context["polygons"].items():
                 # Obtener posible imagen modificada o None
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 manager.update_preprocessing_result(poly_id, cropped_img, worker_name)
-            # Refrescar polígonos desde el manager para la siguiente etapa
+
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             context["polygons"] = polygons
 

@@ -23,7 +23,6 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.debug("DBSCScanner iniciado")
             valid_analyses: Dict[str, Dict[str, float]] = context.get("all_features", {})
             logger.debug(f"Features recibidos por Scanner: {len(valid_analyses)} líneas")
-            # logger.debug(f"Features: {valid_analyses}")
             
             if not valid_analyses:
                 logger.warning("No se recibieron features del Vectorizer")
@@ -52,7 +51,7 @@ class DensityScanner(VectorizationAbstractWorker):
                     logger.error("Error al guardar líneas tabulares en el workflow")
                     return False
         except Exception as e:
-            logger.error(f"DBSCAN no detectó tablas en el documento: {e}", exc_debug=True)
+            logger.error(f"DBSCAN no detectó tablas en el documento: {e}", exc_info=True)
         return False
 
     def _apply_dbscan_clustering(self, valid_analyses: Dict[str, Dict[str, float]]) -> List[str]:

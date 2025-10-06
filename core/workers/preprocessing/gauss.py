@@ -18,8 +18,6 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
         self.worker_config = self.config.get('bilateral_params', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("gauss_poly", False)
-        
-        # Parámetros del filtro leídos desde la configuración una sola vez
         self.d = self.worker_config.get('d', 9)
         self.sigma_color = self.worker_config.get('sigma_color', 75)
         self.sigma_space = self.worker_config.get('sigma_space', 75)
@@ -40,22 +38,26 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
             analysis_results: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
 
-            for poly_id, polygon in polygons.items():
-                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                if cropped_img is None:
-                    logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
-                    continue
-                
-                cropped_img_np = np.array(cropped_img, dtype=np.uint8)
-                if cropped_img_np.size == 0:
-                    logger.warning(f"Imagen vacía para el polígono '{poly_id}'")
-                    continue
-                
-                analysis = self._analyze_image_for_gauss(cropped_img_np)
-                if analysis:
-                    analysis_results.append(analysis)
-                    poly_ids_order.append(poly_id)
+            try:
+                for poly_id, polygon in polygons.items():
+                    cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
+                    if cropped_img is None:
+                        logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
+                        continue
+                    
+                    cropped_img_np = np.array(cropped_img, dtype=np.uint8)
+                    if cropped_img_np.size == 0:
+                        logger.warning(f"Imagen vacía para el polígono '{poly_id}'")
+                        continue
+                    
+                    analysis = self._analyze_image_for_gauss(cropped_img_np)
+                    if analysis:
+                        analysis_results.append(analysis)
+                        poly_ids_order.append(poly_id)
 
+            except Exception as e:
+                logger.error(f"Error en create_polygon_dicts: {e}", exc_info=True)
+                
             if not analysis_results:
                 return True
 

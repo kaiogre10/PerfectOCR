@@ -14,6 +14,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         self.project_root = project_root
         self.worker_config = self.config.get('cutting', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("cropped_img", False)
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte.
@@ -34,9 +35,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
                 img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
                 
-            img_h: np.uint32 = img_dims.get("height")
+            img_h = img_dims.get("height")
             
-            img_w: np.uint32  = img_dims.get("width") 
+            img_w = img_dims.get("width") 
                         
             if not polygons:
                 logger.warning("PolygonExtractor: No se encontraron polígonos para procesar.")
@@ -60,10 +61,10 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 return True
 
             # 2. Fase de Decisión Vectorizada: Calcular todos los recortes con padding
-            padding: np.uint32 = self.config.get("cropping_padding", 5)
+            padding = self.config.get("cropping_padding", 5)
             
             # Convertir a array NumPy para operaciones vectorizadas
-            bboxes_array = np.array(all_bboxes, dtype=np.uint32)  # shape: (n_polygons, 4)
+            bboxes_array = np.array(all_bboxes)  # shape: (n_polygons, 4)
             
             # Calcular coordenadas con padding usando operaciones vectorizadas
             x1, y1, x2, y2 = bboxes_array[:, 0], bboxes_array[:, 1], bboxes_array[:, 2], bboxes_array[:, 3]
@@ -124,6 +125,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.error("PolygonExtractor: Error al guardar imágenes recortadas en el workflow")
                 return False
 
+            if self.output:
+                self._save_debug_image(context, cropped_images)
+
             # Liberamos la imagen del contexto y del workflow para ahorrar memoria
             context["full_img"] = None
             manager.update_full_img(None)
@@ -135,5 +139,21 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             return True
 
         except Exception as e:
-            logger.error(f"Error en PolygonExtractor: {e}", exc_debug=True)
+            logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
             return False
+
+    def _save_debug_image(self, context: Dict[str, Any], cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]]):
+        from services.output_service import save_image
+        import os
+
+        output_paths = context.get("output_paths", [])
+        if not output_paths:
+            logger.debug("No se especificaron rutas de salida para guardar imágenes de debug de poly_gone.")
+            return
+
+        for poly_id, cropped in cropped_images.items():
+            for path in output_paths:
+                output_dir = os.path.join(path, "poly_gone")
+                file_name = f"{poly_id}_poly_gone.png"
+                save_image(cropped, output_dir, file_name)
+            logger.debug(f"Imagen de debug de poly_gone para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")

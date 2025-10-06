@@ -51,10 +51,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 
             try:
 
-                results: Optional[List[Any]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
+                results: Optional[List[List[int]]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
                 logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
             except Exception as e:
-                logger.error("GeometryDetector: No se encontraron polígonos de texto.", exc_debug=True)
+                logger.error("GeometryDetector: No se encontraron polígonos de texto.", exc_info=True)
 
             if not (results and len(results) > 0 and results[0] is not None):
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
@@ -68,5 +68,5 @@ class GeometryDetector(ImagePrepAbstractWorker):
             return True
         
         except Exception as e:
-            logger.error(f"Error en procesamiento vectorizado de geometría: {e}", exc_debug=True)
+            logger.error(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
             return False

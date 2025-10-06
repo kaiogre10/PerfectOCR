@@ -24,28 +24,34 @@ models_config:
     
 pipeline_secuence:
   imagepre_stage:
+    # - "dummie"
     - "image_loader"
     - "cleaner"
-    - "angle_corrector"
+    # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
+    # - "dummie"
     - "moire"
     - "sp"
     - "gauss"
+    # - "ink_enhancement"
     - "clahe"
     - "sharp"
-    - "binarizator"
+    # - "binarizator"
 
   ocr_stage:
+    # - "dummie"
     - "paddle_wrapper"
-    - "text_cleaner"
+    - "text_refiner"
+    # - "text_cleaner"
     - "data_finder"
-    - "semantic_clasificator"
-    - "fragmenter"
+    # - "semantic_clasificator"
+    # - "fragmenter"
 
   vector_stage:
+    # - "dummie"
     - "lineal"
     - "vectorizer"
     - "dbscan"
@@ -72,8 +78,8 @@ enabled_outputs:
   separated_text: false
   reconstructed_lines: false
   table_lines: false
-  table_structured: false
-  math_max_corrected: false
+  table_structured: true
+  math_max_corrected: true
 
 # Configuración de procesamiento
 processing:
@@ -163,6 +169,9 @@ modules:
   ocr:
     paddle_wrapper: 
       min_confidence: 60.0
+
+    text_refiner:
+      num_passes: 2
   
     text_cleaner:
       min_confidence: 75.0
@@ -176,7 +185,7 @@ modules:
         
     data_finder:
       wordfinder_model_path: C:/word_finder_model/data/word_finder_model.pkl
-      min_similarity: 0.90
+      min_similarity: 0.85
       max_q_lenght: 20
 
     fragmenter:
@@ -185,7 +194,7 @@ modules:
 
   vectorization:
     lineal:
-      overlap: 0.3
+      overlap: 0.6
       
     vectorizer:
       vectotize: True

@@ -29,7 +29,7 @@ class Geometry:
     
 @dataclass
 class Polygons:
-    polygon_id: str
+    polygon_id: Optional[str]
     geometry: Geometry
     cropedd_geometry: CroppedGeometry
     cropped_img: Optional[CroppedImage]
@@ -48,14 +48,6 @@ class LineGeometry:
     line_bbox: List[float]
     
 @dataclass
-class HeaderLine:
-    lineal_id: str
-    text: str
-    encoded_text: List[int]
-    polygon_ids: List[str]
-    line_geometry: LineGeometry
-
-@dataclass
 class AllLines:
     lineal_id: str
     text: str
@@ -63,7 +55,7 @@ class AllLines:
     polygon_ids: List[str]
     line_geometry: LineGeometry
     tabular_line: bool
-    header_line: HeaderLine
+    header_line: Optional[str]
     
 @dataclass(frozen=True)
 class Metadata:

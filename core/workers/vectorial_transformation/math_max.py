@@ -19,11 +19,12 @@ class MatrixSolver(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
+        self.project_root = project_root
         self.worker_config = config.get('math_max', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("math_max_corrected", False)
-        self.total_mtl_tolerance = self.config.get('total_mtl_abs_tolerance', 0.05)
-        self.arithmetic_tolerance = self.config.get('row_relative_tolerance', 0.05)
+        self.total_mtl_tolerance = self.worker_config.get('total_mtl_abs_tolerance', 0.05)
+        self.arithmetic_tolerance = self.worker_config.get('row_relative_tolerance', 0.05)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:
@@ -31,7 +32,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             df = manager.get_structured_table()
             if df is None or df.empty:
-                logger.warning("[MatrixSolver] No hay tabla estructurada para procesar")
+                logger.error("[MatrixSolver] No hay tabla estructurada para procesar")
                 return False
 
             corrected_df, final_semantic_types = self.solve(df)
@@ -90,7 +91,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         c_name = quant_cols[c_idx]
         pu_name = quant_cols[pu_idx]
         mtl_name = quant_cols[mtl_idx]
-        logger.debug(f"[MatrixSolver] Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
+        logger.info(f"[MatrixSolver] Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
         # --- FASE 2: Reconstrucción ---
         reconstructed: np.ndarray[np.float32, Any] = numeric_df.to_numpy(copy=True)
         reconstructed: np.ndarray = numeric_df.to_numpy(dtype=np.float32, copy=True)
@@ -220,15 +221,13 @@ class MatrixSolver(VectorizationAbstractWorker):
         try:
             if v is None:
                 return False
+            
             self._clean_numeric_value(v) if isinstance(v, str) else v
             return True
+        
         except Exception:
             return False
             
-    def to_float(self, v: Any) -> float:
-
-        return float(v)
-
     def _save_debug_table(self, manager: DataFormatter, context: Dict[str, Any], corrected_df: pd.DataFrame):
         from services.output_service import save_table
         import os
@@ -245,12 +244,12 @@ class MatrixSolver(VectorizationAbstractWorker):
         if not header_text:
             header_text = list(corrected_df.columns)
             
-        file_name = context.get("image_name")
+        file_name: str = manager.workflow.metadata.image_name
         output_paths = context.get("output_paths", [])
         for path in output_paths:
-            output_dir = os.path.join(path, "math_max")
-            file_name = (f"{file_name}math_max_corrected.csv")
-            save_table(corrected_df, output_dir, file_name, header_text)
+            output_dir: str = os.path.join(path, "math_max")
+            table_file_name = f"{os.path.splitext(file_name)[0]}.csv"
+            save_table(corrected_df, output_dir, table_file_name, header_text)
         
         if output_paths:
-            logger.debug(f"Tabla corregida matemáticamente '{file_name}' guardada en {len(output_paths)} ubicaciones.")
+            logger.info(f"Tabla corregida matemáticamente '{file_name}' guardada en {len(output_paths)} ubicaciones.")

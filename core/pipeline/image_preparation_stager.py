@@ -26,8 +26,8 @@ class ImagePreparationStager(AbstractStager):
                 return None, 0.0
             
             worker_time = time.time() - worker_start
-            logger.debug(f"[ImagePrepStager] {worker.__class__.__name__} completado en {worker_time:.3f}s")
+            logger.debug(f"[ImagePrepStager] {worker.__class__.__name__} completado en {worker_time:.6f}s")
         
         total_time = time.time() - start_time
-        logger.debug(f"[ImagePrepStager] Completado en {total_time:.3f}s")
+        logger.debug(f"[ImagePrepStager] Completado en {total_time:.6f}s")
         return manager, total_time

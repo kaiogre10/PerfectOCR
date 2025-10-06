@@ -1,6 +1,6 @@
 # services/config_models.py
 from pydantic import BaseModel, ConfigDict
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -162,8 +162,12 @@ class DataFinder(ConfigWithNumpy):
 class PaddleWrapper(ConfigWithNumpy):
     min_confidence: float
 
+class TextRefiner(ConfigWithNumpy):
+    num_passes: int
+
 class OCRConfig(ConfigWithNumpy):
     paddle_wrapper: PaddleWrapper
+    text_refiner: TextRefiner
     text_cleaner: TextualConfig
     semantic_clasificator: SemanticClasificator
     data_finder: DataFinder
@@ -199,10 +203,10 @@ class ModulesConfig(ConfigWithNumpy):
     vectorization: VectorConfig
 
 class PipelineConfig(ConfigWithNumpy):
-    imagepre_stage: List[str]
-    preprocessing_stage: List[str]
-    ocr_stage: List[str]
-    vector_stage: List[str]
+    imagepre_stage: Optional[List[str]]
+    preprocessing_stage: Optional[List[str]]
+    ocr_stage: Optional[List[str]]
+    vector_stage: Optional[List[str]]
 
 class MasterConfig(ConfigWithNumpy):
     system: Dict[str, Any]

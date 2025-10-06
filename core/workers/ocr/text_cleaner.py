@@ -57,9 +57,9 @@ class TextCleaner(OCRAbstractWorker):
             text = text or ""
 
             if (not text.strip() or
-                (confidence < self.min_confidence and polygon.semantic_type != "numeric") or
+                (confidence < self.min_confidence and polygon.semantic_type not in ("numeric", "quantitative")) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)):
-                logger.debug(f"Eliminado (basura): ID: {poly_id} | Texto: '{text}'")
+                logger.info(f"Eliminado (basura): ID: {poly_id} | Texto: '{text}'")
                 continue
 
             # 3. Ruta Normal: Limpiar texto del polígono vacío
@@ -69,7 +69,7 @@ class TextCleaner(OCRAbstractWorker):
                 list_of_final_polygons.append(updated_polygon)
             else:
                 eliminated_count += 1
-                logger.debug(f"Eliminado (texto vacío post-limpieza): ID: {poly_id} | Texto: '{text}'")
+                logger.info(f"Eliminado (texto vacío post-limpieza): ID: {poly_id} | Texto: '{text}'")
 
         # 4. Reconstrucción y reindexación final
         final_polygons_dict: Dict[str, Polygons] = {}
@@ -166,7 +166,7 @@ class TextCleaner(OCRAbstractWorker):
                     threshold = float(getattr(self, "min_probability", 5.0))
                     if score < threshold:
                         removed += 1
-                        logger.debug(f"Eliminado (basura): ID: {polygon.polygon_id} | Texto:'{t}' | Score: {score:.2f} ")
+                        logger.info(f"Eliminado (basura): ID: {polygon.polygon_id} | Texto:'{t}' | Score: {score:.2f} ")
                         continue
                     kept.append(tok)
                 else:
@@ -174,7 +174,7 @@ class TextCleaner(OCRAbstractWorker):
 
             out = ' '.join(kept)
             if removed > 0:
-                logger.debug(f"Corrección: ID:={polygon.polygon_id} | Texto: '{text}' => '{out}'")
+                logger.info(f"Corrección: ID:={polygon.polygon_id} | Texto: '{text}' => '{out}'")
             return out
         except Exception as e:
             logger.debug(f"Error eliminando tokens por frecuencia: {e}", exc_info=True)

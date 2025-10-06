@@ -29,7 +29,7 @@ class MainFactory:
         vectorizing_config['enabled_outputs'] = enabled_outputs
 
         # Registro de fábricas por nombre de módulo
-        self.module_factories = {
+        self.module_factories: Dict[str, Any] = {
             "image_preparation": ImagePreparationFactory(
                 image_preparation_config,
                 project_root
@@ -53,21 +53,21 @@ class MainFactory:
         return self.module_factories.get(module_name)
 
     def get_image_preparation_factory(self) -> ImagePreparationFactory:
-        factory = self.module_factories["image_preparation"]
-        assert isinstance(factory, ImagePreparationFactory)
-        return factory
+        return self.module_factories["image_preparation"]
+        # assert isinstance(factory, ImagePreparationFactory)
+        # return factory
 
     def get_preprocessing_factory(self) -> PreprocessingFactory:
-        factory = self.module_factories["preprocessing"]
-        assert isinstance(factory, PreprocessingFactory)
-        return factory
+        return self.module_factories["preprocessing"]
+        # assert isinstance(factory, PreprocessingFactory)
+        # return factory
         
     def get_ocr_factory(self) -> OCRFactory:
-        factory = self.module_factories["ocr"] 
-        assert isinstance(factory, OCRFactory) 
-        return factory
+        return self.module_factories["ocr"] 
+        # assert isinstance(factory, OCRFactory) 
+        # return factory
         
     def get_vectorizing_factory(self) -> VectorizingFactory:
-        factory = self.module_factories["vectorization"]
-        assert isinstance(factory, VectorizingFactory)
-        return factory
+        return self.module_factories["vectorization"]
+        # assert isinstance(factory, VectorizingFactory)
+        # return factory

@@ -29,6 +29,7 @@ class VectorizationStager(AbstractStager):
         start_time = time.time()
         logger.debug("[VectorStager] Iniciando pipeline de vectorización")
         metadata: Metadata = manager.workflow.metadata
+
         if not metadata or not manager.workflow:
             logger.warning("No metadata")
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
@@ -44,6 +45,7 @@ class VectorizationStager(AbstractStager):
         }
                 
         for worker_idx, worker in enumerate(self.workers):
+            worker_start = time.time()
             worker_name = worker.__class__.__name__
             logger.debug(f"[VectorStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
@@ -56,6 +58,8 @@ class VectorizationStager(AbstractStager):
                 # Actualizar polígonos del manager si han sido modificados
                 if manager.workflow:
                     context["polygons"] = manager.workflow.polygons
+                    worker_time = time.time() - worker_start
+                    logger.debug(f"[VECTORIZATIONStager] Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
                 continue
     
         vect_time = time.time() - start_time

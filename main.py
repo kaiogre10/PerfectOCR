@@ -19,20 +19,20 @@ os.environ.update({
 })
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
-DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input2")
+DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input")
 DEFAULT_OUTPUT_PATH = os.path.join(PROJECT_ROOT, "output")
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 
 """Configura el logging global usando parámetros definidos manualmente aquí."""
 
 CONSOLE_LEVEL = "INFO"
-FILE_LEVEL = "DEBUG"
+FILE_LEVEL = "INFO"
 # Formato para la consola: muestra el nivel, nombre del logger, línea y mensaje
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 # Formato para el archivo: incluye fecha/hora, --nivel--, --nombre del logger--, --línea--, --módulo-- y mensaje
-FILE_FORMAT = "%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(funcName)s - %(module)s - %(message)s"
+FILE_FORMAT = "%(asctime)s - %(module)s:%(lineno)d - %(message)s"
 # Formato de fecha/hora utilizado en los logs
-DATE_FORMAT = "%Y-%m-%d %H:%M" #"%Y-%m-%d %H:%M:%S"
+DATE_FORMAT = "%D - %H:%M" #"%Y-%m-%d %H:%M:%S"
 
 logger_root = logging.getLogger()
 logger_root.setLevel(logging.DEBUG)

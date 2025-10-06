@@ -92,5 +92,5 @@ class ImageLoader(ImagePrepAbstractWorker):
             return full_img, metadata
 
         except Exception as e:
-            logger.error(f"Error al  la imagen '{input_path}': {e}", exc_debug=True)
+            logger.error(f"Error al  la imagen '{input_path}': {e}", exc_info=True)
         return None, metadata

@@ -2,12 +2,11 @@
 import dataclasses
 import logging
 import re
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 import numpy as np
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from dataclasses import asdict
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +47,9 @@ class Fragmenter(OCRAbstractWorker):
             punctuation_needs_frag = (
                 self.worker_config and
                 polygon.semantic_type not in ("numeric", "quantitative") and
-                not text_needs_frag and  # Solo si no hay espacios
-                any(punct in (polygon.ocr_text or "") for punct in [";", ":", "!", "?", "'"])
+                not text_needs_frag and 
+                (any(punct in (polygon.ocr_text or "") for punct in [";", ":", "!", "?"]) or 
+                (polygon.ocr_text or "").count('.') == 1) 
             )
 
             poly_blob_metrics = blob_metrics.get(poly_id, {})
@@ -71,7 +71,7 @@ class Fragmenter(OCRAbstractWorker):
                 else:
                     reason = "puntuación"
 
-                logger.debug(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
+                logger.info(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
                 
                 if visual_needs_frag:
                     fragments = self._fragment_by_blobs(polygon, poly_blob_metrics)
@@ -97,13 +97,10 @@ class Fragmenter(OCRAbstractWorker):
             manager.workflow.polygons = final_polygons_dict
         
         if fragmented_count > 0:
-            if self.output:
-                self._save_ocr_raw(context, manager)
-
-            logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
+            logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
             return True
         else:
-            logger.debug(f"No se fragmentaron polígonos")
+            logger.warning(f"No se fragmentaron polígonos")
             return True
 
     def _fragment_polygon(self, polygon: Polygons, poly_blob_metrics: Dict[str, Any], punctuation_needs_frag: bool = False) -> List[Polygons]:
@@ -210,7 +207,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"Fragmento por texto: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por texto: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -230,19 +227,75 @@ class Fragmenter(OCRAbstractWorker):
         text = (polygon.ocr_text or "").strip()
         if not text:
             return [polygon]
-
-        # Dividir por puntuación pero mantener la puntuación en cada parte
-        parts = re.split(r'([.,;:!?])', text)
         
-        # Filtrar partes vacías y reconstruir con puntuación
+        point_count = text.count('.')
+        if point_count == 1:
+            parts = text.split('.')
+            if len(parts) == 2 and all(p.strip() for p in parts):
+
+                # Reconstruir sin incluir el punto en ninguna parte
+                filtered_parts = [parts[0], parts[1]]
+                
+                # Crear fragmentos usando la misma lógica que ya existe
+                char_lengths = [len(p) for p in filtered_parts]
+                total_chars = sum(char_lengths)
+                if total_chars == 0:
+                    return [polygon]
+
+                xmin, ymin, xmax, ymax = polygon.geometry.bounding_box
+                width = xmax - xmin
+                
+                new_polys: List[Polygons] = []
+                current_x = xmin
+
+                for i, part in enumerate(filtered_parts):
+                    part_ratio = char_lengths[i] / total_chars
+                    part_width = part_ratio * width
+                    
+                    new_xmax = current_x + part_width
+                    
+                    new_bbox = np.array([current_x, ymin, new_xmax, ymax])
+                    new_centroid = np.array([(current_x + new_xmax) / 2, (ymin + ymax) / 2])
+
+                    new_geom = dataclasses.replace(
+                        polygon.geometry,
+                        bounding_box=new_bbox,
+                        centroid=new_centroid,
+                        polygon_coords=np.array([
+                            [new_bbox[0], new_bbox[1]],
+                            [new_bbox[2], new_bbox[1]],
+                            [new_bbox[2], new_bbox[3]],
+                            [new_bbox[0], new_bbox[3]],
+                        ])
+                    )
+                    
+                    logger.info(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
+
+                    new_poly = dataclasses.replace(
+                        polygon,
+                        geometry=new_geom,
+                        ocr_text=part,
+                        was_fragmented=True
+                    )
+                    new_polys.append(new_poly)
+                    current_x = new_xmax
+
+                return new_polys
+
+        parts = re.split(r'([.;:!?])', text)
+        
+        # Filtrar partes vacías y reconstruir con puntuación (excepto el punto)
         filtered_parts: List[str] = []
         for i, part in enumerate(parts):
-            if part.strip():
-                # Si la siguiente parte es puntuación, incluirla
-                if i + 1 < len(parts) and parts[i + 1] in [";", ":", "!", "?"]:
-                    filtered_parts.append(part + parts[i + 1])
-                elif part not in [";", ":", "!", "?"]:
-                    filtered_parts.append(part)
+            if not part.strip():
+                continue
+            
+            # Si la siguiente parte es puntuación (NO un punto), incluirla
+            if i + 1 < len(parts) and parts[i + 1] in [";", ":", "!", "?"]:
+                filtered_parts.append(part + parts[i + 1])
+            # Si la parte actual NO es un signo de puntuación, añadirla sola
+            elif part not in [".", ";", ":", "!", "?"]:
+                filtered_parts.append(part)
         
         if len(filtered_parts) <= 1:
             return [polygon]
@@ -259,8 +312,20 @@ class Fragmenter(OCRAbstractWorker):
         new_polys: List[Polygons] = []
         current_x = xmin
 
-        for i, part in enumerate(filtered_parts):
-            part_ratio = char_lengths[i] / total_chars
+        for i, part in enumerate(parts):
+            if not part.strip():
+                continue
+            
+            part_text = part
+            # Si la siguiente parte es puntuación (NO un punto), incluirla para el cálculo de ratio
+            if i + 1 < len(parts) and parts[i + 1] in [";", ":", "!", "?"]:
+                part_text += parts[i+1]
+            
+            # Si la parte actual es un signo de puntuación, saltarla
+            if part_text in [".", ";", ":", "!", "?"]:
+                continue
+
+            part_ratio = len(part_text) / total_chars
             part_width = part_ratio * width
             
             new_xmax = current_x + part_width
@@ -280,12 +345,12 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
                 geometry=new_geom,
-                ocr_text=part,
+                ocr_text=part, # Usar solo la parte de texto, sin la puntuación adjunta
                 was_fragmented=True
             )
             new_polys.append(new_poly)
@@ -293,8 +358,8 @@ class Fragmenter(OCRAbstractWorker):
 
         return new_polys
         
-    def _fragment_by_quantitative(self, polygon: Polygons, runs: List[str]) -> List[Polygons]:
-        parts = [tok for _, _, tok in runs]
+    def _fragment_by_quantitative(self, polygon: Polygons, quant_runs: List[Tuple[int, int, str]]) -> List[Polygons]:
+        parts = [tok for _, _, tok in quant_runs]
         if len(parts) <= 1:
             return [polygon]
 
@@ -327,6 +392,8 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
 
+            logger.info(f"Fragmento por cuantitativo: texto='{part}', bbox={new_bbox.tolist()}")
+
             new_polys.append(dataclasses.replace(
                 polygon,
                 geometry=new_geom,
@@ -355,23 +422,3 @@ class Fragmenter(OCRAbstractWorker):
             if is_decimal or has_currency:
                 runs.append((m.start(), m.end(), tok))
         return runs
-
-    # def _save_ocr_raw(self, context: Dict[str, Any], manager: DataFormatter):
-    #     logger.debug("OUTPUT PARA FRAGMENTADOR INICIADO")
-    #     from services.output_service import save_json
-    #     import os
-    #     try:
-    #         project_root = self.project_root
-    #         file_name: str = manager.workflow.metadata.image_name
-    #         output_paths = context.get("output_paths", [])
-    #         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-    #         polygons_list = [asdict(poly) for poly in polygons.values()]
-    #         logger.debug(f"{polygons_list}")
-    #     except Exception as e:
-    #         logger.debug(f"Error generando output: {e}", exc_info=True)
-    #         for path in output_paths:
-    #             output_dir: str = os.path.join(path, "separated_text")
-    #             json_file_name = f"{os.path.splitext(file_name)[0]}.json"
-    #             save_json(polygons_list, output_dir, json_file_name, project_root)
-    #             if output_paths:
-    #                 logger.debug(f"Texto Fragmentado para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
