@@ -179,8 +179,8 @@ modules:
       min_char: 3
     
     semantic_clasificator:
-      numeric: [100.0, 60.0]
-      code: [41.0, 59.9]
+      numeric: [100.0, 80.0]
+      code: [41.0, 79.9]
       descriptive: [0.0, 40.9]
         
     data_finder:

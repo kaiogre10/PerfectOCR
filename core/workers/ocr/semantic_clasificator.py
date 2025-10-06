@@ -54,8 +54,8 @@ class SemanticClasificator(OCRAbstractWorker):
             return False
             
     def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
-        numeric_range = self.worker_config.get("numeric", [70.0, 100.0])
-        code_range = self.worker_config.get("code", [31.0, 69.9])
+        numeric_range = self.worker_config.get("numeric", [])
+        code_range = self.worker_config.get("code", [])
 
         def norm(r): return (min(r[0], r[1]), max(r[0], r[1]))
         n_min, n_max = norm(numeric_range)
@@ -69,15 +69,19 @@ class SemanticClasificator(OCRAbstractWorker):
             total = len(chars)
             pct = (sum(1 for ch in chars if ch.isdigit()) / total) * 100.0 if total else 0.0
 
+            # 1. Verificar primero si es numeric
             if n_min <= pct <= n_max:
                 semantic = "numeric"
+                # Verificar si es quantitative (refinamiento de numeric)
                 tokens = [t for t in (s or "").split() if t]
                 if any(self._is_quantitative(t) for t in tokens):
                     semantic = "quantitative"
-            elif c_min <= pct <= c_max:
-                semantic = "code"
-            else:
+            # 2. Si no es numeric, verificar si es descriptive
+            elif pct < c_min:
                 semantic = "descriptive"
+            # 3. Si no es ni numeric ni descriptive, entonces es code
+            else:
+                semantic = "code"
 
             final_results[pid] = semantic
 

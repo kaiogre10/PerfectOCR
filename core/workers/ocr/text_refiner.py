@@ -18,18 +18,18 @@ class Refiner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.worker_config = self.config
-        self.num_passes = self.worker_config.get("num_passes", 2)
         self.clasificator = SemanticClasificator(config, project_root)
         self.cleaner = TextCleaner(config, project_root)
         self.fragmenter = Fragmenter(config, project_root)
-        logger.info(f"TextRefinerWorker inicializado para {self.num_passes} pasadas.")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Ejecuta el ciclo de refinamiento.
         """
+        num_passes = self.worker_config.get("num_passes", 2)
+        logger.info(f"TextRefinerWorker inicializado para {num_passes} pasadas.")
         try:
-            for i in range(self.num_passes):
+            for i in range(num_passes):
                 pass_num = i + 1
                 logger.info(f"--- Iniciando Pasada de Refinamiento de Texto #{pass_num} ---")
 
