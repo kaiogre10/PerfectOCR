@@ -13,13 +13,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 os.environ.update({
-    'OMP_NUM_THREADS': '4',        
+    'OMP_NUM_THREADS': '4',
     'MKL_NUM_THREADS': '4',
-    'FLAGS_use_mkldnn': '1',     
+    'FLAGS_use_mkldnn': '1',
 })
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
-DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input")
+DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input2")
 DEFAULT_OUTPUT_PATH = os.path.join(PROJECT_ROOT, "output")
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 

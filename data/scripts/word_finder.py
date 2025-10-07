@@ -26,7 +26,6 @@ class WordFinder:
             return self.model
         except Exception as e:
             logger.error(f"Error al cargar el modelo{e}", exc_info=True)
-            return {}
 
     def available_models(self) -> List[str]:
         return ["standard"]
@@ -53,9 +52,6 @@ class WordFinder:
         raw_global = self.global_filter.get("global_ngrams", [])
         self.global_counter = self.global_filter.get("global_counter")
         raw_freqs = self.global_filter.get("global_ngram_freqs")
-        self.forbidden_words: List[str] = self.model.get("forbidden_words", [])
-        self.forbidden_grams: List[Dict[int, set[str]]] = []
-
         try:
             if isinstance(raw_freqs, dict):
                 # trainer devolvió un dict ngram -> freq
@@ -107,26 +103,46 @@ class WordFinder:
             for i, length in enumerate(self.lengths):
                 self.buckets_by_len.setdefault(length, []).append(i)
 
+        # Cargar forbidden words y sus n-gramas
+        self.noise_words: List[str] = self.model.get("noise_words", [])
+        self.noise_grams: List[Dict[int, set[str]]] = []
         
-        forbidden_grams_index = self.model.get("forbidden_grams_index", [])
-        for entry in forbidden_grams_index:
+        
+        noise_grams_index = self.model.get("noise_grams_index", [])
+        for entry in noise_grams_index:
             gmap_sets: Dict[int, set[str]] = {}
             gmap_raw: Dict[int, List[str]] = entry.get("grams", {})
             for n in range(self.ngr[0], self.ngr[1] + 1):
                 gmap_sets[n] = set(gmap_raw.get(n, []))
-            self.forbidden_grams.append(gmap_sets)
+            self.noise_grams.append(gmap_sets)
 
-    def _len_threshold(self, length: int) -> float:
-        """Obtiene umbral por longitud del candidato"""
+    def _len_threshold(self, cand_len: int, key_len: int) -> float:
+        """
+        Calcula el umbral ajustado según la proporción de longitudes entre la palabra candidata y la palabra clave.
+        Si la palabra candidata es al menos el doble de larga que la palabra clave, se penaliza la confianza.
+        Penalización: score = 1 - (1/n), donde n = cand_len / key_len (redondeado hacia abajo).
+        Solo aplica penalización a partir del doble de largo (n >= 2).
+        """
         try:
+            # Buscar el umbral base por longitud de la candidata
+            base_threshold = 1.0
             for start, end, value in self.thresholds_by_len:
-                if start <= length <= end:
-                    return value
+                if start <= cand_len <= end:
+                    base_threshold = value
+                    break
+
+            if key_len == 0:
+                return base_threshold  # Evitar división por cero
+
+            n = cand_len // key_len
+            if n >= 2:
+                penalizacion = 1 - (1 / n)
+                return max(0.0, base_threshold - penalizacion)
             else:
-                return 1.0
+                return base_threshold
         except Exception as e:
-            logger.error(f"error calculando umrales de largo: {e}", exc_info=True)
-            return 0.0
+            logger.error(f"error calculando umbrales de largo: {e}", exc_info=True)
+            return 1.0
 
     def find_keywords(self, text: List[str] | str, threshold: Optional[float] = None) -> Optional[List[Dict[str, Any]]]:
         """Busca todas las palabras clave presentes en el string, no solo la mejor."""
@@ -309,17 +325,17 @@ class WordFinder:
             if not candidate_normalized:
                 return False
                 
-            for i, forbidden_word in enumerate(self.forbidden_words):
-                if not forbidden_word:
+            for i, noise_word in enumerate(self.noise_words):
+                if not noise_word:
                     continue
                     
-                forbidden_len = len(forbidden_word)
-                min_w = max(1, forbidden_len - self.window_flex)
+                noise_len = len(noise_word)
+                min_w = max(1, noise_len - self.window_flex)
                 if min_w > len(candidate_normalized):
                     continue
-                max_w = min(len(candidate_normalized), forbidden_len + self.window_flex)
+                max_w = min(len(candidate_normalized), noise_len + self.window_flex)
                 
-                grams_forbidden = self.forbidden_grams[i]
+                grams_forbidden = self.noise_grams[i]
                 
                 for w in range(min_w, max_w + 1):
                     if w > len(candidate_normalized):
@@ -328,13 +344,13 @@ class WordFinder:
                         sub = candidate_normalized[j:j + w]
                         grams_sub = self._build_query_grams(sub)
                         
-                        if sub == forbidden_word and len(sub) == forbidden_len:
+                        if sub == noise_word and len(sub) == noise_len:
                             similarity = 1.0
                         else:
                             similarity = self._score_binary_cosine_multi_n(grams_forbidden, grams_sub)
-                            len_ratio = max(len(sub), forbidden_len) / max(1, min(len(sub), forbidden_len))
+                            len_ratio = max(len(sub), noise_len) / max(1, min(len(sub), noise_len))
                             if len_ratio >= 2.0:
-                                penalizacion = min(len(sub), forbidden_len) / max(len(sub), forbidden_len)
+                                penalizacion = min(len(sub), noise_len) / max(len(sub), noise_len)
                                 similarity *= penalizacion
                         
                         if similarity >= threshold:
@@ -349,6 +365,7 @@ class WordFinder:
         "total_words": len(self.global_words),
         "threshold_similarity": self.threshold,
         "char_ngram_range": self.ngr,
-        "weights_by_n": self.weights_by_n
+        "weights_by_n": self.weights_by_n,
+        "noise_words": self.noise_words
         }
 

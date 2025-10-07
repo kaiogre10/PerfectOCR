@@ -32,36 +32,36 @@ class ProcessingBuilder:
             # FASE 1: Preparación de imagen (usa execute() del AbstractStager)
             manager, time_poly = self.input_stager.execute(manager)
             if manager is None:
-                logger.error("[ProcessingBuilder] Fallo en fase de preparación")
+                logger.error("Fallo en fase de preparación")
                 return None
             logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
 
             # FASE 2: Preprocesamiento (usa execute() del AbstractStager)
             manager, elapsed = self.preprocessing_stager.execute(manager)
             if manager is None:
-                logger.error("[ProcessingBuilder] Fallo en preprocesamiento")
+                logger.error("Fallo en preprocesamiento")
                 return None
             logger.info(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
             # FASE 3: OCR (usa execute() del AbstractStager)
             manager, ocr_time = self.ocr_stager.execute(manager)
             if manager is None:
-                logger.error("[ProcessingBuilder] Fallo en OCR")
+                logger.error("Fallo en OCR")
                 return None
             logger.info(f"OCR completado en: {ocr_time:.6f}s")
                     
             # FASE 4: Vectorización (usa execute() del AbstractStager)
             manager, vect_time = self.vectorization_stager.execute(manager)
             if manager is None:
-                logger.error("[ProcessingBuilder] Fallo en vectorización")
+                logger.error("Fallo en vectorización")
                 return None
             logger.info(f"Vectorización completada en: {vect_time:.6f}s")
             
             total_workflow_time = time.perf_counter() - workflow_start
-            logger.info(f"[ProcessingBuilder] Procesamiento completado en {total_workflow_time:.6f}s")
+            logger.info(f"Procesamiento completado en {total_workflow_time:.6f}s")
 
             return manager
             
         except Exception as e:
-            logger.error(f"[ProcessingBuilder] Error fatal procesando la imagen: {e}", exc_info=True)
+            logger.error(f"Error fatal procesando la imagen: {e}", exc_info=True)
             return None

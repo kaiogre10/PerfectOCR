@@ -19,20 +19,39 @@ class Vectorizer(VectorizationAbstractWorker):
         self.output = self.enabled_outputs.get("table_lines", False)        
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        try:   
+        try:
             start_time: float = time.time()
             logger.debug("Calculando Features")
 
-            all_features = self._vectorize_text(manager)
-            if all_features:
-                total_time = time.time() - start_time
-                logger.debug(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
-                context["all_features"] = all_features
+            table_line_ids = self._get_keywords_interval(manager)
+            if table_line_ids is not None:
                 
-                return True
+                # Si se detecta un intervalo claro, se omite la vectorización
+                logger.info(f"Intervalo tabular detectado, se omite vectorización")
+                if self.output:
+                    file_name: str = context.get("image_name", "")
+                    self._save_output(context, table_line_ids, file_name, manager)
+
+                context["all_features"] = None
+                success: bool = manager.save_tabular_lines(table_line_ids)
+                if success:
+                    logger.debug("Líneas guardadas en el manager desde Vectorizer")
+                    return True
+                else:
+                    logger.error("No se pudieron guardar las líneas tabulares en el manager")
+                    return False
+
             else:
-                logger.error(f"No se pudo realizar vectorización")
-                return False
+                # Si no hay intervalo, se prosigue con la vectorización normal
+                all_features = self._vectorize_text(manager)
+                if all_features:
+                    total_time = time.time() - start_time
+                    logger.debug(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
+                    context["all_features"] = all_features
+                    return True
+                else:
+                    logger.error(f"No se pudo realizar vectorización")
+                    return False
         except Exception as e:
             logger.error(f"Error en vectorización: {e}", exc_info=True)
             return False
@@ -475,3 +494,73 @@ class Vectorizer(VectorizationAbstractWorker):
         except Exception as e:
                 logger.debug(f"Error en feaures de lineas: {e}", exc_info=True)
                 return {}
+
+    def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[str]]:
+        
+        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+
+        # Verificar existencia de header_line
+        header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None) is not None]
+        header_line_id = header_line_ids[0] if header_line_ids else None
+
+        # Buscar los poly_id de los posibles footers
+        footer_poly_ids: List[str] = [
+            pid for pid, p in polygons.items()
+            if getattr(p, "key_field", None) in ("TotalProductos", "MontoTotalDocumento")
+        ]
+
+        # Mapear poly_id a line_id (por ejemplo, si existe un campo line_id en el polígono)
+        polyid_to_lineid: Dict[str, str] = {}
+        for pid in footer_poly_ids:
+            for line_id, line_obj in all_lines.items():
+                if pid in line_obj.polygon_ids:
+                    polyid_to_lineid[pid] = line_id
+                    break
+
+        # Verificar condiciones: debe haber header y al menos un footer
+        if not header_line_id or not polyid_to_lineid:
+            return None
+
+        # Elegir el footer más cercano al header_line_id
+        header_idx = list(all_lines.keys()).index(header_line_id)
+        min_distance = None
+        winner_line_id = None
+        for pid, line_id in polyid_to_lineid.items():
+            if line_id in all_lines:
+                idx = list(all_lines.keys()).index(line_id)
+                distance = abs(idx - header_idx)
+                if min_distance is None or distance < min_distance:
+                    min_distance = distance
+                    winner_line_id = line_id
+
+        if winner_line_id is None:
+            return None
+
+        # Obtener el intervalo de líneas tabulares (excluyendo header y footer)
+        all_line_ids = list(all_lines.keys())
+        header_pos = all_line_ids.index(header_line_id)
+        footer_pos = all_line_ids.index(winner_line_id)
+
+        logger.info(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
+
+        # Asegurar que el header esté antes que el footer
+        if header_pos >= footer_pos - 1:
+            return None
+
+        tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
+        logger.info(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
+        return tabular_line_ids
+        
+        
+    def _save_output(self, context: Dict[str, Any], expanded_line_ids: List[str], file_name: str, manager: DataFormatter):
+        from services.output_service import save_tabjson
+        import os
+        project_root = self.project_root
+        output_file = context.get("output_paths", [])
+        for path in output_file:
+            output_dir: str = os.path.join(path, "dbscan")
+            json_file_name = f"{os.path.splitext(file_name)[0]}.json"
+            output_file = save_tabjson(expanded_line_ids, manager, output_dir, json_file_name, project_root)
+        if output_file:
+            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")

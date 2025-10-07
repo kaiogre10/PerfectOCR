@@ -32,7 +32,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             df = manager.get_structured_table()
             if df is None or df.empty:
-                logger.error("[MatrixSolver] No hay tabla estructurada para procesar")
+                logger.error("No hay tabla estructurada para procesar")
                 return False
 
             corrected_df, final_semantic_types = self.solve(df)
@@ -42,7 +42,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
             total_time = time.time() - start_time
-            logger.debug(f"[MatrixSolver] Corrección matemática completada en {total_time:.6f}s, Se encontraron {len(corrected_df)} filas.")
+            logger.debug(f"Corrección matemática completada en {total_time:.6f}s, Se encontraron {len(corrected_df)} filas.")
             return True
         except Exception as e:
             logger.error(f"Error en MatrixSolver.vectorize: {e}", exc_info=True)
@@ -62,7 +62,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         basic_types = self._infer_semantic_types_basic(df)
         quant_indices_map = [i for i, t in enumerate(basic_types) if t == "cuantitativo"]
         if len(quant_indices_map) < 3:
-            logger.warning("[MatrixSolver] Menos de 3 columnas cuantitativas; no se aplica corrección.")
+            logger.warning("Menos de 3 columnas cuantitativas; no se aplica corrección.")
             return df, basic_types
 
         quant_cols = [columns[i] for i in quant_indices_map]
@@ -84,14 +84,14 @@ class MatrixSolver(VectorizationAbstractWorker):
                 hypothesis_scores[valid_hypotheses[1]] += 0.5
 
         if not any(score > 0 for score in hypothesis_scores.values()):
-            logger.error("[MatrixSolver] No se encontró hipótesis válida; no se corrige.")
+            logger.error("No se encontró hipótesis válida; no se corrige.")
             return df, basic_types
         
         c_idx, pu_idx, mtl_idx = max(hypothesis_scores, key=lambda k: hypothesis_scores[k])
         c_name = quant_cols[c_idx]
         pu_name = quant_cols[pu_idx]
         mtl_name = quant_cols[mtl_idx]
-        logger.info(f"[MatrixSolver] Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
+        logger.info(f"Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
         # --- FASE 2: Reconstrucción ---
         reconstructed: np.ndarray[np.float32, Any] = numeric_df.to_numpy(copy=True)
         reconstructed: np.ndarray = numeric_df.to_numpy(dtype=np.float32, copy=True)

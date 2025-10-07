@@ -22,6 +22,11 @@ class MatricialCusine(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool: # type: ignore
         start_time: float = time.time()
         try:
+            # Si all_features es None, ya se encontraron las líneas tabulares y encabezado, no se ejecuta nada
+            if context.get("all_features", None) is None:
+                logger.info("Las líneas tabulares y encabezado ya fueron detectados, no se ejecuta validación coseno.")
+                return True
+
             logger.debug("Calculando matriz de similitud")
             
             tabular_lines: List[str] = manager.get_tabular_lines()

@@ -165,6 +165,9 @@ class PaddleWrapper(ConfigWithNumpy):
 class TextRefiner(ConfigWithNumpy):
     num_passes: int
 
+class TextCorrector(ConfigWithNumpy):
+    confidence_threshold: float
+
 class OCRConfig(ConfigWithNumpy):
     paddle_wrapper: PaddleWrapper
     text_refiner: TextRefiner
@@ -172,6 +175,7 @@ class OCRConfig(ConfigWithNumpy):
     semantic_clasificator: SemanticClasificator
     data_finder: DataFinder
     fragmenter: Fragmenter
+    text_corrector: TextCorrector
 
 class DBSCAN(ConfigWithNumpy):
     eps: float

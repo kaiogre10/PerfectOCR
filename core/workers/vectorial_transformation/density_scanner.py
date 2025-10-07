@@ -18,16 +18,17 @@ class DensityScanner(VectorizationAbstractWorker):
         self.output = self.enabled_outputs.get("table_lines", False)
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        # Si el vectorizador ya detectó las líneas tabulares (all_features es None), no se ejecuta el scanner
+        if context.get("all_features", {}) is None:
+            logger.info("El vectorizador ya detectó líneas tabulares, el scanner no se ejecuta.")
+            return True
+
         start_time = time.time()
         try:
             logger.debug("DBSCScanner iniciado")
-            valid_analyses: Dict[str, Dict[str, float]] = context.get("all_features", {})
+            valid_analyses = context.get("all_features", {})
             logger.debug(f"Features recibidos por Scanner: {len(valid_analyses)} líneas")
             
-            if not valid_analyses:
-                logger.warning("No se recibieron features del Vectorizer")
-                return False
-                
             table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
             logger.debug(f"{len(table_line_ids)} table_line_ids: {table_line_ids}")
             if table_line_ids:

@@ -4,6 +4,8 @@ import logging
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.models_manager import ModelsManager
+from fuzzywuzzy import fuzz
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +22,11 @@ class DataFinder(OCRAbstractWorker):
     def model(self) -> Optional[Any]:
         try:
             if self._model is None:
-                from core.domain.models_manager import ModelsManager
                 model_manager = ModelsManager.get_instance()
                 self._model = model_manager.word_finder
+                self.model_info: Dict[str, Any] = self._model.get_model_info()
+                
+                self.noise_words: List[str] = self.model_info["noise_words"]
                 logger.debug("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
             
             return self._model
@@ -54,27 +58,27 @@ class DataFinder(OCRAbstractWorker):
             
             # Guardar resultados en el contexto
             total_time = time.time() - start_time
-            logger.debug(f"Key Fields detectados en {total_time:.4f}s")
+            logger.debug(f"Key Fields detectados en {total_time:6f}s")
             return success  # Siempre retorna True para continuar con el pipeline
         except Exception as e:
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
             return True  # Retorna True para continuar con fallbacks
 
     def _find_data(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, str]:
-        threshold = self.worker_config.get("min_similarity", 0.90)
-        max_q_lenght = self.worker_config.get("max_q_lenght", 15)
+        threshold = self.worker_config.get("min_similarity", {})
+        max_q_lenght = self.worker_config.get("max_q_lenght", {})
         
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
             return {}
         try:
-            logger.debug("DataFinder: inicio de búsqueda de palabras clave")
+            logger.debug("Inicio de búsqueda de palabras clave")
             if not polygons:
-                logger.debug("No hay polígonos para procesar")
+                logger.error("No hay polígonos para procesar")
                 return {}
             else:
 
-                logger.debug(f"Data_finder: cantidad polygons={len(polygons)}")
+                logger.debug(f"Cantidad polygons={len(polygons)}")
 
             processed_count = 0
             polygon_updates: Dict[str, str] = {}
@@ -107,8 +111,28 @@ class DataFinder(OCRAbstractWorker):
 
                 if max_len_cfg is not None and lenght > max_len_cfg:
                     skipped_len += 1
-                    logger.debug(f"DataFinder: Polígono {pid} omitido por largo ({lenght} > {max_len_cfg})")
+                    logger.info(f"Polígono: {pid} omitido por largo ({lenght} > {max_len_cfg})")
                     continue
+                
+                try:
+                    if self.noise_words:
+                        # Se convierte el valor de min_similarity (ej: 0.85) a la escala de fuzzywuzzy (ej: 85)
+                        min_sim_value = self.worker_config.get("min_similarity",{})
+                        similarity_threshold = int(min_sim_value * 100)
+                        
+                        is_noisy = False
+                        for word in self.noise_words:
+                            # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
+                            similarity = fuzz.token_set_ratio(text.lower(), word.lower())
+                            if similarity >= similarity_threshold:
+                                logger.info(f"Polígono: {pid} omitido por palabra prohibida '{word}' (similitud: {similarity}%)")
+                                is_noisy = True
+                                break
+                        if is_noisy:
+                            continue
+                        
+                except Exception as e:    
+                    logger.warning(f"Error buscando las forbbiden words: {e}", exc_info=True)
                 
                 # Buscar con WordFinder
                 valid_results: List[str] = self.model.find_keywords(text, threshold)
@@ -120,7 +144,7 @@ class DataFinder(OCRAbstractWorker):
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Similitud por palabra: {pid}: {best_result}")
+                        logger.info(f"Similitud por palabra: {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")
@@ -133,4 +157,3 @@ class DataFinder(OCRAbstractWorker):
         except Exception as e:
             logger.warning(f"Fallo en búsqueda de datos globales{e}", exc_info=True)
             return {}
-        

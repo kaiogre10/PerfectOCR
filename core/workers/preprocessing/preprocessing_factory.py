@@ -8,7 +8,7 @@ from core.workers.preprocessing.gauss import GaussianDenoiser
 from core.workers.preprocessing.ink_enhancer import InkEnhancer
 from core.workers.preprocessing.clahe import ClaherEnhancer
 from core.workers.preprocessing.sharp import SharpeningEnhancer
-from core.workers.ocr.binarization import Binarizator
+from core.workers.preprocessing.binarization import Binarizator
 
 
 class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):

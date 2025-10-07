@@ -45,11 +45,8 @@ pipeline_secuence:
     # - "dummie"
     - "paddle_wrapper"
     - "text_refiner"
-    # - "text_cleaner"
     - "data_finder"
-    # - "semantic_clasificator"
-    # - "fragmenter"
-
+    
   vector_stage:
     # - "dummie"
     - "lineal"
@@ -95,7 +92,9 @@ processing:
 
 # Configuración específica de cada módulo (SIN rutas)
 modules:
+
   image_preparation:
+  
     deskew:
       min_angle_for_correction: 0.15
       canny_thresholds: [50, 150]
@@ -114,6 +113,7 @@ modules:
       cropping_padding: 5
 
   preprocessing:
+  
     moire:
       percentile:
         percentile_threshold: 95
@@ -167,6 +167,7 @@ modules:
         quality_max: 0.90
         
   ocr:
+  
     paddle_wrapper: 
       min_confidence: 60.0
 
@@ -179,9 +180,9 @@ modules:
       min_char: 3
     
     semantic_clasificator:
-      numeric: [100.0, 80.0]
-      code: [41.0, 79.9]
-      descriptive: [0.0, 40.9]
+      numeric: [100.0, 66.0]
+      code: [45.0, 65.9]
+      descriptive: [0.0, 44.9]
         
     data_finder:
       wordfinder_model_path: C:/word_finder_model/data/word_finder_model.pkl
@@ -192,7 +193,11 @@ modules:
       fragment_on_text: True
       min_contours_for_frag: 2
 
+    text_corrector:
+      confidence_threshold: 0.85
+  
   vectorization:
+  
     lineal:
       overlap: 0.6
       
