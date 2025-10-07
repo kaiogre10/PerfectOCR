@@ -144,8 +144,8 @@ class TextCorrector(OCRAbstractWorker):
         # Actualizar el manager con los polígonos corregidos
         manager.workflow.polygons = corrected_polygons
         
-        logger.info(
-            f"Corrección quirúrgica completada - "
+        logger.debug(
+            f"Corrección textual completada - "
             f"Total: {correction_stats['total_corrections']} | "
             f"Alta confianza omitidos: {correction_stats['skipped_high_confidence']} | "
             f"Numeric: {correction_stats['numeric']} | "

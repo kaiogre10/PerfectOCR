@@ -359,7 +359,7 @@ class DataFormatter:
                     updated_count += 1
 
             if updated_count > 0:
-                logger.info(f"Actualizados {updated_count} polígonos con semantic_types")
+                logger.debug(f"Actualizados {updated_count} polígonos con semantic_types")
             return True
             
         except Exception as e:
@@ -459,7 +459,7 @@ class DataFormatter:
             logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
             return None
 
-    def update_header(self, header_line_id: str) -> None:
+    def update_header(self, header_line_id: str) -> bool:
         """
         Actualiza los key_field de todos los polígonos según la línea de encabezado:
         1. Todos los polígonos de la línea de encabezado → key_field="HeaderWords"
@@ -467,13 +467,13 @@ class DataFormatter:
         """
         try:
             if not self.workflow:
-                return
+                return False
             
             # Obtener los polygon_ids de la línea de encabezado
             header_line = self.workflow.all_lines.get(header_line_id)
             if not header_line:
                 logger.warning(f"No se encontró la línea de encabezado {header_line_id}")
-                return
+                return False
             
             header_polygon_ids = set(getattr(header_line, "polygon_ids", []))
             
@@ -501,9 +501,11 @@ class DataFormatter:
                         logger.debug(f"Polígono {poly_id} limpiado de HeaderWords (fuera de línea {header_line_id})")
             
             logger.info(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
+            return True
             
         except Exception as e:
             logger.error(f"Error actualizando polígonos de encabezado: {e}", exc_info=True)
+            return False
             
     def create_text_lines(self, lines_debug: Dict[str, Any]) -> bool:
         """
@@ -554,11 +556,12 @@ class DataFormatter:
 
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
-                    logger.info(f"Linea textual: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
+                    logger.debug(f"Linea textual: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
 
             header_line = self._find_and_mark_header()
             if header_line:
-                logger.info(f"Header marcado automáticamente: {header_line}")
+                logger.debug(f"Header marcado automáticamente: {header_line}")
+                return True
 
             num_lines = len(all_lines_dataclasses)
             logger.debug(f"Guardadas {num_lines} líneas reconstruidas.")

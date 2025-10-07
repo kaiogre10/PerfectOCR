@@ -35,9 +35,15 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("No hay tabla estructurada para procesar")
                 return False
 
+            # Log simple de cómo recibe la tabla (antes de corregir)
+            logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=False))
+
             corrected_df, final_semantic_types = self.solve(df)
             if self.output:
                 self._save_debug_table(manager, context, corrected_df)
+
+            # Log simple de cómo queda la tabla ya corregida
+            logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
 
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 

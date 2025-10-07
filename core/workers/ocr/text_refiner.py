@@ -31,7 +31,7 @@ class Refiner(OCRAbstractWorker):
         Ejecuta el ciclo de refinamiento.
         """
         num_passes = self.worker_config.get("num_passes", {})
-        logger.info(f"Refinador inicializado para {num_passes} pasadas.")
+        logger.debug(f"Refinador inicializado para {num_passes} pasadas.")
         try:
             for i in range(num_passes):
                 pass_num = i + 1

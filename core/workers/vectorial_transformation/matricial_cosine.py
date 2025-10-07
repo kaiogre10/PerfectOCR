@@ -19,14 +19,14 @@ class MatricialCusine(VectorizationAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)        
                 
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool: # type: ignore
-        start_time: float = time.time()
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             # Si all_features es None, ya se encontraron las líneas tabulares y encabezado, no se ejecuta nada
-            if context.get("all_features", None) is None:
+            if context.get("all_features", {}) is None:
                 logger.info("Las líneas tabulares y encabezado ya fueron detectados, no se ejecuta validación coseno.")
                 return True
-
+                
+            start_time: float = time.time()
             logger.debug("Calculando matriz de similitud")
             
             tabular_lines: List[str] = manager.get_tabular_lines()
@@ -83,13 +83,13 @@ class MatricialCusine(VectorizationAbstractWorker):
                 return []
             else:
                 logger.info(f"Encabezado encontrado en coseno: {header_lineid}")
+                
+            header_line_id = header_lineid
             
-            success: bool = manager.update_header(header_lineid)
+            success: bool = manager.update_header(header_line_id)
             if success:
                 logger.info(f"Encabzado actualizado en el manager desde coseno")
 
-            header_line_id = header_lineid
-            
         header_idx = line_ids.index(header_line_id)
         # Convertir tabular_lines (IDs de línea) a índices numéricos
         tabular_indices: List[int] = []
@@ -214,19 +214,19 @@ class MatricialCusine(VectorizationAbstractWorker):
         try:
             X = csr_matrix(mat_rows, dtype=np.float64)
             timecos0 = time.perf_counter()
-            sims_mat = cosine_similarity(X, dense_output=False)
+            sims_mat = cosine_similarity(X, dense_output=False) # type: ignore
             logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
         except Exception as e:
             logger.error(f"Error calculando matriz se similitud: {e}", exc_info=True)
 
         # Convertir la matriz dispersa a densa para mostrarla
-        sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray()
-        mean_log = np.mean(sims_mat_dense)
+        sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray() # type: ignore
+        mean_log = np.mean(sims_mat_dense) # type: ignore
         logger.debug(f"Promedio matriz: {mean_log}")
         logger.debug("Matriz de similitud (cosine_similarity):")
         logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
         matriz_str = "\n".join(
-            ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense]
+            ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense] # type: ignore
         )
         logger.debug("Matriz:\n%s", matriz_str)
 
@@ -236,7 +236,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             if n == 1:
                 mean_sims.append(1.0)
             else:
-                mean_val = float((np.sum(sims_mat[i]) - 1.0) / (n - 1))
+                mean_val = float((np.sum(sims_mat[i]) - 1.0) / (n - 1)) # type: ignore
                 mean_sims.append(mean_val)
 
         matched_original_indices: List[int] = []
@@ -257,19 +257,19 @@ class MatricialCusine(VectorizationAbstractWorker):
             if not hdr_poly_ids: 
                 return None
             
-            hdr_set = set(hdr_poly_ids)
+            hdr_set: Set[List[str]] = set(hdr_poly_ids)
             counts = {lid: len(set(lobj.polygon_ids).intersection(hdr_set)) for lid, lobj in all_lines.items() if lobj.polygon_ids}
             
             if not counts: 
                 return None
         
-            header_line_id: Optional[str] = max(counts, key=counts.get)
+            header_line_id: Optional[str] = max(counts, key=counts.get) # type: ignore
         
             if not header_line_id:
                 return None
             
             else:
-                logger.info(f"Header_line_id={header_line_id} (via HeaderWords)")
+                logger.info(f"Header_line_id={header_line_id}")
                 return header_line_id
         
         except Exception as e:

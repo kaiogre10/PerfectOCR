@@ -125,7 +125,7 @@ class DataFinder(OCRAbstractWorker):
                             # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
                             similarity = fuzz.token_set_ratio(text.lower(), word.lower())
                             if similarity >= similarity_threshold:
-                                logger.info(f"Polígono: {pid} omitido por palabra prohibida '{word}' (similitud: {similarity}%)")
+                                logger.debug(f"Polígono: {pid} omitido por palabra prohibida '{word}' (similitud: {similarity}%)")
                                 is_noisy = True
                                 break
                         if is_noisy:
@@ -144,7 +144,7 @@ class DataFinder(OCRAbstractWorker):
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.info(f"Similitud por palabra: {pid}: {best_result}")
+                        logger.debug(f"Similitud por palabra: {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")
