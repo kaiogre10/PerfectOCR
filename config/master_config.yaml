@@ -26,19 +26,19 @@ pipeline_secuence:
   imagepre_stage:
     # - "dummie"
     - "image_loader"
-    - "cleaner"
+    # - "cleaner"
     # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-    # - "dummie"
-    - "moire"
-    - "sp"
-    - "gauss"
+    - "dummie"
+    # - "moire"
+    # - "sp"
+    # - "gauss"
     # - "ink_enhancement"
-    - "clahe"
-    - "sharp"
+    # - "clahe"
+    # - "sharp"
     # - "binarizator"
 
   ocr_stage:
@@ -51,10 +51,11 @@ pipeline_secuence:
     # - "dummie"
     - "lineal"
     - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
-    - "math_max"
+    # - "dbscan"
+    # - "cos_sim"
+    # - "table_structurer"
+    # - "semantic_corrector"
+    # - "math_max"
   
 # Configuración de salida (independiente)
 enabled_outputs:
@@ -70,13 +71,10 @@ enabled_outputs:
   sharp_poly: false
   binarized_polygons: false
   ocr_raw: false
-  semantic_words: false
-  clean_text: false
-  separated_text: false
   reconstructed_lines: false
   table_lines: false
-  table_structured: true
-  math_max_corrected: true
+  table_structured: false
+  math_max_corrected: false
 
 # Configuración de procesamiento
 processing:
@@ -92,28 +90,25 @@ processing:
 
 # Configuración específica de cada módulo (SIN rutas)
 modules:
-
   image_preparation:
-  
-    deskew:
+    cleaner:
+        std_low: 15.0
+        sp_thr: 0.015
+        clahe_clip: 2.0
+        clahe_grid: [8, 8]
+
+    angle_corrector:
       min_angle_for_correction: 0.15
       canny_thresholds: [50, 150]
       hough_threshold: 150
       hough_min_line_length_cap_px: 300
       hough_max_line_gap_px: 20
       hough_angle_filter_range_degrees: [-20.0, 20.0]
-      
-    cleaning:
-      std_low: 15.0
-      sp_thr: 0.015
-      clahe_clip: 2.0
-      clahe_grid: [8, 8]
-      
-    cutting:
+        
+    polygon_extractor:
       cropping_padding: 5
 
   preprocessing:
-  
     moire:
       percentile:
         percentile_threshold: 95
@@ -126,13 +121,13 @@ modules:
       absolute:
         absolute_threshold: 200000000
 
-    median_filter:
+    sp_config:
       kernel_size: 5
       salt_pepper_threshold: 0.0025
       salt_pepper_low: 3
       salt_pepper_high: 253
 
-    bilateral_params:
+    gauss_params:
       laplacian_variance_threshold: 80.0
       d: 9
       sigma_color: 75
@@ -167,7 +162,6 @@ modules:
         quality_max: 0.90
         
   ocr:
-  
     paddle_wrapper: 
       min_confidence: 60.0
 
@@ -177,7 +171,7 @@ modules:
     text_cleaner:
       min_confidence: 75.0
       min_probability: 75.0
-      min_char: 3
+      min_char: 2
     
     semantic_clasificator:
       numeric: [100.0, 66.0]
@@ -194,12 +188,11 @@ modules:
       min_contours_for_frag: 2
 
     text_corrector:
-      confidence_threshold: 0.85
+      confidence_threshold: 0.90
   
   vectorization:
-  
     lineal:
-      overlap: 0.6
+      overlap_threshold: 0.35
       
     vectorizer:
       vectotize: True
@@ -215,7 +208,7 @@ modules:
 
     table_structurer:
       min_h: 3
-      min_cosine_similarity: 0.75
+      min_cosine_similarity: 0.65
     
     math_max:
       total_mtl_abs_tolerance: 0.05

@@ -27,7 +27,7 @@ class VectorizationStager(AbstractStager):
         para máxima eficiencia de memoria.
         """        
         start_time = time.time()
-        logger.debug("[VectorStager] Iniciando pipeline de vectorización")
+        logger.debug("Iniciando pipeline de vectorización")
         metadata: Metadata = manager.workflow.metadata
 
         if not metadata or not manager.workflow:

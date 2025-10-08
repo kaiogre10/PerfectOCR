@@ -106,9 +106,16 @@ class DeskewConfig(ConfigWithNumpy):
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
 
+class CleaningConfig(ConfigWithNumpy):
+    std_low: float
+    sp_thr: float
+    clahe_clip: float
+    clahe_grid: Tuple[int, int]
+
 class ImagePreparation(ConfigWithNumpy):
-    deskew: DeskewConfig
-    cutting: CuttingConfig
+    angle_corrector: DeskewConfig
+    cleaner: CleaningConfig
+    polygon_extractor: CuttingConfig
 
 class ContrastConfigGeneral(ConfigWithNumpy):
     clahe_clip_limit: float
@@ -138,8 +145,8 @@ class InkConfig(ConfigWithNumpy):
 
 class PreprocessingConfig(ConfigWithNumpy):
     moire: MoireConfig  
-    median_filter: SaltPepper 
-    bilateral_params: GaussianConfig
+    sp_config: SaltPepper 
+    gauss_params: GaussianConfig
     ink_enhancement: InkConfig
     contrast: ContrastConfig  
     sharpening: SharpeningConfig
@@ -182,7 +189,7 @@ class DBSCAN(ConfigWithNumpy):
     min_cluster_size: int
 
 class Lineal(ConfigWithNumpy):
-    overlap: float
+    overlap_threshold: float
 
 class TableStructurer(ConfigWithNumpy):
     min_h: int

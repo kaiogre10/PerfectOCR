@@ -20,9 +20,6 @@ class StagersFactory:
         self.manager_config = manager_config
         self.main_factory = MainFactory(modules_config, project_root)
 
-        # Obtener las configuraciones específicas de módulos
-        self.modules_settings = modules_config.get("modules", {})
-        
         # Obtener los workers de cada pipeline
         self.image_workers = self.workers_order.get("imagepre_stage" , [])
         self.preprocessing_workers = self.workers_order.get("preprocessing_stage", [])
@@ -36,7 +33,7 @@ class StagersFactory:
         # Agregar configuraciones específicas de image_preparation al contexto
         context_with_config = {
             **context,
-            "image_preparation_config": self.modules_settings.get("image_preparation", {}),
+            "image_preparation_config": self.modules_config.get("image_preparation", {}),
             "manager_config": self.manager_config
         }
         
@@ -56,7 +53,7 @@ class StagersFactory:
         # Agregar configuraciones específicas de preprocessing al contexto
         context_with_config = {
             **context,
-            "preprocessing_config": self.modules_settings.get("preprocessing", {}),
+            "preprocessing_config": self.modules_config.get("preprocessing", {}),
             "manager_config": self.manager_config
         }
         
@@ -76,7 +73,7 @@ class StagersFactory:
         # Agregar configuraciones específicas de OCR al contexto
         context_with_config = {
             **context,
-            "ocr_config": self.modules_settings.get("ocr", {}),
+            "ocr_config": self.modules_config.get("ocr", {}),
             "manager_config": self.manager_config
         }
         
@@ -96,7 +93,7 @@ class StagersFactory:
         # Agregar configuraciones específicas de vectorización al contexto
         context_with_config = {
             **context,
-            "vectorization_config": self.modules_settings.get("vectorization", {}),
+            "vectorization_config": self.modules_config.get("vectorization", {}),
             "manager_config": self.manager_config
         }
         

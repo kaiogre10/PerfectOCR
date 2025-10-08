@@ -1,4 +1,4 @@
-# semantic_clasificator
+# core/workers/ocr/semantic_clasificator.py
 import logging
 import re
 from typing import Dict, Any
@@ -14,15 +14,14 @@ class SemanticClasificator(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get("semantic_clasificator", {})
-        self.enabled_outputs = config.get("enabled_outputs", {})
-        self.output = self.enabled_outputs.get("semantic_words", False)  
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         
-        logger.debug("Clasificador inciado")
+        logger.info("Clasificador inciado")
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para preocesar")
+                return False
                 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             
@@ -35,22 +34,17 @@ class SemanticClasificator(OCRAbstractWorker):
                     polygon = polygons[poly_id]
                     classified_count += 1
 
-            logger.debug(f"Total clasificados: {classified_count}")
+            logger.info(f"Total clasificados: {classified_count}")
             for poly_id, semantic_type in final_results.items():
                 if poly_id in polygons:
                     polygon = polygons[poly_id]
-                    logger.debug(f"{poly_id}, semantic={semantic_type}, text='{polygon.ocr_text or ''}'")
+                    logger.info(f"{poly_id}: {semantic_type} | texto: '{polygon.ocr_text or ''}'")
                     
             manager.update_semantic_type(final_results)
-
-            file_name: str = manager.workflow.metadata.image_name
-            
-            if self.output:
-                self._save_ocr_raw(context, final_results, file_name)
             return True
-            
+
         except Exception as e:
-            logger.debug(f"Error en el clasiicador{e}", exc_info=True)
+            logger.warning(f"Error en el clasiicador{e}", exc_info=True)
             return False
             
     def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
@@ -69,13 +63,19 @@ class SemanticClasificator(OCRAbstractWorker):
             total = len(chars)
             pct = (sum(1 for ch in chars if ch.isdigit()) / total) * 100.0 if total else 0.0
 
-            # 1. Verificar primero si es numeric
-            if n_min <= pct <= n_max:
+            # Verificar si existe patrón cuantitativo PRIMERO
+            tokens = [t for t in (s or "").split() if t]
+            if not tokens:  # Si no hay espacios, usar el texto completo
+                tokens = [s]
+            
+            has_quantitative = any(self._is_quantitative(t) for t in tokens)
+            
+            # 0. Si tiene patrón cuantitativo, clasificar directamente como quantitative
+            if has_quantitative:
+                semantic = "quantitative"
+            # 1. Si el porcentaje está en rango numérico, clasificar como numeric
+            elif n_min <= pct <= n_max:
                 semantic = "numeric"
-                # Verificar si es quantitative (refinamiento de numeric)
-                tokens = [t for t in (s or "").split() if t]
-                if any(self._is_quantitative(t) for t in tokens):
-                    semantic = "quantitative"
             # 2. Si no es numeric, verificar si es descriptive
             elif pct < c_min:
                 semantic = "descriptive"
@@ -139,17 +139,32 @@ class SemanticClasificator(OCRAbstractWorker):
     def _is_quantitative(self, token: str) -> bool:
         return self._is_currency_amount(token) or self._is_decimal_number(token)
                 
-    def _save_ocr_raw(self, context: Dict[str, Any], final_results: Dict[str, str], file_name: str):
-        from services.output_service import save_json
-        import os
-
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir: str = os.path.join(path, "semantic_words")
-            json_file_name = f"{os.path.splitext(file_name)[0]}.json"
-            save_json(final_results, output_dir, json_file_name)
+    def _has_quantitative_pattern(self, s: str) -> bool:
+        """
+        Verifica si el texto contiene algún patrón cuantitativo (moneda o decimal).
+        Busca patrones dentro del texto, incluso si hay caracteres basura.
+        """
         
-        if output_paths:
-            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")
-            
-            
+        if not s or not s.strip():
+            return False
+        
+        # Verificar tokens separados por espacios
+        tokens = [t for t in s.split() if t]
+        if tokens:
+            if any(self._is_quantitative(t) for t in tokens):
+                return True
+        
+        # Si no hay espacios o no se encontró en tokens, buscar patrón dentro del string
+        # Patrón para números decimales (con coma o punto como separador)
+        decimal_pattern = r'\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}'  # Ej: 1.275.00, 1,275.00
+        
+        # Patrón para moneda ($ € £ ¥ ¢ seguido de números)
+        currency_pattern = r'[$€£¥¢]\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?'
+        
+        # Buscar cualquiera de estos patrones en el texto
+        if re.search(decimal_pattern, s) or re.search(currency_pattern, s):
+            return True
+        
+        # Último recurso: verificar el string completo limpio
+        return self._is_quantitative(s)
+                

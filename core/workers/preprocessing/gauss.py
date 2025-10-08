@@ -15,13 +15,13 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('bilateral_params', {})
+        self.worker_config = self.config.get('gauss_params', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("gauss_poly", False)
         self.d = self.worker_config.get('d', 9)
-        self.sigma_color = self.worker_config.get('sigma_color', 75)
-        self.sigma_space = self.worker_config.get('sigma_space', 75)
-        self.gauss_threshold = self.worker_config.get('laplacian_variance_threshold', 100)
+        self.sigma_color = self.worker_config.get('sigma_color', {})
+        self.sigma_space = self.worker_config.get('sigma_space', {})
+        self.gauss_threshold = self.worker_config.get('laplacian_variance_threshold', {})
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -73,7 +73,7 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
                 polygon = polygons[poly_id]
                 original_img = analysis_results[idx]['original_img']
 
-                logger.debug(f"Poly '{poly_id}': Aplicando filtro bilateral (Varianza: {laplacian_variances[idx]:.2f})")
+                logger.debug(f"{poly_id}': Limpieza S&P (Varianza: {laplacian_variances[idx]:.2f})")
 
                 corrected_img = self._apply_gauss_correction(original_img)
                 
@@ -83,7 +83,7 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
                     self._save_debug_image(context, poly_id, corrected_img)
 
             total_time = time.time() - start_time
-            logger.debug(f"Procesamiento Gaussiano completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
+            logger.debug(f"Procesamiento Gaussiano completado para {len(poly_ids_order)} polígonos en: {total_time:.6f}s")
             return True
         except Exception as e:
             logger.error(f"Error en el procesamiento por lotes de GaussianDenoiser: {e}", exc_info=True)

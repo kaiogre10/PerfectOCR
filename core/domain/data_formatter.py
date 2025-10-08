@@ -556,7 +556,9 @@ class DataFormatter:
 
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
-                    logger.debug(f"Linea textual: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
+                    # logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
+                    logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']}")
+
 
             header_line = self._find_and_mark_header()
             if header_line:
@@ -626,7 +628,7 @@ class DataFormatter:
             if marked_ids:
                 logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_debug in tabular_lines_debug:
-                    logger.info(f"Líneas tabulares: {log_debug['line_id']}: '{log_debug['text']}' | polygons: {log_debug['polygon_ids']}")
+                    logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}' | polygons: {log_debug['polygon_ids']}")
             else:
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 

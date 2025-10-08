@@ -42,6 +42,8 @@ class TextCorrector(OCRAbstractWorker):
             "l": "1",
             "S": "5",
             "s": "5",
+            "G": "6",
+            "C": "6",
             "B": "8",
             "Z": "2",
             "z": "2",
@@ -51,15 +53,9 @@ class TextCorrector(OCRAbstractWorker):
         self.quantitative_corrections: Dict[str, str] = self.numeric_corrections
         
         # Correcciones para texto descriptivo
-        self.descriptive_corrections: Dict[str, str] = {
-            "0": "O",
-            "1": "I",
-            "5": "S",
-            "$": "S",
-            "8": "B",
-        }
+        self.descriptive_corrections: Dict[str, str] = {"$": "S"}
         
-        logger.debug("Reglas de corrección quirúrgica cargadas")
+        logger.info("Reglas de corrección quirúrgica cargadas")
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -72,6 +68,7 @@ class TextCorrector(OCRAbstractWorker):
         Returns:
             True si el proceso se completó exitosamente
         """
+        conf_threshold = float(self.confidence_threshold *100.0)
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCorrector: No hay polígonos para procesar.")
             return True
@@ -87,14 +84,7 @@ class TextCorrector(OCRAbstractWorker):
             "skipped_high_confidence": 0
         }
         
-        # Ordenar polígonos para procesamiento secuencial
-        sorted_poly_ids = sorted(
-            polygons_in.keys(),
-            key=lambda p_id: (
-                polygons_in[p_id].geometry.centroid[1],
-                polygons_in[p_id].geometry.centroid[0]
-            )
-        )
+        sorted_poly_ids = sorted(polygons_in.keys())
         
         # Procesar cada polígono recursivamente
         for poly_id in sorted_poly_ids:
@@ -107,12 +97,9 @@ class TextCorrector(OCRAbstractWorker):
                 continue
             
             # Filtro de confianza: si está por encima del umbral, no corregir
-            if confidence >= self.confidence_threshold:
+            if confidence > conf_threshold:
                 corrected_polygons[poly_id] = polygon
                 correction_stats["skipped_high_confidence"] += 1
-                logger.debug(
-                    f"Polígono {poly_id} omitido por alta confianza: {confidence:.2f}"
-                )
                 continue
                 
             # Aplicar corrección según tipo semántico
@@ -133,7 +120,7 @@ class TextCorrector(OCRAbstractWorker):
                 correction_stats["total_corrections"] += 1
                 
                 logger.info(
-                    f"Corrección aplicada - ID: {poly_id} | "
+                    f"Corrección {poly_id}: "
                     f"Tipo: {polygon.semantic_type} | "
                     f"Confianza: {confidence:.2f} | "
                     f"Original: '{original_text}' → Corregido: '{corrected_text}'"
@@ -144,7 +131,7 @@ class TextCorrector(OCRAbstractWorker):
         # Actualizar el manager con los polígonos corregidos
         manager.workflow.polygons = corrected_polygons
         
-        logger.debug(
+        logger.info(
             f"Corrección textual completada - "
             f"Total: {correction_stats['total_corrections']} | "
             f"Alta confianza omitidos: {correction_stats['skipped_high_confidence']} | "
@@ -181,7 +168,7 @@ class TextCorrector(OCRAbstractWorker):
         corrections_map = self._get_corrections_map(semantic_type)
         
         if not corrections_map:
-            logger.debug(
+            logger.warning(
                 f"No hay reglas de corrección para tipo: {semantic_type} "
                 f"(poly_id: {polygon_id})"
             )
@@ -193,11 +180,17 @@ class TextCorrector(OCRAbstractWorker):
         for i, char in enumerate(text):
             if char not in corrections_map:
                 continue
-                
+
             # Verificar si el carácter está AISLADO (sin vecinos del mismo tipo)
             if not self._is_isolated(text, i):
                 continue
-                
+
+            # Log antes de corregir
+            logger.info(
+                f"[{polygon_id}] Corrigiendo índice {i}: '{char}' → '{corrections_map[char]}' "
+                f"en texto original: '{text}'"
+            )
+
             # Aplicar corrección
             corrected_chars[i] = corrections_map[char]
             

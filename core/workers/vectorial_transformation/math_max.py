@@ -36,14 +36,14 @@ class MatrixSolver(VectorizationAbstractWorker):
                 return False
 
             # Log simple de cómo recibe la tabla (antes de corregir)
-            logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=False))
+            logger.debug("Tabla recibida para corrección matemática:\n" + df.to_string(index=False))
 
             corrected_df, final_semantic_types = self.solve(df)
             if self.output:
                 self._save_debug_table(manager, context, corrected_df)
 
             # Log simple de cómo queda la tabla ya corregida
-            logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
+            logger.debug("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
 
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
@@ -99,8 +99,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         mtl_name = quant_cols[mtl_idx]
         logger.info(f"Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
         # --- FASE 2: Reconstrucción ---
-        reconstructed: np.ndarray[np.float32, Any] = numeric_df.to_numpy(copy=True)
-        reconstructed: np.ndarray = numeric_df.to_numpy(dtype=np.float32, copy=True)
+        reconstructed: np.ndarray[Any, np.dtype[np.float32]] = numeric_df.to_numpy(dtype=np.float32, copy=True)
                 
         col_medians = {i: np.nanmedian(reconstructed[:, i]) for i in col_indices_in_numeric_matrix}
 

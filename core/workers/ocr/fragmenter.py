@@ -19,8 +19,6 @@ class Fragmenter(OCRAbstractWorker):
         self.project_root = project_root
         self.config = config
         self.worker_config = self.config.get('fragmenter', {})
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
-        self.output = self.enabled_outputs.get('separated_text', False)
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         if not manager.workflow or not manager.workflow.polygons:
@@ -71,7 +69,7 @@ class Fragmenter(OCRAbstractWorker):
                 else:
                     reason = "puntuación"
 
-                logger.debug(f"Fragmentando poly_id={poly_id} (motivo: {reason}). Texto original: '{polygon.ocr_text}'")
+                logger.info(f"{poly_id}: MOTIVO: {reason}, {polygon.ocr_text}")
                 
                 if visual_needs_frag:
                     fragments = self._fragment_by_blobs(polygon, poly_blob_metrics)
@@ -85,6 +83,7 @@ class Fragmenter(OCRAbstractWorker):
                 final_polygons.extend(fragments)
                 if len(fragments) > 1:
                     fragmented_count += 1
+
             else:
                 final_polygons.append(polygon)
 
@@ -97,7 +96,7 @@ class Fragmenter(OCRAbstractWorker):
             manager.workflow.polygons = final_polygons_dict
         
         if fragmented_count > 0:
-            logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
+            logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
             return True
         else:
             logger.warning(f"No se fragmentaron polígonos")
@@ -156,7 +155,7 @@ class Fragmenter(OCRAbstractWorker):
             
             frag_text = text_parts[i] if i < len(text_parts) else ""
             
-            logger.debug(f"Fragmento visual: texto='{frag_text}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento visual: texto='{frag_text}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -207,7 +206,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"Fragmento por texto: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmentos: {part}")#, bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -273,7 +272,7 @@ class Fragmenter(OCRAbstractWorker):
                         ])
                     )
                     
-                    logger.debug(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
+                    logger.info(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
 
                     new_poly = dataclasses.replace(
                         polygon,
@@ -349,7 +348,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -396,7 +395,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
 
-            logger.debug(f"Fragmento por cuantitativo: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por cuantitativo: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_polys.append(dataclasses.replace(
                 polygon,

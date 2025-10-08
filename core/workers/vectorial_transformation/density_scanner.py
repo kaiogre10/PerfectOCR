@@ -1,4 +1,4 @@
-# PerfectOCR/core/workflow/vectorial_transformation/density_scanner.py
+# PerfectOCR/core/vectorial_transformation/density_scanner.py
 from sklearn.cluster import DBSCAN #type: ignore
 import numpy as np
 import time

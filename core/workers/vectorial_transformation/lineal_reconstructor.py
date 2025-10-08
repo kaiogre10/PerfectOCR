@@ -55,6 +55,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         Reconstruye líneas agrupando polígonos y devuelve un dict con la debug completa de cada línea,
         incluyendo los textos OCR concatenados.
         """
+        overlap_threshold = self.worker_config.get('overlap_threshold', {})
         prepared_sorted = sorted(
             polygons.values(),
             key=lambda p: p.geometry.centroid[1])
@@ -79,7 +80,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 min_h = min(y1_max - y1_min, y2_max - y2_min)
                 overlap = overlap_abs / min_h if min_h > 1e-5 else 0.0
 
-                if overlap > 0.3:
+                if overlap > overlap_threshold:
                     current_line_polys.append(poly)
                     all_bboxes = [p.geometry.bounding_box for p in current_line_polys]
                     if all_bboxes:

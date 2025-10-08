@@ -71,14 +71,14 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             processed_count = len(final_results) if success else 0
             manager.clear_cropped_images(polygon_ids)
             logger.debug("Cropped_img liberadas usando DataFormatter")
-            logger.debug(f"{final_results}")
+            logger.info(f"{final_results}")
             file_name: str = manager.workflow.metadata.image_name
             
             if self.output:
                 self._save_ocr_raw(context, final_results, file_name)
         
         total_time = time.perf_counter() - start_time
-        logger.debug(f"[PaddleWrapper] Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
+        logger.debug(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
         return True
         
     def recognize_text_from_batch(self, image_list: List[np.ndarray[Any, np.dtype[np.uint8]]]) -> List[Optional[Dict[str, Any]]]:
@@ -121,7 +121,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         
                         # Aplicar filtro de confianza mínima
                         if confidence_pct < self.min_confidence:
-                            logger.debug(f"Resultado filtrado por baja confianza: '{text}' -> {confidence_pct}% < {self.min_confidence}%")
+                            logger.info(f"Resultado filtrado por baja confianza:'{text}'-> {confidence_pct}% < {self.min_confidence}%")
                             final_results.append(None)  # Resultado filtrado
                             continue
                             

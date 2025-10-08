@@ -13,19 +13,18 @@ class MainFactory:
         self.project_root = project_root
         
         # Extraer la configuración anidada y los outputs globales
-        nested_modules = self.modules_config.get('modules', {})
         enabled_outputs = self.modules_config.get('enabled_outputs', {})
         
-        image_preparation_config = nested_modules.get('image_preparation', {}).copy()
+        image_preparation_config = self.modules_config["modules"]["image_preparation"]
         image_preparation_config['enabled_outputs'] = enabled_outputs
 
-        preprocessing_config = nested_modules.get('preprocessing', {}).copy()
+        preprocessing_config = self.modules_config["modules"]['preprocessing']
         preprocessing_config['enabled_outputs'] = enabled_outputs
         
-        ocr_config = nested_modules.get('ocr', {}).copy()
+        ocr_config = self.modules_config["modules"]['ocr']
         ocr_config['enabled_outputs'] = enabled_outputs
  
-        vectorizing_config = nested_modules.get('vectorization', {}).copy()
+        vectorizing_config = self.modules_config["modules"]['vectorization']
         vectorizing_config['enabled_outputs'] = enabled_outputs
 
         # Registro de fábricas por nombre de módulo

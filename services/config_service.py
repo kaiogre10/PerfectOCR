@@ -57,7 +57,7 @@ class ConfigService:
             return self.config.get('processing', {})
 
         @property
-        def modules_config(self) -> Dict[str, Any]:
+        def modules_config(self) -> Dict[str, Dict[str, Any]]:
             """Obtiene configuración de módulos."""
             return {
                 "modules": self.config.get("modules", {}),

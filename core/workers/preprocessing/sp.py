@@ -14,7 +14,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('median_filter', {})
+        self.worker_config = self.config.get('sp_config', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("sp_poly", False)
     
