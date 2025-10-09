@@ -34,13 +34,13 @@ class Polygons:
     cropedd_geometry: CroppedGeometry
     cropped_img: Optional[CroppedImage]
     perimeter: Optional[float]
-    line_id: str
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
-    was_fragmented: bool
-    status: bool
     key_field: Optional[str]
     semantic_type: str
+    was_fragmented: bool
+    was_cleanned: bool
+    was_corrected: bool
     
 @dataclass
 class LineGeometry:

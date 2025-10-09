@@ -14,16 +14,18 @@ class Vectorizer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('vectorizer', {})
+        self.worker_config = config.get('vectorizer')
         self.enabled_outputs = self.config.get("enabled_outputs", {})
-        self.output = self.enabled_outputs.get("table_lines", False)        
+        self.output = self.enabled_outputs.get("table_lines", False)
+        self.activate_keyword_interval = self.worker_config.get("activate_keyword_interval", True) # Agrega esta línea
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time: float = time.time()
             logger.debug("Calculando Features")
+            logger.info(f"Configuración: {self.worker_config}")
 
-            table_line_ids = self._get_keywords_interval(manager)
+            table_line_ids = self._get_keywords_interval(manager) if self.activate_keyword_interval else None # Modifica esta línea
             if table_line_ids is not None:
                 
                 # Si se detecta un intervalo claro, se omite la vectorización
@@ -38,7 +40,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     logger.debug("Líneas guardadas en el manager desde Vectorizer")
                     return True
                 else:
-                    logger.error("No se pudieron guardar las líneas tabulares en el manager")
+                    logger.warning("No se pudieron guardar las líneas tabulares en el manager")
                     return False
 
             else:

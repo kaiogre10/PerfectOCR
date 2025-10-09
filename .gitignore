@@ -15,6 +15,7 @@ __pycache__/
 .typings/
 .idea/
 .input2/
+.input3/
 
 # Ignorar carpeta
 input/

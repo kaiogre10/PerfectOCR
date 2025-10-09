@@ -26,19 +26,19 @@ pipeline_secuence:
   imagepre_stage:
     # - "dummie"
     - "image_loader"
-    # - "cleaner"
-    # - "angle_corrector"
+    - "cleaner"
+    - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-    - "dummie"
-    # - "moire"
-    # - "sp"
-    # - "gauss"
-    # - "ink_enhancement"
-    # - "clahe"
-    # - "sharp"
+    # - "dummie"
+    - "moire"
+    - "sp"
+    - "gauss"
+    - "ink_enhancement"
+    - "clahe"
+    - "sharp"
     # - "binarizator"
 
   ocr_stage:
@@ -51,11 +51,11 @@ pipeline_secuence:
     # - "dummie"
     - "lineal"
     - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
-    # - "semantic_corrector"
-    # - "math_max"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
+    - "semantic_corrector"
+    - "math_max"
   
 # Configuración de salida (independiente)
 enabled_outputs:
@@ -192,10 +192,11 @@ modules:
   
   vectorization:
     lineal:
-      overlap_threshold: 0.35
+      overlap_threshold: 0.50
       
     vectorizer:
-      vectotize: True
+      activate_vectorization: False
+      activate_keyword_interval: True
 
     cos_sim:
       min_cluster: 1

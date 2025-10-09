@@ -76,7 +76,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
                 total_time = time.time() - start_time
                 if not df.empty:
-                    logger.debug(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}")
+                    logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}")
                 else:
                     logger.warning("No se pudo generar la tabla estructurada, el DataFrame está vacío.")
                 logger.debug(f"Estructuración de tabla completada en {total_time:.10f} s.")

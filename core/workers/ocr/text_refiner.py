@@ -32,39 +32,40 @@ class Refiner(OCRAbstractWorker):
         Ejecuta el ciclo de refinamiento.
         """
         num_passes = self.worker_config.get("num_passes", {})
-        logger.info(f"Refinador inicializado para {num_passes} pasadas.")
+        logger.debug(f"Refinador inicializado para {num_passes} pasadas.")
         try:
             t0 = time.perf_counter()
             for i in range(num_passes):
                 pass_num = i + 1
-                logger.info(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
+                logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
 
+                # 3. Clasificar todo el texto limpio
+                logger.debug(f"Pasada 2, bucle: #{pass_num}: Clasificación Semántica")
+                self.clasificator.transcribe(context, manager)
+
+                logger.debug(f"Bucle: #{pass_num}: Correción textual")
+                self.corrector.transcribe(context, manager)
+                
                 # 1. Clasificar todo el texto actual
-                logger.info(f"Pasada 1, bucle: #{pass_num}: Clasificación Semántica")
+                logger.debug(f"Pasada 1, bucle: #{pass_num}: Clasificación Semántica")
                 self.clasificator.transcribe(context, manager)
 
                 # 2. Limpiar polígonos basura
-                logger.info(f"Bucle: #{pass_num}: Limpieza de Texto")
+                logger.debug(f"Bucle: #{pass_num}: Limpieza de Texto")
                 self.cleaner.transcribe(context, manager)
 
-                # 3. Clasificar todo el texto limpio
-                logger.info(f"Pasada 2, bucle: #{pass_num}: Clasificación Semántica")
-                self.clasificator.transcribe(context, manager)
 
-                logger.info(f"Bucle: #{pass_num}: Correción textual")
-                self.corrector.transcribe(context, manager)
-
-                logger.info(f"Pasada 3, bucle: #{pass_num}: Clasificación Semántica")
+                logger.debug(f"Pasada 3, bucle: #{pass_num}: Clasificación Semántica")
                 self.clasificator.transcribe(context, manager)
 
                 # 4. Fragmentar polígonos que lo necesiten
-                logger.info(f"Bucle: #{pass_num}: Fragmentación de Texto")
+                logger.debug(f"Bucle: #{pass_num}: Fragmentación de Texto")
                 self.fragmenter.transcribe(context, manager)
     
-            logger.info(f"Pasada final Clasificación Semántica")
+            logger.debug(f"Pasada final Clasificación Semántica")
 
             self.clasificator.transcribe(context, manager)                
-            logger.info(f"Clasificación Semántica Final Completada en: {time.perf_counter()-t0:.6f}s")
+            logger.debug(f"Clasificación Semántica Final Completada en: {time.perf_counter()-t0:.6f}s")
 
             return True
         

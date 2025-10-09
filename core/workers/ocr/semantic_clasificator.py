@@ -17,7 +17,7 @@ class SemanticClasificator(OCRAbstractWorker):
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         
-        logger.info("Clasificador inciado")
+        logger.debug("Clasificador inciado")
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para preocesar")
@@ -34,11 +34,11 @@ class SemanticClasificator(OCRAbstractWorker):
                     polygon = polygons[poly_id]
                     classified_count += 1
 
-            logger.info(f"Total clasificados: {classified_count}")
+            logger.debug(f"Total clasificados: {classified_count}")
             for poly_id, semantic_type in final_results.items():
                 if poly_id in polygons:
                     polygon = polygons[poly_id]
-                    logger.info(f"{poly_id}: {semantic_type} | texto: '{polygon.ocr_text or ''}'")
+                    logger.debug(f"{poly_id}: {semantic_type} | texto: '{polygon.ocr_text or ''}'")
                     
             manager.update_semantic_type(final_results)
             return True
@@ -51,9 +51,9 @@ class SemanticClasificator(OCRAbstractWorker):
         numeric_range = self.worker_config.get("numeric", [])
         code_range = self.worker_config.get("code", [])
 
-        def norm(r): return (min(r[0], r[1]), max(r[0], r[1]))
+        def norm(r): return (min(r[0], r[1]), max(r[0], r[1])) # type: ignore
         n_min, n_max = norm(numeric_range)
-        c_min, c_max = norm(code_range)
+        c_min, c_max = norm(code_range) # type: ignore
 
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
         final_results: Dict[str, str] = {}

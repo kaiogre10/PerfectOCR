@@ -31,7 +31,8 @@ class TextCleaner(OCRAbstractWorker):
         # Configurada directamente en el worker en lugar de leerla desde un YAML.
         self.chars = [
             ")", "(", "]", "[", "{", "}", "|", "*", "^", "#", "@",
-            "-", "~", "_", "+", "=", "<", ">", ";", ":", "x", "X"
+            "-", "~", "_", "+", "=", "<", ">", ";", ":", "x", "X",
+            "'", "´", "!", "¡", "?", "¿"
         ]
 
         # normalizar a conjunto de caracteres de longitud 1
@@ -59,7 +60,7 @@ class TextCleaner(OCRAbstractWorker):
             eliminated_count = 0
 
             if self._is_polygon_single_special(text):
-                logger.info(f"Eliminado {poly_id} unico: '{text}'")
+                logger.debug(f"Eliminado {poly_id} unico: '{text}'")
                 continue
             
             text = self._filter_low_prob_tokens(text, polygon, manager)
@@ -68,16 +69,16 @@ class TextCleaner(OCRAbstractWorker):
             if (not text.strip() or
                 (confidence < self.min_confidence and polygon.semantic_type not in ("numeric", "quantitative")) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)):
-                logger.info(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence}")
+                logger.debug(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence}")
                 continue
 
             # 3. Ruta Normal: Limpiar texto del polígono vacío
             cleaned_text = self._process_single_text(text, polygon, semantic_type, manager)
             if cleaned_text:
-                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
+                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text, was_cleanned=True)
                 list_of_final_polygons.append(updated_polygon)
             else:
-                logger.info(f"Eliminado {poly_id}: | Texto: '{text}'")
+                logger.debug(f"Eliminado {poly_id}: | Texto: '{text}'")
 
             eliminated_count += 1
 
@@ -85,13 +86,13 @@ class TextCleaner(OCRAbstractWorker):
         final_polygons_dict: Dict[str, Polygons] = {}
         for idx, poly_obj in enumerate(list_of_final_polygons):
             new_id = f"poly_{idx:04d}"
-            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
+            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, was_cleanned=True)
             final_polygons_dict[new_id] = final_poly_obj
         
         # 5. Reemplazo directo en el manager
         manager.workflow.polygons = final_polygons_dict
 
-        logger.info(f"{eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
+        logger.debug(f"{eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
         return True
 
     def _process_single_text(self, text: str, polygon: Polygons, semantic_type :str, manager: DataFormatter) -> str:
@@ -113,10 +114,10 @@ class TextCleaner(OCRAbstractWorker):
             
             # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if self._is_stray_single_special(token):
-                logger.info(f"Eliminado unico: '{token}' in {polygon.polygon_id if polygon else ''}")
+                logger.debug(f"Eliminado unico: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             
-            if self._is_likely_numeric_or_code(token, semantic_type):
+            if self._is_likely_numeric(token, semantic_type):
             
                 processed_words.append(token)
             else:
@@ -140,7 +141,7 @@ class TextCleaner(OCRAbstractWorker):
         
         return ' '.join(processed_words)
         
-    def _is_likely_numeric_or_code(self, token: str, semantic_type: str) -> bool:
+    def _is_likely_numeric(self, token: str, semantic_type: str) -> bool:
         if semantic_type in ("numeric", "quantitative"):
             return True
         return False
@@ -177,7 +178,7 @@ class TextCleaner(OCRAbstractWorker):
                     
                     if score < min_probability:
                         removed += 1
-                        logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{t}' | Probabilidad: {score:.4f}")
+                        logger.debug(f"Eliminado:{polygon.polygon_id} | Texto:'{t}' | Probabilidad: {score:.4f}")
                         continue
                     kept.append(tok)
                 else:
@@ -185,7 +186,7 @@ class TextCleaner(OCRAbstractWorker):
 
             out = ' '.join(kept)
             if removed > 0:
-                logger.info(f"{polygon.polygon_id} | Texto: '{text}' => '{out}'")
+                logger.debug(f"{polygon.polygon_id} | Texto: '{text}' => '{out}'")
             return out
         
         except Exception as e:
@@ -270,7 +271,7 @@ class TextCleaner(OCRAbstractWorker):
         if not text:
             return text
 
-        special_chars = self.chars
+        special_chars = self.drop_single_chars
         if not special_chars:
             logger.warning("Usando patron regex")
             pattern = r'[^A-Za-z0-9\s$]'

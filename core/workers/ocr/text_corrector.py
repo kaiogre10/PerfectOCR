@@ -55,7 +55,7 @@ class TextCorrector(OCRAbstractWorker):
         # Correcciones para texto descriptivo
         self.descriptive_corrections: Dict[str, str] = {"$": "S"}
         
-        logger.info("Reglas de corrección quirúrgica cargadas")
+        logger.debug("Reglas de corrección quirúrgica cargadas")
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -113,13 +113,14 @@ class TextCorrector(OCRAbstractWorker):
             if corrected_text != original_text:
                 updated_polygon = dataclasses.replace(
                     polygon,
-                    ocr_text=corrected_text
+                    ocr_text=corrected_text,
+                    was_corrected=True
                 )
                 corrected_polygons[poly_id] = updated_polygon
                 correction_stats[polygon.semantic_type] += 1
                 correction_stats["total_corrections"] += 1
                 
-                logger.info(
+                logger.debug(
                     f"Corrección {poly_id}: "
                     f"Tipo: {polygon.semantic_type} | "
                     f"Confianza: {confidence:.2f} | "
@@ -131,7 +132,7 @@ class TextCorrector(OCRAbstractWorker):
         # Actualizar el manager con los polígonos corregidos
         manager.workflow.polygons = corrected_polygons
         
-        logger.info(
+        logger.debug(
             f"Corrección textual completada - "
             f"Total: {correction_stats['total_corrections']} | "
             f"Alta confianza omitidos: {correction_stats['skipped_high_confidence']} | "
@@ -163,6 +164,11 @@ class TextCorrector(OCRAbstractWorker):
         """
         if not text or not semantic_type:
             return text
+        
+        # No corregir tipo "code"
+        if semantic_type == "code":
+            logger.debug(f"Omitiendo corrección para tipo 'code' (poly_id: {polygon_id})")
+            return text
             
         # Seleccionar el diccionario de correcciones apropiado
         corrections_map = self._get_corrections_map(semantic_type)
@@ -186,8 +192,8 @@ class TextCorrector(OCRAbstractWorker):
                 continue
 
             # Log antes de corregir
-            logger.info(
-                f"[{polygon_id}] Corrigiendo índice {i}: '{char}' → '{corrections_map[char]}' "
+            logger.debug(
+                f"{polygon_id} Corrigiendo: '{char}' → '{corrections_map[char]}' "
                 f"en texto original: '{text}'"
             )
 

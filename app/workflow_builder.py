@@ -17,7 +17,7 @@ class WorkFlowBuilder:
         self.project_root = project_root
         self.processing_config = config_services.processing_config
         self.batch_config = self.processing_config.get('batch_processing', {})
-        self.small_batch_limit = self.batch_config.get('small_batch_limit', 5)
+        self.small_batch_limit = self.batch_config.get('small_batch_limit', {})
         self.input_paths = input_paths or []
         self.output_path = output_path
         
@@ -29,7 +29,7 @@ class WorkFlowBuilder:
     def _extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, str]]:
         """Extrae lista de rutas y nombres de imágenes válidas de forma recursiva."""
         image_info: List[Dict[str, str]] = []
-        for root, dirs, files in os.walk(input_folder):
+        for root, dirs, files in os.walk(input_folder): #type: ignore
             for filename in files:
                 if filename.lower().endswith(valid_extensions):
                     full_path = os.path.join(root, filename)
@@ -89,7 +89,7 @@ class WorkFlowBuilder:
 
         if not image_info:
             logger.critical("No se encontraron imágenes válidas.")
-            return {"status": "no_images", "image_info": []}
+            return {}
 
         num_images = len(image_info)
         use_batch = num_images > self.small_batch_limit
@@ -97,7 +97,6 @@ class WorkFlowBuilder:
         logging.debug(f"Número de imágenes: {num_images}, modo: {mode}")
 
         return {
-            "status": "success",
             "total_images": num_images,
             "mode": mode,
             "image_info": image_info,

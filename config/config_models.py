@@ -199,10 +199,15 @@ class CosineSimilarity(ConfigWithNumpy):
     min_cluster: int
     similarity_threshold: float
     interval: int
+    
+class Vectorizer(ConfigWithNumpy):
+    activate_vectorization: bool
+    activate_keyword_interval: bool
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
     dbscan: DBSCAN
+    vectorizer: Vectorizer
     cos_sim: CosineSimilarity
     math_max: MathMaxConfig
     table_structurer: TableStructurer

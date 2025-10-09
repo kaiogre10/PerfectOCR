@@ -84,13 +84,13 @@ class DataFormatter:
                     cropedd_geometry=None,
                     cropped_img=None,
                     perimeter=None,
-                    line_id=None,
                     ocr_text=None,
                     ocr_confidence=None,
                     was_fragmented=False,
-                    status=False,
                     key_field=None,
                     semantic_type=None,
+                    was_cleanned=False,
+                    was_corrected=False
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -133,13 +133,13 @@ class DataFormatter:
                             cropedd_geometry=polygon.cropedd_geometry,
                             cropped_img=None,  # Limpiar imagen
                             perimeter=polygon.perimeter,
-                            line_id=polygon.line_id,
                             ocr_text=polygon.ocr_text,
                             ocr_confidence=polygon.ocr_confidence,
                             was_fragmented=polygon.was_fragmented,
-                            status=polygon.status,
                             key_field=polygon.key_field,
                             semantic_type=polygon.semantic_type,
+                            was_cleanned=polygon.was_cleanned,
+                            was_corrected=polygon.was_corrected
                         )
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_count += 1
@@ -264,13 +264,13 @@ class DataFormatter:
                         cropedd_geometry=cropped_geometry_obj,
                         cropped_img=cropped_image_obj,
                         perimeter=polygon.perimeter,
-                        line_id=polygon.line_id,
                         ocr_text=polygon.ocr_text,
                         ocr_confidence=polygon.ocr_confidence,
                         was_fragmented=polygon.was_fragmented,
-                        status=polygon.status,
                         key_field=polygon.key_field,
                         semantic_type=polygon.semantic_type,
+                        was_cleanned=polygon.was_cleanned,
+                        was_corrected=polygon.was_corrected
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
@@ -291,13 +291,13 @@ class DataFormatter:
                 cropedd_geometry=polygon.cropedd_geometry,
                 cropped_img=CroppedImage(cropped_img) if cropped_img is not None else None,
                 perimeter=polygon.perimeter,
-                line_id=polygon.line_id,
                 ocr_text=polygon.ocr_text,
                 ocr_confidence=polygon.ocr_confidence,
                 was_fragmented=polygon.was_fragmented,
-                status=polygon.status,
                 key_field=polygon.key_field,
                 semantic_type=polygon.semantic_type,
+                was_cleanned=polygon.was_cleanned,
+                was_corrected=polygon.was_corrected
             )
             self.workflow.polygons[poly_id] = updated_polygon
             
@@ -325,13 +325,13 @@ class DataFormatter:
                             cropedd_geometry=polygon.cropedd_geometry,
                             cropped_img=polygon.cropped_img,
                             perimeter=polygon.perimeter,
-                            line_id=polygon.line_id,
                             ocr_text=res.get("text", ""),  
                             ocr_confidence=res.get("confidence"), 
                             was_fragmented=polygon.was_fragmented,
-                            status=polygon.status,
                             key_field=polygon.key_field,
                             semantic_type=polygon.semantic_type,
+                            was_cleanned=polygon.was_cleanned,
+                            was_corrected=polygon.was_corrected
                         )
                         
                         self.workflow.polygons[poly_id] = updated_polygon
