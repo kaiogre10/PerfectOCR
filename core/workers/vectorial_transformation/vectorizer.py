@@ -14,18 +14,18 @@ class Vectorizer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('vectorizer')
+        self.worker_config = config.get('vectorizer', {})
+        self.keywords_interval_enabled = self.worker_config.get('keywords_interval_enabled', True)
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
-        self.activate_keyword_interval = self.worker_config.get("activate_keyword_interval", True) # Agrega esta línea
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time: float = time.time()
             logger.debug("Calculando Features")
-            logger.info(f"Configuración: {self.worker_config}")
+            logger.info(f"Keywords interval habilitado: {self.keywords_interval_enabled}")
 
-            table_line_ids = self._get_keywords_interval(manager) if self.activate_keyword_interval else None # Modifica esta línea
+            table_line_ids = self._get_keywords_interval(manager) if self.keywords_interval_enabled else None
             if table_line_ids is not None:
                 
                 # Si se detecta un intervalo claro, se omite la vectorización
@@ -54,6 +54,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 else:
                     logger.error(f"No se pudo realizar vectorización")
                     return False
+
         except Exception as e:
             logger.error(f"Error en vectorización: {e}", exc_info=True)
             return False
@@ -81,8 +82,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 return None
                 
             all_features: Dict[str, Dict[str, float]] = {}
-            tabla_headers: List[str] = []
-            tabla_rows: List[List[str]] = []
+            table_headers: List[str] = []
+            table_rows: List[List[str]] = []
             id_col_width = 10
 
             for line_id, _ in sorted_lines:
@@ -93,42 +94,42 @@ class Vectorizer(VectorizationAbstractWorker):
                 all_features[line_id] = features
                     
                 # Inicializar headers solo la primera vez
-                if not tabla_headers:
-                    tabla_headers = list(features.keys())
+                if not table_headers:
+                    table_headers = list(features.keys())
                 
                 # Agregar cada fila (convirtiendo todo a string para la tabla)
-                row_values = [line_id] + [f"{features.get(k, 0.0):.4f}" if isinstance(features.get(k), float) else str(features.get(k, '')) for k in tabla_headers]
-                tabla_rows.append(row_values)
+                row_values = [line_id] + [f"{features.get(k, 0.0):.4f}" if isinstance(features.get(k), float) else str(features.get(k, '')) for k in table_headers]
+                table_rows.append(row_values)
                 
                 # Actualizar ancho de columna ID
                 if len(line_id) > id_col_width:
                     id_col_width = len(line_id)
         
             # Construir tabla FUERA del bucle
-            if all_features and tabla_rows:
+            if all_features and table_rows:
                 col_widths = [int(id_col_width)] + [
-                    max(len(str(h)), max(len(f"{row[i+1]:.4f}") if isinstance(row[i+1], float) else len(str(row[i+1])) for row in tabla_rows))
-                    + 2 for i, h in enumerate(tabla_headers)
+                    max(len(str(h)), max(len(f"{row[i+1]:.4f}") if isinstance(row[i+1], float) else len(str(row[i+1])) for row in table_rows))
+                    + 2 for i, h in enumerate(table_headers)
                 ]
-                tabla: List[str] = []
-                tabla.append("+" + "+".join("-" * w for w in col_widths) + "+")
+                table: List[str] = []
+                table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 header_row: str = "|" + "line_id".center(col_widths[0]) + "|" + "|".join(
-                    str(h).center(w) for h, w in zip(tabla_headers, col_widths[1:])
+                    str(h).center(w) for h, w in zip(table_headers, col_widths[1:])
                 ) + "|"
-                tabla.append(header_row)
+                table.append(header_row)
                 # Línea separadora
-                tabla.append("+" + "+".join("-" * w for w in col_widths) + "+")
+                table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 # Filas de datos
-                for row in tabla_rows:
+                for row in table_rows:
                     value_row = "|" + str(row[0]).center(col_widths[0]) + "|" + "|".join(
                         (f"{v:.4f}" if isinstance(v, float) else str(v)).center(w)
                         for v, w in zip(row[1:], col_widths[1:])
                     ) + "|"
-                    tabla.append(value_row)
+                    table.append(value_row)
                 # Línea inferior
-                tabla.append("+" + "+".join("-" * w for w in col_widths) + "+")
-                tabla_str = "\n".join(tabla)
-                logger.debug(f"\nTabla unificada de características:\n{tabla_str}")
+                table.append("+" + "+".join("-" * w for w in col_widths) + "+")
+                table_str = "\n".join(table)
+                logger.debug(f"\nTabla unificada de características:\n{table_str}")
                 logger.debug(f"Se calcularon features para {len(all_features)} líneas")
                 # logger.debug(f"Features: {all_features} líneas")
                 return all_features
@@ -167,7 +168,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 if not line_values:
                     logger.warning(f"Línea {line_id} sin codificación o sin features geométricos; será ignorada.")
                     continue
-                
 
                 if not line_data:
                     logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")
@@ -210,7 +210,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 numeric_frec_rel: float = numeric_count - max_numeric_count 
                 numeric_ratio_frec: float = numeric_count_norm + numeric_frec_rel
                 num_above: float = 1.0 if numeric_count > numeric_mean else 0.0
-                digit_char_count: float = float(sum(ch.isdigit() for ch in line_text))
+                digit_char_count = sum(ch.isdigit() for ch in line_text)
                 digit_char_frec: float = digit_char_count / max_digit_count if digit_char_count > 0 else 0.0
 
                 # Normaliza num_margin en el intervalo [-1, 1] usando el promedio global como base 0.
@@ -251,7 +251,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 ratio_area: float = (line_area / float(total_size)) if total_size is not None else 0.0
                 max_ratio: float = (max_area / total_size) if total_size is not None and max_area is not None else 0.0
                 ratio_area_norm = float(ratio_area / max_ratio )
-                aspect_ratio = ((bbox_height / bbox_width) * 100) if bbox_width or bbox_height > 0 else 0.0
+                aspect_ratio = ((bbox_height / bbox_width) * 100.0) if bbox_width or bbox_height > 0 else 0.0
                 aspcrat_inv_norm = 1 - abs(aspect_ratio / max_asptrat) if max_asptrat is not None else 0
                 perimeter: float = 2 * (bbox_width + bbox_height) if bbox_width or bbox_height > 0 else 0.0
                 perimeter_norm: float = (perimeter / max_perimeter) if max_perimeter is not None else 0.0
@@ -346,8 +346,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 mean_rel: float = mean / global_max_encoded if mean > 0.0 else 0.0
                 count_rel: float = count / global_max_encoded if count or global_max_encoded > 0.0 else 0.0
                 if mean > 0.0:
-                    mean_ref: float = global_max_encoded / 2
-                    mean_margin: float = (mean - mean_ref) / (mean_ref)
+                    mean_ref: float = float(global_max_encoded / 2.0)
+                    mean_margin: float = (mean - mean_ref) / mean_ref
                     mean_margin = max(-1.0, min(1.0, mean_margin))
                 else:
                     mean_margin = 0.0
@@ -553,8 +553,7 @@ class Vectorizer(VectorizationAbstractWorker):
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
         logger.info(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
         return tabular_line_ids
-        
-        
+
     def _save_output(self, context: Dict[str, Any], expanded_line_ids: List[str], file_name: str, manager: DataFormatter):
         from services.output_service import save_tabjson
         import os

@@ -54,7 +54,7 @@ class DataFinder(OCRAbstractWorker):
             polygon_updates = self._find_data(polygons, manager)
 
             # Actualiza las líneas marcadas como encabezado en las dataclasses
-            success: bool = manager.update_polygon_data(polygon_updates)
+            success: bool = manager.update_key_field(polygon_updates)
             
             # Guardar resultados en el contexto
             total_time = time.time() - start_time

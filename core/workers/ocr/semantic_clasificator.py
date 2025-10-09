@@ -15,36 +15,55 @@ class SemanticClasificator(OCRAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get("semantic_clasificator", {})
             
-    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        
-        logger.debug("Clasificador inciado")
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter, filter_modified: bool = False) -> bool:
+        """
+        Clasifica polígonos semánticamente.        
+        Args:
+            context: Contexto de ejecución
+            manager: DataFormatter con los polígonos
+            filter_modified: Si True, solo clasifica polígonos con was_refined=True
+        """
+        logger.debug(f"Clasificador iniciado (filter_modified={filter_modified})")
         try:
             if not manager.workflow or not manager.workflow.polygons:
-                logger.warning("Semantic Clasificator no tiene polígonos para preocesar")
+                logger.warning("Semantic Clasificator no tiene polígonos para procesar")
                 return False
                 
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            all_polygons: Dict[str, Polygons] = manager.workflow.polygons
             
-            final_results: Dict[str, str] = self._clasify_words(polygons)
+            # FILTRO SELECTIVO: Solo clasificar polígonos modificados si filter_modified=True
+            if filter_modified:
+                polygons_to_classify = {
+                    pid: p for pid, p in all_polygons.items() 
+                    if p.was_refined
+                }
+                logger.debug(f"Modo selectivo: {len(polygons_to_classify)}/{len(all_polygons)} polígonos modificados para reclasificar")
+            else:
+                polygons_to_classify = all_polygons
+                logger.debug(f"Modo completo: clasificando todos los {len(all_polygons)} polígonos")
             
-            classified_count = 0
-
-            for poly_id, semantic_type in final_results.items():
-                if poly_id in polygons:
-                    polygon = polygons[poly_id]
-                    classified_count += 1
-
+            if not polygons_to_classify:
+                logger.debug("No hay polígonos que clasificar")
+                return True
+            
+            # Clasificar solo los polígonos seleccionados
+            final_results: Dict[str, str] = self._clasify_words(polygons_to_classify)
+            
+            classified_count = len(final_results)
             logger.debug(f"Total clasificados: {classified_count}")
+            
             for poly_id, semantic_type in final_results.items():
-                if poly_id in polygons:
-                    polygon = polygons[poly_id]
+                if poly_id in all_polygons:
+                    polygon = all_polygons[poly_id]
                     logger.debug(f"{poly_id}: {semantic_type} | texto: '{polygon.ocr_text or ''}'")
-                    
-            manager.update_semantic_type(final_results)
+            
+            # Actualizar semantic_type Y resetear was_refined si es modo filtrado
+            manager.update_semantic_type(final_results, reset_refined=filter_modified)
+            
             return True
 
         except Exception as e:
-            logger.warning(f"Error en el clasiicador{e}", exc_info=True)
+            logger.warning(f"Error en el clasificador: {e}", exc_info=True)
             return False
             
     def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:

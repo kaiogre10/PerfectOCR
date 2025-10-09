@@ -38,9 +38,7 @@ class Polygons:
     ocr_confidence: Optional[float]
     key_field: Optional[str]
     semantic_type: str
-    was_fragmented: bool
-    was_cleanned: bool
-    was_corrected: bool
+    was_refined: bool
     
 @dataclass
 class LineGeometry:

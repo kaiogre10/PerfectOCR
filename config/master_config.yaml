@@ -162,14 +162,12 @@ modules:
         quality_max: 0.90
         
   ocr:
-    paddle_wrapper: 
-      min_confidence: 60.0
+    min_confidence: 60.0
 
     text_refiner:
       num_passes: 2
   
     text_cleaner:
-      min_confidence: 75.0
       min_probability: 75.0
       min_char: 2
     
@@ -195,8 +193,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      activate_vectorization: False
-      activate_keyword_interval: True
+      keywords_interval_enabled: True
 
     cos_sim:
       min_cluster: 1

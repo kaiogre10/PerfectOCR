@@ -64,40 +64,47 @@ class WorkFlowBuilder:
         PLANIFICA el procesamiento: cuenta imágenes y decide estrategia.
         REPORTA a Main: cuántos builders crear y qué modo usar.
         """
-        valid_extensions = self._get_valid_extensions()
+        try:
+            valid_extensions = self._get_valid_extensions()
 
-        # Si recibimos input_paths, expandimos; si no, usamos la carpeta del YAML
-        image_info: List[Dict[str, str]] = []
-        if self.input_paths:
-            for path in self.input_paths:
-                if os.path.isdir(path):
-                    image_info.extend(self._extract_valid_image_paths(path, valid_extensions))
-                elif os.path.isfile(path) and path.lower().endswith(valid_extensions):
-                    base = os.path.basename(path)
-                    image_info.append({
-                        "path": path,
-                        "name": os.path.splitext(base)[0],
-                        "extension": os.path.splitext(base)[1],
-                    })
-        else:
-            paths_config = self.config_services.paths_config
-            input_folder = paths_config.get('input_folder', "")
-            if not os.path.isdir(input_folder):
-                logger.critical(f"La carpeta de entrada no existe: {input_folder}")
-                return {"error": f"Carpeta de entrada no encontrada: {input_folder}"}
-            image_info = self._extract_valid_image_paths(input_folder, valid_extensions)
+            # Si recibimos input_paths, expandimos; si no, usamos la carpeta del YAML
+            try:
+                image_info: List[Dict[str, str]] = []
+                if self.input_paths:
+                    for path in self.input_paths:
+                        if os.path.isdir(path):
+                            image_info.extend(self._extract_valid_image_paths(path, valid_extensions))
+                        elif os.path.isfile(path) and path.lower().endswith(valid_extensions):
+                            base = os.path.basename(path)
+                            image_info.append({
+                                "path": path,
+                                "name": os.path.splitext(base)[0],
+                                "extension": os.path.splitext(base)[1],
+                            })
+            except Exception as e:
+                logger.error(f"Obteniendo image_info: {e}", exc_info=True)
+            else:
+                paths_config = self.config_services.paths_config
+                input_folder = paths_config.get('input_folder', "")
+                if not os.path.isdir(input_folder):
+                    logger.critical(f"La carpeta de entrada no existe: {input_folder}")
+                    return {"error": f"Carpeta de entrada no encontrada: {input_folder}"}
+                image_info = self._extract_valid_image_paths(input_folder, valid_extensions)
 
-        if not image_info:
-            logger.critical("No se encontraron imágenes válidas.")
-            return {}
+            if not image_info:
+                logger.critical("No se encontraron imágenes válidas.")
+                return {}
 
-        num_images = len(image_info)
-        use_batch = num_images > self.small_batch_limit
-        mode = 'batch' if use_batch else 'interactive'
-        logging.debug(f"Número de imágenes: {num_images}, modo: {mode}")
+            num_images = len(image_info)
+            use_batch = num_images > self.small_batch_limit
+            mode = 'batch' if use_batch else 'interactive'
+            logging.debug(f"Número de imágenes: {num_images}, modo: {mode}")
 
-        return {
-            "total_images": num_images,
-            "mode": mode,
-            "image_info": image_info,
-        }
+            return {
+                "total_images": num_images,
+                "mode": mode,
+                "image_info": image_info,
+            }
+
+        except Exception as e:
+            logger.error(f"Error en workflow builder: {e}", exc_info=True)

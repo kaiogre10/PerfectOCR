@@ -2,8 +2,8 @@
 import dataclasses
 import logging
 import re
-from typing import Dict, Any, List, Tuple
 import numpy as np
+from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -21,9 +21,10 @@ class Fragmenter(OCRAbstractWorker):
         self.worker_config = self.config.get('fragmenter', {})
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("Fragmenter: No hay polígonos para procesar.")
-            return True
+            return False
 
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
         blob_metrics: Dict[str, Any] = context.get('blob_metrics', {})
@@ -161,7 +162,7 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=frag_text,
-                was_fragmented=True
+                was_refined=True
             )
             new_polys.append(new_poly)
 
@@ -212,7 +213,7 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=part,
-                was_fragmented=True
+                was_refined=True
             )
             new_polys.append(new_poly)
             current_x = new_xmax
@@ -278,7 +279,7 @@ class Fragmenter(OCRAbstractWorker):
                         polygon,
                         geometry=new_geom,
                         ocr_text=part,
-                        was_fragmented=True
+                        was_refined=True
                     )
                     new_polys.append(new_poly)
                     current_x = new_xmax
@@ -354,7 +355,7 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=part, # Usar solo la parte de texto, sin la puntuación adjunta
-                was_fragmented=True
+                was_refined=True
             )
             new_polys.append(new_poly)
             current_x = new_xmax
@@ -401,7 +402,7 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=part,
-                was_fragmented=True
+                was_refined=True
             ))
             current_x = new_xmax
 

@@ -19,7 +19,7 @@ class PreprocessingStager(AbstractStager):
 
     def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
-        logger.debug("[PreprocessingManager] Iniciando pipeline secuencial directo")
+        logger.debug("Iniciando pipeline secuencial directo")
         
         # Obtener datos
         metadata: Metadata = manager.workflow.metadata if manager.workflow else {}
@@ -29,7 +29,7 @@ class PreprocessingStager(AbstractStager):
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.time()
             worker_name = worker.__class__.__name__
-            logger.debug(f"[PreprocessingStager] Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            logger.debug(f"Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
                     
             context: Dict[str, Any] = {
                 "polygons": polygons,
@@ -44,17 +44,16 @@ class PreprocessingStager(AbstractStager):
                 return None, 0.0
 
             worker_time = time.time() - worker_start
-            logger.debug(f"[PreprocessingStager] Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
+            logger.debug(f"Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
 
-            # Sincronizar resultados de preprocesamiento al manager
             for poly_id, polygon in context["polygons"].items():
                 # Obtener posible imagen modificada o None
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                manager.update_preprocessing_result(poly_id, cropped_img, worker_name)
+                manager.update_preprocessing_result(poly_id, cropped_img)
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             context["polygons"] = polygons
 
         elapsed = time.time() - start_time
-        logger.debug(f"[PreprocessingStager] Preprocesamiento completado en: {elapsed:.6f}s; polígonos: {len(polygons)}")
+        logger.debug(f"Preprocesamiento completado en: {elapsed:.6f}s; polígonos: {len(polygons)}")
         return manager, elapsed

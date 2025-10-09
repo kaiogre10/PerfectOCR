@@ -25,7 +25,7 @@ class TextCleaner(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get("text_cleaner", {})
-        self.min_confidence = self.worker_config.get("min_confidence", {})
+        self.min_confidence = self.config.get("min_confidence", {})
         
         # Lista de caracteres especiales a eliminar si aparecen solos.
         # Configurada directamente en el worker en lugar de leerla desde un YAML.
@@ -75,7 +75,7 @@ class TextCleaner(OCRAbstractWorker):
             # 3. Ruta Normal: Limpiar texto del polígono vacío
             cleaned_text = self._process_single_text(text, polygon, semantic_type, manager)
             if cleaned_text:
-                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text, was_cleanned=True)
+                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text, was_refined=True)
                 list_of_final_polygons.append(updated_polygon)
             else:
                 logger.debug(f"Eliminado {poly_id}: | Texto: '{text}'")
@@ -86,7 +86,7 @@ class TextCleaner(OCRAbstractWorker):
         final_polygons_dict: Dict[str, Polygons] = {}
         for idx, poly_obj in enumerate(list_of_final_polygons):
             new_id = f"poly_{idx:04d}"
-            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, was_cleanned=True)
+            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, was_refined=True)
             final_polygons_dict[new_id] = final_poly_obj
         
         # 5. Reemplazo directo en el manager

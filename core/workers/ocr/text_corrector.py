@@ -114,7 +114,7 @@ class TextCorrector(OCRAbstractWorker):
                 updated_polygon = dataclasses.replace(
                     polygon,
                     ocr_text=corrected_text,
-                    was_corrected=True
+                    was_refined=True
                 )
                 corrected_polygons[poly_id] = updated_polygon
                 correction_stats[polygon.semantic_type] += 1

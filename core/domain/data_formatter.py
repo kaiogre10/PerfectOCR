@@ -86,11 +86,9 @@ class DataFormatter:
                     perimeter=None,
                     ocr_text=None,
                     ocr_confidence=None,
-                    was_fragmented=False,
+                    was_refined=False,
                     key_field=None,
                     semantic_type=None,
-                    was_cleanned=False,
-                    was_corrected=False
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -135,11 +133,9 @@ class DataFormatter:
                             perimeter=polygon.perimeter,
                             ocr_text=polygon.ocr_text,
                             ocr_confidence=polygon.ocr_confidence,
-                            was_fragmented=polygon.was_fragmented,
+                            was_refined=polygon.was_refined,
                             key_field=polygon.key_field,
                             semantic_type=polygon.semantic_type,
-                            was_cleanned=polygon.was_cleanned,
-                            was_corrected=polygon.was_corrected
                         )
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_count += 1
@@ -266,11 +262,9 @@ class DataFormatter:
                         perimeter=polygon.perimeter,
                         ocr_text=polygon.ocr_text,
                         ocr_confidence=polygon.ocr_confidence,
-                        was_fragmented=polygon.was_fragmented,
+                        was_refined=polygon.was_refined,
                         key_field=polygon.key_field,
                         semantic_type=polygon.semantic_type,
-                        was_cleanned=polygon.was_cleanned,
-                        was_corrected=polygon.was_corrected
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
@@ -280,7 +274,7 @@ class DataFormatter:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
             return False
         
-    def update_preprocessing_result(self, poly_id: str, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_name: str) -> bool:
+    def update_preprocessing_result(self, poly_id: str, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> bool:
         """Actualiza resultado de preprocesamiento"""            
         # También actualizar la dataclass
         if self.workflow and poly_id in self.workflow.polygons:
@@ -293,11 +287,9 @@ class DataFormatter:
                 perimeter=polygon.perimeter,
                 ocr_text=polygon.ocr_text,
                 ocr_confidence=polygon.ocr_confidence,
-                was_fragmented=polygon.was_fragmented,
+                was_refined=polygon.was_refined,
                 key_field=polygon.key_field,
                 semantic_type=polygon.semantic_type,
-                was_cleanned=polygon.was_cleanned,
-                was_corrected=polygon.was_corrected
             )
             self.workflow.polygons[poly_id] = updated_polygon
             
@@ -327,11 +319,9 @@ class DataFormatter:
                             perimeter=polygon.perimeter,
                             ocr_text=res.get("text", ""),  
                             ocr_confidence=res.get("confidence"), 
-                            was_fragmented=polygon.was_fragmented,
+                            was_refined=polygon.was_refined,
                             key_field=polygon.key_field,
                             semantic_type=polygon.semantic_type,
-                            was_cleanned=polygon.was_cleanned,
-                            was_corrected=polygon.was_corrected
                         )
                         
                         self.workflow.polygons[poly_id] = updated_polygon
@@ -342,7 +332,16 @@ class DataFormatter:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
 
-    def update_semantic_type(self, final_results: Dict[str, str]) -> bool:
+    # core/domain/data_formatter.py (líneas 345-357)
+
+    def update_semantic_type(self, final_results: Dict[str, str], reset_refined: bool = False) -> bool:
+        """
+        Actualiza el semantic_type de los polígonos.
+        
+        Args:
+            final_results: Diccionario {poly_id: semantic_type}
+            reset_refined: Si True, resetea was_refined=False después de actualizar
+        """
         try:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
@@ -354,19 +353,28 @@ class DataFormatter:
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
-                    updated_polygon = dataclasses.replace(polygon, semantic_type=semantic_type)
+                    # Actualizar semantic_type y opcionalmente resetear was_refined
+                    if reset_refined:
+                        updated_polygon = dataclasses.replace(
+                            polygon, 
+                            semantic_type=semantic_type,
+                            was_refined=False
+                        )
+                    else:
+                        updated_polygon = dataclasses.replace(polygon, semantic_type=semantic_type)
+                    
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
 
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con semantic_types")
+                logger.debug(f"Actualizados {updated_count} polígonos con semantic_types (reset_refined={reset_refined})")
             return True
             
         except Exception as e:
             logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
             return False
         
-    def update_polygon_data(self, polygon_updates: Optional[Dict[str, str]]) -> bool:
+    def update_key_field(self, polygon_updates: Optional[Dict[str, str]]) -> bool:
         """
         Actualiza los datos de los polígonos en las dataclasses de polígonos.
         """
@@ -445,7 +453,7 @@ class DataFormatter:
                     updated_line = dataclasses.replace(current, header_line=header_line_id)
                     self.workflow.all_lines[header_line_id] = updated_line
                     
-                    # NUEVO: Actualizar todos los polígonos según la línea de encabezado
+                    # Actualizar todos los polígonos según la línea de encabezado
                     self.update_header(header_line_id)
                     
                     logger.info(f"Header_line_id={header_line_id} guardado correctamente")

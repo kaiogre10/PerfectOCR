@@ -134,11 +134,6 @@ class MathMaxConfig(ConfigWithNumpy):
     total_mtl_abs_tolerance: float
     row_relative_tolerance: float
 
-class TextualConfig(ConfigWithNumpy):
-    min_confidence: float
-    min_probability: float
-    min_char: int
-
 class InkConfig(ConfigWithNumpy):
     faded_detection_threshold: float
     contrast_boost_factor: float
@@ -151,6 +146,10 @@ class PreprocessingConfig(ConfigWithNumpy):
     contrast: ContrastConfig  
     sharpening: SharpeningConfig
     binarizator: Binarization
+
+class TextualConfig(ConfigWithNumpy):
+    min_probability: float
+    min_char: int
 
 class SemanticClasificator(ConfigWithNumpy):
     numeric: List[float]
@@ -166,9 +165,6 @@ class DataFinder(ConfigWithNumpy):
     min_similarity: float
     max_q_lenght: int
     
-class PaddleWrapper(ConfigWithNumpy):
-    min_confidence: float
-
 class TextRefiner(ConfigWithNumpy):
     num_passes: int
 
@@ -176,7 +172,7 @@ class TextCorrector(ConfigWithNumpy):
     confidence_threshold: float
 
 class OCRConfig(ConfigWithNumpy):
-    paddle_wrapper: PaddleWrapper
+    min_confidence: float
     text_refiner: TextRefiner
     text_cleaner: TextualConfig
     semantic_clasificator: SemanticClasificator
@@ -201,8 +197,7 @@ class CosineSimilarity(ConfigWithNumpy):
     interval: int
     
 class Vectorizer(ConfigWithNumpy):
-    activate_vectorization: bool
-    activate_keyword_interval: bool
+    keywords_interval_enabled: bool
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
