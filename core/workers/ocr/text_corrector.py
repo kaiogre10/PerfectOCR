@@ -23,8 +23,9 @@ class TextCorrector(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("text_corrector", {})
-        self.confidence_threshold = self.worker_config.get("confidence_threshold", {})
+        # self.worker_config = config.get("text_corrector", {})
+        
+        self.confidence_threshold = self.config.get("min_confidence", {})
         self._load_correction_rules()
 
     def _load_correction_rules(self):
@@ -43,7 +44,6 @@ class TextCorrector(OCRAbstractWorker):
             "S": "5",
             "s": "5",
             "G": "6",
-            "C": "6",
             "B": "8",
             "Z": "2",
             "z": "2",

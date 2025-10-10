@@ -20,7 +20,7 @@ class DensityScanner(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         # Si el vectorizador ya detectó las líneas tabulares (all_features es None), no se ejecuta el scanner
         if context.get("all_features", {}) is None:
-            logger.info("El vectorizador ya detectó líneas tabulares, el scanner no se ejecuta.")
+            logger.debug("El vectorizador ya detectó líneas tabulares, el scanner no se ejecuta.")
             return True
 
         start_time = time.time()

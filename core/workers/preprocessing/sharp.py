@@ -4,7 +4,7 @@ import time
 import numpy as np
 import logging
 from typing import Dict, Any, List
-from skimage.filters import unsharp_mask
+from skimage.filters import unsharp_mask # type: ignore
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -27,9 +27,13 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
         """
         try:
             start_time = time.time()
-            polygons: Dict[str, Polygons] = context.get("polygons", {})
+            if not manager.validate_cropped_img():
+                logger.info(f"Sin cropped_img en el formatter")
+                return False
+                            
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
-                return True
+                return False
 
             # 1. Fase de Análisis
             analysis_results: List[Dict[str, Any]] = []
@@ -51,7 +55,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
                     poly_ids_order.append(poly_id)
 
             if not analysis_results:
-                return True
+                return False
 
             # 2. Fase de Decisión Vectorizada
             sharpness_metrics = np.array([res['sharpness'] for res in analysis_results], dtype=np.float32)

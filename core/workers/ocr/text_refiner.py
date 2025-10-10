@@ -18,7 +18,6 @@ class Refiner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str, clasificator: SemanticClasificator, cleaner: TextCleaner, fragmenter: Fragmenter, corrector: TextCorrector):
         super().__init__(config, project_root)
         self.worker_config = self.config.get("text_refiner", {})
-        self.min_confidence = self.config.get("min_confidence", {})
         self.clasificator = clasificator
         self.cleaner = cleaner
         self.fragmenter = fragmenter
@@ -40,29 +39,23 @@ class Refiner(OCRAbstractWorker):
                 # Determinar si usar filtro selectivo (solo en pasadas 2+)
                 use_filter = (i > 0)
 
-                # 1. Clasificación inicial del bucle (completa en pasada 1, selectiva después)
                 logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (filtro={use_filter})")
                 self.clasificator.transcribe(context, manager, filter_modified=use_filter)
 
-                # 2. Corrección textual (marca was_refined=True en modificados)
-                logger.debug(f"Bucle #{pass_num}: Corrección textual")
-                self.corrector.transcribe(context, manager)
-                
-                # 3. Reclasificar solo los corregidos
-                logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo corregidos)")
-                self.clasificator.transcribe(context, manager, filter_modified=True)
-
-                # 4. Limpieza de texto (marca was_refined=True en modificados)
                 logger.debug(f"Bucle #{pass_num}: Limpieza de Texto")
                 self.cleaner.transcribe(context, manager)
 
-                # 5. Reclasificar solo los limpiados
-                logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
+                logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo corregidos)")
                 self.clasificator.transcribe(context, manager, filter_modified=True)
 
-                # 6. Fragmentación (marca was_refined=True en nuevos fragmentos)
                 logger.debug(f"Bucle #{pass_num}: Fragmentación de Texto")
                 self.fragmenter.transcribe(context, manager)
+
+                logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
+                self.clasificator.transcribe(context, manager, filter_modified=True)
+                
+                logger.debug(f"Bucle #{pass_num}: Corrección textual")
+                self.corrector.transcribe(context, manager)
     
             # Clasificación final completa para asegurar consistencia
             logger.debug(f"Pasada final: Clasificación Semántica (completa)")

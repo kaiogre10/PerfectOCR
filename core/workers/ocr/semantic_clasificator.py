@@ -43,7 +43,7 @@ class SemanticClasificator(OCRAbstractWorker):
                 logger.debug(f"Modo completo: clasificando todos los {len(all_polygons)} polígonos")
             
             if not polygons_to_classify:
-                logger.debug("No hay polígonos que clasificar")
+                logger.warning("No hay polígonos que clasificar")
                 return True
             
             # Clasificar solo los polígonos seleccionados
@@ -136,8 +136,9 @@ class SemanticClasificator(OCRAbstractWorker):
             rf"(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?$"
         )
         # No aceptar símbolo al final
-        pattern_end = rf"^(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?\s*{currency}$"
-        # Verificar si hay dos patrones válidos seguidos (ej: "$10.00 $60.00")
+        # Patrón para detectar el símbolo de moneda al final, incluso si no hay espacio
+        pattern_end = rf"^(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?\s*{currency}\s*$"
+        # Verificar si hay dos patrones válidos seguidos (ej: "$10.00$60.00", "$10.00 $60.00")
         multi_pattern = (
             rf"^(\s*{currency}\s*(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?\s*){{2,}}$"
         )

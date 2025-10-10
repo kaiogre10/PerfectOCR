@@ -33,6 +33,7 @@ class Polygons:
     geometry: Geometry
     cropedd_geometry: CroppedGeometry
     cropped_img: Optional[CroppedImage]
+    its_white: bool
     perimeter: Optional[float]
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
@@ -64,7 +65,7 @@ class Metadata:
 
 @dataclass
 class FullImage:
-    full_img:  Optional[np.ndarray[Any, np.dtype[np.uint8]]]
+    full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
 
 @dataclass
 class WorkflowDict:

@@ -26,9 +26,13 @@ class InkEnhancer(PreprocessingAbstractWorker):
         """Detecta y restaura texto con tinta gastada."""
         try:
             start_time = time.time()
-            polygons: Dict[str, Polygons] = context.get("polygons", {})
+            if not manager.validate_cropped_img():
+                logger.info(f"Sin cropped_img en el formatter")
+                return False
+            
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
-                return True
+                return False
 
             # 1. Fase de Análisis
             analysis_results: List[Dict[str, Any]] = []
@@ -61,9 +65,9 @@ class InkEnhancer(PreprocessingAbstractWorker):
                 original_img = analysis_results[idx]['original_img']
                 faded_score = faded_scores[idx]
 
-                logger.debug(f"Poly '{poly_id}': Restaurando tinta gastada (score: {faded_score:.2f})")
+                # logger.debug(f"Poly '{poly_id}': Restaurando tinta gastada (score: {faded_score:.2f})")
 
-                enhanced_img = self._restore_faded_ink(original_img)
+                enhanced_img = self._restore_faded_ink(original_img, faded_score)
                 polygon.cropped_img.cropped_img = enhanced_img
                 enhanced_count += 1
 
@@ -71,9 +75,11 @@ class InkEnhancer(PreprocessingAbstractWorker):
                     self._save_debug_image(context, poly_id, enhanced_img)
 
             total_time = time.time() - start_time
+            
             logger.debug(
                 f"Restauración de tinta completada para {enhanced_count}/{len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
+            
         except Exception as e:
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
             return False

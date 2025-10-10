@@ -101,7 +101,7 @@ class TextCleaner(OCRAbstractWorker):
         y seguro a los valores que parecen numéricos.
         """ 
         # NUEVA FUNCIONALIDAD: Eliminar caracteres especiales consecutivos (2 o más)
-        text = self._remove_consecutive_special_chars(text)
+        text = self._remove_special_chars(text)
         
         # Dividir por espacios para procesar token por token, preservando la estructura.
         words = text.split(' ')
@@ -263,7 +263,7 @@ class TextCleaner(OCRAbstractWorker):
             return 100.0  # tokens sin letras no se filtran por frecuencia
         return sum(letters) / float(len(letters))
 
-    def _remove_consecutive_special_chars(self, text: str) -> str:
+    def _remove_special_chars(self, text: str) -> str:
         """
         Elimina todos los caracteres especiales, tanto solitarios como en secuencia.
         Preserva dígitos, letras y espacios.
@@ -274,7 +274,7 @@ class TextCleaner(OCRAbstractWorker):
         special_chars = self.drop_single_chars
         if not special_chars:
             logger.warning("Usando patron regex")
-            pattern = r'[^A-Za-z0-9\s$]'
+            pattern = r'[^A-Za-z0-9\s$¢.,]'
         else:
             # escapamos los caracteres especiales para regex
             chars_escaped = re.escape("".join(special_chars))

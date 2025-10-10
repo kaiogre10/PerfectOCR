@@ -116,6 +116,7 @@ class ImagePreparation(ConfigWithNumpy):
     angle_corrector: DeskewConfig
     cleaner: CleaningConfig
     polygon_extractor: CuttingConfig
+    bin_interval: Tuple[int, int]
 
 class ContrastConfigGeneral(ConfigWithNumpy):
     clahe_clip_limit: float

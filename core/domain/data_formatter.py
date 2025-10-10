@@ -82,6 +82,7 @@ class DataFormatter:
                     polygon_id=poly_id,
                     geometry=geometry,
                     cropedd_geometry=None,
+                    its_white=False,
                     cropped_img=None,
                     perimeter=None,
                     ocr_text=None,
@@ -108,9 +109,6 @@ class DataFormatter:
 
     def get_structured_table(self) -> Optional[pd.DataFrame]:
         return self.structured_table.df if self.structured_table else None
-
-    def get_structured_semantic_types(self) -> Optional[List[str]]:
-        return self.structured_table.semantic_types if self.structured_table else None
         
     def clear_cropped_images(self, polygon_ids: List[str]) -> bool:
         """Libera las imágenes recortadas de polígonos específicos para ahorrar memoria"""
@@ -129,7 +127,8 @@ class DataFormatter:
                             polygon_id=polygon.polygon_id,
                             geometry=polygon.geometry,
                             cropedd_geometry=polygon.cropedd_geometry,
-                            cropped_img=None,  # Limpiar imagen
+                            cropped_img=None,
+                            its_white=polygon.its_white,
                             perimeter=polygon.perimeter,
                             ocr_text=polygon.ocr_text,
                             ocr_confidence=polygon.ocr_confidence,
@@ -220,9 +219,15 @@ class DataFormatter:
                 
             if full_img is None:
                 # Si se pasa None, vaciamos la imagen para liberar memoria
-                dataclasses.replace(self.workflow, full_img=None)
+                self.workflow = dataclasses.replace(self.workflow, full_img=None)
                 logger.debug(f"Imagen liberada con éxito: {full_img}")
+                return True
+            
+            # Si se pasa una imagen, actualiza el objeto
+            self.workflow = dataclasses.replace(self.workflow, full_img=full_img)
+            logger.debug("Imagen actualizada con éxito.")
             return True
+            
         except Exception as e:
             logger.error(f"Error actualizando full_img: {e}", exc_info=True)
             return False
@@ -259,6 +264,7 @@ class DataFormatter:
                         geometry=polygon.geometry,
                         cropedd_geometry=cropped_geometry_obj,
                         cropped_img=cropped_image_obj,
+                        its_white=polygon.its_white,
                         perimeter=polygon.perimeter,
                         ocr_text=polygon.ocr_text,
                         ocr_confidence=polygon.ocr_confidence,
@@ -284,6 +290,7 @@ class DataFormatter:
                 geometry=polygon.geometry,
                 cropedd_geometry=polygon.cropedd_geometry,
                 cropped_img=CroppedImage(cropped_img) if cropped_img is not None else None,
+                its_white=polygon.its_white,
                 perimeter=polygon.perimeter,
                 ocr_text=polygon.ocr_text,
                 ocr_confidence=polygon.ocr_confidence,
@@ -293,6 +300,55 @@ class DataFormatter:
             )
             self.workflow.polygons[poly_id] = updated_polygon
             
+    def validate_cropped_img(self) -> bool:
+        """
+        Valida automáticamente todas las imágenes recortadas y elimina las blancas/inválidas.
+        Retorna True si hay workflow válido, False si no hay workflow.
+        """
+        if not self.workflow:
+            logger.error("No hay workflow inicializado para validar imágenes.")
+            return False
+        
+        min_threshold = 10
+        max_threshold = 245
+        white_poly_ids: List[str] = []
+        
+        # Detectar polígonos blancos/inválidos
+        for poly_id, polygon in self.workflow.polygons.items():
+            cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
+            
+            if cropped_img is None or cropped_img.size == 0:
+                white_poly_ids.append(poly_id)
+                continue
+            
+            # Validación simple con .mean()
+            img_mean = cropped_img.mean(dtype=int)
+            if img_mean < min_threshold or img_mean > max_threshold:
+                white_poly_ids.append(poly_id)
+        
+        # Eliminar polígonos blancos y reindexar
+        if white_poly_ids:
+            logger.info(f"Eliminando {len(white_poly_ids)} polígonos blancos/inválidos")
+            
+            # Eliminar polígonos blancos
+            for poly_id in white_poly_ids:
+                if poly_id in self.workflow.polygons:
+                    del self.workflow.polygons[poly_id]
+            
+            # Reindexar polígonos restantes (patrón de poly_gone)
+            remaining_polygons = list(self.workflow.polygons.items())
+            new_polygons: Dict[str, Polygons] = {}
+            
+            for idx, (old_id, poly_obj) in enumerate(remaining_polygons):
+                new_id = f"poly_{idx:04d}"
+                updated_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
+                new_polygons[new_id] = updated_poly_obj
+            
+            self.workflow.polygons = new_polygons
+            logger.debug(f"Reindexados {len(new_polygons)} polígonos válidos")
+        
+        return True
+
     def update_ocr_results(self, final_results: List[Optional[Dict[str, Any]]], polygon_ids: List[str]) -> bool:
         """
         Actualiza los resultados de OCR en las dataclasses de polígonos.
@@ -316,6 +372,7 @@ class DataFormatter:
                             geometry=polygon.geometry,
                             cropedd_geometry=polygon.cropedd_geometry,
                             cropped_img=polygon.cropped_img,
+                            its_white=polygon.its_white,
                             perimeter=polygon.perimeter,
                             ocr_text=res.get("text", ""),  
                             ocr_confidence=res.get("confidence"), 
@@ -439,7 +496,7 @@ class DataFormatter:
                 
                 # LOG: Mostrar líneas que tienen al menos un HeaderWord
                 if header_count > 0:
-                    logger.info(f"Línea {line_id} tiene {header_count} HeaderWords: {[pid for pid in hdr_poly_ids if pid in polygon_ids]}")
+                    logger.debug(f"Línea {line_id} tiene {header_count} HeaderWords: {[pid for pid in hdr_poly_ids if pid in polygon_ids]}")
 
                 if header_count > max_header_count:
                     # Si esta línea tiene más polígonos de encabezado, actualizar
@@ -456,7 +513,7 @@ class DataFormatter:
                     # Actualizar todos los polígonos según la línea de encabezado
                     self.update_header(header_line_id)
                     
-                    logger.info(f"Header_line_id={header_line_id} guardado correctamente")
+                    logger.debug(f"Header_line_id={header_line_id} guardado correctamente")
                     return header_line_id
             else:
                 logger.warning(f"No se encontró ninguna línea con HeaderWords. hdr_poly_ids={hdr_poly_ids}")
@@ -508,7 +565,7 @@ class DataFormatter:
                         cleared_header += 1
                         logger.debug(f"Polígono {poly_id} limpiado de HeaderWords (fuera de línea {header_line_id})")
             
-            logger.info(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
+            logger.debug(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
             return True
             
         except Exception as e:
@@ -565,7 +622,7 @@ class DataFormatter:
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
                     # logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']}")
+                    logger.debug(f"Linea: {all_lines['line_id']}: {all_lines['text']}")
 
 
             header_line = self._find_and_mark_header()

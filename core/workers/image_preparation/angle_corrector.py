@@ -26,6 +26,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         if full_img is None:
             logger.error(f"No Hay full_img en el Formatter")
             return False
+            
         logger.debug("Full_img obtenida con éxito")
         
         img_dims: Dict[str, int] = {}
@@ -36,9 +37,6 @@ class AngleCorrector(ImagePrepAbstractWorker):
         
         # if lines is not None:
         #     full_img = self._trim_using_hough(full_img, lines, img_dims)
-        
-        # Actualiza la imagen en el contexto
-        context["full_img"] = full_img
         
         manager.update_full_img(full_img)
         logger.debug(f"Imagen inclinada corregida actualiada en el manager")

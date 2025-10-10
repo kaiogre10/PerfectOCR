@@ -25,9 +25,15 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         """
         try:
             start_time = time.time()
-            polygons: Dict[str, Polygons] = context.get("polygons", {})
+            
+            if not manager.validate_cropped_img():
+                logger.info(f"Sin cropped_img en el formatter")
+                return False
+                
+            logger.debug("Polygonos revisados")
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
-                return True
+                return False
 
             # 1. Analysis Phase
             metrics: List[Dict[str, Any]] = []

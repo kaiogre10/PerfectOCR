@@ -111,7 +111,7 @@ class DataFinder(OCRAbstractWorker):
 
                 if max_len_cfg is not None and lenght > max_len_cfg:
                     skipped_len += 1
-                    logger.info(f"Polígono: {pid} omitido por largo ({lenght} > {max_len_cfg})")
+                    logger.debug(f"Polígono: {pid} omitido por largo ({lenght} > {max_len_cfg})")
                     continue
                 
                 try:
@@ -144,7 +144,7 @@ class DataFinder(OCRAbstractWorker):
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.info(f"Similitud: {pid}: {best_result}")
+                        logger.debug(f"Similitud: {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")

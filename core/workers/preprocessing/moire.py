@@ -26,12 +26,19 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         try:
             logger.debug("Moire empezado conéxito")
             start_time = time.time()
-            # 1. Obtener polígonos (dataclasses) del contexto
+            
+            if not manager.validate_cropped_img():
+                logger.info(f"Sin cropped_img en el formatter")
+                return False
+                
+            logger.debug("Polygonos revisados")
+            
+            # Obtener polígonos (dataclasses) del contexto
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
 
-            # 2. Fase de Análisis: Recopilar métricas
+            # Fase de Análisis: Recopilar métricas
             metrics: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
             for poly_id, polygon in polygons.items():
@@ -40,12 +47,14 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                 if cropped_img is None:
                     logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
-                
+                    
                 if cropped_img.size == 0:
                     logger.warning(f"Imagen vacía o corrupta en '{poly_id}'")
                     continue
                 
-                h, w = cropped_img.shape[:2]
+                h = polygon.cropedd_geometry.croppy_dims.get("poly_height") or 0
+                w = polygon.cropedd_geometry.croppy_dims.get("poly_width") or 0
+                
                 analysis = self._analyze_image_for_moire(cropped_img, (h, w))
                 if analysis:
                     metrics.append(analysis)
@@ -83,7 +92,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                 default=np.maximum(1000, np.minimum(5000000, 2000000.0 * (spectrum_vars / 100.0)))
             )
 
-            # 4. Fase de Aplicación (modificando el contexto "in-line")
+            # 4. Fase de Aplicación (modificando las dataclasses"in-line")
             for idx, poly_id in enumerate(poly_ids_order):
                 polygon = polygons[poly_id]
                 analysis_results = metrics[idx]

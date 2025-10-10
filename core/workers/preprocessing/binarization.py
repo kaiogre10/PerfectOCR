@@ -18,17 +18,16 @@ class Binarizator(PreprocessingAbstractWorker):
     - Binariza las imágenes de los polígonos para su análisis.
     - Realiza un análisis visual para detectar agrupaciones incorrectas.
     - Combina su análisis visual con las sugerencias basadas en texto (del TextCleaner)
-      para crear una lista definitiva de polígonos que necesitan ser fragmentados.
+    - para crear una lista definitiva de polígonos que necesitan ser fragmentados.
     """    
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.config = config
-        bin_config = self.config.get('binarize', {})
+        bin_config = self.config.get('binarizator', {})
         self.c_value = bin_config.get('c_value', 7)
         self.height_thresholds = bin_config.get('height_thresholds_px', [100, 800, 1500, 2500])
         self.block_sizes_map = bin_config.get('block_sizes_map', [15, 21, 25, 35, 41])
-        # Nuevos parámetros para la detección de fragmentación
         self.min_area_factor = bin_config.get('min_area_factor', 0.005)
         self.min_blobs_for_frag = bin_config.get('min_blobs_for_frag', 2)
         self.gap_threshold_norm = bin_config.get('gap_threshold_norm', 0.05)
@@ -51,7 +50,7 @@ class Binarizator(PreprocessingAbstractWorker):
 
                 height = int(cropped_img.shape[0])
                 block = self._get_adaptive_block_size(height)
-                mode = self._measure_polygon_quality(cropped_img)
+                mode: str = self._measure_polygon_quality(cropped_img)
 
                 if mode == "otsu":
                     bin_img = self._otsu_binarize(cropped_img)
@@ -118,7 +117,7 @@ class Binarizator(PreprocessingAbstractWorker):
         final_block_size = self.block_sizes_map[-1]
         return max(3, final_block_size if final_block_size % 2 != 0 else final_block_size + 1)
 
-    def _measure_polygon_quality(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> List[str]:
+    def _measure_polygon_quality(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> str:
         std = np.std(cropped_img)
         if std == 0: return "adaptive_mean" # Imagen plana
         
@@ -144,7 +143,7 @@ class Binarizator(PreprocessingAbstractWorker):
     
     def _sauvola_binarize(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[np.uint8, Any]:
         thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size)
-        bin_img = (cropped_img > thresh_sauvola).astype(np.uint8) * 255
+        bin_img = (cropped_img > thresh_sauvola)
         return bin_img
 
     def _adaptive_mean_fallback(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int) -> np.ndarray[np.uint8, Any]:

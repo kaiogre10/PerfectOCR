@@ -23,7 +23,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         try:
             # Si all_features es None, ya se encontraron las líneas tabulares y encabezado, no se ejecuta nada
             if context.get("all_features", {}) is None:
-                logger.info("Las líneas tabulares y encabezado ya fueron detectados, no se ejecuta validación coseno.")
+                logger.debug("Las líneas tabulares y encabezado ya fueron detectados, no se ejecuta validación coseno.")
                 return True
                 
             start_time: float = time.time()

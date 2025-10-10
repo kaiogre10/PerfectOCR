@@ -34,16 +34,12 @@ class GeometryDetector(ImagePrepAbstractWorker):
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            img_obj = manager.get_full_img()
-            img = img_obj.full_img if img_obj is not None else None
+            img = manager.get_full_img()
             if img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
             logger.debug("Full_img obtenida con éxito")
-
-            if img.ndim == 2:
-                import cv2
-                img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            
             engine = self.engine
             if engine is None:
                 logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")

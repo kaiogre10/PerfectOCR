@@ -70,7 +70,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             processed_count = len(final_results) if success else 0
             manager.clear_cropped_images(polygon_ids)
             logger.debug("Cropped_img liberadas usando DataFormatter")
-            logger.info(f"{final_results}")
+            logger.debug(f"{final_results}")
             file_name: str = manager.workflow.metadata.image_name
             
             if self.output:
@@ -120,7 +120,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         
                         # Aplicar filtro de confianza mínima
                         if confidence_pct < self.min_confidence:
-                            logger.info(f"Resultado filtrado por baja confianza:'{text}'-> {confidence_pct}% < {self.min_confidence}%")
+                            logger.debug(f"Resultado filtrado por baja confianza:'{text}'-> {confidence_pct}% < {self.min_confidence}%")
                             final_results.append(None)  # Resultado filtrado
                             continue
                             

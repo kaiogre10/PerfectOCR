@@ -1,11 +1,11 @@
-# PerfectOCR/config/master_config.yaml
+# config/master_config.yaml
 system:
   project_root: "C:/PerfectOCR"
   log_level: "INFO" # DEBUG, INFO, WARNING, ERROR, CRITICAL
   
 # Todas las rutas del sistema
 paths:
-  input_folder: "C:/PerfectOCR/input2"
+  input_folder: "C:/PerfectOCR/input3"
   output_folder: "C:/PerfectOCR/output"
   db_path: "C:/PerfectOCR/data_base/data_base.json"
   
@@ -107,11 +107,13 @@ modules:
         
     polygon_extractor:
       cropping_padding: 5
+    
+    bin_interval: [10, 245]
 
   preprocessing:
     moire:
       percentile:
-        percentile_threshold: 95
+        percentile_threshold: 90
         notch_radius: 2
         min_distance_from_center: 200
 
@@ -172,7 +174,7 @@ modules:
       min_char: 2
     
     semantic_clasificator:
-      numeric: [100.0, 66.0]
+      numeric: [66.0, 100.0]
       code: [45.0, 65.9]
       descriptive: [0.0, 44.9]
         

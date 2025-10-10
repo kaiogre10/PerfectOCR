@@ -23,7 +23,7 @@ class Vectorizer(VectorizationAbstractWorker):
         try:
             start_time: float = time.time()
             logger.debug("Calculando Features")
-            logger.info(f"Keywords interval habilitado: {self.keywords_interval_enabled}")
+            logger.debug(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
 
             table_line_ids = self._get_keywords_interval(manager) if self.keywords_interval_enabled else None
             if table_line_ids is not None:
@@ -544,14 +544,14 @@ class Vectorizer(VectorizationAbstractWorker):
         header_pos = all_line_ids.index(header_line_id)
         footer_pos = all_line_ids.index(winner_line_id)
 
-        logger.info(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
+        logger.debug(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
 
         # Asegurar que el header esté antes que el footer
         if header_pos >= footer_pos - 1:
             return None
 
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
-        logger.info(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
+        logger.debug(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
         return tabular_line_ids
 
     def _save_output(self, context: Dict[str, Any], expanded_line_ids: List[str], file_name: str, manager: DataFormatter):

@@ -363,7 +363,20 @@ class Fragmenter(OCRAbstractWorker):
         return new_polys
         
     def _fragment_by_quantitative(self, polygon: Polygons, quant_runs: List[Tuple[int, int, str]]) -> List[Polygons]:
-        parts = [tok for _, _, tok in quant_runs]
+        """
+        Fragmenta un polígono que contiene múltiples tokens cuantitativos.
+        - Si hay espacios: fragmenta por espacios (preserva todo el texto)
+        - Si NO hay espacios: fragmenta por patrones cuantitativos (extrae solo números/monedas)
+        """
+        text: str = (polygon.ocr_text or "").strip()
+        
+        # ESTRATEGIA 1: Si hay espacios, fragmentar por espacios (como _fragment_by_text)
+        if " " in text:
+            parts = [p for p in text.split(' ') if p]
+        else:
+            # ESTRATEGIA 2: Si no hay espacios, fragmentar por patrones cuantitativos
+            parts = [tok for _, _, tok in quant_runs]
+        
         if len(parts) <= 1:
             return [polygon]
 

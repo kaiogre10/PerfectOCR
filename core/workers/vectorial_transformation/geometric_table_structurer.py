@@ -44,14 +44,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
             # 1. Detectar encabezado H* usando data classes
             try:
-                header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
+                # buscar líneas marcadas explícitamente como header_line == True
+                header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
                 header_line_id = header_line_id[0] if header_line_id else None
-        
-                logger.info(f"Usando header_line_id desde manager: {header_line_id}")
                 
                 line_ids: List[str] = list(all_lines.keys())
                 if header_line_id not in line_ids:
-                    logger.info("Header no encontrado en el manager")
+                    logger.warning("Header no encontrado en el manager")
                     return False
                 
                 # 2. Extraer centroides de referencia c_j del encabezado
@@ -62,7 +61,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     logger.error("No se pudieron extraer centroides del encabezado")
                     return False
                     
-                logger.info(f"Encabezado detectado: {header_line_id}, H={H} columnas")
+                logger.debug(f"Encabezado detectado: {header_line_id}, H={H} columnas")
 
                 # 3. Seleccionar filas S para procesamiento
                 selected_lines = self._select_table_rows(header_line_id, tabular_line_ids, all_lines)
@@ -114,8 +113,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     centroid = poly_data.geometry.centroid.tolist()
                     header_centroids.append(centroid)
  
-            logger.info(f"Cnetroides: {len(header_centroids)}")
-            logger.info(f"polygon_ids: {len(header_line.polygon_ids)}")
             return header_centroids
         
         except Exception as e:
@@ -272,17 +269,27 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 element = row_elements[0]
                 element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
                 
-                # Calcular j* = argmax_j (c_1 · c_j) / (||c_1|| ||c_j||)
-                best_col = 0
-                best_similarity = 0.0
-                
-                for j, header_centroid in enumerate(header_centroids):
-                    similarity = alignment(header_centroid, element_centroid)
-                    if similarity > best_similarity and similarity >= min_cosine_similarity:
-                        best_similarity = similarity
-                        best_col = j
-                
-                row_cells[best_col]['words'] = [element]
+                # Calcular similitudes con todos los centroides y escoger el argmax.
+                # IMPORTANTE: siempre asignar al argmax aunque la similitud sea baja.
+                if not header_centroids:
+                    # sin encabezado, asignar a la primera columna
+                    row_cells[0]['words'] = [element]
+                else:
+                    sims = [alignment(hc, element_centroid) for hc in header_centroids]
+                    # escoger índice del máximo (si hay empates, elige el primero)
+                    best_col = int(max(range(len(sims)), key=lambda j: sims[j]))
+                    best_similarity = sims[best_col]
+
+                    # Si por alguna razón best_similarity es NaN o inválido, fallback por proximidad X
+                    try:
+                        if not (isinstance(best_similarity, float) and best_similarity == best_similarity):
+                            raise ValueError("similarity inválida")
+                    except Exception:
+                        elem_x = element_centroid[0]
+                        distances = [abs(float(hc[0]) - elem_x) for hc in header_centroids]
+                        best_col = int(min(range(len(distances)), key=lambda j: distances[j]))
+
+                    row_cells[best_col]['words'] = [element]
             
             # Subcaso B.2: 1 < L_k < H - Asignación secuencial
             else:

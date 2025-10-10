@@ -18,8 +18,6 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         self.worker_config = self.config.get('contrast', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("clahe_poly", False)
-        
-        # Parámetros de configuración
         global_clahe_corrects = self.worker_config.get('global', {})
         self.contrast_threshold = global_clahe_corrects.get('contrast_threshold', 50.0)
         self.page_dimensions = global_clahe_corrects.get('dimension_thresholds_px', [1000, 2500])
@@ -32,9 +30,14 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         """
         try:
             start_time = time.time()
-            polygons: Dict[str, Polygons] = context.get("polygons", {})
+            
+            if not manager.validate_cropped_img():
+                logger.info(f"Sin cropped_img en el formatter")
+                return False
+            
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
-                return True
+                return False
 
             # 1. Fase de Análisis
             analysis_results: List[Dict[str, Any]] = []
@@ -102,7 +105,7 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
                     self._save_debug_image(context, poly_id, corrected_img)
 
             total_time = time.time() - start_time
-            logger.debug(f"Procesamiento CLAHE completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
+            # logger.debug(f"Procesamiento CLAHE completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
         except Exception as e:
             logger.error(f"Error en el procesamiento por lotes de ClaherEnhancer: {e}", exc_info=True)
