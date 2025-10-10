@@ -170,7 +170,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
                 # CASO B: L_k < H (Menos palabras que columnas)  
                 else:
-                    row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids, min_cosine_similarity)
+                    row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids)
                 
                 # Generar texto de celda
                 for cell_idx in range(H):
@@ -202,7 +202,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         "xmax": geom.bounding_box[2], 
                         "cx": geom.centroid[0],
                         "cy": geom.centroid[1],
-                        "ocr_text": poly_data.ocr_text or ""
+                        "ocr_text": poly_data.ocr_text or "",
+                        "semantic_type": poly_data.semantic_type,
                     }
                     row_elements.append(element)
                     
@@ -257,7 +258,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             return []
 
     def _case_b_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int,
-                          header_centroids: List[List[float]], min_cosine_similarity: float) -> List[Dict[str, Any]]:
+                          header_centroids: List[List[float]]) -> List[Dict[str, Any]]:
         """
         CASO B: L_k < H - Asignación por similitud coseno o secuencial
         """

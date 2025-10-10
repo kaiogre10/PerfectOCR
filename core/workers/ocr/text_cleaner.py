@@ -30,7 +30,7 @@ class TextCleaner(OCRAbstractWorker):
         self.chars = [
             ")", "(", "]", "[", "{", "}", "|", "*", "^", "#", "@",
             "-", "~", "_", "+", "=", "<", ">", ";", ":", "x", "X",
-            "'", "´", "!", "¡", "?", "¿"
+            "'", "!", "¡", "?", "¿", "'", "/", "\\"
         ]
 
         # normalizar a conjunto de caracteres de longitud 1
@@ -275,7 +275,7 @@ class TextCleaner(OCRAbstractWorker):
         special_chars = self.drop_single_chars
         if not special_chars:
             logger.warning("Usando patron regex")
-            pattern = r'[^A-Za-z0-9\s$¢.,]'
+            pattern = r'[^A-Za-z0-9\s$¢.,\/\\]'
         else:
             # escapamos los caracteres especiales para regex
             chars_escaped = re.escape("".join(special_chars))

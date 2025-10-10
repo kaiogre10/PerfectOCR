@@ -121,35 +121,58 @@ class SemanticClasificator(OCRAbstractWorker):
         s = (s or "").strip()
         if not s or "%" in s:
             return False
+
+        currency_symbols = "$€£¥¢"
         currency = r"[$€£¥¢]"
+
+        # Simple no-regex shortcut: if contains a currency and at least 1 digit after it
+        for sym in currency_symbols:
+            idx = s.find(sym)
+            if idx != -1:
+                # At least one digit to right of symbol
+                after = s[idx+1 : ]
+                if any(c.isdigit() for c in after):
+                    # No letras entre el símbolo y el número inmediato
+                    # y no termina con símbolo
+                    # y no es "00" después del símbolo
+                    # y no digitos antes y símbolo al final
+                    maybe_amt = after.lstrip()
+                    # quick fail for 00 only amount
+                    possible_num = ""
+                    for ch in maybe_amt:
+                        if ch.isdigit() or ch in ",.":
+                            possible_num += ch
+                        else:
+                            break
+                    if possible_num == "00":
+                        return False
+                    # Evitar simbolo al final
+                    if idx == len(s)-1:
+                        return False
+                    # Evitar cantidades tipo "10.00$"
+                    if idx == 0 or (s[:idx].strip().isdigit() == False):
+                        return True
+                    # En casos tipo "1,000$50", permitir
+                    before = s[:idx]
+                    if any(c.isdigit() for c in before):
+                        return True
+        # Si no coincide el shortcut, sigue el método previo por regex
         # El símbolo puede estar al inicio o en medio, pero NO al final
-        # Debe estar rodeado enteramente de números (no letras)
-        # No se aceptan cantidades "00" (ni $00 ni 00$ ni 00$00)
-        # Ejemplos válidos: $10.00, 10$00, 1,000$50, $1,000.00, 10$00.50
-        # Ejemplos inválidos: 00$, $00, 00$00, 10.00$
-        # Patrón para símbolo al inicio
         pattern_start = rf"^{currency}\s*(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?$"
-        # Patrón para símbolo en medio, rodeado de números
         pattern_middle = (
             rf"^(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)"
             rf"\s*{currency}\s*"
             rf"(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?$"
         )
-        # No aceptar símbolo al final
-        # Patrón para detectar el símbolo de moneda al final, incluso si no hay espacio
         pattern_end = rf"^(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?\s*{currency}\s*$"
-        # Verificar si hay dos patrones válidos seguidos (ej: "$10.00$60.00", "$10.00 $60.00")
         multi_pattern = (
             rf"^(\s*{currency}\s*(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?\s*){{2,}}$"
         )
-        # Rechazar si termina con símbolo de moneda
         if re.match(pattern_end, s):
             return False
-        # Rechazar si la cantidad es "00" en cualquier parte
         cantidades = re.findall(rf"{currency}?\s*(\d+)(?:[.,]\d+)?\s*{currency}?", s)
         if any(c == "00" for c in cantidades):
             return False
-        # Aceptar si cumple patrón de inicio, patrón de en medio, o múltiples patrones válidos
         return (
             bool(re.match(pattern_start, s)) or
             bool(re.match(pattern_middle, s)) or
