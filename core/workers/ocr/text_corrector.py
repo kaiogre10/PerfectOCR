@@ -23,11 +23,8 @@ class TextCorrector(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        # self.worker_config = config.get("text_corrector", {})
+        self.worker_config = config.get("text_corrector", {})
         
-        self.confidence_threshold = self.config.get("min_confidence", {})
-        self._load_correction_rules()
-
     def _load_correction_rules(self):
         """
         Carga las reglas de corrección desde la configuración.
@@ -43,10 +40,11 @@ class TextCorrector(OCRAbstractWorker):
             "l": "1",
             "S": "5",
             "s": "5",
-            "G": "6",
+            # "G": "6",
             "B": "8",
             "Z": "2",
             "z": "2",
+            "j": "9"
         }
         
         # Correcciones para texto cuantitativo (números con unidades)
@@ -68,7 +66,10 @@ class TextCorrector(OCRAbstractWorker):
         Returns:
             True si el proceso se completó exitosamente
         """
-        conf_threshold = float(self.confidence_threshold *100.0)
+        confidence_threshold = self.worker_config.get("confidence_threshold")
+
+        conf_threshold = float(confidence_threshold *100.0)
+        self._load_correction_rules()
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCorrector: No hay polígonos para procesar.")
             return True
@@ -133,7 +134,7 @@ class TextCorrector(OCRAbstractWorker):
         manager.workflow.polygons = corrected_polygons
         
         logger.debug(
-            f"Corrección textual completada - "
+            f"Corrección textual - "
             f"Total: {correction_stats['total_corrections']} | "
             f"Alta confianza omitidos: {correction_stats['skipped_high_confidence']} | "
             f"Numeric: {correction_stats['numeric']} | "
@@ -167,7 +168,7 @@ class TextCorrector(OCRAbstractWorker):
         
         # No corregir tipo "code"
         if semantic_type == "code":
-            logger.debug(f"Omitiendo corrección para tipo 'code' (poly_id: {polygon_id})")
+            logger.debug(f"Omitiendo corrección para tipo 'code' ({polygon_id}: {text} )")
             return text
             
         # Seleccionar el diccionario de correcciones apropiado

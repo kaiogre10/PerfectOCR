@@ -68,7 +68,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         basic_types = self._infer_semantic_types_basic(df)
         quant_indices_map = [i for i, t in enumerate(basic_types) if t == "cuantitativo"]
         if len(quant_indices_map) < 3:
-            logger.warning("Menos de 3 columnas cuantitativas; no se aplica corrección.")
+            logger.debug("Menos de 3 columnas cuantitativas; no se aplica corrección.")
             return df, basic_types
 
         quant_cols = [columns[i] for i in quant_indices_map]
@@ -97,7 +97,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         c_name = quant_cols[c_idx]
         pu_name = quant_cols[pu_idx]
         mtl_name = quant_cols[mtl_idx]
-        logger.info(f"Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
+        logger.debug(f"Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
         # --- FASE 2: Reconstrucción ---
         reconstructed: np.ndarray[Any, np.dtype[np.float32]] = numeric_df.to_numpy(dtype=np.float32, copy=True)
                 

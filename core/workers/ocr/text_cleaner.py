@@ -24,9 +24,7 @@ class TextCleaner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("text_cleaner", {})
-        self.min_confidence = self.config.get("min_confidence", {})
-        
+        self.worker_config = config.get("text_cleaner", {})        
         # Lista de caracteres especiales a eliminar si aparecen solos.
         # Configurada directamente en el worker en lugar de leerla desde un YAML.
         self.chars = [
@@ -39,6 +37,8 @@ class TextCleaner(OCRAbstractWorker):
         self.drop_single_chars = set(c for c in self.chars if isinstance(c, str) and len(c) == 1)
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        self.min_confidence: float  = self.worker_config.get("min_confidence")
+
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCleaner: No hay polígonos en el workflow para procesar.")
             return True
@@ -60,11 +60,13 @@ class TextCleaner(OCRAbstractWorker):
             eliminated_count = 0
 
             if self._is_polygon_single_special(text):
-                logger.debug(f"Eliminado {poly_id} unico: '{text}'")
+                logger.debug(f"Eliminado {poly_id} unico:'{text}'")
                 continue
             
             text = self._filter_low_prob_tokens(text, polygon, manager)
             text = text or ""
+
+            text = self._remove_special_chars(text)
 
             if (not text.strip() or
                 (confidence < self.min_confidence and polygon.semantic_type not in ("numeric", "quantitative")) or
@@ -80,7 +82,7 @@ class TextCleaner(OCRAbstractWorker):
             else:
                 logger.debug(f"Eliminado {poly_id}: | Texto: '{text}'")
 
-            eliminated_count += 1
+                eliminated_count += 1
 
         # 4. Reconstrucción y reindexación final
         final_polygons_dict: Dict[str, Polygons] = {}
@@ -88,11 +90,12 @@ class TextCleaner(OCRAbstractWorker):
             new_id = f"poly_{idx:04d}"
             final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, was_refined=True)
             final_polygons_dict[new_id] = final_poly_obj
-        
-        # 5. Reemplazo directo en el manager
+            
+            # 5. Reemplazo directo en el manager
         manager.workflow.polygons = final_polygons_dict
 
         logger.debug(f"{eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
+            
         return True
 
     def _process_single_text(self, text: str, polygon: Polygons, semantic_type :str, manager: DataFormatter) -> str:
@@ -100,8 +103,6 @@ class TextCleaner(OCRAbstractWorker):
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
         y seguro a los valores que parecen numéricos.
         """ 
-        # NUEVA FUNCIONALIDAD: Eliminar caracteres especiales consecutivos (2 o más)
-        text = self._remove_special_chars(text)
         
         # Dividir por espacios para procesar token por token, preservando la estructura.
         words = text.split(' ')
@@ -147,8 +148,8 @@ class TextCleaner(OCRAbstractWorker):
         return False
 
     def _filter_low_prob_tokens(self, text: str, polygon: Polygons, manager: DataFormatter) -> str:
-        min_char = int(self.worker_config.get("min_char", {}))
-        min_probability = float(self.worker_config.get("min_probability", {}))
+        min_char = int(self.worker_config.get("min_char"))
+        min_probability = float(self.worker_config.get("min_probability"))
         if polygon.ocr_confidence and polygon.ocr_confidence >= self.min_confidence:
             return text
             

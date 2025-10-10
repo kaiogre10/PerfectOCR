@@ -29,7 +29,7 @@ class Vectorizer(VectorizationAbstractWorker):
             if table_line_ids is not None:
                 
                 # Si se detecta un intervalo claro, se omite la vectorización
-                logger.info(f"Intervalo tabular detectado, se omite vectorización")
+                logger.debug(f"Intervalo tabular detectado, se omite vectorización")
                 if self.output:
                     file_name: str = context.get("image_name", "")
                     self._save_output(context, table_line_ids, file_name, manager)

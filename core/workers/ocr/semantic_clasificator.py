@@ -43,7 +43,7 @@ class SemanticClasificator(OCRAbstractWorker):
                 logger.debug(f"Modo completo: clasificando todos los {len(all_polygons)} polígonos")
             
             if not polygons_to_classify:
-                logger.warning("No hay polígonos que clasificar")
+                logger.debug("No hay polígonos que clasificar")
                 return True
             
             # Clasificar solo los polígonos seleccionados

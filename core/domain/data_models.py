@@ -59,9 +59,8 @@ class AllLines:
 @dataclass(frozen=True)
 class Metadata:
     image_name: str
-    format: Optional[str]
-    img_dims: Dict[str, float]
-    date_creation: Optional[str]
+    img_dims: Dict[str, int]
+    date_creation: str
 
 @dataclass
 class FullImage:

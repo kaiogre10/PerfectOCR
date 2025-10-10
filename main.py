@@ -19,7 +19,7 @@ os.environ.update({
 })
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
-DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input3")
+DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input2")
 DEFAULT_OUTPUT_PATH = os.path.join(PROJECT_ROOT, "output")
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 
@@ -56,22 +56,6 @@ console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(console_formatter)
 console_handler.setLevel(CONSOLE_LEVEL.upper())
 logger_root.addHandler(console_handler)
-
-# import functools
-
-# def trace_calls(func):
-#     @functools.wraps(func)
-#     def wrapper(*args, **kwargs):
-#         logger.debug(f"→ {func.__name__}()")
-#         try:
-#             result = func(*args, **kwargs)
-#             logger.debug(f"{func.__name__}")
-#             return result
-#         except Exception:
-#             logger.error(f"{func.__name__}", exc_info=True)
-#             raise
-#     return wrapper
-
 
 # app = typer.Typer(help="PerfectOCR - Sistema de OCR optimizado")
 

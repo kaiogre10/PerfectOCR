@@ -1,6 +1,5 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
-import numpy as np
 from typing import Dict, Any, Optional, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -34,7 +33,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            img = manager.get_full_img()
+            img = manager.workflow.full_img if manager.workflow else None
             if img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
@@ -46,7 +45,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
                 
             try:
-
                 results: Optional[List[List[int]]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
                 logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
             except Exception as e:

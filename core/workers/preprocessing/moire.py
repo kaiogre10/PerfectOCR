@@ -118,6 +118,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             total_time = time.time() - start_time
             logger.debug(f"Moire batch completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
+            
         except Exception as e:
             logger.error(f"Error en el procesamiento por lotes de Moire: {e}", exc_info=True)
             return False
@@ -132,7 +133,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             magnitude_spectrum = cv2.magnitude(f_shifted[:, :, 0], f_shifted[:, :, 1])
             magnitude_spectrum = 20 * np.log(magnitude_spectrum + 1)
             
-            min_dist_conf = self.worker_config.get('min_distance_from_center', 200)
+            min_dist_conf = self.worker_config.get('min_distance_from_center')
             adaptive_min_dist = max(50, min(300, int(min_dist_conf * (max(h, w) / 2000.0))))
             
             temp_spectrum = magnitude_spectrum.copy()
@@ -156,14 +157,15 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             
         except Exception as e:
             logger.error(f"Error analizando poligono para moire: {e}", exc_info=True)
+            return {}
 
     def _apply_moire_correction(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], analysis: Dict[str, Any], adaptive_threshold: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
         h, w = analysis['img_dims']
         max_dim = max(h, w)
         spectrum_var = analysis['spectrum_var']
         
-        notch_radius_conf = self.worker_config.get('notch_radius', 2)
-        min_dist_conf = self.worker_config.get('min_distance_from_center', 200)
+        notch_radius_conf = self.worker_config.get('notch_radius')
+        min_dist_conf = self.worker_config.get('min_distance_from_center')
 
         adaptive_notch = max(2, min(6, int(notch_radius_conf * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
         adaptive_min_dist = max(50, min(300, int(min_dist_conf * (max_dim / 2000.0))))

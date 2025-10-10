@@ -143,7 +143,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             manager.workflow.polygons = new_polygons
 
             if discarded_poly_ids:
-                logger.info(f"PolygonExtractor: Se eliminaron {len(discarded_poly_ids)} polígonos no válidos: {', '.join(discarded_poly_ids)}")
+                logger.warning(f"PolygonExtractor: Se eliminaron {len(discarded_poly_ids)} polígonos no válidos: {', '.join(discarded_poly_ids)}")
             
             # Guardar resultados
             success = manager.save_cropped_images(cropped_images, cropped_geometries)

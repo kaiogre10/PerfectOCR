@@ -1,6 +1,5 @@
 # PerfectOCR/core/image_preparation/image_loader.py
 import cv2
-import time
 import numpy as np
 import logging
 from datetime import datetime
@@ -85,7 +84,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             metadata["img_dims"] = {
                         "width": float(cv2_width), 
                         "height": float(cv2_height),
-                        "size": int(cv2_size)
+                        "size": float(cv2_size)
                     }
             logger.debug(f"Dimensiones imagen:{cv2_width, cv2_height}")
         
@@ -93,4 +92,4 @@ class ImageLoader(ImagePrepAbstractWorker):
 
         except Exception as e:
             logger.error(f"Error al  la imagen '{input_path}': {e}", exc_info=True)
-        return None, metadata
+            return None, metadata

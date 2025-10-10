@@ -148,7 +148,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             table_matrix: List[List[Dict[str, Any]]] = []
-            min_cosine_similarity = self.worker_config.get("min_cosine_similarity", 0.7)
+            min_cosine_similarity = self.worker_config.get("min_cosine_similarity")
             
             for line_id in selected_lines:
                 line_obj = all_lines[line_id]
@@ -158,7 +158,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 L_k = len(row_elements)  # Cardinalidad |S_k|
                 
                 # Inicializar fila de celdas vacías
-                row_cells = [{'words': [], 'cell_text': ''} for _ in range(H)]
+                row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
                 
                 if L_k == 0:
                     table_matrix.append(row_cells)

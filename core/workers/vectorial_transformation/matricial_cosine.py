@@ -70,7 +70,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
         header_line_id = header_line_id[0] if header_line_id else None
         
-        logger.info(f"Usando header_line_id proporcionado por manager: {header_line_id}")
+        logger.warning(f"Usando header_line_id proporcionado por manager: {header_line_id}")
         
         line_ids: List[str] = list(all_lines.keys())
         if header_line_id not in line_ids:

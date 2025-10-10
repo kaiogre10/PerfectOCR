@@ -24,19 +24,17 @@ class DataFormatter:
         
     def create_workflow(self, IDRegistro: str, full_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando solo dataclasses"""
-        try:
-            
+        try:            
             full_image = FullImage(
                 full_img=(full_img)
                 )
             
             metadata_obj = Metadata(
                 image_name=str(metadata.get("image_name", "")),
-                format=str(metadata.get("format", "")),
                 img_dims={
-                    "width": float(metadata.get("img_dims", {}).get("width") or 0.0),
-                    "height": float(metadata.get("img_dims", {}).get("height") or 0.0),
-                    "size": float(metadata.get("img_dims", {}).get("size") or 0.0),
+                    "width": int(metadata.get("img_dims", {}).get("width") or 0),
+                    "height": int(metadata.get("img_dims", {}).get("height") or 0),
+                    "size": int(metadata.get("img_dims", {}).get("size") or 0),
                 },
                 date_creation=metadata.get("date_creation", datetime.now().isoformat()),
             )
@@ -51,7 +49,7 @@ class DataFormatter:
             return True
         except Exception as e:
             logger.error(f"Error creando workflow: {e}", exc_info=True)
-            return False        
+            return False
 
     def create_polygon_dicts(self, results: Optional[List[Any]]) -> bool:
         """Refactorizado para usar validación + dataclasses"""
@@ -106,7 +104,7 @@ class DataFormatter:
             
     def get_full_img(self) -> Optional[FullImage]:
         return self.workflow.full_img if self.workflow else None
-
+            
     def get_structured_table(self) -> Optional[pd.DataFrame]:
         return self.structured_table.df if self.structured_table else None
         
@@ -116,29 +114,16 @@ class DataFormatter:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para limpiar imágenes.")
                 return False
-                
+
             cleared_count = 0
             for poly_id in polygon_ids:
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
                     if polygon.cropped_img is not None:
-                        # Crear nuevo polígono sin imagen para mantener immutabilidad
-                        updated_polygon = Polygons(
-                            polygon_id=polygon.polygon_id,
-                            geometry=polygon.geometry,
-                            cropedd_geometry=polygon.cropedd_geometry,
-                            cropped_img=None,
-                            its_white=polygon.its_white,
-                            perimeter=polygon.perimeter,
-                            ocr_text=polygon.ocr_text,
-                            ocr_confidence=polygon.ocr_confidence,
-                            was_refined=polygon.was_refined,
-                            key_field=polygon.key_field,
-                            semantic_type=polygon.semantic_type,
-                        )
+                        updated_polygon = dataclasses.replace(polygon, cropped_img=None)
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_count += 1
-                    
+
             logger.debug(f"Liberadas {cleared_count} imágenes recortadas de memoria.")
             return True
         except Exception as e:
@@ -247,30 +232,22 @@ class DataFormatter:
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
                     cropped_geo = cropped_geometries.get(poly_id)
-                    
+
                     # Crear nuevo objeto CroppedImage
                     cropped_image_obj = CroppedImage(img)
-                    
+
                     # Crear nuevo objeto CroppedGeometry
                     cropped_geometry_obj = CroppedGeometry(
                         padd_centroid=np.array(cropped_geo["padd_centroid"]) if cropped_geo and cropped_geo["padd_centroid"] else np.array([]),
                         padding_coords=np.array(cropped_geo["padding_coords"]) if cropped_geo and cropped_geo["padding_coords"] else np.array([]),
                         croppy_dims=cropped_geo.get("croppy_dims", {}) if cropped_geo else {}
                     )
-                    
+
                     # Crear nuevo polígono con la imagen recortada y la geometría
-                    updated_polygon = Polygons(
-                        polygon_id=polygon.polygon_id,
-                        geometry=polygon.geometry,
-                        cropedd_geometry=cropped_geometry_obj,
+                    updated_polygon = dataclasses.replace(
+                        polygon,
                         cropped_img=cropped_image_obj,
-                        its_white=polygon.its_white,
-                        perimeter=polygon.perimeter,
-                        ocr_text=polygon.ocr_text,
-                        ocr_confidence=polygon.ocr_confidence,
-                        was_refined=polygon.was_refined,
-                        key_field=polygon.key_field,
-                        semantic_type=polygon.semantic_type,
+                        cropedd_geometry=cropped_geometry_obj
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
@@ -279,26 +256,6 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
             return False
-        
-    def update_preprocessing_result(self, poly_id: str, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> bool:
-        """Actualiza resultado de preprocesamiento"""            
-        # También actualizar la dataclass
-        if self.workflow and poly_id in self.workflow.polygons:
-            polygon = self.workflow.polygons[poly_id]
-            updated_polygon = Polygons(
-                polygon_id=polygon.polygon_id,
-                geometry=polygon.geometry,
-                cropedd_geometry=polygon.cropedd_geometry,
-                cropped_img=CroppedImage(cropped_img) if cropped_img is not None else None,
-                its_white=polygon.its_white,
-                perimeter=polygon.perimeter,
-                ocr_text=polygon.ocr_text,
-                ocr_confidence=polygon.ocr_confidence,
-                was_refined=polygon.was_refined,
-                key_field=polygon.key_field,
-                semantic_type=polygon.semantic_type,
-            )
-            self.workflow.polygons[poly_id] = updated_polygon
             
     def validate_cropped_img(self) -> bool:
         """
@@ -339,7 +296,7 @@ class DataFormatter:
             remaining_polygons = list(self.workflow.polygons.items())
             new_polygons: Dict[str, Polygons] = {}
             
-            for idx, (old_id, poly_obj) in enumerate(remaining_polygons):
+            for idx, (old_id, poly_obj) in enumerate(remaining_polygons): # type: ignore
                 new_id = f"poly_{idx:04d}"
                 updated_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = updated_poly_obj
@@ -357,39 +314,46 @@ class DataFormatter:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
                 return False
-                
+
             logger.debug(f"Recibe: {len(final_results)} resultados, {len(polygon_ids)} IDs")
- 
+
             for idx, res in enumerate(final_results):
                 if idx < len(polygon_ids) and res is not None:
                     poly_id = polygon_ids[idx]
                     if poly_id in self.workflow.polygons:
-                        # Actualizar la dataclass directamente
                         polygon = self.workflow.polygons[poly_id]
-                        # Crear nuevo polígono con texto actualizado
-                        updated_polygon = Polygons(
-                            polygon_id=polygon.polygon_id,
-                            geometry=polygon.geometry,
-                            cropedd_geometry=polygon.cropedd_geometry,
-                            cropped_img=polygon.cropped_img,
-                            its_white=polygon.its_white,
-                            perimeter=polygon.perimeter,
-                            ocr_text=res.get("text", ""),  
-                            ocr_confidence=res.get("confidence"), 
-                            was_refined=polygon.was_refined,
-                            key_field=polygon.key_field,
-                            semantic_type=polygon.semantic_type,
+                        updated_polygon = dataclasses.replace(
+                            polygon,
+                            ocr_text=res.get("text", ""),
+                            ocr_confidence=res.get("confidence")
                         )
-                        
+
                         self.workflow.polygons[poly_id] = updated_polygon
-                        
+
             logger.debug("Texto OCR actualizado")
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
+            
+    def merge_types(self) -> bool:
+        """
+        Unifica los tipos semánticos en las dataclasses, convirtiendo
+        todos los 'quantitative' a 'numeric'.
+        """
+        if not self.workflow or not self.workflow.polygons:
+            return False
 
-    # core/domain/data_formatter.py (líneas 345-357)
+        updated_count = 0
+        for poly_id, polygon in self.workflow.polygons.items():
+            if getattr(polygon, 'semantic_type', None) == 'quantitative':
+                updated_polygon = dataclasses.replace(polygon, semantic_type='numeric')
+                self.workflow.polygons[poly_id] = updated_polygon
+                updated_count += 1
+        
+        if updated_count > 0:
+            logger.debug(f"Unificados {updated_count} polígonos de 'quantitative' a 'numeric'.")
+        return True
 
     def update_semantic_type(self, final_results: Dict[str, str], reset_refined: bool = False) -> bool:
         """
@@ -542,7 +506,6 @@ class DataFormatter:
             
             header_polygon_ids = set(getattr(header_line, "polygon_ids", []))
             
-            # Contadores para logging
             marked_as_header = 0
             cleared_header = 0
             
@@ -624,7 +587,6 @@ class DataFormatter:
                     # logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
                     logger.debug(f"Linea: {all_lines['line_id']}: {all_lines['text']}")
 
-
             header_line = self._find_and_mark_header()
             if header_line:
                 logger.debug(f"Header marcado automáticamente: {header_line}")
@@ -643,14 +605,11 @@ class DataFormatter:
         """
         Identifica las líneas tabulares y las guarda como dataclasses TabularLines
         en el workflow. También actualiza el flag en AllLines.
-
-        Comportamiento: cada llamada primero borra todos los flags tabular_line
-        y después marca únicamente los line_ids provistos.
         """
         try:
             if not self.workflow:
                 return False
-    
+
             # 1) Limpiar todos los flags tabular_line existentes
             cleared_count = 0
             for lid, line_obj in self.workflow.all_lines.items():
@@ -659,13 +618,9 @@ class DataFormatter:
                         updated = dataclasses.replace(line_obj, tabular_line=False)
                         self.workflow.all_lines[lid] = updated
                         cleared_count += 1
-                except Exception:
-                    # Fallback: intentar asignar directamente si dataclasses.replace falla
-                    try:
-                        line_obj.tabular_line = False
-                        cleared_count += 1
-                    except Exception:
-                        continue
+                except Exception as e:
+                    logger.error(f"Error limpiando tabular_line para la línea {lid}: {e}", exc_info=True)
+                    continue
 
             logger.debug(f"Limpiados {cleared_count} flags tabular_line previos.")
 

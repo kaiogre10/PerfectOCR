@@ -1,11 +1,12 @@
 import time
 from typing import Dict, Any, Optional, List
 import logging
+from cleantext import clean # type: ignore
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from fuzzywuzzy import fuzz
+from fuzzywuzzy import fuzz # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +66,8 @@ class DataFinder(OCRAbstractWorker):
             return True  # Retorna True para continuar con fallbacks
 
     def _find_data(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, str]:
-        threshold = self.worker_config.get("min_similarity", {})
-        max_q_lenght = self.worker_config.get("max_q_lenght", {})
+        threshold = float(self.worker_config.get("min_similarity"))
+        max_q_lenght = self.worker_config.get("max_q_lenght")
         
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
@@ -95,14 +96,27 @@ class DataFinder(OCRAbstractWorker):
                     continue
                 
                 # Obtener texto del polígono
-                text = getattr(poly, "ocr_text", "") or ""
-                if not text:
+                ocr_text = getattr(poly, "ocr_text", "") or ""
+                if not ocr_text:
                     continue
-
+                
+                original_text = ocr_text
+                
+                text_finder = clean(
+                    ocr_text,
+                    clean_all=False,
+                    extra_spaces=True,
+                    stemming=False,
+                    stopwords=False, # No eliminar stopwords para no perder contexto
+                    lowercase=True,
+                    numbers=True,
+                    punct=True, 
+                )
+                    
                 try: 
-                    lenght = len(text.replace(" ", ""))
+                    lenght = len(text_finder.replace(" ", ""))
                 except Exception:
-                    lenght = len(text)
+                    lenght = len(text_finder)
 
                 try:
                     max_len_cfg = int(max_q_lenght) if max_q_lenght is not None else None
@@ -111,21 +125,20 @@ class DataFinder(OCRAbstractWorker):
 
                 if max_len_cfg is not None and lenght > max_len_cfg:
                     skipped_len += 1
-                    logger.debug(f"Polígono: {pid} omitido por largo ({lenght} > {max_len_cfg})")
+                    logger.debug(f"{pid}: {original_text} | {text_finder} omitido por largo ({lenght} > {max_len_cfg})")
                     continue
                 
                 try:
                     if self.noise_words:
                         # Se convierte el valor de min_similarity (ej: 0.85) a la escala de fuzzywuzzy (ej: 85)
-                        min_sim_value = self.worker_config.get("min_similarity",{})
-                        similarity_threshold = int(min_sim_value * 100)
+                        similarity_threshold = int(threshold * 100)
                         
                         is_noisy = False
                         for word in self.noise_words:
                             # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
-                            similarity = fuzz.token_set_ratio(text.lower(), word.lower())
+                            similarity = fuzz.token_set_ratio(text_finder.lower(), word.lower())
                             if similarity >= similarity_threshold:
-                                logger.debug(f"Polígono: {pid} omitido por palabra prohibida '{word}' (similitud: {similarity}%)")
+                                logger.debug(f"{pid}: {text_finder} omitido por palabra prohibida {word} (similitud: {similarity}%)")
                                 is_noisy = True
                                 break
                         if is_noisy:
@@ -135,7 +148,7 @@ class DataFinder(OCRAbstractWorker):
                     logger.warning(f"Error buscando las forbbiden words: {e}", exc_info=True)
                 
                 # Buscar con WordFinder
-                valid_results: List[str] = self.model.find_keywords(text, threshold)
+                valid_results: Dict[str, Any] = self.model.find_keywords(text_finder, threshold)
                 if not valid_results:
                     continue
                 

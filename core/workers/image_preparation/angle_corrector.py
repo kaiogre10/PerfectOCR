@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import math
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
@@ -16,83 +16,89 @@ class AngleCorrector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('deskew', {})
+        self.worker_config = config.get('angle_corrector', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-       
-        img_obj = manager.get_full_img()
-        full_img = img_obj.full_img if img_obj is not None else None
-        if full_img is None:
-            logger.error(f"No Hay full_img en el Formatter")
-            return False
-            
-        logger.debug("Full_img obtenida con éxito")
-        
-        img_dims: Dict[str, int] = {}
-        if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
-            img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
-                    
-        full_img, lines = self.correct_angle(full_img, img_dims)
-        
-        # if lines is not None:
-        #     full_img = self._trim_using_hough(full_img, lines, img_dims)
-        
-        manager.update_full_img(full_img)
-        logger.debug(f"Imagen inclinada corregida actualiada en el manager")
-            
-        return True
+        try:
+            full_img = manager.workflow.full_img if manager.workflow else None
+            if full_img is None:
+                logger.error(f"No Hay full_img en el Formatter")
+                return False
+                
+            logger.debug("Full_img obtenida con éxito")
 
-    def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]], img_dims: Dict[str, int]) -> Tuple[np.ndarray[Any, np.dtype[np.uint8]], Any]:
+            full_img = self.correct_angle(full_img, manager)
+            
+            manager.update_full_img(full_img)
+            logger.debug(f"Imagen inclinada corregida actualiada en el manager")
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error angular; {e}", exc_info=True)
+            return False
+
+    def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
         """
         Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no).
         """
-        corrections = self.config
-        canny_thresholds = corrections.get('canny_thresholds', [50, 150])
-        hough_threshold = corrections.get('hough_threshold', 150)
-        hough_max_line_gap_px = corrections.get('hough_max_line_gap_px', 20)
-        hough_angle_filter_range_degrees = corrections.get('hough_angle_filter_range_degrees', [-15.0, 15.0])
-        hough_min_line_length_cap_px = corrections.get('hough_min_line_length_cap_px', 300)
-        min_angle_for_correction = corrections.get('min_angle_for_correction', 0.1)
+        min_angle_for_correction = self.worker_config.get('min_angle_for_correction')
+        canny_thresholds = self.worker_config.get('canny_thresholds', [])
+        hough_threshold = self.worker_config.get('hough_threshold')
+        hough_max_line_gap_px = self.worker_config.get('hough_max_line_gap_px')
+        hough_angle_filter_range_degrees = self.worker_config.get('hough_angle_filter_range_degrees', [])
+        hough_min_line_length_cap_px = self.worker_config.get('hough_min_line_length_cap_px')
         
-        # total_time = time.perf_counter()
-        h = int(img_dims.get("height"))
-        w = int(img_dims.get("width"))
+        try:
+            # total_time = time.perf_counter()
+            # img_dims: Dict[str, int] = {}
+            # if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
+            #     img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
+            
+            img_dims: Dict[str, int] = manager.workflow.metadata.img_dims if manager.workflow else {}
+                
+            h = img_dims.get("height") 
+            
+            w = img_dims.get("width") 
 
-        if h is None or w is None or h == 0 or w == 0:
-            logger.warning("Dimensiones de imagen inválidas (None o 0) para la corrección de ángulo.")
-            return full_img, None
+            if h is None or w is None:
+                logger.warning("Dimensiones de imagen inválidas (None o 0) para la corrección de ángulo.")
+                return full_img
 
-        center = w // 2, h // 2
-        min_len = min((w) // 3, hough_min_line_length_cap_px)
-        
-        edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold,
-                                minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
+            center = w // 2, h // 2
+            min_len = min((w) // 3, hough_min_line_length_cap_px)
+            
+            edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
+            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold,
+                                    minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
 
-        if lines is None or len(lines) == 0:
-            # logger.debug(f"No se detectaron líneas para la corrección de inclinación, {time.perf_counter() - total_time:.6f}s")
-            return full_img, None
+            if lines is None or len(lines) == 0:
+                # logger.debug(f"No se detectaron líneas para la corrección de inclinación, {time.perf_counter() - total_time:.6f}s")
+                return full_img
 
-        angles = [math.degrees(math.atan2(l[0][3]-l[0][1], l[0][2]-l[0][0])) for l in lines]
-        filtered_angles = [a for a in angles if hough_angle_filter_range_degrees[0] < a < hough_angle_filter_range_degrees[1]]
-        
-        if not filtered_angles:
-            # logger.debug(f"Ninguna línea detectada en el rango de ángulos para corrección, tiempo: {time.perf_counter() - total_time:.6f}s")
-            return full_img, None
+            angles = [math.degrees(math.atan2(l[0][3]-l[0][1], l[0][2]-l[0][0])) for l in lines]
+            filtered_angles = [a for a in angles if hough_angle_filter_range_degrees[0] < a < hough_angle_filter_range_degrees[1]]
+            
+            if not filtered_angles:
+                # logger.debug(f"Ninguna línea detectada en el rango de ángulos para corrección, tiempo: {time.perf_counter() - total_time:.6f}s")
+                return full_img
 
-        angle = np.median(filtered_angles)
-
-        if abs(angle) > min_angle_for_correction:
-            logger.debug(f"-> Aplicando corrección de inclinación: {angle:.6f} grados.")
-            rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
-            deskewed_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-            full_img = np.array(deskewed_img, dtype=np.uint8)
-            # logger.debug(f"Imagen rotada en {time.perf_counter() - total_time:.6f}s")
-            return full_img, lines
-        else:
-            # logger.debug(f"Ángulo de inclinación insignificante. No se aplica corrección, tiempo de medición: {time.perf_counter() - total_time:.6f}s")
-            return full_img, lines
+            angle = np.median(filtered_angles)
+            if abs(angle) > min_angle_for_correction:
+                logger.debug(f"-> Aplicando corrección de inclinación: {angle:.6f} grados.")
+                rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
+                deskewed_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+                full_img = np.array(deskewed_img, dtype=np.uint8)
+                # logger.debug(f"Imagen rotada en {time.perf_counter() - total_time:.6f}s")
+                return full_img
+            else:             
+                # logger.debug(f"Ángulo de inclinación insignificante. No se aplica corrección, tiempo de medición: {time.perf_counter() - total_time:.6f}s")
+                return full_img
+                
+        except Exception as e:
+            logger.error(f"ERRROR; {e}", exc_info=True)
+            return full_img
             
 #     def _trim_using_hough(self, full_img: np.ndarray[Any, Any], lines: np.ndarray[Any, Any], img_dims: Dict[str, int]) -> np.ndarray[Any, Any]:
 #         """Trim usando líneas de Hough detectadas"""

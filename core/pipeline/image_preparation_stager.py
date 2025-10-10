@@ -41,3 +41,4 @@ class ImagePreparationStager(AbstractStager):
             return manager, total_time
         except Exception as e:
             logger.error(f"Error en fase 1: {e}", exc_info=True)
+            return None, 0.0

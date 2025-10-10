@@ -2,7 +2,6 @@
 import cv2
 import numpy as np
 import logging
-import time
 from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -18,19 +17,16 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         self.worker_config = self.config.get('contrast', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("clahe_poly", False)
-        global_clahe_corrects = self.worker_config.get('global', {})
-        self.contrast_threshold = global_clahe_corrects.get('contrast_threshold', 50.0)
-        self.page_dimensions = global_clahe_corrects.get('dimension_thresholds_px', [1000, 2500])
-        self.grid_maps = global_clahe_corrects.get('grid_sizes_map', [[6, 6], [8, 8], [10, 10]])
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Analiza el contraste de todos los polígonos, decide la corrección con CLAHE de forma
         vectorizada y la aplica in-place.
         """
-        try:
-            start_time = time.time()
-            
+        contrast_threshold = self.worker_config.get('contrast_threshold')
+        page_dimensions = self.worker_config.get('dimension_thresholds_px', [])
+        grid_maps = self.worker_config.get('grid_sizes_map', [])
+        try:            
             if not manager.validate_cropped_img():
                 logger.info(f"Sin cropped_img en el formatter")
                 return False
@@ -69,18 +65,17 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
             widths = np.array([res['w'] for res in analysis_results], dtype=np.int32)
 
             dynamic_intervals = np.maximum(30.0, variances * 0.6)
-            adaptive_thresholds = np.where(dyn_ranges > self.contrast_threshold, dynamic_intervals, 20.0)
-            
+            adaptive_thresholds = np.where(dyn_ranges > contrast_threshold, dynamic_intervals, 20.0)
             needs_correction = stds < adaptive_thresholds
 
             max_dims = np.maximum(heights, widths)
-            cond_small = max_dims < self.page_dimensions[0]
-            cond_medium = max_dims < self.page_dimensions[1]
+            cond_small = max_dims < page_dimensions[0]
+            cond_medium = max_dims < page_dimensions[1]
             
             # Vectoriza los tamaños de grid para cada polígono
-            grid_small = np.tile(self.grid_maps[0], (len(max_dims), 1))
-            grid_medium = np.tile(self.grid_maps[1], (len(max_dims), 1))
-            grid_large = np.tile(self.grid_maps[2], (len(max_dims), 1))
+            grid_small = np.tile(grid_maps[0], (len(max_dims), 1))
+            grid_medium = np.tile(grid_maps[1], (len(max_dims), 1))
+            grid_large = np.tile(grid_maps[2], (len(max_dims), 1))
 
             grid_sizes = np.where(cond_small[:, None], grid_small,
                           np.where(cond_medium[:, None], grid_medium, grid_large))
@@ -104,8 +99,6 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
                 if self.output:
                     self._save_debug_image(context, poly_id, corrected_img)
 
-            total_time = time.time() - start_time
-            # logger.debug(f"Procesamiento CLAHE completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
         except Exception as e:
             logger.error(f"Error en el procesamiento por lotes de ClaherEnhancer: {e}", exc_info=True)

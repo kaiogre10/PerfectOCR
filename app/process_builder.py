@@ -34,31 +34,31 @@ class ProcessingBuilder:
             if manager is None:
                 logger.error("Fallo en fase de preparación")
                 return None
-            logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
+            logger.debug(f"Fase de preparación completada en: {time_poly:.6f}s")
 
             # FASE 2: Preprocesamiento (usa execute() del AbstractStager)
             manager, elapsed = self.preprocessing_stager.execute(manager)
             if manager is None:
                 logger.error("Fallo en preprocesamiento")
                 return None
-            logger.info(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
+            logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
             # FASE 3: OCR (usa execute() del AbstractStager)
             manager, ocr_time = self.ocr_stager.execute(manager)
             if manager is None:
                 logger.error("Fallo en OCR")
                 return None
-            logger.info(f"OCR completado en: {ocr_time:.6f}s")
+            logger.debug(f"OCR completado en: {ocr_time:.6f}s")
                     
             # FASE 4: Vectorización (usa execute() del AbstractStager)
             manager, vect_time = self.vectorization_stager.execute(manager)
             if manager is None:
                 logger.error("Fallo en vectorización")
                 return None
-            logger.info(f"Vectorización completada en: {vect_time:.6f}s")
+            logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
             
             total_workflow_time = time.perf_counter() - workflow_start
-            logger.info(f"Procesamiento completado en {total_workflow_time:.6f}s")
+            logger.debug(f"Procesamiento completado en {total_workflow_time:.6f}s")
 
             return manager
             

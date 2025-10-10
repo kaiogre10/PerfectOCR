@@ -21,7 +21,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.config = config
-        self.min_confidence = config.get("min_confidence", {})
+        self.worker_config = config.get("paddle_wrapper", {})
         self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("ocr_raw", False)
         self._engine = None
@@ -71,9 +71,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             manager.clear_cropped_images(polygon_ids)
             logger.debug("Cropped_img liberadas usando DataFormatter")
             logger.debug(f"{final_results}")
-            file_name: str = manager.workflow.metadata.image_name
             
             if self.output:
+                file_name: str = manager.workflow.metadata.image_name
                 self._save_ocr_raw(context, final_results, file_name)
         
         total_time = time.perf_counter() - start_time
@@ -86,7 +86,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         Está adaptado para manejar el caso en que PaddleOCR devuelve una única
         lista consolidada de resultados.
         """
-        
+        min_confidence = self.worker_config.get("min_confidence")
         if self.engine is None:
             logger.error("PaddleOCR recognition engine not initialized. Cannot recognize text.")
             return [None] * len(image_list)
@@ -119,8 +119,8 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         confidence_pct = round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
                         
                         # Aplicar filtro de confianza mínima
-                        if confidence_pct < self.min_confidence:
-                            logger.debug(f"Resultado filtrado por baja confianza:'{text}'-> {confidence_pct}% < {self.min_confidence}%")
+                        if confidence_pct < min_confidence:
+                            logger.debug(f"Resultado filtrado por baja confianza:'{text}'-> {confidence_pct}% < {min_confidence}%")
                             final_results.append(None)  # Resultado filtrado
                             continue
                             

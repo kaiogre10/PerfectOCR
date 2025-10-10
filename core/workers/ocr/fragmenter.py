@@ -100,7 +100,7 @@ class Fragmenter(OCRAbstractWorker):
             logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
             return True
         else:
-            logger.warning(f"No se fragmentaron polígonos")
+            logger.debug(f"No se fragmentaron polígonos")
             return True
 
     def _fragment_polygon(self, polygon: Polygons, poly_blob_metrics: Dict[str, Any], punctuation_needs_frag: bool = False) -> List[Polygons]:
@@ -428,8 +428,9 @@ class Fragmenter(OCRAbstractWorker):
         currency = r"[$€£¥¢]"
         amount_body = r"(?:\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,]\d+)?"
         # cuantitativo: decimales o con símbolo (sin %)
-        quant_token = rf"(?:{currency}\s*{amount_body}|{amount_body}\s*{currency}|{amount_body})"
+        quant_token = rf"{currency}\s*{amount_body}|{amount_body}\s*{currency}|{amount_body}"
         runs: List[tuple[int, int, str]] = []
+        # Buscar todos los tokens cuantitativos
         for m in re.finditer(quant_token, s):
             tok = s[m.start():m.end()]
             if "%" in tok:
@@ -438,4 +439,16 @@ class Fragmenter(OCRAbstractWorker):
             has_currency = bool(re.search(currency, tok))
             if is_decimal or has_currency:
                 runs.append((m.start(), m.end(), tok))
+        # Si hay más de un símbolo de divisa, dividir los tokens
+        tokens = [tok for _, _, tok in runs]
+        currency_count = sum(1 for t in tokens if re.search(currency, t))
+        if currency_count > 1:
+            # Dividir por cada símbolo de divisa encontrado
+            split_tokens = re.findall(rf"{currency}\s*\d+(?:[.,]\d+)?", s)
+            runs = []
+            for match in split_tokens:
+                start = s.find(match)
+                end = start + len(match)
+                runs.append((start, end, match))
         return runs
+    

@@ -6,8 +6,9 @@ class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 class OutputFlag(ConfigWithNumpy):
+    pre_clean: bool
+    angle_corrected: bool
     preprocessed_image: bool
-    ocr_raw: bool
     cropped_img: bool
     moire_poly: bool
     sp_poly: bool
@@ -16,23 +17,21 @@ class OutputFlag(ConfigWithNumpy):
     clahe_poly: bool
     sharp_poly: bool
     binarized_polygons: bool
+    ocr_raw: bool
     reconstructed_lines: bool
     table_lines: bool
     table_structured: bool
     math_max_corrected: bool
-
-class BatchProcessing(ConfigWithNumpy):
+    
+class Processing(ConfigWithNumpy):
+    max_workers: int
+    valid_image_extensions: Tuple[str, ...]
+    batch_mode: bool
     small_batch_limit: int
     max_physical_cores: int
     add_extra_worker: bool
     batch_size_factor: int
     auto_mode: bool
-
-class Processing(ConfigWithNumpy):
-    max_workers: int
-    valid_image_extensions: Tuple[str, ...]
-    batch_mode: bool
-    batch_processing: BatchProcessing
 
 class ModelsPaths(ConfigWithNumpy):
     det_model_dir: str
@@ -46,32 +45,25 @@ class ModelsConfig(ConfigWithNumpy):
     show_log: bool
     use_gpu: bool
     enable_mkldnn: bool
+    rec_batch_num: int
     models: ModelsPaths
 
 class PathsConfig(ConfigWithNumpy):
     input_folder: str
     output_folder: str
+    db_path: str
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
     radius: float
     amount: float
 
-class MoirePercentile(ConfigWithNumpy):
-    percentile_threshold: int
-    notch_radius: int
-    min_distance_from_center: int
-
-class MoireFactor(ConfigWithNumpy):
-    mean_factor_threshold: int
-
-class MoireAbsolute(ConfigWithNumpy):
-    absolute_threshold: int
-
 class MoireConfig(ConfigWithNumpy):
-    percentile: MoirePercentile
-    factor: MoireFactor
-    absolute: MoireAbsolute
+    min_distance_from_center: int
+    notch_radius: int
+    percentile_threshold: int
+    mean_factor_threshold: int
+    absolute_threshold: int
     
 class BinarizeQuality(ConfigWithNumpy):
     quality_min: float
@@ -111,25 +103,21 @@ class CleaningConfig(ConfigWithNumpy):
     sp_thr: float
     clahe_clip: float
     clahe_grid: Tuple[int, int]
+    kernel_size: int
 
 class ImagePreparation(ConfigWithNumpy):
     angle_corrector: DeskewConfig
     cleaner: CleaningConfig
     polygon_extractor: CuttingConfig
-    bin_interval: Tuple[int, int]
-
-class ContrastConfigGeneral(ConfigWithNumpy):
-    clahe_clip_limit: float
-    dimension_thresholds_px: List[int]
-    grid_sizes_map: List[List[int]]
-  
-class ContrastConfigLocal(ConfigWithNumpy):
-    window_size: int
-    std_dev_threshold: float
+    bin_interval: Tuple[int, int]    
 
 class ContrastConfig(ConfigWithNumpy):
-    general: ContrastConfigGeneral
-    local: ContrastConfigLocal
+    clahe_clip_limit: float
+    contrast_threshold: int
+    dimension_thresholds_px: List[int]
+    grid_sizes_map: List[Tuple[int, int]]
+    window_size: int
+    std_dev_threshold: float
     
 class MathMaxConfig(ConfigWithNumpy):
     total_mtl_abs_tolerance: float
@@ -148,17 +136,17 @@ class PreprocessingConfig(ConfigWithNumpy):
     sharpening: SharpeningConfig
     binarizator: Binarization
 
-class TextualConfig(ConfigWithNumpy):
+class TextualCleanConfig(ConfigWithNumpy):
     min_probability: float
-    min_char: int
+    min_char: float
+    min_confidence: float
 
 class SemanticClasificator(ConfigWithNumpy):
-    numeric: List[float]
-    code: List[float]
-    descriptive: List[float]
+    numeric: Tuple[float, float]
+    code: Tuple[float, float]
+    descriptive: Tuple[float, float]
 
 class Fragmenter(ConfigWithNumpy):
-    fragment_on_text: bool
     min_contours_for_frag: int
         
 class DataFinder(ConfigWithNumpy):
@@ -172,10 +160,13 @@ class TextRefiner(ConfigWithNumpy):
 class TextCorrector(ConfigWithNumpy):
     confidence_threshold: float
 
-class OCRConfig(ConfigWithNumpy):
+class PaddleTranscription(ConfigWithNumpy):
     min_confidence: float
+
+class OCRConfig(ConfigWithNumpy):
+    paddle_wrapper: PaddleTranscription
     text_refiner: TextRefiner
-    text_cleaner: TextualConfig
+    text_cleaner: TextualCleanConfig
     semantic_clasificator: SemanticClasificator
     data_finder: DataFinder
     fragmenter: Fragmenter
