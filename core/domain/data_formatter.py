@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage
+from core.domain.data_models import WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage, SemanticClassification
 import numpy as np
 import dataclasses
 import logging
@@ -87,7 +87,7 @@ class DataFormatter:
                     ocr_confidence=None,
                     was_refined=False,
                     key_field=None,
-                    semantic_type=None,
+                    semantic_clasification=None,
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -336,7 +336,7 @@ class DataFormatter:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
             
-    def merge_types(self) -> bool:
+    def merge_semantics(self) -> bool:
         """
         Unifica los tipos semánticos en las dataclasses, convirtiendo
         todos los 'quantitative' a 'numeric'.
@@ -346,8 +346,13 @@ class DataFormatter:
 
         updated_count = 0
         for poly_id, polygon in self.workflow.polygons.items():
-            if getattr(polygon, 'semantic_type', None) == 'quantitative':
-                updated_polygon = dataclasses.replace(polygon, semantic_type='numeric')
+            if polygon.semantic_clasification.quantitative:
+                updated_polygon = dataclasses.replace(polygon, semantic_clasification='numeric')
+                self.workflow.polygons[poly_id] = updated_polygon
+                updated_count += 1
+
+            if polygon.semantic_clasification.umd:
+                updated_polygon = dataclasses.replace(polygon, semantic_clasification='descriptive')
                 self.workflow.polygons[poly_id] = updated_polygon
                 updated_count += 1
         
@@ -355,12 +360,12 @@ class DataFormatter:
             logger.debug(f"Unificados {updated_count} polígonos de 'quantitative' a 'numeric'.")
         return True
 
-    def update_semantic_type(self, final_results: Dict[str, str], reset_refined: bool = False) -> bool:
+    def update_semantic_clasification(self, final_results: Dict[str, SemanticClassification], reset_refined: bool = False) -> bool:
         """
-        Actualiza el semantic_type de los polígonos.
+        Actualiza el semantic_clasification de los polígonos.
         
         Args:
-            final_results: Diccionario {poly_id: semantic_type}
+            final_results: Diccionario {poly_id: SemanticClassification}
             reset_refined: Si True, resetea was_refined=False después de actualizar
         """
         try:
@@ -370,25 +375,25 @@ class DataFormatter:
 
             updated_count = 0
 
-            for poly_id, semantic_type in final_results.items():
+            for poly_id, semantic_object in final_results.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
-                    # Actualizar semantic_type y opcionalmente resetear was_refined
+                    # Actualizar semantic_clasification y opcionalmente resetear was_refined
                     if reset_refined:
                         updated_polygon = dataclasses.replace(
                             polygon, 
-                            semantic_type=semantic_type,
+                            semantic_clasification=semantic_object,
                             was_refined=False
                         )
                     else:
-                        updated_polygon = dataclasses.replace(polygon, semantic_type=semantic_type)
+                        updated_polygon = dataclasses.replace(polygon, semantic_clasification=semantic_object)
                     
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
 
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con semantic_types (reset_refined={reset_refined})")
+                logger.debug(f"Actualizados {updated_count} polígonos con semantic_clasifications (reset_refined={reset_refined})")
             return True
             
         except Exception as e:
@@ -585,7 +590,7 @@ class DataFormatter:
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
                     # logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.debug(f"Linea: {all_lines['line_id']}: {all_lines['text']}")
+                    logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
             if header_line:
@@ -599,7 +604,7 @@ class DataFormatter:
                         
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
-            return False
+        return False
 
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
         """
@@ -705,7 +710,7 @@ class DataFormatter:
             logger.debug("Estructuración de datos iniciada")
             try:
                 if not self.workflow:
-                    return {}
+                    return ""
 
                 wf: WorkflowDict = self.workflow
                 md: Metadata = wf.metadata

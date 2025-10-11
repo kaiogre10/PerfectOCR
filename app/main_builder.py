@@ -82,9 +82,6 @@ def create_builders_with_factory(
         for image_data in image_info_list:
             # Contexto común para todos los stagers
             context: Dict[str, Any] = {
-                "geometry_detector": config_services.paddle_det_config,
-                "paddle_wrapper": config_services.paddle_rec_config,
-                "data_finder": config_services.data_finder_config,
                 "image_data": image_data,
             }
 

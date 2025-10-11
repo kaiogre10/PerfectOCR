@@ -74,7 +74,7 @@ class DensityScanner(VectorizationAbstractWorker):
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
         labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_array).astype(np.float32)
         
-        logger.debug(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
+        logger.info(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:

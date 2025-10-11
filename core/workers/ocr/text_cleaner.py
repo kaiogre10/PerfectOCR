@@ -29,7 +29,7 @@ class TextCleaner(OCRAbstractWorker):
         # Configurada directamente en el worker en lugar de leerla desde un YAML.
         self.chars = [
             ")", "(", "]", "[", "{", "}", "|", "*", "^", "#", "@",
-            "-", "~", "_", "+", "=", "<", ">", ";", ":", "x", "X",
+            "-", "~", "_", "+", "=", "<", ">", ";", ":",
             "'", "!", "¡", "?", "¿", "'", "/", "\\"
         ]
 
@@ -50,15 +50,14 @@ class TextCleaner(OCRAbstractWorker):
             polygons_in.keys(), 
             key=lambda p_id: (polygons_in[p_id].geometry.centroid[1], polygons_in[p_id].geometry.centroid[0])
         )
-        
+        eliminated_count = 0
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
             text = polygon.ocr_text or ""
             confidence = polygon.ocr_confidence or 0.0
-            semantic_type = polygon.semantic_type or ""
+            semantic_clasification = polygon.semantic_clasification or ""
 
-            eliminated_count = 0
-
+        
             if self._is_polygon_single_special(text):
                 logger.debug(f"Eliminado {poly_id} unico:'{text}'")
                 continue
@@ -69,20 +68,20 @@ class TextCleaner(OCRAbstractWorker):
             text = self._remove_special_chars(text)
 
             if (not text.strip() or
-                (confidence < self.min_confidence and polygon.semantic_type not in ("numeric", "quantitative")) or
+                (confidence < self.min_confidence and polygon.semantic_clasification not in ("numeric", "quantitative", "rfc", "umd")) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)):
                 logger.debug(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence}")
                 continue
 
             # 3. Ruta Normal: Limpiar texto del polígono vacío
-            cleaned_text = self._process_single_text(text, polygon, semantic_type, manager)
+            cleaned_text = self._process_single_text(text, polygon, semantic_clasification, manager)
             if cleaned_text:
                 updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text, was_refined=True)
                 list_of_final_polygons.append(updated_polygon)
             else:
                 logger.debug(f"Eliminado {poly_id}: | Texto: '{text}'")
 
-                eliminated_count += 1
+        eliminated_count += 1
 
         # 4. Reconstrucción y reindexación final
         final_polygons_dict: Dict[str, Polygons] = {}
@@ -98,7 +97,7 @@ class TextCleaner(OCRAbstractWorker):
             
         return True
 
-    def _process_single_text(self, text: str, polygon: Polygons, semantic_type :str, manager: DataFormatter) -> str:
+    def _process_single_text(self, text: str, polygon: Polygons, semantic_clasification :str, manager: DataFormatter) -> str:
         """
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
         y seguro a los valores que parecen numéricos.
@@ -118,32 +117,15 @@ class TextCleaner(OCRAbstractWorker):
                 logger.debug(f"Eliminado unico: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             
-            if self._is_likely_numeric(token, semantic_type):
-            
+            if self._is_likely_numeric(token, semantic_clasification):
                 processed_words.append(token)
             else:
-                try:
-                    cleaned_token_lib = clean(
-                        token, # Usar el token ya pre-limpiado
-                        clean_all=False,
-                        extra_spaces=True,
-                        stemming=False,
-                        stopwords=False, # No eliminar stopwords para no perder contexto
-                        lowercase=False,
-                        numbers=False,
-                        punct=False, # No eliminar puntuación que podría ser relevante
-                    )
-                    
-                    processed_words.append(cleaned_token_lib)
-
-                except Exception:
-                    # Si clean-text falla, usar el token pre-limpiado como fallback
-                    processed_words.append(token)
+                processed_words.append(token)
         
         return ' '.join(processed_words)
         
-    def _is_likely_numeric(self, token: str, semantic_type: str) -> bool:
-        if semantic_type in ("numeric", "quantitative"):
+    def _is_likely_numeric(self, token: str, semantic_clasification: str) -> bool:
+        if semantic_clasification in ("numeric", "quantitative"):
             return True
         return False
 
@@ -154,7 +136,7 @@ class TextCleaner(OCRAbstractWorker):
             return text
             
         try:
-            if getattr(polygon, "semantic_type", None) in ("numeric", "quantitative"):
+            if getattr(polygon, "semantic_clasification", None) in ("numeric", "quantitative"):
                 return text
 
             tokens = text.split(' ')
@@ -197,14 +179,14 @@ class TextCleaner(OCRAbstractWorker):
 
     def _normalize_char_for_freq(self, ch: str, manager: DataFormatter) -> str:
          # Mantén tildes/ñ si existen en la tabla; si no, haz fallback a su base
-         if ch in self._get_frecuency_norm(manager): #type: ignore
-             return ch
-         base_map = {
-             "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
-             "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
-             "ü": "u", "Ü": "U", "ñ": "n", "Ñ": "N",
-         }
-         return base_map.get(ch, ch)
+        if ch in self._get_frecuency_norm(manager): #type: ignore
+            return ch
+        base_map = {
+            "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
+            "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
+            "ü": "u", "Ü": "U", "ñ": "n", "Ñ": "N",
+        }
+        return base_map.get(ch, ch)
 
     def _is_stray_single_special(self, token: str) -> bool:
         """

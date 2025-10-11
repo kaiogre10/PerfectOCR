@@ -39,13 +39,13 @@ class Fragmenter(OCRAbstractWorker):
             
             text_needs_frag = (
                 self.worker_config and
-                polygon.semantic_type not in ("numeric", "quantitative") and
+                polygon.semantic_clasification not in ("numeric", "quantitative", "rfc", "umd") and
                 " " in (polygon.ocr_text or "").strip()
             )
 
             punctuation_needs_frag = (
                 self.worker_config and
-                polygon.semantic_type not in ("numeric", "quantitative") and
+                polygon.semantic_clasification not in ("numeric", "quantitative", "rfc", "umd") and
                 not text_needs_frag and 
                 (any(punct in (polygon.ocr_text or "") for punct in [";", ":", "!", "?"]) or 
                 (polygon.ocr_text or "").count('.') == 1) 
@@ -54,7 +54,7 @@ class Fragmenter(OCRAbstractWorker):
             poly_blob_metrics = blob_metrics.get(poly_id, {})
             visual_needs_frag = poly_blob_metrics.get('needs_fragmentation', False)
             quant_runs = []
-            if polygon.semantic_type == "quantitative":
+            if polygon.semantic_clasification == "quantitative":
                 quant_runs = self._quantitative_runs(polygon.ocr_text or "")
             quant_needs_frag = len(quant_runs) >= 2
 
@@ -70,7 +70,7 @@ class Fragmenter(OCRAbstractWorker):
                 else:
                     reason = "puntuación"
 
-                logger.debug(f"{poly_id}: MOTIVO: {reason}, TIPO: {polygon.semantic_type} = {polygon.ocr_text}")
+                logger.debug(f"{poly_id}: MOTIVO: {reason}, TIPO: {polygon.semantic_clasification} = {polygon.ocr_text}")
                 
                 if visual_needs_frag:
                     fragments = self._fragment_by_blobs(polygon, poly_blob_metrics)
@@ -231,9 +231,18 @@ class Fragmenter(OCRAbstractWorker):
         point_count = text.count('.')
         if point_count == 1:
             # Si el tipo semántico ya es numérico o cuantitativo, no fragmentar.
-            if polygon.semantic_type in ("numeric", "quantitative"):
+            if polygon.semantic_clasification in ("numeric", "quantitative", "rfc", "umd"):
                 return [polygon]
-            
+
+            dot_index = text.find('.')
+            has_digits_before = dot_index > 0 and text[dot_index - 1].isdigit()
+            has_digits_after = dot_index < len(text) - 1 and text[dot_index + 1].isdigit()
+
+            # Si hay dígitos antes y después del punto, es probablemente un número
+            if has_digits_before and has_digits_after:
+                logger.debug(f"No fragmentando por punto: detectado potencial número '{text}'")
+                return [polygon]
+
             parts = text.split('.')
             if len(parts) == 2 and all(p.strip() for p in parts):
 
@@ -286,7 +295,7 @@ class Fragmenter(OCRAbstractWorker):
 
                 return new_polys
 
-        parts = re.split(r'([.;:!?])', text)
+        parts = re.split(r'([.,;:!?])', text)
         
         # Filtrar partes vacías y reconstruir con puntuación (excepto el punto)
         filtered_parts: List[str] = []

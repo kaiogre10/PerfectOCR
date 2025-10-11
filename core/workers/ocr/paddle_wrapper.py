@@ -121,7 +121,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         # Aplicar filtro de confianza mínima
                         if confidence_pct < min_confidence:
                             logger.debug(f"Resultado filtrado por baja confianza:'{text}'-> {confidence_pct}% < {min_confidence}%")
-                            final_results.append(None)  # Resultado filtrado
+                            final_results.append(None)
                             continue
                             
                         processed_result: Dict[str, Any] = {

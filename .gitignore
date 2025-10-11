@@ -22,6 +22,7 @@ input/
 output/
 data/models/
 input2/
+input3/
 
 # Excepción
 !density_encoder.json

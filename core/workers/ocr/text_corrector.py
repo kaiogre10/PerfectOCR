@@ -38,8 +38,8 @@ class TextCorrector(OCRAbstractWorker):
             "i": "1",
             "|": "1",
             "l": "1",
-            "S": "5",
-            "s": "5",
+            # "S": "5",
+            # "s": "5",
             # "G": "6",
             "B": "8",
             "Z": "2",
@@ -106,7 +106,7 @@ class TextCorrector(OCRAbstractWorker):
             # Aplicar corrección según tipo semántico
             corrected_text = self._apply_corrections(
                 text=original_text,
-                semantic_type=polygon.semantic_type,
+                semantic_clasification=polygon.semantic_clasification,
                 polygon_id=poly_id
             )
             
@@ -118,12 +118,12 @@ class TextCorrector(OCRAbstractWorker):
                     was_refined=True
                 )
                 corrected_polygons[poly_id] = updated_polygon
-                correction_stats[polygon.semantic_type] += 1
+                correction_stats[polygon.semantic_clasification] += 1
                 correction_stats["total_corrections"] += 1
                 
                 logger.debug(
                     f"Corrección {poly_id}: "
-                    f"Tipo: {polygon.semantic_type} | "
+                    f"Tipo: {polygon.semantic_clasification} | "
                     f"Confianza: {confidence:.2f} | "
                     f"Original: '{original_text}' → Corregido: '{corrected_text}'"
                 )
@@ -148,7 +148,7 @@ class TextCorrector(OCRAbstractWorker):
     def _apply_corrections(
         self,
         text: str,
-        semantic_type: str,
+        semantic_clasification: str,
         polygon_id: str
     ) -> str:
         """
@@ -157,26 +157,26 @@ class TextCorrector(OCRAbstractWorker):
         
         Args:
             text: Texto original a corregir
-            semantic_type: Tipo semántico del polígono
+            semantic_clasification: Tipo semántico del polígono
             polygon_id: Identificador del polígono
             
         Returns:
             Texto corregido
         """
-        if not text or not semantic_type:
+        if not text or not semantic_clasification:
             return text
         
-        # No corregir tipo "code"
-        if semantic_type == "code":
-            logger.debug(f"Omitiendo corrección para tipo 'code' ({polygon_id}: {text} )")
+        # No corregir
+        if semantic_clasification == "code" or "quantitative" or "rfc" or "umd":
+            logger.debug(f"Omitiendo corrección para tipo '{semantic_clasification}' ({polygon_id}: {text} )")
             return text
             
         # Seleccionar el diccionario de correcciones apropiado
-        corrections_map = self._get_corrections_map(semantic_type)
+        corrections_map = self._get_corrections_map(semantic_clasification)
         
         if not corrections_map:
             logger.warning(
-                f"No hay reglas de corrección para tipo: {semantic_type} "
+                f"No hay reglas de corrección para tipo: {semantic_clasification} "
                 f"(poly_id: {polygon_id})"
             )
             return text
@@ -259,12 +259,12 @@ class TextCorrector(OCRAbstractWorker):
         # Está aislado si NO tiene ningún vecino del mismo tipo
         return not (has_left_match or has_right_match)
         
-    def _get_corrections_map(self, semantic_type: str) -> Dict[str, str]:
+    def _get_corrections_map(self, semantic_clasification: str) -> Dict[str, str]:
         """Devuelve el mapa de correcciones para un tipo semántico dado."""
-        if semantic_type == "numeric":
+        if semantic_clasification == "numeric":
             return self.numeric_corrections
-        if semantic_type == "quantitative":
+        if semantic_clasification == "quantitative":
             return self.quantitative_corrections
-        if semantic_type == "descriptive":
+        if semantic_clasification == "descriptive":
             return self.descriptive_corrections
         return {}

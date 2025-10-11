@@ -54,7 +54,7 @@ pipeline_secuence:
     - "dbscan"
     - "cos_sim"
     - "table_structurer"
-    - "semantic_corrector"
+    - "table_validated"
     - "math_max"
   
 # Configuración de salida (independiente)
@@ -120,7 +120,7 @@ modules:
       absolute_threshold: 200000000
 
     sp_config:
-      kernel_size: 5
+      kernel_size: 3
       salt_pepper_threshold: 0.0025
       salt_pepper_low: 3
       salt_pepper_high: 253
@@ -167,7 +167,8 @@ modules:
     text_cleaner:
       min_probability: 75.0
       min_char: 2.0
-      min_confidence: 75.0
+      min_confidence: 70.0
+      min_conf_to_clean: 90.0
     
     semantic_clasificator:
       numeric: [66.0, 100.0]
@@ -176,21 +177,22 @@ modules:
         
     data_finder:
       wordfinder_model_path: C:/word_finder_model/data/word_finder_model.pkl
-      min_similarity: 0.85
+      min_similarity: 0.90
       max_q_lenght: 20
+      fuzzy_ratio: 80
 
     fragmenter:
       min_contours_for_frag: 2
 
     text_corrector:
-      confidence_threshold: 0.85
+      confidence_threshold: 0.90
     
   vectorization:
     lineal:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: true
+      keywords_interval_enabled: True
 
     cos_sim:
       min_cluster: 1

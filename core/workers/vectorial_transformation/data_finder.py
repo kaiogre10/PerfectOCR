@@ -26,7 +26,6 @@ class DataFinder(OCRAbstractWorker):
                 model_manager = ModelsManager.get_instance()
                 self._model = model_manager.word_finder
                 self.model_info: Dict[str, Any] = self._model.get_model_info()
-                
                 self.noise_words: List[str] = self.model_info["noise_words"]
                 logger.debug("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
             
@@ -78,7 +77,6 @@ class DataFinder(OCRAbstractWorker):
                 logger.error("No hay polígonos para procesar")
                 return {}
             else:
-
                 logger.debug(f"Cantidad polygons={len(polygons)}")
 
             processed_count = 0
@@ -90,8 +88,8 @@ class DataFinder(OCRAbstractWorker):
                 processed_count += 1
 
                 # Omitir numéricos y cuantitativos
-                semantic = getattr(poly, "semantic_type", "") or ""
-                if semantic in ("numeric", "quantitative"):
+                semantic = getattr(poly, "semantic_clasification", "") or ""
+                if semantic in ("numeric", "quantitative", "code", "rfc"):
                     skipped_numeric += 1
                     continue
                 
@@ -102,7 +100,7 @@ class DataFinder(OCRAbstractWorker):
                 
                 original_text = ocr_text
                 
-                text_finder = clean(
+                text_finder: str = clean(
                     ocr_text,
                     clean_all=False,
                     extra_spaces=True,
@@ -131,12 +129,12 @@ class DataFinder(OCRAbstractWorker):
                 try:
                     if self.noise_words:
                         # Se convierte el valor de min_similarity (ej: 0.85) a la escala de fuzzywuzzy (ej: 85)
-                        similarity_threshold = int(threshold * 100)
+                        similarity_threshold: int = self.worker_config.get("fuzzy_ratio")
                         
                         is_noisy = False
                         for word in self.noise_words:
                             # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
-                            similarity = fuzz.token_set_ratio(text_finder.lower(), word.lower())
+                            similarity: int = fuzz.token_set_ratio(text_finder, word)
                             if similarity >= similarity_threshold:
                                 logger.debug(f"{pid}: {text_finder} omitido por palabra prohibida {word} (similitud: {similarity}%)")
                                 is_noisy = True
@@ -146,6 +144,7 @@ class DataFinder(OCRAbstractWorker):
                         
                 except Exception as e:    
                     logger.warning(f"Error buscando las forbbiden words: {e}", exc_info=True)
+                    continue
                 
                 # Buscar con WordFinder
                 valid_results: Dict[str, Any] = self.model.find_keywords(text_finder, threshold)
@@ -165,7 +164,7 @@ class DataFinder(OCRAbstractWorker):
                 return polygon_updates
             else:
                 logger.debug("DataFinder: No se encontraron coincidencias de palabras clave - usando fallback")
-                logger.debug(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
+                return {}
                     
         except Exception as e:
             logger.warning(f"Fallo en búsqueda de datos globales{e}", exc_info=True)

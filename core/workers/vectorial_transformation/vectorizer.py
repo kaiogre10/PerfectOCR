@@ -30,13 +30,9 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 # Si se detecta un intervalo claro, se omite la vectorización
                 logger.debug(f"Intervalo tabular detectado, se omite vectorización")
-                if self.output:
-                    file_name: str = context.get("image_name", "")
-                    self._save_output(context, table_line_ids, file_name, manager)
-
                 context["all_features"] = None
-                success: bool = manager.save_tabular_lines(table_line_ids)
-                if success:
+
+                if manager.save_tabular_lines(table_line_ids):
                     logger.debug("Líneas guardadas en el manager desde Vectorizer")
                     return True
                 else:
@@ -129,7 +125,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Línea inferior
                 table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 table_str = "\n".join(table)
-                logger.debug(f"\nTabla unificada de características:\n{table_str}")
+                logger.info(f"\nTabla unificada de características:\n{table_str}")
                 logger.debug(f"Se calcularon features para {len(all_features)} líneas")
                 # logger.debug(f"Features: {all_features} líneas")
                 return all_features
@@ -180,7 +176,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     polygons_dict: Dict[str, Polygons] = manager.workflow.polygons
                     for pid in poly_ids_line:
                         if pid in polygons_dict:
-                            semantic = getattr(polygons_dict[pid], "semantic_type", "") or ""
+                            semantic = getattr(polygons_dict[pid], "semantic_clasification", "") or ""
                             if semantic == "numeric":
                                 numeric_count += 1.0
                 
@@ -412,7 +408,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 if manager.workflow and manager.workflow.polygons and poly_ids_line:
                     polygons_dict: Dict[str, Polygons] = manager.workflow.polygons
                     for pid in poly_ids_line:
-                        if pid in polygons_dict and getattr(polygons_dict[pid], "semantic_type", "") == "numeric":
+                        if pid in polygons_dict and getattr(polygons_dict[pid], "semantic_clasification", "") == "numeric":
                             ncount += 1.0
                 numeric_counts_by_line[line_id] = ncount
                 
@@ -553,15 +549,3 @@ class Vectorizer(VectorizationAbstractWorker):
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
         logger.debug(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
         return tabular_line_ids
-
-    def _save_output(self, context: Dict[str, Any], expanded_line_ids: List[str], file_name: str, manager: DataFormatter):
-        from services.output_service import save_tabjson
-        import os
-        project_root = self.project_root
-        output_file = context.get("output_paths", [])
-        for path in output_file:
-            output_dir: str = os.path.join(path, "dbscan")
-            json_file_name = f"{os.path.splitext(file_name)[0]}.json"
-            output_file = save_tabjson(expanded_line_ids, manager, output_dir, json_file_name, project_root)
-        if output_file:
-            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")

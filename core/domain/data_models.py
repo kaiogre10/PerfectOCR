@@ -26,6 +26,15 @@ class Geometry:
     polygon_coords: np.ndarray[Any, Any]  # shape: (n_points, 2)
     bounding_box: np.ndarray[Any, Any]    # shape: (4,)
     centroid: np.ndarray[Any, Any]        # shape: (2,)
+
+@dataclass
+class SemanticClassification:
+    quantitative: bool
+    umd: bool
+    rfc: bool
+    numeric: bool
+    descriptive: bool
+    code: bool
     
 @dataclass
 class Polygons:
@@ -38,7 +47,7 @@ class Polygons:
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
     key_field: Optional[str]
-    semantic_type: str
+    semantic_clasification: SemanticClassification
     was_refined: bool
     
 @dataclass

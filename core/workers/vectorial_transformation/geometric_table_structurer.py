@@ -148,7 +148,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             table_matrix: List[List[Dict[str, Any]]] = []
-            min_cosine_similarity = self.worker_config.get("min_cosine_similarity")
             
             for line_id in selected_lines:
                 line_obj = all_lines[line_id]
@@ -168,8 +167,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if L_k >= H:
                     row_cells = self._case_a_assignment(row_elements, H, L_k)
                 
-                # CASO B: L_k < H (Menos palabras que columnas)  
-                else:
+                # CASO B: L_k < H (Menos palabras que columnas)
+                if L_k < H:
                     row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids)
                 
                 # Generar texto de celda
@@ -203,7 +202,9 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         "cx": geom.centroid[0],
                         "cy": geom.centroid[1],
                         "ocr_text": poly_data.ocr_text or "",
-                        "semantic_type": poly_data.semantic_type,
+                        "semantic_clasification": poly_data.semantic_clasification or "",
+                        "lineal_id": line_obj.lineal_id,
+                        "polygon_ids": line_obj.polygon_ids, 
                     }
                     row_elements.append(element)
                     
@@ -220,11 +221,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
-            
-            if H == 1:
-                row_cells[0]['words'] = row_elements
-                return row_cells
-            
+
             # 1. Calcular distancias horizontales Δ_i
             horizontal_distances: List[tuple[float, int]] = []
             for i in range(L_k - 1):
@@ -258,51 +255,39 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             return []
 
     def _case_b_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int,
-                          header_centroids: List[List[float]]) -> List[Dict[str, Any]]:
+                        header_centroids: List[List[float]]) -> List[Dict[str, Any]]:
         """
-        CASO B: L_k < H - Asignación por similitud coseno o secuencial
+        CASO B: L_k < H - Asignación por similitud coseno 
+        Cada polígono se asigna individualmente a la columna más cercana.
         """
         try:
             row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
             
-            # Subcaso B.1: L_k = 1 - Similitud coseno con centroides de encabezado
-            if L_k == 1:
-                element = row_elements[0]
+            for element in row_elements:
                 element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
+                line_id = element.get("lineal_id")
+                poly_ids = element.get("polygon_ids", [])
                 
-                # Calcular similitudes con todos los centroides y escoger el argmax.
-                # IMPORTANTE: siempre asignar al argmax aunque la similitud sea baja.
                 if not header_centroids:
                     # sin encabezado, asignar a la primera columna
-                    row_cells[0]['words'] = [element]
+                    row_cells[0]['words'].append(element)
+                    logger.info(f"[Sin encabezado] Asignado a col_0: {element}")
                 else:
                     sims = [alignment(hc, element_centroid) for hc in header_centroids]
-                    # escoger índice del máximo (si hay empates, elige el primero)
                     best_col = int(max(range(len(sims)), key=lambda j: sims[j]))
                     best_similarity = sims[best_col]
-
-                    # Si por alguna razón best_similarity es NaN o inválido, fallback por proximidad X
-                    try:
-                        if not (isinstance(best_similarity, float) and best_similarity == best_similarity):
-                            raise ValueError("similarity inválida")
-                    except Exception:
-                        elem_x = element_centroid[0]
-                        distances = [abs(float(hc[0]) - elem_x) for hc in header_centroids]
-                        best_col = int(min(range(len(distances)), key=lambda j: distances[j]))
-
-                    row_cells[best_col]['words'] = [element]
-            
-            # Subcaso B.2: 1 < L_k < H - Asignación secuencial
-            else:
-                for i in range(min(L_k, H)):
-                    row_cells[i]['words'] = [row_elements[i]]
+                    logger.info(
+                        f"Similitud para línea {line_id}, polígonos {poly_ids}, centroides {element_centroid}: "
+                        f"{sims}, asignado a col_{best_col}, similitud={best_similarity}"
+                    )
+                    row_cells[best_col]['words'].append(element)
                     
             return row_cells
         
         except Exception as e:
             logger.error(f"Error en geometric: {e}", exc_info=True)
             return []
-
+        
     def _create_structured_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> pd.DataFrame:
         """
         Genera DataFrame estructurado a partir de la matriz de celdas T[k][j].

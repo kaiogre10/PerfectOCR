@@ -140,6 +140,7 @@ class TextualCleanConfig(ConfigWithNumpy):
     min_probability: float
     min_char: float
     min_confidence: float
+    min_conf_to_clean: float
 
 class SemanticClasificator(ConfigWithNumpy):
     numeric: Tuple[float, float]
@@ -153,6 +154,7 @@ class DataFinder(ConfigWithNumpy):
     wordfinder_model_path: str
     min_similarity: float
     max_q_lenght: int
+    fuzzy_ratio: int
     
 class TextRefiner(ConfigWithNumpy):
     num_passes: int

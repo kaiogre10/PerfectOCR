@@ -1,9 +1,10 @@
 # core/workers/ocr/semantic_clasificator.py
 import logging
 import re
+import dataclasses
 from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
+from core.domain.data_models import Polygons, SemanticClassification
 from core.factory.abstract_worker import OCRAbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -17,11 +18,7 @@ class SemanticClasificator(OCRAbstractWorker):
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter, filter_modified: bool = False) -> bool:
         """
-        Clasifica polígonos semánticamente.        
-        Args:
-            context: Contexto de ejecución
-            manager: DataFormatter con los polígonos
-            filter_modified: Si True, solo clasifica polígonos con was_refined=True
+        Clasifica polígonos semánticamente
         """
         logger.debug(f"Clasificador iniciado (filter_modified={filter_modified})")
         try:
@@ -45,20 +42,23 @@ class SemanticClasificator(OCRAbstractWorker):
             if not polygons_to_classify:
                 logger.debug("No hay polígonos que clasificar")
                 return True
-            
+
             # Clasificar solo los polígonos seleccionados
-            final_results: Dict[str, str] = self._clasify_words(polygons_to_classify)
+            final_results: Dict[str, SemanticClassification] = self._clasify_words(polygons_to_classify)
             
             classified_count = len(final_results)
             logger.debug(f"Total clasificados: {classified_count}")
             
-            for poly_id, semantic_type in final_results.items():
+            for poly_id, semantic_obj in final_results.items():
                 if poly_id in all_polygons:
                     polygon = all_polygons[poly_id]
-                    logger.debug(f"{poly_id}: {semantic_type} | texto: '{polygon.ocr_text or ''}'")
+                    # Mostrar qué campo está activo
+                    active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] 
+                                   if getattr(semantic_obj, field)]
+                    logger.debug(f"{poly_id}: {active_fields} | texto: '{polygon.ocr_text or ''}'")
             
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
-            manager.update_semantic_type(final_results, reset_refined=filter_modified)
+            manager.update_semantic_clasification(final_results, reset_refined=filter_modified)
             
             return True
 
@@ -66,16 +66,16 @@ class SemanticClasificator(OCRAbstractWorker):
             logger.warning(f"Error en el clasificador: {e}", exc_info=True)
             return False
             
-    def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
+    def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, SemanticClassification]:
         numeric_range = self.worker_config.get("numeric", [])
         code_range = self.worker_config.get("code", [])
 
-        def norm(r): return (min(r[0], r[1]), max(r[0], r[1])) # type: ignore
+        def norm(r): return (min(r[0], r[1]), max(r[0], r[1]))
         n_min, n_max = norm(numeric_range)
-        c_min, c_max = norm(code_range) # type: ignore
-
+        c_min, c_max = norm(code_range)
+        
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
-        final_results: Dict[str, str] = {}
+        final_results: Dict[str, SemanticClassification] = {}
 
         for pid, s in texts.items():
             chars = [ch for ch in s if not ch.isspace()]
@@ -89,20 +89,36 @@ class SemanticClasificator(OCRAbstractWorker):
             
             has_quantitative = any(self._is_quantitative(t) for t in tokens)
             
-            # 0. Si tiene patrón cuantitativo, clasificar directamente como quantitative
+            # Crear objeto SemanticClassification con todos los campos en False
+            semantic_clasification = SemanticClassification(
+                quantitative=False,
+                umd=False,
+                rfc=False,
+                numeric=False,
+                descriptive=False,
+                code=False
+            )
+            
+            # Si tiene patrón cuantitativo, clasificar directamente como quantitative
             if has_quantitative:
-                semantic = "quantitative"
-            # 1. Si el porcentaje está en rango numérico, clasificar como numeric
+                semantic_clasification = dataclasses.replace(semantic_clasification, quantitative=True)
+            # Busca unidades de medida
+            elif self.find_umd(s):
+                semantic_clasification = dataclasses.replace(semantic_clasification, umd=True)
+            # Busca el RFC
+            elif self.find_rfc(s):
+                semantic_clasification = dataclasses.replace(semantic_clasification, rfc=True)
+            # Si el porcentaje está en rango numérico, clasificar como numeric
             elif n_min <= pct <= n_max:
-                semantic = "numeric"
-            # 2. Si no es numeric, verificar si es descriptive
+                semantic_clasification = dataclasses.replace(semantic_clasification, numeric=True)
+            # Si no es numeric, verificar si es descriptive
             elif pct < c_min:
-                semantic = "descriptive"
-            # 3. Si no es ni numeric ni descriptive, entonces es code
+                semantic_clasification = dataclasses.replace(semantic_clasification, descriptive=True)
+            # Si no es ni numeric ni descriptive, entonces es code
             else:
-                semantic = "code"
+                semantic_clasification = dataclasses.replace(semantic_clasification, code=True)
 
-            final_results[pid] = semantic
+            final_results[pid] = semantic_clasification
 
         return final_results
             
@@ -122,20 +138,16 @@ class SemanticClasificator(OCRAbstractWorker):
         if not s or "%" in s:
             return False
 
-        currency_symbols = "$€£¥¢"
-        currency = r"[$€£¥¢]"
+        currency_symbols = "$¢"
+        currency = r"[$¢]"
 
         # Simple no-regex shortcut: if contains a currency and at least 1 digit after it
         for sym in currency_symbols:
             idx = s.find(sym)
             if idx != -1:
-                # At least one digit to right of symbol
                 after = s[idx+1 : ]
                 if any(c.isdigit() for c in after):
-                    # No letras entre el símbolo y el número inmediato
-                    # y no termina con símbolo
-                    # y no es "00" después del símbolo
-                    # y no digitos antes y símbolo al final
+# No letras entre el símbolo y el número inmediato y no termina con símbolo y no es "00" después del símbolo y no digitos antes y símbolo al final
                     maybe_amt = after.lstrip()
                     # quick fail for 00 only amount
                     possible_num = ""
@@ -187,7 +199,6 @@ class SemanticClasificator(OCRAbstractWorker):
         Verifica si el texto contiene algún patrón cuantitativo (moneda o decimal).
         Busca patrones dentro del texto, incluso si hay caracteres basura.
         """
-        
         if not s or not s.strip():
             return False
         
@@ -210,4 +221,41 @@ class SemanticClasificator(OCRAbstractWorker):
         
         # Último recurso: verificar el string completo limpio
         return self._is_quantitative(s)
-                
+
+    def find_umd(self, s: str) -> bool:
+        try:
+            if not s or not s.strip():
+                return False
+
+            # Regex Maestra para capturar la unidad y el valor
+            # Nota: La diagonal debe ser escapada: \/
+            umd_patterns = r'\b(\d+([,\.]\d+)?)\s*(/)?\s*(k(g(r)?|ilo(s)?)|g(r|ramo(s)?|m)?|mg|m(t(r)?|etro(s)?|2|\\^2)?|cm|l(t(r)?|itro(s)?|ml)?|cc|ud(s)?|pza(s)?|cj(s)?)\b'
+            if re.search(umd_patterns, s):
+                 return True
+            return False
+
+        except Exception as e:
+            logger.info(f"No se hallaron unidades de medida: {e}", exc_info=True)
+            return False
+
+    def find_rfc(self, s: str) -> bool:
+        try:
+            if not s or not s.strip():
+                return False
+            rfc_code = r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$'
+            rfc_word = r'\b(R\.?F\.?C\.?)\b'
+
+            # Busca primero el patrón corto
+            if re.search(rfc_word, s):
+                # Si lo encuentra, busca el patrón largo
+                if re.search(rfc_code, s):
+                    return True
+                else:
+                    return False
+            # Si no encuentra el corto, busca el largo directamente
+            if re.search(rfc_code, s):
+                return True
+            return False
+        except Exception as e:
+            logger.info(f"Error buscando RFC: {e}", exc_info=True)
+            return False

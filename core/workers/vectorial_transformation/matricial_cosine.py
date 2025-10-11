@@ -64,8 +64,8 @@ class MatricialCusine(VectorizationAbstractWorker):
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
         all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
 
-        similarity_threshold: float = self.worker_config.get("similarity_threshold", {})
-        min_cluster = int(self.worker_config.get("min_cluster", 2))
+        similarity_threshold: float = self.worker_config.get("similarity_threshold")
+        min_cluster = int(self.worker_config.get("min_cluster"))
         
         header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
         header_line_id = header_line_id[0] if header_line_id else None
@@ -75,20 +75,10 @@ class MatricialCusine(VectorizationAbstractWorker):
         line_ids: List[str] = list(all_lines.keys())
         if header_line_id not in line_ids:
             logger.info("Header no encontrado en el manager")
-        
-            header_lineid = self._find_header_line_id(polygons, all_lines)
-        
-            if not header_lineid:
-                logger.warning(f"Error buscando encabezado en coseno")
-                return []
-            else:
-                logger.info(f"Encabezado encontrado en coseno: {header_lineid}")
-                
-            header_line_id = header_lineid
-            
-            success: bool = manager.update_header(header_line_id)
-            if success:
-                logger.info(f"Encabzado actualizado en el manager desde coseno")
+
+        success: bool = manager.update_header(header_line_id)
+        if success:
+            logger.info(f"Encabzado actualizado en el manager desde coseno")
 
         header_idx = line_ids.index(header_line_id)
         # Convertir tabular_lines (IDs de línea) a índices numéricos
@@ -222,13 +212,13 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Convertir la matriz dispersa a densa para mostrarla
         sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray() # type: ignore
         mean_log = np.mean(sims_mat_dense) # type: ignore
-        logger.debug(f"Promedio matriz: {mean_log}")
+        logger.info(f"Promedio matriz: {mean_log}")
         logger.debug("Matriz de similitud (cosine_similarity):")
-        logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
+        logger.info("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
         matriz_str = "\n".join(
             ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense] # type: ignore
         )
-        logger.debug("Matriz:\n%s", matriz_str)
+        logger.info("Matriz:\n%s", matriz_str)
 
         # para cada fila, calcular similitud media con las demás (excluir self)
         mean_sims: List[float] = []
@@ -245,32 +235,8 @@ class MatricialCusine(VectorizationAbstractWorker):
             if mean_sim >= similarity_threshold:
                 matched_original_indices.append(int(orig_idx))
                 consecutive_failures +=1
-            logger.debug(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
+            logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
 
         table_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
         return table_line_ids
 
-    def _find_header_line_id(self, polygons: Dict[str, Polygons], all_lines: Dict[str, AllLines]) -> Optional[str]:
-        """Localiza la line_id del encabezado basada en HeaderWords."""
-        try:
-            hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == "HeaderWords"]
-            if not hdr_poly_ids: 
-                return None
-            
-            hdr_set: Set[List[str]] = set(hdr_poly_ids)
-            counts = {lid: len(set(lobj.polygon_ids).intersection(hdr_set)) for lid, lobj in all_lines.items() if lobj.polygon_ids}
-            
-            if not counts: 
-                return None
-        
-            header_line_id: Optional[str] = max(counts, key=counts.get) # type: ignore
-        
-            if not header_line_id:
-                return None
-            
-            else:
-                logger.info(f"Header_line_id={header_line_id}")
-                return header_line_id
-        
-        except Exception as e:
-            logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)

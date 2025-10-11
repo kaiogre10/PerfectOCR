@@ -19,7 +19,6 @@ class MatrixSolver(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.project_root = project_root
         self.worker_config = config.get('math_max', {})
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("math_max_corrected", False)
@@ -61,8 +60,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         - Reconstruya valores faltantes/inconsistentes.
         - Devuelva DF corregido y tipos semánticos finales.
         """
-        if df is None or df.empty: # type: ignore
-            return df, []
 
         columns: List[str] = list(df.columns)
         basic_types = self._infer_semantic_types_basic(df)
