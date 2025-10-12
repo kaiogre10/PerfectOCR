@@ -20,6 +20,7 @@ class OutputFlag(ConfigWithNumpy):
     ocr_raw: bool
     reconstructed_lines: bool
     table_lines: bool
+    features: bool
     table_structured: bool
     math_max_corrected: bool
     
@@ -178,6 +179,7 @@ class OCRConfig(ConfigWithNumpy):
 class DBSCAN(ConfigWithNumpy):
     eps: float
     min_cluster_size: int
+    hmin_cluster_size: int
 
 class Lineal(ConfigWithNumpy):
     overlap_threshold: float
@@ -192,6 +194,7 @@ class CosineSimilarity(ConfigWithNumpy):
     
 class Vectorizer(ConfigWithNumpy):
     keywords_interval_enabled: bool
+    exclude_types: List[str]
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal

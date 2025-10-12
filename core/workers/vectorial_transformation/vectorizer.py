@@ -2,10 +2,11 @@
 import numpy as np
 import time
 import logging
+import math
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines, Polygons
+from core.domain.data_models import AllLines, Polygons, SemanticClassification
 from core.utils.cosine_similarity import alignment
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,10 @@ class Vectorizer(VectorizationAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('vectorizer', {})
         self.keywords_interval_enabled = self.worker_config.get('keywords_interval_enabled', True)
+        self.exclude_types =  self.worker_config.get('exclude_types', [])
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
+        self.output = self.enabled_outputs.get("features", False)
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
@@ -46,6 +49,9 @@ class Vectorizer(VectorizationAbstractWorker):
                     logger.debug(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
                     context["all_features"] = all_features
                     logger.debug(f"Features guardadas en el contexto")
+                    if self.output:
+                        self._save_debug_table(manager, context, all_features)
+                        
                     return True
                 else:
                     logger.error(f"No se pudo realizar vectorización")
@@ -67,8 +73,10 @@ class Vectorizer(VectorizationAbstractWorker):
 
             sorted_lines: List[Tuple[str, AllLines]] = sorted(
                 all_lines.items(),
-                key=lambda kv: kv[1].line_geometry.line_centroid[1]
+                key=lambda kv: kv[0]
             )
+            
+            # sc.descriptive or sc.rfc or sc.code or sc.umd
             line_features: Dict[str, float] = self._calculate_textual_line_featrues(sorted_lines, manager)
             geoline_features: Dict[str, float] = self._calculate_geometric_line_featrues(sorted_lines, manager)            
             features_by_line = self._calculate_features(sorted_lines, manager, line_features, geoline_features)
@@ -176,26 +184,28 @@ class Vectorizer(VectorizationAbstractWorker):
                     polygons_dict: Dict[str, Polygons] = manager.workflow.polygons
                     for pid in poly_ids_line:
                         if pid in polygons_dict:
-                            semantic = getattr(polygons_dict[pid], "semantic_clasification", "") or ""
-                            if semantic not in ('descriptive', 'rfc'):
+                            sc = polygons_dict[pid].semantic_clasification
+                            if self._is_numeric_polygon(sc):
                                 numeric_count += 1.0
                 
-                all_numerics = line_features.get("total_numerics_global") or 0.0
-                max_numeric_count = line_features.get("max_numeric_count_global") or 0.0
-                max_digit_count = line_features.get("max_digit_count_global") or 0.0
-                line_text = getattr(line_data, "text", "") or ""
-                
-                numeric_count_norm = numeric_count / max_numeric_count 
-                numeric_frec_rel: float = numeric_count - max_numeric_count
-                numeric_ratio_frec: float = numeric_count_norm + numeric_frec_rel
-                numeric_mean: float = all_numerics / num_lines
-                num_above: float = 1.0 if numeric_count > numeric_mean else 0.0
-                digit_char_count = sum(ch.isdigit() for ch in line_text)
-                digit_char_frec: float = digit_char_count / max_digit_count
+                all_numerics = line_features.get("total_numerics_global") or 0.0  # Total de claisificación numerica o quantitativa en todas las líneas (global).
+                max_numeric_count = line_features.get("max_numeric_count_global") or 0.0  # Cantidad máxima de claisificación numerica o quantitativa encontrados en una sola línea (global).
+                median_numeric = line_features.get("median_numeric_global") or 0.0
+                max_digit_count = line_features.get("max_digit_count_global") or 0.0  # Máxima cantidad de caracteres dígitos (0-9) en una sola línea (global).
+                line_text = getattr(line_data, "text", "") or ""  # El texto bruto de la línea actual.
 
-                # Normaliza num_margin en el intervalo [-1, 1] usando el promedio global como base 0.
+                has_numeric = 1.0 if numeric_count > 1.0 else - 1.0
+                num_count_norm = numeric_count / max_numeric_count if numeric_count > 0 else 0.0  # Proporción de tokens numéricos en la línea respecto al máximo global; mide "cuán numérica" es la línea respecto a la más numérica.
+                num_median_norm = numeric_count / median_numeric if numeric_count else 0.0
+                num_mean: float = all_numerics / num_lines if num_lines > 0 else 0.0  # Promedio global de tokens numéricos por línea; sirve como referencia.
+                num_above: float = 1.0 if numeric_count > num_mean else -1.0  # Indicador (1/0) si la línea supera el promedio global de tokens numéricos.
+                digit_char_count = sum(ch.isdigit() for ch in line_text)  # Total de caracteres dígito ("0-9") en el texto de la línea.
+                has_digit = 1.0 if digit_char_count > 1.0 else -1.0
+                digit_char_frec: float = digit_char_count / max_digit_count if max_digit_count > 0 else 0.0  # Proporción de caracteres dígito en la línea respecto al máximo global visto.
+
+                # Normaliza la diferencia entre los tokens numéricos de la línea y el promedio global al rango [-1, 1]; cerca de 1 significa mucho más numérica que la media, cerca de -1 significa mucho menos numérica.
                 if max_numeric_count > 0:
-                    num_margin = (numeric_count - numeric_mean) / (max_numeric_count / 2)
+                    num_margin = (numeric_count - num_mean) / (max_numeric_count / 2)  # Normaliza la diferencia a [-1, 1]; valores extremos significan líneas atípicas respecto a lo numérico.
                     num_margin = max(-1.0, min(1.0, num_margin))
                 else:
                     num_margin = 0.0
@@ -210,34 +220,49 @@ class Vectorizer(VectorizationAbstractWorker):
                 if not img_dims:
                     continue
                 
-                total_size = img_dims.get("size")
-                total_width = img_dims.get("width")
-                total_height = img_dims.get("height") 
-                max_width = geoline_features.get("max_count_width")
-                max_area = geoline_features.get("max_count_area")
-                max_perimeter = geoline_features.get("max_count_perimeter") 
-                max_asptrat = geoline_features.get("max_count_aspcrat")
-                max_diagonal = geoline_features.get("max_count_diagonal")
+                total_size = img_dims.get("size") or 0.0
+                total_width = img_dims.get("width") or 0.0
+                total_height = img_dims.get("height") or 0.0
+                max_width = geoline_features.get("max_count_width") or 0.0
+                max_area = geoline_features.get("max_count_area") or 0.0
+                max_perimeter = geoline_features.get("max_count_perimeter") or 0.0
+                max_asptrat = geoline_features.get("max_count_aspcrat") or 0.0
+                max_diagonal = geoline_features.get("max_count_diagonal") or 0.0
+                diagonal_median = geoline_features.get("diagonal_median") or 0.0
+                bbox_width_median = geoline_features.get("bbox_width_median") or 0.0
+                area_median = geoline_features.get("area_median") or 0.0
+                perimeter_median = geoline_features.get("perimeter_median") or 0.0
+                angle_median = geoline_features.get("angle_median") or 0.0
 
-                bbox_height: float = bbox[3] - bbox[1]
-                bbox_width: float = float(bbox[2] - bbox[0])
-                norm_wid = (bbox_width / max_width) if max_width is not None else 0.0
-                width_rel = bbox_width / total_width if total_width is not None else 0.0
-                cw: float = (total_width / 2.0) if total_width is not None else 0.0
-                ch: float = (total_height / 2.0) if total_height is not None else 0.0
-                main_centroid: List[float] = cw, ch if ch or cw > 0.0 else 0.0 # type: ignore
-                line_area: float = float(bbox_width * bbox_height) if bbox_height or bbox_width > 0.0  else 0.0
-                area_norm: float = (line_area / max_area) if max_area is not None else 0.0
-                ratio_area: float = (line_area / float(total_size)) if total_size is not None else 0.0
-                max_ratio: float = (max_area / total_size) if total_size is not None and max_area is not None else 0.0
-                ratio_area_norm = float(ratio_area / max_ratio )
-                aspect_ratio = ((bbox_height / bbox_width) * 100.0) if bbox_width or bbox_height > 0 else 0.0
-                aspcrat_inv_norm = 1 - abs(aspect_ratio / max_asptrat) if max_asptrat is not None else 0
-                perimeter: float = 2 * (bbox_width + bbox_height) if bbox_width or bbox_height > 0 else 0.0
-                perimeter_norm: float = (perimeter / max_perimeter) if max_perimeter is not None else 0.0
-                diagonal = float(np.sqrt((bbox_width**2.0) + (bbox_height**2.0)))
-                diagonal_norm = float(diagonal / max_diagonal) if max_diagonal is not None else 0.0 
-                compact = ((perimeter**2) / line_area) / 100.0 if line_area > 0 else 0.0
+                bbox_height: float = bbox[3] - bbox[1]  # alto del bbox de la línea
+                bbox_width: float = float(bbox[2] - bbox[0])  # ancho del bbox de la línea
+                bbox_width_inv = bbox_width / bbox_width_median if bbox_width_median != 0 else 0.0
+                bbox_w_dif = 1 - abs(bbox_width - bbox_width_median)/bbox_width_median if bbox_width_median != 0 else 0.0
+                norm_wid = (bbox_width / max_width)  # ancho normalizado respecto al máximo ancho observado
+                width_rel = bbox_width / total_width  # ancho relativo al ancho total de la imagen
+                cw: float = (total_width / 2.0)  # centro horizontal de la imagen
+                ch: float = (total_height / 2.0)  # centro vertical de la imagen
+                main_centroid: List[float] = cw, ch # type: ignore  # coordenadas (x, y) del centro de la imagen
+                line_area: float = float(bbox_width * bbox_height)  # área del bbox de la línea
+                area_norm: float = (line_area / max_area)  # área de la línea normalizada al máximo área
+                ratio_area: float = (line_area / float(total_size))  # área de línea respecto al área total de la imagen
+                area_inv = line_area / area_median if area_median !=0 else 0.0
+                area_dif = 1 - abs(line_area - area_median)/area_median if area_median !=0 else 0.0
+                max_ratio: float = (max_area / total_size)  # máxima proporción de área de línea respecto al área total
+                ratio_area_norm = float(ratio_area / max_ratio )  # relación entre ratio de área de la línea y el máximo ratio posible; mide "qué tan grande es esta línea respecto al máximo esperado"
+                aspect_ratio = ((bbox_height / bbox_width) * 100.0)  # proporción de aspecto (alto/ancho) en porcentaje de la línea
+                aspcrat_inv_norm = 1 - abs(aspect_ratio / max_asptrat)  # cuán diferente es el aspect_ratio respecto al máximo observado (más cerca de 1, más "promedio")
+                perimeter: float = 2 * (bbox_width + bbox_height)  # perímetro del bbox
+                perimeter_norm: float = (perimeter / max_perimeter)  # perímetro normalizado al máximo
+                perimeter_inv = perimeter / perimeter_median if perimeter_median != 0 else 0.0 
+                perimeter_dif = 1 - abs(perimeter - perimeter_median)/perimeter_median if perimeter_median != 0 else 0.0  # Normalización respecto a la mediana, igual que diag_inv
+                diagonal = float(np.hypot(bbox_width, bbox_height))  # diagonal del bbox (distancia máxima)
+                diag_inv = diagonal / diagonal_median if diagonal_median != 0 else 0.0
+                diag_dif = 1 - abs(diagonal - diagonal_median)/diagonal_median if diagonal_median != 0 else 0.0
+                angle = math.degrees(math.atan2(bbox_height, bbox_width))
+                angle_inv = angle/ angle_median if angle_median != 0 else 0.0
+                diag_norm = float(diagonal / max_diagonal)  # diagonal normalizada al máximo
+                compact = ((perimeter**2) / line_area) / 100.0  # medida de compactación (perímetro al cuadrado sobre área), valores más bajos = formas más cuadradas/compactas
 
                 def _calculate_line_coords(sorted_lines: List[Tuple[str, AllLines]], current_index: int) -> Tuple[List[float], List[float], List[float], List[float]]:
                     """Calcula coordenadas de líneas anterior y siguiente, retorna listas vacías si no existen"""
@@ -313,7 +338,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 center_aling: float = alignment(centroid, main_centroid)
                 
                 # max_size_num_vals: float = 114.0
-                numeric_values: List[float] = [float(x) for x in line_values]
+                numeric_values: List[float] = [float(x) for x in line_values] # Líneas codificadas
                 
                 # Calcular estadísticos básicos
                 count: float = float(len(numeric_values))
@@ -322,7 +347,6 @@ class Vectorizer(VectorizationAbstractWorker):
 
                 # Calcular etadisticos especiales
                 mean_rel: float = mean / global_max_encoded if mean > 0.0 else 0.0
-                count_rel: float = count / global_max_encoded if count or global_max_encoded > 0.0 else 0.0
                 if mean > 0.0:
                     mean_ref: float = float(global_max_encoded / 2.0)
                     mean_margin: float = (mean - mean_ref) / mean_ref
@@ -338,23 +362,32 @@ class Vectorizer(VectorizationAbstractWorker):
                         
                 # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
                 line_all_features: Dict[str, float] = {
-                    'count_rel': count_rel,
                     'mean_rel': mean_rel,
                     'mean_margin': mean_margin,
                     'skewness': skewness,
-                    "numeric_count_norm": numeric_count_norm,
-                    "numeric_ratio_frec": numeric_ratio_frec,
+                    "has_numeric": has_numeric,
+                    "num_median_norm": num_median_norm,
+                    "numeric_count_norm": num_count_norm,
                     "num_above": num_above,
                     "num_margin": num_margin,
                     "digit_char_frec": digit_char_frec,
+                    "has_digit": has_digit,
                     "area_norm": area_norm,
                     "norm_wid": norm_wid,
                     "width_rel": width_rel,
-                    "ratio_area": ratio_area,
+                    "bbox_width_inv": bbox_width_inv,
+                    "bbox_w_dif": bbox_w_dif,
                     "ratio_area_norm": ratio_area_norm,
+                    "area_inv": area_inv,
+                    "area_dif": area_dif,
                     "aspcrat_inv_norm": aspcrat_inv_norm,
                     "perimeter_norm": perimeter_norm,
-                    "diagonal_norm": diagonal_norm,
+                    "perimeter_inv": perimeter_inv,
+                    "perimeter_dif": perimeter_dif,
+                    "diag_inv": diag_inv,
+                    "diag_dif": diag_dif,
+                    "diag_norm": diag_norm,
+                    "angle_inv": angle_inv,
                     "compact": compact,
                     "prev_xmin_align": prev_xmin_align if prev_xmin_align is not None else 1.0,
                     "prev_xmax_align": prev_xmax_align if prev_xmax_align is not None else 1.0,
@@ -388,8 +421,10 @@ class Vectorizer(VectorizationAbstractWorker):
                 if manager.workflow and manager.workflow.polygons and poly_ids_line:
                     polygons_dict: Dict[str, Polygons] = manager.workflow.polygons
                     for pid in poly_ids_line:
-                        if pid in polygons_dict and polygons_dict[pid].semantic_clasification not in ('descriptive', 'rfc'):
-                            ncount += 1.0
+                        if pid in polygons_dict:
+                            sc = polygons_dict[pid].semantic_clasification
+                            if self._is_numeric_polygon(sc):
+                                ncount += 1.0
                 numeric_counts_by_line[line_id] = ncount
                 
                 line_text = getattr(line_data, "text", "") or ""
@@ -398,14 +433,19 @@ class Vectorizer(VectorizationAbstractWorker):
                 digit_count_by_line[line_id] = dcount
 
             if numeric_counts_by_line:
-                total_numerics_global: float = float(sum(numeric_counts_by_line.values())) if numeric_counts_by_line else 0.0
-                max_numeric_count_global = max(numeric_counts_by_line.values()) if numeric_counts_by_line else 0.0
-                max_digit_count_global = max(digit_count_by_line.values()) if digit_count_by_line else 0.0
+                # Para obtener la mediana correctamente, convierte los valores a una lista antes de pasarlos a np.median
+                numeric_counts_list = list(numeric_counts_by_line.values())
+                total_numerics_global: float = float(sum(numeric_counts_list)) if numeric_counts_list else 0.0
+                max_numeric_count_global = max(numeric_counts_list) if numeric_counts_list else 0.0
+                median_numeric_global = float(np.median(numeric_counts_list)) if numeric_counts_list else 0.0
+                digit_counts_list = list(digit_count_by_line.values())
+                max_digit_count_global = max(digit_counts_list) if digit_counts_list else 0.0
                 
                 line_features = {
                     "total_numerics_global": total_numerics_global,
                     "max_numeric_count_global": max_numeric_count_global,
                     "max_digit_count_global": max_digit_count_global,
+                    "median_numeric_global": median_numeric_global
                 }
 
             return line_features
@@ -426,6 +466,8 @@ class Vectorizer(VectorizationAbstractWorker):
             perimeter_count_by_line: Dict[str, float] = {}
             asprat_count_by_line: Dict[str, float] = {}
             diagonal_count_by_line: Dict[str, float] = {}
+            angle_count_by_line: Dict[str, float] = {}
+            
             for line_id, line_data in sorted_lines:
                 line_geometry = getattr(line_data, "line_geometry", None)
                 if line_geometry and hasattr(line_geometry, "line_bbox") and len(line_geometry.line_bbox) == 4:
@@ -436,19 +478,30 @@ class Vectorizer(VectorizationAbstractWorker):
                     perimeter: float = 2 * (bbox_width + bbox_height)
                     aspect_ratio = ((bbox_height / bbox_width) * 100)
                     diagonal = float(np.sqrt((bbox_width**2.0) + (bbox_height**2.0)))
+                    angle = math.degrees(math.atan2(bbox_height, bbox_width))
                     width_count_by_line[line_id] = bbox_width
                     area_count_by_line[line_id] = area
                     perimeter_count_by_line[line_id] = perimeter
                     asprat_count_by_line[line_id] = aspect_ratio
                     diagonal_count_by_line[line_id] = diagonal
+                    angle_count_by_line[line_id] = angle
                     
             if width_count_by_line:
-                max_count_width = max(width_count_by_line.values()) if width_count_by_line else 0.0
-                max_count_area = max(area_count_by_line.values()) if area_count_by_line else 0.0
-                max_count_perimeter = max(perimeter_count_by_line.values()) if perimeter_count_by_line else 0.0
-                max_count_aspcrat = max(asprat_count_by_line.values()) if asprat_count_by_line else 0.0
-                max_count_diagonal = max(diagonal_count_by_line.values()) if diagonal_count_by_line else 0.0
-
+                max_count_width = max(width_count_by_line.values()) if width_count_by_line else 0.0      # Ancho máximo de los bounding boxes de las líneas
+                max_count_area = max(area_count_by_line.values()) if area_count_by_line else 0.0         # Área máxima cubierta por los bounding boxes de las líneas
+                max_count_perimeter = max(perimeter_count_by_line.values()) if perimeter_count_by_line else 0.0 # Perímetro máximo entre los bounding boxes de las líneas
+                max_count_aspcrat = max(asprat_count_by_line.values()) if asprat_count_by_line else 0.0  # Máxima razón de aspecto (alto/ancho * 100) de las líneas
+                max_count_diagonal = max(diagonal_count_by_line.values()) if diagonal_count_by_line else 0.0    # Longitud diagonal máxima entre los bounding boxes de las líneas
+                diagonal_values = list(diagonal_count_by_line.values())
+                diagonal_median = float(np.median(diagonal_values)) if diagonal_values else 0.0
+                bbox_width_values= list(width_count_by_line.values())
+                bbox_width_median = float(np.median(bbox_width_values)) if bbox_width_values else 0.0
+                area_values= list(area_count_by_line.values())
+                area_median = float(np.median(area_values)) if area_values else 0.0
+                perimeter_values = list(perimeter_count_by_line.values())
+                perimeter_median = float(np.median(perimeter_values)) if perimeter_values else 0.0
+                angle_values = list(angle_count_by_line.values())
+                angle_median = float(np.median(angle_values)) if angle_values else 0.0
 
                 geoline_features = {
                     "max_count_width": max_count_width,
@@ -456,6 +509,11 @@ class Vectorizer(VectorizationAbstractWorker):
                     "max_count_perimeter": max_count_perimeter,
                     "max_count_aspcrat": max_count_aspcrat,
                     "max_count_diagonal": max_count_diagonal,
+                    "diagonal_median": diagonal_median,
+                    'bbox_width_median': bbox_width_median,
+                    'area_median': area_median,
+                    'perimeter_median': perimeter_median,
+                    "angle_median": angle_median
                 }
 
             return geoline_features
@@ -519,3 +577,81 @@ class Vectorizer(VectorizationAbstractWorker):
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
         logger.debug(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
         return tabular_line_ids
+
+    def _is_numeric_polygon(self, semantic_clasification: SemanticClassification) -> bool:
+        """
+        Determina si un polígono debe contarse como numérico basado en su clasificación semántica.
+        Usa la configuración del YAML para determinar qué tipos excluir.
+        """
+        # Verificar si alguno de los tipos excluidos está activo
+        for exclude_type in self.exclude_types:
+            if getattr(semantic_clasification, exclude_type, False):
+                return False
+        return True
+        
+    def _save_debug_table(self, manager: DataFormatter, context: Dict[str, Any], all_features: Dict[str, Dict[str, float]]):
+        from services.output_service import save_table
+        import os
+        import pandas as pd #type: ignore
+        import matplotlib.pyplot as plt
+        # Crear DataFrame desde all_features
+        
+        df = pd.DataFrame.from_dict(all_features, orient='index')
+        df.index.name = 'line_id'
+        
+        # Resetear índice para que line_id sea una columna
+        df = df.reset_index()
+        
+        # Obtener nombre del archivo
+        file_name: str = manager.workflow.metadata.image_name
+        output_paths = context.get("output_paths", [])
+        
+        for path in output_paths:
+            output_dir: str = os.path.join(path, "vectorizer")
+            table_file_name = f"{os.path.splitext(file_name)[0]}.csv"
+            save_table(df, output_dir, table_file_name, list(df.columns))
+        
+        # Preparar datos (excluir line_id)
+        features_data = df.drop('line_id', axis=1)
+        feature_names = features_data.columns.tolist()
+        
+        # Crear la figura
+        plt.figure(figsize=(12, 8))
+        
+        # Plotear cada línea del documento con valores originales
+        for idx, row in features_data.iterrows():
+            line_id = df.iloc[idx]['line_id']
+            plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1)
+        
+        # Configurar la gráfica
+        plt.xlabel('Features')
+        plt.ylabel('Valores de Features')
+        plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')
+        plt.xticks(rotation=45, ha='right')
+        plt.grid(True, alpha=0.3)
+        
+        # Calcular los límites del eje Y y poner los ticks de 1 en 1
+        if not features_data.empty:
+            ymin = features_data.min().min()
+            ymax = features_data.max().max()
+            ymin_tick = int(np.floor(ymin))
+            ymax_tick = int(np.ceil(ymax))
+            plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1))
+        
+        # Limitar leyenda si hay muchas líneas
+        if len(df) > 20:
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+        else:
+            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        
+        plt.tight_layout()
+        
+        # Guardar la gráfica
+        plot_filename = f"{os.path.splitext(file_name)[0]}_features_plot.png"
+        plot_path = os.path.join(output_dir, plot_filename)
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        logger.info(f"Gráfica de features guardada en: {plot_path}")
+        
+        

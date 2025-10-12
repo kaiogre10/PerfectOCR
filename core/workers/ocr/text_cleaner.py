@@ -2,8 +2,7 @@
 import logging
 import re
 import dataclasses
-from typing import Dict, Any, List, Optional
-from cleantext import clean # type: ignore
+from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -34,7 +33,7 @@ class TextCleaner(OCRAbstractWorker):
         ]
 
         # normalizar a conjunto de caracteres de longitud 1
-        self.drop_single_chars = set(c for c in self.chars if isinstance(c, str) and len(c) == 1)
+        self.drop_single_chars = set(c for c in self.chars if isinstance(c, str) and len(c) == 1) # type: ignore
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         self.min_confidence: float  = self.worker_config.get("min_confidence")
@@ -44,6 +43,7 @@ class TextCleaner(OCRAbstractWorker):
             return True
 
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
+        
         list_of_final_polygons: List[Polygons] = []
         
         sorted_poly_ids = sorted(
@@ -55,9 +55,8 @@ class TextCleaner(OCRAbstractWorker):
             polygon = polygons_in[poly_id]
             text = polygon.ocr_text or ""
             confidence = polygon.ocr_confidence or 0.0
-            semantic_clasification = polygon.semantic_clasification or ""
-
-        
+            sc = polygon.semantic_clasification
+            
             if self._is_polygon_single_special(text):
                 logger.debug(f"Eliminado {poly_id} unico:'{text}'")
                 continue
@@ -68,13 +67,13 @@ class TextCleaner(OCRAbstractWorker):
             text = self._remove_special_chars(text)
 
             if (not text.strip() or
-                (confidence < self.min_confidence and polygon.semantic_clasification not in ("numeric", "quantitative", "rfc", "umd")) or
+                (confidence < self.min_confidence and not (sc.numeric or sc.quantitative or sc.rfc or sc.umd)) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)):
                 logger.debug(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence}")
                 continue
 
             # 3. Ruta Normal: Limpiar texto del polígono vacío
-            cleaned_text = self._process_single_text(text, polygon, semantic_clasification, manager)
+            cleaned_text = self._process_single_text(text, polygon)
             if cleaned_text:
                 updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text, was_refined=True)
                 list_of_final_polygons.append(updated_polygon)
@@ -97,7 +96,7 @@ class TextCleaner(OCRAbstractWorker):
             
         return True
 
-    def _process_single_text(self, text: str, polygon: Polygons, semantic_clasification :str, manager: DataFormatter) -> str:
+    def _process_single_text(self, text: str, polygon: Polygons) -> str:
         """
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
         y seguro a los valores que parecen numéricos.
@@ -116,18 +115,11 @@ class TextCleaner(OCRAbstractWorker):
             if self._is_stray_single_special(token):
                 logger.debug(f"Eliminado unico: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
-            
-            if self._is_likely_numeric(token, semantic_clasification):
-                processed_words.append(token)
+        
             else:
                 processed_words.append(token)
         
         return ' '.join(processed_words)
-        
-    def _is_likely_numeric(self, token: str, semantic_clasification: str) -> bool:
-        if semantic_clasification in ("numeric", "quantitative"):
-            return True
-        return False
 
     def _filter_low_prob_tokens(self, text: str, polygon: Polygons, manager: DataFormatter) -> str:
         min_char = int(self.worker_config.get("min_char"))
@@ -136,7 +128,8 @@ class TextCleaner(OCRAbstractWorker):
             return text
             
         try:
-            if getattr(polygon, "semantic_clasification", None) in ("numeric", "quantitative"):
+            sc = polygon.semantic_clasification
+            if sc.numeric or sc.quantitative:
                 return text
 
             tokens = text.split(' ')

@@ -2,7 +2,7 @@
 import logging
 import re
 import dataclasses
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, SemanticClassification
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -49,13 +49,12 @@ class SemanticClasificator(OCRAbstractWorker):
             classified_count = len(final_results)
             logger.debug(f"Total clasificados: {classified_count}")
             
-            for poly_id, semantic_obj in final_results.items():
-                if poly_id in all_polygons:
-                    polygon = all_polygons[poly_id]
-                    # Mostrar qué campo está activo
-                    active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] 
-                                   if getattr(semantic_obj, field)]
-                    # logger.debug(f"{poly_id}: {active_fields} | texto: '{polygon.ocr_text or ''}'")
+            # for poly_id, semantic_obj in final_results.items():
+            #     if poly_id in all_polygons:
+            #         polygon = all_polygons[poly_id]
+            #         active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] 
+            #                        if getattr(semantic_obj, field)]
+            #         logger.debug(f"{poly_id}: {active_fields} | texto: '{polygon.ocr_text or ''}'")
             
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results, reset_refined=filter_modified)
@@ -70,9 +69,9 @@ class SemanticClasificator(OCRAbstractWorker):
         numeric_range = self.worker_config.get("numeric", [])
         code_range = self.worker_config.get("code", [])
 
-        def norm(r): return (min(r[0], r[1]), max(r[0], r[1]))
+        def norm(r: Tuple[float, float]): return (min(r[0], r[1]), max(r[0], r[1]))
         n_min, n_max = norm(numeric_range)
-        c_min, c_max = norm(code_range)
+        c_min, c_max = norm(code_range) #type: ignore
         
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
         final_results: Dict[str, SemanticClassification] = {}

@@ -6,7 +6,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from fuzzywuzzy import fuzz # type: ignore
+from fuzzywuzzy import fuzz 
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +25,9 @@ class DataFinder(OCRAbstractWorker):
             if self._model is None:
                 model_manager = ModelsManager.get_instance()
                 self._model = model_manager.word_finder
-                self.model_info: Dict[str, Any] = self._model.get_model_info()
-                self.noise_words: List[str] = self.model_info["noise_words"]
                 logger.debug("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
-            
+            self.model_info: Dict[str, Any] = self._model.get_model_info() 
+            self.noise_words: List[str] = self.model_info["noise_words"]
             return self._model
         except Exception as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
@@ -89,9 +88,8 @@ class DataFinder(OCRAbstractWorker):
             for pid, poly in polygons.items():
                 processed_count += 1
 
-                # Omitir numéricos y cuantitativos
-                semantic = getattr(poly, "semantic_clasification", "") or ""
-                if semantic in ("numeric", "quantitative", "code", "rfc"):
+                sc = poly.semantic_clasification
+                if sc.numeric or sc.quantitative or sc.code or sc.rfc:
                     skipped_numeric += 1
                     continue
                 

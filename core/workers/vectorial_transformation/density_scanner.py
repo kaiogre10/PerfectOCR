@@ -1,5 +1,5 @@
 # PerfectOCR/core/vectorial_transformation/density_scanner.py
-from sklearn.cluster import DBSCAN #type: ignore
+from sklearn.cluster import HDBSCAN, DBSCAN
 import numpy as np
 import time
 import logging
@@ -33,7 +33,9 @@ class DensityScanner(VectorizationAbstractWorker):
             valid_analyses = self._get_interval(analyses, manager)
             
             table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
-            logger.info(f"{len(table_line_ids)} table_line_ids: {table_line_ids}")
+            logger.info(f"DBSCAN: {len(table_line_ids)} table_line_ids: {table_line_ids}")
+            # htable_line_ids: List[str] = self._apply_hdbscan_clustering(valid_analyses)
+            # logger.info(f"HDBSCAN: {len(htable_line_ids)} table_line_ids: {htable_line_ids}")
             if table_line_ids:
                 # consecutive_indices = self._get_consecutive_indices(table_line_ids, list(valid_analyses.keys()))
                 # logger.debug(f"{len(consecutive_indices)} consecutive_indices: {consecutive_indices}")
@@ -75,20 +77,55 @@ class DensityScanner(VectorizationAbstractWorker):
         features_array = np.array(features, dtype=np.float32)
 
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
-        labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_array)
-        
-        logger.info(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
+        labels: np.ndarray[Any, np.dtype[np.int8]] = clustering.fit_predict(features_array)
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:
             logger.warning("DBSCAN: No se encontraron clusters válidos.")
             return []
-        
+                
         cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
         
         logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
+    
+        return table_line_ids
+        
+    def _apply_hdbscan_clustering(self, valid_analyses: Dict[str, Dict[str, float]]) -> List[str]:
+        """Aplica DBSCAN para agrupar líneas similares - versión que acepta diccionario."""
+        min_cluster_size = int(self.worker_config.get("min_cluster_size")) # type: ignore
+        min_samples = int(self.worker_config.get("hmin_cluster_size")) # type: ignore
+        if len(valid_analyses) < min_cluster_size:
+            logger.warning("No hay suficientes líneas válidas para clustering.")
+            return []
+                
+        line_ids = list(valid_analyses.keys())
+        features: List[List[float]] = []
+        
+        for line_data in valid_analyses.values():
+            features.append(list(line_data.values()))
+            
+        features_array = np.array(features, dtype=np.float32)
+        
+        hclustering = HDBSCAN(
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
+        allow_single_cluster=True
+        )
+        hlabels: np.ndarray[Any, np.dtype[np.signedinteger]] = hclustering.fit_predict(features_array)
+        logger.info(f"HDBSCAN: min_samples={min_cluster_size}, labels={hlabels}")
+        
+        hunique_labels: List[int] = [l for l in set(hlabels) if l != -1]
+        if not hunique_labels:
+            logger.warning("HDBSCAN: No se encontraron clusters válidos.")
+            return []
+        
+        hcluster_sizes: Dict[int, int] = {hlabel: list(hlabels).count(hlabel) for hlabel in hunique_labels}
+        hmain_cluster = max(hcluster_sizes, key=hcluster_sizes.get)
+        
+        logger.info(f"HDBSCAN: hcluster_sizes={hcluster_sizes}, hmain_cluster={hmain_cluster}")
+        table_line_ids: List[str] = [line_ids[i] for i, hlabel in enumerate(hlabels) if hlabel == hmain_cluster]
         return table_line_ids
 
     def _get_consecutive_indices(self, table_line_ids: List[str], all_line_ids: List[str]) -> List[int]:
@@ -134,7 +171,7 @@ class DensityScanner(VectorizationAbstractWorker):
         # Solo tomar líneas después del encabezado
         filtered_ids = line_ids[header_idx:]
         valid_analyses = {lid: analyses[lid] for lid in filtered_ids}
-        logger.info(f"Lineas filtradas: {len(valid_analyses)}: {filtered_ids} ")
+        logger.debug(f"Lineas filtradas: {len(valid_analyses)}: {filtered_ids} ")
         return valid_analyses
 
     def _save_output(self, context: Dict[str, Any], expanded_line_ids: List[str], file_name: str, manager: DataFormatter):

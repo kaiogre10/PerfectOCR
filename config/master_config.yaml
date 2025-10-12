@@ -32,30 +32,30 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-    # - "dummie"
-    - "moire"
-    - "sp"
-    - "gauss"
+    - "dummie"
+    # - "moire"
+    # - "sp"
+    # - "gauss"
     # - "ink_enhancement"
-    - "clahe"
-    - "sharp"
+    # - "clahe"
+    # - "sharp"
     # - "binarizator"
 
   ocr_stage:
     # - "dummie"
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
     # - "dummie"
     - "lineal"
     - "vectorizer"
-    - "dbscan"
+    # - "dbscan"
     - "cos_sim"
-    - "table_structurer"
+    # - "table_structurer"
     # - "table_validated"
-    - "math_max"
+    # - "math_max"
   
 # Configuración de salida (independiente)
 enabled_outputs:
@@ -73,6 +73,7 @@ enabled_outputs:
   ocr_raw: false
   reconstructed_lines: false
   table_lines: false
+  features: false
   table_structured: false
   math_max_corrected: false
 
@@ -194,16 +195,27 @@ modules:
       
     vectorizer:
       keywords_interval_enabled: False
+      exclude_types: [
+        "descriptive", 
+        "rfc", 
+        "code", 
+        "umd"
+      ]
+      include_types: [
+        "numeric", 
+        "quantitative"
+      ]
 
     cos_sim:
       min_cluster: 1
-      similarity_threshold: 0.85
-      interval: 1
+      similarity_threshold: 0.925
+      interval: 2
       
     dbscan:
-      eps: 1.5
+      eps: 1.0
       min_cluster_size: 2
-
+      hmin_cluster_size: 3
+    
     table_structurer:
       min_h: 3
 

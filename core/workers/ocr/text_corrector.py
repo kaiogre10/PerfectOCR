@@ -3,7 +3,7 @@ import logging
 import dataclasses
 from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
+from core.domain.data_models import Polygons, SemanticClassification
 from core.factory.abstract_worker import OCRAbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -118,13 +118,15 @@ class TextCorrector(OCRAbstractWorker):
                     was_refined=True
                 )
                 corrected_polygons[poly_id] = updated_polygon
-                correction_stats[polygon.semantic_clasification] += 1
+                sc = polygon.semantic_clasification
+                semantic_type = "numeric" if sc.numeric else "quantitative" if sc.quantitative else "descriptive" if sc.descriptive else "code"
+                correction_stats[semantic_type] += 1
                 correction_stats["total_corrections"] += 1
                 
                 logger.debug(
                     f"Corrección {poly_id}: "
-                    f"Tipo: {polygon.semantic_clasification} | "
-                    f"Confianza: {confidence:.2f} | "
+                    f"Tipo: {semantic_type} | "
+                    f"Confianza: {confidence:.4f} | "
                     f"Original: '{original_text}' → Corregido: '{corrected_text}'"
                 )
             else:
@@ -148,7 +150,7 @@ class TextCorrector(OCRAbstractWorker):
     def _apply_corrections(
         self,
         text: str,
-        semantic_clasification: str,
+        semantic_clasification: SemanticClassification,
         polygon_id: str
     ) -> str:
         """
@@ -167,10 +169,11 @@ class TextCorrector(OCRAbstractWorker):
             return text
         
         # No corregir
-        if semantic_clasification not in ("numeric", "quantitative", "descriptive"):
-            logger.debug(f"Omitiendo corrección para tipo '{semantic_clasification}' ({polygon_id}: {text} )")
+        if not (semantic_clasification.numeric or semantic_clasification.quantitative or semantic_clasification.descriptive):
+            semantic_type = "code" if semantic_clasification.code else "umd" if semantic_clasification.umd else "rfc" if semantic_clasification.rfc else "unknown"
+            logger.debug(f"Omitiendo corrección para tipo '{semantic_type}' ({polygon_id}: {text} )")
             return text
-            
+                    
         # Seleccionar el diccionario de correcciones apropiado
         corrections_map = self._get_corrections_map(semantic_clasification)
         
@@ -259,12 +262,12 @@ class TextCorrector(OCRAbstractWorker):
         # Está aislado si NO tiene ningún vecino del mismo tipo
         return not (has_left_match or has_right_match)
         
-    def _get_corrections_map(self, semantic_clasification: str) -> Dict[str, str]:
+    def _get_corrections_map(self, semantic_clasification: SemanticClassification) -> Dict[str, str]:
         """Devuelve el mapa de correcciones para un tipo semántico dado."""
-        if semantic_clasification == "numeric":
+        if semantic_clasification.numeric:
             return self.numeric_corrections
-        if semantic_clasification == "quantitative":
+        if semantic_clasification.quantitative:
             return self.quantitative_corrections
-        if semantic_clasification == "descriptive":
+        if semantic_clasification.descriptive:
             return self.descriptive_corrections
         return {}

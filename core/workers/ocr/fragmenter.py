@@ -37,15 +37,24 @@ class Fragmenter(OCRAbstractWorker):
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
             
+            # Adapt to use the new SemanticClassification dataclass, and handle booleans
+            sc = polygon.semantic_clasification
+
+            # "numeric", "quantitative", "umd", "rfc" -> all those keys are in the boolean fields
+            is_quant = getattr(sc, "quantitative", False)
+            is_numeric = getattr(sc, "numeric", False)
+            is_umd = getattr(sc, "umd", False)
+            is_rfc = getattr(sc, "rfc", False)
+
             text_needs_frag = (
                 self.worker_config and
-                polygon.semantic_clasification not in ("numeric", "quantitative", "umd", "rfc" ) and
+                not (is_numeric or is_quant or is_umd or is_rfc) and
                 " " in (polygon.ocr_text or "").strip()
             )
 
             punctuation_needs_frag = (
                 self.worker_config and
-                polygon.semantic_clasification not in ("numeric", "quantitative", "rfc", "umd") and
+                not (is_numeric or is_quant or is_umd or is_rfc) and
                 not text_needs_frag and 
                 (any(punct in (polygon.ocr_text or "") for punct in [";", ":", "!", "?"]) or 
                 (polygon.ocr_text or "").count('.') == 1) 
@@ -54,7 +63,7 @@ class Fragmenter(OCRAbstractWorker):
             poly_blob_metrics = blob_metrics.get(poly_id, {})
             visual_needs_frag = poly_blob_metrics.get('needs_fragmentation', False)
             quant_runs = []
-            if polygon.semantic_clasification == "quantitative":
+            if is_quant:
                 quant_runs = self._quantitative_runs(polygon.ocr_text or "")
             quant_needs_frag = len(quant_runs) >= 2
 
@@ -70,7 +79,10 @@ class Fragmenter(OCRAbstractWorker):
                 else:
                     reason = "puntuación"
 
-                logger.debug(f"{poly_id}: MOTIVO: {reason}, TIPO: {polygon.semantic_clasification} = {polygon.ocr_text}")
+                sc = polygon.semantic_clasification
+                active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] 
+                            if getattr(sc, field)]
+                logger.debug(f"{poly_id}: MOTIVO: {reason}, TIPO: {active_fields} = {polygon.ocr_text}")
                 
                 if visual_needs_frag:
                     fragments = self._fragment_by_blobs(polygon, poly_blob_metrics)
@@ -231,7 +243,8 @@ class Fragmenter(OCRAbstractWorker):
         point_count = text.count('.')
         if point_count == 1:
             # Si el tipo semántico ya es numérico o cuantitativo, no fragmentar.
-            if polygon.semantic_clasification in ("numeric", "quantitative", "rfc", "umd"):
+            sc = polygon.semantic_clasification
+            if sc.numeric or sc.quantitative or sc.rfc or sc.umd:
                 return [polygon]
 
             dot_index = text.find('.')
