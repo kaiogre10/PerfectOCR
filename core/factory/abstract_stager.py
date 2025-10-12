@@ -12,7 +12,7 @@ class AbstractStager(ABC):
         self, 
         workers: List[Any],  # Cambiado a Any para permitir cualquier tipo de worker
         stage_config: Dict[str, Any], 
-        output_paths: Optional[List[str]], 
+        output_paths: List[str] | str,
         project_root: str
     ):
         self.workers = workers

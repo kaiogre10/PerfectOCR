@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Any, List
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import AllLines
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +27,13 @@ class DensityScanner(VectorizationAbstractWorker):
         start_time = time.time()
         try:
             logger.debug("DBSCScanner iniciado")
-            valid_analyses = context.get("all_features", {})
-            logger.debug(f"Features recibidos por Scanner: {len(valid_analyses)} líneas")
+            analyses: Dict[str, Dict[str, float]] = context.get("all_features", {})
+            logger.debug(f"Features recibidos por Scanner: {len(analyses)} líneas")
+            
+            valid_analyses = self._get_interval(analyses, manager)
             
             table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
-            logger.debug(f"{len(table_line_ids)} table_line_ids: {table_line_ids}")
+            logger.info(f"{len(table_line_ids)} table_line_ids: {table_line_ids}")
             if table_line_ids:
                 # consecutive_indices = self._get_consecutive_indices(table_line_ids, list(valid_analyses.keys()))
                 # logger.debug(f"{len(consecutive_indices)} consecutive_indices: {consecutive_indices}")
@@ -72,7 +75,7 @@ class DensityScanner(VectorizationAbstractWorker):
         features_array = np.array(features, dtype=np.float32)
 
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
-        labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_array).astype(np.float32)
+        labels: np.ndarray[Any, np.dtype[np.uint8]] = clustering.fit_predict(features_array)
         
         logger.info(f"DBSCAN: eps={eps}, min_samples={min_cluster_size}, labels={labels}")
         
@@ -84,7 +87,7 @@ class DensityScanner(VectorizationAbstractWorker):
         cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
         
-        logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
+        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
         return table_line_ids
 
@@ -115,6 +118,25 @@ class DensityScanner(VectorizationAbstractWorker):
         
         return consecutive_line_ids
 
+    def _get_interval(self, analyses: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
+        """
+        Filtra solo las líneas después del encabezado para evitar ruido.
+        """
+
+        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+        header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
+        header_line_id = header_line_id[0] if header_line_id else None
+        if header_line_id is None:
+            return analyses
+        
+        line_ids = list(analyses.keys())
+        header_idx = line_ids.index(header_line_id)
+        # Solo tomar líneas después del encabezado
+        filtered_ids = line_ids[header_idx:]
+        valid_analyses = {lid: analyses[lid] for lid in filtered_ids}
+        logger.info(f"Lineas filtradas: {len(valid_analyses)}: {filtered_ids} ")
+        return valid_analyses
+
     def _save_output(self, context: Dict[str, Any], expanded_line_ids: List[str], file_name: str, manager: DataFormatter):
         from services.output_service import save_tabjson
         import os
@@ -125,4 +147,4 @@ class DensityScanner(VectorizationAbstractWorker):
             json_file_name = f"{os.path.splitext(file_name)[0]}.json"
             output_file = save_tabjson(expanded_line_ids, manager, output_dir, json_file_name, project_root)
         if output_file:
-            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")
+            logger.info(f"OCR Raw results para '{file_name}' guardado en {len(output_file)} ubicaciones.")

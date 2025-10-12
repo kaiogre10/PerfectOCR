@@ -18,8 +18,8 @@ class DataFormatter:
     """
     def __init__(self):
         self.workflow: Optional[WorkflowDict] = None
-        self.encoder = DENSITY_ENCODER
-        self.frecuency = CHAR_FRECUENCY
+        self.encoder: Optional[Dict[str, int]] = None
+        self.frecuency: Optional[Dict[str, int]] = None
         self.structured_table: Optional[StructuredTable] = None
         
     def create_workflow(self, IDRegistro: str, full_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
@@ -36,7 +36,7 @@ class DataFormatter:
                     "height": int(metadata.get("img_dims", {}).get("height") or 0),
                     "size": int(metadata.get("img_dims", {}).get("size") or 0),
                 },
-                date_creation=metadata.get("date_creation", datetime.now().isoformat()),
+                date_creation=str(metadata.get("date_creation" or "")),
             )
 
             self.workflow = WorkflowDict(
@@ -80,7 +80,6 @@ class DataFormatter:
                     polygon_id=poly_id,
                     geometry=geometry,
                     cropedd_geometry=None,
-                    its_white=False,
                     cropped_img=None,
                     perimeter=None,
                     ocr_text=None,
@@ -139,6 +138,9 @@ class DataFormatter:
             if not self.workflow or not hasattr(self.workflow, "all_lines") or not self.workflow.all_lines:
                 logger.warning("No hay líneas disponibles para codificar.")
                 return {}
+            
+            if self.encoder is None:
+                self.encoder = DENSITY_ENCODER
                 
             encoded_lines: Dict[str, List[int]] = {}
             all_lines: Dict[str, Any] = self.workflow.all_lines
@@ -150,7 +152,7 @@ class DataFormatter:
                     line_text = getattr(line_obj, "text", "")
                     if line_text:
                         compact_text = ''.join(line_text.split())
-                        encoded_text = [self.encoder.get(char, 0) for char in compact_text]
+                        encoded_text = [self.encoder.get(char, 30) for char in compact_text]
                         encoded_lines[line_id] = encoded_text
                     else:
                         logger.warning(f"Línea {line_id} no tiene texto para codificar.")
@@ -187,13 +189,16 @@ class DataFormatter:
             logger.error(f"Error obteniendo lineas tabulares: {e}", exc_info=True)
             return []
                 
-    def get_frecuency_char(self) -> Optional[Dict[str, int]]:
+    def get_frecuency_char(self) -> Dict[str, int]:
         """Obtiene los valores de frecuencia para letras"""
         try:
-            if self.frecuency:
-                return self.frecuency
+            if self.frecuency is None:
+                self.frecuency = CHAR_FRECUENCY
+            return self.frecuency
+        
         except Exception as e:
             logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
+            return {}
 
     def update_full_img(self, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""
@@ -410,7 +415,8 @@ class DataFormatter:
                 return False
             
             if not polygon_updates:
-                return False
+                logger.warning("Sin Key_fields")
+                return True
 
             updated_count = 0
 
@@ -569,7 +575,6 @@ class DataFormatter:
                 all_lines_dataclasses[line_id] = AllLines(
                     lineal_id=line_id,
                     text=line_data.get("text", ""),
-                    encoded_text=[], 
                     polygon_ids=line_data.get("polygon_ids", []),
                     line_geometry=line_geometry,
                     tabular_line=False,
@@ -590,7 +595,7 @@ class DataFormatter:
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
                     # logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
+                    logger.info(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
             if header_line:

@@ -1,5 +1,5 @@
 # core/pipeline/stagers_factory.py
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
@@ -26,7 +26,7 @@ class StagersFactory:
         self.ocr_workers = self.workers_order.get("ocr_stage", [])
         self.vectorizing_workers = self.workers_order.get("vector_stage", [])
 
-    def create_image_prep_stager(self, context: Dict[str, Any], output_paths: Optional[List[str]]) -> ImagePreparationStager:
+    def create_image_prep_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> ImagePreparationStager:
         """Crea stager de preparación de imagen con configuraciones específicas del master config."""
         factory = self.main_factory.get_image_preparation_factory()
         
@@ -46,7 +46,7 @@ class StagersFactory:
             project_root=self.project_root
         )
 
-    def create_preprocessing_stager(self, context: Dict[str, Any], output_paths: Optional[List[str]]) -> PreprocessingStager:
+    def create_preprocessing_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> PreprocessingStager:
         """Crea stager de preprocessing con configuraciones específicas del master config."""
         factory = self.main_factory.get_preprocessing_factory()
         
@@ -66,7 +66,7 @@ class StagersFactory:
             project_root=self.project_root
         )
 
-    def create_ocr_stager(self, context: Dict[str, Any], output_paths: Optional[List[str]]) -> OCRStager:
+    def create_ocr_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> OCRStager:
         """Crea stager de OCR con configuraciones específicas del master config."""
         factory = self.main_factory.get_ocr_factory()
         
@@ -86,7 +86,7 @@ class StagersFactory:
             project_root=self.project_root
         )
 
-    def create_vectorization_stager(self, context: Dict[str, Any], output_paths: Optional[List[str]]) -> VectorizationStager:
+    def create_vectorization_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> VectorizationStager:
         """Crea stager de vectorización con configuraciones específicas del master config."""
         factory = self.main_factory.get_vectorizing_factory()
         

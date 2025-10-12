@@ -75,7 +75,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
                 total_time = time.time() - start_time
                 if not df.empty:
-                    logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
+                    logger.debug(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
                     context["table_copy"] = df.copy()
                 else:
                     logger.warning("No se pudo generar la tabla estructurada, el DataFrame está vacío.")
@@ -277,7 +277,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     sims = [alignment(hc, element_centroid) for hc in header_centroids]
                     best_col = int(max(range(len(sims)), key=lambda j: sims[j]))
                     best_similarity = sims[best_col]
-                    logger.info(
+                    logger.debug(
                         f"Similitud para línea {line_id}, polígonos {poly_ids}, centroides {element_centroid}: "
                         f"{sims}, asignado a col_{best_col}, similitud={best_similarity}"
                     )

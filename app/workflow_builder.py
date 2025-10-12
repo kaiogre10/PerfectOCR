@@ -1,7 +1,7 @@
 # PerfectOCR/management/workflow_manager.py
 import os
 import logging
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple
 from services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
@@ -12,14 +12,14 @@ class WorkFlowBuilder:
     HIPER-ESPECIALIZADO en: contar imágenes, decidir modo, generar reporte.
     NO procesa imágenes - solo planifica.
     """
-    def __init__(self, config_services: ConfigService, project_root: str, input_paths: Optional[List[str]] = None, output_path: Optional[str] = None):
+    def __init__(self, config_services: ConfigService, project_root: str, input_paths: List[str] | str, output_paths: List[str] | str):
         self.config_services = config_services
         self.project_root = project_root
         self.processing_config = config_services.processing_config
         self.batch_config = self.processing_config.get('batch_processing', {})
         self.small_batch_limit = self.batch_config.get('small_batch_limit', 5)
         self.input_paths = input_paths or []
-        self.output_path = output_path
+        self.output_path = output_paths
         
     def _get_valid_extensions(self) -> Tuple[str, ...]:
         """Obtiene extensiones válidas desde configuración."""

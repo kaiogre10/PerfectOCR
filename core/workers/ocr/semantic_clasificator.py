@@ -55,7 +55,7 @@ class SemanticClasificator(OCRAbstractWorker):
                     # Mostrar qué campo está activo
                     active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] 
                                    if getattr(semantic_obj, field)]
-                    logger.debug(f"{poly_id}: {active_fields} | texto: '{polygon.ocr_text or ''}'")
+                    # logger.debug(f"{poly_id}: {active_fields} | texto: '{polygon.ocr_text or ''}'")
             
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results, reset_refined=filter_modified)

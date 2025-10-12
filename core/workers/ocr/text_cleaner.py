@@ -207,26 +207,18 @@ class TextCleaner(OCRAbstractWorker):
         t = text.strip()
         return len(t) == 1 and t in self.drop_single_chars
 
-    def _get_frecuency_norm(self, manager: DataFormatter) -> Optional[Dict[str, float]]:
+    def _get_frecuency_norm(self, manager: DataFormatter) -> Dict[str, float]:
 
         try:
-            if not manager or not getattr(manager, "workflow", None):
-                logger.error("Manager o workflow ausente")
-                return None
-
-            frecuency_char_raw = manager.get_frecuency_char()
-            if frecuency_char_raw is None:
-                logger.error("get_frecuency_char() devolvió None")
-                return None
-            frecuency_char: Dict[str, int] = frecuency_char_raw
-
-            max_val = float(max(frecuency_char.values()))
+            frecuency_char = manager.get_frecuency_char()
+            max_val = max(frecuency_char.values())
 
             freq_norm: Dict[str, float] = {char: (val / max_val) * 100 for char, val in frecuency_char.items()}
             return freq_norm
         
         except Exception as e:
             logger.error(f"Error al obtener frecuencias normalizadas: {e}", exc_info=True)
+            return {}
 
     def _token_freq_score(self, token: str, manager: DataFormatter) -> float:
         freq_norm = self._get_frecuency_norm(manager)

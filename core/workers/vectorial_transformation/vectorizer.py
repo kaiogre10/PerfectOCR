@@ -23,13 +23,12 @@ class Vectorizer(VectorizationAbstractWorker):
         try:
             start_time: float = time.time()
             logger.debug("Calculando Features")
-            logger.debug(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
+            logger.warning(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
 
             table_line_ids = self._get_keywords_interval(manager) if self.keywords_interval_enabled else None
             if table_line_ids is not None:
                 
-                # Si se detecta un intervalo claro, se omite la vectorización
-                logger.debug(f"Intervalo tabular detectado, se omite vectorización")
+                logger.warning(f"Intervalo tabular detectado, se omite vectorización")
                 context["all_features"] = None
 
                 if manager.save_tabular_lines(table_line_ids):
@@ -37,7 +36,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     return True
                 else:
                     logger.warning("No se pudieron guardar las líneas tabulares en el manager")
-                    return False
+                    return True
 
             else:
                 # Si no hay intervalo, se prosigue con la vectorización normal
@@ -46,6 +45,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     total_time = time.time() - start_time
                     logger.debug(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
                     context["all_features"] = all_features
+                    logger.debug(f"Features guardadas en el contexto")
                     return True
                 else:
                     logger.error(f"No se pudo realizar vectorización")
@@ -69,7 +69,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 all_lines.items(),
                 key=lambda kv: kv[1].line_geometry.line_centroid[1]
             )
-            
             line_features: Dict[str, float] = self._calculate_textual_line_featrues(sorted_lines, manager)
             geoline_features: Dict[str, float] = self._calculate_geometric_line_featrues(sorted_lines, manager)            
             features_by_line = self._calculate_features(sorted_lines, manager, line_features, geoline_features)
@@ -94,7 +93,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     table_headers = list(features.keys())
                 
                 # Agregar cada fila (convirtiendo todo a string para la tabla)
-                row_values = [line_id] + [f"{features.get(k, 0.0):.4f}" if isinstance(features.get(k), float) else str(features.get(k, '')) for k in table_headers]
+                row_values = [line_id] + [f"{features.get(k, 0.0):.6f}" if isinstance(features.get(k), float) else str(features.get(k, '')) for k in table_headers]
                 table_rows.append(row_values)
                 
                 # Actualizar ancho de columna ID
@@ -154,10 +153,11 @@ class Vectorizer(VectorizationAbstractWorker):
             encoded_lines = manager.get_encode_lines()
             # Conteo inline: cantidad de elementos por línea y máximo global (sin función adicional)
             max_count_by_line: Dict[str, int] = {
-                lid: (len(vals) if vals is not None else 0)
+                lid: (len(vals) if vals is not None else 0) # type: ignore
                 for lid, vals in (encoded_lines or {}).items()
             }
             global_max_encoded: int = max(max_count_by_line.values()) if max_count_by_line else 0
+            num_lines = len(sorted_lines)
 
             for i, (line_id, line_data) in enumerate(sorted_lines):
                 line_values = encoded_lines.get(line_id, [])
@@ -177,37 +177,21 @@ class Vectorizer(VectorizationAbstractWorker):
                     for pid in poly_ids_line:
                         if pid in polygons_dict:
                             semantic = getattr(polygons_dict[pid], "semantic_clasification", "") or ""
-                            if semantic == "numeric":
+                            if semantic not in ('descriptive', 'rfc'):
                                 numeric_count += 1.0
                 
-                all_numerics = line_features.get("total_numerics_global")
-                if all_numerics is None:
-                    continue
-                    
-                max_numeric_count = line_features.get("max_numeric_count_global")
-                if max_numeric_count is None:
-                    continue
-
-                numeric_mean = line_features.get("numeric_mean_global")
-                if numeric_mean is None:
-                    continue
-
-                max_digit_count = line_features.get("max_digit_count_global")
-                if max_digit_count is None:
-                    continue
-
-                max_char_count = line_features.get("max_char_count_global")
-                if max_char_count is None:
-                    continue
-
+                all_numerics = line_features.get("total_numerics_global") or 0.0
+                max_numeric_count = line_features.get("max_numeric_count_global") or 0.0
+                max_digit_count = line_features.get("max_digit_count_global") or 0.0
                 line_text = getattr(line_data, "text", "") or ""
                 
-                numeric_count_norm = numeric_count / max_numeric_count if max_numeric_count > 0 else 0.0
-                numeric_frec_rel: float = numeric_count - max_numeric_count 
+                numeric_count_norm = numeric_count / max_numeric_count 
+                numeric_frec_rel: float = numeric_count - max_numeric_count
                 numeric_ratio_frec: float = numeric_count_norm + numeric_frec_rel
+                numeric_mean: float = all_numerics / num_lines
                 num_above: float = 1.0 if numeric_count > numeric_mean else 0.0
                 digit_char_count = sum(ch.isdigit() for ch in line_text)
-                digit_char_frec: float = digit_char_count / max_digit_count if digit_char_count > 0 else 0.0
+                digit_char_frec: float = digit_char_count / max_digit_count
 
                 # Normaliza num_margin en el intervalo [-1, 1] usando el promedio global como base 0.
                 if max_numeric_count > 0:
@@ -330,8 +314,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 # max_size_num_vals: float = 114.0
                 numeric_values: List[float] = [float(x) for x in line_values]
-                if len(numeric_values) < 2:
-                    continue
                 
                 # Calcular estadísticos básicos
                 count: float = float(len(numeric_values))
@@ -397,45 +379,33 @@ class Vectorizer(VectorizationAbstractWorker):
 
             line_features: Dict[str, float] = {}
             # Cálculo global de numerics (promedio y máximo)
-            char_count_by_line: Dict[str, float] = {}
             digit_count_by_line: Dict[str, float] = {}
             numeric_counts_by_line: Dict[str, float] = {}
             for line_id, line_data in sorted_lines:
-                chcount = 0.0
                 dcount = 0.0
                 ncount = 0.0
                 poly_ids_line = getattr(line_data, "polygon_ids", []) or []
                 if manager.workflow and manager.workflow.polygons and poly_ids_line:
                     polygons_dict: Dict[str, Polygons] = manager.workflow.polygons
                     for pid in poly_ids_line:
-                        if pid in polygons_dict and getattr(polygons_dict[pid], "semantic_clasification", "") == "numeric":
+                        if pid in polygons_dict and polygons_dict[pid].semantic_clasification not in ('descriptive', 'rfc'):
                             ncount += 1.0
                 numeric_counts_by_line[line_id] = ncount
                 
                 line_text = getattr(line_data, "text", "") or ""
-
-                chcount = len(line_text)                
-                char_count_by_line[line_id] = chcount
-
                 dcount = sum(ch.isdigit() for ch in line_text)
                 dcount += 1.0
                 digit_count_by_line[line_id] = dcount
 
             if numeric_counts_by_line:
-                total_numerics_global = float(sum(numeric_counts_by_line.values()))
-                total_lines_global = float(len(numeric_counts_by_line))
-                numeric_mean_global = total_numerics_global / total_lines_global if total_lines_global > 0 else 1.0
-                max_numeric_line_id = max(numeric_counts_by_line, key=numeric_counts_by_line.get) # type: ignore
-                max_numeric_count_global = float(numeric_counts_by_line[max_numeric_line_id])
+                total_numerics_global: float = float(sum(numeric_counts_by_line.values())) if numeric_counts_by_line else 0.0
+                max_numeric_count_global = max(numeric_counts_by_line.values()) if numeric_counts_by_line else 0.0
                 max_digit_count_global = max(digit_count_by_line.values()) if digit_count_by_line else 0.0
-                max_char_count_global = max(char_count_by_line.values()) if char_count_by_line else 0.0
-
+                
                 line_features = {
                     "total_numerics_global": total_numerics_global,
-                    "numeric_mean_global": numeric_mean_global,
                     "max_numeric_count_global": max_numeric_count_global,
                     "max_digit_count_global": max_digit_count_global,
-                    "max_char_count_global": max_char_count_global,
                 }
 
             return line_features
@@ -501,12 +471,16 @@ class Vectorizer(VectorizationAbstractWorker):
         # Verificar existencia de header_line
         header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None) is not None]
         header_line_id = header_line_ids[0] if header_line_ids else None
+        if not header_line_id:
+            return None
 
         # Buscar los poly_id de los posibles footers
         footer_poly_ids: List[str] = [
             pid for pid, p in polygons.items()
             if getattr(p, "key_field", None) in ("TotalProductos", "MontoTotalDocumento")
         ]
+        if not footer_poly_ids:
+            return None
 
         # Mapear poly_id a line_id (por ejemplo, si existe un campo line_id en el polígono)
         polyid_to_lineid: Dict[str, str] = {}
@@ -515,10 +489,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 if pid in line_obj.polygon_ids:
                     polyid_to_lineid[pid] = line_id
                     break
-
-        # Verificar condiciones: debe haber header y al menos un footer
-        if not header_line_id or not polyid_to_lineid:
-            return None
 
         # Elegir el footer más cercano al header_line_id
         header_idx = list(all_lines.keys()).index(header_line_id)

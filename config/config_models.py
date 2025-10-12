@@ -80,6 +80,7 @@ class SaltPepper(ConfigWithNumpy):
     salt_pepper_threshold: float
     salt_pepper_low: int
     salt_pepper_high: int
+    sobel_threshold: float
 
 class GaussianConfig(ConfigWithNumpy):
     laplacian_variance_threshold: float
@@ -183,7 +184,6 @@ class Lineal(ConfigWithNumpy):
 
 class TableStructurer(ConfigWithNumpy):
     min_h: int
-    min_cosine_similarity: float
 
 class CosineSimilarity(ConfigWithNumpy):
     min_cluster: int

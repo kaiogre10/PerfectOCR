@@ -42,7 +42,6 @@ class Polygons:
     geometry: Geometry
     cropedd_geometry: CroppedGeometry
     cropped_img: Optional[CroppedImage]
-    its_white: bool
     perimeter: Optional[float]
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
@@ -59,7 +58,6 @@ class LineGeometry:
 class AllLines:
     lineal_id: str
     text: str
-    encoded_text: List[int]
     polygon_ids: List[str]
     line_geometry: LineGeometry
     tabular_line: bool

@@ -19,8 +19,14 @@ os.environ.update({
 })
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
-DEFAULT_INPUT_PATH = os.path.join(PROJECT_ROOT, "input")
-DEFAULT_OUTPUT_PATH = os.path.join(PROJECT_ROOT, "output")
+DEFAULT_INPUT_PATH = [
+    "input2"
+]
+
+DEFAULT_OUTPUT_PATH =[
+    "output"
+]
+
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 
 """Configura el logging global usando parámetros definidos manualmente aquí."""
@@ -83,8 +89,8 @@ Todos los argumentos son opcionales; si no se especifican, se usan los valores p
 def main():
     """Función main para compatibilidad con ejecución directa."""
     if len(sys.argv) == 1:
-        input_paths = [DEFAULT_INPUT_PATH]
-        output_paths = [DEFAULT_OUTPUT_PATH]
+        input_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_INPUT_PATH]
+        output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
         config_path = DEFAULT_CONFIG_FILE
         project_root = PROJECT_ROOT
         

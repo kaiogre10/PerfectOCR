@@ -39,7 +39,7 @@ class Fragmenter(OCRAbstractWorker):
             
             text_needs_frag = (
                 self.worker_config and
-                polygon.semantic_clasification not in ("numeric", "quantitative", "rfc", "umd") and
+                polygon.semantic_clasification not in ("numeric", "quantitative", "umd", "rfc" ) and
                 " " in (polygon.ocr_text or "").strip()
             )
 

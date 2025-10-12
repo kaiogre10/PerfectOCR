@@ -167,7 +167,7 @@ class TextCorrector(OCRAbstractWorker):
             return text
         
         # No corregir
-        if semantic_clasification == "code" or "quantitative" or "rfc" or "umd":
+        if semantic_clasification not in ("numeric", "quantitative", "descriptive"):
             logger.debug(f"Omitiendo corrección para tipo '{semantic_clasification}' ({polygon_id}: {text} )")
             return text
             

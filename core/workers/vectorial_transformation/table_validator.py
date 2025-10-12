@@ -1,5 +1,5 @@
 # core/workers/vectorial_transformation/semantic_corrector.py
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any
 import pandas as pd # type: ignore
 import time
 from core.factory.abstract_worker import VectorizationAbstractWorker
@@ -20,7 +20,7 @@ class TableCorrector(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:
             if manager.merge_semantics():
-                logger.info("Clasificaciones semánticas fusionadas listas")
+                logger.debug("Clasificaciones semánticas fusionadas listas")
 
                 # Obtener la copia del contexto
                 df = context.get("table_copy")
@@ -73,11 +73,10 @@ class TableCorrector(VectorizationAbstractWorker):
                     value = 0.0
 
                 polygon_semantic_scores[poly_id] = value
-                logger.info(f"Polígono {poly_id}: valor = {value}")
 
             # Crear tabla con valores semánticos
             table_with_values = self._create_table_with_semantic_values(df, polygon_semantic_scores, polygons)
-            logger.info(f"avalores: {table_with_values}")
+            logger.debug(f"avalores: {table_with_values}")
             
             return df
 

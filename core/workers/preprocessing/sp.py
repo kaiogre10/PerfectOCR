@@ -48,8 +48,8 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 if cropped_img.size == 0:
                     logger.warning(f"Imagen vacía o corrupta en '{poly_id}'")
                     continue
-                                
-                analysis = self._analyze_image_for_sp(cropped_img)
+
+                analysis = self._analyze_image_for_sp(cropped_img, polygon)
                 if analysis:
                     metrics.append(analysis)
                     poly_ids_order.append(poly_id)
@@ -103,9 +103,10 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             logger.error(f"Error en el procesamiento por lotes de S&P: {e}", exc_info=True)
             return False
 
-    def _analyze_image_for_sp(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> Dict[str, Any]:
-        h, w = cropped_img.shape[:2]
-        area = h * w
+    def _analyze_image_for_sp(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], polygon: Polygons) -> Dict[str, Any]:
+        h = polygon.cropedd_geometry.croppy_dims.get("poly_height") or 0
+        w = polygon.cropedd_geometry.croppy_dims.get("poly_width") or 0
+        area = h*w
         if area == 0:
             return {}
 
@@ -130,6 +131,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         }
 
     def _apply_sp_correction(self, analysis: Dict[str, Any], ksize: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        sobel_threshold = self.worker_config.get("sobel_threshold")
         original_img: np.ndarray[Any, np.dtype[np.uint8]] = analysis['original_img']
         filtered = cv2.medianBlur(original_img, ksize)
         
@@ -138,7 +140,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
 
         sobel_after = np.mean(np.abs(cv2.Sobel(result, cv2.CV_64F, 1, 1, ksize=3)))
         
-        if sobel_after < 0.85 * analysis['sobel_before']:
+        if sobel_after < sobel_threshold * analysis['sobel_before']:
             logger.debug("Corrección S&P revertida por pérdida de nitidez.")
             return original_img
         

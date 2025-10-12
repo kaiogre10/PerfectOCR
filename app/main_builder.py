@@ -12,7 +12,7 @@ from services.cache_service import cleanup_project_cache
 
 logger = logging.getLogger(__name__)
 
-def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[str]], config_path: str, project_root: str) -> List[str]:
+def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, config_path: str, project_root: str) -> List[str]:
     
     try:
         # 1. Main activa al Configurador
@@ -24,6 +24,7 @@ def activate_main(input_paths: Optional[List[str]], output_paths: Optional[List[
             config_services=config_services,
             project_root=project_root,
             input_paths=input_paths,
+            output_paths=output_paths
         )
         
         # 3. WorkflowManager analiza y reporta
@@ -71,7 +72,7 @@ def create_builders_with_factory(
     stagers_factory: StagersFactory,
     config_services: ConfigService,
     workflow_report: Dict[str, Any],
-    output_paths: Optional[List[str]]
+    output_paths: List[str] | str
 ) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
     
