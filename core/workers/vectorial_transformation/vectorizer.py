@@ -4,6 +4,7 @@ import time
 import logging
 import math
 from typing import Dict, Any, List, Optional, Tuple
+from pandas import DataFrame
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons, SemanticClassification
@@ -20,7 +21,8 @@ class Vectorizer(VectorizationAbstractWorker):
         self.exclude_types =  self.worker_config.get('exclude_types', [])
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
-        self.output = self.enabled_outputs.get("features", False)
+        self.features_output = self.enabled_outputs.get("features", False)
+        self.image_features = self.enabled_outputs.get("image_features", False)
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
@@ -33,6 +35,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 logger.warning(f"Intervalo tabular detectado, se omite vectorización")
                 context["all_features"] = None
+                logger.info(f"Intervalo detectado en:{time.time()-start_time:.7f}")
 
                 if manager.save_tabular_lines(table_line_ids):
                     logger.debug("Líneas guardadas en el manager desde Vectorizer")
@@ -45,11 +48,11 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Si no hay intervalo, se prosigue con la vectorización normal
                 all_features = self._vectorize_text(manager)
                 if all_features:
-                    total_time = time.time() - start_time
-                    logger.debug(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
+                    total_time = time.time() - start_time                    
+                    logger.debug(f"Vectorización completada en {total_time:.7f}s. Líneas válidas: {len(all_features)}")
                     context["all_features"] = all_features
                     logger.debug(f"Features guardadas en el contexto")
-                    if self.output:
+                    if self.features_output:
                         self._save_debug_table(manager, context, all_features)
                         
                     return True
@@ -66,7 +69,8 @@ class Vectorizer(VectorizationAbstractWorker):
         Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado por el scanner.
         No usa el header como referencia para el intervalo; el header sólo se añade si el intervalo es válido.
         """
-        try:            
+        try:
+            t0 = time.perf_counter()
             all_lines: Dict[str, AllLines] = {}
             if manager.workflow and hasattr(manager.workflow, "all_lines"):
                 all_lines = getattr(manager.workflow, "all_lines", {})
@@ -76,10 +80,18 @@ class Vectorizer(VectorizationAbstractWorker):
                 key=lambda kv: kv[0]
             )
             
-            # sc.descriptive or sc.rfc or sc.code or sc.umd
+            t1 = time.perf_counter()            
             line_features: Dict[str, float] = self._calculate_textual_line_featrues(sorted_lines, manager)
-            geoline_features: Dict[str, float] = self._calculate_geometric_line_featrues(sorted_lines, manager)            
+            logger.info(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
+
+            t2 = time.perf_counter()
+            geoline_features: Dict[str, float] = self._calculate_geometric_line_featrues(sorted_lines, manager)
+            logger.info(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
+
+            t3 = time.perf_counter()
             features_by_line = self._calculate_features(sorted_lines, manager, line_features, geoline_features)
+            logger.info(f"All_Feautures calculadas en {time.perf_counter() - t3:.7f}s")
+
             if not features_by_line:
                 logger.warning("No se pudieron calcular las características de ninguna línea.")
                 return None
@@ -132,9 +144,9 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Línea inferior
                 table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 table_str = "\n".join(table)
-                logger.info(f"\nTabla unificada de características:\n{table_str}")
+                logger.info(f"\nTabla unificada características:\n{table_str}")
                 logger.debug(f"Se calcularon features para {len(all_features)} líneas")
-                # logger.debug(f"Features: {all_features} líneas")
+                logger.info(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
                 return all_features
             else:
                 logger.warning("No se pudieron calcular features para ninguna línea")
@@ -346,7 +358,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 std_dev = np.std(numeric_values, ddof=1).astype(float)
 
                 # Calcular etadisticos especiales
-                mean_rel: float = mean / global_max_encoded if mean > 0.0 else 0.0
                 if mean > 0.0:
                     mean_ref: float = float(global_max_encoded / 2.0)
                     mean_margin: float = (mean - mean_ref) / mean_ref
@@ -362,7 +373,6 @@ class Vectorizer(VectorizationAbstractWorker):
                         
                 # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
                 line_all_features: Dict[str, float] = {
-                    'mean_rel': mean_rel,
                     'mean_margin': mean_margin,
                     'skewness': skewness,
                     "has_numeric": has_numeric,
@@ -451,7 +461,7 @@ class Vectorizer(VectorizationAbstractWorker):
             return line_features
 
         except Exception as e:
-            logger.debug(f"Error en feaures de lineas: {e}", exc_info=True)
+            logger.wraning(f"Error en features de lineas: {e}", exc_info=True)
             return {}
 
     def _calculate_geometric_line_featrues(self, sorted_lines: List[Tuple[str, AllLines]],  manager: DataFormatter) -> Dict[str, float]:
@@ -596,62 +606,63 @@ class Vectorizer(VectorizationAbstractWorker):
         import matplotlib.pyplot as plt
         # Crear DataFrame desde all_features
         
-        df = pd.DataFrame.from_dict(all_features, orient='index')
+        df: DataFrame = pd.DataFrame.from_dict(all_features, orient='index')
         df.index.name = 'line_id'
         
         # Resetear índice para que line_id sea una columna
         df = df.reset_index()
         
         # Obtener nombre del archivo
-        file_name: str = manager.workflow.metadata.image_name
+        file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
         output_paths = context.get("output_paths", [])
         
         for path in output_paths:
             output_dir: str = os.path.join(path, "vectorizer")
             table_file_name = f"{os.path.splitext(file_name)[0]}.csv"
             save_table(df, output_dir, table_file_name, list(df.columns))
-        
+
+        if self.image_features:
         # Preparar datos (excluir line_id)
-        features_data = df.drop('line_id', axis=1)
-        feature_names = features_data.columns.tolist()
-        
-        # Crear la figura
-        plt.figure(figsize=(12, 8))
-        
-        # Plotear cada línea del documento con valores originales
-        for idx, row in features_data.iterrows():
-            line_id = df.iloc[idx]['line_id']
-            plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1)
-        
-        # Configurar la gráfica
-        plt.xlabel('Features')
-        plt.ylabel('Valores de Features')
-        plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')
-        plt.xticks(rotation=45, ha='right')
-        plt.grid(True, alpha=0.3)
-        
-        # Calcular los límites del eje Y y poner los ticks de 1 en 1
-        if not features_data.empty:
-            ymin = features_data.min().min()
-            ymax = features_data.max().max()
-            ymin_tick = int(np.floor(ymin))
-            ymax_tick = int(np.ceil(ymax))
-            plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1))
-        
-        # Limitar leyenda si hay muchas líneas
-        if len(df) > 20:
-            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+            features_data = df.drop('line_id', axis=1)
+            feature_names: List[str] = list(features_data.columns.tolist())
+            
+            # Crear la figura
+            plt.figure(figsize=(12, 8))
+            
+            # Plotear cada línea del documento con valores originales
+            for idx, row in features_data.iterrows():
+                line_id: str = df.iloc[idx]['line_id']
+                plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1)
+            
+            # Configurar la gráfica
+            plt.xlabel('Features')
+            plt.ylabel('Valores de Features')
+            plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')
+            plt.xticks(rotation=45, ha='right')
+            plt.grid(True, alpha=0.3)
+            
+            # Calcular los límites del eje Y y poner los ticks de 1 en 1
+            if not features_data.empty:
+                ymin = features_data.min().min()
+                ymax = features_data.max().max()
+                ymin_tick = int(np.floor(ymin))
+                ymax_tick = int(np.ceil(ymax))
+                plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1))
+            
+            # Limitar leyenda si hay muchas líneas
+            if len(df) > 20:
+                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+            else:
+                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            
+            plt.tight_layout()
+            
+            # Guardar la gráfica
+            plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
+            plot_path = os.path.join(output_dir, plot_filename)
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            logger.info(f"Gráfica de features guardada en: {plot_path}")
         else:
-            plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        
-        plt.tight_layout()
-        
-        # Guardar la gráfica
-        plot_filename = f"{os.path.splitext(file_name)[0]}_features_plot.png"
-        plot_path = os.path.join(output_dir, plot_filename)
-        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        logger.info(f"Gráfica de features guardada en: {plot_path}")
-        
-        
+            logger.debug("No se activo output para las gráficas")

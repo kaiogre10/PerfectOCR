@@ -49,7 +49,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                     logger.warning(f"Imagen vacía o corrupta en '{poly_id}'")
                     continue
 
-                analysis = self._analyze_image_for_sp(cropped_img, polygon)
+                analysis = self._analyze_image_for_sp(cropped_img)
                 if analysis:
                     metrics.append(analysis)
                     poly_ids_order.append(poly_id)
@@ -103,9 +103,8 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             logger.error(f"Error en el procesamiento por lotes de S&P: {e}", exc_info=True)
             return False
 
-    def _analyze_image_for_sp(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], polygon: Polygons) -> Dict[str, Any]:
-        h = polygon.cropedd_geometry.croppy_dims.get("poly_height") or 0
-        w = polygon.cropedd_geometry.croppy_dims.get("poly_width") or 0
+    def _analyze_image_for_sp(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> Dict[str, Any]:
+        h, w = cropped_img.shape[:2]
         area = h*w
         if area == 0:
             return {}

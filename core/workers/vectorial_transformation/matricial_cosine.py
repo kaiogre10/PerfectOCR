@@ -21,33 +21,32 @@ class MatricialCusine(VectorizationAbstractWorker):
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            if context.get("all_features", {}) is None:
-                logger.debug("Las líneas tabulares y encabezado ya fueron detectados, no se ejecuta validación coseno.")
+            analysis: Dict[str, Dict[str, float]] = context.get("all_features", {})
+            if not analysis:
+                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                 return True
 
             start_time: float = time.time()
             logger.debug("Calculando matriz de similitud")
 
             tabular_lines: List[str] = manager.get_tabular_lines()
-            analysis: Dict[str, Dict[str, float]] = context.get("all_features", {})
-            if not analysis:
-                logger.warning("No hay features disponibles para procesar")
-                return False
-
+            logger.info(f"Table_lines: {tabular_lines}")
+            
             first_line_features = next(iter(analysis.values()))
             feature_keys: List[str] = list(first_line_features.keys())
             logger.debug(f"Features detectados dinámicamente: {feature_keys}")
-            logger.debug(f"Features recibidos por Scanner: {len(analysis)} líneas")
 
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             line_ids: List[str] = list(all_lines.keys())
             header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
             header_line_id = header_line_id[0] if header_line_id else None
+
             if header_line_id is None:
                 table_line_ids = self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
                 total_time = time.time() - start_time
                 logger.debug(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                 success = manager.save_tabular_lines(table_line_ids)
+                
             else:
                 header_idx = line_ids.index(header_line_id)
                 # Fallback si no hay líneas tabulares o están antes del encabezado
@@ -61,7 +60,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                     table_line_ids = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, manager, header_line_id, line_ids, header_idx, feature_keys)
                     if table_line_ids:
                         total_time = time.time() - start_time
-                        logger.debug(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
+                        logger.info(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                         success = manager.save_tabular_lines(table_line_ids)
                         if success:
                             logger.debug("Lineas guardadas en el manager desde COSENO (validación all-vs-all)")
@@ -74,7 +73,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                         return False
                 else:
                     logger.warning("Ejecutando fallback: buscando líneas tabulares por similitud coseno con el encabezado")
-                    table_line_ids = self._fallback_cosine(analysis, header_line_id, line_ids, header_idx, feature_keys)
+                    table_line_ids = self._fallback_cosine(analysis, header_line_id, line_ids, header_idx, feature_keys, all_lines)
                     if table_line_ids:
                         total_time = time.time() - start_time
                         logger.info(f"Fallback coseno completado en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
@@ -86,7 +85,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                             logger.error("Error al guardar líneas tabulares validadas en el workflow (fallback)")
                             return False
         except Exception as e:
-            logger.debug(f"Error en matriz de similitud coseno: {e}", exc_info=True)
+            logger.error(f"Error en matriz de similitud coseno: {e}", exc_info=True)
         return False
 
     def _validate_scanner_interval_all_vs_all(self, analysis: Dict[str, Dict[str, float]], tabular_lines: List[str], manager: DataFormatter, header_line_id: str, line_ids: List[str], header_idx: int, feature_keys: List[str]) -> List[str]:
@@ -109,7 +108,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         
         if not tabular_indices:
             logger.error("Ninguna línea tabular encontrada en line_ids")
-            return []
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
             
         last_scanner_idx = max(tabular_indices)
 
@@ -118,6 +117,7 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         if start_idx > end_idx:
             logger.error("Intervalo para validar vacío (header al final o scanner produjo líneas anteriores al header).")
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
 
         # LOG: Mostrar el intervalo de líneas a validar
         interval_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
@@ -126,9 +126,6 @@ class MatricialCusine(VectorizationAbstractWorker):
             line_obj = all_lines.get(line_id)
             line_text = line_obj.text if line_obj else "SIN TEXTO"
             logger.debug(f"[{start_idx + i}] {line_id}: '{line_text}'")
-
-        # BLOQUEAR líneas que contienen key_field
-        # MontoTotalDocumento, Subtotal, TotalProductos, MontoIVAGeneral, RFCProveedor, FolioDocumento, FechaDocumento, NombreCliente
         
         blocked_line_ids: Set[str] = set()
         if manager.workflow and manager.workflow.polygons:
@@ -162,7 +159,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         # reconstruir intervalo y comprobar si quedó vacío tras el corte
         if start_idx > end_idx:
             logger.debug("Intervalo quedó vacío tras cortar por líneas bloqueadas.")
-            return []
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
 
         filtered_interval_indices: List[int] = [i for i in range(start_idx, end_idx + 1)]
         logger.debug(f"Intervalo filtrado: {len(filtered_interval_indices)} líneas (de {end_idx - start_idx + 1} originales)")
@@ -194,7 +191,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             return interval_line_ids
             
         try:
-            X = csr_matrix(mat_rows, dtype=np.float64)
+            X = csr_matrix(mat_rows, dtype=np.float32)
             timecos0 = time.perf_counter()
             sims_mat = cosine_similarity(X, dense_output=False) # type: ignore
             logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
@@ -226,16 +223,16 @@ class MatricialCusine(VectorizationAbstractWorker):
             if mean_sim >= similarity_threshold:
                 matched_original_indices.append(int(orig_idx))
                 consecutive_failures +=1
-            logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
+            logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
 
         table_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
         return table_line_ids
 
-    def _fallback_cosine(self, analysis: Dict[str, Dict[str, float]], header_line_id: str, line_ids: List[str], header_idx: int, feature_keys: List[str]) -> List[str]:
+    def _fallback_cosine(self, analysis: Dict[str, Dict[str, float]], header_line_id: str, line_ids: List[str], header_idx: int, feature_keys: List[str], all_lines: Dict[str, AllLines]) -> List[str]:
         """
         Fallback: Busca un bloque continuo de líneas tabulares después del encabezado.
         Compara cada línea con la línea de referencia (la primera después del encabezado).
-        Tolera un número de fallos consecutivos ('interval_margin') antes de cortar el bloque.
+        Tolera un número de fallos consecutivos ('interval') antes de cortar el bloque.
         """
         similarity_threshold: float = self.worker_config.get("similarity_threshold")
         min_cluster: int = int(self.worker_config.get("min_cluster"))
@@ -244,7 +241,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         ref_line_idx = header_idx + 1
         if ref_line_idx >= len(line_ids):
             logger.warning("No hay líneas después del encabezado para usar como referencia.")
-            return [header_line_id]
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
 
         # Buscar la primera línea después del encabezado que sí tenga features, si no la encuentra, usa el header igual
         ref_line_id = None
@@ -264,11 +261,12 @@ class MatricialCusine(VectorizationAbstractWorker):
             ref_line_id = header_line_id
             ref_features = analysis.get(header_line_id, {})
             logger.warning("Ninguna línea siguiente al encabezado tiene features. Usando el header como referencia.")
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
 
         ref_vec = np.array([float(ref_features.get(k, 0.0)) for k in feature_keys]).reshape(1, -1)
 
         # Preparar datos para cálculo de similitud en bloque
-        candidate_rows: List[List[float]] = []
+        candidate_rows: List[List[float]]= []
         candidate_line_ids: List[str] = []
         for idx in range(header_idx + 2, len(line_ids)):
             line_id = line_ids[idx]
@@ -282,26 +280,25 @@ class MatricialCusine(VectorizationAbstractWorker):
             candidate_line_ids.append(line_id)
 
         if not candidate_rows:
-            logger.warning("No hay líneas candidatas después de la línea de referencia.")
-            return [header_line_id, ref_line_id]
+            logger.warning("No hay líneas candidatas para fallback después de la línea de referencia.")
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
 
         # Calcular similitud y registrar la matriz
-        X = np.array(candidate_rows, dtype=np.float64)
+        X = csr_matrix(candidate_rows, dtype=np.float64)
         sims = cosine_similarity(ref_vec, X)[0]
 
-        logger.info(f"Promedio de similitud con línea de referencia '{ref_line_id}': {np.mean(sims):.6f}")
-        logger.info("Candidatas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
+        logger.debug(f"Promedio de similitud con línea de referencia '{ref_line_id}': {np.mean(sims):.6f}")
+        logger.debug("Candidatas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
         sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims) + "]"
-        logger.info("Similitudes:\n%s", sims_str)
+        logger.debug("Similitudes:\n%s", sims_str)
 
-        # validated_lines = [header_line_id, ref_line_id]
         last_success_idx = ref_line_idx
         consecutive_failures = 0
 
         # Iterar sobre los resultados de similitud
         for i, sim in enumerate(sims):
             current_idx = line_ids.index(candidate_line_ids[i])
-            logger.info(f"ref {ref_line_id}: línea {candidate_line_ids[i]}, sim={sim:.6f}")
+            logger.debug(f"ref {ref_line_id}: línea {candidate_line_ids[i]}, sim={sim:.6f}")
 
             if sim >= similarity_threshold:
                 consecutive_failures = 0
@@ -314,11 +311,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 break
         
         # Construir el resultado final como un bloque continuo hasta el último éxito
-        final_tabular_lines = [line_ids[i] for i in range(header_idx, last_success_idx + 1)]
-
-        # Forzar 'min_cluster' si el resultado es muy pequeño
-        if len(final_tabular_lines) < (min_cluster + 1):
-             logger.warning(f"El bloque continuo ({len(final_tabular_lines)}) es menor que min_cluster. No se forzará para mantener continuidad.")
+        final_tabular_lines = [line_ids[i] for i in range(ref_line_idx, last_success_idx + 1)]
 
         logger.debug(f"Fallback encontró {len(final_tabular_lines)} líneas tabulares continuas.")
         return final_tabular_lines
@@ -333,7 +326,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             if line_id in line_ids:
                 all_line_indices.append(line_ids.index(line_id))
                 
-        mat_rows: List[List[float]] = []
+        mat_rows: List[Dict[str, List[float]]] = []
         
         for idx in all_line_indices:  
             line_id = line_ids[idx] 
@@ -358,8 +351,8 @@ class MatricialCusine(VectorizationAbstractWorker):
         logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
             
         # Convertir la matriz dispersa a densa para mostrarla
-        sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray() # type: ignore
-        mean_log = np.mean(sims_mat_dense) # type: ignore
+        sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray() 
+        mean_log = np.mean(sims_mat_dense) 
         logger.info(f"Promedio matriz: {mean_log}")
         logger.info("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in all_line_indices))
         matriz_str = "\n".join(
@@ -382,14 +375,12 @@ class MatricialCusine(VectorizationAbstractWorker):
                 matched_original_indices.append(int(orig_idx))
                 consecutive_failures +=1
             logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
-
-        table_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
         
         if not matched_original_indices:
             logger.warning("No se encontraron líneas que superen el umbral")
             return []
     
-    # Obtener las line_ids que pasaron el umbral
+        # Obtener las line_ids que pasaron el umbral
         candidate_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
         
         # Ordenar por line_id (ascendente)

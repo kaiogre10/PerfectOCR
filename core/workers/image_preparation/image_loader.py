@@ -45,7 +45,7 @@ class ImageLoader(ImagePrepAbstractWorker):
         
         now = datetime.now()
         date_creation = now.isoformat()
-        logger.info(f"Imagen: {image_name} cargada, {now}")
+        logger.debug(f"Imagen: {image_name} cargada, {now}")
         if np.all(full_img == 255):
             logger.error(f"Imagen {image_name} totalmente en blanco")
             return False

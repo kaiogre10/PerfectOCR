@@ -301,7 +301,7 @@ class DataFormatter:
             remaining_polygons = list(self.workflow.polygons.items())
             new_polygons: Dict[str, Polygons] = {}
             
-            for idx, (old_id, poly_obj) in enumerate(remaining_polygons): # type: ignore
+            for idx, (old_id, poly_obj) in enumerate(remaining_polygons): 
                 new_id = f"poly_{idx:04d}"
                 updated_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = updated_poly_obj
@@ -595,7 +595,7 @@ class DataFormatter:
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
                     # logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.info(f"{all_lines['line_id']}: {all_lines['text']}")
+                    logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
             if header_line:

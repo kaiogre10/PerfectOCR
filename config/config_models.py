@@ -21,6 +21,7 @@ class OutputFlag(ConfigWithNumpy):
     reconstructed_lines: bool
     table_lines: bool
     features: bool
+    image_features: bool
     table_structured: bool
     math_max_corrected: bool
     
@@ -191,7 +192,7 @@ class CosineSimilarity(ConfigWithNumpy):
     min_cluster: int
     similarity_threshold: float
     interval: int
-    
+
 class Vectorizer(ConfigWithNumpy):
     keywords_interval_enabled: bool
     exclude_types: List[str]
