@@ -37,40 +37,47 @@ class ImageLoader(ImagePrepAbstractWorker):
                 },
             "date_creation": None
         }
-        
-        full_img = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
-        if full_img is None:
-            logger.error(f"No se cargó:'{image_name}'")
-            return False
-        
-        now = datetime.now()
-        date_creation = now.isoformat()
-        logger.debug(f"Imagen: {image_name} cargada, {now}")
-        if np.all(full_img == 255):
-            logger.error(f"Imagen {image_name} totalmente en blanco")
-            return False
-        
-        cv2_height, cv2_width = full_img.shape[:2]
-        cv2_size: float = full_img.size
-        if cv2_size == 0:
-            logger.error(f"Imagen vacía o corrupta en '{input_path}'")
-            return False
-        
-        logger.debug(f"Size de la imagen completa: {cv2_size}")
+        try:
+            gray_img = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
+            if gray_img is None:
+                logger.error(f"No se cargó:'{image_name}'")
+                return False
 
-        metadata["img_dims"] = {
-                    "width": float(cv2_width), 
-                    "height": float(cv2_height),
-                    "size": float(cv2_size)
-                }
-        
-        metadata["date_creation"] = date_creation
-        
-        logger.debug(f"Dimensiones imagen:{cv2_width, cv2_height}")
+            now = datetime.now()
+            date_creation = now.isoformat()
+            logger.info(f"Imagen: {image_name} cargada, {now}")
+            if np.all(gray_img == 255):
+                logger.error(f"Imagen {image_name} totalmente en blanco")
+                return False
+            
+            cv2_height, cv2_width = gray_img.shape[:2]
+            cv2_size: float = gray_img.size
+            if cv2_size == 0:
+                logger.error(f"Imagen vacía o corrupta en '{input_path}'")
+                return False
+            
+            logger.debug(f"Size de la imagen completa: {cv2_size}")
 
-        fecha = now.strftime("%Y%m%d")
-        decimales = f"{now.microsecond:04d}"
-        IDRegistro: str= f"{metadata.get('image_name')}_{fecha}{decimales}"
+            metadata["img_dims"] = {
+                        "width": float(cv2_width), 
+                        "height": float(cv2_height),
+                        "size": float(cv2_size)
+                    }
+            
+            metadata["date_creation"] = date_creation
+            
+            logger.debug(f"Dimensiones imagen:{cv2_width, cv2_height}")
+                
+            fecha = now.strftime("%Y%m%d")
+            decimales = f"{now.microsecond:04d}"
+            IDRegistro: str= f"{metadata.get('image_name')}_{fecha}{decimales}"
 
-        if manager.create_workflow(IDRegistro, full_img, metadata):
-            return True
+            if manager.create_workflow(IDRegistro, gray_img, metadata):
+                logger.debug(f"Imagen '{image_name}' cargada en el manager")
+                return True
+            else:
+                logger.error(f"Error cargando '{image_name}'")
+                return False
+        except Exception as e:
+            logger.error(f"Error al cargar la imagen: {image_name}; {e}", exc_info=True)
+            return False

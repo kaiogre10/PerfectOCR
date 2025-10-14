@@ -5,8 +5,10 @@ import dataclasses
 import logging
 import json
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
+from core.utils.image_normalicer import normalice_image
+
 import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -21,36 +23,35 @@ class DataFormatter:
         self.encoder: Optional[Dict[str, int]] = None
         self.frecuency: Optional[Dict[str, int]] = None
         self.structured_table: Optional[StructuredTable] = None
-        
-    def create_workflow(self, IDRegistro: str, full_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
+    
+    def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando solo dataclasses"""
-        try:            
-            full_image = FullImage(
-                full_img=(full_img)
-                )
-            
-            metadata_obj = Metadata(
-                image_name=str(metadata.get("image_name", "")),
-                img_dims={
-                    "width": int(metadata.get("img_dims", {}).get("width") or 0),
-                    "height": int(metadata.get("img_dims", {}).get("height") or 0),
-                    "size": int(metadata.get("img_dims", {}).get("size") or 0),
-                },
-                date_creation=str(metadata.get("date_creation" or "")),
+        
+        full_img = normalice_image(gray_img)
+        
+        full_image = FullImage(
+            full_img=(full_img)
             )
+        
+        metadata_obj = Metadata(
+            image_name=str(metadata.get("image_name", "")),
+            img_dims={
+                "width": int(metadata.get("img_dims", {}).get("width") or 0),
+                "height": int(metadata.get("img_dims", {}).get("height") or 0),
+                "size": int(metadata.get("img_dims", {}).get("size") or 0),
+            },
+            date_creation=str(metadata.get("date_creation" or "")),
+        )
 
-            self.workflow = WorkflowDict(
-                IDRegistro=IDRegistro,
-                full_img=full_image,
-                metadata=metadata_obj,
-                polygons={},
-                all_lines={},
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Error creando workflow: {e}", exc_info=True)
-            return False
-
+        self.workflow = WorkflowDict(
+            IDRegistro=IDRegistro,
+            full_img=full_image,
+            metadata=metadata_obj,
+            polygons={},
+            all_lines={},
+        )
+        return True
+    
     def create_polygon_dicts(self, results: Optional[List[Any]]) -> bool:
         """Refactorizado para usar validación + dataclasses"""
         try:
@@ -79,14 +80,14 @@ class DataFormatter:
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
                     geometry=geometry,
-                    cropedd_geometry=None,
+                    cropedd_geometry=None, #type: ignore
                     cropped_img=None,
                     perimeter=None,
                     ocr_text=None,
                     ocr_confidence=None,
                     was_refined=False,
                     key_field=None,
-                    semantic_clasification=None,
+                    semantic_clasification=None, #type: ignore
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -107,88 +108,23 @@ class DataFormatter:
     def get_structured_table(self) -> Optional[pd.DataFrame]:
         return self.structured_table.df if self.structured_table else None
         
-    def clear_cropped_images(self, polygon_ids: List[str]) -> bool:
-        """Libera las imágenes recortadas de polígonos específicos para ahorrar memoria"""
+    def delete_cropped_images(self) -> bool:
+        """Libera todas las imágenes recortadas de los polígonos para ahorrar memoria."""
         try:
-            if not self.workflow:
-                logger.error("No hay workflow inicializado para limpiar imágenes.")
+            if not self.workflow or not self.workflow.polygons:
+                logger.error("No hay workflow inicializado para limpiar imágenes recortadas.")
                 return False
 
-            cleared_count = 0
-            for poly_id in polygon_ids:
-                if poly_id in self.workflow.polygons:
-                    polygon = self.workflow.polygons[poly_id]
-                    if polygon.cropped_img is not None:
-                        updated_polygon = dataclasses.replace(polygon, cropped_img=None)
-                        self.workflow.polygons[poly_id] = updated_polygon
-                        cleared_count += 1
+            for poly_id, polygon in self.workflow.polygons.items():
+                updated_polygon = dataclasses.replace(polygon, cropped_img=None)
+                self.workflow.polygons[poly_id] = updated_polygon
 
-            logger.debug(f"Liberadas {cleared_count} imágenes recortadas de memoria.")
+            logger.debug("Todas las imágenes recortadas han sido liberadas de memoria.")
             return True
         except Exception as e:
             logger.error(f"Error liberando imágenes recortadas: {e}", exc_info=True)
             return False
             
-    def get_encode_lines(self, line_ids: Optional[List[str]] = None) -> Dict[str, List[int]]:
-        """
-        Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
-        Si no se especifican line_ids, codifica todas las líneas existentes.
-        """
-        try:
-            if not self.workflow or not hasattr(self.workflow, "all_lines") or not self.workflow.all_lines:
-                logger.warning("No hay líneas disponibles para codificar.")
-                return {}
-            
-            if self.encoder is None:
-                self.encoder = DENSITY_ENCODER
-                
-            encoded_lines: Dict[str, List[int]] = {}
-            all_lines: Dict[str, Any] = self.workflow.all_lines
-            lines_to_encode = line_ids if line_ids is not None else list(all_lines.keys())
-            
-            for line_id in lines_to_encode:
-                if line_id in all_lines:
-                    line_obj = all_lines[line_id]
-                    line_text = getattr(line_obj, "text", "")
-                    if line_text:
-                        compact_text = ''.join(line_text.split())
-                        encoded_text = [self.encoder.get(char, 30) for char in compact_text]
-                        encoded_lines[line_id] = encoded_text
-                    else:
-                        logger.warning(f"Línea {line_id} no tiene texto para codificar.")
-                else:
-                    logger.warning(f"Línea {line_id} no encontrada en all_lines.")
-            
-            logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
-            return encoded_lines
-        except Exception as e:
-            logger.error(f"Error codificando líneas: {e}", exc_info=True)
-            return {}
-            
-    def get_tabular_lines(self) -> List[str]:
-        """
-        Retorna la lista de line_id marcadas como tabulares en workflow.all_lines.
-        Devuelve lista vacía si no hay workflow o no hay líneas marcadas.
-        """
-        try:
-            if not self.workflow or not getattr(self.workflow, "all_lines", None):
-                logger.debug("get_tabular_lines: No hay workflow o all_lines vacío.")
-                return []
-
-            tabular_ids: List[str] = []
-            for line_id, line_obj in self.workflow.all_lines.items():
-                try:
-                    if getattr(line_obj, "tabular_line", False):
-                        tabular_ids.append(line_id)
-                except Exception:
-                    continue
-
-            logger.debug(f"Encontradas: {len(tabular_ids)} líneas tabulares.")
-            return tabular_ids
-        except Exception as e:
-            logger.error(f"Error obteniendo lineas tabulares: {e}", exc_info=True)
-            return []
-                
     def get_frecuency_char(self) -> Dict[str, int]:
         """Obtiene los valores de frecuencia para letras"""
         try:
@@ -199,6 +135,57 @@ class DataFormatter:
         except Exception as e:
             logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
             return {}
+            
+    def get_density_encoder(self) -> Dict[str, int]:
+        """
+        Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
+        Si no se especifican line_ids, codifica todas las líneas existentes.
+        """
+        try:
+            if self.encoder is None:
+                self.encoder = DENSITY_ENCODER
+            return self.encoder
+        
+        except Exception as e:
+            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
+            return {}
+            
+    def get_tabular_lines(self, return_objects: bool = False) -> Union[Dict[str, Any], List[str]]:
+        """
+        Retorna las líneas marcadas como tabulares en workflow.all_lines.
+        Args:
+            return_objects: Si True, devuelve Dict[str, Any] con objetos completos.
+                        Si False, devuelve List[str] con solo los line_ids.
+        Returns:
+            Dict[str, Any] o List[str] según el parámetro return_objects.
+            Devuelve estructura vacía si no hay workflow o no hay líneas marcadas.
+        """
+        try:
+            if not self.workflow or not getattr(self.workflow, "all_lines", None):
+                logger.debug("get_tabular_lines: No hay workflow o all_lines vacío.")
+                return {} if return_objects else []
+
+            tabular_lines: Dict[str, Any] = {}
+            tabular_ids: List[str] = []
+            
+            for line_id, line_obj in self.workflow.all_lines.items():
+                try:
+                    if getattr(line_obj, "tabular_line", False):
+                        tabular_lines[line_id] = line_obj
+                        tabular_ids.append(line_id)
+                except Exception:
+                    continue
+
+            logger.debug(f"Encontradas: {len(tabular_lines)} líneas tabulares.")
+            
+            if return_objects:
+                return tabular_lines
+            else:
+                return tabular_ids
+                
+        except Exception as e:
+            logger.error(f"Error obteniendo lineas tabulares: {e}", exc_info=True)
+            return {} if return_objects else []
 
     def update_full_img(self, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""
@@ -213,8 +200,18 @@ class DataFormatter:
                 logger.debug(f"Imagen liberada con éxito: {full_img}")
                 return True
             
-            # Si se pasa una imagen, actualiza el objeto
-            self.workflow = dataclasses.replace(self.workflow, full_img=full_img)
+            # Normalizar si se recibe la dataclass FullImage
+            if isinstance(full_img, FullImage):
+                img_arr = getattr(full_img, "full_img", None)
+            else:
+                img_arr = full_img
+                
+                
+            img_arr = normalice_image(full_img)
+            
+            # Wrap en la dataclass FullImage y actualizar workflow
+            full_image_obj = FullImage(full_img=img_arr)
+            self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
             logger.debug("Imagen actualizada con éxito.")
             return True
             
@@ -301,7 +298,7 @@ class DataFormatter:
             remaining_polygons = list(self.workflow.polygons.items())
             new_polygons: Dict[str, Polygons] = {}
             
-            for idx, (old_id, poly_obj) in enumerate(remaining_polygons): 
+            for idx, (old_id, poly_obj) in enumerate(remaining_polygons): #type: ignore
                 new_id = f"poly_{idx:04d}"
                 updated_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = updated_poly_obj
@@ -311,7 +308,7 @@ class DataFormatter:
         
         return True
 
-    def update_ocr_results(self, final_results: List[Optional[Dict[str, Any]]], polygon_ids: List[str]) -> bool:
+    def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]]) -> bool:
         """
         Actualiza los resultados de OCR en las dataclasses de polígonos.
         """
@@ -319,28 +316,32 @@ class DataFormatter:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
                 return False
+            
+            if not final_results:
+                logger.error(f"No hay Texto OCR")
+                return False
+                
+            logger.debug(f"Recibe: {len(final_results)} resultados IDs")
 
-            logger.debug(f"Recibe: {len(final_results)} resultados, {len(polygon_ids)} IDs")
+            for poly_id, res in final_results.items():
+                if poly_id in self.workflow.polygons:
+                    polygon = self.workflow.polygons[poly_id]
+                    updated_polygon = dataclasses.replace(
+                        polygon,
+                        ocr_text=res.get("text", ""),
+                        ocr_confidence=res.get("confidence")
+                    )
 
-            for idx, res in enumerate(final_results):
-                if idx < len(polygon_ids) and res is not None:
-                    poly_id = polygon_ids[idx]
-                    if poly_id in self.workflow.polygons:
-                        polygon = self.workflow.polygons[poly_id]
-                        updated_polygon = dataclasses.replace(
-                            polygon,
-                            ocr_text=res.get("text", ""),
-                            ocr_confidence=res.get("confidence")
-                        )
-
-                        self.workflow.polygons[poly_id] = updated_polygon
+                    self.workflow.polygons[poly_id] = updated_polygon
+                else:
+                    logger.warning(f"Polígono {poly_id} no encontrado en workflow.polygons")
 
             logger.debug("Texto OCR actualizado")
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
-            
+                        
     def merge_semantics(self) -> bool:
         """
         Unifica los tipos semánticos en las dataclasses, convirtiendo
@@ -546,7 +547,7 @@ class DataFormatter:
             logger.error(f"Error actualizando polígonos de encabezado: {e}", exc_info=True)
             return False
             
-    def create_text_lines(self, lines_debug: Dict[str, Any]) -> bool:
+    def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
         Guarda las líneas reconstruidas en el workflow_dict y, más importante,
         crea las dataclasses AllLines y las guarda en el workflow (la fuente de verdad).
@@ -556,12 +557,13 @@ class DataFormatter:
                 logger.error("No hay workflow_dict o workflow inicializado para guardar líneas de texto.")
                 return False
             
-            if not lines_debug:
+            if not lines_info:
+                logger.error("Sin líneas tabulares")
                 return False
 
-            valid_lines = {k: v for k, v in lines_debug.items() if v is not None}
+            valid_lines = {k: v for k, v in lines_info.items() if v is not None}
             if not valid_lines:
-                logger.warning("No hay líneas válidas para procesar.")
+                logger.error("No hay líneas válidas para procesar.")
                 return False
                 
             all_lines_dataclasses: Dict[str, AllLines] = {}
@@ -595,7 +597,7 @@ class DataFormatter:
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
                     # logger.info(f"Linea: {all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
+                    logger.info(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
             if header_line:

@@ -16,26 +16,43 @@ class MatricialCusine(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('cos_sim', {})
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
-        self.output = self.enabled_outputs.get("table_lines", False)        
+        self.enabled_outputs = config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("table_lines", False)
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             analysis: Dict[str, Dict[str, float]] = context.get("all_features", {})
             if not analysis:
                 logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
-                return True
+                return True            
+            tabular_line_ids: List[str] = self._compare_vectors(manager, analysis)
+            if tabular_line_ids:
+                succes = manager.save_tabular_lines(tabular_line_ids)
+                if succes:
+                    
+                    logger.info("Tablas guaradas en el manager desde coseno")
+                    if self.output:
+                        from services.output_service import save_debug_json
+                        return_objects: bool = True
+                        tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
+                        file_name: str = manager.workflow.metadata.image_name # type: ignore
+                        worker_name = context.get("worker_name", {})
+                        output_paths = context.get("output_paths", [])
+                        save_debug_json(output_paths, worker_name, tab_info, file_name)
+    
+                    return True
+        except Exception as e:
+            logger.error(f"Error en matriz coseno: {e}", exc_info=True)
+        return True
 
+    def _compare_vectors(self, manager: DataFormatter, analysis: Dict[str, Dict[str, float]]) -> List[str]:
+        try:
             start_time: float = time.time()
-            logger.debug("Calculando matriz de similitud")
-
-            tabular_lines: List[str] = manager.get_tabular_lines()
-            logger.info(f"Table_lines: {tabular_lines}")
-            
+            logger.debug("Calculando matriz de similitud")            
             first_line_features = next(iter(analysis.values()))
             feature_keys: List[str] = list(first_line_features.keys())
-            logger.debug(f"Features detectados dinámicamente: {feature_keys}")
-
+            logger.debug(f"Features detectados: {feature_keys}")
+            
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             line_ids: List[str] = list(all_lines.keys())
             header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
@@ -45,61 +62,46 @@ class MatricialCusine(VectorizationAbstractWorker):
                 table_line_ids = self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
                 total_time = time.time() - start_time
                 logger.debug(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
-                success = manager.save_tabular_lines(table_line_ids)
+                return table_line_ids
                 
             else:
+                return_objects: bool = False
+                tabular_lines: List[str]= manager.get_tabular_lines(return_objects) #type: ignore
+                logger.info(f"Table_lines: {tabular_lines}")
                 header_idx = line_ids.index(header_line_id)
-                # Fallback si no hay líneas tabulares o están antes del encabezado
-                fallback_needed = (
-                    not tabular_lines or
-                    (header_line_id and tabular_lines and line_ids.index(tabular_lines[0]) < line_ids.index(header_line_id))
-                )
-
-                if tabular_lines and not fallback_needed:
+                                
+                if tabular_lines:
                     logger.debug(f"Validando resultado del scanner con validación coseno all-vs-all ({len(tabular_lines)} líneas reportadas)")
-                    table_line_ids = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, manager, header_line_id, line_ids, header_idx, feature_keys)
+                    table_line_ids = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, manager, header_line_id, line_ids, header_idx, feature_keys, all_lines)
                     if table_line_ids:
                         total_time = time.time() - start_time
                         logger.info(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
-                        success = manager.save_tabular_lines(table_line_ids)
-                        if success:
-                            logger.debug("Lineas guardadas en el manager desde COSENO (validación all-vs-all)")
-                            return True
-                        else:
-                            logger.error("Error al guardar líneas tabulares validadas en el workflow")
-                            return False
-                    else:
-                        logger.debug("Validación coseno rechazó las líneas detectadas por el scanner")
-                        return False
+                        return table_line_ids
                 else:
                     logger.warning("Ejecutando fallback: buscando líneas tabulares por similitud coseno con el encabezado")
                     table_line_ids = self._fallback_cosine(analysis, header_line_id, line_ids, header_idx, feature_keys, all_lines)
                     if table_line_ids:
                         total_time = time.time() - start_time
                         logger.info(f"Fallback coseno completado en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
-                        success = manager.save_tabular_lines(table_line_ids)
-                        if success:
-                            logger.debug("Lineas guardadas en el manager desde COSENO (fallback header)")
-                            return True
-                        else:
-                            logger.error("Error al guardar líneas tabulares validadas en el workflow (fallback)")
-                            return False
+                        return table_line_ids
+                    else:
+                        logger.error("Error al guardar líneas tabulares validadas en el workflow (fallback)")
+                        return []
         except Exception as e:
             logger.error(f"Error en matriz de similitud coseno: {e}", exc_info=True)
-        return False
+        return []
 
-    def _validate_scanner_interval_all_vs_all(self, analysis: Dict[str, Dict[str, float]], tabular_lines: List[str], manager: DataFormatter, header_line_id: str, line_ids: List[str], header_idx: int, feature_keys: List[str]) -> List[str]:
+    def _validate_scanner_interval_all_vs_all(self, analysis: Dict[str, Dict[str, float]], tabular_lines: List[str], manager: DataFormatter, header_line_id: str, line_ids: List[str], header_idx: int, feature_keys: List[str], all_lines: Dict[str, AllLines]) -> List[str]:
         """
         Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado por el scanner.
         No usa el header como referencia para el intervalo; el header sólo se añade si el intervalo es válido.
-        """
-        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-
+        """            
         similarity_threshold: float = self.worker_config.get("similarity_threshold")
         min_cluster = int(self.worker_config.get("min_cluster"))
         
-        logger.warning(f"Usando header_line_id proporcionado por manager: {header_line_id}")
-
+        if line_ids.index(tabular_lines[0]) < line_ids.index(header_line_id):
+            return []
+            
         # Convertir tabular_lines (IDs de línea) a índices numéricos
         tabular_indices: List[int] = []
         for line_id in tabular_lines:

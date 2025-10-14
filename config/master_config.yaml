@@ -24,21 +24,20 @@ models_config:
     
 pipeline_secuence:
   imagepre_stage:
-    # - "dummie"
     - "image_loader"
-    # - "cleaner"
-    # - "angle_corrector"
+    - "cleaner"
+    - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
     - "dummie"
-    # - "moire"
-    # - "sp"
-    # - "gauss"
-    # - "ink_enhancement"
-    # - "clahe"
-    # - "sharp"
+    - "moire"
+    - "sp"
+    - "gauss"
+    - "ink_enhancement"
+    - "clahe"
+    - "sharp"
     # - "binarizator"
 
   ocr_stage:
@@ -51,11 +50,11 @@ pipeline_secuence:
     # - "dummie"
     - "lineal"
     - "vectorizer"
-    # - "dbscan"
-    -  "cos_sim"
-    # - "table_structurer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
-    #- "math_max"
+    - "math_max"
   
 # Configuración de salida (independiente)
 enabled_outputs:
@@ -76,7 +75,7 @@ enabled_outputs:
   features: false
   image_features: false
   table_structured: false
-  math_max_corrected: false
+  math_max_corrected: true
 
 # Configuración de procesamiento
 processing:
@@ -214,7 +213,7 @@ modules:
 
     cos_sim:
       min_cluster: 1
-      similarity_threshold: 0.925
+      similarity_threshold: 0.90
       interval: 2
     
     table_structurer:

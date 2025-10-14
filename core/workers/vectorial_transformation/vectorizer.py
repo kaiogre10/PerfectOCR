@@ -80,16 +80,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 key=lambda kv: kv[0]
             )
             
-            t1 = time.perf_counter()            
-            line_features: Dict[str, float] = self._calculate_textual_line_featrues(sorted_lines, manager)
-            logger.info(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
-
-            t2 = time.perf_counter()
-            geoline_features: Dict[str, float] = self._calculate_geometric_line_featrues(sorted_lines, manager)
-            logger.info(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
-
             t3 = time.perf_counter()
-            features_by_line = self._calculate_features(sorted_lines, manager, line_features, geoline_features)
+            features_by_line = self._calculate_features(sorted_lines, manager)
             logger.info(f"All_Feautures calculadas en {time.perf_counter() - t3:.7f}s")
 
             if not features_by_line:
@@ -144,7 +136,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Línea inferior
                 table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 table_str = "\n".join(table)
-                logger.info(f"\nTabla unificada características:\n{table_str}")
+                logger.debug(f"\nTabla unificada características:\n{table_str}")
                 logger.debug(f"Se calcularon features para {len(all_features)} líneas")
                 logger.info(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
                 return all_features
@@ -156,12 +148,20 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error vectorizando lineas: {e}", exc_info=True)
             return None
         
-    def _calculate_features(self, sorted_lines: List[Tuple[str, AllLines]] , manager: DataFormatter, line_features: Dict[str, float], geoline_features: Dict[str, float]) -> Optional[Dict[str, Dict[str, float]]]:
+    def _calculate_features(self, sorted_lines: List[Tuple[str, AllLines]] , manager: DataFormatter) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
         """
         try:
+            t1 = time.perf_counter()            
+            line_features: Dict[str, float] = self._calculate_textual_line_featrues(sorted_lines, manager)
+            logger.info(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
+
+            t2 = time.perf_counter()
+            geoline_features: Dict[str, float] = self._calculate_geometric_line_featrues(sorted_lines, manager)
+            logger.info(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
+
             img_dims: Dict[str, int] = {}
             if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
                 img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
@@ -170,7 +170,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 return {}
             
             all_lines_features: Dict[str, Dict[str, float]] = {}
-            encoded_lines = manager.get_encode_lines()
+            encoded_lines = self._calculate_encode_lines(manager, sorted_lines)
             # Conteo inline: cantidad de elementos por línea y máximo global (sin función adicional)
             max_count_by_line: Dict[str, int] = {
                 lid: (len(vals) if vals is not None else 0) # type: ignore
@@ -415,13 +415,9 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error calculando tabular features: {e}", exc_info=True)
             return {}
 
-    def _calculate_textual_line_featrues(self, sorted_lines: List[Tuple[str, AllLines]],  manager: DataFormatter) -> Dict[str, float]:
+    def _calculate_textual_line_featrues(self, sorted_lines: List[Tuple[str, AllLines]], manager: DataFormatter) -> Dict[str, float]:
         try:
-            if not manager.workflow.all_lines if manager.workflow else {}:
-                return {}
-
             line_features: Dict[str, float] = {}
-            # Cálculo global de numerics (promedio y máximo)
             digit_count_by_line: Dict[str, float] = {}
             numeric_counts_by_line: Dict[str, float] = {}
             for line_id, line_data in sorted_lines:
@@ -461,7 +457,7 @@ class Vectorizer(VectorizationAbstractWorker):
             return line_features
 
         except Exception as e:
-            logger.wraning(f"Error en features de lineas: {e}", exc_info=True)
+            logger.warning(f"Error en features de lineas: {e}", exc_info=True)
             return {}
 
     def _calculate_geometric_line_featrues(self, sorted_lines: List[Tuple[str, AllLines]],  manager: DataFormatter) -> Dict[str, float]:
@@ -530,6 +526,29 @@ class Vectorizer(VectorizationAbstractWorker):
         except Exception as e:
                 logger.debug(f"Error en feaures de lineas: {e}", exc_info=True)
                 return {}
+                
+    def _calculate_encode_lines(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]) -> Dict[str, List[int]]:
+        try:
+            encoder = manager.get_density_encoder()
+            encoded_lines: Dict[str, List[int]] = {}
+
+            for line_id, line_obj in sorted_lines:
+                line_text = getattr(line_obj, "text", "")
+                if line_text:
+                    compact_text = ''.join(line_text.split())
+                    encoded_text = [encoder.get(char, 0) for char in compact_text]
+                    encoded_lines[line_id] = encoded_text
+                else:
+                    logger.warning(f"Línea {line_id} no tiene texto para codificar.")
+                    return {}
+
+            logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
+            logger.info(f"Codificación: {encoded_lines}")
+            return encoded_lines
+
+        except Exception as e:
+            logger.error(f"Error codificando líneas: {e}", exc_info=True)
+            return {}
 
     def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[str]]:
         

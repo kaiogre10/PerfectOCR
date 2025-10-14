@@ -20,9 +20,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         self.output = self.enabled_outputs.get("moire_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """
-        Analiza y corrige el moiré modificando los polígonos directamente en el contexto.
-        """
+        """Analiza y corrige el moiré."""
         try:
             logger.debug("Moire empezado conéxito")
             start_time = time.time()
@@ -33,7 +31,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                 
             logger.debug("Polygonos revisados")
             
-            # Obtener polígonos (dataclasses) del contexto
+            # Obtener polígonos de las dataclasses
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
@@ -46,10 +44,6 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 if cropped_img is None:
                     logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
-                    continue
-                    
-                if cropped_img.size == 0:
-                    logger.warning(f"Imagen vacía o corrupta en '{poly_id}'")
                     continue
                 
                 h = polygon.cropedd_geometry.croppy_dims.get("poly_height") or 0
@@ -70,16 +64,9 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             std_energies = np.array([m['std_energy'] for m in metrics], dtype=np.float32)
             skewness_values = np.array([m['skewness'] for m in metrics], dtype=np.float32)
             valid_spectrums = [m['valid_spectrum'] for m in metrics]
-
             safe_mean_energies = np.where(mean_energies == 0, 1.0, mean_energies)
             cond_percentile = (std_energies / safe_mean_energies > 0.5) & (skewness_values > 1.0)
             cond_factor = (std_energies / safe_mean_energies > 0.3) & (skewness_values < 0.5)
-
-            correction_modes = np.select(
-                [cond_percentile, cond_factor],
-                ["percentile", "factor"],
-                default="absolute"
-            )
 
             thresholds_percentile = np.array([np.percentile(vs, 98) if vs.size > 0 else 0 for vs in valid_spectrums], dtype=np.float32)
             
@@ -95,32 +82,34 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             # 4. Fase de Aplicación (modificando las dataclasses"in-line")
             for idx, poly_id in enumerate(poly_ids_order):
                 polygon = polygons[poly_id]
-                analysis_results = metrics[idx]
+                analysis = metrics[idx]
                 
                 # Obtener la imagen original de la dataclass para la corrección
                 original_img_np = polygon.cropped_img.cropped_img
                 
-                mode = correction_modes[idx]
                 threshold = adaptive_thresholds[idx]
                 # logger.debug(f"Poly '{poly_id}': Modo de corrección '{mode}', Threshold: {threshold:.2f}")
 
                 corrected_img: np.ndarray[Any, np.dtype[np.uint8]] = self._apply_moire_correction(
                     original_img_np,
-                    analysis_results,
+                    analysis,
                     threshold,
                 )
                 
                 polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
-                    self._save_debug_image(context, poly_id, corrected_img)
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name", [])
+                    output_paths = context.get("output_paths", [])
+                    save_croped_image(poly_id, corrected_img, output_paths, worker_name)
 
             total_time = time.time() - start_time
             logger.debug(f"Moire batch completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
             
         except Exception as e:
-            logger.error(f"Error en el procesamiento por lotes de Moire: {e}", exc_info=True)
+            logger.error(f"Error en el procesamiento Moire: {e}", exc_info=True)
             return False
 
     def _analyze_image_for_moire(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], img_dims: Tuple[int, int]) -> Dict[str, Any]:
@@ -159,7 +148,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             logger.error(f"Error analizando poligono para moire: {e}", exc_info=True)
             return {}
 
-    def _apply_moire_correction(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], analysis: Dict[str, Any], adaptive_threshold: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    def _apply_moire_correction(self, original_img_np: np.ndarray[Any, np.dtype[np.uint8]], analysis: Dict[str, Any], adaptive_threshold: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
         h, w = analysis['img_dims']
         max_dim = max(h, w)
         spectrum_var = analysis['spectrum_var']
@@ -194,18 +183,5 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             corrected_img =np.array(moire_img, dtype=np.uint8)
             return corrected_img 
         else:
-            corrected_img = np.array(cropped_img, dtype=np.uint8)
+            corrected_img = np.array(original_img_np, dtype=np.uint8)
             return corrected_img
-
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, np.dtype[np.uint8]]):
-        from services.output_service import save_image
-        import os
-        
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir = os.path.join(path, "moire")
-            file_name = f"{poly_id}_moire_debug.png"
-            save_image(image, output_dir, file_name)
-        
-        if output_paths:
-            logger.debug(f"Imagen de debug de moiré para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")

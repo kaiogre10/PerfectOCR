@@ -39,7 +39,12 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             corrected_df, final_semantic_types = self.solve(df)
             if self.output:
-                self._save_debug_table(manager, context, corrected_df)
+                from services.output_service import save_debug_table
+                all_lines: Dict[str, Any] = manager.workflow.all_lines if manager.workflow else {}
+                file_name: str = manager.workflow.metadata.image_name # type: ignore
+                worker_name = context.get("worker_name", {})
+                output_paths = context.get("output_paths", [])
+                save_debug_table(corrected_df, file_name, output_paths, worker_name, all_lines)
 
             # Log simple de cómo queda la tabla ya corregida
             logger.debug("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
@@ -230,28 +235,3 @@ class MatrixSolver(VectorizationAbstractWorker):
         except Exception:
             return False
             
-    def _save_debug_table(self, manager: DataFormatter, context: Dict[str, Any], corrected_df: pd.DataFrame):
-        from services.output_service import save_table
-        import os
-        header_text: List[str] = []
-        if manager and manager.workflow and manager.workflow.all_lines:
-            for line_obj in manager.workflow.all_lines.values():
-                if line_obj.header_line:
-                    for poly_id in line_obj.polygon_ids:
-                        if poly_id in manager.workflow.polygons:
-                            poly_text = manager.workflow.polygons[poly_id].ocr_text
-                            if poly_text:        
-                                header_text.append(poly_text)
-                    break
-        if not header_text:
-            header_text = list(corrected_df.columns)
-            
-        file_name: str = manager.workflow.metadata.image_name
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir: str = os.path.join(path, "math_max")
-            table_file_name = f"{os.path.splitext(file_name)[0]}.csv"
-            save_table(corrected_df, output_dir, table_file_name, header_text)
-        
-        if output_paths:
-            logger.info(f"Tabla corregida matemáticamente '{file_name}' guardada en {len(output_paths)} ubicaciones.")

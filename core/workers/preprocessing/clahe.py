@@ -97,7 +97,10 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
                 polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
-                    self._save_debug_image(context, poly_id, corrected_img)
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name", [])
+                    output_paths = context.get("output_paths", [])
+                    save_croped_image(poly_id, corrected_img, output_paths, worker_name)
 
             return True
         except Exception as e:
@@ -119,17 +122,3 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         """Aplica el filtro CLAHE a una imagen."""
         clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
         return clahe.apply(original_img)
-
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, np.dtype[np.uint8]]):
-        """Guarda una imagen de depuración si la salida está habilitada."""
-        from services.output_service import save_image
-        import os
-        
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir = os.path.join(path, "clahe")
-            file_name = f"{poly_id}_clahe_debug.png"
-            save_image(image, output_dir, file_name)
-        
-        if output_paths:
-            logger.debug(f"Imagen de debug de CLAHE para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")

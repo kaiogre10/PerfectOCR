@@ -24,11 +24,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             import time
             start_time = time.time()
             
-            full_img = manager.get_full_img()
+            img_obj = manager.get_full_img()
+            full_img = img_obj.full_img if img_obj is not None else None
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-                
             logger.debug("Full_img obtenida con éxito")
                 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
@@ -75,6 +75,10 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             py1 = np.maximum(0, y1 - padding)
             px2 = np.minimum(img_w, x2 + padding)
             py2 = np.minimum(img_h, y2 + padding)
+            
+            # Liberar la imagen completa lo antes posible
+            if manager.update_full_img(None):
+                logger.info("full_img liberada")
             
             # Validar dimensiones usando operaciones vectorizadas
             valid_dims: np.ndarray[Any, Any] = (px2 > px1) & (py2 > py1)
@@ -146,19 +150,12 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.warning(f"PolygonExtractor: Se eliminaron {len(discarded_poly_ids)} polígonos no válidos: {', '.join(discarded_poly_ids)}")
             
             # Guardar resultados
-            success = manager.save_cropped_images(cropped_images, cropped_geometries)
-            if not success:
-                logger.error("PolygonExtractor: Error al guardar imágenes recortadas en el workflow")
+            if not manager.save_cropped_images(cropped_images, cropped_geometries):
+                logger.error("No se pudieron guardar las imagenes en el manager")
                 return False
-
-            if self.output:
-                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                self._save_debug_image(context, cropped_images, image_name)
-
-            # Liberamos la imagen del contexto y del workflow para ahorrar memoria
-            manager.update_full_img(None)
             
             total_time = time.time() - start_time
+                
             extracted_count = len(cropped_images)
             logger.debug(f"PolygonExtractor batch completado: {extracted_count} recortes en {total_time:.3f}s. 'full_img' liberada.")
             
@@ -167,20 +164,3 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         except Exception as e:
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
             return False
-
-    def _save_debug_image(self, context: Dict[str, Any], cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]], image_name: str):
-        from services.output_service import save_image
-        import os
-
-        output_paths = context.get("output_paths", [])
-        
-        if not output_paths:
-            logger.error("No se especificaron rutas de salida para guardar imágenes de debug de poly_gone.")
-            return
-
-        for poly_id, cropped in cropped_images.items():
-            for path in output_paths:
-                output_dir = os.path.join(path, "poly_gone")
-                file_name = f"{image_name}_{poly_id}_cropped_img.png"
-                save_image(cropped, output_dir, file_name)
-            logger.info(f"Imagen de debug de poly_gone para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")

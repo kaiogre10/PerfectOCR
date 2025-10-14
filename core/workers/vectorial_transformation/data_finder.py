@@ -53,17 +53,14 @@ class DataFinder(OCRAbstractWorker):
             polygon_updates = self._find_data(polygons, manager)
 
             # Actualiza las líneas marcadas como encabezado en las dataclasses
-            success: bool = manager.update_key_field(polygon_updates)
-
-            
-            # Guardar resultados en el contexto
-            total_time = time.time() - start_time
-            logger.debug(f"Key Fields detectados en {total_time:6f}s")
-            return success  # Siempre retorna True para continuar con el pipeline
-        
+            if manager.update_key_field(polygon_updates):
+                total_time = time.time() - start_time
+                logger.debug(f"Key Fields detectados en {total_time:6f}s")
+                return True
+                
         except Exception as e:
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
-        return True  # Retorna True para continuar con fallbacks
+        return True 
 
     def _find_data(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, str]:
         threshold = float(self.worker_config.get("min_similarity"))

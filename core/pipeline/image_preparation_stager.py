@@ -9,11 +9,6 @@ logger = logging.getLogger(__name__)
 
 class ImagePreparationStager(AbstractStager):
     """Stager de preparación de imágenes."""
-
-    @property
-    def config(self):
-        """Alias para compatibilidad."""
-        return self.stage_config
     
     def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         """Ejecuta la fase de preparación completa."""
@@ -21,24 +16,24 @@ class ImagePreparationStager(AbstractStager):
 
     def prepare_image(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
-        try:
+        for worker_idx, worker in enumerate(self.workers):
+            worker_start = time.time()
+            worker_name = worker.__class__.__name__
+            logger.debug(f"Ejecutando worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+
             context: Dict[str, Any] = {
+                "worker_name": worker_name,
                 "output_paths": self.output_paths,
                 "project_root": self.project_root
             }
             
-            for worker in self.workers:
-                worker_start = time.time()
-                if not worker.process(context, manager):
-                    logger.error(f"Fallo en {worker.__class__.__name__}")
-                    return None, 0.0
-                
-                worker_time = time.time() - worker_start
-                logger.debug(f" {worker.__class__.__name__} completado en {worker_time:.6f}s")
+            if not worker.process(context, manager):
+                logger.error(f"Fallo en {worker.__class__.__name__}")
+                return None, 0.0
             
-            total_time = time.time() - start_time
-            logger.debug(f" Completado en {total_time:.6f}s")
-            return manager, total_time
-        except Exception as e:
-            logger.error(f"Error en fase 1: {e}", exc_info=True)
-            return None, 0.0
+            worker_time = time.time() - worker_start
+            logger.debug(f" {worker.__class__.__name__} completado en {worker_time:.6f}s")
+        
+        total_time = time.time() - start_time
+        logger.debug(f" Completado en {total_time:.6f}s")
+        return manager, total_time

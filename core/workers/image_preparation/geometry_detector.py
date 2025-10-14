@@ -1,5 +1,6 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
+import numpy as np
 from typing import Dict, Any, Optional, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -33,17 +34,17 @@ class GeometryDetector(ImagePrepAbstractWorker):
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            img = manager.workflow.full_img if manager.workflow else None
+            engine = self.engine
+            if engine is None:
+                logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")
+                return False
+            img_obj = manager.get_full_img()
+            img = img_obj.full_img if img_obj is not None else None
             if img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
             logger.debug("Full_img obtenida con éxito")
             
-            engine = self.engine
-            if engine is None:
-                logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")
-                return False
-                
             try:
                 results: Optional[List[List[int]]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
                 logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")

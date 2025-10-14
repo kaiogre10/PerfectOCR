@@ -94,7 +94,10 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
-                    self._save_debug_image(context, poly_id, corrected_img)
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name", [])
+                    output_paths = context.get("output_paths", [])
+                    save_croped_image(poly_id, corrected_img, output_paths, worker_name)
 
             total_time = time.time() - start_time
             logger.debug(f"S&P batch completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
@@ -144,16 +147,3 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             return original_img
         
         return result
-
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, np.dtype[np.uint8]]):
-        from services.output_service import save_image
-        import os
-        
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir = os.path.join(path, "sp")
-            file_name = f"{poly_id}_sp_debug.png"
-            save_image(image, output_dir, file_name)
-        
-        if output_paths:
-            logger.debug(f"Imagen de debug de S&P para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")

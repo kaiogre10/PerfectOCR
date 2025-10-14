@@ -1,6 +1,5 @@
 # PerfectOCR/core/workers/preprocessing/sharp.py
 import cv2
-import time
 import numpy as np
 import logging
 from typing import Dict, Any, List
@@ -26,7 +25,6 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
         de forma vectorizada y la aplica in-place.
         """
         try:
-            start_time = time.time()
             if not manager.validate_cropped_img():
                 logger.info(f"Sin cropped_img en el formatter")
                 return False
@@ -83,10 +81,11 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
                 polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
-                    self._save_debug_image(context, poly_id, corrected_img)
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name", [])
+                    output_paths = context.get("output_paths", [])
+                    save_croped_image(poly_id, corrected_img, output_paths, worker_name)
 
-            total_time = time.time() - start_time
-            logger.debug(f"Procesamiento Sharpening completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             return True
         except Exception as e:
             logger.error(f"Error en el procesamiento por lotes de SharpeningEnhancer: {e}", exc_info=True)
@@ -113,17 +112,3 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
         # unsharp_mask devuelve un float en [0, 1], se debe convertir de vuelta a uint8 [0, 255]
         corrected_img = (np.clip(sharpened_float, 0, 1) * 255).astype(np.uint8)
         return corrected_img
-
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
-        """Guarda una imagen de depuración si la salida está habilitada."""
-        from services.output_service import save_image
-        import os
-        
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir = os.path.join(path, "sharp")
-            file_name = f"{poly_id}_sharp_debug.png"
-            save_image(image, output_dir, file_name)
-        
-        if output_paths:
-            logger.debug(f"Imagen de debug de Sharp para '{poly_id}' guardada")

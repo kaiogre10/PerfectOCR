@@ -8,9 +8,7 @@ from core.factory.abstract_stager import AbstractStager
 logger = logging.getLogger(__name__)
 
 class PreprocessingStager(AbstractStager):
-    """
-    Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente.
-    """
+    """Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente."""
 
     def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         """Ejecuta la fase de preprocesamiento completa."""
@@ -18,15 +16,14 @@ class PreprocessingStager(AbstractStager):
 
     def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
-        logger.debug("Iniciando pipeline secuencial directo")
-        
-        # Para cada worker, procesar todos los polígonos
+            # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.time()
             worker_name = worker.__class__.__name__
             logger.debug(f"Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
                     
             context: Dict[str, Any] = {
+                "worker_name": worker_name,
                 "output_paths": self.output_paths,
                 "project_root": self.project_root
             }
@@ -42,3 +39,4 @@ class PreprocessingStager(AbstractStager):
         elapsed = time.time() - start_time
         logger.debug(f"Preprocesamiento completado en: {elapsed:.6f}s")
         return manager, elapsed
+        

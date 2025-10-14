@@ -85,7 +85,10 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
                 polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
-                    self._save_debug_image(context, poly_id, corrected_img)
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name", [])
+                    output_paths = context.get("output_paths", [])
+                    save_croped_image(poly_id, corrected_img, output_paths, worker_name)
 
             total_time = time.time() - start_time
             logger.debug(f"Procesamiento Gaussiano completado para {len(poly_ids_order)} polígonos en: {total_time:.6f}s")
@@ -110,17 +113,3 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
     def _apply_gauss_correction(self, original_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         """Aplica el filtro bilateral a una imagen."""
         return cv2.bilateralFilter(original_img, self.d, self.sigma_color, self.sigma_space)
-
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
-        """Guarda una imagen de depuración si la salida está habilitada."""
-        from services.output_service import save_image
-        import os
-        
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir = os.path.join(path, "gauss")
-            file_name = f"{poly_id}_gauss_debug.png"
-            save_image(image, output_dir, file_name)
-        
-        if output_paths:
-            logger.debug(f"Imagen de debug Gauss para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")

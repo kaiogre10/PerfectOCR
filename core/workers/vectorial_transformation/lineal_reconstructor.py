@@ -14,18 +14,18 @@ class LinealReconstructor(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('lineal', {})
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("reconstructed_lines", False)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         
         try:
             start_time = time.time()
-            polygons: Dict[str, Polygons] = context.get("polygons", {})
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
                 
-            lines_info: Dict[str, Any] = self._reconstruct_lines(polygons)
+            lines_info= self._reconstruct_lines(polygons)
             if not lines_info:
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
                 return False
@@ -36,19 +36,18 @@ class LinealReconstructor(VectorizationAbstractWorker):
             success = manager.create_text_lines(lines_info)
             if success:
                 logger.debug(f"Lineas guardads correctamente en el manager")
-                
-            else:
-                logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
-                return False
+                if self.output:
+                    from services.output_service import save_debug_ocr
+                    file_name: str = manager.workflow.metadata.image_name
+                    worker_name = context.get("worker_name", {})
+                    output_paths = context.get("output_paths", [])
+                    save_debug_ocr( output_paths, worker_name, lines_info, file_name)
 
-            if self.output:
-                file_name: str = manager.workflow.metadata.image_name
-                self._save_json(context, lines_info, file_name)
-
-            return True
+                return True
+                            
         except Exception as e:
             logger.error(f"error {e}", exc_info=True)
-            return False
+        return False
         
     def _reconstruct_lines(self, polygons: Dict[str, Polygons]) -> Optional[Dict[str, Any]]:
         """
@@ -131,19 +130,5 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 "polygon_ids": polygon_ids,
                 "text": " ".join(texts).strip()
             }
-            
-            self.lines_info = lines_info
+
             return lines_info
-
-    def _save_json(self, context: Dict[str, Any], lines_info: List[Dict[str, Any]], file_name: str):
-        project_root = self.project_root
-        from services.output_service import save_json
-        import os
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir: str = os.path.join(path, "reconstructed_lines")
-            json_file_name = f"{os.path.splitext(file_name)[0]}.json"
-            save_json(lines_info, output_dir, json_file_name, project_root)
-
-        if output_paths:
-            logger.debug(f"OCR Raw results para '{file_name}' guardado en {len(output_paths)} ubicaciones.")

@@ -21,11 +21,11 @@ class AngleCorrector(ImagePrepAbstractWorker):
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            full_img = manager.workflow.full_img if manager.workflow else None
+            img_obj = manager.get_full_img()
+            full_img = img_obj.full_img if img_obj is not None else None
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-                
             logger.debug("Full_img obtenida con éxito")
 
             full_img = self.correct_angle(full_img, manager)
@@ -65,14 +65,19 @@ class AngleCorrector(ImagePrepAbstractWorker):
             if h is None or w is None:
                 logger.warning("Dimensiones de imagen inválidas (None o 0) para la corrección de ángulo.")
                 return full_img
-
-            center = w // 2, h // 2
-            min_len = min((w) // 3, hough_min_line_length_cap_px)
             
-            edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
-            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold,
-                                    minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
-
+            try:
+                center = w // 2, h // 2
+                min_len = min((w) // 3, hough_min_line_length_cap_px)
+                
+                edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
+                lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold,
+                                        minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
+            except Exception as e:
+                logger.warning(f"No se detectaron líneas para la incinación: {e}", exc_info=True)
+                return full_img
+                
+                
             if lines is None or len(lines) == 0:
                 # logger.debug(f"No se detectaron líneas para la corrección de inclinación, {time.perf_counter() - total_time:.6f}s")
                 return full_img

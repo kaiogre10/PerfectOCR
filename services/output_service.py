@@ -5,60 +5,23 @@ import cv2
 import logging
 import csv
 import numpy as np
-import pandas as pd
-from typing import Dict, Optional, Any, List
-from core.domain.data_formatter import DataFormatter
+import pandas as pd # type: ignore
+from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
-def save_json(final_results: List[Dict[str, Any]], output_dir: str, file_name: str, project_root: str) -> Optional[str]:
-    """Guarda un JSON en disco."""
-    try:
-        project_root = project_root
-        os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, file_name)
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(final_results, f, indent=4, ensure_ascii=False)
-        return output_file
-    except Exception as e:
-        logger.error(f"Error guardando JSON: {e}", exc_info=True)
-        return None
-    
-def save_tabjson(line_ids: List[str], manager: DataFormatter, output_dir: str, file_name: str, project_root: str) -> Optional[str]:
-    """Guarda un TABJSON en disco."""
-    project_root = project_root
-    try:
-        marked_count = 0
-        tabular_lines_info: List[Dict[str, Any]] = []
-        marked_ids: List[str] = []
-        for line_id in line_ids:
-            if line_id in manager.workflow.all_lines if manager.workflow else {}:
-                line_obj = manager.workflow.all_lines[line_id]
-                line_obj.tabular_line = True
-                manager.workflow.all_lines[line_id] = line_obj
-                marked_count += 1
-                marked_ids.append(line_id)
-                tabular_lines_info.append({
-                    "line_id": line_id,
-                    "text": getattr(manager.workflow.all_lines[line_id], "text", ""),
-                    "polygon_ids": getattr(manager.workflow.all_lines[line_id], "polygon_ids", [])
-                })
+def save_croped_image(poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str):
+    """Guarda una imagen de depuración si la salida está habilitada."""
+    if isinstance(output_paths, str):
+        output_paths = [output_paths]
+    for path in output_paths:
+        output_dir = os.path.join(path, worker_name)
+        file_name = f"{poly_id}_{worker_name}.png"
+        save_image(image, output_dir, file_name)
+        
+    logger.debug(f"Imagenes debug de {worker_name} guardadas")
 
-        if marked_ids:
-            logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
-            for log_info in tabular_lines_info:
-                logger.debug(f"Líneas tabulares: {log_info['line_id']}: '{log_info['text']}' | polygons: {log_info['polygon_ids']}")
-
-    except Exception as e:
-        logger.error(f"Error guardando JSON: {e}", exc_info=True)
-
-        output_file = os.path.join(output_dir, file_name)
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(tabular_lines_info, f, indent=4, ensure_ascii=False)
-        return output_file
-    
-
-def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name_with_extension: str) -> Optional[str]:
+def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name_with_extension: str):
     """Guarda una única imagen en disco."""
     try:
         os.makedirs(output_dir, exist_ok=True)
@@ -67,30 +30,89 @@ def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file
         return img_path
     except Exception as e:
         logger.error(f"Error guardando imagen: {e}")
-        return None
+        
+def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str):
+    try:
+        final_results: Dict[str, Any] = {}
+        for line_id in results:
+            if line_id in results:
+                line_obj = results[line_id]
+                final_results[line_id] = {
+                    'lineal_id': line_obj.lineal_id,
+                    'text': line_obj.text,
+                    'polygon_ids': line_obj.polygon_ids,
+                }
+                
+        if isinstance(output_paths, str):
+            output_paths = [output_paths]
+        for path in output_paths:
+            output_dir = os.path.join(path, worker_name)
+            file_name = f"{file_name}_{worker_name}.json"
+            save_json(final_results, output_dir, file_name)
+            
+        logger.warning(f"Output JSON geneado para:'{file_name}'.")
+        
+    except Exception as e:
+        logger.error(f"Error guardando output JSON: {e}", exc_info=True)
+    
+def save_debug_ocr(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str):
+    try:
+        if isinstance(output_paths, str):
+            output_paths = [output_paths]
+        for path in output_paths:
+            output_dir = os.path.join(path, worker_name)
+            file_name = f"{file_name}_{worker_name}.json"
+            save_json(results, output_dir, file_name)
+            
+        logger.warning(f"OCR Raw results para '{file_name}'.")
+        
+    except Exception as e:
+        logger.warning(f"Error guardando output JSON: {e}", exc_info=True)
 
-def save_text(text: str, output_dir: str, file_name_with_extension: str) -> Optional[str]:
-    """Guarda texto en disco."""
+def save_json(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: str):
+    """Guarda un JSON en disco."""
     try:
         os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, file_name_with_extension)
+        output_file = os.path.join(output_dir, file_name)
         with open(output_file, 'w', encoding='utf-8') as f:
-            f.write(text)
+            json.dump(results, f, indent=4, ensure_ascii=False)
         return output_file
     except Exception as e:
-        logger.error(f"Error guardando texto: {e}")
+        logger.error(f"Error guardando JSON: {e}", exc_info=True)
         return None
         
-def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, header_text: List[str]) -> Optional[str]:
+def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: List[str] | str, worker_name: str, all_lines: Dict[str, Any]):
+    try:
+        
+        header_text: List[str] = []
+        
+        for line_obj in all_lines.values():
+            poly_ids_line = getattr(line_obj, "polygon_ids", []) or []
+            header_line = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
+            if header_line:
+                header_text = line_obj.text
+                for poly_id in poly_ids_line:
+                    if poly_id in poly_ids_line:
+                        poly_text = poly_ids_line[poly_id].ocr_text
+                        if poly_text:        
+                            header_text.append(poly_text)
+                break
+    
+        if not header_text:
+            header_text = list(corrected_df.columns)
+                    
+        for path in output_paths:
+            output_dir = os.path.join(path, worker_name)
+            file_name = f"{file_name}_{worker_name}.csv"
+            save_table(corrected_df, output_dir, file_name, header_text)
+        
+    except Exception as e:
+        logger.error(f"Error guardadndo tabla JSON de {worker_name},: {e}", exc_info=True)
+        
+def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, header_text: List[str]):
     """
     Guarda una tabla estructurada en formato CSV (compatible con Excel).
-    Args:
-        corrected_df: DataFrame con los datos corregidos.
-        output_dir: Carpeta de salida.
-        file_name: Nombre del archivo CSV.
-        line_header: Lista de nombres de columnas.
-    Returns:
-        Ruta del archivo guardado o None si hay error.
+    Ruta del archivo guardado o None si hay error.
     """
     try:            
         os.makedirs(output_dir, exist_ok=True)
@@ -111,20 +133,17 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
             )
         except Exception as e:
             logger.error(f"error generando el tables_master: {e}", exc_info=True)
+        
+        logger.info(f"Tabla debug generada de: {file_name}")
                         
         return output_file
     except Exception as e:
         logger.error(f"Error guardando CSV: {e}", exc_info=True)
-        return None
         
-def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section_title: str, header_text: List[str], master_filename: str = "tables_master.csv") -> Optional[str]:
+def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section_title: str, header_text: List[str], master_filename: str = "tables_master.csv"):
     """
     Appendea una tabla a un único CSV maestro con secciones, manteniendo headers por tabla.
     Formato:
-      # --- <section_title> ---
-      <header>
-      <rows...>
-      <blank line>
     """
     os.makedirs(output_dir, exist_ok=True)
     master_path = os.path.join(output_dir, master_filename)
@@ -134,5 +153,4 @@ def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section
         writer.writerow(header_text if (header_text and len(header_text) > 0) else list(corrected_df.columns))
         for row in corrected_df.itertuples(index=False, name=None):
             writer.writerow(row)
-        writer.writerow([])  # separador entre tablas
-    return master_path
+        writer.writerow([])
