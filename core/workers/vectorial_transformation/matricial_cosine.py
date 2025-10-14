@@ -426,35 +426,40 @@ class MatricialCusine(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"Error en falback de emergencia: {e}", exc_info=True)
         
+    # ...existing code...
     def _find_best_cluster(self, sorted_candidates: List[str], min_cluster: int, interval_margin: int, all_lines: Dict[str, AllLines]) -> List[str]:
-        """Encuentra el mejor cluster respetando min_cluster e interval"""
+        """Encuentra el mejor cluster respetando min_cluster e interval y devuelve todas las líneas del intervalo."""
         if len(sorted_candidates) < min_cluster:
             logger.warning(f"No hay suficientes candidatos ({len(sorted_candidates)}) para min_cluster ({min_cluster})")
             return []
         
-        # Obtener índices de las líneas candidatas en el documento original
         all_line_ids = list(all_lines.keys())
         candidate_indices = [all_line_ids.index(lid) for lid in sorted_candidates]
         
-        # Buscar el cluster más grande que respete el intervalo
-        best_cluster = []
+        best_start = None
+        best_end = None
         best_size = 0
-        
+
         for i in range(len(candidate_indices)):
-            current_cluster = [sorted_candidates[i]]
+            start_idx = candidate_indices[i]
+            end_idx = start_idx
             current_size = 1
-            
-            # Expandir el cluster hacia adelante respetando interval_margin
+
             for j in range(i + 1, len(candidate_indices)):
                 if candidate_indices[j] - candidate_indices[j-1] <= interval_margin:
-                    current_cluster.append(sorted_candidates[j])
+                    end_idx = candidate_indices[j]
                     current_size += 1
                 else:
                     break
-            
-            # Solo considerar clusters que cumplan min_cluster
+
             if current_size >= min_cluster and current_size > best_size:
-                best_cluster = current_cluster
+                best_start = start_idx
+                best_end = end_idx
                 best_size = current_size
-        
-        return best_cluster
+
+        if best_start is not None and best_end is not None:
+            # Devuelve todas las líneas entre best_start y best_end (inclusive)
+            return all_line_ids[best_start:best_end+1]
+        else:
+            return []
+    #
