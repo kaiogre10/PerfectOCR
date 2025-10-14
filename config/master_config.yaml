@@ -75,7 +75,7 @@ enabled_outputs:
   features: false
   image_features: false
   table_structured: false
-  math_max_corrected: true
+  math_max_corrected: false
 
 # Configuración de procesamiento
 processing:

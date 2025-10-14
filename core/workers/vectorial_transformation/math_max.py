@@ -40,11 +40,22 @@ class MatrixSolver(VectorizationAbstractWorker):
             corrected_df, final_semantic_types = self.solve(df)
             if self.output:
                 from services.output_service import save_debug_table
-                all_lines: Dict[str, Any] = manager.workflow.all_lines if manager.workflow else {}
+                all_lines = manager.workflow.all_lines if manager.workflow else {}
+                polygons = manager.workflow.polygons if manager.workflow else {}
+
+                header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
+                header_line_id = header_line_ids[0] if header_line_ids else None
+
+                header_polygons = []
+                if header_line_id and header_line_id in all_lines:
+                    line_obj = all_lines[header_line_id]
+                    polygon_ids = getattr(line_obj, "polygon_ids", [])
+                    header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
+
                 file_name: str = manager.workflow.metadata.image_name # type: ignore
                 worker_name = context.get("worker_name", {})
                 output_paths = context.get("output_paths", [])
-                save_debug_table(corrected_df, file_name, output_paths, worker_name, all_lines)
+                save_debug_table(corrected_df, file_name, output_paths, worker_name, header_polygons)
 
             # Log simple de cómo queda la tabla ya corregida
             logger.debug("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))

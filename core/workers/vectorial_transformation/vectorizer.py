@@ -4,7 +4,6 @@ import time
 import logging
 import math
 from typing import Dict, Any, List, Optional, Tuple
-from pandas import DataFrame
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons, SemanticClassification
@@ -48,12 +47,19 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Si no hay intervalo, se prosigue con la vectorización normal
                 all_features = self._vectorize_text(manager)
                 if all_features:
-                    total_time = time.time() - start_time                    
+                    total_time = time.time() - start_time
+
+                    if self.features_output:
+                        from services.output_service import save_table_values
+                        file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                        worker_name = context.get("worker_name", {})
+                        output_paths = context.get("output_paths", [])
+                        image_features = self.image_features
+                        save_table_values(file_name, all_features, output_paths, worker_name, image_features)
+                        
                     logger.debug(f"Vectorización completada en {total_time:.7f}s. Líneas válidas: {len(all_features)}")
                     context["all_features"] = all_features
                     logger.debug(f"Features guardadas en el contexto")
-                    if self.features_output:
-                        self._save_debug_table(manager, context, all_features)
                         
                     return True
                 else:
@@ -543,7 +549,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     return {}
 
             logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
-            logger.info(f"Codificación: {encoded_lines}")
+            # logger.info(f"Codificación: {encoded_lines}")
             return encoded_lines
 
         except Exception as e:
@@ -618,70 +624,3 @@ class Vectorizer(VectorizationAbstractWorker):
                 return False
         return True
         
-    def _save_debug_table(self, manager: DataFormatter, context: Dict[str, Any], all_features: Dict[str, Dict[str, float]]):
-        from services.output_service import save_table
-        import os
-        import pandas as pd #type: ignore
-        import matplotlib.pyplot as plt
-        # Crear DataFrame desde all_features
-        
-        df: DataFrame = pd.DataFrame.from_dict(all_features, orient='index')
-        df.index.name = 'line_id'
-        
-        # Resetear índice para que line_id sea una columna
-        df = df.reset_index()
-        
-        # Obtener nombre del archivo
-        file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-        output_paths = context.get("output_paths", [])
-        
-        for path in output_paths:
-            output_dir: str = os.path.join(path, "vectorizer")
-            table_file_name = f"{os.path.splitext(file_name)[0]}.csv"
-            save_table(df, output_dir, table_file_name, list(df.columns))
-
-        if self.image_features:
-        # Preparar datos (excluir line_id)
-            features_data = df.drop('line_id', axis=1)
-            feature_names: List[str] = list(features_data.columns.tolist())
-            
-            # Crear la figura
-            plt.figure(figsize=(12, 8))
-            
-            # Plotear cada línea del documento con valores originales
-            for idx, row in features_data.iterrows():
-                line_id: str = df.iloc[idx]['line_id']
-                plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1)
-            
-            # Configurar la gráfica
-            plt.xlabel('Features')
-            plt.ylabel('Valores de Features')
-            plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')
-            plt.xticks(rotation=45, ha='right')
-            plt.grid(True, alpha=0.3)
-            
-            # Calcular los límites del eje Y y poner los ticks de 1 en 1
-            if not features_data.empty:
-                ymin = features_data.min().min()
-                ymax = features_data.max().max()
-                ymin_tick = int(np.floor(ymin))
-                ymax_tick = int(np.ceil(ymax))
-                plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1))
-            
-            # Limitar leyenda si hay muchas líneas
-            if len(df) > 20:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
-            else:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-            
-            plt.tight_layout()
-            
-            # Guardar la gráfica
-            plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
-            plot_path = os.path.join(output_dir, plot_filename)
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-            plt.close()
-            
-            logger.info(f"Gráfica de features guardada en: {plot_path}")
-        else:
-            logger.debug("No se activo output para las gráficas")

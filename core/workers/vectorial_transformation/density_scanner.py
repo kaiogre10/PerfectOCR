@@ -91,10 +91,8 @@ class DensityScanner(VectorizationAbstractWorker):
         Filtra solo las líneas después del encabezado para evitar ruido.
         """
         all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-        header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
-        logger.info(f"HEADER_LINE: {header_line_id}")
-        
-        header_line_id = header_line_id[0] if header_line_id else None
+        header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
+        header_line_id = header_line_ids[0] if header_line_ids else None
         if header_line_id is None:
             return analyses
         

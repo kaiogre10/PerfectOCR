@@ -81,33 +81,82 @@ def save_json(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: st
         logger.error(f"Error guardando JSON: {e}", exc_info=True)
         return None
         
-def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: List[str] | str, worker_name: str, all_lines: Dict[str, Any]):
+def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: List[str] | str, worker_name: str, header_polygons: List[Any]):
     try:
-        
         header_text: List[str] = []
-        
-        for line_obj in all_lines.values():
-            poly_ids_line = getattr(line_obj, "polygon_ids", []) or []
-            header_line = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
-            if header_line:
-                header_text = line_obj.text
-                for poly_id in poly_ids_line:
-                    if poly_id in poly_ids_line:
-                        poly_text = poly_ids_line[poly_id].ocr_text
-                        if poly_text:        
-                            header_text.append(poly_text)
-                break
-    
+        for poly_obj in header_polygons:
+            poly_text = getattr(poly_obj, "ocr_text", None)
+            if poly_text:
+                header_text.append(poly_text)
         if not header_text:
             header_text = list(corrected_df.columns)
-                    
+
         for path in output_paths:
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.csv"
             save_table(corrected_df, output_dir, file_name, header_text)
-        
+
     except Exception as e:
         logger.error(f"Error guardadndo tabla JSON de {worker_name},: {e}", exc_info=True)
+
+def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]], output_paths: List[str] | str, worker_name: str, image_features: bool):
+    try:
+        df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index')
+        df.index.name = 'line_id'
+        
+        # Resetear índice para que line_id sea una columna
+        df = df.reset_index()
+
+        for path in output_paths:
+            output_dir = os.path.join(path, worker_name)
+            table_file_name = f"{file_name}_{worker_name}.csv"
+            save_table(df, output_dir, table_file_name, list(df.columns))
+
+        if image_features:
+            import matplotlib.pyplot as plt
+            features_data = df.drop('line_id', axis=1)
+            feature_names: List[str] = list(features_data.columns.tolist())
+            
+            # Crear la figura
+            plt.figure(figsize=(12, 8))
+            
+            # Plotear cada línea del documento con valores originales
+            for idx, row in features_data.iterrows():
+                line_id: str = df.iloc[idx]['line_id']
+                plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1)
+            
+            # Configurar la gráfica
+            plt.xlabel('Features')
+            plt.ylabel('Valores de Features')
+            plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')
+            plt.xticks(rotation=45, ha='right')
+            plt.grid(True, alpha=0.3)
+            
+            # Calcular los límites del eje Y y poner los ticks de 1 en 1
+            if not features_data.empty:
+                ymin = features_data.min().min()
+                ymax = features_data.max().max()
+                ymin_tick = int(np.floor(ymin))
+                ymax_tick = int(np.ceil(ymax))
+                plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1))
+            
+            # Limitar leyenda si hay muchas líneas
+            if len(df) > 20:
+                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+            else:
+                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            
+            plt.tight_layout()
+            
+            # Guardar la gráfica
+            plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
+            plot_path = os.path.join(output_dir, plot_filename)
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            logger.info(f"Gráfica de features guardada en: {plot_path}")
+    except Exception as e:
+        logger.error(f"Error calculando Features output: {e}", exc_info=True)
         
 def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, header_text: List[str]):
     """

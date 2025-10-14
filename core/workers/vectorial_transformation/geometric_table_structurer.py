@@ -76,18 +76,34 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 total_time = time.time() - start_time
                 if not df.empty:
                     logger.debug(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
+                    logger.debug(f"Estructuración de tabla completada en {total_time:.10f} s.")
+
                     context["table_copy"] = df.copy()
-                else:
-                    logger.warning("No se pudo generar la tabla estructurada, el DataFrame está vacío.")
-                logger.debug(f"Estructuración de tabla completada en {total_time:.10f} s.")
-                
-                # 7. Guardar usando DataFormatter moderno
-                if df.empty:
-                    logger.warning("No se guardará la tabla estructurada porque está vacía.")
-                    return False
-                success = manager.save_structured_table(df=df, columns=list(df.columns))
-                
-                return success
+                    if self.output:
+                        from services.output_service import save_debug_table
+                        all_lines = manager.workflow.all_lines if manager.workflow else {}
+                        polygons = manager.workflow.polygons if manager.workflow else {}
+
+                        header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
+                        header_line_id = header_line_ids[0] if header_line_ids else None
+
+                        header_polygons = []
+                        if header_line_id and header_line_id in all_lines:
+                            line_obj = all_lines[header_line_id]
+                            polygon_ids = getattr(line_obj, "polygon_ids", [])
+                            header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
+
+                        file_name: str = manager.workflow.metadata.image_name # type: ignore
+                        worker_name = context.get("worker_name", {})
+                        output_paths = context.get("output_paths", [])
+                        save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
+
+                    if manager.save_structured_table(df=df, columns=list(df.columns)):
+                        logger.info("Tabla guardada éxitosamente")
+
+                        return True
+
+                return False
             
             except Exception as e:
                 logger.error(f"Error en línea de encabezado: {e}", exc_info=True)

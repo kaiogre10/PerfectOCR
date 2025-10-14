@@ -67,7 +67,6 @@ class MatricialCusine(VectorizationAbstractWorker):
             else:
                 return_objects: bool = False
                 tabular_lines: List[str]= manager.get_tabular_lines(return_objects) #type: ignore
-                logger.info(f"Table_lines: {tabular_lines}")
                 header_idx = line_ids.index(header_line_id)
                                 
                 if tabular_lines:
@@ -203,12 +202,12 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Convertir la matriz dispersa a densa para mostrarla
         sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray() # type: ignore
         mean_log = np.mean(sims_mat_dense) # type: ignore
-        logger.info(f"Promedio matriz: {mean_log}")
-        logger.info("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
+        logger.debug(f"Promedio matriz: {mean_log}")
+        logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
         matriz_str = "\n".join(
             ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense] # type: ignore
         )
-        logger.info("Matriz:\n%s", matriz_str)
+        logger.debug("Matriz:\n%s", matriz_str)
 
         # para cada fila, calcular similitud media con las demás (excluir self)
         mean_sims: List[float] = []
@@ -225,7 +224,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             if mean_sim >= similarity_threshold:
                 matched_original_indices.append(int(orig_idx))
                 consecutive_failures +=1
-            logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
+            logger.debug(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
 
         table_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
         return table_line_ids
