@@ -176,20 +176,20 @@ class Vectorizer(VectorizationAbstractWorker):
                 return {}
             
             all_lines_features: Dict[str, Dict[str, float]] = {}
-            encoded_lines = self._calculate_encode_lines(manager, sorted_lines)
-            # Conteo inline: cantidad de elementos por línea y máximo global (sin función adicional)
-            max_count_by_line: Dict[str, int] = {
-                lid: (len(vals) if vals is not None else 0) # type: ignore
-                for lid, vals in (encoded_lines or {}).items()
-            }
-            global_max_encoded: int = max(max_count_by_line.values()) if max_count_by_line else 0
+            # encoded_lines = self._calculate_encode_lines(manager, sorted_lines)
+            # # Conteo inline: cantidad de elementos por línea y máximo global (sin función adicional)
+            # max_count_by_line: Dict[str, int] = {
+            #     lid: (len(vals) if vals is not None else 0) # type: ignore
+            #     for lid, vals in (encoded_lines or {}).items()
+            # }
+            # global_max_encoded: int = max(max_count_by_line.values()) if max_count_by_line else 0
             num_lines = len(sorted_lines)
 
             for i, (line_id, line_data) in enumerate(sorted_lines):
-                line_values = encoded_lines.get(line_id, [])
-                if not line_values:
-                    logger.warning(f"Línea {line_id} sin codificación o sin features geométricos; será ignorada.")
-                    continue
+            #     line_values = encoded_lines.get(line_id, [])
+            #     if not line_values:
+            #         logger.warning(f"Línea {line_id} sin codificación o sin features geométricos; será ignorada.")
+            #         continue
 
                 if not line_data:
                     logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")
@@ -248,11 +248,15 @@ class Vectorizer(VectorizationAbstractWorker):
                 max_diagonal = geoline_features.get("max_count_diagonal") or 0.0
                 diagonal_median = geoline_features.get("diagonal_median") or 0.0
                 bbox_width_median = geoline_features.get("bbox_width_median") or 0.0
+                bbox_height_median = geoline_features.get("bbox_height_median") or 0.0
                 area_median = geoline_features.get("area_median") or 0.0
                 perimeter_median = geoline_features.get("perimeter_median") or 0.0
                 angle_median = geoline_features.get("angle_median") or 0.0
+                slope_median = geoline_features.get("slope_median") or 0.0
 
                 bbox_height: float = bbox[3] - bbox[1]  # alto del bbox de la línea
+                bbox_height_inv = bbox_height / bbox_height_median if bbox_height_median != 0 else 0.0
+                bbox_h_dif = 1 - abs(bbox_height - bbox_height_median)/bbox_height_median if bbox_height_median != 0 else 0.0
                 bbox_width: float = float(bbox[2] - bbox[0])  # ancho del bbox de la línea
                 bbox_width_inv = bbox_width / bbox_width_median if bbox_width_median != 0 else 0.0
                 bbox_w_dif = 1 - abs(bbox_width - bbox_width_median)/bbox_width_median if bbox_width_median != 0 else 0.0
@@ -281,6 +285,9 @@ class Vectorizer(VectorizationAbstractWorker):
                 angle_inv = angle/ angle_median if angle_median != 0 else 0.0
                 diag_norm = float(diagonal / max_diagonal)  # diagonal normalizada al máximo
                 compact = ((perimeter**2) / line_area) / 100.0  # medida de compactación (perímetro al cuadrado sobre área), valores más bajos = formas más cuadradas/compactas
+                slope = bbox_width / bbox_height  if bbox_width != 0 else 0.0
+                slope_inv = slope / slope_median if slope_median != 0 else 0.0
+                slope_dif = 1 - abs(slope - slope_median)/slope_median if slope_median != 0 else 0.0
 
                 def _calculate_line_coords(sorted_lines: List[Tuple[str, AllLines]], current_index: int) -> Tuple[List[float], List[float], List[float], List[float]]:
                     """Calcula coordenadas de líneas anterior y siguiente, retorna listas vacías si no existen"""
@@ -354,33 +361,9 @@ class Vectorizer(VectorizationAbstractWorker):
                 align_next: Optional[float] = alignment(centroid, next_centroid)
                 
                 center_aling: float = alignment(centroid, main_centroid)
-                
-                # max_size_num_vals: float = 114.0
-                numeric_values: List[float] = [float(x) for x in line_values] # Líneas codificadas
-                
-                # Calcular estadísticos básicos
-                count: float = float(len(numeric_values))
-                mean: float = sum(numeric_values) / count
-                std_dev = np.std(numeric_values, ddof=1).astype(float)
-
-                # Calcular etadisticos especiales
-                if mean > 0.0:
-                    mean_ref: float = float(global_max_encoded / 2.0)
-                    mean_margin: float = (mean - mean_ref) / mean_ref
-                    mean_margin = max(-1.0, min(1.0, mean_margin))
-                else:
-                    mean_margin = 0.0
-                    
-                # Calcular skewness
-                skewness: float = 0.0
-                if std_dev > 0:
-                    moment3: float = sum(((x - mean) / std_dev) ** 3 for x in numeric_values)
-                    skewness = moment3 / count
                         
                 # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
                 line_all_features: Dict[str, float] = {
-                    'mean_margin': mean_margin,
-                    'skewness': skewness,
                     "has_numeric": has_numeric,
                     "num_median_norm": num_median_norm,
                     "numeric_count_norm": num_count_norm,
@@ -393,6 +376,8 @@ class Vectorizer(VectorizationAbstractWorker):
                     "width_rel": width_rel,
                     "bbox_width_inv": bbox_width_inv,
                     "bbox_w_dif": bbox_w_dif,
+                    "bbox_height_inv": bbox_height_inv,
+                    "bbox_h_dif": bbox_h_dif,
                     "ratio_area_norm": ratio_area_norm,
                     "area_inv": area_inv,
                     "area_dif": area_dif,
@@ -412,6 +397,8 @@ class Vectorizer(VectorizationAbstractWorker):
                     "align_prev": align_prev,
                     "align_next": align_next,
                     "center_aling": center_aling,
+                    "slope_inv": slope_inv,
+                    "slope_dif": slope_dif,
                 }
                 all_lines_features[line_id] = line_all_features
 
@@ -474,11 +461,13 @@ class Vectorizer(VectorizationAbstractWorker):
             geoline_features: Dict[str, float] = {}
 
             width_count_by_line: Dict[str, float] = {}
+            height_count_by_line: Dict[str, float] = {}
             area_count_by_line: Dict[str, float] = {}
             perimeter_count_by_line: Dict[str, float] = {}
             asprat_count_by_line: Dict[str, float] = {}
             diagonal_count_by_line: Dict[str, float] = {}
             angle_count_by_line: Dict[str, float] = {}
+            slope_count_by_line: Dict[str, float] = {}
             
             for line_id, line_data in sorted_lines:
                 line_geometry = getattr(line_data, "line_geometry", None)
@@ -490,13 +479,16 @@ class Vectorizer(VectorizationAbstractWorker):
                     perimeter: float = 2 * (bbox_width + bbox_height)
                     aspect_ratio = ((bbox_height / bbox_width) * 100)
                     diagonal = float(np.sqrt((bbox_width**2.0) + (bbox_height**2.0)))
+                    slope = bbox_width / bbox_height  if bbox_width != 0 else 0.0
                     angle = math.degrees(math.atan2(bbox_height, bbox_width))
                     width_count_by_line[line_id] = bbox_width
+                    height_count_by_line[line_id] = bbox_height
                     area_count_by_line[line_id] = area
                     perimeter_count_by_line[line_id] = perimeter
                     asprat_count_by_line[line_id] = aspect_ratio
                     diagonal_count_by_line[line_id] = diagonal
                     angle_count_by_line[line_id] = angle
+                    slope_count_by_line[line_id] = slope
                     
             if width_count_by_line:
                 max_count_width = max(width_count_by_line.values()) if width_count_by_line else 0.0      # Ancho máximo de los bounding boxes de las líneas
@@ -508,12 +500,16 @@ class Vectorizer(VectorizationAbstractWorker):
                 diagonal_median = float(np.median(diagonal_values)) if diagonal_values else 0.0
                 bbox_width_values= list(width_count_by_line.values())
                 bbox_width_median = float(np.median(bbox_width_values)) if bbox_width_values else 0.0
+                bbox_height_values= list(height_count_by_line.values())
+                bbox_height_median = float(np.median(bbox_height_values)) if height_count_by_line else 0.0
                 area_values= list(area_count_by_line.values())
                 area_median = float(np.median(area_values)) if area_values else 0.0
                 perimeter_values = list(perimeter_count_by_line.values())
                 perimeter_median = float(np.median(perimeter_values)) if perimeter_values else 0.0
                 angle_values = list(angle_count_by_line.values())
                 angle_median = float(np.median(angle_values)) if angle_values else 0.0
+                slope_values = list(slope_count_by_line.values())
+                slope_median = float(np.median(slope_values)) if slope_values else 0.0
 
                 geoline_features = {
                     "max_count_width": max_count_width,
@@ -523,9 +519,11 @@ class Vectorizer(VectorizationAbstractWorker):
                     "max_count_diagonal": max_count_diagonal,
                     "diagonal_median": diagonal_median,
                     'bbox_width_median': bbox_width_median,
+                    "bbox_height_median": bbox_height_median,
                     'area_median': area_median,
                     'perimeter_median': perimeter_median,
-                    "angle_median": angle_median
+                    "angle_median": angle_median,
+                    "slope_median": slope_median
                 }
 
             return geoline_features
@@ -533,28 +531,28 @@ class Vectorizer(VectorizationAbstractWorker):
                 logger.debug(f"Error en feaures de lineas: {e}", exc_info=True)
                 return {}
                 
-    def _calculate_encode_lines(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]) -> Dict[str, List[int]]:
-        try:
-            encoder = manager.get_density_encoder()
-            encoded_lines: Dict[str, List[int]] = {}
+    # def _calculate_encode_lines(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]) -> Dict[str, List[int]]:
+    #     try:
+    #         encoder = manager.get_density_encoder()
+    #         encoded_lines: Dict[str, List[int]] = {}
 
-            for line_id, line_obj in sorted_lines:
-                line_text = getattr(line_obj, "text", "")
-                if line_text:
-                    compact_text = ''.join(line_text.split())
-                    encoded_text = [encoder.get(char, 0) for char in compact_text]
-                    encoded_lines[line_id] = encoded_text
-                else:
-                    logger.warning(f"Línea {line_id} no tiene texto para codificar.")
-                    return {}
+    #         for line_id, line_obj in sorted_lines:
+    #             line_text = getattr(line_obj, "text", "")
+    #             if line_text:
+    #                 compact_text = ''.join(line_text.split())
+    #                 encoded_text = [encoder.get(char, 0) for char in compact_text]
+    #                 encoded_lines[line_id] = encoded_text
+    #             else:
+    #                 logger.warning(f"Línea {line_id} no tiene texto para codificar.")
+    #                 return {}
 
-            logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
-            # logger.info(f"Codificación: {encoded_lines}")
-            return encoded_lines
+    #         logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
+    #         # logger.info(f"Codificación: {encoded_lines}")
+    #         return encoded_lines
 
-        except Exception as e:
-            logger.error(f"Error codificando líneas: {e}", exc_info=True)
-            return {}
+    #     except Exception as e:
+    #         logger.error(f"Error codificando líneas: {e}", exc_info=True)
+    #         return {}
 
     def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[str]]:
         

@@ -28,7 +28,7 @@ class DensityScanner(VectorizationAbstractWorker):
             valid_analyses = self._get_interval(analyses, manager)
             
             table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
-            logger.info(f"DBSCAN: {len(table_line_ids)} table_line_ids: {table_line_ids}")
+            logger.debug(f"RESULTADOS DBSCAN: {len(table_line_ids)} table_line_ids: {table_line_ids}")
             if table_line_ids:
                 success: bool = manager.save_tabular_lines(table_line_ids)
                 total_time = time.time() - start_time

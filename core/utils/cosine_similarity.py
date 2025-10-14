@@ -1,5 +1,7 @@
 import numpy as np
-from typing import List
+from typing import List, Any
+from scipy.sparse import csr_matrix # type: ignore
+from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 
 def alignment(ref_c: List[float], other_c: List[float]) -> float:
     """
@@ -16,3 +18,6 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
         return 1.0
     cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
     return 1.0 - abs(float(cosine))
+
+def calculate_similarity_ref(X: csr_matrix, ref_vec: np.ndarray[Any, Any], dense_output: bool):
+    return cosine_similarity(ref_vec, X, dense_output)[0]

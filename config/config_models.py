@@ -192,6 +192,7 @@ class CosineSimilarity(ConfigWithNumpy):
     min_cluster: int
     similarity_threshold: float
     interval: int
+    dummie_weights: Tuple[float, float]
 
 class Vectorizer(ConfigWithNumpy):
     keywords_interval_enabled: bool

@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage, SemanticClassification
+from core.domain.data_models import WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage, SemanticClassification, VECTOR_MEDIAN_DUMMIE, VECTOR_MEAN_DUMMIE
 import numpy as np
 import dataclasses
 import logging
@@ -23,6 +23,8 @@ class DataFormatter:
         self.encoder: Optional[Dict[str, int]] = None
         self.frecuency: Optional[Dict[str, int]] = None
         self.structured_table: Optional[StructuredTable] = None
+        self.mean_dummie: Optional[Dict[str, float]] = None
+        self.median_dummie: Optional[Dict[str, float]] = None
     
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando solo dataclasses"""
@@ -149,7 +151,35 @@ class DataFormatter:
         except Exception as e:
             logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
             return {}
-            
+
+    def get_mean_dummie(self) -> Dict[str, float]:
+        """
+        Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
+        Si no se especifican line_ids, codifica todas las líneas existentes.
+        """
+        try:
+            if self.mean_dummie is None:
+                self.mean_dummie = VECTOR_MEAN_DUMMIE
+            return self.mean_dummie
+        
+        except Exception as e:
+            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
+            return {}
+
+    def get_median_dummie(self) -> Dict[str, float]:
+        """
+        Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
+        Si no se especifican line_ids, codifica todas las líneas existentes.
+        """
+        try:
+            if self.median_dummie is None:
+                self.median_dummie = VECTOR_MEDIAN_DUMMIE
+            return self.median_dummie
+        
+        except Exception as e:
+            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
+            return {}
+
     def get_tabular_lines(self, return_objects: bool = False) -> Union[Dict[str, Any], List[str]]:
         """
         Retorna las líneas marcadas como tabulares en workflow.all_lines.

@@ -77,67 +77,69 @@ class ConfigService:
     def output_path(self) -> str:
         """Devuelve la ruta de la carpeta de salida."""
         return self.paths_config.get('output_folder', "")
+    
+    @property
+    def workers_order(self) -> Dict[str, List[str]]:
+        return self.config.get("pipeline_secuence", {})
 
     @property
     def models_config(self) -> Dict[str, Any]:
-        """Obtiene la configuración global para Paddle"""
-        return self.config.get('models_config', {})
+        """Obtiene la configuración global para modelos ML"""
+        return { 
+            "models_config": self.config.get('models_config', {}),
+            "ocr_stage": self.workers_order.get("ocr_stage", [])
+        }
 
     @property
     def validated_paddle_config(self):
         """Acceso directo al objeto Pydantic validado."""
         return self.validated_config.models_config
 
-    @property
-    def paddle_det_config(self) -> Dict[str, Any]:
-        """Devuelve la configuración fusionada para el modelo de detección de Paddle.
-        Incluye solo los parámetros generales relevantes y la ruta del modelo de detección."""
-        paddle_config = self.models_config
-        det_model = paddle_config.get('models', {})
-        det_model_path = det_model.get("det_model_dir", "")
+    # @property
+    # def paddle_det_config(self) -> Dict[str, Any]:
+    #     """Devuelve la configuración fusionada para el modelo de detección de Paddle.
+    #     Incluye solo los parámetros generales relevantes y la ruta del modelo de detección."""
+    #     paddle_config = self.models_config
+    #     det_model = paddle_config.get('models', {})
+    #     det_model_path = det_model.get("det_model_dir", "")
 
-        return {
-            "det_model_dir": det_model_path,
-            "use_angle_cls": paddle_config.get("use_angle_cls", False),
-            "show_log": paddle_config.get("show_log", False),
-            "use_gpu": paddle_config.get("use_gpu", False),
-            "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
-            "lang": paddle_config.get("lang", "es"),
-        }
+    #     return {
+    #         "det_model_dir": det_model_path,
+    #         "use_angle_cls": paddle_config.get("use_angle_cls", False),
+    #         "show_log": paddle_config.get("show_log", False),
+    #         "use_gpu": paddle_config.get("use_gpu", False),
+    #         "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
+    #         "lang": paddle_config.get("lang", "es"),
+    #     }
 
-    @property
-    def paddle_rec_config(self) -> Dict[str, Any]:
-        """
-        Devuelve la configuración fusionada para el modelo de reconocimiento de Paddle.
-        Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.
-        """
-        paddle_config = self.models_config
-        rec_model = paddle_config.get('models', {})
-        rec_model_path = rec_model.get("rec_model_dir", "")
+    # @property
+    # def paddle_rec_config(self) -> Dict[str, Any]:
+    #     """
+    #     Devuelve la configuración fusionada para el modelo de reconocimiento de Paddle.
+    #     Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.
+    #     """
+    #     paddle_config = self.models_config
+    #     rec_model = paddle_config.get('models', {})
+    #     rec_model_path = rec_model.get("rec_model_dir", "")
 
-        return {
-            "rec_model_dir": rec_model_path,
-            "use_angle_cls": paddle_config.get("use_angle_cls", False),
-            "show_log": paddle_config.get("show_log", False),
-            "use_gpu": paddle_config.get("use_gpu", False),
-            "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
-            "lang": paddle_config.get("lang", "es"),
-        }
+    #     return {
+    #         "rec_model_dir": rec_model_path,
+    #         "use_angle_cls": paddle_config.get("use_angle_cls", False),
+    #         "show_log": paddle_config.get("show_log", False),
+    #         "use_gpu": paddle_config.get("use_gpu", False),
+    #         "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
+    #         "lang": paddle_config.get("lang", "es"),
+    #     }
 
-    @property
-    def data_finder_config(self) -> Dict[str, str]:
-        word_finder_config = self.models_config
-        find_model = word_finder_config.get("models", {})
-        model_path = word_finder_config.get("C:/word_finder_model/data/word_finder_model.pkl")
-        system_config = self.system_config
-        project_root = system_config.get("project_root", "")
+    # @property
+    # def data_finder_config(self) -> Dict[str, str]:
+    #     word_finder_config = self.models_config
+    #     find_model = word_finder_config.get("models", {})
+    #     model_path = word_finder_config.get("C:/word_finder_model/data/word_finder_model.pkl")
+    #     system_config = self.system_config
+    #     project_root = system_config.get("project_root", "")
 
-        return {
-            "model_path": model_path,
-            "project_root": project_root
-        }
-
-    @property
-    def workers_order(self) -> Dict[str, List[str]]:
-        return self.config.get("pipeline_secuence", {})
-
+    #     return {
+    #         "model_path": model_path,
+    #         "project_root": project_root
+    #     }

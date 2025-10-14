@@ -28,8 +28,8 @@ class TextCleaner(OCRAbstractWorker):
         # Configurada directamente en el worker en lugar de leerla desde un YAML.
         self.chars = [
             ")", "(", "]", "[", "{", "}", "|", "*", "^", "#", "@",
-            "-", "~", "_", "+", "=", "<", ">", ";", ":",
-            "'", "!", "¡", "?", "¿", "'", "/", "\\"
+            "-", "~", "_", "+", "=", "<", ">", ";", ":", "x",
+            "'", "!", "¡", "?", "¿", "'", "/", "\\", "''",
         ]
 
         # normalizar a conjunto de caracteres de longitud 1

@@ -30,10 +30,11 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         # 3. WorkflowManager analiza y reporta
         workflow_report = workflow_manager.count_and_plan()
         
-        # 4. Iniciar Paddle Singleton
+        # 4. Iniciar modelos Singleton
         models_manager = ModelsManager.get_instance()
         models_config = config_services.models_config
-        models_manager.initialize_models(models_config, project_root)
+        if not models_manager.initialize_models(models_config, project_root):
+            logger.fatal(f"Proceso detenido, no se pudieron cargar los modelos")
 
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
         stagers_factory = StagersFactory(
@@ -59,7 +60,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         return results
         
     except Exception as e:
-        logging.error(f"Error fatal en main: {e}", exc_info=True)
+        logger.fatal(f"Error fatal en main: {e}", exc_info=True)
         return []
         
     finally:

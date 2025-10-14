@@ -26,12 +26,12 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "cleaner"
-    - "angle_corrector"
+    # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-    - "dummie"
+    # - "dummie"
     - "moire"
     - "sp"
     - "gauss"
@@ -44,7 +44,7 @@ pipeline_secuence:
     # - "dummie"
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
     # - "dummie"
@@ -215,6 +215,7 @@ modules:
       min_cluster: 1
       similarity_threshold: 0.90
       interval: 2
+      dummie_weights: [0.35, 0.65]
     
     table_structurer:
       min_h: 3

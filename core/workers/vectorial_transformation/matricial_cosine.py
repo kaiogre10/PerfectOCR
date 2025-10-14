@@ -2,7 +2,7 @@
 import numpy as np
 import time
 import logging
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines
@@ -25,9 +25,9 @@ class MatricialCusine(VectorizationAbstractWorker):
             if not analysis:
                 logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                 return True            
-            tabular_line_ids: List[str] = self._compare_vectors(manager, analysis)
-            if tabular_line_ids:
-                succes = manager.save_tabular_lines(tabular_line_ids)
+            table_line_ids: List[str] = self._compare_vectors(manager, analysis)
+            if table_line_ids:
+                succes = manager.save_tabular_lines(table_line_ids)
                 if succes:
                     
                     logger.info("Tablas guaradas en el manager desde coseno")
@@ -59,7 +59,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             header_line_id = header_line_id[0] if header_line_id else None
 
             if header_line_id is None:
-                table_line_ids = self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
+                table_line_ids = self._emergency_fallback(analysis, line_ids, feature_keys, all_lines, manager)
                 total_time = time.time() - start_time
                 logger.debug(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                 return table_line_ids
@@ -67,6 +67,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             else:
                 return_objects: bool = False
                 tabular_lines: List[str]= manager.get_tabular_lines(return_objects) #type: ignore
+                logger.info(f"TABULAR LINES: {tabular_lines}")
                 header_idx = line_ids.index(header_line_id)
                                 
                 if tabular_lines:
@@ -84,8 +85,9 @@ class MatricialCusine(VectorizationAbstractWorker):
                         logger.info(f"Fallback coseno completado en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                         return table_line_ids
                     else:
-                        logger.error("Error al guardar líneas tabulares validadas en el workflow (fallback)")
-                        return []
+                        table_line_ids = self._emergency_fallback(analysis, line_ids, feature_keys, all_lines, manager)
+                        logger.warning("Método fallback falló, pasando al método de emergencia")
+                        return table_line_ids
         except Exception as e:
             logger.error(f"Error en matriz de similitud coseno: {e}", exc_info=True)
         return []
@@ -109,7 +111,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         
         if not tabular_indices:
             logger.error("Ninguna línea tabular encontrada en line_ids")
-            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines, manager)
             
         last_scanner_idx = max(tabular_indices)
 
@@ -118,7 +120,7 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         if start_idx > end_idx:
             logger.error("Intervalo para validar vacío (header al final o scanner produjo líneas anteriores al header).")
-            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines, manager)
 
         # LOG: Mostrar el intervalo de líneas a validar
         interval_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
@@ -160,7 +162,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         # reconstruir intervalo y comprobar si quedó vacío tras el corte
         if start_idx > end_idx:
             logger.debug("Intervalo quedó vacío tras cortar por líneas bloqueadas.")
-            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
+            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines, manager)
 
         filtered_interval_indices: List[int] = [i for i in range(start_idx, end_idx + 1)]
         logger.debug(f"Intervalo filtrado: {len(filtered_interval_indices)} líneas (de {end_idx - start_idx + 1} originales)")
@@ -205,7 +207,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         logger.debug(f"Promedio matriz: {mean_log}")
         logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
         matriz_str = "\n".join(
-            ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense] # type: ignore
+            ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense]
         )
         logger.debug("Matriz:\n%s", matriz_str)
 
@@ -242,7 +244,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         ref_line_idx = header_idx + 1
         if ref_line_idx >= len(line_ids):
             logger.warning("No hay líneas después del encabezado para usar como referencia.")
-            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
+            return []
 
         # Buscar la primera línea después del encabezado que sí tenga features, si no la encuentra, usa el header igual
         ref_line_id = None
@@ -262,7 +264,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             ref_line_id = header_line_id
             ref_features = analysis.get(header_line_id, {})
             logger.warning("Ninguna línea siguiente al encabezado tiene features. Usando el header como referencia.")
-            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
+            return []
 
         ref_vec = np.array([float(ref_features.get(k, 0.0)) for k in feature_keys]).reshape(1, -1)
 
@@ -282,11 +284,14 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         if not candidate_rows:
             logger.warning("No hay líneas candidatas para fallback después de la línea de referencia.")
-            return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines)
+            return []
 
         # Calcular similitud y registrar la matriz
+        from core.utils.cosine_similarity import calculate_similarity_ref
+
         X = csr_matrix(candidate_rows, dtype=np.float64)
-        sims = cosine_similarity(ref_vec, X)[0]
+        sims = calculate_similarity_ref(X, ref_vec)
+        # sims = cosine_similarity(ref_vec, X, dense_output=False)[0]
 
         logger.debug(f"Promedio de similitud con línea de referencia '{ref_line_id}': {np.mean(sims):.6f}")
         logger.debug("Candidatas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
@@ -316,50 +321,75 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         logger.debug(f"Fallback encontró {len(final_tabular_lines)} líneas tabulares continuas.")
         return final_tabular_lines
-        
-    def _emergency_fallback(self, analysis: Dict[str, Dict[str, float]],  line_ids: List[str], feature_keys: List[str], all_lines: Dict[str, AllLines]) -> List[str]:
+
+    def _emergency_fallback(self, analysis: Dict[str, Dict[str, float]], line_ids: List[str], feature_keys: List[str], all_lines: Dict[str, AllLines], manager: DataFormatter) -> List[str]:
+        """
+        Fallback de emergencia optimizado. Compara todas las líneas del documento contra vectores DUMMIE
+        usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares.
+        """
+        logger.info(f"INICIANDO MÉTODO DE EMERGENCA")
         similarity_threshold: float = self.worker_config.get("similarity_threshold")
         min_cluster: int = int(self.worker_config.get("min_cluster"))
         interval_margin: int = int(self.worker_config.get("interval"))
+        dummie_weights: Tuple[float, float] = self.worker_config.get("dummie_weights", [])
+        mean_w, median_w = dummie_weights
         
-        all_line_indices: List[int] = []
-        for line_id in all_lines:
-            if line_id in line_ids:
-                all_line_indices.append(line_ids.index(line_id))
-                
-        mat_rows: List[Dict[str, List[float]]] = []
-        
-        for idx in all_line_indices:  
-            line_id = line_ids[idx] 
-            if not analysis:
-                logger.error("Error extrayendo features")
-            features = analysis.get(line_id, {}) 
-            
+        from core.utils.cosine_similarity import calculate_similarity_ref
+
+        all_lines_indices = all_lines.keys()
+
+        # 1. Preparación de datos
+        mat_rows: List[List[float]] = []
+        all_line_ids: List[str] = []
+        for line_id in all_lines_indices:
+            features = analysis.get(line_id)
             if not features:
-                logger.warning(f"No se encontraron features para línea {line_id}")
                 continue
             
             row: List[float] = [float(features.get(k, 0.0)) for k in feature_keys]
             mat_rows.append(row)
-            all_line_indices.append(idx)
-            line_ids.append(line_id)
+            all_line_ids.append(line_id)
 
         n = len(mat_rows)
             
         X = csr_matrix(mat_rows, dtype=np.float32)
-        timecos0 = time.perf_counter()
-        sims_mat = cosine_similarity(X, dense_output=False) # type: ignore
-        logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
-            
-        # Convertir la matriz dispersa a densa para mostrarla
-        sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray() 
-        mean_log = np.mean(sims_mat_dense) 
-        logger.info(f"Promedio matriz: {mean_log}")
-        logger.info("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in all_line_indices))
-        matriz_str = "\n".join(
-            ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense]
-        )
-        logger.info("Matriz:\n%s", matriz_str)
+
+        # 2. Construcción de vectores Dummie a partir de diccionarios
+        median_dummie_dict = manager.get_median_dummie()
+        median_dummie_list = [median_dummie_dict.get(k, 0.0) for k in feature_keys]
+        if not len(median_dummie_list) == len(feature_keys):
+            return []
+        
+        median_ref_vec = np.array(median_dummie_list, dtype=np.float32).reshape(1, -1)
+        sims_median = calculate_similarity_ref(X, median_ref_vec, dense_output=False)
+
+        mean_dummie_dict = manager.get_mean_dummie()
+        mean_dummie_list = [mean_dummie_dict.get(k, 0.0) for k in feature_keys]
+        if not len(mean_dummie_list) == len(feature_keys):
+            return []
+        
+        mean_ref_vec = np.array(mean_dummie_list, dtype=np.float32).reshape(1, -1)
+        sims_mean = calculate_similarity_ref(X, mean_ref_vec, dense_output=False)
+
+        # 3. Ponderación de resultados
+        median_weighted = sims_median * median_w
+        mean_weighted = sims_mean * mean_w
+        sims_mat = mean_weighted + median_weighted
+
+        # logger.info(f"sims_MEDIAN: {sims_median}")
+        # logger.info(f"sims_MEAN: {sims_mean}")
+        # logger.info(f"sims_mat: {sims_mat}")
+        
+        # sims_mat_dense = sims_mat.toarray() 
+        logger.info(f"Promedio de similitud con dummiessumados '{sims_mat}': {np.mean(sims_mat, dtype=np.float32):.6f}")
+        logger.info("Todas las líneas ordendas: %s", ", ".join(str(lid) for lid in all_lines_indices))
+        sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims_mat) + "]"
+        logger.info("Similitudes:\n%s", sims_str)
+
+        # Log detallado por línea
+        for idx, (line_id, sim) in enumerate(zip(all_line_ids, sims_mat)):
+            feature_vals = [f"{v:7.4f}" for v in mat_rows[idx]]
+            logger.info(f"{line_id}: Sim: {sim:7.4f} | [{', '.join(feature_vals)}]")
         
         mean_sims: List[float] = []
         for i in range(n):
@@ -368,30 +398,33 @@ class MatricialCusine(VectorizationAbstractWorker):
             else:
                 mean_val = float((np.sum(sims_mat[i]) - 1.0) / (n - 1)) # type: ignore
                 mean_sims.append(mean_val)
-                
-        matched_original_indices: List[int] = []
-        consecutive_failures = 0
-        for mean_sim, orig_idx, lid in zip(mean_sims, all_line_indices, line_ids):
-            if mean_sim >= similarity_threshold:
-                matched_original_indices.append(int(orig_idx))
-                consecutive_failures +=1
-            logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.4f}")
         
-        if not matched_original_indices:
-            logger.warning("No se encontraron líneas que superen el umbral")
-            return []
-    
-        # Obtener las line_ids que pasaron el umbral
-        candidate_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
+        try:
+            matched_original_indices: List[int] = []
+            consecutive_failures = 0
+            for idx, (sims_mat, lid) in enumerate(zip(sims_mat, all_lines_indices)):
+                if sims_mat >= similarity_threshold:
+                    matched_original_indices.append(idx)
+                    consecutive_failures += 1
+                logger.info(f"Línea {lid} idx={idx}: mean_sim={sims_mat:.4f}")
+            
+            if not matched_original_indices:
+                logger.warning("No se encontraron líneas que superen el umbral")
+                return []
         
-        # Ordenar por line_id (ascendente)
-        sorted_candidates = sorted(candidate_line_ids)
-        
-        # Encontrar el cluster más grande que respete min_cluster e interval
-        table_line_ids = self._find_best_cluster(sorted_candidates, min_cluster, interval_margin, all_lines)
-        
-        logger.info(f"Cluster encontrado por fallback: {table_line_ids}")
-        return table_line_ids
+            # Obtener las line_ids que pasaron el umbral
+            candidate_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
+            
+            # Ordenar por line_id (ascendente)
+            sorted_candidates = sorted(candidate_line_ids)
+            
+            # Encontrar el cluster más grande que respete min_cluster e interval
+            table_line_ids = self._find_best_cluster(sorted_candidates, min_cluster, interval_margin, all_lines)
+            
+            logger.info(f"Cluster encontrado por fallback: {table_line_ids}")
+            return table_line_ids
+        except Exception as e:
+            logger.error(f"Error en falback de emergencia: {e}", exc_info=True)
         
     def _find_best_cluster(self, sorted_candidates: List[str], min_cluster: int, interval_margin: int, all_lines: Dict[str, AllLines]) -> List[str]:
         """Encuentra el mejor cluster respetando min_cluster e interval"""
