@@ -33,8 +33,11 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         # 4. Iniciar modelos Singleton
         models_manager = ModelsManager.get_instance()
         models_config = config_services.models_config
-        if not models_manager.initialize_models(models_config, project_root):
-            logger.fatal(f"Proceso detenido, no se pudieron cargar los modelos")
+        models_manager.initialize_models(models_config, project_root)
+        noise_words: List[str] =  models_manager.get_noise_words()
+        if noise_words is None:
+            logger.debug("No se cargó WF")
+            return []
 
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
         stagers_factory = StagersFactory(
@@ -49,7 +52,8 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
             stagers_factory=stagers_factory,
             config_services=config_services,
             workflow_report=workflow_report,
-            output_paths=output_paths
+            output_paths=output_paths,
+            noise_words=noise_words
         )
         
         # 7. Main ejecuta procesamiento
@@ -73,7 +77,8 @@ def create_builders_with_factory(
     stagers_factory: StagersFactory,
     config_services: ConfigService,
     workflow_report: Dict[str, Any],
-    output_paths: List[str] | str
+    output_paths: List[str] | str,
+    noise_words: List[str]
 ) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
     
@@ -85,6 +90,7 @@ def create_builders_with_factory(
             # Contexto común para todos los stagers
             context: Dict[str, Any] = {
                 "image_data": image_data,
+                "noise_words": noise_words
             }
 
             input_stager = stagers_factory.create_image_prep_stager(context, output_paths)

@@ -261,6 +261,7 @@ CHAR_FRECUENCY: Dict[str, int] ={
 }
 
 VECTOR_MEAN_DUMMIE: Dict[str, float] = {
+    "num_margin": 0.8259498, 
     "has_numeric": 0.90909091,
     "num_median_norm": 1.91742424,
     "numeric_count_norm": 0.82057272,
@@ -299,6 +300,7 @@ VECTOR_MEAN_DUMMIE: Dict[str, float] = {
 }
 
 VECTOR_MEDIAN_DUMMIE: Dict[str, float] = {
+    "num_margin": 0.8429895,
     "has_numeric": 1.0,
     "num_median_norm": 1.25,
     "numeric_count_norm": 0.81666667,

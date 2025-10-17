@@ -27,6 +27,3 @@ class AbstractBaseFactory(ABC, Generic[T]):
                 worker = self.worker_registry[worker_name](context)
                 workers.append(worker)
         return workers
-    
-        
-        

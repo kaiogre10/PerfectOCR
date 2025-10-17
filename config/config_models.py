@@ -1,6 +1,6 @@
 # services/config_models.py
 from pydantic import BaseModel, ConfigDict
-from typing import Dict, Any, List, Tuple, Optional
+from typing import List, Tuple, Optional
 
 class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -35,12 +35,6 @@ class Processing(ConfigWithNumpy):
     batch_size_factor: int
     auto_mode: bool
 
-class ModelsPaths(ConfigWithNumpy):
-    det_model_dir: str
-    rec_model_dir: str
-    cls_model_dir: str
-    wordfinder_model_path: str
-
 class ModelsConfig(ConfigWithNumpy):
     use_angle_cls: bool
     lang: str
@@ -48,7 +42,10 @@ class ModelsConfig(ConfigWithNumpy):
     use_gpu: bool
     enable_mkldnn: bool
     rec_batch_num: int
-    models: ModelsPaths
+    det_model_dir: str
+    rec_model_dir: str
+    cls_model_dir: str
+    model_path: str
 
 class PathsConfig(ConfigWithNumpy):
     input_folder: str
@@ -219,7 +216,6 @@ class PipelineConfig(ConfigWithNumpy):
     vector_stage: Optional[List[str]]
 
 class MasterConfig(ConfigWithNumpy):
-    system: Dict[str, Any]
     paths: PathsConfig
     pipeline_secuence: PipelineConfig
     enabled_outputs: OutputFlag

@@ -1,27 +1,4 @@
 # config/master_config.yaml
-system:
-  project_root: "C:/PerfectOCR"
-  log_level: "INFO" # DEBUG, INFO, WARNING, ERROR, CRITICAL
-  
-# Todas las rutas del sistema
-paths:
-  input_folder: "C:/PerfectOCR/in"
-  output_folder: "C:/PerfectOCR/output"
-  db_path: "C:/PerfectOCR/data_base/data_base.json"
-  
-models_config:
-  use_angle_cls: false
-  lang: "es"
-  show_log: false
-  use_gpu: false
-  enable_mkldnn: true
-  rec_batch_num: 64
-  models:
-    det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
-    rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
-    cls_model_dir: "C:/PerfectOCR/data/models/paddle/cls"
-    wordfinder_model_path: "C:/word_finder_model/data/word_finder_model.pkl"
-    
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
@@ -31,31 +8,31 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-    # - "dummie"
-    - "moire"
-    - "sp"
-    - "gauss"
-    - "ink_enhancement"
-    - "clahe"
-    - "sharp"
+    - "dummie"
+    # - "moire"
+    # - "sp"
+    # - "gauss"
+    # - "ink_enhancement"
+    # - "clahe"
+    # - "sharp"
     # - "binarizator"
 
   ocr_stage:
     # - "dummie"
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
-    # - "dummie"
+    #- "dummie"
     - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
-    # - "table_validated"
-    - "math_max"
-  
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
+    # - "table_structurer"
+    # # - "table_validated"
+    # - "math_max"
+
 # Configuración de salida (independiente)
 enabled_outputs:
   pre_clean: false
@@ -77,6 +54,23 @@ enabled_outputs:
   table_structured: false
   math_max_corrected: false
 
+paths:
+  input_folder: "C:/PerfectOCR/in"
+  output_folder: "C:/PerfectOCR/output"
+  db_path: "C:/PerfectOCR/data_base/data_base.json"
+  
+models_config:
+  use_angle_cls: false
+  lang: "es"
+  show_log: false
+  use_gpu: false
+  enable_mkldnn: true
+  rec_batch_num: 64
+  det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
+  rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
+  cls_model_dir: C:/PerfectOCR/data/models/paddle/cls
+  model_path: C:/word_finder_model/models/wf_model.pkl
+  
 # Configuración de procesamiento
 processing:
   max_workers: 1
@@ -178,10 +172,10 @@ modules:
       descriptive: [0.0, 44.9]
         
     data_finder:
-      wordfinder_model_path: C:/word_finder_model/data/word_finder_model.pkl
-      min_similarity: 0.85
+      wordfinder_model_path: C:/word_finder_model/models/wf_model.pkl
+      min_similarity: 0.95
       max_q_lenght: 20
-      fuzzy_ratio: 80
+      fuzzy_ratio: 85
 
     fragmenter:
       min_contours_for_frag: 2
@@ -194,7 +188,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: False
+      keywords_interval_enabled: true
       exclude_types: [
         "descriptive", 
         "rfc", 
@@ -214,6 +208,7 @@ modules:
     cos_sim:
       min_cluster: 1
       similarity_threshold: 0.90
+      emergency_threshold: 0.80
       interval: 2
       dummie_weights: [0.35, 0.65]
     

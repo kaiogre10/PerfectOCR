@@ -1,3 +1,4 @@
+
 import time
 from typing import Dict, Any, Optional, List
 import logging
@@ -11,14 +12,14 @@ from fuzzywuzzy import fuzz
 logger = logging.getLogger(__name__)
 
 class DataFinder(OCRAbstractWorker):
-    def __init__(self, config: Dict[str, str], cfg: Dict[str, Any], project_root: str):
+    def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config
-        self.cfg = cfg
-        self.worker_config = cfg.get('data_finder', {})
+        self.config = config.get("config", {})
+        self.noise_words = config["noise_words"]
+        self.worker_config = self.config.get('data_finder', {})
         self._model = None
-    
+
     @property
     def model(self) -> Optional[Any]:
         try:
@@ -26,8 +27,6 @@ class DataFinder(OCRAbstractWorker):
                 model_manager = ModelsManager.get_instance()
                 self._model = model_manager.word_finder
                 logger.debug("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
-            self.model_info: Dict[str, Any] = self._model.get_model_info() 
-            self.noise_words: List[str] = self.model_info["noise_words"]
             return self._model
         except Exception as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
@@ -122,25 +121,24 @@ class DataFinder(OCRAbstractWorker):
                     skipped_len += 1
                     logger.debug(f"{pid}: {original_text} | {text_finder} omitido por largo ({lenght} > {max_len_cfg})")
                     continue
-                
+
                 try:
                     if self.noise_words:
-                        # Se convierte el valor de min_similarity (ej: 0.85) a la escala de fuzzywuzzy (ej: 85)
-                        similarity_threshold: int = self.worker_config.get("fuzzy_ratio")
+                        fuzzy_ratio: int = self.worker_config.get("fuzzy_ratio")
                         
                         is_noisy = False
                         for word in self.noise_words:
                             # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
                             similarity: int = fuzz.token_set_ratio(text_finder, word)
-                            if similarity >= similarity_threshold:
-                                logger.debug(f"{pid}: {text_finder} omitido por palabra prohibida {word} (similitud: {similarity}%)")
+                            if similarity > fuzzy_ratio:
+                                logger.info(f"{pid}: {text_finder} ruido omitido: {word} (similitud: {similarity}%)")
                                 is_noisy = True
                                 break
                         if is_noisy:
                             continue
                         
                 except Exception as e:    
-                    logger.warning(f"Error buscando las forbbiden words: {e}", exc_info=True)
+                    logger.info(f"Error buscando las forbbiden words: {e}", exc_info=True)
                     continue
                 
                 # Buscar con WordFinder
@@ -153,7 +151,7 @@ class DataFinder(OCRAbstractWorker):
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Similitud: {pid}: {best_result}")
+                        logger.info(f"Similitud: {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")

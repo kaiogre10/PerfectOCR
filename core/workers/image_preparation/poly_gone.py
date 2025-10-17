@@ -78,10 +78,10 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             
             # Liberar la imagen completa lo antes posible
             if manager.update_full_img(None):
-                logger.info("full_img liberada")
+                logger.debug("full_img liberada")
             
             # Validar dimensiones usando operaciones vectorizadas
-            valid_dims: np.ndarray[Any, Any] = (px2 > px1) & (py2 > py1)
+            valid_dims: np.ndarray[Any, Any] = (px2 > px1) & (py2 > py1).astype(np.uint8)
             valid_indices = np.where(valid_dims)[0]
             
             if len(valid_indices) == 0:

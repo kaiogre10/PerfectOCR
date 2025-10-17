@@ -7,7 +7,6 @@ from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons, SemanticClassification
-from core.utils.cosine_similarity import alignment
 
 logger = logging.getLogger(__name__)
 
@@ -311,52 +310,19 @@ class Vectorizer(VectorizationAbstractWorker):
                     
                     return prev_bbox, next_bbox, prev_centroid, next_centroid            
 
-                def _bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int) -> Optional[float]:
-                    """
-                    Mide alineación usando similitud coseno.
-                    Punto de referencia: [current_coord, 0] en el eje X
-                    Vector hacia otra línea: [other_coord - current_coord, other_y - 0]
-                    """
-                    try:
-                        if other_bbox:
-                            # Punto de referencia en el eje X
-                            ref_point = np.array([current_coord, 0.0])
-
-                            # Coordenada de la otra línea
-                            other_coord = other_bbox[coord_idx]  # Acceso correcto por índice
-                            other_y = other_bbox[1]  # Coordenada Y de la otra línea
-
-                            # Vector desde el punto de referencia hacia la otra línea
-                            vec_to_other = np.array([other_coord - current_coord, other_y - ref_point[1]])
-                            
-                            # Vector de referencia (eje X positivo)
-                            ref_vec = np.array([1, 0])
-                            
-                            # Similitud coseno
-                            if np.linalg.norm(vec_to_other) == 0:
-                                return 1.0
-                            
-                            cosine_sim = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
-                            return 1.0 - abs(float(cosine_sim))   
-
-                        else:
-                            return 1.0
-
-                    except Exception as e:
-                        logger.error(f"Error calculando similitud coseno: {e}", exc_info=True)
-                        return 1.0
-
                 # Alineación ortogonal para xmin y xmax con prev y next
                 current_xmin = bbox[0]
                 current_xmax = bbox[2]
 
                 prev_bbox, next_bbox, prev_centroid, next_centroid = _calculate_line_coords(sorted_lines, i)
                 
-                prev_xmin_align: Optional[float] = _bbox_alignment(current_xmin, prev_bbox, 0) if prev_bbox else 1.0
-                prev_xmax_align: Optional[float] = _bbox_alignment(current_xmax, prev_bbox, 2) if prev_bbox else 1.0
-                next_xmin_align: Optional[float] = _bbox_alignment(current_xmin, next_bbox, 0) if next_bbox else 1.0
-                next_xmax_align: Optional[float] = _bbox_alignment(current_xmax, next_bbox, 2) if next_bbox else 1.0
-
+                from core.utils.cosine_similarity import alignment, bbox_alignment
+                
+                prev_xmin_align: Optional[float] = bbox_alignment(current_xmin, prev_bbox, 0) if prev_bbox else 1.0
+                prev_xmax_align: Optional[float] = bbox_alignment(current_xmax, prev_bbox, 2) if prev_bbox else 1.0
+                next_xmin_align: Optional[float] = bbox_alignment(current_xmin, next_bbox, 0) if next_bbox else 1.0
+                next_xmax_align: Optional[float] = bbox_alignment(current_xmax, next_bbox, 2) if next_bbox else 1.0
+                
                 align_prev: Optional[float] = alignment(centroid, prev_centroid)
                 align_next: Optional[float] = alignment(centroid, next_centroid)
                 
@@ -364,6 +330,7 @@ class Vectorizer(VectorizationAbstractWorker):
                         
                 # Anida el diccionario de características para que coincida con el tipo de retorno esperado.
                 line_all_features: Dict[str, float] = {
+                    "num_margin": num_margin,
                     "has_numeric": has_numeric,
                     "num_median_norm": num_median_norm,
                     "numeric_count_norm": num_count_norm,

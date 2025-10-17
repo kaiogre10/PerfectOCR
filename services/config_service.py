@@ -28,10 +28,6 @@ class ConfigService:
             raise
 
     @property
-    def system_config(self) -> Dict[str, str]:
-        return self.config.get("system", {})
-
-    @property
     def manager_config(self) -> Dict[str, Any]:
         """Devuelve el paquete estándar de configuraciones de los managers"""
         return {
@@ -86,7 +82,7 @@ class ConfigService:
     def models_config(self) -> Dict[str, Any]:
         """Obtiene la configuración global para modelos ML"""
         return { 
-            "models_config": self.config.get('models_config', {}),
+            "models_config": self.config.get("models_config", {}),
             "ocr_stage": self.workers_order.get("ocr_stage", [])
         }
 

@@ -21,8 +21,9 @@ class OCRStager(AbstractStager):
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
+        worker_start = time.time()
         for worker_idx, worker in enumerate(self.workers):
-            worker_start = time.time()
+
             worker_name = worker.__class__.__name__
             logger.debug(f"Ejecutando Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             

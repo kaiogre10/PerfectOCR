@@ -237,8 +237,8 @@ class MatricialCusine(VectorizationAbstractWorker):
         Compara cada línea con la línea de referencia (la primera después del encabezado).
         Tolera un número de fallos consecutivos ('interval') antes de cortar el bloque.
         """
+        logger.warning("INICIANDO MÉTODO FALLBACK")
         similarity_threshold: float = self.worker_config.get("similarity_threshold")
-        min_cluster: int = int(self.worker_config.get("min_cluster"))
         interval_margin: int = int(self.worker_config.get("interval"))
         # La línea de referencia es la que está justo después del encabezado
         ref_line_idx = header_idx + 1
@@ -290,7 +290,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         from core.utils.cosine_similarity import calculate_similarity_ref
 
         X = csr_matrix(candidate_rows, dtype=np.float64)
-        sims = calculate_similarity_ref(X, ref_vec)
+        sims = calculate_similarity_ref(X, ref_vec, dense_output=False)
         # sims = cosine_similarity(ref_vec, X, dense_output=False)[0]
 
         logger.debug(f"Promedio de similitud con línea de referencia '{ref_line_id}': {np.mean(sims):.6f}")
@@ -332,6 +332,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         min_cluster: int = int(self.worker_config.get("min_cluster"))
         interval_margin: int = int(self.worker_config.get("interval"))
         dummie_weights: Tuple[float, float] = self.worker_config.get("dummie_weights", [])
+        emergency_threshold = self.worker_config.get("emergency_threshold")
         mean_w, median_w = dummie_weights
         
         from core.utils.cosine_similarity import calculate_similarity_ref
@@ -381,15 +382,15 @@ class MatricialCusine(VectorizationAbstractWorker):
         # logger.info(f"sims_mat: {sims_mat}")
         
         # sims_mat_dense = sims_mat.toarray() 
-        logger.info(f"Promedio de similitud con dummiessumados '{sims_mat}': {np.mean(sims_mat, dtype=np.float32):.6f}")
-        logger.info("Todas las líneas ordendas: %s", ", ".join(str(lid) for lid in all_lines_indices))
+        logger.debug(f"Promedio de similitud con dummiessumados '{sims_mat}': {np.mean(sims_mat, dtype=np.float32):.6f}")
+        logger.debug("Todas las líneas ordendas: %s", ", ".join(str(lid) for lid in all_lines_indices))
         sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims_mat) + "]"
-        logger.info("Similitudes:\n%s", sims_str)
+        logger.debug("Similitudes:\n%s", sims_str)
 
         # Log detallado por línea
         for idx, (line_id, sim) in enumerate(zip(all_line_ids, sims_mat)):
             feature_vals = [f"{v:7.4f}" for v in mat_rows[idx]]
-            logger.info(f"{line_id}: Sim: {sim:7.4f} | [{', '.join(feature_vals)}]")
+            logger.debug(f"{line_id}: Sim: {sim:7.4f} | [{', '.join(feature_vals)}]")
         
         mean_sims: List[float] = []
         for i in range(n):
@@ -406,11 +407,19 @@ class MatricialCusine(VectorizationAbstractWorker):
                 if sims_mat >= similarity_threshold:
                     matched_original_indices.append(idx)
                     consecutive_failures += 1
-                logger.info(f"Línea {lid} idx={idx}: mean_sim={sims_mat:.4f}")
+                        
+                logger.debug(f"Línea {lid} idx={idx}: mean_sim={sims_mat:.4f}")
             
             if not matched_original_indices:
                 logger.warning("No se encontraron líneas que superen el umbral")
-                return []
+                emergency_threshold = self.worker_config.get("emergency_threshold")
+                consecutive_failures = 0
+                for idx, (sims_mat, lid) in enumerate(zip(sims_mat, all_lines_indices)):
+                    if sims_mat >= emergency_threshold:
+                        matched_original_indices.append(idx)
+                        consecutive_failures += 1
+                        
+                    logger.info(f"Línea {lid} idx={idx}: mean_sim={sims_mat:.4f}")
         
             # Obtener las line_ids que pasaron el umbral
             candidate_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
@@ -425,8 +434,8 @@ class MatricialCusine(VectorizationAbstractWorker):
             return table_line_ids
         except Exception as e:
             logger.error(f"Error en falback de emergencia: {e}", exc_info=True)
+            return []
         
-    # ...existing code...
     def _find_best_cluster(self, sorted_candidates: List[str], min_cluster: int, interval_margin: int, all_lines: Dict[str, AllLines]) -> List[str]:
         """Encuentra el mejor cluster respetando min_cluster e interval y devuelve todas las líneas del intervalo."""
         if len(sorted_candidates) < min_cluster:
@@ -462,4 +471,3 @@ class MatricialCusine(VectorizationAbstractWorker):
             return all_line_ids[best_start:best_end+1]
         else:
             return []
-    #
