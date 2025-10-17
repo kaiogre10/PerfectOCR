@@ -107,4 +107,4 @@ class ModelsManager:
 
         except Exception as e:
             logger.error(f"No se obtuvieorn paabras con ruido: {e}", exc_info=True)
-            return None
+        return None

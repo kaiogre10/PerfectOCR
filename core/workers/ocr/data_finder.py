@@ -1,13 +1,13 @@
 
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import logging
 from cleantext import clean # type: ignore
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from fuzzywuzzy import fuzz 
+from fuzzywuzzy import fuzz # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +129,7 @@ class DataFinder(OCRAbstractWorker):
                         is_noisy = False
                         for word in self.noise_words:
                             # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
-                            similarity: int = fuzz.token_set_ratio(text_finder, word)
+                            similarity: int = fuzz.token_set_ratio(text_finder, word) # type: ignore
                             if similarity > fuzzy_ratio:
                                 logger.info(f"{pid}: {text_finder} ruido omitido: {word} (similitud: {similarity}%)")
                                 is_noisy = True
@@ -142,16 +142,16 @@ class DataFinder(OCRAbstractWorker):
                     continue
                 
                 # Buscar con WordFinder
-                valid_results: Dict[str, Any] = self.model.find_keywords(text_finder, threshold)
+                valid_results: Dict[str, Dict[str, Any]] = self.model.find_keywords(text_finder, threshold)
                 if not valid_results:
                     continue
                 
                 if valid_results:
-                    best_result = max(valid_results, key=lambda x: x.get('similarity', 0.0))
+                    best_result: Dict[str, float] = max(valid_results, key=lambda x: x.get('similarity', 0.0)) 
                     key_field = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.info(f"Similitud: {pid}: {best_result}")
+                        logger.info(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")
