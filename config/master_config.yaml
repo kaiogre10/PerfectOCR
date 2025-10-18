@@ -188,7 +188,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: true
+      keywords_interval_enabled: False
       exclude_types: [
         "descriptive", 
         "rfc", 

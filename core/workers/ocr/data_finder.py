@@ -1,6 +1,5 @@
-
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import logging
 from cleantext import clean # type: ignore
 from core.domain.data_models import Polygons
@@ -15,9 +14,9 @@ class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config.get("config", {})
-        self.noise_words = config["noise_words"]
+        self.config = self.config.get("config", {})
         self.worker_config = self.config.get('data_finder', {})
+        self._noise_words = None
         self._model = None
 
     @property
@@ -31,6 +30,15 @@ class DataFinder(OCRAbstractWorker):
         except Exception as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
             return None
+
+    @property
+    def noise_words(self) -> Optional[List[str]]:
+        try:
+            if self._noise_words is None:
+                self._noise_words = self.config["noise_words"]
+            return self._noise_words
+        except Exception as e:
+            logger.warning(f"Error cargando las palabras ruidosas: {e}", exc_info=True)
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.time()
@@ -49,7 +57,7 @@ class DataFinder(OCRAbstractWorker):
                 return False
             
             # Llamar al método original que funciona
-            polygon_updates = self._find_data(polygons, manager)
+            polygon_updates = self._find_data(polygons)
 
             # Actualiza las líneas marcadas como encabezado en las dataclasses
             if manager.update_key_field(polygon_updates):
@@ -61,7 +69,7 @@ class DataFinder(OCRAbstractWorker):
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
         return True 
 
-    def _find_data(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, str]:
+    def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
         threshold = float(self.worker_config.get("min_similarity"))
         max_q_lenght = self.worker_config.get("max_q_lenght")
         
@@ -101,7 +109,7 @@ class DataFinder(OCRAbstractWorker):
                     clean_all=False,
                     extra_spaces=True,
                     stemming=False,
-                    stopwords=False, # No eliminar stopwords para no perder contexto
+                    stopwords=False,
                     lowercase=True,
                     numbers=True,
                     punct=True, 
@@ -123,44 +131,47 @@ class DataFinder(OCRAbstractWorker):
                     continue
 
                 try:
-                    if self.noise_words:
-                        fuzzy_ratio: int = self.worker_config.get("fuzzy_ratio")
+                    if self.noise_words is None:
+                        logger.warning("No se pudieron cargar las palabras ruidosas")
+
+                    fuzzy_ratio: int = self.worker_config.get("fuzzy_ratio")
                         
-                        is_noisy = False
-                        for word in self.noise_words:
-                            # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
-                            similarity: int = fuzz.token_set_ratio(text_finder, word) # type: ignore
-                            if similarity > fuzzy_ratio:
-                                logger.info(f"{pid}: {text_finder} ruido omitido: {word} (similitud: {similarity}%)")
-                                is_noisy = True
-                                break
-                        if is_noisy:
-                            continue
+                    is_noisy = False
+                    for word in self.noise_words:
+                        # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
+                        similarity: int = fuzz.token_set_ratio(text_finder, word) # type: ignore
+                        if similarity > fuzzy_ratio:
+                            logger.info(f"{pid}: {text_finder} ruido omitido: {word} (similitud: {similarity}%)")
+                            is_noisy = True
+                            break
+
+                    if is_noisy:
+                        continue
                         
                 except Exception as e:    
-                    logger.info(f"Error buscando las forbbiden words: {e}", exc_info=True)
+                    logger.warning(f"Error buscando las forbbiden words: {e}", exc_info=True)
                     continue
                 
                 # Buscar con WordFinder
-                valid_results: Dict[str, Dict[str, Any]] = self.model.find_keywords(text_finder, threshold)
+                valid_results: List[Dict[str, Any]] = self.model.find_keywords(text_finder, threshold)
                 if not valid_results:
                     continue
                 
                 if valid_results:
-                    best_result: Dict[str, float] = max(valid_results, key=lambda x: x.get('similarity', 0.0)) 
-                    key_field = best_result.get('key_field')
+                    best_result: Dict[str, Any] = max(valid_results, key=lambda x: x['similarity'])
+                    key_field: str = best_result.get('key_field')
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.info(f"Resultado de {pid}: {best_result}")
+                        logger.debug(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
-                logger.debug(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")
-                logger.debug(f"DataFinder: {skipped_numeric} polígonos 'numeric' omitidos")
+                logger.info(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")
+                logger.debug(f"{skipped_numeric} polígonos omitidos")
                 return polygon_updates
             else:
-                logger.debug("DataFinder: No se encontraron coincidencias de palabras clave - usando fallback")
+                logger.debug("No se encontraron coincidencias de palabras clave")
                 return {}
                     
         except Exception as e:
-            logger.warning(f"Fallo en búsqueda de datos globales{e}", exc_info=True)
+            logger.warning(f"Fallo en búsqueda de datos globales: {e}", exc_info=True)
             return {}

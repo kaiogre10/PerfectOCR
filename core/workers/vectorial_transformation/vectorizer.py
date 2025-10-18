@@ -457,13 +457,13 @@ class Vectorizer(VectorizationAbstractWorker):
                     angle_count_by_line[line_id] = angle
                     slope_count_by_line[line_id] = slope
                     
-            if width_count_by_line:
+            if line_data:
                 max_count_width = max(width_count_by_line.values()) if width_count_by_line else 0.0      # Ancho máximo de los bounding boxes de las líneas
                 max_count_area = max(area_count_by_line.values()) if area_count_by_line else 0.0         # Área máxima cubierta por los bounding boxes de las líneas
                 max_count_perimeter = max(perimeter_count_by_line.values()) if perimeter_count_by_line else 0.0 # Perímetro máximo entre los bounding boxes de las líneas
                 max_count_aspcrat = max(asprat_count_by_line.values()) if asprat_count_by_line else 0.0  # Máxima razón de aspecto (alto/ancho * 100) de las líneas
                 max_count_diagonal = max(diagonal_count_by_line.values()) if diagonal_count_by_line else 0.0    # Longitud diagonal máxima entre los bounding boxes de las líneas
-                diagonal_values = list(diagonal_count_by_line.values())
+                diagonal_values = list(diagonal_count_by_line.values()) if diagonal_count_by_line else []
                 diagonal_median = float(np.median(diagonal_values)) if diagonal_values else 0.0
                 bbox_width_values= list(width_count_by_line.values())
                 bbox_width_median = float(np.median(bbox_width_values)) if bbox_width_values else 0.0
