@@ -4,9 +4,18 @@ import threading
 import time
 from typing import Dict, Any, Optional, List
 from paddleocr import PaddleOCR # type: ignore
-from data.scripts.word_finder import WordFinder
-
+import sys
+# from data.scripts.word_finder import WordFinder
 logger = logging.getLogger(__name__)
+
+try:
+    word_finder_model = r"C:\word_finder_model\src"
+    if word_finder_model not in sys.path:
+        sys.path.insert(0, word_finder_model)
+
+    from word_finder import WordFinder
+except Exception as e:
+    logger.error(f"No se pudo importar WORD_FINDER; {e}", exc_info=True)
 
 class ModelsManager:
     _instance = None
@@ -66,9 +75,8 @@ class ModelsManager:
             if self._shared_engine or self._detection_engine or self._recognition_engine:
                 ocr_stage = models_config.get("ocr_stage", [])
                 if "data_finder" in ocr_stage:
-                    self._word_finder = WordFinder(
-                        model_path=model_path,
-                        project_root=project_root
+                    self._word_finder= WordFinder(
+                        model_path=model_path
                     )
                     self._active = True
                     logger.debug(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
@@ -81,7 +89,7 @@ class ModelsManager:
                 return None
 
         except Exception as e:
-            logger.warning(f"No se pudo iniciar WordFinder{e}", exc_info=True)
+            logger.warning(f"No se pudo iniciar WordFinder: {e}", exc_info=True)
             
     @property
     def detection_engine(self) -> Optional[PaddleOCR]:
@@ -98,10 +106,10 @@ class ModelsManager:
     def get_noise_words(self) -> Optional[List[str]]:
         try:
             if self._word_finder or self._active:
-                model_info: Dict[str, Any] = self._word_finder.get_model_info()
+                model_info: Dict[str, Any] = self._word_finder.get_model_info() # type: ignore
                 noise_words: List[str] = model_info["noise_words"]
 
-                if noise_words is not None:
+                if noise_words is not None: # type: ignore
                     logger.debug(f"{len(noise_words)} palabras ruidosas cargadas con éxito")
                     return noise_words
 

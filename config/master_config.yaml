@@ -26,12 +26,12 @@ pipeline_secuence:
   vector_stage:
     #- "dummie"
     - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
-    # # - "table_validated"
-    # - "math_max"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
+    # - "table_validated"
+    - "math_max"
 
 # Configuración de salida (independiente)
 enabled_outputs:

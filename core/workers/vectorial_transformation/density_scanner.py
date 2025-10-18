@@ -22,10 +22,12 @@ class DensityScanner(VectorizationAbstractWorker):
         start_time = time.time()
         try:
             logger.debug("DBSCScanner iniciado")
-            analyses: Dict[str, Dict[str, float]] = context.get("all_features", {})
-            logger.info(f"Features recibidos por Scanner: {len(analyses)} líneas")
-            
-            valid_analyses = self._get_interval(analyses, manager)
+            analysis: Dict[str, Dict[str, float]] = context.get("all_features", {})
+            if not analysis:
+                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
+                return True
+
+            valid_analyses = self._get_interval(analysis, manager)
             
             table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
             logger.debug(f"RESULTADOS DBSCAN: {len(table_line_ids)} table_line_ids: {table_line_ids}")
@@ -86,7 +88,7 @@ class DensityScanner(VectorizationAbstractWorker):
     
         return table_line_ids
 
-    def _get_interval(self, analyses: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
+    def _get_interval(self, analysis: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
         """
         Filtra solo las líneas después del encabezado para evitar ruido.
         """
@@ -94,12 +96,12 @@ class DensityScanner(VectorizationAbstractWorker):
         header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
         header_line_id = header_line_ids[0] if header_line_ids else None
         if header_line_id is None:
-            return analyses
+            return analysis
         
-        line_ids = list(analyses.keys())
+        line_ids = list(analysis.keys())
         header_idx = line_ids.index(header_line_id)
         # Solo tomar líneas después del encabezado
         filtered_ids = line_ids[header_idx:]
-        valid_analyses = {lid: analyses[lid] for lid in filtered_ids}
+        valid_analyses = {lid: analysis[lid] for lid in filtered_ids}
         logger.debug(f"Lineas filtradas: {len(valid_analyses)}: {filtered_ids} ")
         return valid_analyses

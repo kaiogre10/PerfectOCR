@@ -83,7 +83,7 @@ class DataFinder(OCRAbstractWorker):
 
             for pid, poly in polygons.items():
                 processed_count += 1
-
+                
                 sc = poly.semantic_clasification
                 if sc.numeric or sc.quantitative or sc.code or sc.rfc:
                     skipped_numeric += 1
