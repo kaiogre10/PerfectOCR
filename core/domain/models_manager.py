@@ -5,17 +5,17 @@ import time
 from typing import Dict, Any, Optional, List
 from paddleocr import PaddleOCR # type: ignore
 import sys
-# from data.scripts.word_finder import WordFinder
-logger = logging.getLogger(__name__)
 
 try:
-    word_finder_model = r"C:\word_finder_model\src"
-    if word_finder_model not in sys.path:
-        sys.path.insert(0, word_finder_model)
-
-    from word_finder import WordFinder
+    word_finder = r"C:\word_finder_model\src"
+    if word_finder not in sys.path:
+        sys.path.insert(0, word_finder)
+    from word_finder import WordFinder #type: ignore
+    
 except Exception as e:
-    logger.error(f"No se pudo importar WORD_FINDER; {e}", exc_info=True)
+    logging.error(f"No se pudo importar WORD_FINDER; {e}", exc_info=True)
+    
+logger = logging.getLogger(__name__)
 
 class ModelsManager:
     _instance = None
@@ -46,12 +46,11 @@ class ModelsManager:
         init_time = time.perf_counter()
         self.project_root = project_root
         self.models_config: Dict[str, Any] = models_config.get("models_config", {})
-        model_path=self.models_config.get("model_path", "")
 
         try:
             self._shared_engine = PaddleOCR(
                 det=True, rec=True, cls=False,
-                det_model_dir=models_config.get('det_model_dir'),
+                det_model_dir=self.models_config['det_model_dir'],
                 rec_model_dir=models_config.get('rec_model_dir'),
                 use_angle_cls=models_config.get('use_angle_cls', False),
                 show_log=models_config.get('show_log', False),
@@ -73,9 +72,10 @@ class ModelsManager:
 
         try:
             if self._shared_engine or self._detection_engine or self._recognition_engine:
-                ocr_stage = models_config.get("ocr_stage", [])
+                ocr_stage: List[str] = models_config.get("ocr_stage", [])
                 if "data_finder" in ocr_stage:
-                    self._word_finder= WordFinder(
+                    model_path=self.models_config.get("model_path", "")
+                    self._word_finder: WordFinder = WordFinder( #type: ignore
                         model_path=model_path
                     )
                     self._active = True
@@ -85,7 +85,7 @@ class ModelsManager:
                     self._word_finder = None
                     logger.warning(f"Word Finder no se cargó porque no se usará en el pipeline")
             else:
-                logger.error(f"No se pudo iniciar Paddle, no se cargará WF")
+                logger.critical(f"No se pudo iniciar Paddle, no se cargará WF")
                 return None
 
         except Exception as e:
@@ -100,19 +100,5 @@ class ModelsManager:
         return self._recognition_engine
         
     @property    
-    def word_finder(self) -> Optional[WordFinder]:
+    def word_finder(self) -> Optional[WordFinder]: 
         return self._word_finder
-
-    def get_noise_words(self) -> Optional[List[str]]:
-        try:
-            if self._word_finder or self._active:
-                model_info: Dict[str, Any] = self._word_finder.get_model_info() # type: ignore
-                noise_words: List[str] = model_info["noise_words"]
-
-                if noise_words is not None: # type: ignore
-                    logger.debug(f"{len(noise_words)} palabras ruidosas cargadas con éxito")
-                    return noise_words
-
-        except Exception as e:
-            logger.error(f"No se obtuvieorn paabras con ruido: {e}", exc_info=True)
-        return None

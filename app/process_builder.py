@@ -11,8 +11,7 @@ from core.domain.data_formatter import DataFormatter
 logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
-    """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados ycoordina el procesamiento técnico de una sola imagen."""
-    
+    """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados ycoordina el procesamiento técnico de una sola imagen."""    
     def __init__(self, config: Dict[str, str] , input_stager: ImagePreparationStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
         self.config = config
         self.manager = manager

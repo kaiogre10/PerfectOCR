@@ -15,9 +15,18 @@ logger = logging.getLogger(__name__)
 def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, config_path: str, project_root: str) -> List[str]:
     
     try:
-        # 1. Main activa al Configurador
+        # 1. Main activa al Configurador y valida parametros mínimos
         t0 = time.perf_counter()
         config_services = ConfigService(config_path)
+
+        try:
+            if config_services.validate_pipeline_config():
+                logger.warning("Número mínimo de workers activos, se inicia el pipeline")
+            else:
+                return []
+        except Exception as e:
+            logger.error(f"No hay parametros mínimos para el pipeline, se detiene sin haber iniciado: {e}", exc_info=True)
+            return []
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
         workflow_manager = WorkFlowBuilder(
@@ -34,10 +43,6 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         models_manager = ModelsManager.get_instance()
         models_config = config_services.models_config
         models_manager.initialize_models(models_config, project_root)
-        noise_words: List[str] =  models_manager.get_noise_words()
-        if noise_words is None:
-            logger.debug("No se cargó WF")
-            return []
 
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
         stagers_factory = StagersFactory(
@@ -52,8 +57,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
             stagers_factory=stagers_factory,
             config_services=config_services,
             workflow_report=workflow_report,
-            output_paths=output_paths,
-            noise_words=noise_words
+            output_paths=output_paths
         )
         
         # 7. Main ejecuta procesamiento
@@ -78,7 +82,6 @@ def create_builders_with_factory(
     config_services: ConfigService,
     workflow_report: Dict[str, Any],
     output_paths: List[str] | str,
-    noise_words: List[str]
 ) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
     
@@ -90,7 +93,6 @@ def create_builders_with_factory(
             # Contexto común para todos los stagers
             context: Dict[str, Any] = {
                 "image_data": image_data,
-                "noise_words": noise_words
             }
 
             input_stager = stagers_factory.create_image_prep_stager(context, output_paths)

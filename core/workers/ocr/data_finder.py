@@ -1,12 +1,13 @@
 import time
 from typing import Dict, Any, Optional, List
 import logging
-from cleantext import clean # type: ignore
+import re
+from cleantext import clean #type: ignore
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from fuzzywuzzy import fuzz # type: ignore
+from fuzzywuzzy import utils
 
 logger = logging.getLogger(__name__)
 
@@ -14,37 +15,28 @@ class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = self.config.get("config", {})
+        self.config=config
         self.worker_config = self.config.get('data_finder', {})
-        self._noise_words = None
         self._model = None
 
     @property
     def model(self) -> Optional[Any]:
         try:
-            if self._model is None:
+            if self._model is None: #type: ignore
                 model_manager = ModelsManager.get_instance()
-                self._model = model_manager.word_finder
+                self._model = model_manager.word_finder #type: ignore
                 logger.debug("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
-            return self._model
+            return self._model #type: ignore
+
         except Exception as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
             return None
 
-    @property
-    def noise_words(self) -> Optional[List[str]]:
-        try:
-            if self._noise_words is None:
-                self._noise_words = self.config["noise_words"]
-            return self._noise_words
-        except Exception as e:
-            logger.warning(f"Error cargando las palabras ruidosas: {e}", exc_info=True)
-
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+
         start_time = time.time()
         try:
             logger.debug("Data Finder iniciado")
-            
             if not manager or not getattr(manager, "workflow", None):
                 logger.warning("Manager o workflow ausente")
                 return False
@@ -67,22 +59,22 @@ class DataFinder(OCRAbstractWorker):
                 
         except Exception as e:
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
-        return True 
+        return True
 
     def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, str]:
+        time0 = time.perf_counter()
         threshold = float(self.worker_config.get("min_similarity"))
-        max_q_lenght = self.worker_config.get("max_q_lenght")
+
+        max_q_lenght = int(self.worker_config.get("max_q_lenght"))
         
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
             return {}
+
         try:
-            logger.debug("Inicio de búsqueda de palabras clave")
             if not polygons:
                 logger.error("No hay polígonos para procesar")
                 return {}
-            else:
-                logger.debug(f"Cantidad polygons={len(polygons)}")
 
             processed_count = 0
             polygon_updates: Dict[str, str] = {}
@@ -90,88 +82,81 @@ class DataFinder(OCRAbstractWorker):
             skipped_len = 0
 
             for pid, poly in polygons.items():
+                # Obtener datos del polígono
                 processed_count += 1
-                
+                ocr_text: str = poly.ocr_text
                 sc = poly.semantic_clasification
-                if sc.numeric or sc.quantitative or sc.code or sc.rfc:
-                    skipped_numeric += 1
-                    continue
-                
-                # Obtener texto del polígono
-                ocr_text = getattr(poly, "ocr_text", "") or ""
-                if not ocr_text:
-                    continue
-                
-                original_text = ocr_text
-                
-                text_finder: str = clean(
-                    ocr_text,
-                    clean_all=False,
-                    extra_spaces=True,
-                    stemming=False,
-                    stopwords=False,
-                    lowercase=True,
-                    numbers=True,
-                    punct=True, 
-                )
-                    
-                try: 
-                    lenght = len(text_finder.replace(" ", ""))
-                except Exception:
-                    lenght = len(text_finder)
 
-                try:
-                    max_len_cfg = int(max_q_lenght) if max_q_lenght is not None else None
-                except Exception:
-                    max_len_cfg = None
+                # Validación del texto antes de procesar
+                if not utils.validate_string(ocr_text):
+                    logger.info(msg=f"Polygono sin texto: {pid}")
+                    continue
 
-                if max_len_cfg is not None and lenght > max_len_cfg:
+                if sc:
+                    if sc.numeric or sc.quantitative or sc.code or sc.rfc:
+                        skipped_numeric += 1
+                    continue
+
+                lenght = len(ocr_text)
+
+                if max_q_lenght is not None and lenght > max_q_lenght:
                     skipped_len += 1
-                    logger.debug(f"{pid}: {original_text} | {text_finder} omitido por largo ({lenght} > {max_len_cfg})")
+                    logger.info(f"{pid}, texto: '{ocr_text}' omitido por largo ({lenght} > {max_q_lenght})")
                     continue
 
-                try:
-                    if self.noise_words is None:
-                        logger.warning("No se pudieron cargar las palabras ruidosas")
-
-                    fuzzy_ratio: int = self.worker_config.get("fuzzy_ratio")
-                        
-                    is_noisy = False
-                    for word in self.noise_words:
-                        # Usar token_set_ratio para manejar palabras en distinto orden y subconjuntos
-                        similarity: int = fuzz.token_set_ratio(text_finder, word) # type: ignore
-                        if similarity > fuzzy_ratio:
-                            logger.info(f"{pid}: {text_finder} ruido omitido: {word} (similitud: {similarity}%)")
-                            is_noisy = True
-                            break
-
-                    if is_noisy:
-                        continue
-                        
-                except Exception as e:    
-                    logger.warning(f"Error buscando las forbbiden words: {e}", exc_info=True)
-                    continue
-                
-                # Buscar con WordFinder
-                valid_results: List[Dict[str, Any]] = self.model.find_keywords(text_finder, threshold)
+                valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text, threshold)
                 if not valid_results:
                     continue
-                
+
                 if valid_results:
                     best_result: Dict[str, Any] = max(valid_results, key=lambda x: x['similarity'])
-                    key_field: str = best_result.get('key_field')
+                    key_field: str = best_result['key_field']
+
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Resultado de {pid}: {best_result}")
+                        logger.info(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
-                logger.info(f"Encontradas {len(polygon_updates)} coincidencias de palabras clave")
-                logger.debug(f"{skipped_numeric} polígonos omitidos")
+                logger.info(f"{skipped_numeric} polígonos omitidos")
+                logger.info(f"Encontradas {len(polygon_updates)} coincidencias en {time.perf_counter() - time0:6f}s")
                 return polygon_updates
+
             else:
-                logger.debug("No se encontraron coincidencias de palabras clave")
+                logger.warning("No se encontraron coincidencias de palabras clave")
                 return {}
                     
         except Exception as e:
-            logger.warning(f"Fallo en búsqueda de datos globales: {e}", exc_info=True)
+            logger.warning(msg=f"Fallo en búsqueda de datos globales: {e}", exc_info=True)
             return {}
+
+    def _find_rfc(self, s: str) -> bool:
+
+        try:
+
+            if not s or not s.strip():
+                return False
+
+            rfc_code = r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$'
+            rfc_word = r'\b(R\.?F\.?C\.?)\b'
+
+            # Busca primero el patrón corto
+            if re.search(rfc_word, s):
+                # Si lo encuentra, busca el patrón largo
+
+                if re.search(rfc_code, s):
+                    logger.info(f"Resultado de RFC: {s}")
+                    return True
+
+                else:
+                    return False
+
+            # Si no encuentra el corto, busca el largo directamente
+            if re.search(rfc_code, s):
+                logger.info(f"Resultado de RFC: {s}")
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.info(f"Error buscando RFC: {e}", exc_info=True)
+            return False

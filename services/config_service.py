@@ -1,7 +1,7 @@
 # services/config_service.py
 import yaml
 import logging
-from typing import Dict, Any, cast, List
+from typing import Dict, Any, cast, List, Set
 from config.config_models import MasterConfig
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ class ConfigService:
         self.config_path = config_path
         self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
-        
+                
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
         try:
@@ -28,15 +28,6 @@ class ConfigService:
             raise
 
     @property
-    def manager_config(self) -> Dict[str, Any]:
-        """Devuelve el paquete estándar de configuraciones de los managers"""
-        return {
-            "output_folder": self.output_path,
-            "output_flag": self.enabled_outputs,
-            'secuence': self.processing_config.get('pipeline_secuence', {})
-        }
-
-    @property
     def paths_config(self) -> Dict[str, str]:
         """Obtiene todas las rutas del sistema."""
         return self.config.get('paths', "")
@@ -50,7 +41,7 @@ class ConfigService:
     def processing_config(self) -> Dict[str, Any]:
         """Obtiene configuración de procesamiento."""
         return self.config.get('processing', {})
-
+        
     @property
     def modules_config(self) -> Dict[str, Dict[str, Any]]:
         """Obtiene configuración de módulos."""
@@ -63,11 +54,6 @@ class ConfigService:
     def validated_modules_config(self):
         """Acceso directo al objeto Pydantic validado."""
         return self.validated_config.modules
-
-    @property
-    def input_path(self) -> str:
-        """Devuelve la ruta de la carpeta de entrada."""
-        return self.paths_config.get('input_folder', "")
 
     @property
     def output_path(self) -> str:
@@ -87,55 +73,33 @@ class ConfigService:
         }
 
     @property
-    def validated_paddle_config(self):
-        """Acceso directo al objeto Pydantic validado."""
-        return self.validated_config.models_config
+    def manager_config(self) -> Dict[str, Any]:
+        """Devuelve el paquete estándar de configuraciones de los managers"""
+        return {
+            "output_folder": self.output_path,
+            "enabled_outputs": self.enabled_outputs,
+            'secuence': self.workers_order
+        }
 
-    # @property
-    # def paddle_det_config(self) -> Dict[str, Any]:
-    #     """Devuelve la configuración fusionada para el modelo de detección de Paddle.
-    #     Incluye solo los parámetros generales relevantes y la ruta del modelo de detección."""
-    #     paddle_config = self.models_config
-    #     det_model = paddle_config.get('models', {})
-    #     det_model_path = det_model.get("det_model_dir", "")
+    def validate_pipeline_config(self) -> bool:
+        min_workers: List[str] = ["image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"]
+        set_min_workers: Set[str] = set(min_workers)
+        num_min_workers = len(set_min_workers)
+        if not self.workers_order:
+            logger.error("No hay configuración de workers disponible")
+            return False
 
-    #     return {
-    #         "det_model_dir": det_model_path,
-    #         "use_angle_cls": paddle_config.get("use_angle_cls", False),
-    #         "show_log": paddle_config.get("show_log", False),
-    #         "use_gpu": paddle_config.get("use_gpu", False),
-    #         "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
-    #         "lang": paddle_config.get("lang", "es"),
-    #     }
+        try:
+            set_worker_config: Set[str] = {worker for stage in self.workers_order.values() for worker in stage}
+            if set_min_workers.issubset(set_worker_config):
+                for stage, stage_workers in self.workers_order.items():
+                    logger.info(f"Activos '({len(stage_workers)}, {set(stage_workers)})' workers para '{stage}'")
+                return True
+            else:
+                workers_missing = set_min_workers - set_worker_config
+                logger.warning(f"Faltan: {workers_missing} de los '{num_min_workers}' workers mínimos para el pipeline")
+                return False
 
-    # @property
-    # def paddle_rec_config(self) -> Dict[str, Any]:
-    #     """
-    #     Devuelve la configuración fusionada para el modelo de reconocimiento de Paddle.
-    #     Incluye solo los parámetros generales relevantes y la ruta del modelo de detección.
-    #     """
-    #     paddle_config = self.models_config
-    #     rec_model = paddle_config.get('models', {})
-    #     rec_model_path = rec_model.get("rec_model_dir", "")
-
-    #     return {
-    #         "rec_model_dir": rec_model_path,
-    #         "use_angle_cls": paddle_config.get("use_angle_cls", False),
-    #         "show_log": paddle_config.get("show_log", False),
-    #         "use_gpu": paddle_config.get("use_gpu", False),
-    #         "enable_mkldnn": paddle_config.get("enable_mkldnn", True),
-    #         "lang": paddle_config.get("lang", "es"),
-    #     }
-
-    # @property
-    # def data_finder_config(self) -> Dict[str, str]:
-    #     word_finder_config = self.models_config
-    #     find_model = word_finder_config.get("models", {})
-    #     model_path = word_finder_config.get("C:/word_finder_model/data/word_finder_model.pkl")
-    #     system_config = self.system_config
-    #     project_root = system_config.get("project_root", "")
-
-    #     return {
-    #         "model_path": model_path,
-    #         "project_root": project_root
-    #     }
+        except Exception as e:
+            logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
+            return False

@@ -18,6 +18,7 @@ class Refiner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str, clasificator: SemanticClasificator, cleaner: TextCleaner, fragmenter: Fragmenter, corrector: TextCorrector):
         super().__init__(config, project_root)
         self.worker_config = self.config.get("text_refiner", {})
+        # Los workers ahora son compartidos, no necesitan reset
         self.clasificator = clasificator
         self.cleaner = cleaner
         self.fragmenter = fragmenter

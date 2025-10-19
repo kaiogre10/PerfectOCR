@@ -146,7 +146,7 @@ class SemanticClasificator(OCRAbstractWorker):
             if idx != -1:
                 after = s[idx+1 : ]
                 if any(c.isdigit() for c in after):
-# No letras entre el símbolo y el número inmediato y no termina con símbolo y no es "00" después del símbolo y no digitos antes y símbolo al final
+                    # No letras entre el símbolo y el número inmediato y no termina con símbolo y no es "00" después del símbolo y no digitos antes y símbolo al final
                     maybe_amt = after.lstrip()
                     # quick fail for 00 only amount
                     possible_num = ""
@@ -179,8 +179,10 @@ class SemanticClasificator(OCRAbstractWorker):
         multi_pattern = (
             rf"^(\s*{currency}\s*(\d{{1,3}}(?:[.,]\d{{3}})*|\d+)(?:[.,]\d+)?\s*){{2,}}$"
         )
+
         if re.match(pattern_end, s):
             return False
+
         cantidades = re.findall(rf"{currency}?\s*(\d+)(?:[.,]\d+)?\s*{currency}?", s)
         if any(c == "00" for c in cantidades):
             return False

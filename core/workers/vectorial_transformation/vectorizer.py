@@ -51,7 +51,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     if self.features_output:
                         from services.output_service import save_table_values
                         file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                        worker_name = context.get("worker_name", {})
+                        worker_name = context.get("worker_name")
                         output_paths = context.get("output_paths", [])
                         image_features = self.image_features
                         save_table_values(file_name, all_features, output_paths, worker_name, image_features)
@@ -175,20 +175,21 @@ class Vectorizer(VectorizationAbstractWorker):
                 return {}
             
             all_lines_features: Dict[str, Dict[str, float]] = {}
-            # encoded_lines = self._calculate_encode_lines(manager, sorted_lines)
-            # # Conteo inline: cantidad de elementos por línea y máximo global (sin función adicional)
-            # max_count_by_line: Dict[str, int] = {
-            #     lid: (len(vals) if vals is not None else 0) # type: ignore
-            #     for lid, vals in (encoded_lines or {}).items()
-            # }
-            # global_max_encoded: int = max(max_count_by_line.values()) if max_count_by_line else 0
+            encoded_lines = self._calculate_encode_lines(manager, sorted_lines)
+             # Conteo inline: cantidad de elementos por línea y máximo global (sin función adicional)
+            max_count_by_line: Dict[str, int] = {
+                 lid: (len(vals) if vals is not None else 0) # type: ignore
+                 for lid, vals in (encoded_lines or {}).items()
+            }
+
+            global_max_encoded: int = max(max_count_by_line.values()) if max_count_by_line else 0
             num_lines = len(sorted_lines)
 
             for i, (line_id, line_data) in enumerate(sorted_lines):
-            #     line_values = encoded_lines.get(line_id, [])
-            #     if not line_values:
-            #         logger.warning(f"Línea {line_id} sin codificación o sin features geométricos; será ignorada.")
-            #         continue
+                line_values = encoded_lines.get(line_id, [])
+                if not line_values:
+                     logger.warning(f"Línea {line_id} sin codificación o sin features geométricos; será ignorada.")
+                     continue
 
                 if not line_data:
                     logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")

@@ -154,7 +154,6 @@ class DataFinder(ConfigWithNumpy):
     wordfinder_model_path: str
     min_similarity: float
     max_q_lenght: int
-    fuzzy_ratio: int
     
 class TextRefiner(ConfigWithNumpy):
     num_passes: int

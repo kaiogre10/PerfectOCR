@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "cleaner"
+    #- "cleaner"
     # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
@@ -20,18 +20,18 @@ pipeline_secuence:
   ocr_stage:
     # - "dummie"
     - "paddle_wrapper"
-    - "text_refiner"
+    # - "text_refiner"
     - "data_finder"
     
   vector_stage:
-    #- "dummie"
-    - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
+    - "dummie"
+#    - "lineal"
+ #   - "vectorizer"
+  #  - "dbscan"
+   # - "cos_sim"
+    #- "table_structurer"
     # - "table_validated"
-    - "math_max"
+    #- "math_max"
 
 # Configuración de salida (independiente)
 enabled_outputs:
@@ -175,7 +175,6 @@ modules:
       wordfinder_model_path: C:/word_finder_model/models/wf_model.pkl
       min_similarity: 0.95
       max_q_lenght: 20
-      fuzzy_ratio: 85
 
     fragmenter:
       min_contours_for_frag: 2

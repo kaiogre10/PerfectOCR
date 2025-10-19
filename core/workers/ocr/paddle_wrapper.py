@@ -69,12 +69,12 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             if final_results:
                 success = manager.update_ocr_results(final_results)
                 processed_count = len(final_results) if success else 0
-                logger.debug(f"{final_results}")
+                logger.debug(f"Resultados de PADDLE: {final_results}")
                 
                 if self.output:
                     from services.output_service import save_debug_ocr
                     file_name: str = manager.workflow.metadata.image_name
-                    worker_name = context.get("worker_name", {})
+                    worker_name = context.get("worker_name")
                     output_paths = context.get("output_paths", [])
                     save_debug_ocr( output_paths, worker_name, final_results, file_name)
             
@@ -134,8 +134,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                                 "confidence": confidence_pct
                             }
                         else:
-                            logger.debug(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> {confidence_pct}% < {min_confidence}%")
-                    
+                            logger.info(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> {confidence_pct}% < {min_confidence}%")
+
+                    logger.debug(f"Se mapearon '{len(final_results)}' polígonos con su texto y ID")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes.")

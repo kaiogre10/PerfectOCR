@@ -8,6 +8,7 @@ if PROJECT_ROOT not in sys.path:
 # from typing import Optional, List
 from services.cache_service import clear_output_folders
 from app.main_builder import activate_main
+# from services.config_service import ConfigService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,9 +21,9 @@ os.environ.update({
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 DEFAULT_INPUT_PATH = [
-    "input",
+#    "input",
     # "input2",
-    # "input3"
+        "input3"
 ]
 
 DEFAULT_OUTPUT_PATH =[

@@ -626,17 +626,13 @@ class DataFormatter:
 
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
+                    logger.info(f"'{len(all_lines)}' líneas de texto guardadas")
                     # logger.info(f"{all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.info(f"{all_lines['line_id']}: {all_lines['text']}")
+                    logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
             if header_line:
                 logger.debug(f"Header marcado automáticamente: {header_line}")
-                return True
-
-            num_lines = len(all_lines_dataclasses)
-            logger.debug(f"Guardadas {num_lines} líneas reconstruidas.")
-            for line_id, line_data in self.workflow.all_lines.items():
                 return True
                         
         except Exception as e:
