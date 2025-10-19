@@ -21,7 +21,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
 
         try:
             if config_services.validate_pipeline_config():
-                logger.warning("Número mínimo de workers activos, se inicia el pipeline")
+                logger.debug("Número mínimo de workers activos, se inicia el pipeline")
             else:
                 return []
         except Exception as e:

@@ -75,10 +75,11 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
                 total_time = time.time() - start_time
                 if not df.empty:
-                    logger.debug(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
+                    logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
                     logger.debug(f"Estructuración de tabla completada en {total_time:.10f} s.")
 
                     context["table_copy"] = df.copy()
+
                     if self.output:
                         from services.output_service import save_debug_table
                         all_lines = manager.workflow.all_lines if manager.workflow else {}
@@ -94,7 +95,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                             header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
 
                         file_name: str = manager.workflow.metadata.image_name # type: ignore
-                        worker_name = context.get("worker_name", {})
+                        worker_name = context.get("worker_name")
                         output_paths = context.get("output_paths", [])
                         save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
 

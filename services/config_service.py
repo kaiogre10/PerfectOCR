@@ -93,7 +93,7 @@ class ConfigService:
             set_worker_config: Set[str] = {worker for stage in self.workers_order.values() for worker in stage}
             if set_min_workers.issubset(set_worker_config):
                 for stage, stage_workers in self.workers_order.items():
-                    logger.info(f"Activos '({len(stage_workers)}, {set(stage_workers)})' workers para '{stage}'")
+                    logger.debug(f"Activos '({len(stage_workers)}, {set(stage_workers)})' workers para '{stage}'")
                 return True
             else:
                 workers_missing = set_min_workers - set_worker_config

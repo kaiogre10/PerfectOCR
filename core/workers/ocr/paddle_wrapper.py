@@ -69,7 +69,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             if final_results:
                 success = manager.update_ocr_results(final_results)
                 processed_count = len(final_results) if success else 0
-                logger.debug(f"Resultados de PADDLE: {final_results}")
                 
                 if self.output:
                     from services.output_service import save_debug_ocr
@@ -79,7 +78,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     save_debug_ocr( output_paths, worker_name, final_results, file_name)
             
             total_time = time.perf_counter() - start_time
-            logger.debug(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.4f}s.")
+            logger.debug(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.6f}s.")
             
             return True
         except Exception as e:
@@ -133,10 +132,13 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                                 "text": str(text).strip(),
                                 "confidence": confidence_pct
                             }
+
                         else:
                             logger.info(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> {confidence_pct}% < {min_confidence}%")
 
-                    logger.debug(f"Se mapearon '{len(final_results)}' polígonos con su texto y ID")
+                        #logger.debug(f"Resultados: {poly_id}: '{text}', {confidence_pct}%")
+
+                    logger.debug(f"Se mapearon '{len(final_results)}' polígonos con su  ID")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes.")

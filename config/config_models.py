@@ -97,6 +97,8 @@ class DeskewConfig(ConfigWithNumpy):
 
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
+    bin_interval: Tuple[int, int]
+    percentil : int
 
 class CleaningConfig(ConfigWithNumpy):
     std_low: float
@@ -109,7 +111,6 @@ class ImagePreparation(ConfigWithNumpy):
     angle_corrector: DeskewConfig
     cleaner: CleaningConfig
     polygon_extractor: CuttingConfig
-    bin_interval: Tuple[int, int]    
 
 class ContrastConfig(ConfigWithNumpy):
     clahe_clip_limit: float

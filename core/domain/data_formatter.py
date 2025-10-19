@@ -626,7 +626,6 @@ class DataFormatter:
 
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
-                    logger.info(f"'{len(all_lines)}' líneas de texto guardadas")
                     # logger.info(f"{all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
                     logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
 

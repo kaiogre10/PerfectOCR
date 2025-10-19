@@ -39,7 +39,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 if self.output:
                     from services.output_service import save_debug_ocr
                     file_name: str = manager.workflow.metadata.image_name
-                    worker_name = context.get("worker_name", {})
+                    worker_name = context.get("worker_name")
                     output_paths = context.get("output_paths", [])
                     save_debug_ocr( output_paths, worker_name, lines_info, file_name)
 

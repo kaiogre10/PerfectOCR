@@ -20,16 +20,16 @@ pipeline_secuence:
   ocr_stage:
     # - "dummie"
     - "paddle_wrapper"
-    # - "text_refiner"
+    - "text_refiner"
     - "data_finder"
     
   vector_stage:
-    - "dummie"
-#    - "lineal"
- #   - "vectorizer"
-  #  - "dbscan"
-   # - "cos_sim"
-    #- "table_structurer"
+    #- "dummie"
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     #- "math_max"
 
@@ -103,8 +103,8 @@ modules:
     
     polygon_extractor:
       cropping_padding: 5
-      
-    bin_interval: [10, 245]
+      bin_interval: [10, 245]
+      percentil: 10
 
   preprocessing:
     moire:

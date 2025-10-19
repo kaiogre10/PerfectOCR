@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
+import dataclasses
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte.
         Siguiendo el patrón: Análisis → Decisión Vectorizada → Aplicación"""
+        bin_interval: Tuple[int, int] = self.worker_config.get("bin_interval")
+        percentile: int = self.worker_config.get("percentil")
         try:
             import time
             start_time = time.time()
@@ -29,15 +32,20 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
+
+            image_mean = full_img.mean()
+            if image_mean < bin_interval[0] or image_mean > bin_interval[1]:
+                logger.error(f"Full_img fuera de rango, posible daño en correcciones anteriores: {image_mean}")
+                return False
+
             logger.debug("Full_img obtenida con éxito")
-                
+
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             img_dims: Dict[str, int] = {}
             if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
                 img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
                 
             img_h = img_dims.get("height") or 0
-            
             img_w = img_dims.get("width") or 0
                         
             if not polygons:
@@ -98,48 +106,72 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             discarded_poly_ids: List[str] = []
             valid_poly_ids: List[str] = []
 
-            bin_interval: Tuple[int, int] = self.worker_config.get("bin_interval", [10, 245])
-
+            poly_data_to_filter = []
             for i, idx in enumerate(valid_indices):
-                poly_id: str = poly_ids_order[idx] #type: ignore
+                poly_id: str = poly_ids_order[idx]  # type: ignore
                 crop_x1, crop_y1 = int(px1[idx]), int(py1[idx])
                 crop_x2, crop_y2 = int(px2[idx]), int(py2[idx])
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
 
-                if cropped.size == 0:
-                    discarded_poly_ids.append(f"{poly_id} (vacío)")
-                    continue
+                poly_area = cropped.size
+                poly_data_to_filter.append({
+                    "poly_id": poly_id,
+                    "area": poly_area,
+                    "cropped": cropped,
+                    "i": i,
+                    "coords": (crop_x1, crop_y1, crop_x2, crop_y2)
+                })
 
-                img_mean = cropped.mean()
-                if img_mean < bin_interval[0] or img_mean > bin_interval[1]:
-                    discarded_poly_ids.append(f"{poly_id} (blanco/negro)")
-                    continue
+            if not poly_data_to_filter:
+                logger.warning("PolygonExtractor: No hay polígonos válidos para procesar.")
+                return True
 
-                # Solo los válidos se guardan
-                new_id = f"poly_{len(valid_poly_ids):04d}"
-                cropped_images[new_id] = cropped
-                valid_poly_ids.append(poly_id)
+            areas = np.array([p['area'] for p in poly_data_to_filter])
+            percentile_value = np.percentile(areas, percentile)
 
-                poly_height, poly_width = cropped.shape[:2]
+            valid_polygons_data = []
+            for p_data in poly_data_to_filter:
+                if p_data['area'] < percentile_value or p_data['area'] == 0:
+                    discarded_poly_ids.append(f"{p_data['poly_id']} (en el percentil menor o área nula")
+                else:
+                    valid_polygons_data.append(p_data)
+                    valid_poly_ids.append(p_data['poly_id'])
+
+            for i, p_data in enumerate(valid_polygons_data):
+                new_id = f"poly_{i:04d}"
+                cropped_images[new_id] = p_data["cropped"]
+
+                poly_height, poly_width = p_data["cropped"].shape[:2]
+                centroid_idx = p_data["i"]
+                crop_x1, crop_y1, crop_x2, crop_y2 = p_data["coords"]
+
                 cropped_geometries[new_id] = {
-                    "padd_centroid": [(padded_centroids_x[i]), (padded_centroids_y[i])],
-                    "padding_coords": [(crop_x1), (crop_y1), (crop_x2), (crop_y2)],
+                    "padd_centroid": [(padded_centroids_x[centroid_idx]), (padded_centroids_y[centroid_idx])],
+                    "padding_coords": [crop_x1, crop_y1, crop_x2, crop_y2],
                     "croppy_dims": {
-                        "poly_height": poly_height, 
-                        "poly_width":  poly_width,
+                        "poly_height": poly_height,
+                        "poly_width": poly_width,
                     }
                 }
 
             # Eliminar los descartados del manager.workflow.polygons
             for poly_id in discarded_poly_ids:
+                if self.output:
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name")
+                    output_paths = context.get("output_paths", [])
+                    save_croped_image(poly_id, cropped, output_paths, worker_name)
+
                 pid = poly_id.split(" ")[0]
                 if pid in manager.workflow.polygons:
                     del manager.workflow.polygons[pid]
 
             # Reindexar los polígonos válidos en el manager
-            import dataclasses
             new_polygons = {}
             for idx, old_id in enumerate(valid_poly_ids):
+                if old_id not in manager.workflow.polygons:
+                    continue
+
                 new_id = f"poly_{idx:04d}"
                 poly_obj = manager.workflow.polygons[old_id]
                 poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
@@ -147,7 +179,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             manager.workflow.polygons = new_polygons
 
             if discarded_poly_ids:
-                logger.warning(f"PolygonExtractor: Se eliminaron {len(discarded_poly_ids)} polígonos no válidos: {', '.join(discarded_poly_ids)}")
+                logger.debug(f"PolygonExtractor: Se eliminaron {len(discarded_poly_ids)} polígonos no válidos: {', '.join(discarded_poly_ids)}")
             
             # Guardar resultados
             if not manager.save_cropped_images(cropped_images, cropped_geometries):

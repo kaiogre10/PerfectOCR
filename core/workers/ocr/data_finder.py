@@ -37,12 +37,8 @@ class DataFinder(OCRAbstractWorker):
         start_time = time.time()
         try:
             logger.debug("Data Finder iniciado")
-            if not manager or not getattr(manager, "workflow", None):
-                logger.warning("Manager o workflow ausente")
-                return False
-            
-            workflow = manager.workflow
-            polygons: Dict[str, Polygons] = getattr(workflow, "polygons", {}) or {}
+
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
                 
             if not polygons:
                 logger.error("No hay polygons para procesar")
@@ -72,10 +68,6 @@ class DataFinder(OCRAbstractWorker):
             return {}
 
         try:
-            if not polygons:
-                logger.error("No hay polígonos para procesar")
-                return {}
-
             processed_count = 0
             polygon_updates: Dict[str, str] = {}
             skipped_numeric = 0
@@ -92,9 +84,8 @@ class DataFinder(OCRAbstractWorker):
                     logger.info(msg=f"Polygono sin texto: {pid}")
                     continue
 
-                if sc:
-                    if sc.numeric or sc.quantitative or sc.code or sc.rfc:
-                        skipped_numeric += 1
+                if sc.numeric or sc.quantitative or sc.code or sc.rfc:
+                    skipped_numeric += 1
                     continue
 
                 lenght = len(ocr_text)
@@ -132,7 +123,6 @@ class DataFinder(OCRAbstractWorker):
     def _find_rfc(self, s: str) -> bool:
 
         try:
-
             if not s or not s.strip():
                 return False
 
