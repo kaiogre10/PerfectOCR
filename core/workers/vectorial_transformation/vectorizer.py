@@ -19,9 +19,10 @@ class Vectorizer(VectorizationAbstractWorker):
         self.exclude_types =  self.worker_config.get('exclude_types', [])
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
+        self.second_output = self.enabled_outputs.get("encoded_lines", False)
         self.features_output = self.enabled_outputs.get("features", False)
         self.image_features = self.enabled_outputs.get("image_features", False)
-                
+
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time = time.perf_counter()
@@ -33,7 +34,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 logger.warning(f"Intervalo tabular detectado, se omite vectorización")
                 context["all_features"] = None
-                logger.info(f"Intervalo detectado en:{start_time-time.perf_counter():.7f}")
+                logger.info(f"Intervalo detectado en:{time.perf_counter()-start_time:.7f}")
 
                 if manager.save_tabular_lines(table_line_ids):
                     logger.info("Líneas guardadas en el manager desde Vectorizer")
@@ -41,10 +42,9 @@ class Vectorizer(VectorizationAbstractWorker):
                 else:
                     logger.warning("No se pudieron guardar las líneas tabulares en el manager")
                     return True
-
             else:
                 # Si no hay intervalo, se prosigue con la vectorización normal
-                all_features = self._vectorize_text(manager)
+                all_features = self._vectorize_text(manager, context)
                 if all_features:
                     total_time = time.time() - start_time
 
@@ -69,7 +69,7 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error en vectorización: {e}", exc_info=True)
             return False
             
-    def _vectorize_text(self, manager: DataFormatter) -> Optional[Dict[str, Dict[str, float]]]:
+    def _vectorize_text(self, manager: DataFormatter, context: Dict[str, Any]) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado por el scanner.
         No usa el header como referencia para el intervalo; el header sólo se añade si el intervalo es válido.
@@ -86,7 +86,7 @@ class Vectorizer(VectorizationAbstractWorker):
             )
             
             t3 = time.perf_counter()
-            features_by_line = self._calculate_features(sorted_lines, manager)
+            features_by_line = self._calculate_features(sorted_lines, manager, context)
             logger.info(f"All_Feautures calculadas en {time.perf_counter() - t3:.7f}s")
 
             if not features_by_line:
@@ -152,7 +152,7 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error vectorizando lineas: {e}", exc_info=True)
             return None
         
-    def _calculate_features(self, sorted_lines: List[Tuple[str, AllLines]] , manager: DataFormatter) -> Optional[Dict[str, Dict[str, float]]]:
+    def _calculate_features(self, sorted_lines: List[Tuple[str, AllLines]] , manager: DataFormatter, context: Dict[str, Any]) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
@@ -369,6 +369,13 @@ class Vectorizer(VectorizationAbstractWorker):
                 }
                 all_lines_features[line_id] = line_all_features
 
+            if self.second_output:
+                from services.output_service import save_debug_ocr
+                file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                worker_name = context.get("worker_name") or "vectorizer"
+                output_paths = context.get("output_paths", [])
+                save_debug_ocr(output_paths, worker_name, encoded_lines, file_name)
+
             return all_lines_features
 
         except Exception as e:
@@ -512,13 +519,14 @@ class Vectorizer(VectorizationAbstractWorker):
                     encoded_text = [encoder.get(char, 0) for char in compact_text]
                     encoded_lines[line_id] = encoded_text
 
-            logger.info(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
-                
+                    logger.debug(f"Codificación {line_id}: {encoded_text}")
+
+            logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
             return encoded_lines
 
         except Exception as e:
-            logger.error(f"Error codificando líneas: {e}", exc_info=True)
-        return {}
+            logger.warning(f"Error codificando líneas: {e}", exc_info=True)
+            return {}
 
     def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[str]]:
         
@@ -547,7 +555,6 @@ class Vectorizer(VectorizationAbstractWorker):
             return None
 
         logger.info(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
-
 
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
         logger.info(f"Tabular lines desde vectorizeier: {tabular_line_ids}")

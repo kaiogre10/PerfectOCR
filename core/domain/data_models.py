@@ -195,8 +195,8 @@ DENSITY_ENCODER: Dict[str, int] = {
     "i": 109,
     "s": 110,
     "r": 111,
-    "a": 112,
-    "e": 113,
+    "e": 112,
+    "a": 113,
 }
 
 CHAR_FRECUENCY: Dict[str, int] ={

@@ -44,8 +44,9 @@ enabled_outputs:
   sharp_poly: false
   binarized_polygons: false
   ocr_raw: false
-  reconstructed_lines: false
+  reconstructed_lines: true
   table_lines: false
+  encoded_lines: true
   features: false
   image_features: false
   table_structured: false
@@ -95,7 +96,7 @@ modules:
     
     polygon_extractor:
       cropping_padding: 5
-      bin_interval: [10, 245]
+      bin_interval: [10, 248]
       percentil: 10
 
   preprocessing:
@@ -179,7 +180,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: true
+      keywords_interval_enabled: false
       exclude_types: [
         "descriptive", 
         "rfc", 

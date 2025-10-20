@@ -20,6 +20,7 @@ class OutputFlag(ConfigWithNumpy):
     ocr_raw: bool
     reconstructed_lines: bool
     table_lines: bool
+    encoded_lines: bool
     features: bool
     image_features: bool
     table_structured: bool

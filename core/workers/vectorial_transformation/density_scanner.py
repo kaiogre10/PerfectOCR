@@ -27,7 +27,7 @@ class DensityScanner(VectorizationAbstractWorker):
                 logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                 return True
 
-            valid_analyses = self._get_interval(analysis, manager)
+            valid_analyses = self._cut_lines(analysis, manager)
             
             table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
             logger.debug(f"RESULTADOS DBSCAN: {len(table_line_ids)} table_line_ids: {table_line_ids}")
@@ -88,7 +88,7 @@ class DensityScanner(VectorizationAbstractWorker):
     
         return table_line_ids
 
-    def _get_interval(self, analysis: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
+    def _cut_lines(self, analysis: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
         """
         Filtra solo las líneas después del encabezado y antes del footer para evitar ruido.
         """
@@ -96,14 +96,25 @@ class DensityScanner(VectorizationAbstractWorker):
         
         header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
         header_line_id = header_line_ids[0] if header_line_ids else None
-        if not header_line_id:
+        footer_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "footer_line", None) is not None]
+        footer_line_id = footer_line_ids[0] if footer_line_ids else None
+
+        if not header_line_id and not footer_line_id:
+            logger.info("No hay header ni footer: se devuelve el análisis completo")
             return analysis
-            
-        
+
         line_ids = list(analysis.keys())
-        header_idx = line_ids.index(header_line_id)
-        # Solo tomar líneas después del encabezado
-        filtered_ids = line_ids[header_idx:]
-        valid_analyses = {lid: analysis[lid] for lid in filtered_ids}
-        logger.debug(f"Lineas filtradas: {len(valid_analyses)}: {filtered_ids} ")
-        return valid_analyses
+        if header_line_id:
+            if header_line_id in line_ids:
+                header_idx = line_ids.index(header_line_id) + 1  # después del header
+                return {lid: analysis[lid] for lid in line_ids[header_idx:]}
+            logger.warning(f"header_line_id {header_line_id} no encontrada en analysis keys")
+            return analysis
+
+        # Si llegamos aquí, existe footer_line_id y header_line_id es None
+        if footer_line_id:
+            if footer_line_id in line_ids:
+                footer_idx = line_ids.index(footer_line_id)  # antes del footer
+                return {lid: analysis[lid] for lid in line_ids[:footer_idx]}
+            logger.warning(f"footer_line_id {footer_line_id} no encontrada en analysis keys")
+            return analysis
