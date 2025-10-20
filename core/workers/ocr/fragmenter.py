@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.pattern_finder import is_acronym, quantitative_runs
+from core.utils.pattern_finder import is_acronym, find_quantitative_runs
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,6 @@ class Fragmenter(OCRAbstractWorker):
             is_quant = getattr(sc, "quantitative", False)
             is_numeric = getattr(sc, "numeric", False)
             is_umd = getattr(sc, "umd", False)
-            is_rfc = getattr(sc, "rfc", False)
             # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
             if is_acronym(polygon.ocr_text or ""):
                 logger.info(f"No fragmentando sigla detectada: '{polygon.ocr_text}'")
@@ -54,13 +53,13 @@ class Fragmenter(OCRAbstractWorker):
 
             text_needs_frag = (
                 self.worker_config and
-                not (is_numeric or is_quant or is_umd or is_rfc) and
+                not (is_numeric or is_quant or is_umd) and
                 " " in (polygon.ocr_text or "").strip()
             )
 
             punctuation_needs_frag = (
                 self.worker_config and
-                not (is_numeric or is_quant or is_umd or is_rfc) and
+                not (is_numeric or is_quant or is_umd) and
                 not text_needs_frag and 
                 (any(punct in (polygon.ocr_text or "") for punct in [";", ":", "!", "?"]) or 
                 (polygon.ocr_text or "").count('.') == 1) 
@@ -70,7 +69,7 @@ class Fragmenter(OCRAbstractWorker):
             visual_needs_frag = poly_blob_metrics.get('needs_fragmentation', False)
             quant_runs = []
             if is_quant:
-                quant_runs = quantitative_runs(polygon.ocr_text or "")
+                quant_runs = find_quantitative_runs(polygon.ocr_text or "")
             quant_needs_frag = len(quant_runs) >= 2
 
             if text_needs_frag or visual_needs_frag or punctuation_needs_frag or quant_needs_frag:
@@ -87,7 +86,7 @@ class Fragmenter(OCRAbstractWorker):
                     reason = "puntuación"
 
                 sc = polygon.semantic_clasification
-                active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] if getattr(sc, field)]
+                active_fields = [field for field in ['quantitative', 'umd', 'numeric', 'descriptive', 'code'] if getattr(sc, field)]
                 logger.debug(f"{poly_id}: MOTIVO: {reason}, TIPO: {active_fields} = {polygon.ocr_text}")
                 
                 if visual_needs_frag:
@@ -252,7 +251,7 @@ class Fragmenter(OCRAbstractWorker):
         if point_count == 1:
             # Si el tipo semántico ya es numérico o cuantitativo, no fragmentar.
             sc = polygon.semantic_clasification
-            if sc.numeric or sc.quantitative or sc.rfc or sc.umd:
+            if sc.numeric or sc.quantitative or sc.umd:
                 return [polygon]
 
             dot_index = text.find('.')
@@ -450,5 +449,3 @@ class Fragmenter(OCRAbstractWorker):
             current_x = new_xmax
 
         return new_polys
-            
-    

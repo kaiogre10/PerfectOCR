@@ -28,7 +28,7 @@ class TextCleaner(OCRAbstractWorker):
         # Configurada directamente en el worker en lugar de leerla desde un YAML.
         self.chars = [
             ")", "(", "]", "[", "{", "}", "|", "*", "^", "@",
-            "-", "~", "_", "+", "=", "<", ">", ";",
+            "-", "~", "_", "+", "=", "<", ">", ";", ":",
             "'", "!", "¡", "?", "¿", "'", "/", "\\", "''",
         ]
 
@@ -67,7 +67,7 @@ class TextCleaner(OCRAbstractWorker):
             text = self._remove_special_chars(text)
 
             if (not text.strip() or
-                (confidence < self.min_confidence and not (sc.numeric or sc.quantitative or sc.rfc or sc.umd)) or
+                (confidence < self.min_confidence and not (sc.numeric or sc.quantitative or sc.umd)) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)):
                 logger.debug(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence}")
                 continue

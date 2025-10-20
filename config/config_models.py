@@ -94,7 +94,7 @@ class DeskewConfig(ConfigWithNumpy):
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
     bin_interval: Tuple[int, int]
-    percentil : int
+    percentil : float
 
 class CleaningConfig(ConfigWithNumpy):
     std_low: float

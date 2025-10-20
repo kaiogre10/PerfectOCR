@@ -22,7 +22,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte.
         Siguiendo el patrón: Análisis → Decisión Vectorizada → Aplicación"""
         bin_interval: Tuple[int, int] = self.worker_config.get("bin_interval")
-        percentile: int = self.worker_config.get("percentil")
+        percentile: int = int(self.worker_config.get("percentil"))
         try:
             import time
             start_time = time.time()
@@ -106,7 +106,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             discarded_poly_ids: List[str] = []
             valid_poly_ids: List[str] = []
 
-            poly_data_to_filter = []
+            poly_data_to_filter: List[Dict[str, Any]] = []
             for i, idx in enumerate(valid_indices):
                 poly_id: str = poly_ids_order[idx]  # type: ignore
                 crop_x1, crop_y1 = int(px1[idx]), int(py1[idx])
@@ -129,10 +129,10 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             areas = np.array([p['area'] for p in poly_data_to_filter])
             percentile_value = np.percentile(areas, percentile)
 
-            valid_polygons_data = []
+            valid_polygons_data: List[Dict[str, Any]] = []
             for p_data in poly_data_to_filter:
                 if p_data['area'] < percentile_value or p_data['area'] == 0:
-                    discarded_poly_ids.append(f"{p_data['poly_id']} (en el percentil menor o área nula")
+                    discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['area']}")
                 else:
                     valid_polygons_data.append(p_data)
                     valid_poly_ids.append(p_data['poly_id'])
@@ -156,11 +156,24 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # Eliminar los descartados del manager.workflow.polygons
             for poly_id in discarded_poly_ids:
+                pid = poly_id.split(" ")[0]
+                
                 if self.output:
-                    from services.output_service import save_croped_image
-                    worker_name = context.get("worker_name")
-                    output_paths = context.get("output_paths", [])
-                    save_croped_image(poly_id, cropped, output_paths, worker_name)
+                    # Buscar la imagen en poly_data_to_filter
+                    cropped = None
+                    for p_data in poly_data_to_filter:
+                        if p_data['poly_id'] == pid:
+                            cropped = p_data['cropped']
+                            break
+                    
+                    if cropped is not None:
+                        from services.output_service import save_croped_image
+                        worker_name = context.get("worker_name") or "poly_gone"
+                        output_paths = context.get("output_paths", [])
+                        save_croped_image(poly_id, cropped, output_paths, worker_name)
+
+                if pid in manager.workflow.polygons:
+                    del manager.workflow.polygons[pid]
 
                 pid = poly_id.split(" ")[0]
                 if pid in manager.workflow.polygons:

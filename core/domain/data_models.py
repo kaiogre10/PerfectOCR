@@ -29,7 +29,6 @@ class Geometry:
 
 @dataclass
 class SemanticClassification:
-    rfc: bool
     numeric: bool
     descriptive: bool
     code: bool

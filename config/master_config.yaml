@@ -24,10 +24,10 @@ pipeline_secuence:
   vector_stage:
     - "lineal"
     - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
+    # - "dbscan"
+    # - "cos_sim"
     - "table_structurer"
-    # - "table_validated"
+    - "table_validated"
     # - "math_max"
 
 # Configuración de salida (independiente)
@@ -35,7 +35,7 @@ enabled_outputs:
   pre_clean: false
   angle_corrected: false
   preprocessed_image: false
-  cropped_img: false
+  cropped_img: true
   moire_poly: false
   sp_poly: false
   gauss_poly: false
@@ -96,8 +96,8 @@ modules:
     
     polygon_extractor:
       cropping_padding: 5
-      bin_interval: [10, 248]
-      percentil: 10
+      bin_interval: [1, 254]
+      percentil: 0.5
 
   preprocessing:
     moire:

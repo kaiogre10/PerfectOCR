@@ -49,8 +49,6 @@ class DataFinder(OCRAbstractWorker):
             # Llamar al método original que funciona
             polygon_updates = self._find_data(polygons)
 
-            calidat
-
             # Actualiza las líneas marcadas como encabezado en las dataclasses
             if manager.update_key_field(polygon_updates):
                 total_time = time.time() - start_time
@@ -130,11 +128,11 @@ class DataFinder(OCRAbstractWorker):
 
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.info(f"Resultado de {pid}: {best_result}")
+                        logger.debug(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
-                logger.info(f"{skipped_semantic} polígonos semánticos omitidos")
-                logger.info(f"Encontradas {len(polygon_updates)} coincidencias en {time.perf_counter() - time0:6f}s")
+                logger.debug(f"{skipped_semantic} polígonos semánticos omitidos")
+                logger.debug(f"Encontradas {len(polygon_updates)} coincidencias en {time.perf_counter() - time0:6f}s")
                 return polygon_updates
 
             else:

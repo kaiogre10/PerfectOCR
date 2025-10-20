@@ -394,7 +394,7 @@ class DataFormatter:
                 updated_count += 1
 
             if polygon.semantic_clasification.umd:
-                updated_polygon = dataclasses.replace(polygon, semantic_clasification='descriptive')
+                updated_polygon = dataclasses.replace(polygon, semantic_clasification='code')
                 self.workflow.polygons[poly_id] = updated_polygon
                 updated_count += 1
         
@@ -419,7 +419,6 @@ class DataFormatter:
                 semantic_obj = poly_data.semantic_clasification
                 if not semantic_obj:
                     semantic_obj = SemanticClassification(
-                        rfc=False,
                         numeric=False,
                         descriptive=False,
                         code=False,
@@ -727,8 +726,8 @@ class DataFormatter:
 
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
-                    logger.info(f"{all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    # logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
+                    # logger.info(f"{all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
+                    logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
             footer_line = self._get_footer()

@@ -6,7 +6,6 @@ from typing import Dict, Any, List, Set, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines
-from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 from scipy.sparse import csr_matrix # type: ignore
 
 logger = logging.getLogger(__name__)
@@ -99,6 +98,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         """            
         similarity_threshold: float = self.worker_config.get("similarity_threshold")
         min_cluster = int(self.worker_config.get("min_cluster"))
+        from core.utils.fun_cosine_similarity import cosine_similarity_global
         
         if line_ids.index(tabular_lines[0]) < line_ids.index(header_line_id):
             return []
@@ -195,14 +195,16 @@ class MatricialCusine(VectorizationAbstractWorker):
             
         try:
             X = csr_matrix(mat_rows, dtype=np.float32)
+
             timecos0 = time.perf_counter()
-            sims_mat = cosine_similarity(X, dense_output=False) # type: ignore
+
+            sims_mat = cosine_similarity_global(X, dense_output=False) 
             logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
         except Exception as e:
             logger.error(f"Error calculando matriz se similitud: {e}", exc_info=True)
 
         # Convertir la matriz dispersa a densa para mostrarla
-        sims_mat_dense: np.ndarray[Any, Any] = sims_mat.toarray() # type: ignore
+        sims_mat_dense: np.ndarray[Any, np.dtype[np.float32]] = sims_mat.toarray() 
         mean_log = np.mean(sims_mat_dense) # type: ignore
         logger.debug(f"Promedio matriz: {mean_log}")
         logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
@@ -298,7 +300,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Calcular similitud y registrar la matriz
         from core.utils.fun_cosine_similarity import calculate_similarity_ref
 
-        X = csr_matrix(candidate_rows, dtype=np.float64)
+        X = csr_matrix(candidate_rows, dtype=np.float32)
         sims = calculate_similarity_ref(X, ref_vec, dense_output=False)
         # sims = cosine_similarity(ref_vec, X, dense_output=False)[0]
 

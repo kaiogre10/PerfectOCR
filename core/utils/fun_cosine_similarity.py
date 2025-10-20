@@ -49,5 +49,9 @@ def bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int
     else:
         return 1.0
 
-def calculate_similarity_ref(X: csr_matrix, ref_vec: np.ndarray[Any, Any], dense_output: bool):
+def calculate_similarity_ref(X: csr_matrix, ref_vec: np.ndarray[Any, Any], dense_output: bool = False):
     return cosine_similarity(ref_vec, X, dense_output)[0]
+
+def cosine_similarity_global(X: csr_matrix, Y: None=None, dense_output: bool = False):
+    return cosine_similarity(X, Y, dense_output)
+

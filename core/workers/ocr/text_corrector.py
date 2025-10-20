@@ -24,6 +24,7 @@ class TextCorrector(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get("text_corrector", {})
+        self.char_num = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"]
         
     def _load_correction_rules(self):
         """
@@ -38,7 +39,7 @@ class TextCorrector(OCRAbstractWorker):
             "i": "1",
             "|": "1",
             "l": "1",
-            # "S": "5",
+            "S": "$",
             # "s": "5",
             # "G": "6",
             "B": "8",
@@ -170,7 +171,7 @@ class TextCorrector(OCRAbstractWorker):
         
         # No corregir
         if not (semantic_clasification.numeric or semantic_clasification.quantitative or semantic_clasification.descriptive):
-            semantic_type = "code" if semantic_clasification.code else "umd" if semantic_clasification.umd else "rfc" if semantic_clasification.rfc else "unknown"
+            semantic_type = "code" if semantic_clasification.code else "umd" if semantic_clasification.umd else "unknown"
             logger.debug(f"Omitiendo corrección para tipo '{semantic_type}' ({polygon_id}: {text} )")
             return text
                     
@@ -222,7 +223,7 @@ class TextCorrector(OCRAbstractWorker):
             return False
             
         current_char = text[index]
-        current_is_digit = current_char.isdigit()
+        current_is_digit = current_char in self.char_num
         current_is_alpha = current_char.isalpha()
         
         # Si no es letra ni número, no aplicar corrección
@@ -248,13 +249,13 @@ class TextCorrector(OCRAbstractWorker):
         has_right_match = False
         
         if left_neighbor:
-            if current_is_digit and left_neighbor.isdigit():
+            if current_is_digit and left_neighbor in self.char_num:
                 has_left_match = True
             elif current_is_alpha and left_neighbor.isalpha():
                 has_left_match = True
         
         if right_neighbor:
-            if current_is_digit and right_neighbor.isdigit():
+            if current_is_digit and right_neighbor in self.char_num:
                 has_right_match = True
             elif current_is_alpha and right_neighbor.isalpha():
                 has_right_match = True

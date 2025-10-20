@@ -3,10 +3,10 @@ from sklearn.cluster import DBSCAN # type: ignore
 import numpy as np
 import time
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines, Polygons
+from core.domain.data_models import AllLines
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class DensityScanner(VectorizationAbstractWorker):
         features_array = np.array(features, dtype=np.float32)
 
         clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
-        labels: np.ndarray[Any, np.dtype[np.int8]] = clustering.fit_predict(features_array)
+        labels: np.ndarray[Any, Any] = clustering.fit_predict(features_array)
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:

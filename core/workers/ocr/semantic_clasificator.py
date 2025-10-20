@@ -7,7 +7,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, SemanticClassification
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_encoder import encode_text
-from core.utils.pattern_finder import find_rfc, find_umd, is_quantitative, has_quantitative_pattern
+from core.utils.pattern_finder import find_umd, find_quantitative
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +20,7 @@ class SemanticClasificator(OCRAbstractWorker):
         self.char_num = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"]
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter, filter_modified: bool = False) -> bool:
-        """
-        Clasifica polígonos semánticamente
-        """
+        """Clasifica polígonos semánticamente"""
         logger.debug(f"Clasificador iniciado (filter_modified={filter_modified})")
         try:
             if not manager.workflow or not manager.workflow.polygons:
@@ -95,25 +93,20 @@ class SemanticClasificator(OCRAbstractWorker):
             semantic_clasification = SemanticClassification(
                 quantitative=False,
                 umd=False,
-                rfc=False,
                 numeric=False,
                 descriptive=False,
                 code=False
             )
 
             # RFC y UMD antes (patrones fuertes/ortogonales)
-            if find_rfc(s):
-                logger.debug(
-                    f"{pid}: '{s}'| mean: {poly_mean:.4f}, median: {poly_median:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, {pct}% | RFC")
-                semantic_clasification = dataclasses.replace(semantic_clasification, rfc=True)
-            elif find_umd(s):
+            if find_umd(s):
                 logger.debug(
                     f"{pid}: '{s}'| mean: {poly_mean:.4f}, median: {poly_median:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, {pct}% | UMD")
                 semantic_clasification = dataclasses.replace(semantic_clasification, umd=True)
             # Numérico primero; cuantitativo solo si es numérico
             elif semantic_range[1] < pct and poly_mean < encode_mean[0]:
                 # Verificación cuantitativa SOLO dentro de los numéricos
-                has_quantitative = any(is_quantitative(t) for t in tokens) or has_quantitative_pattern(s)
+                has_quantitative = find_quantitative(s)
                 if has_quantitative:
                     logger.debug(
                         f"{pid}: '{s}'| mean: {poly_mean:.4f}, median: {poly_median:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, {pct}% | QUANTITATIVE")

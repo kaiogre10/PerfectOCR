@@ -44,6 +44,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             start_time = time.perf_counter()
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
+
             image_list: List[np.ndarray[Any, np.dtype[np.uint8]]] = []
             polygon_ids: List[str] = []
             
@@ -56,7 +57,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     elif cropped_img.shape[2] == 1:
                         cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
                     
-                    image_list.append(cropped_img)
+                    image_list.append(cropped_img) #type: ignore
                     polygon_ids.append(poly_id)
             
             if not image_list:
@@ -72,8 +73,8 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 
                 if self.output:
                     from services.output_service import save_debug_ocr
-                    file_name: str = manager.workflow.metadata.image_name
-                    worker_name = context.get("worker_name")
+                    file_name: str = manager.workflow.metadata.image_name #type: ignore
+                    worker_name = context.get("worker_name") or "paddle_wrapper"
                     output_paths = context.get("output_paths", [])
                     save_debug_ocr( output_paths, worker_name, final_results, file_name)
             
@@ -103,7 +104,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         try:
             valid_images: List[np.ndarray[Any, np.dtype[np.uint8]]] = []
             for idx, img in enumerate(image_list):
-                if img is None or not hasattr(img, "shape") or len(img.shape) < 2 or img.size == 0:
+                if img is None or not hasattr(img, "shape") or len(img.shape) < 2 or img.size == 0: #type: ignore
                     logger.warning(f"Imagen inválida en el batch (índice {idx}): {type(img)} - shape: {getattr(img, 'shape', None)}")
                     return {}
                     
@@ -115,7 +116,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             
             batch_result: List[List[str]] = self.engine.ocr(valid_images, cls=False, det=False, rec=True)
                                     
-            if len(batch_result) == 1 and isinstance(batch_result[0], list):
+            if len(batch_result) == 1 and isinstance(batch_result[0], list): #type: ignore
                 consolidated_results = batch_result[0]
                 manager.delete_cropped_images()
                 
@@ -136,7 +137,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         else:
                             logger.info(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> {confidence_pct}% < {min_confidence}%")
 
-                        #logger.debug(f"Resultados: {poly_id}: '{text}', {confidence_pct}%")
+                        logger.debug(f"Resultados: {poly_id}: '{text}', {confidence_pct}%")
 
                     logger.debug(f"Se mapearon '{len(final_results)}' polígonos con su  ID")
                     return final_results
