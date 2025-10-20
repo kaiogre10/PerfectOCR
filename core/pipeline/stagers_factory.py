@@ -19,8 +19,6 @@ class StagersFactory:
         self.workers_order = workers_order
         self.manager_config = manager_config
         self.main_factory = MainFactory(modules_config, project_root)
-
-        # Obtener los workers de cada pipeline
         self.image_workers = self.workers_order.get("imagepre_stage" , [])
         self.preprocessing_workers = self.workers_order.get("preprocessing_stage", [])
         self.ocr_workers = self.workers_order.get("ocr_stage", [])
@@ -29,7 +27,7 @@ class StagersFactory:
     def create_image_prep_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> ImagePreparationStager:
         """Crea stager de preparación de imagen con configuraciones específicas del master config."""
         factory = self.main_factory.get_image_preparation_factory()
-        
+
         # Agregar configuraciones específicas de image_preparation al contexto
         context_with_config = {
             **context,
@@ -48,6 +46,9 @@ class StagersFactory:
 
     def create_preprocessing_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> PreprocessingStager:
         """Crea stager de preprocessing con configuraciones específicas del master config."""
+        if not self.preprocessing_workers:
+            return {}
+
         factory = self.main_factory.get_preprocessing_factory()
         
         # Agregar configuraciones específicas de preprocessing al contexto
@@ -76,7 +77,7 @@ class StagersFactory:
             "ocr_config": self.modules_config.get("ocr", {}),
             "manager_config": self.manager_config
         }
-        
+
         ocr_workers = factory.create_workers(self.ocr_workers, context_with_config)
         
         return OCRStager(
@@ -88,6 +89,9 @@ class StagersFactory:
 
     def create_vectorization_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> VectorizationStager:
         """Crea stager de vectorización con configuraciones específicas del master config."""
+        if not self.vectorizing_workers:
+            return {}
+
         factory = self.main_factory.get_vectorizing_factory()
         
         # Agregar configuraciones específicas de vectorización al contexto
@@ -96,7 +100,7 @@ class StagersFactory:
             "vectorization_config": self.modules_config.get("vectorization", {}),
             "manager_config": self.manager_config
         }
-        
+
         vectorizing_workers = factory.create_workers(self.vectorizing_workers, context_with_config)
         
         return VectorizationStager(

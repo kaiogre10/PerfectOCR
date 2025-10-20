@@ -3,10 +3,10 @@ from sklearn.cluster import DBSCAN # type: ignore
 import numpy as np
 import time
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines
+from core.domain.data_models import AllLines, Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -83,20 +83,22 @@ class DensityScanner(VectorizationAbstractWorker):
         cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
         
-        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}")
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
+        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
     
         return table_line_ids
 
     def _get_interval(self, analysis: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
         """
-        Filtra solo las líneas después del encabezado para evitar ruido.
+        Filtra solo las líneas después del encabezado y antes del footer para evitar ruido.
         """
         all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+        
         header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
         header_line_id = header_line_ids[0] if header_line_ids else None
-        if header_line_id is None:
+        if not header_line_id:
             return analysis
+            
         
         line_ids = list(analysis.keys())
         header_idx = line_ids.index(header_line_id)

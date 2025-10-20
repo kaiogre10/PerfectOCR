@@ -42,9 +42,8 @@ class ModelsManager:
                     cls._instance = cls()
         return cls._instance
     
-    def initialize_models(self, models_config: Dict[str, Any], project_root: str):
+    def initialize_models(self, models_config: Dict[str, Any]):
         init_time = time.perf_counter()
-        self.project_root = project_root
         self.models_config: Dict[str, Any] = models_config.get("models_config", {})
 
         try:

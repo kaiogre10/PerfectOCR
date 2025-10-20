@@ -3,33 +3,30 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     #- "cleaner"
-    # - "angle_corrector"
+    #- "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-    - "dummie"
-    # - "moire"
-    # - "sp"
-    # - "gauss"
-    # - "ink_enhancement"
-    # - "clahe"
-    # - "sharp"
-    # - "binarizator"
+  #   - "moire"
+  #   - "sp"
+  #   - "gauss"
+  #  # - "ink_enhancement"
+  #   - "clahe"
+  #   - "sharp"
+  #- "binarizator"
 
   ocr_stage:
-    # - "dummie"
     - "paddle_wrapper"
-    - "text_refiner"
+    # - "text_refiner"
     - "data_finder"
     
   vector_stage:
-    #- "dummie"
     - "lineal"
     - "vectorizer"
     - "dbscan"
     - "cos_sim"
-    - "table_structurer"
+    # - "table_structurer"
     # - "table_validated"
     #- "math_max"
 
@@ -53,11 +50,6 @@ enabled_outputs:
   image_features: false
   table_structured: false
   math_max_corrected: false
-
-paths:
-  input_folder: "C:/PerfectOCR/in"
-  output_folder: "C:/PerfectOCR/output"
-  db_path: "C:/PerfectOCR/data_base/data_base.json"
   
 models_config:
   use_angle_cls: false
@@ -187,7 +179,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: False
+      keywords_interval_enabled: true
       exclude_types: [
         "descriptive", 
         "rfc", 

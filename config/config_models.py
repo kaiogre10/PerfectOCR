@@ -47,11 +47,6 @@ class ModelsConfig(ConfigWithNumpy):
     cls_model_dir: str
     model_path: str
 
-class PathsConfig(ConfigWithNumpy):
-    input_folder: str
-    output_folder: str
-    db_path: str
-
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
     radius: float
@@ -210,13 +205,12 @@ class ModulesConfig(ConfigWithNumpy):
     vectorization: VectorConfig
 
 class PipelineConfig(ConfigWithNumpy):
-    imagepre_stage: Optional[List[str]]
-    preprocessing_stage: Optional[List[str]]
-    ocr_stage: Optional[List[str]]
-    vector_stage: Optional[List[str]]
+    imagepre_stage: Optional[List[str]] = None
+    preprocessing_stage: Optional[List[str]] = None
+    ocr_stage: Optional[List[str]] = None
+    vector_stage: Optional[List[str]] = None
 
 class MasterConfig(ConfigWithNumpy):
-    paths: PathsConfig
     pipeline_secuence: PipelineConfig
     enabled_outputs: OutputFlag
     processing: Processing

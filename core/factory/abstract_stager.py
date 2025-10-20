@@ -10,7 +10,7 @@ class AbstractStager(ABC):
     
     def __init__(
         self, 
-        workers: List[Any],  # Cambiado a Any para permitir cualquier tipo de worker
+        workers: List[Any],
         stage_config: Dict[str, Any], 
         output_paths: List[str] | str,
         project_root: str

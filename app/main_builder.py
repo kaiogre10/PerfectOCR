@@ -19,13 +19,10 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         t0 = time.perf_counter()
         config_services = ConfigService(config_path)
 
-        try:
-            if config_services.validate_pipeline_config():
-                logger.debug("Número mínimo de workers activos, se inicia el pipeline")
-            else:
-                return []
-        except Exception as e:
-            logger.error(f"No hay parametros mínimos para el pipeline, se detiene sin haber iniciado: {e}", exc_info=True)
+        if config_services.validate_pipeline_config():
+            logger.debug("Número mínimo de workers activos, se inicia el pipeline")
+        else:
+            logger.fatal(f"Proceso terminado en: {time.perf_counter()-t0:.6f}s debido a configuración insuficiente")
             return []
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
@@ -33,7 +30,6 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
             config_services=config_services,
             project_root=project_root,
             input_paths=input_paths,
-            output_paths=output_paths
         )
         
         # 3. WorkflowManager analiza y reporta
@@ -42,7 +38,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         # 4. Iniciar modelos Singleton
         models_manager = ModelsManager.get_instance()
         models_config = config_services.models_config
-        models_manager.initialize_models(models_config, project_root)
+        models_manager.initialize_models(models_config)
 
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
         stagers_factory = StagersFactory(
@@ -55,7 +51,6 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         # 6. CREAR BUILDERS USANDO LA FACTORY
         builders = create_builders_with_factory(
             stagers_factory=stagers_factory,
-            config_services=config_services,
             workflow_report=workflow_report,
             output_paths=output_paths
         )
@@ -79,7 +74,6 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
 
 def create_builders_with_factory(
     stagers_factory: StagersFactory,
-    config_services: ConfigService,
     workflow_report: Dict[str, Any],
     output_paths: List[str] | str,
 ) -> List[ProcessingBuilder]:
@@ -104,7 +98,6 @@ def create_builders_with_factory(
             manager = DataFormatter()
 
             builder = ProcessingBuilder(
-                config=config_services.manager_config,
                 input_stager=input_stager,
                 preprocessing_stager=preprocessing_stager,
                 ocr_stager=ocr_stager,
@@ -112,11 +105,12 @@ def create_builders_with_factory(
                 manager=manager
             )
             builders.append(builder)
+
         return builders
 
     except Exception as e:
         logging.error(f"Error fatal en create_builders: {e}", exc_info=True)
-        return []
+    return []
 
 def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dict[str, Any]) -> Optional[List[str]]:
     """Ejecuta el procesamiento para cada builder."""
@@ -125,6 +119,7 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
     total_processing_time = 0.0
     builders_amount = len(builders)
     logger.info(f"Cantidad de Builder creados: {builders_amount}")
+
     try:
         for i, builder in enumerate(builders):
             if i < len(image_info_list):
@@ -136,8 +131,8 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
                 db_paths[image_data.get('name', f'imagen_{i}')] = db_path
 
         if db_paths:
-            promedio = total_processing_time / len(db_paths)
-            logger.info(f"Total de imágenes: {len(db_paths)} en: {total_processing_time:.6f}s, promedio: {promedio:.6f}s")
+            mean_time = total_processing_time / len(db_paths)
+            logger.info(f"Total de imágenes: {len(db_paths)} en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
 
         return ["db_path"]
 

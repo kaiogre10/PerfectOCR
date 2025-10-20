@@ -12,8 +12,7 @@ class AbstractBaseFactory(ABC, Generic[T]):
         self.module_config = module_config
         self.project_root = project_root
         self.worker_registry = self.create_worker_registry()
-        
-    
+
     @abstractmethod
     def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], T]]:
         """Cada módulo define su registro de workers."""

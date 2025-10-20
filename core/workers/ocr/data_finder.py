@@ -2,12 +2,11 @@ import time
 from typing import Dict, Any, Optional, List
 import logging
 import re
-from cleantext import clean #type: ignore
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from fuzzywuzzy import utils
+from fuzzywuzzy import utils # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +42,9 @@ class DataFinder(OCRAbstractWorker):
             if not polygons:
                 logger.error("No hay polygons para procesar")
                 return False
+
+            if manager.create_semantic_clasification():
+                logger.info("Clasificación semántica creada")
             
             # Llamar al método original que funciona
             polygon_updates = self._find_data(polygons)
@@ -76,23 +78,23 @@ class DataFinder(OCRAbstractWorker):
             for pid, poly in polygons.items():
                 # Obtener datos del polígono
                 processed_count += 1
-                ocr_text: str = poly.ocr_text
-                sc = poly.semantic_clasification
+                ocr_text = poly.ocr_text or ""
 
                 # Validación del texto antes de procesar
-                if not utils.validate_string(ocr_text):
-                    logger.info(msg=f"Polygono sin texto: {pid}")
+                if not utils.validate_string(ocr_text): #type: ignore
+                    logger.debug(msg=f"Polygono sin texto: {pid}")
                     continue
 
-                if sc.numeric or sc.quantitative or sc.code or sc.rfc:
+                sc = poly.semantic_clasification
+                if sc.numeric or sc.quantitative or sc.code:
                     skipped_numeric += 1
                     continue
 
                 lenght = len(ocr_text)
 
-                if max_q_lenght is not None and lenght > max_q_lenght:
+                if lenght > max_q_lenght:
                     skipped_len += 1
-                    logger.info(f"{pid}, texto: '{ocr_text}' omitido por largo ({lenght} > {max_q_lenght})")
+                    logger.debug(f"{pid}, texto: '{ocr_text}' omitido por largo ({lenght} > {max_q_lenght})")
                     continue
 
                 valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text, threshold)
@@ -105,11 +107,11 @@ class DataFinder(OCRAbstractWorker):
 
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.info(f"Resultado de {pid}: {best_result}")
+                        logger.debug(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
-                logger.info(f"{skipped_numeric} polígonos omitidos")
-                logger.info(f"Encontradas {len(polygon_updates)} coincidencias en {time.perf_counter() - time0:6f}s")
+                logger.debug(f"{skipped_numeric} polígonos omitidos")
+                logger.debug(f"Encontradas {len(polygon_updates)} coincidencias en {time.perf_counter() - time0:6f}s")
                 return polygon_updates
 
             else:

@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
     """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados ycoordina el procesamiento técnico de una sola imagen."""    
-    def __init__(self, config: Dict[str, str] , input_stager: ImagePreparationStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
-        self.config = config
+    def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
         self.manager = manager
         self.input_stager = input_stager
         self.preprocessing_stager = preprocessing_stager
@@ -36,11 +35,12 @@ class ProcessingBuilder:
             logger.debug(f"Fase de preparación completada en: {time_poly:.6f}s")
 
             # FASE 2: Preprocesamiento (usa execute() del AbstractStager)
-            manager, elapsed = self.preprocessing_stager.execute(manager)
-            if manager is None:
-                logger.error("Fallo en preprocesamiento")
-                return None
-            logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
+            if self.preprocessing_stager:
+                manager, elapsed = self.preprocessing_stager.execute(manager)
+                if manager is None:
+                    logger.error("Fallo en preprocesamiento")
+                    return None
+                logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
             # FASE 3: OCR (usa execute() del AbstractStager)
             manager, ocr_time = self.ocr_stager.execute(manager)
@@ -50,11 +50,12 @@ class ProcessingBuilder:
             logger.debug(f"OCR completado en: {ocr_time:.6f}s")
                     
             # FASE 4: Vectorización (usa execute() del AbstractStager)
-            manager, vect_time = self.vectorization_stager.execute(manager)
-            if manager is None:
-                logger.error("Fallo en vectorización")
-                return None
-            logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
+            if self.vectorization_stager:
+                manager, vect_time = self.vectorization_stager.execute(manager)
+                if manager is None:
+                    logger.error("Fallo en vectorización")
+                    return None
+                logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
             
             total_workflow_time = time.perf_counter() - workflow_start
             logger.debug(f"Procesamiento completado en {total_workflow_time:.6f}s")

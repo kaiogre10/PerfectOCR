@@ -8,7 +8,6 @@ import time
 from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
 from core.utils.image_normalicer import normalice_image
-
 import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -29,34 +28,42 @@ class DataFormatter:
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando solo dataclasses"""
         
-        full_img = normalice_image(gray_img)
-        
-        full_image = FullImage(
-            full_img=(full_img)
+        try:
+            full_img = normalice_image(gray_img)
+            
+            full_image = FullImage(
+                full_img=(full_img)
+                )
+            
+            metadata_obj = Metadata(
+                image_name=str(metadata.get("image_name", "")),
+                img_dims={
+                    "width": int(metadata.get("img_dims", {}).get("width") or 0),
+                    "height": int(metadata.get("img_dims", {}).get("height") or 0),
+                    "size": int(metadata.get("img_dims", {}).get("size") or 0),
+                },
+                date_creation=str(metadata.get("date_creation" or "")),
             )
-        
-        metadata_obj = Metadata(
-            image_name=str(metadata.get("image_name", "")),
-            img_dims={
-                "width": int(metadata.get("img_dims", {}).get("width") or 0),
-                "height": int(metadata.get("img_dims", {}).get("height") or 0),
-                "size": int(metadata.get("img_dims", {}).get("size") or 0),
-            },
-            date_creation=str(metadata.get("date_creation" or "")),
-        )
 
-        self.workflow = WorkflowDict(
-            IDRegistro=IDRegistro,
-            full_img=full_image,
-            metadata=metadata_obj,
-            polygons={},
-            all_lines={},
-        )
-        return True
+            self.workflow = WorkflowDict(
+                IDRegistro=IDRegistro,
+                full_img=full_image,
+                metadata=metadata_obj,
+                polygons={},
+                all_lines={},
+            )
+            return True
+            
+        except Exception as e:
+            logger.error(f"No se pudo crear el workflowDict: {e}", exc_info=True)
+        return False
     
     def create_polygon_dicts(self, results: Optional[List[Any]]) -> bool:
         """Refactorizado para usar validación + dataclasses"""
         try:
+            if self.workflow is None:
+                return False
+                
             if results is None:
                 return False
             
@@ -82,14 +89,14 @@ class DataFormatter:
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
                     geometry=geometry,
-                    cropedd_geometry=None, #type: ignore
+                    cropedd_geometry=None,
                     cropped_img=None,
                     perimeter=None,
                     ocr_text=None,
                     ocr_confidence=None,
                     was_refined=False,
                     key_field=None,
-                    semantic_clasification=None, #type: ignore
+                    semantic_clasification=None
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -102,7 +109,7 @@ class DataFormatter:
             
         except Exception as e:
             logger.error(f"Error en create_polygon_dicts: {e}", exc_info=True)
-            return False
+        return False
             
     def get_full_img(self) -> Optional[FullImage]:
         return self.workflow.full_img if self.workflow else None
@@ -396,6 +403,47 @@ class DataFormatter:
             logger.debug(f"Unificados {updated_count} polígonos de 'quantitative' a 'numeric'.")
         return True
 
+    def create_semantic_clasification(self) -> bool:
+        """
+        Verifica si existe la clasificación semántica para los polígonos
+        si no existe, crea todas False como fallback
+        """
+        try:
+            if not self.workflow:
+                logger.error("No hay workflow inicializado para actualizar resultados OCR.")
+                return False
+                
+            polygons: Dict[str, Polygons] = self.workflow.polygons if self.workflow else {}
+            created_count = 0
+            
+            for poly_id, poly_data in polygons.items():
+                semantic_obj = poly_data.semantic_clasification
+                if not semantic_obj:
+                    semantic_obj = SemanticClassification(
+                        rfc=False,
+                        numeric=False,
+                        descriptive=False,
+                        code=False,
+                        umd=False,
+                        quantitative=False,
+                    )
+                
+                    updated_polygon = dataclasses.replace(poly_data, semantic_clasification=semantic_obj)
+                    self.workflow.polygons[poly_id] = updated_polygon
+                    created_count += 1
+                    logger.debug(f"Clasificación fallback creada para {poly_id}: {semantic_obj}")
+            
+            if created_count > 0:
+                logger.debug(f"Creadas {created_count} clasificaciones semánticas fallback")
+            else:
+                logger.debug("Todos los polígonos ya tenían clasificación semántica")
+            
+            return True
+                
+        except Exception as e:
+            logger.error(f"Error creando semantic_clasification: {e}", exc_info=True)
+            return False
+        
     def update_semantic_clasification(self, final_results: Dict[str, SemanticClassification], reset_refined: bool = False) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
@@ -482,8 +530,8 @@ class DataFormatter:
             polygons = self.workflow.polygons if self.workflow else{}
             all_lines = self.workflow.all_lines if self.workflow else{}
 
-            hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == "HeaderWords"]
-            
+            hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == "HeaderWords"] 
+
             logger.debug(f"Header_polys: {hdr_poly_ids}")
             
             # LOG CRÍTICO: Verificar si all_lines tiene datos
@@ -517,7 +565,7 @@ class DataFormatter:
                     self.workflow.all_lines[header_line_id] = updated_line
                     
                     # Actualizar todos los polígonos según la línea de encabezado
-                    self.update_header(header_line_id)
+                    self.update_headers(header_line_id)
                     
                     logger.debug(f"Header_line_id={header_line_id} guardado correctamente")
                     return header_line_id
@@ -530,7 +578,7 @@ class DataFormatter:
             logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
             return None
 
-    def update_header(self, header_line_id: str) -> bool:
+    def update_headers(self, header_line_id: str) -> bool:
         """
         Actualiza los key_field de todos los polígonos según la línea de encabezado:
         1. Todos los polígonos de la línea de encabezado → key_field="HeaderWords"
@@ -577,6 +625,61 @@ class DataFormatter:
             logger.error(f"Error actualizando polígonos de encabezado: {e}", exc_info=True)
             return False
             
+    def _get_footer(self) -> Optional[str]:
+        try:
+            if not self.workflow:
+                return None
+            
+            polygons = self.workflow.polygons if self.workflow else{}
+            all_lines = self.workflow.all_lines if self.workflow else{}
+            footer_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) in ("TotalProductos", "MontoTotalDocumento")]
+            header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None) is not None]
+            header_line_id = header_line_ids[0] if header_line_ids else None
+            
+            footer_line = None
+            polyid_to_lineid: Dict[str, str] = {}
+            for pid in footer_poly_ids:
+                for line_id, line_obj in all_lines.items():
+                    if pid in line_obj.polygon_ids:
+                        polyid_to_lineid[pid] = line_id
+                        break
+                    
+            # Elegir el footer más cercano al header_line_id o de menor valor si es que no hay 
+            min_distance = None
+            for pid, line_id in polyid_to_lineid.items():
+                if line_id in all_lines:
+                    idx = list(all_lines.keys()).index(line_id)
+                    
+                    if header_line_id is not None:
+                        header_idx = list(all_lines.keys()).index(header_line_id)
+                        distance = abs(idx - header_idx)
+                        if min_distance is None or distance < min_distance:
+                            min_distance = distance
+                            footer_line = line_id
+                            
+                    if header_line_id is None:
+                        min_idx = 1
+                        distance = abs(idx - min_idx)    
+                        if min_distance is None or distance < min_distance:
+                            min_distance = distance
+                            footer_line = line_id
+                            
+            if footer_line is not None:
+                current = self.workflow.all_lines.get(footer_line)
+                if current:
+                    updated_line = dataclasses.replace(current, footer_line=footer_line)
+                    self.workflow.all_lines[footer_line] = updated_line
+                    
+                    return footer_line
+            else: 
+                logger.warning(f"No se encontró ninguna línea para pie de tabla")
+                
+            return None
+                
+        except Exception as e:
+            logger.info(f"Error buscando footer: {e}", exc_info=True)
+            return None
+            
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
         Guarda las líneas reconstruidas en el workflow_dict y, más importante,
@@ -611,6 +714,7 @@ class DataFormatter:
                     line_geometry=line_geometry,
                     tabular_line=False,
                     header_line=None,
+                    footer_line=None,
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
@@ -627,16 +731,23 @@ class DataFormatter:
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
                     # logger.info(f"{all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
+                    logger.info(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
-            if header_line:
-                logger.debug(f"Header marcado automáticamente: {header_line}")
+            footer_line = self._get_footer()
+            
+            if header_line is None or footer_line is None:
+            
+                logger.info(F"No se encontró encabezado")
                 return True
+                
+            logger.info(f"Header marcado automáticamente: {header_line}")
+            logger.info(f"Footer marcado automáticamente: {footer_line}")
+            return True
                         
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
-        return False
+            return False
 
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
         """

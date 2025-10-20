@@ -28,11 +28,6 @@ class ConfigService:
             raise
 
     @property
-    def paths_config(self) -> Dict[str, str]:
-        """Obtiene todas las rutas del sistema."""
-        return self.config.get('paths', "")
-
-    @property
     def enabled_outputs(self) -> Dict[str, bool]:
         """Obtiene flags de salida habilitados."""
         return self.config.get('enabled_outputs', {})
@@ -54,11 +49,6 @@ class ConfigService:
     def validated_modules_config(self):
         """Acceso directo al objeto Pydantic validado."""
         return self.validated_config.modules
-
-    @property
-    def output_path(self) -> str:
-        """Devuelve la ruta de la carpeta de salida."""
-        return self.paths_config.get('output_folder', "")
     
     @property
     def workers_order(self) -> Dict[str, List[str]]:
@@ -76,7 +66,6 @@ class ConfigService:
     def manager_config(self) -> Dict[str, Any]:
         """Devuelve el paquete estándar de configuraciones de los managers"""
         return {
-            "output_folder": self.output_path,
             "enabled_outputs": self.enabled_outputs,
             'secuence': self.workers_order
         }
@@ -84,20 +73,45 @@ class ConfigService:
     def validate_pipeline_config(self) -> bool:
         min_workers: List[str] = ["image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"]
         set_min_workers: Set[str] = set(min_workers)
-        num_min_workers = len(set_min_workers)
+
         if not self.workers_order:
             logger.error("No hay configuración de workers disponible")
             return False
 
         try:
-            set_worker_config: Set[str] = {worker for stage in self.workers_order.values() for worker in stage}
+            set_worker_config: Set[str] = set()
+            # Construir conjunto de workers sólo desde stages válidos
+            for stage, stage_workers in self.workers_order.items():
+                if not stage_workers:
+                    logger.debug(f"Stage '{stage}' sin workers, se ignora")
+                    continue
+
+                if isinstance(stage_workers, (list, tuple, set)):
+                    # añadir sólo elementos tipo str
+                    set_worker_config.update({w for w in stage_workers if isinstance(w, str)})
+                elif isinstance(stage_workers, str):
+                    set_worker_config.add(stage_workers)
+                else:
+                    logger.debug(f"Stage '{stage}' con tipo inesperado {type(stage_workers).__name__}, se ignora")
+
             if set_min_workers.issubset(set_worker_config):
+                # Loguear conteo por stage de forma segura
                 for stage, stage_workers in self.workers_order.items():
-                    logger.debug(f"Activos '({len(stage_workers)}, {set(stage_workers)})' workers para '{stage}'")
+                    if isinstance(stage_workers, (list, tuple, set)):
+                        count = len(stage_workers)
+                        workers_set = set(w for w in stage_workers if isinstance(w, str))
+                    elif isinstance(stage_workers, str):
+                        count = 1
+                        workers_set = {stage_workers}
+                    else:
+                        count = 0
+                        workers_set = set()
+                    logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
                 return True
             else:
                 workers_missing = set_min_workers - set_worker_config
-                logger.warning(f"Faltan: {workers_missing} de los '{num_min_workers}' workers mínimos para el pipeline")
+                logger.warning(
+                    f"Faltan: {workers_missing} de los '{len(set_min_workers)}' workers mínimos para el pipeline")
                 return False
 
         except Exception as e:

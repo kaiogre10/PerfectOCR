@@ -29,12 +29,12 @@ class Geometry:
 
 @dataclass
 class SemanticClassification:
-    quantitative: bool
-    umd: bool
     rfc: bool
     numeric: bool
     descriptive: bool
     code: bool
+    umd: bool
+    quantitative: bool
     
 @dataclass
 class Polygons:
@@ -62,6 +62,7 @@ class AllLines:
     line_geometry: LineGeometry
     tabular_line: bool
     header_line: Optional[str]
+    footer_line: Optional[str]
     
 @dataclass(frozen=True)
 class Metadata:

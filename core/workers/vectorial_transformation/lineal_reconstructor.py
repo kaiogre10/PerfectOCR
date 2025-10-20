@@ -5,6 +5,7 @@ from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
+from fuzzywuzzy import utils # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 logger.debug(f"Lineas guardads correctamente en el manager")
                 if self.output:
                     from services.output_service import save_debug_ocr
-                    file_name: str = manager.workflow.metadata.image_name
-                    worker_name = context.get("worker_name")
+                    file_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                    worker_name = context.get("worker_name") or "lineal"
                     output_paths = context.get("output_paths", [])
                     save_debug_ocr( output_paths, worker_name, lines_info, file_name)
 
@@ -94,41 +95,55 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
                 else:
                     # Finaliza la línea actual y guarda la debug
-                    line_id = f"line_{line_counter:04d}"
                     polygon_ids = [p.polygon_id for p in current_line_polys]
                     texts = [p.ocr_text or "" for p in current_line_polys]
+                    joined_text = " ".join(texts).strip()
+                    
+                    # Validar el texto antes de crear la entrada
+                    if not utils.validate_string(joined_text): #type: ignore
+                        # Si no es válido, iniciar una nueva línea sin incrementar el contador
+                        current_line_polys = [poly]
+                        current_line_bbox = list(bbox)
+                        continue
+                    
                     # El centroide de la línea se calcula como el centroide del bounding box de la línea
                     line_centroid = [           
                             (current_line_bbox[0] + current_line_bbox[2]) / 2,
                             (current_line_bbox[1] + current_line_bbox[3]) / 2
                         ] if current_line_bbox else [0, 0]
-
+                    
+                    line_id = f"line_{line_counter:04d}"
                     lines_info[line_id] = {
                         "line_bbox": current_line_bbox,
                         "line_centroid": line_centroid,
                         "polygon_ids": polygon_ids,
-                        "text": " ".join(texts).strip()
+                        "text": joined_text
                     }
-
+                            
                     line_counter += 1
                     current_line_polys = [poly]
                     current_line_bbox = list(bbox)
 
         # Finaliza la última línea
         if current_line_polys:
-            line_id = f"line_{line_counter:04d}"
             polygon_ids = [p.polygon_id for p in current_line_polys]
             texts = [p.ocr_text or "" for p in current_line_polys]
-            line_centroid = [
-                (current_line_bbox[0] + current_line_bbox[2]) / 2,
-                (current_line_bbox[1] + current_line_bbox[3]) / 2
-            ] if current_line_bbox else [0, 0]
-            current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
-            lines_info[line_id] = {
-                "line_bbox": current_line_bbox,
-                "line_centroid": line_centroid,
-                "polygon_ids": polygon_ids,
-                "text": " ".join(texts).strip()
-            }
+            joined_text = " ".join(texts).strip()
+            
+            # Validar también el texto de la última línea
+            if utils.validate_string(joined_text): #type: ignore
+                current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
+                line_centroid = [
+                    (current_line_bbox[0] + current_line_bbox[2]) / 2,
+                    (current_line_bbox[1] + current_line_bbox[3]) / 2
+                ] if current_line_bbox else [0, 0]
+                
+                line_id = f"line_{line_counter:04d}"
+                lines_info[line_id] = {
+                    "line_bbox": current_line_bbox,
+                    "line_centroid": line_centroid,
+                    "polygon_ids": polygon_ids,
+                    "text": joined_text
+                }
 
-            return lines_info
+        return lines_info

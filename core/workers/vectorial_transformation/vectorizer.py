@@ -24,8 +24,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            start_time: float = time.time()
-            logger.debug("Calculando Features")
+            start_time = time.perf_counter()
+            logger.info("Comienza Vectorizer")
             logger.warning(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
 
             table_line_ids = self._get_keywords_interval(manager) if self.keywords_interval_enabled else None
@@ -33,10 +33,10 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 logger.warning(f"Intervalo tabular detectado, se omite vectorización")
                 context["all_features"] = None
-                logger.info(f"Intervalo detectado en:{time.time()-start_time:.7f}")
+                logger.info(f"Intervalo detectado en:{start_time-time.perf_counter():.7f}")
 
                 if manager.save_tabular_lines(table_line_ids):
-                    logger.debug("Líneas guardadas en el manager desde Vectorizer")
+                    logger.info("Líneas guardadas en el manager desde Vectorizer")
                     return True
                 else:
                     logger.warning("No se pudieron guardar las líneas tabulares en el manager")
@@ -51,14 +51,14 @@ class Vectorizer(VectorizationAbstractWorker):
                     if self.features_output:
                         from services.output_service import save_table_values
                         file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                        worker_name = context.get("worker_name")
+                        worker_name = context.get("worker_name") or "vectorizer"
                         output_paths = context.get("output_paths", [])
                         image_features = self.image_features
                         save_table_values(file_name, all_features, output_paths, worker_name, image_features)
                         
-                    logger.debug(f"Vectorización completada en {total_time:.7f}s. Líneas válidas: {len(all_features)}")
+                    logger.info(f"Vectorización completada en {total_time:.7f}s. Líneas válidas: {len(all_features)}")
                     context["all_features"] = all_features
-                    logger.debug(f"Features guardadas en el contexto")
+                    logger.info(f"Features guardadas en el contexto")
                         
                     return True
                 else:
@@ -142,8 +142,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 table_str = "\n".join(table)
                 logger.debug(f"\nTabla unificada características:\n{table_str}")
-                logger.debug(f"Se calcularon features para {len(all_features)} líneas")
-                logger.info(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
+                logger.debug(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
                 return all_features
             else:
                 logger.warning("No se pudieron calcular features para ninguna línea")
@@ -188,8 +187,8 @@ class Vectorizer(VectorizationAbstractWorker):
             for i, (line_id, line_data) in enumerate(sorted_lines):
                 line_values = encoded_lines.get(line_id, [])
                 if not line_values:
-                     logger.warning(f"Línea {line_id} sin codificación o sin features geométricos; será ignorada.")
-                     continue
+                    logger.warning(f"Línea {line_id} sin codificación o sin features geométricos; será ignorada.")
+                    continue
 
                 if not line_data:
                     logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")
@@ -399,7 +398,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 dcount += 1.0
                 digit_count_by_line[line_id] = dcount
 
-            if numeric_counts_by_line:
+            if sorted_lines:
                 # Para obtener la mediana correctamente, convierte los valores a una lista antes de pasarlos a np.median
                 numeric_counts_list = list(numeric_counts_by_line.values())
                 total_numerics_global: float = float(sum(numeric_counts_list)) if numeric_counts_list else 0.0
@@ -458,7 +457,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     angle_count_by_line[line_id] = angle
                     slope_count_by_line[line_id] = slope
                     
-            if line_data:
+            if sorted_lines:
                 max_count_width = max(width_count_by_line.values()) if width_count_by_line else 0.0      # Ancho máximo de los bounding boxes de las líneas
                 max_count_area = max(area_count_by_line.values()) if area_count_by_line else 0.0         # Área máxima cubierta por los bounding boxes de las líneas
                 max_count_perimeter = max(perimeter_count_by_line.values()) if perimeter_count_by_line else 0.0 # Perímetro máximo entre los bounding boxes de las líneas
@@ -496,87 +495,62 @@ class Vectorizer(VectorizationAbstractWorker):
 
             return geoline_features
         except Exception as e:
-                logger.debug(f"Error en feaures de lineas: {e}", exc_info=True)
-                return {}
+            logger.info(f"Error en feaures de lineas: {e}", exc_info=True)
+            
+            return {}
                 
-    # def _calculate_encode_lines(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]) -> Dict[str, List[int]]:
-    #     try:
-    #         encoder = manager.get_density_encoder()
-    #         encoded_lines: Dict[str, List[int]] = {}
+    def _calculate_encode_lines(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]) -> Dict[str, List[int]]:
+        try:
+            encoder = manager.get_density_encoder()
+            encoded_lines: Dict[str, List[int]] = {}
 
-    #         for line_id, line_obj in sorted_lines:
-    #             line_text = getattr(line_obj, "text", "")
-    #             if line_text:
-    #                 compact_text = ''.join(line_text.split())
-    #                 encoded_text = [encoder.get(char, 0) for char in compact_text]
-    #                 encoded_lines[line_id] = encoded_text
-    #             else:
-    #                 logger.warning(f"Línea {line_id} no tiene texto para codificar.")
-    #                 return {}
+            for line_id, line_obj in sorted_lines:
+                line_text = line_obj.text
+                if line_text:
 
-    #         logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
-    #         # logger.info(f"Codificación: {encoded_lines}")
-    #         return encoded_lines
+                    compact_text = ''.join(line_text.split())
+                    encoded_text = [encoder.get(char, 0) for char in compact_text]
+                    encoded_lines[line_id] = encoded_text
 
-    #     except Exception as e:
-    #         logger.error(f"Error codificando líneas: {e}", exc_info=True)
-    #         return {}
+            logger.info(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
+                
+            return encoded_lines
+
+        except Exception as e:
+            logger.error(f"Error codificando líneas: {e}", exc_info=True)
+        return {}
 
     def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[str]]:
         
-        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
         all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
 
         # Verificar existencia de header_line
         header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None) is not None]
         header_line_id = header_line_ids[0] if header_line_ids else None
         if not header_line_id:
+            logger.info("No se encontró encabezado de tabla")
             return None
+            
+        footer_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "footer_line", None) is not None]
+        footer_line_id = footer_line_ids[0] if footer_line_ids else None
 
-        # Buscar los poly_id de los posibles footers
-        footer_poly_ids: List[str] = [
-            pid for pid, p in polygons.items()
-            if getattr(p, "key_field", None) in ("TotalProductos", "MontoTotalDocumento")
-        ]
-        if not footer_poly_ids:
-            return None
-
-        # Mapear poly_id a line_id (por ejemplo, si existe un campo line_id en el polígono)
-        polyid_to_lineid: Dict[str, str] = {}
-        for pid in footer_poly_ids:
-            for line_id, line_obj in all_lines.items():
-                if pid in line_obj.polygon_ids:
-                    polyid_to_lineid[pid] = line_id
-                    break
-
-        # Elegir el footer más cercano al header_line_id
-        header_idx = list(all_lines.keys()).index(header_line_id)
-        min_distance = None
-        winner_line_id = None
-        for pid, line_id in polyid_to_lineid.items():
-            if line_id in all_lines:
-                idx = list(all_lines.keys()).index(line_id)
-                distance = abs(idx - header_idx)
-                if min_distance is None or distance < min_distance:
-                    min_distance = distance
-                    winner_line_id = line_id
-
-        if winner_line_id is None:
+        if not footer_line_id:
+            logger.info("No se encontró pie de tabla")
             return None
 
         # Obtener el intervalo de líneas tabulares (excluyendo header y footer)
         all_line_ids = list(all_lines.keys())
         header_pos = all_line_ids.index(header_line_id)
-        footer_pos = all_line_ids.index(winner_line_id)
-
-        logger.debug(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
-
-        # Asegurar que el header esté antes que el footer
-        if header_pos >= footer_pos - 1:
+        footer_pos = all_line_ids.index(footer_line_id)
+        
+        if header_pos > footer_pos - 1:
             return None
 
+        logger.info(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
+
+
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
-        logger.debug(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
+        logger.info(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
         return tabular_line_ids
 
     def _is_numeric_polygon(self, semantic_clasification: SemanticClassification) -> bool:
