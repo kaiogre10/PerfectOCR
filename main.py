@@ -22,8 +22,8 @@ os.environ.update({
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 DEFAULT_INPUT_PATH = [
  "input",
-    "input2",
-        "input3"
+#    "input2",
+        # "input3"
 ]
 
 DEFAULT_OUTPUT_PATH =[
@@ -32,7 +32,7 @@ DEFAULT_OUTPUT_PATH =[
 
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 CONSOLE_LEVEL = "INFO"
-FILE_LEVEL = "INFO"
+FILE_LEVEL = "DEBUG"
 # Formato para la consola: muestra el nivel, nombre del logger, línea y mensaje
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 # Formato para el archivo: incluye fecha/hora, --nivel--, --nombre del logger--, --línea--, --módulo-- y mensaje

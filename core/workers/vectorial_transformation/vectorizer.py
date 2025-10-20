@@ -316,7 +316,7 @@ class Vectorizer(VectorizationAbstractWorker):
 
                 prev_bbox, next_bbox, prev_centroid, next_centroid = _calculate_line_coords(sorted_lines, i)
                 
-                from core.utils.cosine_similarity import alignment, bbox_alignment
+                from core.utils.fun_cosine_similarity import alignment, bbox_alignment
                 
                 prev_xmin_align: Optional[float] = bbox_alignment(current_xmin, prev_bbox, 0) if prev_bbox else 1.0
                 prev_xmax_align: Optional[float] = bbox_alignment(current_xmax, prev_bbox, 2) if prev_bbox else 1.0
@@ -506,17 +506,17 @@ class Vectorizer(VectorizationAbstractWorker):
             
             return {}
                 
-    def _calculate_encode_lines(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]) -> Dict[str, List[int]]:
+    def _calculate_encode_lines(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]) -> Dict[str, List[float]]:
+        from core.utils.text_encoder import encode_text
         try:
-            encoder = manager.get_density_encoder()
-            encoded_lines: Dict[str, List[int]] = {}
+            encoder: Dict[str, float] = manager.get_density_encoder()
+            encoded_lines: Dict[str, List[float]] = {}
 
             for line_id, line_obj in sorted_lines:
-                line_text = line_obj.text
-                if line_text:
+                line_txt = line_obj.text
+                if line_txt:
 
-                    compact_text = ''.join(line_text.split())
-                    encoded_text = [encoder.get(char, 0) for char in compact_text]
+                    encoded_text = encode_text(line_txt, encoder)
                     encoded_lines[line_id] = encoded_text
 
                     logger.debug(f"Codificación {line_id}: {encoded_text}")

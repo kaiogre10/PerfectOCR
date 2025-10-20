@@ -7,6 +7,7 @@ from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
+from core.utils.pattern_finder import is_acronym, quantitative_runs
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,11 @@ class Fragmenter(OCRAbstractWorker):
             is_numeric = getattr(sc, "numeric", False)
             is_umd = getattr(sc, "umd", False)
             is_rfc = getattr(sc, "rfc", False)
+            # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
+            if is_acronym(polygon.ocr_text or ""):
+                logger.info(f"No fragmentando sigla detectada: '{polygon.ocr_text}'")
+                final_polygons.append(polygon)
+                continue
 
             text_needs_frag = (
                 self.worker_config and
@@ -64,10 +70,11 @@ class Fragmenter(OCRAbstractWorker):
             visual_needs_frag = poly_blob_metrics.get('needs_fragmentation', False)
             quant_runs = []
             if is_quant:
-                quant_runs = self._quantitative_runs(polygon.ocr_text or "")
+                quant_runs = quantitative_runs(polygon.ocr_text or "")
             quant_needs_frag = len(quant_runs) >= 2
 
             if text_needs_frag or visual_needs_frag or punctuation_needs_frag or quant_needs_frag:
+
                 if visual_needs_frag and text_needs_frag:
                     reason = "visual y texto"
                 elif visual_needs_frag:
@@ -80,8 +87,7 @@ class Fragmenter(OCRAbstractWorker):
                     reason = "puntuación"
 
                 sc = polygon.semantic_clasification
-                active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] 
-                            if getattr(sc, field)]
+                active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] if getattr(sc, field)]
                 logger.debug(f"{poly_id}: MOTIVO: {reason}, TIPO: {active_fields} = {polygon.ocr_text}")
                 
                 if visual_needs_frag:
@@ -90,8 +96,10 @@ class Fragmenter(OCRAbstractWorker):
                     fragments = self._fragment_by_quantitative(polygon, quant_runs)
                 elif text_needs_frag:
                     fragments = self._fragment_by_text(polygon)
-                else:
+                elif punctuation_needs_frag:  # CAMBIO: Condición específica en lugar de else
                     fragments = self._fragment_by_punctuation(polygon)
+                else:
+                    fragments = [polygon]  # CAMBIO: No fragmentar si no hay condición específica
 
                 final_polygons.extend(fragments)
                 if len(fragments) > 1:
@@ -253,7 +261,7 @@ class Fragmenter(OCRAbstractWorker):
 
             # Si hay dígitos antes y después del punto, es probablemente un número
             if has_digits_before and has_digits_after:
-                logger.debug(f"No fragmentando por punto: detectado potencial número '{text}'")
+                logger.info(f"No fragmentando por punto: detectado potencial número '{text}'")
                 return [polygon]
 
             parts = text.split('.')
@@ -271,7 +279,7 @@ class Fragmenter(OCRAbstractWorker):
                 xmin, ymin, xmax, ymax = polygon.geometry.bounding_box
                 width = xmax - xmin
                 
-                new_polys: List[Polygons] = []
+                new_polys = []
                 current_x = xmin
 
                 for i, part in enumerate(filtered_parts):
@@ -295,7 +303,7 @@ class Fragmenter(OCRAbstractWorker):
                         ])
                     )
                     
-                    logger.debug(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
+                    logger.info(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
 
                     new_poly = dataclasses.replace(
                         polygon,
@@ -371,7 +379,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -443,34 +451,4 @@ class Fragmenter(OCRAbstractWorker):
 
         return new_polys
             
-    def _quantitative_runs(self, s: str) -> List[tuple[int, int, str]]:
-        s = (s or "").strip()
-        if not s:
-            return []
-        currency = r"[$€£¥¢]"
-        amount_body = r"(?:\d{1,3}(?:[.,]\d{3})+|\d+)(?:[.,]\d+)?"
-        # cuantitativo: decimales o con símbolo (sin %)
-        quant_token = rf"{currency}\s*{amount_body}|{amount_body}\s*{currency}|{amount_body}"
-        runs: List[tuple[int, int, str]] = []
-        # Buscar todos los tokens cuantitativos
-        for m in re.finditer(quant_token, s):
-            tok = s[m.start():m.end()]
-            if "%" in tok:
-                continue
-            is_decimal = bool(re.match(r"^\d+[.,]\d+$", tok) or re.match(r"^\d{1,3}(?:[.,]\d{3})+[.,]\d+$", tok))
-            has_currency = bool(re.search(currency, tok))
-            if is_decimal or has_currency:
-                runs.append((m.start(), m.end(), tok))
-        # Si hay más de un símbolo de divisa, dividir los tokens
-        tokens = [tok for _, _, tok in runs]
-        currency_count = sum(1 for t in tokens if re.search(currency, t))
-        if currency_count > 1:
-            # Dividir por cada símbolo de divisa encontrado
-            split_tokens = re.findall(rf"{currency}\s*\d+(?:[.,]\d+)?", s)
-            runs = []
-            for match in split_tokens:
-                start = s.find(match)
-                end = start + len(match)
-                runs.append((start, end, match))
-        return runs
     

@@ -19,8 +19,8 @@ class DataFormatter:
     """
     def __init__(self):
         self.workflow: Optional[WorkflowDict] = None
-        self.encoder: Optional[Dict[str, int]] = None
-        self.frecuency: Optional[Dict[str, int]] = None
+        self.encoder: Optional[Dict[str, float]] = None
+        self.frecuency: Optional[Dict[str, float]] = None
         self.structured_table: Optional[StructuredTable] = None
         self.mean_dummie: Optional[Dict[str, float]] = None
         self.median_dummie: Optional[Dict[str, float]] = None
@@ -89,14 +89,14 @@ class DataFormatter:
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
                     geometry=geometry,
-                    cropedd_geometry=None,
+                    cropedd_geometry=None, #type:ignore
                     cropped_img=None,
                     perimeter=None,
                     ocr_text=None,
                     ocr_confidence=None,
                     was_refined=False,
                     key_field=None,
-                    semantic_clasification=None
+                    semantic_clasification=None #type:ignore
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -134,7 +134,7 @@ class DataFormatter:
             logger.error(f"Error liberando imágenes recortadas: {e}", exc_info=True)
             return False
             
-    def get_frecuency_char(self) -> Dict[str, int]:
+    def get_frecuency_char(self) -> Dict[str, float]:
         """Obtiene los valores de frecuencia para letras"""
         try:
             if self.frecuency is None:
@@ -145,7 +145,7 @@ class DataFormatter:
             logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
             return {}
             
-    def get_density_encoder(self) -> Dict[str, int]:
+    def get_density_encoder(self) -> Dict[str, float]:
         """
         Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
         Si no se especifican line_ids, codifica todas las líneas existentes.
@@ -242,8 +242,7 @@ class DataFormatter:
                 img_arr = getattr(full_img, "full_img", None)
             else:
                 img_arr = full_img
-                
-                
+                                
             img_arr = normalice_image(full_img)
             
             # Wrap en la dataclass FullImage y actualizar workflow
@@ -507,10 +506,10 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.debug(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
+                    logger.info(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
+                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
             else:
@@ -571,8 +570,6 @@ class DataFormatter:
                     return header_line_id
             else:
                 logger.warning(f"No se encontró ninguna línea con HeaderWords. hdr_poly_ids={hdr_poly_ids}")
-
-            return None
         
         except Exception as e:
             logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
@@ -730,8 +727,8 @@ class DataFormatter:
 
             if textual_lines_debug:
                 for all_lines in textual_lines_debug:
-                    # logger.info(f"{all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.info(f"{all_lines['line_id']}: {all_lines['text']}")
+                    logger.info(f"{all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
+                    # logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
             footer_line = self._get_footer()

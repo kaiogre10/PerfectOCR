@@ -2,11 +2,11 @@
 import logging
 import time
 from typing import List, Dict, Any
-import pandas as pd # type: ignore
+import pandas as pd
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
-from core.utils.cosine_similarity import alignment
+from core.utils.fun_cosine_similarity import alignment
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # buscar líneas marcadas explícitamente como header_line == True
                 header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
                 header_line_id = header_line_id[0] if header_line_id else None
+
+                logger.info(f"header_line_id: {header_line_id}")
                 
                 line_ids: List[str] = list(all_lines.keys())
                 if header_line_id not in line_ids:
@@ -75,7 +77,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
                 total_time = time.time() - start_time
                 if not df.empty:
-                    logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
+                    logger.debug(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
                     logger.debug(f"Estructuración de tabla completada en {total_time:.10f} s.")
 
                     context["table_copy"] = df.copy()
@@ -95,7 +97,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                             header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
 
                         file_name: str = manager.workflow.metadata.image_name # type: ignore
-                        worker_name = context.get("worker_name")
+                        worker_name = context.get("worker_name") or "geometrical_structurer"
                         output_paths = context.get("output_paths", [])
                         save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
 
@@ -130,6 +132,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     # Acceso directo a centroide usando data class
                     centroid = poly_data.geometry.centroid.tolist()
                     header_centroids.append(centroid)
+
+            logger.info(f"HEADER CENTROIDS: {len(header_line.polygon_ids)}")
  
             return header_centroids
         
@@ -280,12 +284,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
-            
+
             for element in row_elements:
                 element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
                 line_id = element.get("lineal_id")
                 poly_ids = element.get("polygon_ids", [])
-                
+
                 if not header_centroids:
                     # sin encabezado, asignar a la primera columna
                     row_cells[0]['words'].append(element)
@@ -294,13 +298,14 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     sims = [alignment(hc, element_centroid) for hc in header_centroids]
                     best_col = int(max(range(len(sims)), key=lambda j: sims[j]))
                     best_similarity = sims[best_col]
+                    row_cells[best_col]['words'].append(element)
                     logger.debug(
                         f"Similitud para línea {line_id}, polígonos {poly_ids}, centroides {element_centroid}: "
                         f"{sims}, asignado a col_{best_col}, similitud={best_similarity}"
                     )
-                    
+
             return row_cells
-        
+
         except Exception as e:
             logger.error(f"Error en geometric: {e}", exc_info=True)
             return []

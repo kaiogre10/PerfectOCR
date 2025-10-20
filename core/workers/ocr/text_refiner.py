@@ -28,6 +28,7 @@ class Refiner(OCRAbstractWorker):
         Ejecuta el ciclo de refinamiento con clasificación selectiva.
         """
         num_passes = self.worker_config.get("num_passes")
+
         logger.debug(f"Refinador inicializado para {num_passes} pasadas.")
         t0 = time.perf_counter()
 

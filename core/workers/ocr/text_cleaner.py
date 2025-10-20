@@ -27,8 +27,8 @@ class TextCleaner(OCRAbstractWorker):
         # Lista de caracteres especiales a eliminar si aparecen solos.
         # Configurada directamente en el worker en lugar de leerla desde un YAML.
         self.chars = [
-            ")", "(", "]", "[", "{", "}", "|", "*", "^", "#", "@",
-            "-", "~", "_", "+", "=", "<", ">", ";", ":", "x",
+            ")", "(", "]", "[", "{", "}", "|", "*", "^", "@",
+            "-", "~", "_", "+", "=", "<", ">", ";",
             "'", "!", "¡", "?", "¿", "'", "/", "\\", "''",
         ]
 

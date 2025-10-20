@@ -79,7 +79,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                         return table_line_ids
                 else:
                     logger.warning("Ejecutando fallback: buscando líneas tabulares por similitud coseno con el encabezado")
-                    table_line_ids = self._fallback_cosine(analysis, header_line_id, line_ids, header_idx, feature_keys, all_lines)
+                    table_line_ids = self._fallback_cosine(analysis, header_line_id, line_ids, header_idx, feature_keys)
                     if table_line_ids:
                         total_time = time.time() - start_time
                         logger.info(f"Fallback coseno completado en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
@@ -223,15 +223,24 @@ class MatricialCusine(VectorizationAbstractWorker):
         matched_original_indices: List[int] = []
         consecutive_failures = 0
         for mean_sim, orig_idx, lid in zip(mean_sims, candidate_indices, candidate_line_ids):
-            if mean_sim >= similarity_threshold:
+            if mean_sim > similarity_threshold:
                 matched_original_indices.append(int(orig_idx))
-                consecutive_failures +=1
+                consecutive_failures += 1
             logger.debug(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
 
-        table_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
-        return table_line_ids
+        # Si hay validaciones por coseno, devolver todo el intervalo hasta la última validada
+        if matched_original_indices:
+            last_valid_idx = max(matched_original_indices)
+            final_end_idx = min(last_valid_idx, end_idx)  # respeta corte por key_field
+            table_line_ids = [line_ids[i] for i in range(start_idx, final_end_idx + 1)]
+            logger.info(f"Intervalo asignado por coseno hasta último validado (idx={final_end_idx}): {len(table_line_ids)} líneas")
+            return table_line_ids
 
-    def _fallback_cosine(self, analysis: Dict[str, Dict[str, float]], header_line_id: str, line_ids: List[str], header_idx: int, feature_keys: List[str], all_lines: Dict[str, AllLines]) -> List[str]:
+        # Si ninguna línea superó el umbral, activar emergencia desde aquí
+        logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
+        return self._emergency_fallback(analysis, line_ids, feature_keys, all_lines, manager)
+
+    def _fallback_cosine(self, analysis: Dict[str, Dict[str, float]], header_line_id: str, line_ids: List[str], header_idx: int, feature_keys: List[str]) -> List[str]:
         """
         Fallback: Busca un bloque continuo de líneas tabulares después del encabezado.
         Compara cada línea con la línea de referencia (la primera después del encabezado).
@@ -287,7 +296,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             return []
 
         # Calcular similitud y registrar la matriz
-        from core.utils.cosine_similarity import calculate_similarity_ref
+        from core.utils.fun_cosine_similarity import calculate_similarity_ref
 
         X = csr_matrix(candidate_rows, dtype=np.float64)
         sims = calculate_similarity_ref(X, ref_vec, dense_output=False)
@@ -306,7 +315,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             current_idx = line_ids.index(candidate_line_ids[i])
             logger.debug(f"ref {ref_line_id}: línea {candidate_line_ids[i]}, sim={sim:.6f}")
 
-            if sim >= similarity_threshold:
+            if sim > similarity_threshold:
                 consecutive_failures = 0
                 last_success_idx = current_idx
             else:
@@ -335,7 +344,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         emergency_threshold = self.worker_config.get("emergency_threshold")
         mean_w, median_w = dummie_weights
         
-        from core.utils.cosine_similarity import calculate_similarity_ref
+        from core.utils.fun_cosine_similarity import calculate_similarity_ref
 
         all_lines_indices = all_lines.keys()
 
@@ -385,7 +394,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         logger.debug(f"Promedio de similitud con dummiessumados '{sims_mat}': {np.mean(sims_mat, dtype=np.float32):.6f}")
         logger.debug("Todas las líneas ordendas: %s", ", ".join(str(lid) for lid in all_lines_indices))
         sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims_mat) + "]"
-        logger.debug("Similitudes:\n%s", sims_str)
+        logger.debug("Similitudes de emergencia:\n%s", sims_str)
 
         # Log detallado por línea
         for idx, (line_id, sim) in enumerate(zip(all_line_ids, sims_mat)):
@@ -404,7 +413,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             matched_original_indices: List[int] = []
             consecutive_failures = 0
             for idx, (sims_mat, lid) in enumerate(zip(sims_mat, all_lines_indices)):
-                if sims_mat >= similarity_threshold:
+                if sims_mat > similarity_threshold:
                     matched_original_indices.append(idx)
                     consecutive_failures += 1
                         
@@ -415,7 +424,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 emergency_threshold = self.worker_config.get("emergency_threshold")
                 consecutive_failures = 0
                 for idx, (sims_mat, lid) in enumerate(zip(sims_mat, all_lines_indices)):
-                    if sims_mat >= emergency_threshold:
+                    if sims_mat > emergency_threshold:
                         matched_original_indices.append(idx)
                         consecutive_failures += 1
                         
@@ -461,7 +470,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 else:
                     break
 
-            if current_size >= min_cluster and current_size > best_size:
+            if current_size > min_cluster and current_size > best_size:
                 best_start = start_idx
                 best_end = end_idx
                 best_size = current_size

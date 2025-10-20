@@ -1,12 +1,12 @@
 import time
 from typing import Dict, Any, Optional, List
 import logging
-import re
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
 from fuzzywuzzy import utils # type: ignore
+from core.utils.pattern_finder import find_rfc, find_iva, find_date
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,8 @@ class DataFinder(OCRAbstractWorker):
             # Llamar al método original que funciona
             polygon_updates = self._find_data(polygons)
 
+            calidat
+
             # Actualiza las líneas marcadas como encabezado en las dataclasses
             if manager.update_key_field(polygon_updates):
                 total_time = time.time() - start_time
@@ -72,7 +74,7 @@ class DataFinder(OCRAbstractWorker):
         try:
             processed_count = 0
             polygon_updates: Dict[str, str] = {}
-            skipped_numeric = 0
+            skipped_semantic = 0
             skipped_len = 0
 
             for pid, poly in polygons.items():
@@ -87,7 +89,7 @@ class DataFinder(OCRAbstractWorker):
 
                 sc = poly.semantic_clasification
                 if sc.numeric or sc.quantitative or sc.code:
-                    skipped_numeric += 1
+                    skipped_semantic += 1
                     continue
 
                 lenght = len(ocr_text)
@@ -95,6 +97,27 @@ class DataFinder(OCRAbstractWorker):
                 if lenght > max_q_lenght:
                     skipped_len += 1
                     logger.debug(f"{pid}, texto: '{ocr_text}' omitido por largo ({lenght} > {max_q_lenght})")
+                    continue
+
+                rfc_key = find_rfc(ocr_text)
+                if rfc_key:
+                    skipped_semantic +=1
+                    logger.info(f"RFC encontrado en {pid}, '{ocr_text}', {rfc_key}")
+                    polygon_updates[pid] = "RFCProveedor"
+                    continue
+
+                iva_key = find_iva(ocr_text)
+                if iva_key:
+                    skipped_semantic +=1
+                    logger.info(f"IVA encontrado en {pid}, '{ocr_text}', {iva_key}")
+                    polygon_updates[pid] = "MontoIVAGeneral"
+                    continue
+
+                date_key = find_date(ocr_text)
+                if date_key:
+                    skipped_semantic +=1
+                    logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', {date_key}")
+                    polygon_updates[pid] = "FechaDocumento"
                     continue
 
                 valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text, threshold)
@@ -107,11 +130,11 @@ class DataFinder(OCRAbstractWorker):
 
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Resultado de {pid}: {best_result}")
+                        logger.info(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
-                logger.debug(f"{skipped_numeric} polígonos omitidos")
-                logger.debug(f"Encontradas {len(polygon_updates)} coincidencias en {time.perf_counter() - time0:6f}s")
+                logger.info(f"{skipped_semantic} polígonos semánticos omitidos")
+                logger.info(f"Encontradas {len(polygon_updates)} coincidencias en {time.perf_counter() - time0:6f}s")
                 return polygon_updates
 
             else:
@@ -121,34 +144,4 @@ class DataFinder(OCRAbstractWorker):
         except Exception as e:
             logger.warning(msg=f"Fallo en búsqueda de datos globales: {e}", exc_info=True)
             return {}
-
-    def _find_rfc(self, s: str) -> bool:
-
-        try:
-            if not s or not s.strip():
-                return False
-
-            rfc_code = r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$'
-            rfc_word = r'\b(R\.?F\.?C\.?)\b'
-
-            # Busca primero el patrón corto
-            if re.search(rfc_word, s):
-                # Si lo encuentra, busca el patrón largo
-
-                if re.search(rfc_code, s):
-                    logger.info(f"Resultado de RFC: {s}")
-                    return True
-
-                else:
-                    return False
-
-            # Si no encuentra el corto, busca el largo directamente
-            if re.search(rfc_code, s):
-                logger.info(f"Resultado de RFC: {s}")
-                return True
-
-            return False
-
-        except Exception as e:
-            logger.info(f"Error buscando RFC: {e}", exc_info=True)
-            return False
+    

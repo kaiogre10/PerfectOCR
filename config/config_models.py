@@ -140,9 +140,8 @@ class TextualCleanConfig(ConfigWithNumpy):
     min_conf_to_clean: float
 
 class SemanticClasificator(ConfigWithNumpy):
-    numeric: Tuple[float, float]
-    code: Tuple[float, float]
-    descriptive: Tuple[float, float]
+    semantic_range: Tuple[float, float]
+    encode_mean: Tuple[float, float]
 
 class Fragmenter(ConfigWithNumpy):
     min_contours_for_frag: int

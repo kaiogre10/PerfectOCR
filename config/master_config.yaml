@@ -14,11 +14,11 @@ pipeline_secuence:
   #  # - "ink_enhancement"
   #   - "clahe"
   #   - "sharp"
-  #- "binarizator"
+  # - "binarizator"
 
   ocr_stage:
     - "paddle_wrapper"
-    # - "text_refiner"
+    - "text_refiner"
     - "data_finder"
     
   vector_stage:
@@ -26,9 +26,9 @@ pipeline_secuence:
     - "vectorizer"
     - "dbscan"
     - "cos_sim"
-    # - "table_structurer"
+    - "table_structurer"
     # - "table_validated"
-    #- "math_max"
+    # - "math_max"
 
 # Configuración de salida (independiente)
 enabled_outputs:
@@ -44,9 +44,9 @@ enabled_outputs:
   sharp_poly: false
   binarized_polygons: false
   ocr_raw: false
-  reconstructed_lines: true
+  reconstructed_lines: false
   table_lines: false
-  encoded_lines: true
+  encoded_lines: false
   features: false
   image_features: false
   table_structured: false
@@ -160,9 +160,9 @@ modules:
       min_conf_to_clean: 90.0
     
     semantic_clasificator:
-      numeric: [66.0, 100.0]
-      code: [45.0, 65.9]
-      descriptive: [0.0, 44.9]
+      semantic_range: [45.0, 66.5]
+      encode_mean: [25.1, 39.1]
+      encode_var: [25.1, 39.1]
         
     data_finder:
       wordfinder_model_path: C:/word_finder_model/models/wf_model.pkl
@@ -180,7 +180,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: false
+      keywords_interval_enabled: true
       exclude_types: [
         "descriptive", 
         "rfc", 
