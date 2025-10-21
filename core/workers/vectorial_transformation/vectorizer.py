@@ -160,11 +160,11 @@ class Vectorizer(VectorizationAbstractWorker):
         try:
             t1 = time.perf_counter()            
             line_features: Dict[str, float] = self._calculate_textual_line_featrues(sorted_lines, manager)
-            logger.info(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
+            logger.debug(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
 
             t2 = time.perf_counter()
             geoline_features: Dict[str, float] = self._calculate_geometric_line_featrues(sorted_lines, manager)
-            logger.info(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
+            logger.debug(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
 
             img_dims: Dict[str, int] = {}
             if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
@@ -570,4 +570,3 @@ class Vectorizer(VectorizationAbstractWorker):
             if getattr(semantic_clasification, exclude_type, False):
                 return False
         return True
-        

@@ -63,13 +63,23 @@ def find_iva(s: str) -> bool:
     except Exception as e:
         logger.warning(f"Error buscando IVA: {e}", exc_info=True)
         return False
+        
+def contains_quantitative(s: str) -> bool:
+    """
+    Devuelve True si hay al menos un cuantitativo válido en cualquier parte del texto.
+    """
+    runs = find_quantitative_runs(s)
+    return len(runs) > 0
 
 def get_quantitative_patterns() -> Dict[str, str]:
     """
     Función interna que centraliza todos los patrones regex para reutilización.
+    Ahora acepta la letra o/O como posible dígito para robustecer contra errores de OCR.
     """
+    # Incluimos o y O como posibles dígitos
+    digit = r"[0-9oO]"
     currency = r"[$¢]"
-    amount_body = r"(?:\d{1,3}(?:[.,]\d{3})*|\d+)(?:[.,]\d+)?"
+    amount_body = rf"(?:{digit}{{1,3}}(?:[.,]{digit}{{3}})*|{digit}+)(?:[.,]{digit}+)?"
 
     return {
         "currency": currency,
@@ -84,46 +94,49 @@ def get_quantitative_patterns() -> Dict[str, str]:
 def find_quantitative(s: str) -> bool:
     """
     Determina si el string COMPLETO es una única entidad cuantitativa.
-    Consolida toda la lógica de validación de find_quantitative y find_numeric.
+    Ahora acepta la letra o/O como posible dígito para robustecer contra errores de OCR.
     """
     s = (s or "").strip()
     if not s or "%" in s:
         return False
 
+    # Normaliza letras o/O a 0 para la validación final
+    s_norm = s.replace("o", "0").replace("O", "0")
+
     patterns = get_quantitative_patterns()
     currency_symbols = "$¢"
     for sym in currency_symbols:
-        idx = s.find(sym)
+        idx = s_norm.find(sym)
         if idx != -1:
-            after = s[idx+1:]
+            after = s_norm[idx+1:]
             if any(c.isdigit() for c in after):
                 maybe_amt = after.lstrip()
                 possible_num = "".join(ch for ch in maybe_amt if ch.isdigit() or ch in ".,")
                 if possible_num == "00":
                     return False
-                if idx == len(s) - 1: # Símbolo al final
+                if idx == len(s_norm) - 1: # Símbolo al final
                     return False
-                if idx == 0 or not s[:idx].strip().isdigit():
+                if idx == 0 or not s_norm[:idx].strip().isdigit():
                     break # Es un candidato válido, proceder a regex
 
-    if re.match(patterns["end"], s):
+    if re.match(patterns["end"], s_norm):
         return False
 
-    amounts = re.findall(r"\d+", s)
+    amounts = re.findall(r"\d+", s_norm)
     if any(c == "00" for c in amounts if len(amounts) > 1 or c != "00"):
         return False
 
     return bool(
-        re.match(patterns["start"], s) or
-        re.match(patterns["middle"], s) or
-        re.match(patterns["multi"], s) or
-        re.match(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$", s) # Decimal explícito
+        re.match(patterns["start"], s_norm) or
+        re.match(patterns["middle"], s_norm) or
+        re.match(patterns["multi"], s_norm) or
+        re.match(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$", s_norm) # Decimal explícito
     )
 
 def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
     """
     Encuentra TODAS las apariciones de entidades cuantitativas en un string,
-    reutilizando la lógica de quantitative_runs original.
+    aceptando la letra o/O como posible dígito.
     """
     s = (s or "").strip()
     if not s:
@@ -131,20 +144,21 @@ def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
     
     patterns = get_quantitative_patterns()
     runs: List[Tuple[int, int, str]] = []
-    for m in re.finditer(patterns["token"], s):
+    # Normaliza para la búsqueda
+    s_norm = s.replace("o", "0").replace("O", "0")
+    for m in re.finditer(patterns["token"], s_norm):
         tok = m.group(0)
         # Reutilizamos la lógica principal para validar cada token
         if find_quantitative(tok):
-            runs.append((m.start(), m.end(), tok))
-            
+            runs.append((m.start(), m.end(), s[m.start():m.end()]))  # Devuelve el texto original
+
     # Lógica original para múltiples símbolos de divisa
     currency_count = sum(1 for _, _, tok in runs if re.search(patterns["currency"], tok))
     if currency_count > 1:
-        # Si hay múltiples monedas, se divide por cada una
         split_runs: List[Tuple[int, int, str]] = []
         split_pattern = rf"{patterns['currency']}\s*{patterns['amount_body']}"
-        for match in re.finditer(split_pattern, s):
-            split_runs.append((match.start(), match.end(), match.group(0)))
+        for match in re.finditer(split_pattern, s_norm):
+            split_runs.append((match.start(), match.end(), s[match.start():match.end()]))
         return split_runs
 
     return runs

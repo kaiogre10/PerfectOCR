@@ -302,7 +302,7 @@ class Fragmenter(OCRAbstractWorker):
                         ])
                     )
                     
-                    logger.info(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
+                    logger.debug(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
 
                     new_poly = dataclasses.replace(
                         polygon,

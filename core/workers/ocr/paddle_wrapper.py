@@ -135,9 +135,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             }
 
                         else:
-                            logger.info(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> {confidence_pct}% < {min_confidence}%")
+                            logger.debug(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> {confidence_pct}% < {min_confidence}%")
 
-                        logger.debug(f"Resultados: {poly_id}: '{text}', {confidence_pct}%")
+                        logger.info(f"Resultados: {poly_id}: '{text}', {confidence_pct}%")
 
                     logger.debug(f"Se mapearon '{len(final_results)}' polígonos con su  ID")
                     return final_results

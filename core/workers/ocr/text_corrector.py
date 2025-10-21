@@ -197,7 +197,7 @@ class TextCorrector(OCRAbstractWorker):
                 continue
 
             # Log antes de corregir
-            logger.debug(
+            logger.info(
                 f"{polygon_id} Corrigiendo: '{char}' → '{corrections_map[char]}' "
                 f"en texto original: '{text}'"
             )

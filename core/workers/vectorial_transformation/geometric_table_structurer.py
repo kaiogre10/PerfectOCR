@@ -1,7 +1,7 @@
 # PerfectOCR/core/workers/vectorial_transformation/geometric_table_structurer.py
 import logging
 import time
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 import pandas as pd #type: ignore
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
@@ -282,57 +282,94 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Cada polígono se asigna individualmente UNA SOLA VEZ considerando disponibilidad semántica.
         """
         try:
+            # Inicializar celdas vacías
             row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
-
-            # Cada element ya es un polígono individual, asignarlo una sola vez
+            
+            # Si no hay elementos en la fila, devolver celdas vacías
+            if not row_elements:
+                return row_cells
+            
+            # Si no hay centroides de encabezado, asignar todos a la primera columna
+            if not header_centroids:
+                for element in row_elements:
+                    row_cells[0]['words'].append(element)
+                logger.warning("No hay centroides de encabezado, asignando todos los elementos a la primera columna")
+                return row_cells
+            
+            # Validar que tengamos suficientes centroides para las columnas
+            if len(header_centroids) < H:
+                logger.warning(f"Insuficientes centroides ({len(header_centroids)}) para {H} columnas. Usando los disponibles.")
+                H = min(H, len(header_centroids))
+                row_cells = row_cells[:H]  # Ajustar tamaño de row_cells
+            
+            # Asignar cada elemento a una celda según restricciones semánticas
             for element in row_elements:
                 element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
                 element_semantic = element.get('semantic_clasification', '')
                 
-                if not header_centroids:
-                    row_cells[0]['words'].append(element)
-                else:
-                    # 1. Filtrar celdas semánticamente disponibles
-                    available_columns = []
-                    for col_idx in range(H):
-                        cell_content = row_cells[col_idx]['words']
-                        
-                        # Verificar si la celda está semánticamente disponible
-                        if self._is_semantically_available(cell_content, element_semantic):
-                            available_columns.append(col_idx)
+                # 1. Filtrar celdas semánticamente disponibles
+                available_columns: List[str] = []
+                for col_idx in range(H):
+                    cell_content = row_cells[col_idx]['words']
                     
-                    # 2. Si hay múltiples opciones, usar distancia euclidiana
-                    if len(available_columns) > 1:
-                        distances = []
-                        for col_idx in available_columns:
+                    # Verificar si la celda está semánticamente disponible
+                    if self._is_semantically_available(cell_content, element_semantic):
+                        available_columns.append(col_idx)
+                
+                # 2. Determinar la mejor columna basada en disponibilidad
+                if len(available_columns) > 1:
+                    # Múltiples opciones: usar distancia euclidiana
+                    distances: List[float] = []
+                    for col_idx in available_columns:
+                        if col_idx < len(header_centroids):
                             header_centroid = header_centroids[col_idx]
                             distance = self._euclidean_distance(element_centroid, header_centroid)
                             distances.append((distance, col_idx))
-                        
-                        # Asignar a la columna con menor distancia
-                        best_col = min(distances, key=lambda x: x[0])[1]
-                    elif len(available_columns) == 1:
-                        # Solo una opción disponible
-                        best_col = available_columns[0]
-                    else:
-                        # No hay columnas disponibles, usar algoritmo original como fallback
-                        sims = [alignment(hc, element_centroid) for hc in header_centroids]
-                        best_col = int(max(range(len(sims)), key=lambda j: sims[j]))
                     
-                    row_cells[best_col]['words'].append(element)
-
-                    logger.info(f"elemento: {element_semantic}, columnas_disponibles: {available_columns}, asignación: {best_col}")
+                    # Asignar a la columna con menor distancia si hay distancias calculadas
+                    if distances:
+                        best_col = min(distances, key=lambda x: x[0])[1]
+                    else:
+                        # Fallback si no hay distancias calculadas
+                        best_col = available_columns[0]
+                elif len(available_columns) == 1:
+                    # Solo una opción disponible
+                    best_col = available_columns[0]
+                else:
+                    # No hay columnas disponibles, usar algoritmo original como fallback
+                    try:
+                        sims = []
+                        for hc_idx, hc in enumerate(header_centroids):
+                            if hc_idx < H:  # Limitar a H centroides
+                                sim = alignment(hc, element_centroid)
+                                sims.append(sim)
+                        
+                        if sims:
+                            best_col = int(max(range(len(sims)), key=lambda j: sims[j]))
+                        else:
+                            # Si no hay similitudes, usar primera columna
+                            best_col = 0
+                    except Exception as e:
+                        logger.warning(f"Error calculando similitud coseno: {e}")
+                        best_col = 0  # Fallback a primera columna
+                
+                # Asegurar que best_col esté en rango
+                best_col = max(0, min(best_col, H-1))
+                
+                # Asignar elemento a la celda
+                row_cells[best_col]['words'].append(element)
+                
+                logger.debug(f"elemento: {element_semantic}, columnas_disponibles: {available_columns}, asignación: {best_col}")
 
             return row_cells
             
         except Exception as e:
             logger.error(f"Error en geometric: {e}", exc_info=True)
-            return []
+            return [{'words': [], 'cell_text': ''} for _ in range(H)]
 
     def _is_semantically_available(self, cell_content: List[Dict[str, Any]], element_semantic: str) -> bool:
         """
         Verifica si una celda está semánticamente disponible para un elemento.
-        
         Reglas:
         - Solo UN polígono numérico/cuantitativo por celda
         - Descriptivos y códigos no tienen restricciones
@@ -342,7 +379,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             restricted_types = {'numeric', 'quantitative'}
             
             # Asegurar que element_semantic es string
-            if not isinstance(element_semantic, str):
+            if not isinstance(element_semantic, str): #type: ignore
                 element_semantic = str(element_semantic) if element_semantic else ""
             
             # Si el elemento no es restrictivo, siempre puede ir
@@ -351,8 +388,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             # Si el elemento ES restrictivo, verificar que no haya otros restrictivos en la celda
             for existing_element in cell_content:
-                existing_semantic = existing_element.get('semantic_clasification', '')
-                
+                existing_semantic = getattr(existing_element, 'semantic_clasification', False)
                 # Asegurar que existing_semantic es string
                 if not isinstance(existing_semantic, str):
                     existing_semantic = str(existing_semantic) if existing_semantic else ""
@@ -366,7 +402,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error verificando disponibilidad semántica: {e}", exc_info=True)
             return True  # En caso de error, permitir asignación
 
-    def _euclidean_distance(self, point1: List[float], point2: List[float]) -> float:
+    def _euclidean_distance(self, point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
         """
         Calcula la distancia euclidiana entre dos puntos en ℝ².
         """

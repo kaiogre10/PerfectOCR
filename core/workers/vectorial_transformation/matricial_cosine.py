@@ -198,8 +198,9 @@ class MatricialCusine(VectorizationAbstractWorker):
 
             timecos0 = time.perf_counter()
 
-            sims_mat = cosine_similarity_global(X, dense_output=False) 
+            sims_mat = cosine_similarity_global(X, dense_output=False).astype(np.float32)
             logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
+            
         except Exception as e:
             logger.error(f"Error calculando matriz se similitud: {e}", exc_info=True)
 
@@ -301,7 +302,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         from core.utils.fun_cosine_similarity import calculate_similarity_ref
 
         X = csr_matrix(candidate_rows, dtype=np.float32)
-        sims = calculate_similarity_ref(X, ref_vec, dense_output=False)
+        sims = calculate_similarity_ref(X, ref_vec).astype(np.float32)
         # sims = cosine_similarity(ref_vec, X, dense_output=False)[0]
 
         logger.debug(f"Promedio de similitud con línea de referencia '{ref_line_id}': {np.mean(sims):.6f}")
@@ -381,16 +382,12 @@ class MatricialCusine(VectorizationAbstractWorker):
             return []
         
         mean_ref_vec = np.array(mean_dummie_list, dtype=np.float32).reshape(1, -1)
-        sims_mean = calculate_similarity_ref(X, mean_ref_vec, dense_output=False)
+        sims_mean = calculate_similarity_ref(X, mean_ref_vec, dense_output=False).astype(np.float32)
 
         # 3. Ponderación de resultados
         median_weighted = sims_median * median_w
         mean_weighted = sims_mean * mean_w
         sims_mat = mean_weighted + median_weighted
-
-        # logger.info(f"sims_MEDIAN: {sims_median}")
-        # logger.info(f"sims_MEAN: {sims_mean}")
-        # logger.info(f"sims_mat: {sims_mat}")
         
         # sims_mat_dense = sims_mat.toarray() 
         logger.debug(f"Promedio de similitud con dummiessumados '{sims_mat}': {np.mean(sims_mat, dtype=np.float32):.6f}")

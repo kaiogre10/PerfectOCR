@@ -142,6 +142,7 @@ class TextualCleanConfig(ConfigWithNumpy):
 class SemanticClasificator(ConfigWithNumpy):
     semantic_range: Tuple[float, float]
     encode_mean: Tuple[float, float]
+    morph_mean: Tuple[float, float]
 
 class Fragmenter(ConfigWithNumpy):
     min_contours_for_frag: int

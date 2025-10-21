@@ -86,10 +86,10 @@ class ConfigService:
                     logger.debug(f"Stage '{stage}' sin workers, se ignora")
                     continue
 
-                if isinstance(stage_workers, (list, tuple, set)):
+                if isinstance(stage_workers, (list, tuple, set)): #type: ignore
                     # añadir sólo elementos tipo str
-                    set_worker_config.update({w for w in stage_workers if isinstance(w, str)})
-                elif isinstance(stage_workers, str):
+                    set_worker_config.update({w for w in stage_workers if isinstance(w, str)}) #type: ignore
+                elif isinstance(stage_workers, str): #type: ignore
                     set_worker_config.add(stage_workers)
                 else:
                     logger.debug(f"Stage '{stage}' con tipo inesperado {type(stage_workers).__name__}, se ignora")
@@ -97,15 +97,15 @@ class ConfigService:
             if set_min_workers.issubset(set_worker_config):
                 # Loguear conteo por stage de forma segura
                 for stage, stage_workers in self.workers_order.items():
-                    if isinstance(stage_workers, (list, tuple, set)):
+                    if isinstance(stage_workers, (list, tuple, set)): #type: ignore
                         count = len(stage_workers)
-                        workers_set = set(w for w in stage_workers if isinstance(w, str))
-                    elif isinstance(stage_workers, str):
+                        workers_set = set(w for w in stage_workers if isinstance(w, str)) #type: ignore
+                    elif isinstance(stage_workers, str): #type: ignore
                         count = 1
                         workers_set = {stage_workers}
                     else:
                         count = 0
-                        workers_set = set()
+                        workers_set: Set[str] = set()
                     logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
                 return True
             else:

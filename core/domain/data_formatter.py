@@ -304,8 +304,8 @@ class DataFormatter:
             logger.error("No hay workflow inicializado para validar imágenes.")
             return False
         
-        min_threshold = 10
-        max_threshold = 245
+        min_threshold = 5
+        max_threshold = 250
         white_poly_ids: List[str] = []
         
         # Detectar polígonos blancos/inválidos
@@ -505,10 +505,10 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.info(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
+                    logger.debug(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
-                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
+                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
             else:
@@ -903,6 +903,7 @@ class DataFormatter:
             except Exception as e:
                 logger.debug(f"fallo en dbpayload{e}", exc_info=True)
             try:
+                
                 detalles: List[List[int]] = []
                 if self.structured_table and hasattr(self.structured_table, "df"):
                     df = self.structured_table.df

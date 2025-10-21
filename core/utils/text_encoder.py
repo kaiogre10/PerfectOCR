@@ -20,3 +20,24 @@ def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
         except Exception as e:
             logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
         return []
+        
+def get_morphological_map(text: str) -> List[float]:
+    char_num: List[str] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"]
+    try:
+        result: List[float] = []
+        if not utils.validate_string(text):  # type:ignore
+            return []
+
+        compact_text = ''.join(text.split())
+        for ch in compact_text:
+            if ch in char_num:
+                result.append(1.0)
+            elif ch.isalpha():
+                result.append(-1.0)
+            else:
+                result.append(0.0)
+        return result
+
+    except Exception as e:
+        logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
+    return []
