@@ -47,7 +47,7 @@ class Fragmenter(OCRAbstractWorker):
             is_umd = getattr(sc, "umd", False)
             # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
             if is_acronym(polygon.ocr_text or ""):
-                logger.info(f"No fragmentando sigla detectada: '{polygon.ocr_text}'")
+                logger.debug(f"No fragmentando sigla detectada: '{polygon.ocr_text}'")
                 final_polygons.append(polygon)
                 continue
 
@@ -145,8 +145,11 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
 
         pad_xmin, pad_ymin, _, _ = polygon.cropedd_geometry.padding_coords
-        poly_width = polygon.cropedd_geometry.croppy_dims.get('poly_width', {})
-        poly_height = polygon.cropedd_geometry.croppy_dims.get('poly_height', {})
+        poly_width = int(polygon.cropedd_geometry.croppy_dims.get('poly_width', 0))
+        poly_height = int(polygon.cropedd_geometry.croppy_dims.get('poly_height', 0))
+        if poly_width <= 0 or poly_height <= 0:
+            logger.warning("Fragmenter: Dimensiones de recorte inválidas para fragmentación por blobs.")
+            return [polygon]
         
         text_parts = (polygon.ocr_text or "").strip().split()
 

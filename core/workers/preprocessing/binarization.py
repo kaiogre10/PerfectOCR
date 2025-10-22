@@ -5,7 +5,6 @@ import numpy as np
 import logging
 from typing import Dict, Any, List, Tuple
 from skimage.filters import threshold_sauvola  # type: ignore
-from skimage.util import img_as_ubyte # type: ignore
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -30,6 +29,8 @@ class Binarizator(PreprocessingAbstractWorker):
         self.block_sizes_map = bin_config.get('block_sizes_map', [15, 21, 25, 35, 41])
         self.min_area_factor = bin_config.get('min_area_factor', 0.005)
         self.min_blobs_for_frag = bin_config.get('min_blobs_for_frag', 2)
+        # Alias to maintain compatibility with visual analysis helper
+        self.min_contours_for_frag = bin_config.get('min_contours_for_frag', self.min_blobs_for_frag)
         self.gap_threshold_norm = bin_config.get('gap_threshold_norm', 0.05)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -66,7 +67,7 @@ class Binarizator(PreprocessingAbstractWorker):
                     continue
 
                 poly_area = float(bin_img.shape[0] * bin_img.shape[1])
-                min_area = max(1.0, poly_area * self.min_area_factor)
+                min_area = poly_area * float(self.min_area_factor)
                 valid_boxes_norm: List[List[float]] = []
 
                 for c in contours:
@@ -74,7 +75,10 @@ class Binarizator(PreprocessingAbstractWorker):
                         continue
                     x, y, w, h = cv2.boundingRect(c)
                     x2, y2 = x + w, y + h
-                    valid_boxes_norm.append([x / bin_img.shape[1], y / bin_img.shape[0], x2 / bin_img.shape[1], y2 / bin_img.shape[0]])
+                    valid_boxes_norm.append([
+                        x / bin_img.shape[1], y / bin_img.shape[0],
+                        x2 / bin_img.shape[1], y2 / bin_img.shape[0]
+                    ])
 
                 if valid_boxes_norm:
                     sorted_boxes = sorted(valid_boxes_norm, key=lambda box: box[0])
@@ -84,25 +88,28 @@ class Binarizator(PreprocessingAbstractWorker):
                     if num_blobs > 1:
                         for i in range(num_blobs - 1):
                             gap = sorted_boxes[i+1][0] - sorted_boxes[i][2]
-                            gaps_x_norm.append(max(0, gap))
+                            gaps_x_norm.append(max(0.0, float(gap)))
 
                     needs_fragmentation = (
-                        num_blobs >= self.min_blobs_for_frag and
-                        (max(gaps_x_norm) if gaps_x_norm else 0) >= self.gap_threshold_norm
+                        num_blobs >= int(self.min_blobs_for_frag) and
+                        (max(gaps_x_norm) if gaps_x_norm else 0.0) >= float(self.gap_threshold_norm)
                     )
                     
-                    blob_metrics[poly_id] = {
-                        "needs_fragmentation": needs_fragmentation,
-                        "num_blobs": num_blobs,
+                    per_poly_metrics = {
+                        "needs_fragmentation": bool(needs_fragmentation),
+                        "num_blobs": int(num_blobs),
                         "blobs_norm_boxes": sorted_boxes,
                         "gaps_x_norm": gaps_x_norm
                     }
+                    blob_metrics[poly_id] = per_poly_metrics
+
+                    logger.info(f"Blobs extraídos para: {poly_id}: {per_poly_metrics} en {time.time()-start:.3f}s")
 
             if blob_metrics:
                 context['blob_metrics'] = blob_metrics
                 polygon_ids = list(blob_metrics.keys())
 
-            logger.debug(f"Binarizator: métricas de blobs extraídas para {len(blob_metrics)} polígonos en {time.time()-start:.3f}s")
+            
             return True
 
         except Exception as e:
@@ -142,9 +149,12 @@ class Binarizator(PreprocessingAbstractWorker):
         )
     
     def _sauvola_binarize(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[np.uint8, Any]:
-        thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size)
-        bin_img = (cropped_img > thresh_sauvola)
-        return bin_img
+        """Sauvola thresholding producing uint8 mask with text as foreground (255)."""
+        thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size)  # type: ignore
+        # Text is typically darker than background: use < threshold and cast to 0/255 uint8
+        bin_bool = (cropped_img < thresh_sauvola)
+        bin_img = (bin_bool.astype(np.uint8) * 255)
+        return bin_img  # type: ignore
 
     def _adaptive_mean_fallback(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int) -> np.ndarray[np.uint8, Any]:
         return cv2.adaptiveThreshold(

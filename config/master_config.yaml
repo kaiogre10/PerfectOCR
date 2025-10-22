@@ -14,7 +14,7 @@ pipeline_secuence:
   #  # - "ink_enhancement"
      - "clahe"
      - "sharp"
-  # - "binarizator"
+     - "binarizator"
 
   ocr_stage:
     - "paddle_wrapper"

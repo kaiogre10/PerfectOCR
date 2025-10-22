@@ -564,7 +564,7 @@ class Vectorizer(VectorizationAbstractWorker):
 
             mean_frecuency, std_frecuency, var_frecuency = self.vectorice_values(frecuency_line) 
 
-            logger.info(
+            logger.debug(
          #       "\n"f"{line_id}:"
         #        "\n"f"{line_txt}"
                 "\n"f"FRECUENCY: {frecuency}"
