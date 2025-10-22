@@ -44,7 +44,7 @@ class DataFinder(OCRAbstractWorker):
                 return False
 
             if manager.create_semantic_clasification():
-                logger.info("Clasificación semántica creada")
+                logger.debug("Clasificación semántica creada")
             
             # Llamar al método original que funciona
             polygon_updates = self._find_data(polygons)

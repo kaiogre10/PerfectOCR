@@ -1,5 +1,6 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowDict, DENSITY_ENCODER, CHAR_FRECUENCY, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage, SemanticClassification, VECTOR_MEDIAN_DUMMIE, VECTOR_MEAN_DUMMIE
+from core.utils.data_utils import  DENSITY_ENCODER, CHAR_FRECUENCY, VECTOR_MEDIAN_DUMMIE, VECTOR_MEAN_DUMMIE, FRECUENCY_ENCODER
+from core.domain.data_models import WorkflowDict, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage, SemanticClassification
 import numpy as np
 import dataclasses
 import logging
@@ -21,9 +22,10 @@ class DataFormatter:
         self.workflow: Optional[WorkflowDict] = None
         self.encoder: Optional[Dict[str, float]] = None
         self.frecuency: Optional[Dict[str, float]] = None
-        self.structured_table: Optional[StructuredTable] = None
+        self.frecuency_encoder: Optional[Dict[str, float]] = None
         self.mean_dummie: Optional[Dict[str, float]] = None
         self.median_dummie: Optional[Dict[str, float]] = None
+        self.structured_table: Optional[StructuredTable] = None
     
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando solo dataclasses"""
@@ -145,10 +147,22 @@ class DataFormatter:
             logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
             return {}
             
+    def get_frecuency_encoder(self) -> Dict[str, float]:
+        """
+        Obtiene los valores de densos frecuencia para letras.
+        """
+        try:
+            if self.frecuency_encoder is None:
+                self.frecuency_encoder = FRECUENCY_ENCODER
+            return self.frecuency_encoder
+        
+        except Exception as e:
+            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
+            return {}
+
     def get_density_encoder(self) -> Dict[str, float]:
         """
-        Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
-        Si no se especifican line_ids, codifica todas las líneas existentes.
+        Obtiene los valores de densidad para letras.
         """
         try:
             if self.encoder is None:
@@ -696,7 +710,6 @@ class DataFormatter:
                 return False
                 
             all_lines_dataclasses: Dict[str, AllLines] = {}
-            textual_lines_debug: List[Dict[str, Any]] = []
             for line_id, line_data in valid_lines.items():
                 line_geometry = LineGeometry(
                     line_centroid=line_data.get("line_centroid", [0, 0]),
@@ -714,20 +727,6 @@ class DataFormatter:
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
-
-            for line_id in self.workflow.all_lines:
-                if line_id in self.workflow.all_lines:
-                    line_obj = self.workflow.all_lines[line_id]
-                    textual_lines_debug.append({
-                                "line_id": line_id,
-                                "text": line_obj.text,
-                                "polygon_ids": line_obj.polygon_ids
-                            })
-
-            if textual_lines_debug:
-                for all_lines in textual_lines_debug:
-                    # logger.info(f"{all_lines['line_id']}: {all_lines['text']} | {all_lines['polygon_ids']}")
-                    logger.debug(f"{all_lines['line_id']}: {all_lines['text']}")
 
             header_line = self._find_and_mark_header()
             footer_line = self._get_footer()

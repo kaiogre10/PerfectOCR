@@ -50,13 +50,7 @@ class SemanticClasificator(OCRAbstractWorker):
             
             classified_count = len(final_results)
             logger.debug(f"Total clasificados: {classified_count}")
-            
-            # for poly_id, semantic_obj in final_results.items():
-            #     if poly_id in all_polygons:
-            #         polygon = all_polygons[poly_id]
-            #         active_fields = [field for field in ['quantitative', 'umd', 'rfc', 'numeric', 'descriptive', 'code'] if getattr(semantic_obj, field)]
-            #         logger.debug(f"{poly_id}: {active_fields} | texto: '{polygon.ocr_text or ''}'")
-            
+
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results, reset_refined=filter_modified)
             
@@ -95,35 +89,34 @@ class SemanticClasificator(OCRAbstractWorker):
                 code=False
             )
 
-            if contains_quantitative(s):
-                logger.info(
-                    f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | QUANTITATIVE (pattern_finder)")
-                semantic_clasification = dataclasses.replace(semantic_clasification, quantitative=True)
+            #if contains_quantitative(s):
+             #   logger.info(
+              #      f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | QUANTITATIVE (pattern_finder)")
+               # semantic_clasification = dataclasses.replace(semantic_clasification, quantitative=True)
                 # UMD antes (patrones fuertes/ortogonales)
-            elif find_umd(s):
-                logger.info(
-                    f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | UMD")
+            if find_umd(s):
                 semantic_clasification = dataclasses.replace(semantic_clasification, umd=True)
             # Numérico primero; cuantitativo solo si es numérico
             elif semantic_range[1] < pct and poly_mean < encode_mean[0] and morph_mean[1] < poly_morph_mean:
                 # Verificación cuantitativa SOLO dentro de los numéricos
                 has_quantitative = find_quantitative(s)
                 if has_quantitative:
-                    logger.info(
-                        f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | QUANTITATIVE")
                     semantic_clasification = dataclasses.replace(semantic_clasification, quantitative=True)
                 else:
-                    logger.info(
-                        f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | NUMERIC")
                     semantic_clasification = dataclasses.replace(semantic_clasification, numeric=True)
             elif pct < semantic_range[0] and poly_morph_mean < morph_mean[0]:
-                logger.info(
-                    f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | DESCRIPTIVE")
                 semantic_clasification = dataclasses.replace(semantic_clasification, descriptive=True)
             else:
-                logger.info(
-                    f"{pid}: '{s}' | mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | CODE")
                 semantic_clasification = dataclasses.replace(semantic_clasification, code=True)
+
+            true_field = next(
+                (field for field, value in dataclasses.asdict(semantic_clasification).items() if value),
+                "none"
+            )
+            logger.debug(
+                f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, "
+                f"morph: {poly_morph_mean}, {pct}% | sc: {true_field.upper()}"
+            )
 
             final_results[pid] = semantic_clasification
 

@@ -25,13 +25,14 @@ class LinealReconstructor(VectorizationAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
-                
+            
             lines_info= self._reconstruct_lines(polygons)
             if not lines_info:
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
                 return False
             
             total_time1 = time.time() - start_time
+
             logger.debug(f"Armado de líneas completado en {total_time1:.10f}")
 
             success = manager.create_text_lines(lines_info)
@@ -123,6 +124,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     line_counter += 1
                     current_line_polys = [poly]
                     current_line_bbox = list(bbox)
+                
+                    logger.debug(f"{line_id}: '{joined_text}' | {polygon_ids}")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -146,4 +149,5 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     "text": joined_text
                 }
 
+                logger.debug(f"{line_id}: '{joined_text}' | {polygon_ids}")
         return lines_info

@@ -7,6 +7,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons, SemanticClassification
+from core.utils.text_encoder import encode_text
 
 logger = logging.getLogger(__name__)
 
@@ -46,17 +47,17 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Si no hay intervalo, se prosigue con la vectorización normal
                 all_features = self._vectorize_text(manager, context)
                 if all_features:
-                    total_time = time.time() - start_time
+                    total_time = time.perf_counter() - start_time
 
                     if self.features_output:
                         from services.output_service import save_table_values
                         file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                        worker_name = context.get("worker_name") or "vectorizer"
+                        worker_name = context.get("worker_name") or "vectorizer_features"
                         output_paths = context.get("output_paths", [])
                         image_features = self.image_features
                         save_table_values(file_name, all_features, output_paths, worker_name, image_features)
                         
-                    logger.info(f"Vectorización completada en {total_time:.7f}s. Líneas válidas: {len(all_features)}")
+                    logger.info(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
                     context["all_features"] = all_features
                     logger.info(f"Features guardadas en el contexto")
                         
@@ -172,30 +173,18 @@ class Vectorizer(VectorizationAbstractWorker):
 
             if not line_features:
                 return {}
-            
-            all_lines_features: Dict[str, Dict[str, float]] = {}
-            encoded_lines = self._calculate_encode_lines(manager, sorted_lines)
-             # Conteo inline: cantidad de elementos por línea y máximo global (sin función adicional)
-            max_count_by_line: Dict[str, int] = {
-                 lid: (len(vals) if vals is not None else 0) # type: ignore
-                 for lid, vals in (encoded_lines or {}).items()
-            }
 
-            global_max_encoded: int = max(max_count_by_line.values()) if max_count_by_line else 0
+            all_lines_features: Dict[str, Dict[str, float]] = {}
             num_lines = len(sorted_lines)
+            encoded_values = self._calculate_encoding_values(manager, sorted_lines)
 
             for i, (line_id, line_data) in enumerate(sorted_lines):
-                line_values = encoded_lines.get(line_id, [])
-                if not line_values:
-                    logger.warning(f"Línea {line_id} sin codificación o sin features geométricos; será ignorada.")
-                    continue
 
                 if not line_data:
                     logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")
                     continue
-                
-                numeric_count = 0.0
 
+                numeric_count = 0.0
                 poly_ids_line = getattr(line_data, "polygon_ids", []) or []
                 if manager.workflow and manager.workflow.polygons and poly_ids_line:
                     polygons_dict: Dict[str, Polygons] = manager.workflow.polygons
@@ -374,7 +363,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "vectorizer"
                 output_paths = context.get("output_paths", [])
-                save_debug_ocr(output_paths, worker_name, encoded_lines, file_name)
+                save_debug_ocr(output_paths, worker_name, file_name)
 
             return all_lines_features
 
@@ -506,28 +495,6 @@ class Vectorizer(VectorizationAbstractWorker):
             
             return {}
                 
-    def _calculate_encode_lines(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]) -> Dict[str, List[float]]:
-        from core.utils.text_encoder import encode_text
-        try:
-            encoder: Dict[str, float] = manager.get_density_encoder()
-            encoded_lines: Dict[str, List[float]] = {}
-
-            for line_id, line_obj in sorted_lines:
-                line_txt = line_obj.text
-                if line_txt:
-
-                    encoded_text = encode_text(line_txt, encoder)
-                    encoded_lines[line_id] = encoded_text
-
-                    logger.debug(f"Codificación {line_id}: {encoded_text}")
-
-            logger.debug(f"Codificadas {len(encoded_lines)} líneas para análisis de densidad.")
-            return encoded_lines
-
-        except Exception as e:
-            logger.warning(f"Error codificando líneas: {e}", exc_info=True)
-            return {}
-
     def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[str]]:
         
         all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
@@ -559,6 +526,59 @@ class Vectorizer(VectorizationAbstractWorker):
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
         logger.info(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
         return tabular_line_ids
+    
+    def _calculate_encoding_values(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]):
+        
+        encoded_text: Dict[str, float] = {}
+        den_encoder = manager.get_density_encoder()
+        frec_encoder = manager.get_frecuency_encoder()
+        for line_id, line_data in sorted_lines:
+            if not line_data:
+                logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")
+                continue
+            
+            line_txt = line_data.text
+            # density_line = self._calculate_lines_values(manager, line_data, encoding="density")
+            frecuency_line = encode_text(line_txt, frec_encoder)
+
+            if not frecuency_line: # or not density_line:
+                logger.warning(f"Línea {line_id} sin codificación será ignorada.")
+                continue
+
+            frecuency = 0.0
+            prev_sign = None
+
+            for i in frecuency_line:
+                if i >= 1.0:
+                    current_sign = "positive"
+                elif i == 0.0:
+                    current_sign = "negative"  # 0 cuenta como negativo según tu especificación
+                else:
+                    current_sign = "negative"
+
+                # Solo contar cambio si hay un signo previo y es diferente al actual
+                if prev_sign is not None and prev_sign != current_sign:
+                    frecuency += 1.0
+
+                prev_sign = current_sign
+
+            mean_frecuency, std_frecuency, var_frecuency = self.vectorice_values(frecuency_line) 
+
+            logger.info(
+         #       "\n"f"{line_id}:"
+        #        "\n"f"{line_txt}"
+                "\n"f"FRECUENCY: {frecuency}"
+                #"\n"f"{frecuency_line}"
+                # "\n"f"mean: {mean_frecuency:.6f}, std: {std_frecuency:.6f}, var: {var_frecuency:.6f}"
+                )
+
+            encoded_text = {
+                "mean_frecuency": mean_frecuency,
+                "std_frecuency": std_frecuency,
+                "var_frecuency": var_frecuency
+            }
+
+        return encoded_text
 
     def _is_numeric_polygon(self, semantic_clasification: SemanticClassification) -> bool:
         """
@@ -570,3 +590,17 @@ class Vectorizer(VectorizationAbstractWorker):
             if getattr(semantic_clasification, exclude_type, False):
                 return False
         return True
+
+    def vectorice_values(self, data_list: List[float]) -> List[float]:
+        """
+        Calcula estadísticas vectorizadas (media, desviación estándar, varianza) de una lista de valores.
+        """
+        if not data_list:
+            return [0.0, 0.0, 0.0]
+
+        value_array = np.array(data_list, dtype=np.float32)
+        line_mean = np.mean(value_array)
+        line_std = np.std(value_array)
+        line_var = np.var(value_array)
+        
+        return [float(line_mean), float(line_std), float(line_var)]

@@ -62,7 +62,7 @@ class Refiner(OCRAbstractWorker):
             logger.debug(f"Pasada final: Clasificación Semántica (completa)")
             self.clasificator.transcribe(context, manager, filter_modified=False)
             
-            logger.info(f"Clasificación Semántica Final Completada en: {time.perf_counter()-t0:.6f}s")
+            logger.debug(f"Clasificación Semántica Final Completada en: {time.perf_counter()-t0:.6f}s")
             return True
         
         except Exception as e:

@@ -25,7 +25,7 @@ class OCRStager(AbstractStager):
         for worker_idx, worker in enumerate(self.workers):
 
             worker_name = worker.__class__.__name__
-            logger.info(f"Ejecutando Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            logger.debug(f"Ejecutando Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
             context: Dict[str, Any] = {
                     "worker_name": worker_name,
@@ -38,6 +38,6 @@ class OCRStager(AbstractStager):
                 return None, 0.0
 
             worker_time = time.time() - worker_start
-            logger.info(f"Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
+            logger.debug(f"Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
         ocr_time = time.time() - start_time
         return manager, ocr_time

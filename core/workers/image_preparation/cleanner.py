@@ -94,4 +94,3 @@ class ImageCleaner(ImagePrepAbstractWorker):
         except Exception as e:
             logger.error(f"Cleaner: {e}", exc_info=True)
             return False
-            
