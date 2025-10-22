@@ -42,7 +42,7 @@ enabled_outputs:
   ink_poly: false
   clahe_poly: false
   sharp_poly: false
-  binarized_polygons: false
+  binarized_polygons: true
   ocr_raw: false
   reconstructed_lines: false
   table_lines: false

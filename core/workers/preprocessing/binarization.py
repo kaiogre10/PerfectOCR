@@ -32,6 +32,8 @@ class Binarizator(PreprocessingAbstractWorker):
         # Alias to maintain compatibility with visual analysis helper
         self.min_contours_for_frag = bin_config.get('min_contours_for_frag', self.min_blobs_for_frag)
         self.gap_threshold_norm = bin_config.get('gap_threshold_norm', 0.05)
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("binarized_polygons", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
 
@@ -105,10 +107,15 @@ class Binarizator(PreprocessingAbstractWorker):
 
                     logger.info(f"Blobs extraídos para: {poly_id}: {per_poly_metrics} en {time.time()-start:.3f}s")
 
+                if self.output:
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name") or "binarizator"
+                    output_paths = context.get("output_paths", [])
+                    save_croped_image(poly_id, bin_img, output_paths, worker_name)
+
             if blob_metrics:
                 context['blob_metrics'] = blob_metrics
                 polygon_ids = list(blob_metrics.keys())
-
             
             return True
 
@@ -149,11 +156,13 @@ class Binarizator(PreprocessingAbstractWorker):
         )
     
     def _sauvola_binarize(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[np.uint8, Any]:
-        """Sauvola thresholding producing uint8 mask with text as foreground (255)."""
+        """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)."""
         thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size)  # type: ignore
-        # Text is typically darker than background: use < threshold and cast to 0/255 uint8
+        # Text is typically darker than background: invert to make text black (0) and background white (255)
         bin_bool = (cropped_img < thresh_sauvola)
         bin_img = (bin_bool.astype(np.uint8) * 255)
+        # Invert to match other binarization methods: text black (0), background white (255)
+        bin_img = cv2.bitwise_not(bin_img)
         return bin_img  # type: ignore
 
     def _adaptive_mean_fallback(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int) -> np.ndarray[np.uint8, Any]:
