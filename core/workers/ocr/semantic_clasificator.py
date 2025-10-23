@@ -7,7 +7,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, SemanticClassification
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_encoder import encode_text, get_morphological_map
-from core.utils.pattern_finder import find_umd, find_quantitative, contains_quantitative
+from core.utils.pattern_finder import find_umd, find_quantitative
 
 logger = logging.getLogger(__name__)
 

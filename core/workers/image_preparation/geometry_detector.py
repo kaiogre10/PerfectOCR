@@ -1,6 +1,5 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
-import numpy as np
 from typing import Dict, Any, Optional, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -10,7 +9,6 @@ logger = logging.getLogger(__name__)
 class GeometryDetector(ImagePrepAbstractWorker):
     """
     Detecta geometría con PaddleOCR:
-    workflow['polygons'][poly_id] = { polygon_id, geometry, ... }
     """
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
@@ -44,12 +42,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
             logger.debug("Full_img obtenida con éxito")
-            
-            try:
-                results: Optional[List[List[int]]] = engine.ocr(img=img, det=True, cls=False, rec=False) 
-                logger.debug(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
-            except Exception as e:
-                logger.error("GeometryDetector: No se encontraron polígonos de texto.", exc_info=True)
+
+            results: Optional[List[List[int]]] = engine.ocr(img=img, det=True, cls=False, rec=False)
+            logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
 
             if not (results and len(results) > 0 and results[0] is not None):
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")

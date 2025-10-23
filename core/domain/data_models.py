@@ -18,9 +18,9 @@ class CroppedGeometry:
     
 @dataclass
 class CroppedImage:
-    cropped_img: np.ndarray[Any, np.dtype[np.uint8]]
+    cropped_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
             
-@dataclass(frozen=True)
+@dataclass
 class Geometry:
     polygon_coords: np.ndarray[Any, Any]  # shape: (n_points, 2)
     bounding_box: np.ndarray[Any, Any]    # shape: (4,)

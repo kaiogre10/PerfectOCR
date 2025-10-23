@@ -1,32 +1,41 @@
 import re
 import logging
 from typing import List, Tuple, Dict
+from fuzzywuzzy import utils #type: ignore
 
 logger = logging.getLogger(__name__)
 
 def is_acronym(text: str) -> bool:
+    try:
         """
         Detecta siglas del tipo A.B.C. o P.U.C.D con punto final opcional
         y, a partir de ahora, admite un signo ':' ';' ',' opcional al final.
         """
+        if not utils.validate_string(text): #type: ignore
+            return False
+            
         pattern = r'^([A-Za-z]\.){2,}[A-Za-z]\.?(?:[:;,])?$'
         return re.search(pattern, text.strip()) is not None
+        
+    except Exception as e:
+        logger.info(f"Error buscando siglas: {e}", exc_info=True)
+    return False
 
 def find_umd(s: str) -> bool:
-        try:
-            if not s or not s.strip():
-                return False
-
-            # Regex Maestra para capturar la unidad y el valor
-            # Nota: La diagonal debe ser escapada: \/
-            umd_patterns = r'\b(\d+([,\.]\d+)?)\s*(/)?\s*(k(g(r)?|ilo(s)?)|g(r|ramo(s)?|m)?|mg|m(t(r)?|etro(s)?|2|\\^2)?|cm|l(t(r)?|itro(s)?|ml)?|cc|ud(s)?|pza(s)?|cj(s)?)\b'
-            if re.search(umd_patterns, s):
-                 return True
+    try:
+        if not s or not s.strip():
             return False
 
-        except Exception as e:
-            logger.warning(f"No se hallaron unidades de medida: {e}", exc_info=True)
-            return False
+        # Regex Maestra para capturar la unidad y el valor
+        # Nota: La diagonal debe ser escapada: \/
+        umd_patterns = r'\b(\d+([,\.]\d+)?)\s*(/)?\s*(k(g(r)?|ilo(s)?)|g(r|ramo(s)?|m)?|mg|m(t(r)?|etro(s)?|2|\\^2)?|cm|l(t(r)?|itro(s)?|ml)?|cc|ud(s)?|pza(s)?|cj(s)?)\b'
+        if re.search(umd_patterns, s):
+                return True
+        return False
+
+    except Exception as e:
+        logger.warning(f"No se hallaron unidades de medida: {e}", exc_info=True)
+        return False
 
 def find_rfc(s: str) -> bool:
     try:

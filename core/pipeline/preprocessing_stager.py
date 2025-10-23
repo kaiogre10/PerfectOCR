@@ -34,7 +34,7 @@ class PreprocessingStager(AbstractStager):
                 return None, 0.0
 
             worker_time = time.time() - worker_start
-            logger.info(f"Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
+            logger.debug(f"Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
 
         elapsed = time.time() - start_time
         logger.debug(f"Preprocesamiento completado en: {elapsed:.6f}s")

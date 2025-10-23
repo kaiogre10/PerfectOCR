@@ -10,6 +10,7 @@ class OutputFlag(ConfigWithNumpy):
     angle_corrected: bool
     preprocessed_image: bool
     cropped_img: bool
+    discarded_polys: bool
     moire_poly: bool
     sp_poly: bool
     gauss_poly: bool
@@ -60,16 +61,14 @@ class MoireConfig(ConfigWithNumpy):
     mean_factor_threshold: int
     absolute_threshold: int
     
-class BinarizeQuality(ConfigWithNumpy):
-    quality_min: float
-    quality_max: float
-
 class Binarization(ConfigWithNumpy):
     c_value: int
     height_thresholds_px: List[int]
     block_sizes_map: List[int]
-    quality: BinarizeQuality
-
+    min_blobs_for_frag: int
+    gap_threshold_norm: float
+    min_area_factor: float
+    
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
     salt_pepper_threshold: float
@@ -95,6 +94,7 @@ class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
     bin_interval: Tuple[int, int]
     percentil : float
+    angle_thr: Tuple[float, float]
 
 class CleaningConfig(ConfigWithNumpy):
     std_low: float
@@ -131,7 +131,6 @@ class PreprocessingConfig(ConfigWithNumpy):
     ink_enhancement: InkConfig
     contrast: ContrastConfig  
     sharpening: SharpeningConfig
-    binarizator: Binarization
 
 class TextualCleanConfig(ConfigWithNumpy):
     min_probability: float
@@ -163,6 +162,7 @@ class PaddleTranscription(ConfigWithNumpy):
 
 class OCRConfig(ConfigWithNumpy):
     paddle_wrapper: PaddleTranscription
+    binarizator: Binarization
     text_refiner: TextRefiner
     text_cleaner: TextualCleanConfig
     semantic_clasificator: SemanticClasificator

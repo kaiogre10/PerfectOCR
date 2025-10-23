@@ -72,12 +72,18 @@ class InkEnhancer(PreprocessingAbstractWorker):
                 enhanced_count += 1
 
                 if self.output:
-                    self._save_debug_image(context, poly_id, enhanced_img)
-
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name") or "inker"
+                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                    output_paths = context.get("output_paths", [])
+                    
+                    save_croped_image(image_name, poly_id, enhanced_img, output_paths, worker_name)
+                    
             total_time = time.time() - start_time
             
             logger.debug(
                 f"Restauración de tinta completada para {enhanced_count}/{len(poly_ids_order)} polígonos en: {total_time:.3f}s")
+            
             return True
             
         except Exception as e:

@@ -21,9 +21,9 @@ os.environ.update({
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 DEFAULT_INPUT_PATH = [
- "input",
- # "input2",
-        "input3"
+# "input",
+# "input2",
+"input3"
 ]
 
 DEFAULT_OUTPUT_PATH =[

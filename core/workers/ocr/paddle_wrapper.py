@@ -118,7 +118,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                                     
             if len(batch_result) == 1 and isinstance(batch_result[0], list): #type: ignore
                 consolidated_results = batch_result[0]
-                manager.delete_cropped_images()
                 
                 if len(consolidated_results) == len(valid_images):
                     final_results: Dict[str, Dict[str, Any]] = {}
@@ -139,7 +138,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
 
                         logger.debug(f"Resultados: {poly_id}: '{text}', {confidence_pct}%")
 
-                    logger.debug(f"Se mapearon '{len(final_results)}' polígonos con su  ID")
+                    logger.info(f"Se mapearon '{len(final_results)}' polígonos con su  ID")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes.")

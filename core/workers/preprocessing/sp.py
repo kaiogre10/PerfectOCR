@@ -96,8 +96,9 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 if self.output:
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name", [])
+                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     output_paths = context.get("output_paths", [])
-                    save_croped_image(poly_id, corrected_img, output_paths, worker_name)
+                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
 
             total_time = time.time() - start_time
             logger.debug(f"S&P batch completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")

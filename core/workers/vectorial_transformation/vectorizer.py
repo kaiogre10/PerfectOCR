@@ -176,7 +176,7 @@ class Vectorizer(VectorizationAbstractWorker):
 
             all_lines_features: Dict[str, Dict[str, float]] = {}
             num_lines = len(sorted_lines)
-            encoded_values = self._calculate_encoding_values(manager, sorted_lines)
+            #encoded_values = self._calculate_encoding_values(manager, sorted_lines)
 
             for i, (line_id, line_data) in enumerate(sorted_lines):
 
@@ -442,8 +442,8 @@ class Vectorizer(VectorizationAbstractWorker):
                     perimeter: float = 2 * (bbox_width + bbox_height)
                     aspect_ratio = ((bbox_height / bbox_width) * 100)
                     diagonal = float(np.sqrt((bbox_width**2.0) + (bbox_height**2.0)))
-                    slope = bbox_width / bbox_height  if bbox_width != 0 else 0.0
                     angle = math.degrees(math.atan2(bbox_height, bbox_width))
+                    slope = bbox_width / bbox_height  if bbox_width != 0 else 0.0
                     width_count_by_line[line_id] = bbox_width
                     height_count_by_line[line_id] = bbox_height
                     area_count_by_line[line_id] = area

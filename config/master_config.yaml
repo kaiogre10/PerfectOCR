@@ -2,31 +2,30 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "cleaner"
+    # - "cleaner"
     #- "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-     - "moire"
-     - "sp"
-     - "gauss"
-  #  # - "ink_enhancement"
-     - "clahe"
-     - "sharp"
-     - "binarizator"
+    #  - "moire"
+    #  - "sp"
+    #  - "gauss"
+    #  - "ink_enhancement"
+    #  - "clahe"
+    #  - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
-    - "lineal"
-    - "vectorizer"
+    # - "lineal"
+    # - "vectorizer"
     # - "dbscan"
     # - "cos_sim"
-    - "table_structurer"
+    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -36,13 +35,14 @@ enabled_outputs:
   angle_corrected: false
   preprocessed_image: false
   cropped_img: false
+  discarded_polys: false
   moire_poly: false
   sp_poly: false
   gauss_poly: false
   ink_poly: false
   clahe_poly: false
   sharp_poly: false
-  binarized_polygons: true
+  binarized_polygons: false
   ocr_raw: false
   reconstructed_lines: false
   table_lines: false
@@ -96,8 +96,9 @@ modules:
     
     polygon_extractor:
       cropping_padding: 5
-      bin_interval: [1, 254]
+      bin_interval: [5, 250]
       percentil: 0.5
+      angle_thr: [42.5, 47.5]
 
   preprocessing:
     moire:
@@ -136,19 +137,18 @@ modules:
       sharpness_threshold: 50.0
       radius: 1.0
       amount: 1.5
-      
-    binarizator:
-      c_value: 7
-      height_thresholds_px: [100, 800, 1500, 2500]
-      block_sizes_map: [15, 21, 25, 35, 41]
-      
-      quality:
-        quality_min: 0.10
-        quality_max: 0.90
         
   ocr:
     paddle_wrapper:
       min_confidence: 65.0
+
+    binarizator:
+      c_value: 7
+      height_thresholds_px: [ 100, 800, 1500, 2500 ]
+      block_sizes_map: [ 15, 21, 25, 35, 41 ]
+      min_blobs_for_frag: 2
+      gap_threshold_norm: 0.05
+      min_area_factor: 0.005
       
     text_refiner:
       num_passes: 2
@@ -180,7 +180,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: false
+      keywords_interval_enabled: true
       exclude_types: [
         "descriptive",
         "code", 

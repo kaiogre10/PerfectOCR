@@ -98,9 +98,10 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
                 
                 if self.output:
                     from services.output_service import save_croped_image
-                    worker_name = context.get("worker_name", [])
+                    worker_name = context.get("worker_name") or "clahe"
+                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     output_paths = context.get("output_paths", [])
-                    save_croped_image(poly_id, corrected_img, output_paths, worker_name)
+                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
 
             return True
         except Exception as e:

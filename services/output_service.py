@@ -10,15 +10,22 @@ from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
-def save_croped_image(poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str):
+def save_croped_image(image_name: str, poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, method: str = None):  #type: ignore
     """Guarda una imagen de depuración si la salida está habilitada."""
     if isinstance(output_paths, str):
         output_paths = [output_paths]
     for path in output_paths:
-        output_dir = os.path.join(path, worker_name)
-        file_name = f"{poly_id}_{worker_name}.png"
-        save_image(image, output_dir, file_name)
-        
+        if method:
+            output_dir = os.path.join(path, image_name, method)
+            file_name = f"{poly_id}.png"
+            save_image(image, output_dir, file_name)
+
+        else:
+            output_dir = os.path.join(path, image_name)
+            file_name = f"{poly_id}.png"
+            save_image(image, output_dir, file_name)
+            output_dir = os.path.join(path, worker_name, image_name)
+
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
 
 def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name_with_extension: str):
@@ -101,7 +108,7 @@ def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: L
 
 def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]], output_paths: List[str] | str, worker_name: str, image_features: bool):
     try:
-        df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index')
+        df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index') #type: ignore
         df.index.name = 'line_id'
         
         # Resetear índice para que line_id sea una columna
@@ -118,19 +125,19 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]],
             feature_names: List[str] = list(features_data.columns.tolist())
             
             # Crear la figura
-            plt.figure(figsize=(12, 8))
+            plt.figure(figsize=(12, 8)) #type: ignore
             
             # Plotear cada línea del documento con valores originales
             for idx, row in features_data.iterrows():
-                line_id: str = df.iloc[idx]['line_id']
-                plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1)
+                line_id: str = df.iloc[idx]['line_id'] #type: ignore
+                plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1) #type: ignore
             
             # Configurar la gráfica
-            plt.xlabel('Features')
-            plt.ylabel('Valores de Features')
-            plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')
-            plt.xticks(rotation=45, ha='right')
-            plt.grid(True, alpha=0.3)
+            plt.xlabel('Features') #type: ignore
+            plt.ylabel('Valores de Features') #type: ignore
+            plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')#type: ignore
+            plt.xticks(rotation=45, ha='right') #type: ignore
+            plt.grid(True, alpha=0.3) #type: ignore
             
             # Calcular los límites del eje Y y poner los ticks de 1 en 1
             if not features_data.empty:
@@ -138,20 +145,20 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]],
                 ymax = features_data.max().max()
                 ymin_tick = int(np.floor(ymin))
                 ymax_tick = int(np.ceil(ymax))
-                plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1))
+                plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1)) #type: ignore
             
             # Limitar leyenda si hay muchas líneas
             if len(df) > 20:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8) #type: ignore
             else:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left') #type: ignore
             
             plt.tight_layout()
             
             # Guardar la gráfica
             plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
-            plot_path = os.path.join(output_dir, plot_filename)
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            plot_path = os.path.join(output_dir, plot_filename) #type: ignore
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight') #type: ignore
             plt.close()
             
             logger.info(f"Gráfica de features guardada en: {plot_path}")

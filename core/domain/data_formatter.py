@@ -98,7 +98,7 @@ class DataFormatter:
                     ocr_confidence=None,
                     was_refined=False,
                     key_field=None,
-                    semantic_clasification=None #type:ignore
+                    semantic_clasification=None, #type:ignore
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -303,7 +303,7 @@ class DataFormatter:
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
-            logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte")
+            logger.info(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte")
             return True
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
@@ -727,7 +727,6 @@ class DataFormatter:
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
-
             header_line = self._find_and_mark_header()
             footer_line = self._get_footer()
             
