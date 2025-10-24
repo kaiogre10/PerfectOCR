@@ -99,6 +99,7 @@ class DataFormatter:
                     was_refined=False,
                     key_field=None,
                     semantic_clasification=None, #type:ignore
+                    binarized=False
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -269,11 +270,7 @@ class DataFormatter:
             logger.error(f"Error actualizando full_img: {e}", exc_info=True)
             return False
             
-    def save_cropped_images(
-    self,
-    cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]],
-    cropped_geometries: Dict[str, Dict[str, Any]]
-    ) -> bool:
+    def save_cropped_images(self, cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]], cropped_geometries: Dict[str, Dict[str, Any]]) -> bool:
         """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""
         try:
             if not self.workflow:
@@ -519,7 +516,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.debug(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
+                    logger.info(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")

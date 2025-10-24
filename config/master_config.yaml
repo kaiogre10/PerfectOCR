@@ -2,30 +2,30 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "cleaner"
+    - "cleaner"
     #- "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-    #  - "moire"
-    #  - "sp"
-    #  - "gauss"
+     - "moire"
+     - "sp"
+     - "gauss"
     #  - "ink_enhancement"
-    #  - "clahe"
-    #  - "sharp"
+     - "clahe"
+     - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -34,7 +34,7 @@ enabled_outputs:
   pre_clean: false
   angle_corrected: false
   preprocessed_image: false
-  cropped_img: false
+  cropped_img: true
   discarded_polys: false
   moire_poly: false
   sp_poly: false
@@ -98,7 +98,7 @@ modules:
       cropping_padding: 5
       bin_interval: [5, 250]
       percentil: 0.5
-      angle_thr: [42.5, 47.5]
+      angle_thr: [44.5, 45.5]
 
   preprocessing:
     moire:
@@ -142,13 +142,13 @@ modules:
     paddle_wrapper:
       min_confidence: 65.0
 
-    binarizator:
+    fragmenter:
       c_value: 7
-      height_thresholds_px: [ 100, 800, 1500, 2500 ]
-      block_sizes_map: [ 15, 21, 25, 35, 41 ]
-      min_blobs_for_frag: 2
-      gap_threshold_norm: 0.05
-      min_area_factor: 0.005
+      height_thresholds_px: [100, 800, 1500, 2500]
+      block_sizes_map: [15, 21, 25, 35, 41]
+      min_blobs_for_frag: 3
+      gap_threshold_norm: 0.01
+      min_area_factor: 0.01
       
     text_refiner:
       num_passes: 2
@@ -169,9 +169,6 @@ modules:
       min_similarity: 0.92
       max_q_lenght: 20
 
-    fragmenter:
-      min_contours_for_frag: 2
-
     text_corrector:
       confidence_threshold: 0.90
     
@@ -180,7 +177,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: true
+      keywords_interval_enabled: false
       exclude_types: [
         "descriptive",
         "code", 

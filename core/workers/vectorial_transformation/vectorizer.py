@@ -27,7 +27,7 @@ class Vectorizer(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time = time.perf_counter()
-            logger.info("Comienza Vectorizer")
+            logger.debug("Comienza Vectorizer")
             logger.warning(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
 
             table_line_ids = self._get_keywords_interval(manager) if self.keywords_interval_enabled else None
@@ -35,10 +35,10 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 logger.warning(f"Intervalo tabular detectado, se omite vectorización")
                 context["all_features"] = None
-                logger.info(f"Intervalo detectado en:{time.perf_counter()-start_time:.7f}")
+                logger.debug(f"Intervalo detectado en:{time.perf_counter()-start_time:.7f}")
 
                 if manager.save_tabular_lines(table_line_ids):
-                    logger.info("Líneas guardadas en el manager desde Vectorizer")
+                    logger.debug("Líneas guardadas en el manager desde Vectorizer")
                     return True
                 else:
                     logger.warning("No se pudieron guardar las líneas tabulares en el manager")
@@ -491,7 +491,7 @@ class Vectorizer(VectorizationAbstractWorker):
 
             return geoline_features
         except Exception as e:
-            logger.info(f"Error en feaures de lineas: {e}", exc_info=True)
+            logger.warning(f"Error en feaures de lineas: {e}", exc_info=True)
             
             return {}
                 
@@ -503,14 +503,14 @@ class Vectorizer(VectorizationAbstractWorker):
         header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None) is not None]
         header_line_id = header_line_ids[0] if header_line_ids else None
         if not header_line_id:
-            logger.info("No se encontró encabezado de tabla")
+            logger.warning("No se encontró encabezado de tabla")
             return None
             
         footer_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "footer_line", None) is not None]
         footer_line_id = footer_line_ids[0] if footer_line_ids else None
 
         if not footer_line_id:
-            logger.info("No se encontró pie de tabla")
+            logger.warning("No se encontró pie de tabla")
             return None
 
         # Obtener el intervalo de líneas tabulares (excluyendo header y footer)
@@ -521,10 +521,10 @@ class Vectorizer(VectorizationAbstractWorker):
         if header_pos > footer_pos - 1:
             return None
 
-        logger.info(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
+        logger.debug(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
 
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
-        logger.info(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
+        logger.debug(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
         return tabular_line_ids
     
     def _calculate_encoding_values(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]):

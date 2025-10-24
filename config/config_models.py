@@ -61,7 +61,7 @@ class MoireConfig(ConfigWithNumpy):
     mean_factor_threshold: int
     absolute_threshold: int
     
-class Binarization(ConfigWithNumpy):
+class Fragmenter(ConfigWithNumpy):
     c_value: int
     height_thresholds_px: List[int]
     block_sizes_map: List[int]
@@ -142,9 +142,6 @@ class SemanticClasificator(ConfigWithNumpy):
     semantic_range: Tuple[float, float]
     encode_mean: Tuple[float, float]
     morph_mean: Tuple[float, float]
-
-class Fragmenter(ConfigWithNumpy):
-    min_contours_for_frag: int
         
 class DataFinder(ConfigWithNumpy):
     wordfinder_model_path: str
@@ -162,7 +159,6 @@ class PaddleTranscription(ConfigWithNumpy):
 
 class OCRConfig(ConfigWithNumpy):
     paddle_wrapper: PaddleTranscription
-    binarizator: Binarization
     text_refiner: TextRefiner
     text_cleaner: TextualCleanConfig
     semantic_clasificator: SemanticClasificator
@@ -184,6 +180,7 @@ class TableStructurer(ConfigWithNumpy):
 class CosineSimilarity(ConfigWithNumpy):
     min_cluster: int
     similarity_threshold: float
+    emergency_threshold: float
     interval: int
     dummie_weights: Tuple[float, float]
 

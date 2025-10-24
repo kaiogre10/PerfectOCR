@@ -1,8 +1,8 @@
 # PerfectOCR/core/vectorial_transformation/density_scanner.py
-from sklearn.cluster import DBSCAN # type: ignore
 import numpy as np
 import time
 import logging
+from sklearn.cluster import DBSCAN # type: ignore
 from typing import Dict, Any, List
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -23,6 +23,7 @@ class DensityScanner(VectorizationAbstractWorker):
         try:
             logger.debug("DBSCScanner iniciado")
             analysis: Dict[str, Dict[str, float]] = context.get("all_features", {})
+            
             if not analysis:
                 logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                 return True
@@ -34,13 +35,13 @@ class DensityScanner(VectorizationAbstractWorker):
             if table_line_ids:
                 success: bool = manager.save_tabular_lines(table_line_ids)
                 total_time = time.time() - start_time
+                
                 if self.output:
                     from services.output_service import save_debug_json
-                    return_objects: bool = True
-                    tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
-                    file_name: str = manager.workflow.metadata.image_name # type: ignore
-                    worker_name = context.get("worker_name", {})
-                    output_paths = context.get("output_paths", [])
+                    tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects=True) #type: ignore
+                    file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                    worker_name = context.get("worker_name") or "density_scanner"
+                    output_paths = context["output_paths"]
                     save_debug_json(output_paths, worker_name, tab_info, file_name)
 
                 logger.debug(f"Detección de tablas en: {total_time:.6f}s. Encontradas {len(table_line_ids)}, {table_line_ids}")
@@ -52,6 +53,7 @@ class DensityScanner(VectorizationAbstractWorker):
                 else:
                     logger.error("Error al guardar líneas tabulares en el workflow")
                     return False
+                    
         except Exception as e:
             logger.error(f"DBSCAN no detectó tablas en el documento: {e}", exc_info=True)
         return False
@@ -84,7 +86,7 @@ class DensityScanner(VectorizationAbstractWorker):
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
         
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
-        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
+        logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
     
         return table_line_ids
 
@@ -117,4 +119,6 @@ class DensityScanner(VectorizationAbstractWorker):
                 footer_idx = line_ids.index(footer_line_id)  # antes del footer
                 return {lid: analysis[lid] for lid in line_ids[:footer_idx]}
             logger.warning(f"footer_line_id {footer_line_id} no encontrada en analysis keys")
+            
             return analysis
+        return analysis

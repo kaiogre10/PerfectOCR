@@ -138,7 +138,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
 
                         logger.debug(f"Resultados: {poly_id}: '{text}', {confidence_pct}%")
 
-                    logger.info(f"Se mapearon '{len(final_results)}' polígonos con su  ID")
+                    logger.debug(f"Se mapearon '{len(final_results)}' polígonos con su ID")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes.")

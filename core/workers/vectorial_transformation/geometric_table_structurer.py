@@ -102,7 +102,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
 
                     if manager.save_structured_table(df=df, columns=list(df.columns)):
-                        logger.info("Tabla guardada éxitosamente")
+                        logger.debug("Tabla guardada éxitosamente")
 
                         return True
 

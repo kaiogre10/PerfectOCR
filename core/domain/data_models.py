@@ -46,6 +46,7 @@ class Polygons:
     key_field: Optional[str]
     semantic_clasification: SemanticClassification
     was_refined: bool
+    binarized: bool
     
 @dataclass
 class LineGeometry:

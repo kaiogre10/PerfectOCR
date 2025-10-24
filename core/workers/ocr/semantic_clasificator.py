@@ -7,7 +7,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, SemanticClassification
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_encoder import encode_text, get_morphological_map
-from core.utils.pattern_finder import find_umd, find_quantitative
+from core.utils.pattern_finder import find_umd, find_quantitative, contains_quantitative
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +89,8 @@ class SemanticClasificator(OCRAbstractWorker):
                 code=False
             )
 
-            #if contains_quantitative(s):
-             #   logger.info(
-              #      f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | QUANTITATIVE (pattern_finder)")
-               # semantic_clasification = dataclasses.replace(semantic_clasification, quantitative=True)
+            # if contains_quantitative(s):
+            #     semantic_clasification = dataclasses.replace(semantic_clasification, quantitative=True)
                 # UMD antes (patrones fuertes/ortogonales)
             if find_umd(s):
                 semantic_clasification = dataclasses.replace(semantic_clasification, umd=True)
@@ -113,10 +111,7 @@ class SemanticClasificator(OCRAbstractWorker):
                 (field for field, value in dataclasses.asdict(semantic_clasification).items() if value),
                 "none"
             )
-            logger.debug(
-                f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, "
-                f"morph: {poly_morph_mean}, {pct}% | sc: {true_field.upper()}"
-            )
+            logger.debug(f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | sc: {true_field.upper()}")
 
             final_results[pid] = semantic_clasification
 
