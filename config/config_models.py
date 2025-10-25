@@ -20,6 +20,7 @@ class OutputFlag(ConfigWithNumpy):
     binarized_polygons: bool
     ocr_raw: bool
     reconstructed_lines: bool
+    semantic_field: bool
     table_lines: bool
     encoded_lines: bool
     features: bool

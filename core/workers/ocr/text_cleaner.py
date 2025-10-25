@@ -6,6 +6,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
+from fuzzywuzzy import utils # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +51,16 @@ class TextCleaner(OCRAbstractWorker):
             polygons_in.keys(), 
             key=lambda p_id: (polygons_in[p_id].geometry.centroid[1], polygons_in[p_id].geometry.centroid[0])
         )
+        logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
         eliminated_count = 0
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
-            text = polygon.ocr_text or ""
             confidence = polygon.ocr_confidence or 0.0
-            sc = polygon.semantic_clasification
+            sc = polygon.semantic_clasification or 0
+            text = polygon.ocr_text or ""
+            if not utils.validate_string(text): # type: ignore
+                logger.debug(f"Eliminado {poly_id}: | Texto: {text}, conf: sin texto")
+                continue
             
             if self._is_polygon_single_special(text):
                 logger.debug(f"Eliminado {poly_id} unico:'{text}'")
@@ -67,7 +72,7 @@ class TextCleaner(OCRAbstractWorker):
             text = self._remove_special_chars(text)
 
             if (not text.strip() or
-                (confidence < self.min_confidence and not (sc.numeric or sc.quantitative or sc.umd)) or
+                (confidence < self.min_confidence and not (sc == 1 or sc == 2 or sc == -2)) or
                 re.fullmatch(r'[\s\.\-_,;:]+', text)):
                 logger.debug(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence}")
                 continue
@@ -129,7 +134,7 @@ class TextCleaner(OCRAbstractWorker):
             
         try:
             sc = polygon.semantic_clasification
-            if sc.numeric or sc.quantitative:
+            if sc == 1 or sc == 2:
                 return text
 
             tokens = text.split(' ')

@@ -1,9 +1,7 @@
 # core/utils/output_service.py
 import os
 import json
-import cv2
 import logging
-import csv
 import numpy as np
 import pandas as pd # type: ignore
 from typing import Dict, Any, List
@@ -28,15 +26,16 @@ def save_croped_image(image_name: str, poly_id: str, image: np.ndarray[Any, Any]
 
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
 
-def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name_with_extension: str):
+def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name: str):
     """Guarda una única imagen en disco."""
     try:
+        import cv2
         os.makedirs(output_dir, exist_ok=True)
-        img_path = os.path.join(output_dir, file_name_with_extension)
+        img_path = os.path.join(output_dir, file_name)
         cv2.imwrite(img_path, image)
         return img_path
     except Exception as e:
-        logger.error(f"Error guardando imagen: {e}")
+        logger.error(f"Error guardando '{file_name}' imagen: {e}")
         
 def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str):
     try:
@@ -56,11 +55,11 @@ def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Di
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.json"
             save_json(final_results, output_dir, file_name)
-            
-        logger.warning(f"Output JSON geneado para:'{file_name}'.")
-        
+
+        logger.warning(f"JSON de {worker_name} generado para '{file_name}'.")
+
     except Exception as e:
-        logger.error(f"Error guardando output JSON: {e}", exc_info=True)
+        logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
     
 def save_debug_ocr(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str):
     try:
@@ -71,10 +70,10 @@ def save_debug_ocr(output_paths: List[str] | str, worker_name: str, results: Dic
             file_name = f"{file_name}_{worker_name}.json"
             save_json(results, output_dir, file_name)
             
-        logger.warning(f"OCR Raw results para '{file_name}'.")
+        logger.warning(f"JSON de {worker_name} generado para '{file_name}'.")
         
     except Exception as e:
-        logger.warning(f"Error guardando output JSON: {e}", exc_info=True)
+        logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
 
 def save_json(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: str):
     """Guarda un JSON en disco."""
@@ -170,7 +169,8 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
     Guarda una tabla estructurada en formato CSV (compatible con Excel).
     Ruta del archivo guardado o None si hay error.
     """
-    try:            
+    import csv
+    try:      
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, file_name)
         with open(output_file, 'w', newline='', encoding='utf-8') as f:
@@ -201,6 +201,7 @@ def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section
     Appendea una tabla a un único CSV maestro con secciones, manteniendo headers por tabla.
     Formato:
     """
+    import csv
     os.makedirs(output_dir, exist_ok=True)
     master_path = os.path.join(output_dir, master_filename)
     with open(master_path, 'a', newline='', encoding='utf-8') as f:

@@ -27,14 +27,6 @@ class Geometry:
     centroid: np.ndarray[Any, Any]        # shape: (2,)
 
 @dataclass
-class SemanticClassification:
-    numeric: bool
-    descriptive: bool
-    code: bool
-    umd: bool
-    quantitative: bool
-    
-@dataclass
 class Polygons:
     polygon_id: Optional[str]
     geometry: Geometry
@@ -44,7 +36,12 @@ class Polygons:
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
     key_field: Optional[str]
-    semantic_clasification: SemanticClassification
+    semantic_clasification: int
+        # quantitative: 2
+        # numeric: 1
+        # descriptive: 0
+        # code: -1
+        # umd: -2
     was_refined: bool
     binarized: bool
     

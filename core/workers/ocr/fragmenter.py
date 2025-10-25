@@ -32,6 +32,7 @@ class Fragmenter(OCRAbstractWorker):
             
             polygons_in: Dict[str, Polygons] = manager.workflow.polygons
             sorted_poly_ids = sorted(polygons_in.keys())
+            logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
             fragmented_count = 0
             final_polygons: List[Polygons] = []
             
@@ -45,7 +46,10 @@ class Fragmenter(OCRAbstractWorker):
                     continue
                 
                 blob_metrics = binarice(cropped_img, self.worker_config)
+                # Si no se pueden calcular blob_metrics, conservar el polígono tal cual.
                 if not blob_metrics:
+                    logger.info(f"Sin Metricas para: {poly_id}")
+                    final_polygons.append(polygon)
                     continue
                     
                 # logger.info(f"{poly_id}: cantidad de blob ='{blob_metrics.get("num_blobs")}'")
@@ -67,20 +71,20 @@ class Fragmenter(OCRAbstractWorker):
 
                 text_needs_frag = (
                     self.worker_config and
-                    not (sc.numeric or sc.quantitative or sc.umd) and
+                    not (sc == 1 or sc == 2 or sc == -2) and
                     " " in (ocr_text or "").strip()
                 )
 
                 punctuation_needs_frag = (
                     self.worker_config and
-                    not (sc.numeric or sc.quantitative or sc.umd) and
+                    not (sc == 1 or sc == 2 or sc == -2) and
                     not text_needs_frag and
                     (any(punct in (ocr_text or "") for punct in [";", ":", "!", "?"]) or
                     (ocr_text or "").count('.') == 1)
                 )
 
                 quant_runs = []
-                if sc.quantitative:
+                if sc == 2:
                     quant_runs = find_quantitative_runs(ocr_text)
 
                 quant_needs_frag = len(quant_runs) > 1
@@ -101,8 +105,8 @@ class Fragmenter(OCRAbstractWorker):
                     else:
                         reason = "puntuación"
 
-                    active_fields = [field for field in ['quantitative', 'umd', 'numeric', 'descriptive', 'code'] if getattr(sc, field)] #type: ignore
-                    logger.info(f"{poly_id}: MOTIVO: {reason}= {ocr_text}")
+                    semantic_type_name = self._get_semantic_type_name(sc, manager)
+                    logger.debug(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
 
                     if visual_needs_frag:
                         fragments = self.fragment_by_blobs(polygon, blob_metrics)
@@ -126,6 +130,8 @@ class Fragmenter(OCRAbstractWorker):
                 new_id = f"poly_{idx:04d}"
                 final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 final_polygons_dict[new_id] = final_poly_obj
+
+                
 
                 manager.workflow.polygons = final_polygons_dict #type: ignore
 
@@ -256,14 +262,13 @@ class Fragmenter(OCRAbstractWorker):
         text = (polygon.ocr_text or "").strip()
         if not utils.validate_string(text): #type: ignore
             return [polygon]
+
+        sc = polygon.semantic_clasification
+        if sc == 1 or sc == 2 or sc == -2:
+            return [polygon]
         
         point_count = text.count('.')
         if point_count == 1:
-            # Si el tipo semántico ya es numérico o cuantitativo, no fragmentar.
-            sc = polygon.semantic_clasification
-            if sc.numeric or sc.quantitative or sc.umd:
-                return [polygon]
-
             dot_index = text.find('.')
             has_digits_before = dot_index > 0 and text[dot_index - 1].isdigit()
             has_digits_after = dot_index < len(text) - 1 and text[dot_index + 1].isdigit()
@@ -471,3 +476,12 @@ class Fragmenter(OCRAbstractWorker):
             polys_areas.append(poly_area)
 
         return min(polys_areas)
+
+    def _get_semantic_type_name(self, semantic_clasification: int, manager: DataFormatter) -> str:
+        """Convierte el tipo semántico numérico a nombre legible usando el mapeo del formatter"""
+        semantic_map = manager.get_semmantic_types()
+        # Buscar el nombre por el valor
+        for name, value in semantic_map.items():
+            if value == semantic_clasification:
+                return name
+        return "unknown"

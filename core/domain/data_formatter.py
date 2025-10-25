@@ -1,6 +1,6 @@
 # core/domain/data_formatter.py
-from core.utils.data_utils import  DENSITY_ENCODER, CHAR_FRECUENCY, VECTOR_MEDIAN_DUMMIE, VECTOR_MEAN_DUMMIE, FRECUENCY_ENCODER
-from core.domain.data_models import WorkflowDict, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage, SemanticClassification
+from core.utils.data_utils import  DENSITY_ENCODER, CHAR_FRECUENCY, VECTOR_MEDIAN_DUMMIE, VECTOR_MEAN_DUMMIE, INV_FRECUENCY_ENCODER, SEMATIC_TYPES_MAP
+from core.domain.data_models import WorkflowDict, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage
 import numpy as np
 import dataclasses
 import logging
@@ -20,12 +20,14 @@ class DataFormatter:
     """
     def __init__(self):
         self.workflow: Optional[WorkflowDict] = None
-        self.encoder: Optional[Dict[str, float]] = None
-        self.frecuency: Optional[Dict[str, float]] = None
+
+        self.density_encoder: Optional[Dict[str, float]] = None
         self.frecuency_encoder: Optional[Dict[str, float]] = None
+        self.inv_frecuency: Optional[Dict[str, float]] = None
         self.mean_dummie: Optional[Dict[str, float]] = None
         self.median_dummie: Optional[Dict[str, float]] = None
         self.structured_table: Optional[StructuredTable] = None
+        self.semantic_map: Optional[Dict[str, int]] = None
     
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando solo dataclasses"""
@@ -98,7 +100,7 @@ class DataFormatter:
                     ocr_confidence=None,
                     was_refined=False,
                     key_field=None,
-                    semantic_clasification=None, #type:ignore
+                    semantic_clasification=0,
                     binarized=False
                 )
                 polygons_dataclass[poly_id] = polygon_obj
@@ -136,39 +138,54 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error liberando imágenes recortadas: {e}", exc_info=True)
             return False
-            
-    def get_frecuency_char(self) -> Dict[str, float]:
-        """Obtiene los valores de frecuencia para letras"""
-        try:
-            if self.frecuency is None:
-                self.frecuency = CHAR_FRECUENCY
-            return self.frecuency
-        
-        except Exception as e:
-            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
-            return {}
-            
-    def get_frecuency_encoder(self) -> Dict[str, float]:
-        """
-        Obtiene los valores de densos frecuencia para letras.
-        """
-        try:
-            if self.frecuency_encoder is None:
-                self.frecuency_encoder = FRECUENCY_ENCODER
-            return self.frecuency_encoder
-        
-        except Exception as e:
-            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
-            return {}
 
     def get_density_encoder(self) -> Dict[str, float]:
         """
         Obtiene los valores de densidad para letras.
         """
         try:
-            if self.encoder is None:
-                self.encoder = DENSITY_ENCODER
-            return self.encoder
+            if self.density_encoder is None:
+                self.density_encoder = DENSITY_ENCODER
+            return self.density_encoder
+        
+        except Exception as e:
+            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
+            return {}
+
+    def get_frecuency_char(self) -> Dict[str, float]:
+        """
+        Obtiene los valores de densos frecuencia para letras.
+        """
+        try:
+            if self.frecuency_encoder is None:
+                self.frecuency_encoder = CHAR_FRECUENCY
+            return self.frecuency_encoder
+        
+        except Exception as e:
+            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
+            return {}
+
+    def get_inverse_frecuency_encoder(self) -> Dict[str, float]:
+        """
+        Obtiene los valores de densos frecuencia para letras.
+        """
+        try:
+            if self.inv_frecuency is None:
+                self.inv_frecuency = INV_FRECUENCY_ENCODER
+            return self.inv_frecuency
+        
+        except Exception as e:
+            logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
+            return {}
+
+    def get_semmantic_types(self) -> Dict[str, int]:
+        """
+        Obtiene los valores de densos frecuencia para letras.
+        """
+        try:
+            if self.semantic_map is None:
+                self.semantic_map = SEMATIC_TYPES_MAP
+            return self.semantic_map
         
         except Exception as e:
             logger.warning(f"Error entregando frecuencias: {e}", exc_info=True)
@@ -389,76 +406,13 @@ class DataFormatter:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
                         
-    def merge_semantics(self) -> bool:
-        """
-        Unifica los tipos semánticos en las dataclasses, convirtiendo
-        todos los 'quantitative' a 'numeric'.
-        """
-        if not self.workflow or not self.workflow.polygons:
-            return False
-
-        updated_count = 0
-        for poly_id, polygon in self.workflow.polygons.items():
-            if polygon.semantic_clasification.quantitative:
-                updated_polygon = dataclasses.replace(polygon, semantic_clasification='numeric')
-                self.workflow.polygons[poly_id] = updated_polygon
-                updated_count += 1
-
-            if polygon.semantic_clasification.umd:
-                updated_polygon = dataclasses.replace(polygon, semantic_clasification='code')
-                self.workflow.polygons[poly_id] = updated_polygon
-                updated_count += 1
-        
-        if updated_count > 0:
-            logger.debug(f"Unificados {updated_count} polígonos de 'quantitative' a 'numeric'.")
-        return True
-
-    def create_semantic_clasification(self) -> bool:
-        """
-        Verifica si existe la clasificación semántica para los polígonos
-        si no existe, crea todas False como fallback
-        """
-        try:
-            if not self.workflow:
-                logger.error("No hay workflow inicializado para actualizar resultados OCR.")
-                return False
-                
-            polygons: Dict[str, Polygons] = self.workflow.polygons if self.workflow else {}
-            created_count = 0
-            
-            for poly_id, poly_data in polygons.items():
-                semantic_obj = poly_data.semantic_clasification
-                if not semantic_obj:
-                    semantic_obj = SemanticClassification(
-                        numeric=False,
-                        descriptive=False,
-                        code=False,
-                        umd=False,
-                        quantitative=False,
-                    )
-                
-                    updated_polygon = dataclasses.replace(poly_data, semantic_clasification=semantic_obj)
-                    self.workflow.polygons[poly_id] = updated_polygon
-                    created_count += 1
-                    logger.debug(f"Clasificación fallback creada para {poly_id}: {semantic_obj}")
-            
-            if created_count > 0:
-                logger.debug(f"Creadas {created_count} clasificaciones semánticas fallback")
-            else:
-                logger.debug("Todos los polígonos ya tenían clasificación semántica")
-            
-            return True
-                
-        except Exception as e:
-            logger.error(f"Error creando semantic_clasification: {e}", exc_info=True)
-            return False
-        
-    def update_semantic_clasification(self, final_results: Dict[str, SemanticClassification], reset_refined: bool = False) -> bool:
+        # Cambiar update_semantic_clasification para recibir Dict[str, int]
+    def update_semantic_clasification(self, final_results: Dict[str, int], reset_refined: bool = False) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
         
         Args:
-            final_results: Diccionario {poly_id: SemanticClassification}
+            final_results: Diccionario {poly_id: int} donde int es el tipo semántico
             reset_refined: Si True, resetea was_refined=False después de actualizar
         """
         try:
@@ -468,7 +422,7 @@ class DataFormatter:
 
             updated_count = 0
 
-            for poly_id, semantic_object in final_results.items():
+            for poly_id, semantic_type in final_results.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
@@ -476,11 +430,11 @@ class DataFormatter:
                     if reset_refined:
                         updated_polygon = dataclasses.replace(
                             polygon, 
-                            semantic_clasification=semantic_object,
+                            semantic_clasification=semantic_type,
                             was_refined=False
                         )
                     else:
-                        updated_polygon = dataclasses.replace(polygon, semantic_clasification=semantic_object)
+                        updated_polygon = dataclasses.replace(polygon, semantic_clasification=semantic_type)
                     
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
@@ -492,7 +446,31 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
             return False
+            
+    def merge_semantics(self) -> bool:
+        """
+        Unifica los tipos semánticos en las dataclasses, convirtiendo
+        todos los 'quantitative' (2) a 'numeric' (1).
+        """
+        if not self.workflow or not self.workflow.polygons:
+            return False
+
+        updated_count = 0
+        for poly_id, polygon in self.workflow.polygons.items():
+            if polygon.semantic_clasification == 2:  # quantitative
+                updated_polygon = dataclasses.replace(polygon, semantic_clasification=1)  # numeric
+                self.workflow.polygons[poly_id] = updated_polygon
+                updated_count += 1
+
+            if polygon.semantic_clasification == -2:  # umd
+                updated_polygon = dataclasses.replace(polygon, semantic_clasification=-1)  # code
+                self.workflow.polygons[poly_id] = updated_polygon
+                updated_count += 1
         
+        if updated_count > 0:
+            logger.debug(f"Unificados {updated_count} polígonos de 'quantitative' a 'numeric'.")
+        return True
+                
     def update_key_field(self, polygon_updates: Optional[Dict[str, str]]) -> bool:
         """
         Actualiza los datos de los polígonos en las dataclasses de polígonos.

@@ -75,7 +75,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     from services.output_service import save_debug_ocr
                     file_name: str = manager.workflow.metadata.image_name #type: ignore
                     worker_name = context.get("worker_name") or "paddle_wrapper"
-                    output_paths = context.get("output_paths", [])
+                    output_paths = context["output_paths"]
                     save_debug_ocr( output_paths, worker_name, final_results, file_name)
             
             total_time = time.perf_counter() - start_time

@@ -3,7 +3,7 @@ import logging
 import dataclasses
 from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons, SemanticClassification
+from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 
 logger = logging.getLogger(__name__)
@@ -53,8 +53,6 @@ class TextCorrector(OCRAbstractWorker):
         
         # Correcciones para texto descriptivo
         self.descriptive_corrections: Dict[str, str] = {"$": "S"}
-        
-        logger.debug("Reglas de corrección quirúrgica cargadas")
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -76,7 +74,9 @@ class TextCorrector(OCRAbstractWorker):
             return True
             
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
-        corrected_polygons: Dict[str, Polygons] = {}
+        # Copia inicial: garantiza que TODOS los polígonos se conserven, 
+        # incluso si no requieren corrección.
+        corrected_polygons: Dict[str, Polygons] = dict(polygons_in)
         correction_stats = {
             "numeric": 0,
             "quantitative": 0,
@@ -87,23 +87,23 @@ class TextCorrector(OCRAbstractWorker):
         }
         
         sorted_poly_ids = sorted(polygons_in.keys())
-        
+        logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")        
         # Procesar cada polígono recursivamente
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
             original_text = polygon.ocr_text or ""
             confidence = polygon.ocr_confidence or 0.0
             
+            # Si el texto está vacío, no hay nada que corregir
             if not original_text.strip():
-                corrected_polygons[poly_id] = polygon
                 continue
             
-            # Filtro de confianza: si está por encima del umbral, no corregir
+            # Filtro de confianza
             if confidence > conf_threshold:
                 corrected_polygons[poly_id] = polygon
                 correction_stats["skipped_high_confidence"] += 1
                 continue
-                
+            
             # Aplicar corrección según tipo semántico
             corrected_text = self._apply_corrections(
                 text=original_text,
@@ -120,11 +120,11 @@ class TextCorrector(OCRAbstractWorker):
                 )
                 corrected_polygons[poly_id] = updated_polygon
                 sc = polygon.semantic_clasification
-                semantic_type = "numeric" if sc.numeric else "quantitative" if sc.quantitative else "descriptive" if sc.descriptive else "code"
+                semantic_type = "numeric" if sc == 1 else "quantitative" if sc == 2 else "descriptive" if sc == 0 else "code"
                 correction_stats[semantic_type] += 1
                 correction_stats["total_corrections"] += 1
                 
-                logger.debug(
+                logger.info(
                     f"Corrección {poly_id}: "
                     f"Tipo: {semantic_type} | "
                     f"Confianza: {confidence:.4f} | "
@@ -136,7 +136,7 @@ class TextCorrector(OCRAbstractWorker):
         # Actualizar el manager con los polígonos corregidos
         manager.workflow.polygons = corrected_polygons
         
-        logger.debug(
+        logger.info(
             f"Corrección textual - "
             f"Total: {correction_stats['total_corrections']} | "
             f"Alta confianza omitidos: {correction_stats['skipped_high_confidence']} | "
@@ -151,7 +151,7 @@ class TextCorrector(OCRAbstractWorker):
     def _apply_corrections(
         self,
         text: str,
-        semantic_clasification: SemanticClassification,
+        semantic_clasification: int,
         polygon_id: str
     ) -> str:
         """
@@ -166,13 +166,13 @@ class TextCorrector(OCRAbstractWorker):
         Returns:
             Texto corregido
         """
-        if not text or not semantic_clasification:
+        if not text:
             return text
         
         # No corregir
-        if not (semantic_clasification.numeric or semantic_clasification.quantitative or semantic_clasification.descriptive):
-            semantic_type = "code" if semantic_clasification.code else "umd" if semantic_clasification.umd else "unknown"
-            logger.debug(f"Omitiendo corrección para tipo '{semantic_type}' ({polygon_id}: {text} )")
+        if not (semantic_clasification == 1 or semantic_clasification == 2 or semantic_clasification == 0):
+            semantic_type = "code" if semantic_clasification == -1 else "umd" if semantic_clasification == -2 else "descriptive"
+            logger.info(f"Omitiendo corrección para tipo '{semantic_type}' ({polygon_id}: {text} )")
             return text
                     
         # Seleccionar el diccionario de correcciones apropiado
@@ -263,12 +263,12 @@ class TextCorrector(OCRAbstractWorker):
         # Está aislado si NO tiene ningún vecino del mismo tipo
         return not (has_left_match or has_right_match)
         
-    def _get_corrections_map(self, semantic_clasification: SemanticClassification) -> Dict[str, str]:
+    def _get_corrections_map(self, semantic_clasification: int) -> Dict[str, str]:
         """Devuelve el mapa de correcciones para un tipo semántico dado."""
-        if semantic_clasification.numeric:
+        if semantic_clasification == 1:
             return self.numeric_corrections
-        if semantic_clasification.quantitative:
+        if semantic_clasification == 2:
             return self.quantitative_corrections
-        if semantic_clasification.descriptive:
+        if semantic_clasification == 0:
             return self.descriptive_corrections
         return {}

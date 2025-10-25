@@ -1,10 +1,9 @@
 # core/workers/ocr/semantic_clasificator.py
 import logging
-import dataclasses
 import numpy as np
 from typing import Dict, Any, Tuple
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons, SemanticClassification
+from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_encoder import encode_text, get_morphological_map
 from core.utils.pattern_finder import find_umd, find_quantitative, contains_quantitative
@@ -18,6 +17,8 @@ class SemanticClasificator(OCRAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get("semantic_clasificator", {})
         self.char_num = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"]
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("semantic_field", False)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter, filter_modified: bool = False) -> bool:
         """Clasifica polígonos semánticamente"""
@@ -45,14 +46,31 @@ class SemanticClasificator(OCRAbstractWorker):
                 return True
 
             # Clasificar solo los polígonos seleccionados
-            encoder: Dict[str, float] = manager.get_density_encoder()
-            final_results: Dict[str, SemanticClassification] = self._clasify_words(polygons_to_classify, encoder)
+            encoder: Dict[str, float] = manager.get_inverse_frecuency_encoder()
+            final_results: Dict[str, int] = self._clasify_words(polygons_to_classify, encoder)
             
             classified_count = len(final_results)
             logger.debug(f"Total clasificados: {classified_count}")
 
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results, reset_refined=filter_modified)
+
+            if self.output:
+                from services.output_service import save_debug_ocr
+                file_name: str = manager.workflow.metadata.image_name  # type: ignore
+                worker_name = "semantic_clasificator"
+                output_paths = context["output_paths"]
+                polygons = manager.workflow.polygons if manager.workflow else {}
+                results: Dict[str, Any] = {}
+                for poly_id, polygon in polygons.items():
+                    text = getattr(polygon, "ocr_text", None)
+                    sc = getattr(polygon, "semantic_clasification", None)
+                    results[poly_id] = {
+                        "text": text,
+                        "semantic_clasification": sc
+                    }
+
+                save_debug_ocr( output_paths, worker_name, results, file_name)
             
             return True
 
@@ -60,13 +78,14 @@ class SemanticClasificator(OCRAbstractWorker):
             logger.warning(f"Error en el clasificador: {e}", exc_info=True)
             return False
             
-    def _clasify_words(self, polygons: Dict[str, Polygons], encoder: Dict[str, float]) -> Dict[str, SemanticClassification]:
+    # Cambiar el método _clasify_words para devolver Dict[str, int] en lugar de Dict[str, SemanticClassification]
+    def _clasify_words(self, polygons: Dict[str, Polygons], encoder: Dict[str, float]) -> Dict[str, int]:
         semantic_range: Tuple[float, float] = self.worker_config.get("semantic_range", [])
         encode_mean: Tuple[float, float] = self.worker_config.get("encode_mean", [])
         morph_mean: Tuple[float, float] = self.worker_config.get("morph_mean", [])
 
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
-        final_results: Dict[str, SemanticClassification] = {}
+        final_results: Dict[str, int] = {}
 
         for pid, s in texts.items():
             chars = [ch for ch in s if not ch.isspace()]
@@ -77,42 +96,28 @@ class SemanticClasificator(OCRAbstractWorker):
             morph_text = get_morphological_map(s)
             poly_mean = np.mean(encoded_poly)
             poly_morph_mean = np.mean(morph_text) if morph_text else - 1.0
-            poly_std = np.std(encoded_poly)
-            poly_var = np.var(encoded_poly)
 
-            # Crear objeto SemanticClassification con todos los campos en False
-            semantic_clasification = SemanticClassification(
-                quantitative=False,
-                umd=False,
-                numeric=False,
-                descriptive=False,
-                code=False
-            )
-
-            # if contains_quantitative(s):
-            #     semantic_clasification = dataclasses.replace(semantic_clasification, quantitative=True)
-                # UMD antes (patrones fuertes/ortogonales)
-            if find_umd(s):
-                semantic_clasification = dataclasses.replace(semantic_clasification, umd=True)
-            # Numérico primero; cuantitativo solo si es numérico
+            # Lógica de clasificación simplificada a enteros
+            semantic_type = 0  # descriptive por defecto
+            
+            if contains_quantitative(s):
+                semantic_type = 2  # quantitative
+            elif find_umd(s):
+                semantic_type = -2  # umd
             elif semantic_range[1] < pct and poly_mean < encode_mean[0] and morph_mean[1] < poly_morph_mean:
-                # Verificación cuantitativa SOLO dentro de los numéricos
                 has_quantitative = find_quantitative(s)
                 if has_quantitative:
-                    semantic_clasification = dataclasses.replace(semantic_clasification, quantitative=True)
+                    semantic_type = 2  # quantitative
                 else:
-                    semantic_clasification = dataclasses.replace(semantic_clasification, numeric=True)
+                    semantic_type = 1  # numeric
             elif pct < semantic_range[0] and poly_morph_mean < morph_mean[0]:
-                semantic_clasification = dataclasses.replace(semantic_clasification, descriptive=True)
+                semantic_type = 0  # descriptive
             else:
-                semantic_clasification = dataclasses.replace(semantic_clasification, code=True)
+                semantic_type = -1  # code
 
-            true_field = next(
-                (field for field, value in dataclasses.asdict(semantic_clasification).items() if value),
-                "none"
-            )
-            logger.debug(f"{pid}: '{s}'| mean: {poly_mean:.4f}, std: {poly_std:.4f}, var: {poly_var:.4f}, morph: {poly_morph_mean}, {pct}% | sc: {true_field.upper()}")
+            logger.info(f"{pid}: '{s}'| mean: {poly_mean:.4f}, morph: {poly_morph_mean}, {pct}% | sc: {semantic_type}")
 
-            final_results[pid] = semantic_clasification
+            final_results[pid] = semantic_type
 
         return final_results
+

@@ -34,7 +34,7 @@ enabled_outputs:
   pre_clean: false
   angle_corrected: false
   preprocessed_image: false
-  cropped_img: true
+  cropped_img: false
   discarded_polys: false
   moire_poly: false
   sp_poly: false
@@ -45,6 +45,7 @@ enabled_outputs:
   binarized_polygons: false
   ocr_raw: false
   reconstructed_lines: false
+  semantic_field: true
   table_lines: false
   encoded_lines: false
   features: false
@@ -151,7 +152,7 @@ modules:
       min_area_factor: 0.01
       
     text_refiner:
-      num_passes: 2
+      num_passes: 1
   
     text_cleaner:
       min_probability: 75.0

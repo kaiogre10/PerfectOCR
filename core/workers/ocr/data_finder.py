@@ -42,9 +42,6 @@ class DataFinder(OCRAbstractWorker):
             if not polygons:
                 logger.error("No hay polygons para procesar")
                 return False
-
-            if manager.create_semantic_clasification():
-                logger.debug("Clasificación semántica creada")
             
             # Llamar al método original que funciona
             polygon_updates = self._find_data(polygons)
@@ -86,7 +83,7 @@ class DataFinder(OCRAbstractWorker):
                     continue
 
                 sc = poly.semantic_clasification
-                if sc.numeric or sc.quantitative or sc.code:
+                if sc == 1 or sc == 2 or sc == -1:
                     skipped_semantic += 1
                     continue
 

@@ -6,7 +6,7 @@ import math
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines, Polygons, SemanticClassification
+from core.domain.data_models import AllLines, Polygons
 from core.utils.text_encoder import encode_text
 
 logger = logging.getLogger(__name__)
@@ -191,12 +191,12 @@ class Vectorizer(VectorizationAbstractWorker):
                     for pid in poly_ids_line:
                         if pid in polygons_dict:
                             sc = polygons_dict[pid].semantic_clasification
-                            if self._is_numeric_polygon(sc):
+                            if self._is_numeric_polygon(sc, manager):
                                 numeric_count += 1.0
                 
                 all_numerics = line_features.get("total_numerics_global") or 0.0  # Total de claisificación numerica o quantitativa en todas las líneas (global).
                 max_numeric_count = line_features.get("max_numeric_count_global") or 0.0  # Cantidad máxima de claisificación numerica o quantitativa encontrados en una sola línea (global).
-                median_numeric = line_features.get("median_numeric_global") or 0.0
+                median_numeric = line_features.get("median_numeric_global") or -1.0
                 max_digit_count = line_features.get("max_digit_count_global") or 0.0  # Máxima cantidad de caracteres dígitos (0-9) en una sola línea (global).
                 line_text = getattr(line_data, "text", "") or ""  # El texto bruto de la línea actual.
 
@@ -363,7 +363,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "vectorizer"
                 output_paths = context.get("output_paths", [])
-                save_debug_ocr(output_paths, worker_name, file_name)
+                # save_debug_ocr(output_paths, worker_name, file_name)
 
             return all_lines_features
 
@@ -385,7 +385,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     for pid in poly_ids_line:
                         if pid in polygons_dict:
                             sc = polygons_dict[pid].semantic_clasification
-                            if self._is_numeric_polygon(sc):
+                            if self._is_numeric_polygon(sc, manager):
                                 ncount += 1.0
                 numeric_counts_by_line[line_id] = ncount
                 
@@ -399,9 +399,9 @@ class Vectorizer(VectorizationAbstractWorker):
                 numeric_counts_list = list(numeric_counts_by_line.values())
                 total_numerics_global: float = float(sum(numeric_counts_list)) if numeric_counts_list else 0.0
                 max_numeric_count_global = max(numeric_counts_list) if numeric_counts_list else 0.0
-                median_numeric_global = float(np.median(numeric_counts_list)) if numeric_counts_list else 0.0
+                median_numeric_global = float(np.median(numeric_counts_list)) if numeric_counts_list else -1.0
                 digit_counts_list = list(digit_count_by_line.values())
-                max_digit_count_global = max(digit_counts_list) if digit_counts_list else 0.0
+                max_digit_count_global = max(digit_counts_list) if digit_counts_list else -1.0
                 
                 line_features = {
                     "total_numerics_global": total_numerics_global,
@@ -530,8 +530,8 @@ class Vectorizer(VectorizationAbstractWorker):
     def _calculate_encoding_values(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]):
         
         encoded_text: Dict[str, float] = {}
-        den_encoder = manager.get_density_encoder()
-        frec_encoder = manager.get_frecuency_encoder()
+        # den_encoder = manager.get_density_encoder()
+        frec_encoder = manager.get_frecuency_char()
         for line_id, line_data in sorted_lines:
             if not line_data:
                 logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")
@@ -580,16 +580,26 @@ class Vectorizer(VectorizationAbstractWorker):
 
         return encoded_text
 
-    def _is_numeric_polygon(self, semantic_clasification: SemanticClassification) -> bool:
+    def _is_numeric_polygon(self, semantic_clasification: int, manager: DataFormatter) -> bool:
         """
         Determina si un polígono debe contarse como numérico basado en su clasificación semántica.
         Usa la configuración del YAML para determinar qué tipos excluir.
+        
+        Args:
+            semantic_clasification: int - Tipo semántico
+            manager: DataFormatter - Para obtener el mapeo de tipos
         """
-        # Verificar si alguno de los tipos excluidos está activo
-        for exclude_type in self.exclude_types:
-            if getattr(semantic_clasification, exclude_type, False):
+        # Obtener el mapeo desde el formatter
+        semantic_map = manager.get_semmantic_types()
+        
+        # Verificar si el tipo actual está en los tipos excluidos
+        for exclude_type_str in self.exclude_types:
+            exclude_type_int = semantic_map.get(exclude_type_str)
+            if exclude_type_int is not None and semantic_clasification == exclude_type_int:
                 return False
-        return True
+        
+        # Por defecto, considerar numérico si es quantitative (2) o numeric (1)
+        return semantic_clasification in [1, 2]
 
     def vectorice_values(self, data_list: List[float]) -> List[float]:
         """

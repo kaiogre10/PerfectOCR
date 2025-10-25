@@ -1,5 +1,13 @@
 from typing import Dict
 
+SEMATIC_TYPES_MAP: Dict[str, int] = {
+    "quantitative": 2,
+    "numeric": 1, 
+    "descriptive": 0,
+    "code": -1,
+    "umd": -2
+}
+
 DENSITY_ENCODER: Dict[str, float] = {
     "0": 0.0,
     "1": 1.0,
@@ -117,7 +125,7 @@ DENSITY_ENCODER: Dict[str, float] = {
     "a": 113.0,
 }
 
-FRECUENCY_ENCODER: Dict[str, float] = {
+INV_FRECUENCY_ENCODER: Dict[str, float] = {
     "0": 56.0,
     "1": 55.0,
     "2": 54.0,
