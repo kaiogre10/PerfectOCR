@@ -35,7 +35,7 @@ enabled_outputs:
   angle_corrected: false
   preprocessed_image: false
   cropped_img: false
-  discarded_polys: true
+  discarded_polys: false
   moire_poly: false
   sp_poly: false
   gauss_poly: false

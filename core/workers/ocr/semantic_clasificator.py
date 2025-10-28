@@ -126,4 +126,3 @@ class SemanticClasificator(OCRAbstractWorker):
             final_results[pid] = semantic_type
 
         return final_results
-
