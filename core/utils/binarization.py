@@ -4,6 +4,7 @@ import numpy as np
 import logging
 from typing import Dict, Any, List
 from skimage.filters import threshold_sauvola  # type: ignore
+from skimage.measure import regionprops, label
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,9 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
     # 1. Aplicar la corrección #1 (inversión) aquí arriba
     bin_img = cv2.bitwise_not(bin_img)
     
-    contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    valid_contours = [c for c in contours if cv2.contourArea(c) > area_min]
+    # contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # valid_contours = [c for c in contours if cv2.contourArea(c) > area_min]
+    (bin_img)
     # 2. Aplicar la corrección #2 (filtro > min_area)
     valid_boxes_norm: List[List[float]] = []
     blob_metrics: Dict[str, Any] = {}
@@ -123,3 +125,82 @@ def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], blo
         cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
         cv2.THRESH_BINARY, block_size, max(1, c_value - 2) 
     )
+
+def extract_cc_metrics(bin_img: np.ndarray):
+    # bin_img: uint8, foreground=255, background=0
+    # Etiquetado
+    n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats((bin_img>0).astype(np.uint8), connectivity=8)
+    # stats: [label, x, y, w, h, area]
+    bbox_area = bin_img.shape[0] * bin_img.shape[1]
+
+    cc_list = []
+    for lab in range(1, n_labels):  # saltar fondo
+        x, y, w, h, area = stats[lab, cv2.CC_STAT_LEFT], stats[lab, cv2.CC_STAT_TOP], \
+                          stats[lab, cv2.CC_STAT_WIDTH], stats[lab, cv2.CC_STAT_HEIGHT], stats[lab, cv2.CC_STAT_AREA]
+        cx, cy = centroids[lab]
+        cc_list.append({
+            "label": lab,
+            "x": int(x), "y": int(y), "w": int(w), "h": int(h),
+            "area": int(area),
+            "cx": float(cx), "cy": float(cy)
+        })
+
+    if not cc_list:
+        return {"cc": [], "H_mean": 0, "density": 0}
+
+    heights = np.array([c["h"] for c in cc_list], dtype=float)
+    H_mean = heights.mean()
+    total_area_cc = sum([c["area"] for c in cc_list])
+    density = float(total_area_cc) / float(bbox_area)
+
+    # Normalizar características por H_mean (inmune a DPI)
+    for c in cc_list:
+        c["w_norm"] = c["w"] / max(1.0, H_mean)
+        c["h_norm"] = c["h"] / max(1.0, H_mean)
+        c["area_norm"] = c["area"] / max(1.0, bbox_area)
+
+    # Orden por x (para gaps)
+    cc_sorted = sorted(cc_list, key=lambda z: z["x"])
+    gaps = []
+    for i in range(len(cc_sorted)-1):
+        gap_px = cc_sorted[i+1]["x"] - (cc_sorted[i]["x"] + cc_sorted[i]["w"])
+        gaps.append(gap_px / max(1.0, H_mean))  # gap normalizado
+
+    metrics = {
+        "cc": cc_sorted,
+        "H_mean": H_mean,
+        "density": density,
+        "gaps_norm": gaps,
+        "n_cc": len(cc_sorted)
+    }
+    return metrics
+
+# Ejemplo de regla rápida de split
+def decide_split(metrics, cfg=None):
+    if cfg is None:
+        cfg = {
+            "min_cc_for_frag": 3,
+            "density_threshold": 0.65,
+            "max_cc_for_density_rule": 5,
+            "width_var_threshold": 0.25,
+            "k_sigma": 1.25
+        }
+
+    n_cc = metrics["n_cc"]
+    if n_cc <= cfg["min_cc_for_frag"]:
+        return False, "few_cc"
+
+    if metrics["density"] > cfg["density_threshold"] and n_cc <= cfg["max_cc_for_density_rule"]:
+        return False, "high_density"
+
+    w_norms = np.array([c["w_norm"] for c in metrics["cc"]])
+    if np.var(w_norms) < cfg["width_var_threshold"]:
+        return False, "low_width_var"
+
+    gaps = np.array(metrics["gaps_norm"]) if metrics["gaps_norm"] else np.array([0.0])
+    mu, sigma = gaps.mean(), gaps.std()
+    # detectar posiciones para corte
+    split_positions = np.where(gaps > mu + cfg["k_sigma"] * max(1e-6, sigma))[0]
+    if len(split_positions) > 0:
+        return True, {"reason": "gap_outlier", "positions": split_positions.tolist(), "mu":float(mu), "sigma":float(sigma)}
+    return False, "no_evidence"

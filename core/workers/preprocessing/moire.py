@@ -46,8 +46,8 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                     logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
                 
-                h = polygon.cropedd_geometry.croppy_dims.get("poly_height") or 0
-                w = polygon.cropedd_geometry.croppy_dims.get("poly_width") or 0
+                h = polygon.cropedd_geometry.croppy_dims.get("poly_height") or cropped_img.shape[0]
+                w = polygon.cropedd_geometry.croppy_dims.get("poly_width") or cropped_img.shape[1]
                 
                 analysis = self._analyze_image_for_moire(cropped_img, (h, w))
                 if analysis:

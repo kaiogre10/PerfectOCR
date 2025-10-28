@@ -332,28 +332,21 @@ class DataFormatter:
             logger.error("No hay workflow inicializado para validar imágenes.")
             return False
         
-        min_threshold = 5
-        max_threshold = 250
         white_poly_ids: List[str] = []
         
-        # Detectar polígonos blancos/inválidos
+        # Detectar polígonos blancos/inválidos usando el normalicer
         for poly_id, polygon in self.workflow.polygons.items():
             cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-            
-            if cropped_img is None or cropped_img.size == 0:
-                white_poly_ids.append(poly_id)
-                continue
-            
-            # Validación simple con .mean()
-            img_mean = cropped_img.mean(dtype=int)
-            if img_mean < min_threshold or img_mean > max_threshold:
-                white_poly_ids.append(poly_id)
+            try:
+                if normalice_image(cropped_img) is None:  # None = imagen inválida
+                    white_poly_ids.append(poly_id)
+            except Exception as e:
+                logger.error(f"Imagen: {poly_id} con error: {e}", exc_info=True)
         
-        # Eliminar polígonos blancos y reindexar
+        # Eliminar polígonos blancos (FUERA del bucle)
         if white_poly_ids:
             logger.info(f"Eliminando {len(white_poly_ids)} polígonos blancos/inválidos")
             
-            # Eliminar polígonos blancos
             for poly_id in white_poly_ids:
                 if poly_id in self.workflow.polygons:
                     del self.workflow.polygons[poly_id]
@@ -362,7 +355,7 @@ class DataFormatter:
             remaining_polygons = list(self.workflow.polygons.items())
             new_polygons: Dict[str, Polygons] = {}
             
-            for idx, (old_id, poly_obj) in enumerate(remaining_polygons): #type: ignore
+            for idx, (old_id, poly_obj) in enumerate(remaining_polygons):
                 new_id = f"poly_{idx:04d}"
                 updated_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = updated_poly_obj
@@ -371,7 +364,7 @@ class DataFormatter:
             logger.debug(f"Reindexados {len(new_polygons)} polígonos válidos")
         
         return True
-
+        
     def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]]) -> bool:
         """
         Actualiza los resultados de OCR en las dataclasses de polígonos.
@@ -494,7 +487,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.info(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
+                    logger.debug(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")

@@ -35,7 +35,7 @@ enabled_outputs:
   angle_corrected: false
   preprocessed_image: false
   cropped_img: false
-  discarded_polys: false
+  discarded_polys: true
   moire_poly: false
   sp_poly: false
   gauss_poly: false
@@ -45,7 +45,7 @@ enabled_outputs:
   binarized_polygons: false
   ocr_raw: false
   reconstructed_lines: false
-  semantic_field: true
+  semantic_field: false
   table_lines: false
   encoded_lines: false
   features: false
@@ -96,8 +96,8 @@ modules:
       kernel_size: 3
     
     polygon_extractor:
-      cropping_padding: 5
-      bin_interval: [5, 250]
+      cropping_padding: 1
+      bin_interval: [10, 250]
       percentil: 0.5
       angle_thr: [44.5, 45.5]
 
@@ -161,9 +161,9 @@ modules:
       min_conf_to_clean: 90.0
     
     semantic_clasificator:
-      semantic_range: [45.0, 66.5]
-      encode_mean: [25.1, 39.1]
-      morph_mean: [-0.3, 0.35]
+      semantic_range: [45.0, 66.5] # Cantidad de digitos
+      encode_mean: [25.1, 39.1] # Promedio de densidad
+      morph_mean: [-0.3, 0.35] # Promedio morfológico
         
     data_finder:
       wordfinder_model_path: C:/word_finder_model/models/wf_model.pkl

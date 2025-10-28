@@ -46,8 +46,9 @@ class SemanticClasificator(OCRAbstractWorker):
                 return True
 
             # Clasificar solo los polígonos seleccionados
-            encoder: Dict[str, float] = manager.get_inverse_frecuency_encoder()
-            final_results: Dict[str, int] = self._clasify_words(polygons_to_classify, encoder)
+            encoder: Dict[str, float] = manager.get_density_encoder()
+            inv_encoder: Dict[str, float] = manager.get_inverse_frecuency_encoder()
+            final_results: Dict[str, int] = self._clasify_words(polygons_to_classify, encoder, inv_encoder)
             
             classified_count = len(final_results)
             logger.debug(f"Total clasificados: {classified_count}")
@@ -79,7 +80,7 @@ class SemanticClasificator(OCRAbstractWorker):
             return False
             
     # Cambiar el método _clasify_words para devolver Dict[str, int] en lugar de Dict[str, SemanticClassification]
-    def _clasify_words(self, polygons: Dict[str, Polygons], encoder: Dict[str, float]) -> Dict[str, int]:
+    def _clasify_words(self, polygons: Dict[str, Polygons], encoder: Dict[str, float], inv_encoder: Dict[str, float]) -> Dict[str, int]:
         semantic_range: Tuple[float, float] = self.worker_config.get("semantic_range", [])
         encode_mean: Tuple[float, float] = self.worker_config.get("encode_mean", [])
         morph_mean: Tuple[float, float] = self.worker_config.get("morph_mean", [])
@@ -93,8 +94,12 @@ class SemanticClasificator(OCRAbstractWorker):
             pct = (sum(1 for ch in chars if ch in self.char_num) / total) * 100.0 if total else 0.0
 
             encoded_poly = encode_text(s, encoder)
-            morph_text = get_morphological_map(s)
             poly_mean = np.mean(encoded_poly)
+
+            inv_encoded_poly = encode_text(s, inv_encoder)
+            inv_poly_mean = np.mean(inv_encoded_poly)
+
+            morph_text = get_morphological_map(s)
             poly_morph_mean = np.mean(morph_text) if morph_text else - 1.0
 
             # Lógica de clasificación simplificada a enteros
@@ -104,18 +109,19 @@ class SemanticClasificator(OCRAbstractWorker):
                 semantic_type = 2  # quantitative
             elif find_umd(s):
                 semantic_type = -2  # umd
-            elif semantic_range[1] < pct and poly_mean < encode_mean[0] and morph_mean[1] < poly_morph_mean:
+            elif  morph_mean[1] < poly_morph_mean and poly_mean < encode_mean[0] and encode_mean[1] < inv_poly_mean and semantic_range[1] < pct :
                 has_quantitative = find_quantitative(s)
                 if has_quantitative:
                     semantic_type = 2  # quantitative
                 else:
                     semantic_type = 1  # numeric
-            elif pct < semantic_range[0] and poly_morph_mean < morph_mean[0]:
-                semantic_type = 0  # descriptive
-            else:
+            elif semantic_range[0] < pct < semantic_range[1] and morph_mean[0] < poly_morph_mean < morph_mean[1]:
                 semantic_type = -1  # code
+            else:
+                # pct < semantic_range[0] and poly_morph_mean < morph_mean[0]
+                semantic_type = 0  # Descriptive
 
-            logger.info(f"{pid}: '{s}'| mean: {poly_mean:.4f}, morph: {poly_morph_mean}, {pct}% | sc: {semantic_type}")
+            logger.info(f"{pid}: '{s}'| mean: {poly_mean:.4f}, inv_mean: {inv_poly_mean}, morph: {poly_morph_mean}, {pct}% | sc: {semantic_type}")
 
             final_results[pid] = semantic_type
 

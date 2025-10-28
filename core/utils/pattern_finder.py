@@ -23,7 +23,7 @@ def is_acronym(text: str) -> bool:
 
 def find_umd(s: str) -> bool:
     try:
-        if not s or not s.strip():
+        if not utils.validate_string(s): #type: ignore
             return False
 
         # Regex Maestra para capturar la unidad y el valor
@@ -35,12 +35,13 @@ def find_umd(s: str) -> bool:
 
     except Exception as e:
         logger.warning(f"No se hallaron unidades de medida: {e}", exc_info=True)
-        return False
+    return False
 
 def find_rfc(s: str) -> bool:
     try:
-        if not s or not s.strip():
+        if not utils.validate_string(s): #type: ignore
             return False
+
         rfc_code = r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$'
         rfc_word = r'\b(R\.?F\.?C\.?)\b'
 
@@ -58,8 +59,9 @@ def find_rfc(s: str) -> bool:
 
 def find_iva(s: str) -> bool:
     try:
-        if not s or not s.strip():
+        if not utils.validate_string(s): #type: ignore
             return False
+
         iva_word = r'\b(I\.?V\.?A\.?)\b'
 
         if is_acronym(s):

@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def normalice_image(img: np.ndarray[Any, Any]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
+def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     """
     Normaliza una imagen de entrada:
     - Asegura que sea ndarray
@@ -18,6 +18,10 @@ def normalice_image(img: np.ndarray[Any, Any]) -> Optional[np.ndarray[Any, np.dt
     try:
         if img is None:
             logger.error("normalice_image: imagen None recibida")
+            return None
+        
+        if not validate_image(img):
+            logger.error("Imagen blanca/negra completamente")
             return None
 
         try:
@@ -80,3 +84,12 @@ def normalice_image(img: np.ndarray[Any, Any]) -> Optional[np.ndarray[Any, np.dt
     except Exception  as e:
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)
         return None
+
+def validate_image(img: np.ndarray[Any, Any]) -> bool:
+    min_threshold = 5
+    max_threshold = 250
+    img_mean =  np.mean(img).astype(np.uint8)
+    if img_mean < min_threshold or max_threshold < img_mean:
+        return False
+    else:
+        return True

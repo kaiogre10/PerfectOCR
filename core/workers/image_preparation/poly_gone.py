@@ -146,7 +146,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 if p_data['angle'] < self.angle_thr[1] and self.angle_thr[0] < p_data['angle']:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['angle']}")
-                    logger.debug(f"ELIMINADO '{p_data['poly_id']}': ÁNGULO = {p_data['angle']}°")
+                    logger.info(f"ELIMINADO '{p_data['poly_id']}': ÁNGULO = {p_data['angle']}°")
                     
                     if self.disoutput:
                         worker_name = context.get("worker_name") or "poly_gone"
@@ -155,7 +155,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 elif p_data['area'] < percentile_value or p_data['area'] == 0:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['area']}")
-                    logger.debug(f"ELIMINADO '{p_data['poly_id']}': ÁREA= {p_data['area']}")
+                    logger.info(f"ELIMINADO '{p_data['poly_id']}': ÁREA= {p_data['area']}")
 
                     if self.disoutput:
                         worker_name = context.get("worker_name") or "poly_gone"
@@ -164,7 +164,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 elif p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
-                    logger.debug(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO = {p_data['poly_mean']}")
+                    logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO = {p_data['poly_mean']}")
                     
                     if self.disoutput:
                         worker_name = context.get("worker_name") or "poly_gone"
