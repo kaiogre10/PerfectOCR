@@ -5,7 +5,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     """
     Normaliza una imagen de entrada:
@@ -25,7 +24,7 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
             return None
 
         try:
-            img_arr = np.asarray(img)
+            img_arr = np.asarray(img,dtype=np.uint8)
         except Exception as e:
             logger.error(f"normalice_image: no se pudo convertir a ndarray: {e}", exc_info=True)
             return None
@@ -78,12 +77,12 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
             id(img_arr), getattr(img_arr, "shape", None), getattr(img_arr, "dtype", None),
             vmin, vmax, f"{vmean:.2f}" if vmean is not None else None
         )
-        
+    
         return img_arr
         
     except Exception  as e:
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)
-        return None
+    return None
 
 def validate_image(img: np.ndarray[Any, Any]) -> bool:
     min_threshold = 5

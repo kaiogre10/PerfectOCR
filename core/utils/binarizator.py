@@ -2,33 +2,22 @@
 import cv2
 import numpy as np
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from skimage.filters import threshold_sauvola  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-
 def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Binariza la imagen, extrae métricas robustas de componentes conectados (CC)
-    y decide si necesita fragmentación.
+    Binariza la imagen, extrae métricas robustas de componentes conectados (CC) y decide si necesita fragmentación.
     """
-
-    # --- 1. Configuración ---
-    c_value: int = worker_config.get('c_value', {})
+    c_value = worker_config.get('c_value', 7)
     height_thresholds: List[int] = worker_config['height_thresholds_px']
     block_sizes_map: List[int] = worker_config['block_sizes_map']
-
-    # Configuración para la decisión de split (pasada a decide_split)
-    split_decision_cfg = worker_config.get('split_cfg', None)
-
-    # Filtro de área mínima (pasado a extract_cc_metrics)
     min_area_factor: float = worker_config.get('min_area_factor', 0.001)
     height = int(cropped_img.shape[0])
-    area = cropped_img.size
-    area_min = area * min_area_factor
-
-    # --- 2. Binarización (Basada en calidad de imagen) ---
+    area = float(cropped_img.size)
+    area_min: float = area * min_area_factor
     block = get_adaptive_block_size(height, height_thresholds, block_sizes_map)
     mode: str = measure_polygon_quality(cropped_img)
 
@@ -41,23 +30,15 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
     else:
         bin_img = adaptive_mean_fallback(cropped_img, block, c_value)
 
-    # Invertir imagen: El binarizador da texto=0, bg=255.
-    # connectedComponents espera texto=255 (o >0), bg=0.
     bin_img = cv2.bitwise_not(bin_img)
-
-    # --- 3. Extracción y Decisión de Métricas (Lógica central) ---
-
-    # Extraer métricas robustas (esto ahora filtra ruido)
+    
     cc_metrics = extract_cc_metrics(bin_img, area_min)
 
     if not cc_metrics or cc_metrics["n_cc"] == 0:
         logger.debug("No se detectaron componentes conectados válidos tras el filtrado.")
-        return {}  # No hay nada que procesar
+        return {}
 
-    # Decidir si necesita fragmentación
-    needs_fragmentation, reason_info = decide_split(cc_metrics, split_decision_cfg)
-
-    # --- 4. Formatear Salida ---
+    needs_fragmentation, reason_info = decide_split(cc_metrics, worker_config)
 
     blob_metrics: Dict[str, Any] = {
         "needs_fragmentation": needs_fragmentation,
@@ -71,7 +52,7 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
     # Añadir los bounding boxes normalizados si existen
     if cc_metrics["cc"]:
         img_h, img_w = bin_img.shape[:2]
-        valid_boxes_norm = []
+        valid_boxes_norm: List[List[int]] = []
         for c in cc_metrics["cc"]:
             x, y, w, h = c["x"], c["y"], c["w"], c["h"]
             x2, y2 = x + w, y + h
@@ -85,7 +66,6 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-
 def get_adaptive_block_size(height: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
     """Calcula el tamaño de bloque adaptativo basado en la altura del polígono."""
     for i, threshold in enumerate(height_thresholds):
@@ -94,7 +74,6 @@ def get_adaptive_block_size(height: float, height_thresholds: List[int], block_s
             return max(3, block_size if block_size % 2 != 0 else block_size + 1)
     final_block_size = block_sizes_map[-1]
     return max(3, final_block_size if final_block_size % 2 != 0 else final_block_size + 1)
-
 
 def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> str:
     """
@@ -120,11 +99,9 @@ def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) ->
     else:
         return "adaptive_mean"  # Bajo contraste, imagen "plana"
 
-
 def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[np.int8, Any]:
     _, bin_img = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return bin_img
-
 
 def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[
     np.int8, Any]:
@@ -132,7 +109,6 @@ def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_si
         cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY, block_size, c_value
     )
-
 
 def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[
     np.int8, Any]:
@@ -142,7 +118,6 @@ def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_
     bin_img = (bin_bool.astype(np.uint8) * 255)  # type: ignore
     return bin_img  # type: ignore
 
-
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> \
 np.ndarray[np.int8, Any]:
     return cv2.adaptiveThreshold(
@@ -150,8 +125,7 @@ np.ndarray[np.int8, Any]:
         cv2.THRESH_BINARY, block_size, max(1, c_value - 2)
     )
 
-
-def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], min_area: float) -> Dict[str, Any]:
+def extract_cc_metrics(bin_img: np.ndarray[np.int8, Any], min_area: float) -> Dict[str, Any]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área, Ratio de Aspecto y Solidez.
@@ -165,9 +139,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], min_area: f
 
     cc_list = []
 
-    # Iterar sobre cada blob detectado (saltar fondo lab=0)
     for lab in range(1, n_labels):
-        # Extraer estadísticas rápidas de CC
         x, y, w, h, area = (
             stats[lab, cv2.CC_STAT_LEFT], stats[lab, cv2.CC_STAT_TOP],
             stats[lab, cv2.CC_STAT_WIDTH], stats[lab, cv2.CC_STAT_HEIGHT],
@@ -189,21 +161,21 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], min_area: f
         # --- Filtro 3: Solidez (Filtro robusto contra manchas/ruido) ---
         try:
             # Crear una máscara solo para este blob
-            component_mask = (labels == lab).astype(np.uint8) * 255
+            component_mask: np.ndarray[np.uint8, Any] = (labels == lab).astype(np.uint8) * 255
             # Encontrar contornos solo en esta máscara (muy rápido)
             contours, _ = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             if not contours:
                 continue
 
-            c = max(contours, key=cv2.contourArea)  # Obtener el contorno principal
+            c = max(contours, key=cv2.contourArea)
             hull = cv2.convexHull(c)
-            hull_area = cv2.contourArea(hull)
+            hull_area: float = cv2.contourArea(hull)
 
-            if hull_area == 0:
+            if hull_area == 0.0:
                 continue
 
-            solidity = area / float(hull_area)
+            solidity = float(area) / hull_area
 
             # Descartar formas "dispersas" o "huecas" (ruido)
             if solidity < 0.4:
@@ -220,13 +192,12 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], min_area: f
             "cx": float(cx), "cy": float(cy)
         })
 
-    # --- Calcular métricas agregadas SOBRE LOS BLOBS FILTRADOS ---
     if not cc_list:
         return {"cc": [], "H_mean": 0, "density": 0, "gaps_norm": [], "n_cc": 0}
 
-    heights = np.array([c["h"] for c in cc_list], dtype=float)
-    H_mean = heights.mean()
-    total_area_cc = sum([c["area"] for c in cc_list])
+    heights = np.array([c["h"] for c in cc_list], dtype=np.float32)
+    H_mean: float = heights.mean()
+    total_area_cc = float(sum([c["area"] for c in cc_list]))
     density = float(total_area_cc) / float(bbox_area)
 
     # Normalizar características por H_mean (inmune a DPI)
@@ -236,9 +207,9 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], min_area: f
         c["area_norm"] = c["area"] / max(1.0, bbox_area)
 
     # Ordenar por 'x' (para calcular gaps)
-    cc_sorted = sorted(cc_list, key=lambda z: z["x"])
+    cc_sorted: List[float] = sorted(cc_list, key=lambda z: z["x"])
 
-    gaps = []
+    gaps: List[int] = []
     for i in range(len(cc_sorted) - 1):
         gap_px = cc_sorted[i + 1]["x"] - (cc_sorted[i]["x"] + cc_sorted[i]["w"])
         # Normalizar gap por la altura media de caracteres
@@ -253,49 +224,42 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], min_area: f
     }
     return metrics
 
-
-def decide_split(metrics: Dict[str, Any], cfg: Dict[str, Any] = None) -> (bool, Any):
+def decide_split(metrics: Dict[str, Any], cfg: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
     """
     Toma las métricas de CC robustas y aplica reglas heurísticas
     para decidir si un polígono debe ser fragmentado.
     """
-    if cfg is None:
-        # Valores default si no se pasa configuración
-        cfg = {
-            "min_cc_for_frag": 2,  # Mínimo 2 blobs para considerar fragmentar
-            "density_threshold": 0.65,  # Si es muy denso, probablemente es una sola palabra
-            "max_cc_for_density_rule": 5,  # Límite de blobs para aplicar regla de densidad
-            "width_var_threshold": 0.25,  # Si todos los blobs tienen ancho similar, no fragmentar
-            "k_sigma": 1.25,  # Factor para detectar gaps atípicos
-            "min_gap_outlier": 0.5  # Un gap debe ser al menos 0.5x H_mean para ser 'outlier'
-        }
-
+    k_sigma = cfg.get("k_sigma", 1.25)
+    min_cc_for_frag: int = cfg.get("min_cc_for_frag", 2)
+    min_gap_outlier = cfg.get("min_gap_outlier", 0.5)
+    density_threshold = cfg.get("density_threshold", 0.65)
+    max_cc_for_density_rule = cfg.get("max_cc_for_density_rule", 5)
+    width_var_threshold = cfg.get("width_var_threshold", 0.25)
     n_cc = metrics["n_cc"]
 
     # Regla 1: No fragmentar si hay muy pocos blobs
-    if n_cc < cfg["min_cc_for_frag"]:
-        return False, "few_cc"
+    if n_cc < min_cc_for_frag:
+        return False, {}
 
     # Regla 2: No fragmentar si es muy denso (probablemente una palabra)
-    if metrics["density"] > cfg["density_threshold"] and n_cc <= cfg["max_cc_for_density_rule"]:
-        return False, "high_density"
+    if metrics["density"] > density_threshold and n_cc <= max_cc_for_density_rule:
+        return False, {}
 
     # Regla 3: No fragmentar si todos los caracteres son de ancho similar
     w_norms = np.array([c["w_norm"] for c in metrics["cc"]])
-    if np.var(w_norms) < cfg["width_var_threshold"]:
-        return False, "low_width_var"
+    if np.var(w_norms) < width_var_threshold:
+        return False, {}
 
     # Regla 4: Fragmentar si hay gaps atípicos (grandes)
     gaps = np.array(metrics["gaps_norm"]) if metrics["gaps_norm"] else np.array([0.0])
 
     if len(gaps) == 0:
-        return False, "no_gaps"
+        return False, {}
 
     mu, sigma = gaps.mean(), gaps.std()
 
     # Buscar gaps que sean (A) atípicos (k*sigma) Y (B) suficientemente grandes (min_gap)
-    threshold = max(mu + cfg["k_sigma"] * max(1e-6, sigma), cfg["min_gap_outlier"])
-
+    threshold = max(mu + k_sigma * max(1e-6, sigma), min_gap_outlier)
     split_indices = np.where(gaps > threshold)[0]
 
     if len(split_indices) > 0:
@@ -309,4 +273,4 @@ def decide_split(metrics: Dict[str, Any], cfg: Dict[str, Any] = None) -> (bool, 
         }
         return True, reason_info
 
-    return False, "no_gap_outlier"
+    return False, {}

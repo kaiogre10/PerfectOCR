@@ -14,15 +14,16 @@ from fuzzywuzzy import utils #type: ignore
 logger = logging.getLogger(__name__)
 
 class Fragmenter(OCRAbstractWorker):
-    """
-    Fragmenta polígonos basados en señales textuales (espacios) y visuales (blobs).
-    """
+    """Fragmenta polígonos basados en señales textuales (espacios) y visuales (blobs)"""
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.config = config
         self.worker_config = self.config.get('fragmenter', {})
+        self.binarizator_config = self.worker_config.get('binarizator', {})
         self.min_contours_for_frag = self.worker_config.get("min_blobs_for_frag")
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("fragmented_polys", False)
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool: 
         try:
@@ -45,7 +46,8 @@ class Fragmenter(OCRAbstractWorker):
                     logger.warning(f"Cropped_img de {poly_id} es None")
                     continue
                 
-                blob_metrics = binarice(cropped_img, self.worker_config)
+                binarizator_config: Dict[str, Any] = self.binarizator_config
+                blob_metrics = binarice(cropped_img, binarizator_config)
                 # Si no se pueden calcular blob_metrics, conservar el polígono tal cual.
                 if not blob_metrics:
                     logger.info(f"Sin Metricas para: {poly_id}")
@@ -55,7 +57,7 @@ class Fragmenter(OCRAbstractWorker):
                 # logger.info(f"{poly_id}: cantidad de blob ='{blob_metrics.get("num_blobs")}'")
                 
                 # Adapt to use the new SemanticClassification dataclass, and handle booleans
-                sc = polygon.semantic_clasification
+                sc = polygon.semantic_clasification or 0
                 ocr_text: str = polygon.ocr_text or ""
                 
                 if not utils.validate_string(ocr_text): #type: ignore
@@ -105,8 +107,8 @@ class Fragmenter(OCRAbstractWorker):
                     else:
                         reason = "puntuación"
 
-                    semantic_type_name = self._get_semantic_type_name(sc, manager)
-                    logger.info(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
+                    semantic_type_name = self.get_semantic_type_name(sc, manager)
+                    logger.debug(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
 
                     if visual_needs_frag:
                         fragments = self.fragment_by_blobs(polygon, blob_metrics)
@@ -118,6 +120,16 @@ class Fragmenter(OCRAbstractWorker):
                         fragments = self.fragment_by_punctuation(polygon)
                     else:
                         fragments = [polygon]
+                    
+                    if self.output and len(fragments) > 1:
+                        from services.output_service import save_croped_image
+                        for frag_poly in fragments:
+                            worker_name = "fragmenter"
+                            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                            output_paths = context["output_paths"]
+                            cropped_image = frag_poly.cropped_img.cropped_img if frag_poly.cropped_img else None
+                            poly_id = frag_poly.polygon_id if frag_poly else ""
+                            save_croped_image(image_name, poly_id, cropped_image, output_paths, worker_name, method=None)
 
                     final_polygons.extend(fragments)
                     if len(fragments) > 1:
@@ -130,11 +142,8 @@ class Fragmenter(OCRAbstractWorker):
                 new_id = f"poly_{idx:04d}"
                 final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 final_polygons_dict[new_id] = final_poly_obj
-
-                
-
                 manager.workflow.polygons = final_polygons_dict #type: ignore
-
+                
             if fragmented_count >= 1:
                 logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
                 return True
@@ -153,7 +162,7 @@ class Fragmenter(OCRAbstractWorker):
         text_parts = (polygon.ocr_text or "").strip().split()
         
         if not blobs_norm_boxes or num_blobs < self.min_contours_for_frag or len(text_parts) != num_blobs:
-            logger.info(f"No se fragmenta: blobs/palabras {num_blobs} / {len(text_parts)}")
+            logger.debug(f"No se fragmenta: blobs/palabras {num_blobs} / {len(text_parts)}")
             return [polygon]
             
         pad_xmin, pad_ymin, _, _ = polygon.cropedd_geometry.padding_coords
@@ -242,7 +251,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.info(f"Fragmentos textuales: {part}, bbox={new_bbox.tolist()}")
+            logger.debug(f"Fragmentos textuales: {part}, bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -317,7 +326,7 @@ class Fragmenter(OCRAbstractWorker):
                         ])
                     )
                     
-                    logger.info(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
+                    logger.debug(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
 
                     new_poly = dataclasses.replace(
                         polygon,
@@ -398,7 +407,7 @@ class Fragmenter(OCRAbstractWorker):
             new_poly = dataclasses.replace(
                 polygon,
                 geometry=new_geom,
-                ocr_text=part, # Usar solo la parte de texto, sin la puntuación adjunta
+                ocr_text=part,
                 was_refined=True
             )
             new_polys.append(new_poly)
@@ -413,7 +422,7 @@ class Fragmenter(OCRAbstractWorker):
         - Si NO hay espacios: fragmenta por patrones cuantitativos (extrae solo números/monedas)
         """
         text: str = (polygon.ocr_text or "").strip()
-        if not utils.validate_string(str): #type: ignore
+        if not utils.validate_string(text): #type: ignore
             return [polygon]
         
         # ESTRATEGIA 1: Si hay espacios, fragmentar por espacios (como _fragment_by_text)
@@ -464,20 +473,9 @@ class Fragmenter(OCRAbstractWorker):
                 was_refined=True
             ))
             current_x = new_xmax
-
         return new_polys
 
-    def _get_min_area(self, manager: DataFormatter) -> int:
-        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-        polys_areas: List[int] = []
-        
-        for poly_data in polygons.values():
-            poly_area = poly_data.cropped_img.cropped_img.size #type: ignore
-            polys_areas.append(poly_area)
-
-        return min(polys_areas)
-
-    def _get_semantic_type_name(self, semantic_clasification: int, manager: DataFormatter) -> str:
+    def get_semantic_type_name(self, semantic_clasification: int, manager: DataFormatter) -> str:
         """Convierte el tipo semántico numérico a nombre legible usando el mapeo del formatter"""
         semantic_map = manager.get_semmantic_types()
         # Buscar el nombre por el valor

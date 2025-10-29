@@ -48,8 +48,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
                 header_line_id = header_line_id[0] if header_line_id else None
 
-                logger.info(f"header_line_id: {header_line_id}")
-                
                 line_ids: List[str] = list(all_lines.keys())
                 if header_line_id not in line_ids:
                     logger.warning("Header no encontrado en el manager")

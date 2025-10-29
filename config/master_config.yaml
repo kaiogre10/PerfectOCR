@@ -3,7 +3,7 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "cleaner"
-    #- "angle_corrector"
+    - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
@@ -22,7 +22,7 @@ pipeline_secuence:
     
   vector_stage:
     - "lineal"
-  #  - "vectorizer"
+    - "vectorizer"
     - "dbscan"
     - "cos_sim"
     - "table_structurer"
@@ -44,6 +44,7 @@ enabled_outputs:
   sharp_poly: false
   binarized_polygons: false
   ocr_raw: false
+  fragmented_polys: false
   reconstructed_lines: false
   semantic_field: false
   table_lines: false
@@ -96,7 +97,7 @@ modules:
       kernel_size: 3
     
     polygon_extractor:
-      cropping_padding: 1
+      cropping_padding: 2
       bin_interval: [10, 250]
       percentil: 0.5
       angle_thr: [44.5, 45.5]
@@ -144,12 +145,19 @@ modules:
       min_confidence: 65.0
 
     fragmenter:
-      c_value: 7
-      height_thresholds_px: [100, 800, 1500, 2500]
-      block_sizes_map: [15, 21, 25, 35, 41]
       min_blobs_for_frag: 3
       gap_threshold_norm: 0.01
       min_area_factor: 0.01
+      binarizator:
+        c_value: 7
+        height_thresholds_px: [100, 800, 1500, 2500]
+        block_sizes_map: [15, 21, 25, 35, 41]
+        min_cc_for_frag: 2
+        density_threshold: 0.65
+        max_cc_for_density_rule: 5
+        width_var_threshold: 0.25
+        k_sigma: 1.25
+        min_gap_outlier: 0.5
       
     text_refiner:
       num_passes: 1

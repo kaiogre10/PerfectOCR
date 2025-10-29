@@ -4,17 +4,18 @@ import json
 import logging
 import numpy as np
 import pandas as pd # type: ignore
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
-def save_croped_image(image_name: str, poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, method: str = None):  #type: ignore
+def save_croped_image(image_name: str, poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, method: Optional[str] = None): 
     """Guarda una imagen de depuración si la salida está habilitada."""
     if isinstance(output_paths, str):
         output_paths = [output_paths]
+
     for path in output_paths:
         if method:
-            output_dir = os.path.join(path, image_name, method)
+            output_dir = os.path.join(path, worker_name, image_name, method)
             file_name = f"{poly_id}.png"
             save_image(image, output_dir, file_name)
 

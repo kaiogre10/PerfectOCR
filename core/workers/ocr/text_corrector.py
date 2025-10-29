@@ -74,8 +74,7 @@ class TextCorrector(OCRAbstractWorker):
             return True
             
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
-        # Copia inicial: garantiza que TODOS los polígonos se conserven, 
-        # incluso si no requieren corrección.
+
         corrected_polygons: Dict[str, Polygons] = dict(polygons_in)
         correction_stats = {
             "numeric": 0,
@@ -87,7 +86,7 @@ class TextCorrector(OCRAbstractWorker):
         }
         
         sorted_poly_ids = sorted(polygons_in.keys())
-        logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+        logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
         # Procesar cada polígono recursivamente
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]

@@ -4,7 +4,6 @@ import numpy as np
 import logging
 from typing import Dict, Any, List
 from skimage.filters import threshold_sauvola  # type: ignore
-from skimage.measure import regionprops, label
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,6 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
     
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     valid_contours = [c for c in contours if cv2.contourArea(c) > area_min]
-    (bin_img)
     # 2. Aplicar la corrección #2 (filtro > min_area)
     valid_boxes_norm: List[List[float]] = []
     blob_metrics: Dict[str, Any] = {}

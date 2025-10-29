@@ -19,6 +19,7 @@ class OutputFlag(ConfigWithNumpy):
     sharp_poly: bool
     binarized_polygons: bool
     ocr_raw: bool
+    fragmented_polys: bool
     reconstructed_lines: bool
     semantic_field: bool
     table_lines: bool
@@ -50,6 +51,17 @@ class ModelsConfig(ConfigWithNumpy):
     cls_model_dir: str
     model_path: str
 
+class BinariceConfig(ConfigWithNumpy):
+    height_thresholds_px: List[int]
+    c_value: int
+    block_sizes_map: List[int]
+    min_cc_for_frag: int
+    density_threshold: float
+    max_cc_for_density_rule: int
+    width_var_threshold: float
+    k_sigma: float
+    min_gap_outlier: float
+
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
     radius: float
@@ -63,12 +75,10 @@ class MoireConfig(ConfigWithNumpy):
     absolute_threshold: int
     
 class Fragmenter(ConfigWithNumpy):
-    c_value: int
-    height_thresholds_px: List[int]
-    block_sizes_map: List[int]
     min_blobs_for_frag: int
     gap_threshold_norm: float
     min_area_factor: float
+    binarizator: BinariceConfig
     
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
