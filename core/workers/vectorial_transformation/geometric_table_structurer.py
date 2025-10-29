@@ -32,8 +32,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 return False
                 
             # Obtener datos usando data classes modernas
-            all_lines: Dict[str, AllLines] = manager.workflow.all_lines
-            polygons: Dict[str, Polygons] = manager.workflow.polygons
+            all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             
             # Filtrar líneas tabulares usando propiedades de data class
             tabular_line_ids = [lid for lid, line_obj in all_lines.items() if line_obj.tabular_line]

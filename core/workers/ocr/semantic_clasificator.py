@@ -121,7 +121,7 @@ class SemanticClasificator(OCRAbstractWorker):
                 # pct < semantic_range[0] and poly_morph_mean < morph_mean[0]
                 semantic_type = 0  # Descriptive
 
-            logger.info(f"{pid}: '{s}'| mean: {poly_mean:.4f}, inv_mean: {inv_poly_mean}, morph: {poly_morph_mean}, {pct}% | sc: {semantic_type}")
+            logger.debug(f"{pid}: '{s}'| mean: {poly_mean:.4f}, inv_mean: {inv_poly_mean}, morph: {poly_morph_mean}, {pct}% | sc: {semantic_type}")
 
             final_results[pid] = semantic_type
 

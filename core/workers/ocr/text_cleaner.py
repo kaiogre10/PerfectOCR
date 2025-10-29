@@ -51,7 +51,7 @@ class TextCleaner(OCRAbstractWorker):
             polygons_in.keys(), 
             key=lambda p_id: (polygons_in[p_id].geometry.centroid[1], polygons_in[p_id].geometry.centroid[0])
         )
-        logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+        logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
         eliminated_count = 0
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]

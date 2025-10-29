@@ -87,7 +87,7 @@ class TextCorrector(OCRAbstractWorker):
         }
         
         sorted_poly_ids = sorted(polygons_in.keys())
-        logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")        
+        logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
         # Procesar cada polígono recursivamente
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
@@ -136,7 +136,7 @@ class TextCorrector(OCRAbstractWorker):
         # Actualizar el manager con los polígonos corregidos
         manager.workflow.polygons = corrected_polygons
         
-        logger.info(
+        logger.debug(
             f"Corrección textual - "
             f"Total: {correction_stats['total_corrections']} | "
             f"Alta confianza omitidos: {correction_stats['skipped_high_confidence']} | "

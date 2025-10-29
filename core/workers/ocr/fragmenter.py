@@ -8,7 +8,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.pattern_finder import is_acronym, find_quantitative_runs
-from core.utils.binarization import binarice
+from core.utils.binarizator import binarice
 from fuzzywuzzy import utils #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class Fragmenter(OCRAbstractWorker):
             
             polygons_in: Dict[str, Polygons] = manager.workflow.polygons
             sorted_poly_ids = sorted(polygons_in.keys())
-            logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+            logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
             fragmented_count = 0
             final_polygons: List[Polygons] = []
             
@@ -48,25 +48,25 @@ class Fragmenter(OCRAbstractWorker):
                 blob_metrics = binarice(cropped_img, self.worker_config)
                 # Si no se pueden calcular blob_metrics, conservar el polígono tal cual.
                 if not blob_metrics:
-                    logger.debug(f"Sin Metricas para: {poly_id}")
+                    logger.info(f"Sin Metricas para: {poly_id}")
                     final_polygons.append(polygon)
                     continue
                     
-                # logger.debug(f"{poly_id}: cantidad de blob ='{blob_metrics.get("num_blobs")}'")
+                # logger.info(f"{poly_id}: cantidad de blob ='{blob_metrics.get("num_blobs")}'")
                 
                 # Adapt to use the new SemanticClassification dataclass, and handle booleans
                 sc = polygon.semantic_clasification
                 ocr_text: str = polygon.ocr_text or ""
                 
                 if not utils.validate_string(ocr_text): #type: ignore
-                    logger.debug(f"Polygono sin texto: {poly_id}")
+                    logger.info(f"Polygono sin texto: {poly_id}")
                     continue
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
                 if is_acronym(ocr_text):
-                    logger.debug(f"No fragmentando sigla detectada: '{ocr_text}'")
+                    logger.info(f"No fragmentando sigla detectada: '{ocr_text}'")
                     final_polygons.append(polygon)
-                    logger.debug(f"{poly_id}: {ocr_text}")
+                    logger.info(f"{poly_id}: {ocr_text}")
                     continue
 
                 text_needs_frag = (
@@ -106,7 +106,7 @@ class Fragmenter(OCRAbstractWorker):
                         reason = "puntuación"
 
                     semantic_type_name = self._get_semantic_type_name(sc, manager)
-                    logger.debug(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
+                    logger.info(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
 
                     if visual_needs_frag:
                         fragments = self.fragment_by_blobs(polygon, blob_metrics)
@@ -136,7 +136,7 @@ class Fragmenter(OCRAbstractWorker):
                 manager.workflow.polygons = final_polygons_dict #type: ignore
 
             if fragmented_count >= 1:
-                logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
+                logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} polígonos, resultando en {len(final_polygons_dict)} polígonos totales.")
                 return True
             else:
                 logger.warning("No se fragmentaron polígonos")
@@ -153,7 +153,7 @@ class Fragmenter(OCRAbstractWorker):
         text_parts = (polygon.ocr_text or "").strip().split()
         
         if not blobs_norm_boxes or num_blobs < self.min_contours_for_frag or len(text_parts) != num_blobs:
-            logger.debug(f"No se fragmenta: blobs/palabras {num_blobs} / {len(text_parts)}")
+            logger.info(f"No se fragmenta: blobs/palabras {num_blobs} / {len(text_parts)}")
             return [polygon]
             
         pad_xmin, pad_ymin, _, _ = polygon.cropedd_geometry.padding_coords
@@ -188,7 +188,7 @@ class Fragmenter(OCRAbstractWorker):
             
             frag_text = text_parts[i] if i < len(text_parts) else ""
             
-            # logger.debug(f"Fragmento visual: texto='{frag_text}'") #, bbox={new_bbox.tolist()}")
+            # logger.info(f"Fragmento visual: texto='{frag_text}'") #, bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -242,7 +242,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"Fragmentos: {part}, bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmentos textuales: {part}, bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -275,7 +275,7 @@ class Fragmenter(OCRAbstractWorker):
 
             # Si hay dígitos antes y después del punto, es probablemente un número
             if has_digits_before and has_digits_after:
-                # logger.debug(f"No fragmentando por punto: detectado potencial número '{text}'")
+                # logger.info(f"No fragmentando por punto: detectado potencial número '{text}'")
                 return [polygon]
 
             parts = text.split('.')
@@ -317,7 +317,7 @@ class Fragmenter(OCRAbstractWorker):
                         ])
                     )
                     
-                    logger.debug(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
+                    logger.info(f"Fragmento por punto único: texto='{part}', bbox={new_bbox.tolist()}")
 
                     new_poly = dataclasses.replace(
                         polygon,
@@ -393,7 +393,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.debug(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por puntuación: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -455,7 +455,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
 
-            logger.debug(f"Fragmento por cuantitativo: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por cuantitativo: texto='{part}', bbox={new_bbox.tolist()}")
 
             new_polys.append(dataclasses.replace(
                 polygon,

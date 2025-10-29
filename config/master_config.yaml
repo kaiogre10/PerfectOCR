@@ -8,12 +8,12 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-     - "moire"
-     - "sp"
-     - "gauss"
+#     - "moire"
+ #    - "sp"
+  #   - "gauss"
     #  - "ink_enhancement"
-     - "clahe"
-     - "sharp"
+  #   - "clahe"
+   #  - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
@@ -22,7 +22,7 @@ pipeline_secuence:
     
   vector_stage:
     - "lineal"
-    - "vectorizer"
+  #  - "vectorizer"
     - "dbscan"
     - "cos_sim"
     - "table_structurer"

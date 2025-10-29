@@ -317,7 +317,7 @@ class DataFormatter:
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
-            logger.info(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte")
+            logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte")
             return True
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
@@ -700,11 +700,11 @@ class DataFormatter:
             
             if header_line is None or footer_line is None:
             
-                logger.info(F"No se encontró encabezado")
+                logger.warning(F"No se encontró encabezado")
                 return True
                 
-            logger.info(f"Header marcado automáticamente: {header_line}")
-            logger.info(f"Footer marcado automáticamente: {footer_line}")
+            logger.debug(f"Header marcado automáticamente: {header_line}")
+            logger.debug(f"Footer marcado automáticamente: {footer_line}")
             return True
                         
         except Exception as e:
