@@ -1,13 +1,5 @@
 from typing import Dict
 
-SEMATIC_TYPES_MAP: Dict[str, int] = {
-    "quantitative": 2,
-    "numeric": 1, 
-    "descriptive": 0,
-    "code": -1,
-    "umd": -2
-}
-
 DENSITY_ENCODER: Dict[str, float] = {
     "0": 0.0,
     "1": 1.0,
@@ -19,8 +11,8 @@ DENSITY_ENCODER: Dict[str, float] = {
     "7": 7.0,
     "8": 8.0,
     "9": 9.0,
-    ".": 10.0,
-    "$": 11.0,
+    "$": 10.0,
+    ".": 11.0,
     ",": 12.0,
     "¢": 13.0,
     "/": 14.0,
@@ -136,8 +128,8 @@ INV_FRECUENCY_ENCODER: Dict[str, float] = {
     "7": 49.0,
     "8": 48.0,
     "9": 47.0,
-    ".": 46.0,
-    "$": 45.0,
+    "$": 46.0,
+    ".": 45.0,
     ",": 44.0,
     "¢": 43.0,
     "/": 42.0,
@@ -305,12 +297,10 @@ CHAR_FRECUENCY: Dict[str, float] ={
 }
 
 VECTOR_MEAN_DUMMIE: Dict[str, float] = {
-    "num_margin": 0.8259498, 
+    "num_margin": 0.9259498, 
     "has_numeric": 0.90909091,
-    "num_median_norm": 1.91742424,
     "numeric_count_norm": 0.82057272,
     "num_above": 0.57575756,
-    "num_margin": 0.6086166,
     "digit_char_frec": 0.7981898,
     "has_digit": 0.96969697,
     "area_norm": 0.70323396,
@@ -344,12 +334,10 @@ VECTOR_MEAN_DUMMIE: Dict[str, float] = {
 }
 
 VECTOR_MEDIAN_DUMMIE: Dict[str, float] = {
-    "num_margin": 0.8429895,
+    "num_margin": 0.9429895,
     "has_numeric": 1.0,
-    "num_median_norm": 1.25,
     "numeric_count_norm": 0.81666667,
     "num_above": 1.0,
-    "num_margin": 0.69333333,
     "digit_char_frec": 0.76470588,
     "has_digit": 1.0,
     "area_norm": 0.72145619,
@@ -380,4 +368,12 @@ VECTOR_MEDIAN_DUMMIE: Dict[str, float] = {
     "center_aling": 0.91985991,
     "slope_inv": 0.9617871,
     "slope_dif": 0.9842937
+}
+
+SEMATIC_TYPES_MAP: Dict[str, int] = {
+    "quantitative": 2,
+    "numeric": 1, 
+    "descriptive": 0,
+    "code": -1,
+    "umd": -2
 }

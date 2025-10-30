@@ -86,8 +86,8 @@ class ImageCleaner(ImagePrepAbstractWorker):
                 sharp = sharp.astype(np.uint8, copy=False)
 
             full_img[...] = sharp
-            
-            manager.update_full_img(full_img)
+            corrected = True
+            manager.update_full_img(corrected, full_img)
                 
             return True
             

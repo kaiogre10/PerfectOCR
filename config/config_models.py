@@ -61,6 +61,9 @@ class BinariceConfig(ConfigWithNumpy):
     width_var_threshold: float
     k_sigma: float
     min_gap_outlier: float
+    min_area_factor: float
+    min_blobs_for_frag: int
+    gap_threshold_norm: float
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
@@ -75,10 +78,8 @@ class MoireConfig(ConfigWithNumpy):
     absolute_threshold: int
     
 class Fragmenter(ConfigWithNumpy):
-    min_blobs_for_frag: int
-    gap_threshold_norm: float
-    min_area_factor: float
     binarizator: BinariceConfig
+    min_contours_for_frag: int
     
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int

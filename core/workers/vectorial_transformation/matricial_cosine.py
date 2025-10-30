@@ -208,12 +208,12 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Convertir la matriz dispersa a densa para mostrarla
         sims_mat_dense= sims_mat.toarray() #type: ignore
         mean_log = np.mean(sims_mat_dense) # type: ignore
-        logger.debug(f"Promedio matriz: {mean_log}")
+        logger.info(f"Promedio matriz: {mean_log}")
         logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
         matriz_str = "\n".join(
             ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense]
         )
-        logger.debug("Matriz:\n%s", matriz_str)
+        logger.info("Matriz:\n%s", matriz_str)
 
         # para cada fila, calcular similitud media con las demás (excluir self)
         mean_sims: List[float] = []
@@ -230,7 +230,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             if mean_sim > similarity_threshold:
                 matched_original_indices.append(int(orig_idx))
                 consecutive_failures += 1
-            logger.debug(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
+            logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
 
         # Si hay validaciones por coseno, devolver todo el intervalo hasta la última validada
         if matched_original_indices:
@@ -306,10 +306,10 @@ class MatricialCusine(VectorizationAbstractWorker):
         sims = calculate_similarity_ref(X, ref_vec).astype(np.float32)
         # sims = cosine_similarity(ref_vec, X, dense_output=False)[0]
 
-        logger.debug(f"Promedio de similitud con línea de referencia '{ref_line_id}': {np.mean(sims):.6f}")
-        logger.debug("Candidatas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
+        logger.info(f"Promedio de similitud con línea de referencia '{ref_line_id}': {np.mean(sims):.6f}")
+        logger.info("Candidatas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
         sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims) + "]"
-        logger.debug("Similitudes:\n%s", sims_str)
+        logger.info("Similitudes:\n%s", sims_str)
 
         last_success_idx = ref_line_idx
         consecutive_failures = 0
@@ -317,7 +317,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Iterar sobre los resultados de similitud
         for i, sim in enumerate(sims):
             current_idx = line_ids.index(candidate_line_ids[i])
-            logger.debug(f"ref {ref_line_id}: línea {candidate_line_ids[i]}, sim={sim:.6f}")
+            logger.info(f"ref {ref_line_id}: línea {candidate_line_ids[i]}, sim={sim:.6f}")
 
             if sim > similarity_threshold:
                 consecutive_failures = 0
@@ -367,78 +367,66 @@ class MatricialCusine(VectorizationAbstractWorker):
         n = len(mat_rows)
             
         X = csr_matrix(mat_rows, dtype=np.float32)
-
+        amout = features = len(feature_keys)
         # 2. Construcción de vectores Dummie a partir de diccionarios
         median_dummie_dict = manager.get_median_dummie()
         median_dummie_list = [median_dummie_dict.get(k, 0.0) for k in feature_keys]
-        if not len(median_dummie_list) == len(feature_keys):
+        amount_median_dummie = len(median_dummie_dict)
+        
+        if not amount_median_dummie == amout:
+            logger.warning(f"Diferente numero de features para mediana: '{amount_median_dummie}'/{amout}")
             return []
         
         median_ref_vec = np.array(median_dummie_list, dtype=np.float32).reshape(1, -1)
-        sims_median = calculate_similarity_ref(X, median_ref_vec, dense_output=False)
+        sims_median = calculate_similarity_ref(X, median_ref_vec, dense_output=False).flatten()
+        logger.debug(f"Similitudes con Dummie MEDIAN: {sims_median}")
 
         mean_dummie_dict = manager.get_mean_dummie()
         mean_dummie_list = [mean_dummie_dict.get(k, 0.0) for k in feature_keys]
-        if not len(mean_dummie_list) == len(feature_keys):
-            return []
+        amount_median_dummie = len(mean_dummie_dict)
         
+        if not amount_median_dummie == amout:
+            logger.warning(f"Diferente numero de features para media: '{amount_median_dummie}'/{amout}")
+            return []
+            
         mean_ref_vec = np.array(mean_dummie_list, dtype=np.float32).reshape(1, -1)
-        sims_mean = calculate_similarity_ref(X, mean_ref_vec, dense_output=False)
+        sims_mean = calculate_similarity_ref(X, mean_ref_vec, dense_output=False).flatten()
+        logger.debug(f"Similitudes con Dummie MEAN: {sims_mean}")
 
         # 3. Ponderación de resultados
-        median_weighted = sims_median * median_w
-        mean_weighted = sims_mean * mean_w
-        sims_mat = mean_weighted + median_weighted
-        mean_sim: float = np.mean(sims_mat)
-        # sims_mat_dense = sims_mat.toarray() 
-        logger.debug(f"Promedio de similitud con dummiessumados '{sims_mat}': {mean_sim}:.6f")
-        logger.debug("Todas las líneas ordendas: %s", ", ".join(str(lid) for lid in all_lines_indices))
-        sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims_mat) + "]"
-        logger.debug("Similitudes de emergencia:\n%s", sims_str)
+        sims_final = (sims_median * median_w) + (sims_mean * mean_w)
+        
+        logger.info(f"Promedio de similitud final ponderada: {np.mean(sims_final):.6f}")
+        logger.debug("Todas las líneas ordenadas: %s", ", ".join(str(lid) for lid in all_line_ids))
+        sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims_final) + "]"
+        logger.debug("Similitudes de emergencia finales:\n%s", sims_str)
 
         # Log detallado por línea
-        for idx, (line_id, sim) in enumerate(zip(all_line_ids, sims_mat)):
-            feature_vals = [f"{v:7.4f}" for v in mat_rows[idx]]
-            logger.debug(f"{line_id}: Sim: {sim:7.4f} | [{', '.join(feature_vals)}]")
-        
-        mean_sims: List[float] = []
-        for i in range(n):
-            if n == 1:
-                mean_sims.append(1.0)
-            else:
-                mean_val = float((np.sum(sims_mat[i]) - 1.0) / (n - 1)) 
-                mean_sims.append(mean_val)
+        for idx, (line_id, sim) in enumerate(zip(all_line_ids, sims_final)):
+            logger.info(f"{line_id}: Sim: {sim:7.4f}")
         
         try:
-            matched_original_indices: List[int] = []
-            consecutive_failures = 0
-            for idx, (mean_sim, lid) in enumerate(zip(mean_sims, all_lines_indices)):
-                if mean_sim > similarity_threshold:
-                    matched_original_indices.append(idx)
-                    consecutive_failures += 1
-                    
-                logger.debug(f"Línea {lid} idx={idx}: mean_sim={mean_sim:.4f}")
-                
-            if not matched_original_indices:
-                logger.warning("No se encontraron líneas que superen el umbral")
-                emergency_threshold: float = float(self.worker_config.get("emergency_threshold"))
-                consecutive_failures = 0
-                for idx, (mean_sim, lid) in enumerate(zip(mean_sims, all_lines_indices)):
-                    if mean_sim > emergency_threshold:
-                        matched_original_indices.append(idx)
-                        consecutive_failures += 1
-                        
-                    logger.debug(f"Línea {lid} idx={idx}: mean_sim={mean_sim:.4f}")
+            matched_indices = [idx for idx, sim in enumerate(sims_final) if sim > similarity_threshold]
+
+            # Si no hay coincidencias, intentar con el umbral de emergencia más bajo
+            if not matched_indices:
+                logger.warning(f"Ninguna línea superó el umbral de {similarity_threshold}. Intentando con umbral de emergencia de {emergency_threshold}.")
+                matched_indices = [idx for idx, sim in enumerate(sims_final) if sim > emergency_threshold]
+
+            if not matched_indices:
+                logger.warning("Ninguna línea superó el umbral de emergencia. No se encontraron clusters.")
+                return []
+
             # Obtener las line_ids que pasaron el umbral
-            candidate_line_ids = [line_ids[i] for i in matched_original_indices if i < len(line_ids)]
+            candidate_line_ids = [all_line_ids[i] for i in matched_indices]
             
             # Ordenar por line_id (ascendente)
-            sorted_candidates = sorted(candidate_line_ids)
+            sorted_candidates = sorted(candidate_line_ids, key=lambda x: line_ids.index(x))
             
             # Encontrar el cluster más grande que respete min_cluster e interval
             table_line_ids = self._find_best_cluster(sorted_candidates, min_cluster, interval_margin, all_lines)
             
-            logger.info(f"Cluster encontrado por fallback: {table_line_ids}")
+            logger.info(f"Cluster '{len(table_line_ids)}' encontrado por fallback de emergencia: {table_line_ids}")
             return table_line_ids
         except Exception as e:
             logger.error(f"Error en falback de emergencia: {e}", exc_info=True)
@@ -447,7 +435,7 @@ class MatricialCusine(VectorizationAbstractWorker):
     def _find_best_cluster(self, sorted_candidates: List[str], min_cluster: int, interval_margin: int, all_lines: Dict[str, AllLines]) -> List[str]:
         """Encuentra el mejor cluster respetando min_cluster e interval y devuelve todas las líneas del intervalo."""
         if len(sorted_candidates) < min_cluster:
-            logger.warning(f"No hay suficientes candidatos ({len(sorted_candidates)}) para min_cluster ({min_cluster})")
+            logger.warning(f"No hay suficientes candidatos '{len(sorted_candidates)}' para min_cluster: '{min_cluster}'")
             return []
         
         all_line_ids = list(all_lines.keys())

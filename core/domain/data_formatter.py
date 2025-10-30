@@ -256,7 +256,7 @@ class DataFormatter:
             logger.error(f"Error obteniendo lineas tabulares: {e}", exc_info=True)
             return {} if return_objects else []
 
-    def update_full_img(self, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
+    def update_full_img(self, corrected: bool, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""
         try:
             if not self.workflow:
@@ -277,16 +277,28 @@ class DataFormatter:
                                 
             img_arr = normalice_image(full_img)
             
-            # Wrap en la dataclass FullImage y actualizar workflow
-            full_image_obj = FullImage(full_img=img_arr)
-            self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
-            logger.debug("Imagen actualizada con éxito.")
-            return True
+            # Actualizar dimensiones en metadata de forma consistente
+            if corrected:
+                h = int(img_arr.shape[0]) if img_arr is not None else 0
+                w = int(img_arr.shape[1]) if img_arr is not None else 0
+                size = int(img_arr.size) if img_arr is not None and hasattr(img_arr, "size") else 0
+                md = self.workflow.metadata
+                new_md = dataclasses.replace(md, img_dims={"width": w, "height": h, "size": size})
+                self.workflow = dataclasses.replace(self.workflow, metadata=new_md)
+
+                # Wrap en la dataclass FullImage y actualizar workflow
+                full_image_obj = FullImage(full_img=img_arr)
+                self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
+                logger.debug("Imagen actualizada con éxito.")
+                return True
+            else:
+                logger.debug("Imagen completa sin modificaciones")
+                return True
             
         except Exception as e:
             logger.error(f"Error actualizando full_img: {e}", exc_info=True)
             return False
-            
+                        
     def save_cropped_images(self, cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]], cropped_geometries: Dict[str, Dict[str, Any]]) -> bool:
         """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""
         try:
@@ -487,7 +499,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.debug(f"UPDATED: poly_id={poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
+                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
@@ -530,7 +542,7 @@ class DataFormatter:
                 
                 # LOG: Mostrar líneas que tienen al menos un HeaderWord
                 if header_count > 0:
-                    logger.debug(f"Línea {line_id} tiene {header_count} HeaderWords: {[pid for pid in hdr_poly_ids if pid in polygon_ids]}")
+                    logger.info(f"Línea {line_id} tiene {header_count} HeaderWords: {[pid for pid in hdr_poly_ids if pid in polygon_ids]}")
 
                 if header_count > max_header_count:
                     # Si esta línea tiene más polígonos de encabezado, actualizar
@@ -547,7 +559,7 @@ class DataFormatter:
                     # Actualizar todos los polígonos según la línea de encabezado
                     self.update_headers(header_line_id)
                     
-                    logger.debug(f"Header_line_id={header_line_id} guardado correctamente")
+                    logger.info(f"Header_line_id={header_line_id} guardado correctamente")
                     return header_line_id
             else:
                 logger.warning(f"No se encontró ninguna línea con HeaderWords. hdr_poly_ids={hdr_poly_ids}")
@@ -587,16 +599,16 @@ class DataFormatter:
                         updated_polygon = dataclasses.replace(polygon, key_field="HeaderWords")
                         self.workflow.polygons[poly_id] = updated_polygon
                         marked_as_header += 1
-                        logger.debug(f"Polígono {poly_id} marcado como HeaderWords (en línea {header_line_id})")
+                        logger.info(f"Polígono {poly_id} marcado como HeaderWords (en línea {header_line_id})")
                 else:
                     # Este polígono NO pertenece a la línea de encabezado
                     if current_key_field == "HeaderWords":
                         updated_polygon = dataclasses.replace(polygon, key_field=None)
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_header += 1
-                        logger.debug(f"Polígono {poly_id} limpiado de HeaderWords (fuera de línea {header_line_id})")
+                        logger.info(f"Polígono {poly_id} limpiado de HeaderWords (fuera de línea {header_line_id})")
             
-            logger.debug(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
+            logger.info(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
             return True
             
         except Exception as e:
@@ -758,7 +770,8 @@ class DataFormatter:
             if marked_ids:
                 logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_debug in tabular_lines_debug:
-                    logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}' | polygons: {log_debug['polygon_ids']}")
+                    # logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}' | polygons: {log_debug['polygon_ids']}")
+                    logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
             else:
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 
@@ -916,4 +929,3 @@ class DataFormatter:
         except Exception as e:
             logger.debug(f"Error exportando payload json: {e}", exc_info=True)
             return False
-

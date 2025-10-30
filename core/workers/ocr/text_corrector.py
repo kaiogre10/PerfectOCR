@@ -5,6 +5,7 @@ from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
+from core.utils.text_encoder import get_morphological_map
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,6 @@ class TextCorrector(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get("text_corrector", {})
-        self.char_num = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"]
         
     def _load_correction_rules(self):
         """
@@ -191,18 +191,20 @@ class TextCorrector(OCRAbstractWorker):
             if char not in corrections_map:
                 continue
 
-            # Verificar si el carácter está AISLADO (sin vecinos del mismo tipo)
+            # Mantener tu chequeo de aislamiento
             if not self._is_isolated(text, i):
                 continue
 
-            # Log antes de corregir
+            if char == 'S' and self._should_use_five_instead_of_dollar(text, i, semantic_clasification):
+                replacement = '5'
+            else:
+                replacement = corrections_map[char]
+
             logger.info(
-                f"{polygon_id} Corrigiendo: '{char}' → '{corrections_map[char]}' "
+                f"{polygon_id} Corrigiendo: '{char}' → '{replacement}' "
                 f"en texto original: '{text}'"
             )
-
-            # Aplicar corrección
-            corrected_chars[i] = corrections_map[char]
+            corrected_chars[i] = replacement
             
         return ''.join(corrected_chars)
 
@@ -210,19 +212,13 @@ class TextCorrector(OCRAbstractWorker):
         """
         Verifica si un carácter está AISLADO (sin vecinos del mismo tipo).
         Ignora espacios al buscar vecinos.
-        
-        Args:
-            text: Texto completo
-            index: Índice del carácter a verificar
-            
-        Returns:
-            True si el carácter está aislado (sin vecinos del mismo tipo)
         """
         if index < 0 or index >= len(text):
             return False
             
+        char_num = get_morphological_map()
         current_char = text[index]
-        current_is_digit = current_char in self.char_num
+        current_is_digit = current_char in char_num
         current_is_alpha = current_char.isalpha()
         
         # Si no es letra ni número, no aplicar corrección
@@ -248,13 +244,13 @@ class TextCorrector(OCRAbstractWorker):
         has_right_match = False
         
         if left_neighbor:
-            if current_is_digit and left_neighbor in self.char_num:
+            if current_is_digit and left_neighbor in char_num:
                 has_left_match = True
             elif current_is_alpha and left_neighbor.isalpha():
                 has_left_match = True
         
         if right_neighbor:
-            if current_is_digit and right_neighbor in self.char_num:
+            if current_is_digit and right_neighbor in char_num:
                 has_right_match = True
             elif current_is_alpha and right_neighbor.isalpha():
                 has_right_match = True
@@ -271,3 +267,39 @@ class TextCorrector(OCRAbstractWorker):
         if semantic_clasification == 0:
             return self.descriptive_corrections
         return {}
+        
+    def _should_use_five_instead_of_dollar(self, text: str, index: int, semantic_clasification: int) -> bool:
+        # Aplica a numérico/cuantitativo
+        if semantic_clasification not in (1, 2):
+            return False
+        if index < 0 or index >= len(text):
+            return False
+        if text[index] != 'S':
+            return False
+
+        # Delimitar token por espacios
+        l = index
+        while l > 0 and text[l-1] != ' ':
+            l -= 1
+        r = index
+        while r + 1 < len(text) and text[r+1] != ' ':
+            r += 1
+        token = text[l:r+1]
+
+        # Debe ser cuantitativo real (contener dígitos)
+        if not any(ch.isdigit() for ch in token):
+            return False
+
+        # Si 'S' está al inicio del token: NO forzar '5' (permitir '$')
+        if index == l:
+            return False
+
+        # Contexto numérico local (vecinos)
+        left = text[index-1] if index-1 >= l else ' '
+        right = text[index+1] if index+1 <= r else ' '
+        left_numish = left.isdigit() or left in '.,'
+        right_numish = right.isdigit() or right in '.,'
+
+        # Si hay '$' antes en el token o está en contexto numérico → usar '5'
+        has_currency_before = '$' in token[:index - l]
+        return (has_currency_before or left_numish or right_numish)

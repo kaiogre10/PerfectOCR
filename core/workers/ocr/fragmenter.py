@@ -21,7 +21,7 @@ class Fragmenter(OCRAbstractWorker):
         self.config = config
         self.worker_config = self.config.get('fragmenter', {})
         self.binarizator_config = self.worker_config.get('binarizator', {})
-        self.min_contours_for_frag = self.worker_config.get("min_blobs_for_frag")
+        self.min_contours_for_frag = self.worker_config.get("min_blobs_for_frag", 2)
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("fragmented_polys", False)
 
@@ -50,7 +50,7 @@ class Fragmenter(OCRAbstractWorker):
                 blob_metrics = binarice(cropped_img, binarizator_config)
                 # Si no se pueden calcular blob_metrics, conservar el polígono tal cual.
                 if not blob_metrics:
-                    logger.info(f"Sin Metricas para: {poly_id}")
+                    logger.debug(f"Sin Metricas para: {poly_id}")
                     final_polygons.append(polygon)
                     continue
                     
@@ -113,7 +113,7 @@ class Fragmenter(OCRAbstractWorker):
                     if visual_needs_frag:
                         fragments = self.fragment_by_blobs(polygon, blob_metrics)
                     elif quant_needs_frag:
-                        fragments = self.fragment_by_quantitative(polygon, quant_runs)
+                        fragments = self.fragment_by_quantitative(polygon, quant_runs, blob_metrics)
                     elif text_needs_frag:
                         fragments = self.fragment_by_text(polygon)
                     elif punctuation_needs_frag:
@@ -156,33 +156,44 @@ class Fragmenter(OCRAbstractWorker):
             return False
 
     def fragment_by_blobs(self, polygon: Polygons, blob_metrics: Dict[str, Any]) -> List[Polygons]:
+        """
+        Fragmenta un polígono 1-a-1 con cada blob detectado,
+        garantizando geometría precisa (sin solapes ni desfases).
+        """
         new_polys: List[Polygons] = []
-        blobs_norm_boxes = blob_metrics["blobs_norm_boxes"]
-        num_blobs = blob_metrics.get('num_blobs')
+        blobs_norm_boxes = blob_metrics.get("blobs_norm_boxes", [])
+        num_blobs = blob_metrics.get("num_blobs", 0)
         text_parts = (polygon.ocr_text or "").strip().split()
-        
+
+        # Debe existir correspondencia exacta blobs ↔ palabras
         if not blobs_norm_boxes or num_blobs < self.min_contours_for_frag or len(text_parts) != num_blobs:
-            logger.debug(f"No se fragmenta: blobs/palabras {num_blobs} / {len(text_parts)}")
+            logger.debug(f"No se fragmenta: blobs/palabras {num_blobs}/{len(text_parts)}")
             return [polygon]
-            
+
+        # Padding coords = referencia absoluta del recorte
         pad_xmin, pad_ymin, _, _ = polygon.cropedd_geometry.padding_coords
-        poly_width = int(polygon.cropedd_geometry.croppy_dims.get('poly_width', 0))
-        poly_height = int(polygon.cropedd_geometry.croppy_dims.get('poly_height', 0))
-        if 0 >= poly_width or 0 >= poly_height:
-            logger.warning("Fragmenter: Dimensiones de recorte inválidas para fragmentación por blobs.")
+        poly_width  = polygon.cropedd_geometry.croppy_dims.get("poly_width", 0)
+        poly_height = polygon.cropedd_geometry.croppy_dims.get("poly_height", 0)
+
+        if poly_width <= 0 or poly_height <= 0:
+            logger.warning("Fragmenter: Dimensiones de recorte inválidas.")
             return [polygon]
 
-        for i, box_norm in enumerate(blobs_norm_boxes):
-            xn1, yn1, xn2, yn2 = box_norm
-            
-            xmin_abs = pad_xmin + (xn1 * poly_width)
-            xmax_abs = pad_xmin + (xn2 * poly_width)
-            ymin_abs = pad_ymin + (yn1 * poly_height)
-            ymax_abs = pad_ymin + (yn2 * poly_height)
+        for i, (xn1, yn1, xn2, yn2) in enumerate(blobs_norm_boxes):
+            # Clamp y conversión segura
+            xn1 = float(np.clip(xn1, 0.0, 1.0))
+            yn1 = float(np.clip(yn1, 0.0, 1.0))
+            xn2 = float(np.clip(xn2, 0.0, 1.0))
+            yn2 = float(np.clip(yn2, 0.0, 1.0))
 
-            new_bbox = np.array([xmin_abs, ymin_abs, xmax_abs, ymax_abs])
-            new_centroid = np.array([(xmin_abs + xmax_abs) / 2, (ymin_abs + ymax_abs) / 2])
-            
+            xmin_abs = round(pad_xmin + xn1 * poly_width)
+            xmax_abs = round(pad_xmin + xn2 * poly_width)
+            ymin_abs = round(pad_ymin + yn1 * poly_height)
+            ymax_abs = round(pad_ymin + yn2 * poly_height)
+
+            new_bbox = np.array([xmin_abs, ymin_abs, xmax_abs, ymax_abs], dtype=np.float32)
+            new_centroid = np.array([(xmin_abs + xmax_abs) / 2, (ymin_abs + ymax_abs) / 2], dtype=np.float32)
+
             new_geom = dataclasses.replace(
                 polygon.geometry,
                 bounding_box=new_bbox,
@@ -192,13 +203,12 @@ class Fragmenter(OCRAbstractWorker):
                     [new_bbox[2], new_bbox[1]],
                     [new_bbox[2], new_bbox[3]],
                     [new_bbox[0], new_bbox[3]],
-                ])
+                ], dtype=np.float32)
             )
-            
-            frag_text = text_parts[i] if i < len(text_parts) else ""
-            
-            # logger.info(f"Fragmento visual: texto='{frag_text}'") #, bbox={new_bbox.tolist()}")
 
+            frag_text = text_parts[i]  # 1-a-1 con blobs
+            
+            logger.info(f"Fragmento visual: texto='{frag_text}'") #, bbox={new_bbox.tolist()}")
             new_poly = dataclasses.replace(
                 polygon,
                 geometry=new_geom,
@@ -415,7 +425,7 @@ class Fragmenter(OCRAbstractWorker):
 
         return new_polys
         
-    def fragment_by_quantitative(self, polygon: Polygons, quant_runs: List[Tuple[int, int, str]]) -> List[Polygons]:
+    def fragment_by_quantitative(self, polygon: Polygons, quant_runs: List[Tuple[int, int, str]], blob_metrics: Dict[str, Any] | None = None) -> List[Polygons]:
         """
         Fragmenta un polígono que contiene múltiples tokens cuantitativos.
         - Si hay espacios: fragmenta por espacios (preserva todo el texto)
@@ -425,16 +435,22 @@ class Fragmenter(OCRAbstractWorker):
         if not utils.validate_string(text): #type: ignore
             return [polygon]
         
-        # ESTRATEGIA 1: Si hay espacios, fragmentar por espacios (como _fragment_by_text)
-        if " " in text:
-            parts = [p for p in text.split(' ') if p]
-        else:
-            # ESTRATEGIA 2: Si no hay espacios, fragmentar por patrones cuantitativos
-            parts = [tok for _, _, tok in quant_runs]
+        # Obtener partes a partir de runs cuantitativos (ya filtrados)
+        parts = [tok for _, _, tok in quant_runs] or text.split()
+
+        # Intentar usar blobs si coinciden en número
+        if blob_metrics:
+            boxes = blob_metrics.get("blobs_norm_boxes", [])
+            if boxes and len(boxes) >= len(parts):
+                # Ordenar cajas por xmin y tomar las k primeras más a la izquierda
+                boxes_sorted = sorted(boxes, key=lambda b: b[0])
+                selected = boxes_sorted[: len(parts)]
+                return self._fragment_using_boxes(polygon, parts, selected)
         
         if self.min_contours_for_frag > len(parts):
             return [polygon]
 
+        # ---- Fallback proporcional (lógica existente) ----
         char_lengths = [len(p) for p in parts]
         total_chars = sum(char_lengths) or 1
 
@@ -464,7 +480,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
 
-            logger.info(f"Fragmento por cuantitativo: texto='{part}', bbox={new_bbox.tolist()}")
+            logger.info(f"Fragmento por cuantitativo: texto original: {polygon.ocr_text}, texto nuevo='{part}', bbox={new_bbox.tolist()}")
 
             new_polys.append(dataclasses.replace(
                 polygon,
@@ -473,6 +489,45 @@ class Fragmenter(OCRAbstractWorker):
                 was_refined=True
             ))
             current_x = new_xmax
+        return new_polys
+
+    def _fragment_using_boxes(self, polygon: Polygons, parts: List[str], boxes_norm: List[List[float]]) -> List[Polygons]:
+        """Crea fragmentos usando cajas normalizadas (exactas)"""
+        new_polys: List[Polygons] = []
+        pad_xmin, pad_ymin, _, _ = polygon.cropedd_geometry.padding_coords
+        poly_width = polygon.cropedd_geometry.croppy_dims.get("poly_width", 0)
+        poly_height = polygon.cropedd_geometry.croppy_dims.get("poly_height", 0)
+
+        if poly_width <= 0 or poly_height <= 0:
+            return [polygon]
+
+        for i, (xn1, yn1, xn2, yn2) in enumerate(boxes_norm):
+            xn1 = float(np.clip(xn1, 0, 1)); yn1 = float(np.clip(yn1, 0, 1))
+            xn2 = float(np.clip(xn2, 0, 1)); yn2 = float(np.clip(yn2, 0, 1))
+
+            xmin_abs = round(pad_xmin + xn1 * poly_width)
+            xmax_abs = round(pad_xmin + xn2 * poly_width)
+            ymin_abs = round(pad_ymin + yn1 * poly_height)
+            ymax_abs = round(pad_ymin + yn2 * poly_height)
+
+            new_bbox = np.array([xmin_abs, ymin_abs, xmax_abs, ymax_abs], dtype=np.float32)
+            new_centroid = np.array([(xmin_abs + xmax_abs)/2, (ymin_abs + ymax_abs)/2], dtype=np.float32)
+
+            new_geom = dataclasses.replace(
+                polygon.geometry,
+                bounding_box=new_bbox,
+                centroid=new_centroid,
+                polygon_coords=np.array([
+                    [new_bbox[0], new_bbox[1]],
+                    [new_bbox[2], new_bbox[1]],
+                    [new_bbox[2], new_bbox[3]],
+                    [new_bbox[0], new_bbox[3]],
+                ], dtype=np.float32)
+            )
+
+            frag_text = parts[i] if i < len(parts) else ""
+            new_polys.append(dataclasses.replace(polygon, geometry=new_geom, ocr_text=frag_text, was_refined=True))
+
         return new_polys
 
     def get_semantic_type_name(self, semantic_clasification: int, manager: DataFormatter) -> str:

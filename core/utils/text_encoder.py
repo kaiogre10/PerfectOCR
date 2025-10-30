@@ -21,9 +21,13 @@ def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
             logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
         return []
         
-def get_morphological_map(text: str) -> List[float]:
+def get_morphological_map() -> List[str]:
     char_num: List[str] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"]
+    return char_num
+        
+def get_morphological_encode(text: str) -> List[float]:
     try:
+        char_num = get_morphological_map()
         result: List[float] = []
         if not utils.validate_string(text):  # type:ignore
             return []

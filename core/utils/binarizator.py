@@ -11,15 +11,17 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
     """
     Binariza la imagen, extrae métricas robustas de componentes conectados (CC) y decide si necesita fragmentación.
     """
-    c_value = worker_config.get('c_value', 7)
+    c_value: int = worker_config.get('c_value', 7)
     height_thresholds: List[int] = worker_config['height_thresholds_px']
     block_sizes_map: List[int] = worker_config['block_sizes_map']
-    min_area_factor: float = worker_config.get('min_area_factor', 0.001)
+    min_area_factor: float = worker_config.get('min_area_factor', {})
     height = int(cropped_img.shape[0])
-    area = float(cropped_img.size)
-    area_min: float = area * min_area_factor
+    area = cropped_img.size
+
+    area_min = area*min_area_factor
     block = get_adaptive_block_size(height, height_thresholds, block_sizes_map)
     mode: str = measure_polygon_quality(cropped_img)
+
 
     if mode == "otsu":
         bin_img = otsu_binarize(cropped_img)

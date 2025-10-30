@@ -8,24 +8,24 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-#     - "moire"
- #    - "sp"
-  #   - "gauss"
-    #  - "ink_enhancement"
-  #   - "clahe"
-   #  - "sharp"
+    - "moire"
+    - "sp"
+    - "gauss"
+    - "ink_enhancement"
+    - "clahe"
+    - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
-    - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
+    # - "lineal"
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
+    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -46,7 +46,7 @@ enabled_outputs:
   ocr_raw: false
   fragmented_polys: false
   reconstructed_lines: false
-  semantic_field: false
+  semantic_field: true
   table_lines: false
   encoded_lines: false
   features: false
@@ -82,7 +82,7 @@ modules:
   image_preparation:
   
     angle_corrector:
-      min_angle_for_correction: 0.15
+      min_angle_for_correction: 2.0
       canny_thresholds: [50, 150]
       hough_threshold: 150
       hough_min_line_length_cap_px: 300
@@ -100,7 +100,7 @@ modules:
       cropping_padding: 2
       bin_interval: [10, 250]
       percentil: 0.5
-      angle_thr: [44.5, 45.5]
+      angle_thr: [44.9, 45.1]
 
   preprocessing:
     moire:
@@ -142,12 +142,10 @@ modules:
         
   ocr:
     paddle_wrapper:
-      min_confidence: 65.0
+      min_confidence: 60.0
 
     fragmenter:
-      min_blobs_for_frag: 3
-      gap_threshold_norm: 0.01
-      min_area_factor: 0.01
+      min_contours_for_frag: 2
       binarizator:
         c_value: 7
         height_thresholds_px: [100, 800, 1500, 2500]
@@ -158,9 +156,12 @@ modules:
         width_var_threshold: 0.25
         k_sigma: 1.25
         min_gap_outlier: 0.5
+        min_area_factor: 0.01
+        min_blobs_for_frag: 3
+        gap_threshold_norm: 0.01
       
     text_refiner:
-      num_passes: 1
+      num_passes: 2
   
     text_cleaner:
       min_probability: 75.0
@@ -186,7 +187,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: false
+      keywords_interval_enabled: true
       exclude_types: [
         "descriptive",
         "code", 
@@ -205,7 +206,7 @@ modules:
     cos_sim:
       min_cluster: 1
       similarity_threshold: 0.90
-      emergency_threshold: 0.80
+      emergency_threshold: 0.75
       interval: 2
       dummie_weights: [0.35, 0.65]
     

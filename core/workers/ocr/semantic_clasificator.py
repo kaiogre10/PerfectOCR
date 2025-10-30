@@ -5,7 +5,7 @@ from typing import Dict, Any, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_encoder import encode_text, get_morphological_map
+from core.utils.text_encoder import encode_text, get_morphological_encode, get_morphological_map
 from core.utils.pattern_finder import find_umd, find_quantitative, contains_quantitative
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,6 @@ class SemanticClasificator(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get("semantic_clasificator", {})
-        self.char_num = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"]
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("semantic_field", False)
             
@@ -91,7 +90,8 @@ class SemanticClasificator(OCRAbstractWorker):
         for pid, s in texts.items():
             chars = [ch for ch in s if not ch.isspace()]
             total = len(chars)
-            pct = (sum(1 for ch in chars if ch in self.char_num) / total) * 100.0 if total else 0.0
+            char_num = get_morphological_map()
+            pct = (sum(1 for ch in chars if ch in char_num) / total) * 100.0 if total else 0.0
 
             encoded_poly = encode_text(s, encoder)
             poly_mean = np.mean(encoded_poly)
@@ -99,14 +99,14 @@ class SemanticClasificator(OCRAbstractWorker):
             inv_encoded_poly = encode_text(s, inv_encoder)
             inv_poly_mean = np.mean(inv_encoded_poly)
 
-            morph_text = get_morphological_map(s)
+            morph_text = get_morphological_encode(s)
             poly_morph_mean = np.mean(morph_text) if morph_text else - 1.0
 
             # Lógica de clasificación simplificada a enteros
             semantic_type = 0  # descriptive por defecto
             
             if contains_quantitative(s):
-                semantic_type = 2  # quantitative
+               semantic_type = 2  # quantitative
             elif find_umd(s):
                 semantic_type = -2  # umd
             elif  morph_mean[1] < poly_morph_mean and poly_mean < encode_mean[0] and encode_mean[1] < inv_poly_mean and semantic_range[1] < pct :

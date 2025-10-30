@@ -60,7 +60,7 @@ class AllLines:
     header_line: Optional[str]
     footer_line: Optional[str]
     
-@dataclass(frozen=True)
+@dataclass
 class Metadata:
     image_name: str
     img_dims: Dict[str, int]
