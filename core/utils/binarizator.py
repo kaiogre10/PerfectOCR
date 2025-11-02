@@ -1,4 +1,4 @@
-# PerfectOCR/core/utils/binarization.py
+# PerfectOCR/core/utils/binarizator.py
 import cv2
 import numpy as np
 import logging
@@ -7,11 +7,11 @@ from skimage.filters import threshold_sauvola  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
+def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Binariza la imagen, extrae métricas robustas de componentes conectados (CC) y decide si necesita fragmentación.
     """
-    c_value: int = worker_config.get('c_value', 7)
+    c_value: int = worker_config.get('c_value', {})
     height_thresholds: List[int] = worker_config['height_thresholds_px']
     block_sizes_map: List[int] = worker_config['block_sizes_map']
     min_area_factor: float = worker_config.get('min_area_factor', {})
@@ -22,7 +22,6 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
     block = get_adaptive_block_size(height, height_thresholds, block_sizes_map)
     mode: str = measure_polygon_quality(cropped_img)
 
-
     if mode == "otsu":
         bin_img = otsu_binarize(cropped_img)
     elif mode == "adaptive_gaussian":
@@ -32,7 +31,7 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
     else:
         bin_img = adaptive_mean_fallback(cropped_img, block, c_value)
 
-    bin_img = cv2.bitwise_not(bin_img)
+    bin_img = cv2.bitwise_not(bin_img).astype(np.uint8)
     
     cc_metrics = extract_cc_metrics(bin_img, area_min)
 
@@ -71,7 +70,7 @@ def binarice(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Di
 def get_adaptive_block_size(height: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
     """Calcula el tamaño de bloque adaptativo basado en la altura del polígono."""
     for i, threshold in enumerate(height_thresholds):
-        if height <= threshold:
+        if height < threshold:
             block_size = block_sizes_map[min(i, len(block_sizes_map) - 1)]
             return max(3, block_size if block_size % 2 != 0 else block_size + 1)
     final_block_size = block_sizes_map[-1]
@@ -101,38 +100,31 @@ def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) ->
     else:
         return "adaptive_mean"  # Bajo contraste, imagen "plana"
 
-def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[np.int8, Any]:
-    _, bin_img = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    resultis = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    bin_img = resultis[1].astype(np.uint8)
     return bin_img
 
-def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[
-    np.int8, Any]:
-    return cv2.adaptiveThreshold(
-        cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY, block_size, c_value
-    )
+def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value).astype(np.uint8)
 
-def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[
-    np.int8, Any]:
+def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
     thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size)  # type: ignore
     bin_bool: np.ndarray[np.uint8, Any] = (cropped_img > thresh_sauvola)  # type: ignore
     bin_img = (bin_bool.astype(np.uint8) * 255)  # type: ignore
     return bin_img  # type: ignore
 
-def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> \
-np.ndarray[np.int8, Any]:
+def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return cv2.adaptiveThreshold(
-        cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-        cv2.THRESH_BINARY, block_size, max(1, c_value - 2)
-    )
+        cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)).astype(np.uint8)
 
-def extract_cc_metrics(bin_img: np.ndarray[np.int8, Any], min_area: float) -> Dict[str, Any]:
+def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], min_area: float) -> Dict[str, Any]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área, Ratio de Aspecto y Solidez.
     """
-    # bin_img: uint8, foreground=255, background=0
+    # bin_img: np.uint8, foreground=255, background=0
     # 1. Etiquetado rápido
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity=8)
 
@@ -152,18 +144,10 @@ def extract_cc_metrics(bin_img: np.ndarray[np.int8, Any], min_area: float) -> Di
         if area < min_area:
             continue
 
-        # --- Filtro 2: Ratio de Aspecto (Filtro rápido contra rayones) ---
-        if h == 0 or w == 0:
-            continue
-        aspect_ratio = w / float(h)
-        # Descartar formas extremadamente anchas o altas (rayones)
-        if aspect_ratio > 20.0 or aspect_ratio < 0.05:
-            continue
-
         # --- Filtro 3: Solidez (Filtro robusto contra manchas/ruido) ---
         try:
             # Crear una máscara solo para este blob
-            component_mask: np.ndarray[np.uint8, Any] = (labels == lab).astype(np.uint8) * 255
+            component_mask: np.ndarray[Any, np.dtype[np.uint8]] = ((labels == lab).astype(np.uint8) * 255)
             # Encontrar contornos solo en esta máscara (muy rápido)
             contours, _ = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -217,7 +201,7 @@ def extract_cc_metrics(bin_img: np.ndarray[np.int8, Any], min_area: float) -> Di
         # Normalizar gap por la altura media de caracteres
         gaps.append(max(0.0, gap_px) / max(1.0, H_mean))
 
-    metrics = {
+    metrics: Dict[str, Any] = {
         "cc": cc_sorted,
         "H_mean": H_mean,
         "density": density,
@@ -265,7 +249,7 @@ def decide_split(metrics: Dict[str, Any], cfg: Dict[str, Any]) -> Tuple[bool, Di
     split_indices = np.where(gaps > threshold)[0]
 
     if len(split_indices) > 0:
-        reason_info = {
+        reason_info: Dict[str, Any] = {
             "reason": "gap_outlier",
             "positions_idx": split_indices.tolist(),
             "gaps_found": gaps[split_indices].tolist(),

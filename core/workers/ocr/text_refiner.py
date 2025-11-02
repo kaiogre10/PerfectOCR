@@ -54,6 +54,9 @@ class Refiner(OCRAbstractWorker):
                 logger.debug(f"Bucle #{pass_num}: Corrección textual")
                 self.corrector.transcribe(context, manager)
 
+            if manager.delete_cropped_images():
+                logger.warning(f"Imagenes recortadas liberadas exitosamente")
+
             # Clasificación final completa para asegurar consistencia
             logger.debug(f"Pasada final: Clasificación Semántica (completa)")
             self.clasificator.transcribe(context, manager)

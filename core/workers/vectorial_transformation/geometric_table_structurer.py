@@ -323,7 +323,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     for col_idx in available_columns:
                         if col_idx < len(header_centroids):
                             header_centroid = header_centroids[col_idx]
-                            distance: float = euclidean_distance(element_centroid, header_centroid) # type: ignore
+                            distance: float = euclidean_distance(element_centroid, header_centroid)
                             distances.append((distance, col_idx))
                     
                     # Asignar a la columna con menor distancia si hay distancias calculadas
@@ -387,7 +387,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # Si el elemento ES restrictivo, verificar que no haya otros restrictivos en la celda
             for existing_element in cell_content:
                 existing_semantic_val = existing_element.get('semantic_clasification', 0)
-                existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val]) # type: ignore
+                existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val])
                 
                 if existing_semantics & restricted_types:
                     return False
