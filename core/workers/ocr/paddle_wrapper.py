@@ -136,7 +136,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             }
 
                         else:
-                            logger.info(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
+                            logger.debug(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
 
                         logger.debug(f"Resultados: {poly_id}: Texto='{text}', Confianza='{confidence_pct}%'")
                         

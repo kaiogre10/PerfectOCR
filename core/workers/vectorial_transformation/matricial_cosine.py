@@ -208,12 +208,12 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Convertir la matriz dispersa a densa para mostrarla
         sims_mat_dense= sims_mat.toarray() #type: ignore
         mean_log = np.mean(sims_mat_dense) # type: ignore
-        logger.info(f"Promedio matriz: {mean_log}")
+        logger.debug(f"Promedio matriz: {mean_log}")
         logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in candidate_line_ids))
         matriz_str = "\n".join(
-            ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense]
+            ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense] # type: ignore
         )
-        logger.info("Matriz:\n%s", matriz_str)
+        logger.debug("Matriz:\n%s", matriz_str)
 
         # para cada fila, calcular similitud media con las demás (excluir self)
         mean_sims: List[float] = []
@@ -230,7 +230,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             if mean_sim > similarity_threshold:
                 matched_original_indices.append(int(orig_idx))
                 consecutive_failures += 1
-            logger.info(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
+            logger.debug(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
 
         # Si hay validaciones por coseno, devolver todo el intervalo hasta la última validada
         if matched_original_indices:
@@ -394,14 +394,14 @@ class MatricialCusine(VectorizationAbstractWorker):
         # 3. Ponderación de resultados
         sims_final = (sims_median * median_w) + (sims_mean * mean_w)
         
-        logger.info(f"Promedio de similitud final ponderada: {np.mean(sims_final):.6f}")
+        logger.debug(f"Promedio de similitud final ponderada: {np.mean(sims_final):.6f}")
         logger.debug("Todas las líneas ordenadas: %s", ", ".join(str(lid) for lid in all_line_ids))
         sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims_final) + "]"
         logger.debug("Similitudes de emergencia finales:\n%s", sims_str)
 
         # Log detallado por línea
-        for idx, (line_id, sim) in enumerate(zip(all_line_ids, sims_final)):
-            logger.info(f"{line_id}: Sim: {sim:7.4f}")
+        for idx, (line_id, sim) in enumerate(zip(all_line_ids, sims_final)): # type: ignore
+            logger.debug(f"{line_id}: Sim: {sim:7.4f}")
         try:
             matched_indices = [idx for idx, sim in enumerate(sims_final) if sim > similarity_threshold]
 
@@ -423,7 +423,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             # Encontrar el cluster más grande que respete min_cluster e interval
             table_line_ids = self._find_best_cluster(sorted_candidates, min_cluster, interval_margin, all_lines)
             
-            logger.info(f"Cluster '{len(table_line_ids)}' encontrado por fallback de emergencia: {table_line_ids}")
+            logger.debug(f"Cluster '{len(table_line_ids)}' encontrado por fallback de emergencia: {table_line_ids}")
             return table_line_ids
         except Exception as e:
             logger.error(f"Error en falback de emergencia: {e}", exc_info=True)

@@ -24,7 +24,7 @@ class DataFinder(OCRAbstractWorker):
             if self._model is None: #type: ignore
                 model_manager = ModelsManager.get_instance()
                 self._model = model_manager.word_finder #type: ignore
-                logger.info("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
+                logger.debug("DataFinder: Modelo de búsqueda obtenido del ModelsManager")
             return self._model #type: ignore
 
         except Exception as e:
@@ -35,7 +35,7 @@ class DataFinder(OCRAbstractWorker):
 
         start_time = time.time()
         try:
-            logger.info("Data Finder iniciado")
+            logger.debug("Data Finder iniciado")
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
                 
@@ -49,7 +49,7 @@ class DataFinder(OCRAbstractWorker):
             # Actualiza las líneas marcadas como encabezado en las dataclasses
             if manager.update_key_field(polygon_updates):
                 total_time = time.time() - start_time
-                logger.info(f"Key Fields detectados en {total_time:6f}s")
+                logger.debug(f"Key Fields detectados en {total_time:6f}s")
                 return True
                 
         except Exception as e:

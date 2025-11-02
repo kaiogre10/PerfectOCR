@@ -43,7 +43,7 @@ class TextCleaner(OCRAbstractWorker):
             key=lambda p_id: (polygons_in[p_id].geometry.centroid[1], polygons_in[p_id].geometry.centroid[0])
         )
 
-        logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+        logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
         list_of_final_polygons: List[Polygons] = []
         eliminated_count = 0
 
@@ -54,13 +54,13 @@ class TextCleaner(OCRAbstractWorker):
             text = polygon.ocr_text or ""
 
             if not validate_text(text):
-                logger.info(f"Eliminado {poly_id} sin texto inicial")
+                logger.debug(f"Eliminado {poly_id} sin texto inicial")
                 eliminated_count += 1
                 continue
             
             fil_text = self._filter_low_prob_tokens(text, polygon, manager)
             if not validate_text(fil_text):
-                logger.info(f"Eliminado {poly_id} sin texto después de filtrado de probabilidad")
+                logger.debug(f"Eliminado {poly_id} sin texto después de filtrado de probabilidad")
                 eliminated_count += 1
                 continue
 
@@ -74,7 +74,7 @@ class TextCleaner(OCRAbstractWorker):
                 reason = "sin texto" if not validate_text(text) \
                     else f"baja confianza ({confidence:.2f})" if confidence < self.min_confidence and not is_numeric_like \
                     else "solo caracteres de puntuación"
-                logger.info(f"Eliminado {poly_id}: '{text}' (Razón: {reason})")
+                logger.debug(f"Eliminado {poly_id}: '{text}' (Razón: {reason})")
                 eliminated_count += 1
                 continue
 
@@ -100,7 +100,7 @@ class TextCleaner(OCRAbstractWorker):
             # 5. Reemplazo directo en el manager
         manager.workflow.polygons = final_polygons_dict
 
-        logger.info(f"{eliminated_count} limpios. Total final: {len(final_polygons_dict)}")
+        logger.debug(f"{eliminated_count} limpios. Total final: {len(final_polygons_dict)}")
             
         return True
 

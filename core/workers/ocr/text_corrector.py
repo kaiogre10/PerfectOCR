@@ -11,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 class TextCorrector(OCRAbstractWorker):
     """
-    Corrector textual quirúrgico que realiza reemplazos especializados de caracteres
-    según el tipo semántico de cada polígono:
+    - Corrector textual quirúrgico que realiza reemplazos especializados de caracteres según el tipo semántico de cada polígono:
     - Según la clasificación semántica aplica correcciones específicas.
     - Solo hace reemplazos de caracteres, no corrección ortográfica.
     - Es recursivo: itera sobre todos los polígonos aplicando correcciones especializadas.
@@ -56,7 +55,7 @@ class TextCorrector(OCRAbstractWorker):
             
             # Si el texto está vacío, no hay nada que corregir
             if not validate_text(original_text):
-                logger.info(f"Sin texto: {poly_id}: '{original_text}'")
+                logger.debug(f"Sin texto: {poly_id}: '{original_text}'")
                 continue
             
             # Filtro de confianza
@@ -76,7 +75,7 @@ class TextCorrector(OCRAbstractWorker):
                 correction_stats[semantic_type] += 1
                 correction_stats["total_corrections"] += 1
                 
-                logger.info(
+                logger.debug(
                     f"Corrección {poly_id}: "
                     f"Tipo: '{semantic_type}' | "
                     f"Confianza: '{confidence}' | "
@@ -87,8 +86,8 @@ class TextCorrector(OCRAbstractWorker):
                 
         manager.workflow.polygons = corrected_polygons
         
-        logger.info(f"Total correcciones: {correction_stats['total_corrections']}")
-        logger.info(
+        logger.debug(f"Total correcciones: {correction_stats['total_corrections']}")
+        logger.debug(
             f"Corrección textual - "
             f"Alta confianza omitidos: {correction_stats['skipped_high_confidence']} | "
             f"Numeric: {correction_stats['numeric']} | "
@@ -108,7 +107,7 @@ class TextCorrector(OCRAbstractWorker):
         
         # Si la clasificación es una lista, debe corresponder con los tokens
         is_list_classification = isinstance(semantic_clasification, list)
-        logger.info(f"Procesando {polygon_id}: '{text}' | Clasificación: {semantic_clasification}")
+        logger.debug(f"Procesando {polygon_id}: '{text}' | Clasificación: {semantic_clasification}")
         if is_list_classification and len(semantic_clasification) != len(tokens):
             logger.warning(f"Discrepancia en {polygon_id}: {len(tokens)} tokens vs {len(semantic_clasification)} clasificaciones. No se corrige.")
             return text
@@ -128,7 +127,7 @@ class TextCorrector(OCRAbstractWorker):
         """Aplica correcciones a un único token basado en su clasificación semántica."""
         if semantic_clasification in [-1, -2]:
             semantic_type = "umd" if semantic_clasification == -2 else "code"
-            logger.info(f"Omitiendo corrección de token en {polygon_id}: '{semantic_type}', '{token}'")
+            logger.debug(f"Omitiendo corrección de token en {polygon_id}: '{semantic_type}', '{token}'")
             return token
             
         # Seleccionar el diccionario de correcciones apropiado
@@ -151,11 +150,11 @@ class TextCorrector(OCRAbstractWorker):
 
             if char == 'S' and self._should_use_five_instead_of_dollar(token, i, semantic_clasification):
                 replacement = '5'
-                logger.info(f"{polygon_id}: Regla especial S->5 en '{token}'")
+                logger.debug(f"{polygon_id}: Regla especial S->5 en '{token}'")
             else:
                 replacement = corrections_map[char]
 
-            logger.info(
+            logger.debug(
                 f"{polygon_id}: Clasificación: {semantic_clasification} Corrigiendo: '{char}' => '{replacement}'"
                 f"en texto original: '{token}'"
             )

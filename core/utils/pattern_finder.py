@@ -6,11 +6,8 @@ from core.utils.text_encoder import validate_text
 logger = logging.getLogger(__name__)
 
 def is_acronym(text: str) -> bool:
+    """Detecta siglas del tipo A.B.C. o P.U.C.D con punto final opcional y, admite un signo ':' ';' ',' opcional al final. """
     try:
-        """
-        Detecta siglas del tipo A.B.C. o P.U.C.D con punto final opcional
-        y, a partir de ahora, admite un signo ':' ';' ',' opcional al final.
-        """
         if not validate_text(text):
             return False
             
@@ -26,8 +23,6 @@ def find_umd(s: str) -> bool:
         if not validate_text(s): #type: ignore
             return False
 
-        # Regex Maestra para capturar la unidad y el valor
-        # Nota: La diagonal debe ser escapada: \/
         umd_patterns = r'\b(\d+([,\.]\d+)?)\s*(/)?\s*(k(g(r)?|ilo(s)?)|g(r|ramo(s)?|m)?|mg|m(t(r)?|etro(s)?|2|\\^2)?|cm|l(t(r)?|itro(s)?|ml)?|cc|ud(s)?|pza(s)?|cj(s)?)\b'
         if re.search(umd_patterns, s):
                 return True
@@ -87,7 +82,6 @@ def get_quantitative_patterns() -> Dict[str, str]:
     Función interna que centraliza todos los patrones regex para reutilización.
     Ahora acepta la letra o/O como posible dígito para robustecer contra errores de OCR.
     """
-    # Incluimos o y O como posibles dígitos
     digit = r"[0-9oO]"
     currency = r"[$¢]"
     amount_body = rf"(?:{digit}{{1,3}}(?:[.,]{digit}{{3}})*|{digit}+)(?:[.,]{digit}+)?"
@@ -108,7 +102,7 @@ def find_quantitative(s: str) -> bool:
     Ahora acepta la letra o/O como posible dígito para robustecer contra errores de OCR.
     """
     s = (s or "").strip()
-    if not s or "%" in s:
+    if not validate_text(s) or "%" in s:
         return False
 
     # Normaliza letras o/O a 0 para la validación final

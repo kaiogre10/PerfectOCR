@@ -29,7 +29,7 @@ pipeline_secuence:
     # - "table_validated"
     # - "math_max"
 
-# Configuración de salida (independiente)
+# Configuración de salida
 enabled_outputs:
   pre_clean: false
   angle_corrected: false
@@ -100,7 +100,7 @@ modules:
       cropping_padding: 2
       bin_interval: [10, 250]
       percentil: 0.5
-      angle_thr: [44.9, 45.1]
+      angle_thr: [44.5, 45.5]
 
   preprocessing:
     moire:
@@ -187,7 +187,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: true
+      keywords_interval_enabled: false
       exclude_types: [
         "descriptive",
         "code", 

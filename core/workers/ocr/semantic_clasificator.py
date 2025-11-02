@@ -42,7 +42,7 @@ class SemanticClasificator(OCRAbstractWorker):
             final_results: Dict[str, int | List[int]] = self._clasify_words(polygons_to_classify, encoder, inv_encoder)
             
             classified_count = len(final_results)
-            logger.info(f"Total clasificados: {classified_count}")
+            logger.debug(f"Total clasificados: {classified_count}")
 
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results)
@@ -50,7 +50,7 @@ class SemanticClasificator(OCRAbstractWorker):
             for poly_id, polygon in polygons_to_classify.items():
                 text = polygon.ocr_text
                 sc = polygon.semantic_clasification
-                logger.info(f"Clasificación {poly_id}: '{text}', '{sc}'")
+                logger.debug(f"Clasificación {poly_id}: '{text}', '{sc}'")
 
             if self.output:
                 from services.output_service import save_debug_ocr

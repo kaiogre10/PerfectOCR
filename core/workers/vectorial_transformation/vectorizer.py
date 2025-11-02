@@ -18,7 +18,7 @@ class Vectorizer(VectorizationAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('vectorizer', {})
         self.keywords_interval_enabled = self.worker_config.get('keywords_interval_enabled', True)
-        self.exclude_types =  self.worker_config.get('exclude_types', [])
+        self.exclude_types =  self.worker_config['exclude_types']
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
         self.second_output = self.enabled_outputs.get("encoded_lines", False)
@@ -27,8 +27,8 @@ class Vectorizer(VectorizationAbstractWorker):
         self.char_num = get_char_num()
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        start_time = time.perf_counter()
         try:
-            start_time = time.perf_counter()
             logger.debug("Comienza Vectorizer")
             logger.warning(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
 
@@ -144,8 +144,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Línea inferior
                 table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 table_str = "\n".join(table)
-                logger.info(f"\nTabla unificada características:\n{table_str}")
-                logger.info(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
+                logger.debug(f"\nTabla unificada características:\n{table_str}")
+                logger.debug(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
                 return all_features
             else:
                 logger.warning("No se pudieron calcular features para ninguna línea")
@@ -193,8 +193,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     for pid in poly_ids_line:
                         if pid in polygons_dict:
                             sc = polygons_dict[pid].semantic_clasification
-                            if self._is_numeric_polygon(sc, manager):
-                                numeric_count += 1.0
+                            numeric_count += self.count_numeric_tokens(sc, manager)
                 
                 all_numerics = line_features.get("total_numerics_global") or 1.0  # Total de claisificación numerica o quantitativa en todas las líneas (global).
                 max_numeric_count = line_features.get("max_numeric_count_global") or 1.0  # Cantidad máxima de claisificación numerica o quantitativa encontrados en una sola línea (global).
@@ -376,7 +375,6 @@ class Vectorizer(VectorizationAbstractWorker):
             digit_count_by_line: Dict[str, float] = {}
             numeric_counts_by_line: Dict[str, float] = {}
             for line_id, line_data in sorted_lines:
-                dcount = 0.0
                 ncount = 0.0
                 poly_ids_line = getattr(line_data, "polygon_ids", []) or []
                 if manager.workflow and manager.workflow.polygons and poly_ids_line:
@@ -384,8 +382,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     for pid in poly_ids_line:
                         if pid in polygons_dict:
                             sc = polygons_dict[pid].semantic_clasification
-                            if self._is_numeric_polygon(sc, manager):
-                                ncount += 1.0
+                            ncount += self.count_numeric_tokens(sc, manager)
                 numeric_counts_by_line[line_id] = ncount
                 
                 line_text = getattr(line_data, "text", "") or ""
@@ -523,26 +520,21 @@ class Vectorizer(VectorizationAbstractWorker):
         logger.debug(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
 
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
-        logger.debug(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
+        logger.debug(f"Tabular lines desde vectorizer: {tabular_line_ids}")
         return tabular_line_ids
 
-    def _is_numeric_polygon(self, semantic_clasification: int | List[int], manager: DataFormatter) -> bool:
+    def count_numeric_tokens(self, semantic_clasification: int | List[int], manager: DataFormatter) -> int:
         """
-        Determina si un polígono debe contarse como numérico basado en su clasificación semántica.
-        Usa la configuración del YAML para determinar qué tipos excluir.
-        
-        Args:
-            semantic_clasification: int - Tipo semántico
-            manager: DataFormatter - Para obtener el mapeo de tipos
+        Cuenta cuántos tokens en un polígono son numéricos o cuantitativos, respetando exclusiones.
         """
-        # Obtener el mapeo desde el formatter
         semantic_map = manager.get_semmantic_types()
+        exclude_ints = {semantic_map.get(et) for et in self.exclude_types if semantic_map.get(et) is not None}
+
+        classifications = semantic_clasification if isinstance(semantic_clasification, list) else [semantic_clasification]
+
+        # Si algún token tiene un tipo excluido, el polígono entero se considera no numérico.
+        if any(sc in exclude_ints for sc in classifications):
+            return 0
         
-        # Verificar si el tipo actual está en los tipos excluidos
-        for exclude_type_str in self.exclude_types:
-            exclude_type_int = semantic_map.get(exclude_type_str)
-            if exclude_type_int is not None and semantic_clasification == exclude_type_int:
-                return False
-        
-        # Por defecto, considerar numérico si es quantitative (2) o numeric (1)
-        return semantic_clasification in [1, 2]
+        # De lo contrario, cuenta los tokens que son numéricos (1) o cuantitativos (2).
+        return sum(1 for sc in classifications if sc in [1, 2])

@@ -34,7 +34,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             
             total_time1 = time.time() - start_time
 
-            logger.info(f"'{len(lines_info)}' líneas amadas en {total_time1:.10f}")
+            logger.debug(f"'{len(lines_info)}' líneas amadas en {total_time1:.10f}")
 
             success = manager.create_text_lines(lines_info)
             if success:

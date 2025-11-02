@@ -434,7 +434,7 @@ class DataFormatter:
                     updated_count += 1
 
             if updated_count > 0:
-                logger.info(f"Actualizados {updated_count} polígonos con semantic_clasifications")
+                logger.debug(f"Actualizados {updated_count} polígonos con semantic_clasifications")
             return True
             
         except Exception as e:
@@ -588,7 +588,8 @@ class DataFormatter:
                         updated_polygon = dataclasses.replace(polygon, key_field="HeaderWords")
                         self.workflow.polygons[poly_id] = updated_polygon
                         marked_as_header += 1
-                        logger.info(f"Polígono {poly_id} marcado como HeaderWords (en línea {header_line_id})")
+                    logger.info(f"Polígono {poly_id} marcado como encabezado: '{polygon.ocr_text}' en línea {header_line_id}")
+                
                 else:
                     # Este polígono NO pertenece a la línea de encabezado
                     if current_key_field == "HeaderWords":
@@ -597,7 +598,7 @@ class DataFormatter:
                         cleared_header += 1
                         logger.info(f"Polígono {poly_id} limpiado de HeaderWords (fuera de línea {header_line_id})")
             
-            logger.info(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
+            logger.debug(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
             return True
             
         except Exception as e:

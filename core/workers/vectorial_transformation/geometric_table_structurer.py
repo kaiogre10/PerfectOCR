@@ -131,7 +131,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     centroid = poly_data.geometry.centroid.tolist()
                     header_centroids.append(centroid)
 
-            logger.info(f"HEADER CENTROIDS: {len(header_line.polygon_ids)}")
+            logger.debug(f"HEADER CENTROIDS: {len(header_line.polygon_ids)}")
  
             return header_centroids
         
@@ -299,13 +299,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # Validar que tengamos suficientes centroides para las columnas
             if len(header_centroids) < H:
                 logger.warning(f"Insuficientes centroides ({len(header_centroids)}) para {H} columnas. Usando los disponibles.")
-                H = min(H, len(header_centroids))
+                H = min(H, len(header_centroids)) # type: ignore
                 row_cells = row_cells[:H]  # Ajustar tamaño de row_cells
             
             # Asignar cada elemento a una celda según restricciones semánticas
             for element in row_elements:
                 element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
-                element_semantic = element.get('semantic_clasification', '')
+                element_semantic: List[int] | int = element.get('semantic_clasification', 0)
                 
                 # 1. Filtrar celdas semánticamente disponibles
                 available_columns: List[int] = []
@@ -319,12 +319,11 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # 2. Determinar la mejor columna basada en disponibilidad
                 if len(available_columns) > 1:
                     # Múltiples opciones: usar distancia euclidiana
-                    distances: List[float] = []
+                    distances: List[Tuple[float, int]] = []
                     for col_idx in available_columns:
                         if col_idx < len(header_centroids):
                             header_centroid = header_centroids[col_idx]
-                            distance: float = euclidean_distance(element_centroid, header_centroid)
-                            col_idx = float(col_idx)
+                            distance: float = euclidean_distance(element_centroid, header_centroid) # type: ignore
                             distances.append((distance, col_idx))
                     
                     # Asignar a la columna con menor distancia si hay distancias calculadas
@@ -355,12 +354,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         best_col = 0  # Fallback a primera columna
                 
                 # Asegurar que best_col esté en rango
-                best_col = max(0, min(best_col, H-1))
+                best_col = int(max(0, min(best_col, H-1)))
                 
                 # Asignar elemento a la celda
                 row_cells[best_col]['words'].append(element)
                 
-                logger.debug(f"elemento: {element_semantic}, columnas_disponibles: {available_columns}, asignación: {best_col}")
+                logger.debug(f"elemento: {element.get('ocr_text', '')}, semantica: {element_semantic}, columnas_disponibles: {available_columns}, asignación: {best_col}")
 
             return row_cells
             
@@ -368,7 +367,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error en geometric: {e}", exc_info=True)
             return [{'words': [], 'cell_text': ''} for _ in range(H)]
 
-    def _is_semantically_available(self, cell_content: List[Dict[str, Any]], element_semantic: str) -> bool:
+    def _is_semantically_available(self, cell_content: List[Dict[str, Any]], element_semantic: List[int] | int) -> bool:
         """
         Verifica si una celda está semánticamente disponible para un elemento.
         Reglas:
@@ -377,27 +376,23 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             # Tipos que tienen restricciones (solo uno por celda)
-            restricted_types = {'numeric', 'quantitative'}
+            restricted_types = {1, 2}
             
-            # Asegurar que element_semantic es string
-            if not isinstance(element_semantic, str): #type: ignore
-                element_semantic = str(element_semantic) if element_semantic else ""
-            
+            current_semantics = set(element_semantic if isinstance(element_semantic, list) else [element_semantic])
+
             # Si el elemento no es restrictivo, siempre puede ir
-            if element_semantic not in restricted_types:
+            if not (current_semantics & restricted_types):
                 return True
             
             # Si el elemento ES restrictivo, verificar que no haya otros restrictivos en la celda
             for existing_element in cell_content:
-                existing_semantic = getattr(existing_element, 'semantic_clasification', False)
-                # Asegurar que existing_semantic es string
-                if not isinstance(existing_semantic, str):
-                    existing_semantic = str(existing_semantic) if existing_semantic else ""
+                existing_semantic_val = existing_element.get('semantic_clasification', 0)
+                existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val]) # type: ignore
                 
-                if existing_semantic in restricted_types:
-                    return False  # Ya hay un elemento restrictivo
+                if existing_semantics & restricted_types:
+                    return False
             
-            return True  # La celda está disponible
+            return True
         
         except Exception as e:
             logger.error(f"Error verificando disponibilidad semántica: {e}", exc_info=True)
