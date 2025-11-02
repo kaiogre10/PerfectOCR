@@ -16,6 +16,8 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = self.config.get('moire', {})
+        self.notch_radius_conf = self.worker_config.get('notch_radius')
+        self.min_dist_conf = self.worker_config.get('min_distance_from_center')
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("moire_poly", False)
 
@@ -85,7 +87,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                 analysis = metrics[idx]
                 
                 # Obtener la imagen original de la dataclass para la corrección
-                original_img_np = polygon.cropped_img.cropped_img
+                original_img_np = polygon.cropped_img.cropped_img 
                 
                 threshold = adaptive_thresholds[idx]
                 # logger.debug(f"Poly '{poly_id}': Modo de corrección '{mode}', Threshold: {threshold:.2f}")
@@ -154,11 +156,8 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         max_dim = max(h, w)
         spectrum_var = analysis['spectrum_var']
         
-        notch_radius_conf = self.worker_config.get('notch_radius')
-        min_dist_conf = self.worker_config.get('min_distance_from_center')
-
-        adaptive_notch = max(2, min(6, int(notch_radius_conf * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
-        adaptive_min_dist = max(50, min(300, int(min_dist_conf * (max_dim / 2000.0))))
+        adaptive_notch = max(2, min(6, int(self.notch_radius_conf * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
+        adaptive_min_dist = max(50, min(300, int(self.min_dist_conf * (max_dim / 2000.0))))
 
         peaks_coords = np.argwhere(analysis['magnitude_spectrum'] > adaptive_threshold)
         filtered_peaks = [(y, x) for y, x in peaks_coords if np.sqrt((y - h//2)**2 + (x - w//2)**2) > adaptive_min_dist]

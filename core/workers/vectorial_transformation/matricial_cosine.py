@@ -99,7 +99,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         """            
         similarity_threshold: float = self.worker_config.get("similarity_threshold")
         min_cluster = int(self.worker_config.get("min_cluster"))
-        from core.utils.fun_cosine_similarity import cosine_similarity_global
+        from core.utils.math_utils import cosine_similarity_global
         
         if line_ids.index(tabular_lines[0]) < line_ids.index(header_line_id):
             return []
@@ -300,7 +300,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             return []
 
         # Calcular similitud y registrar la matriz
-        from core.utils.fun_cosine_similarity import calculate_similarity_ref
+        from core.utils.math_utils import calculate_similarity_ref
 
         X = csr_matrix(candidate_rows, dtype=np.float32)
         sims = calculate_similarity_ref(X, ref_vec).astype(np.float32)
@@ -348,7 +348,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         emergency_threshold = self.worker_config.get("emergency_threshold")
         mean_w, median_w = dummie_weights
         
-        from core.utils.fun_cosine_similarity import calculate_similarity_ref
+        from core.utils.math_utils import calculate_similarity_ref
 
         all_lines_indices = all_lines.keys()
 
@@ -363,9 +363,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             row: List[float] = [float(features.get(k, 0.0)) for k in feature_keys]
             mat_rows.append(row)
             all_line_ids.append(line_id)
-
-        n = len(mat_rows)
-            
+    
         X = csr_matrix(mat_rows, dtype=np.float32)
         amout = features = len(feature_keys)
         # 2. Construcción de vectores Dummie a partir de diccionarios
@@ -404,7 +402,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Log detallado por línea
         for idx, (line_id, sim) in enumerate(zip(all_line_ids, sims_final)):
             logger.info(f"{line_id}: Sim: {sim:7.4f}")
-        
         try:
             matched_indices = [idx for idx, sim in enumerate(sims_final) if sim > similarity_threshold]
 

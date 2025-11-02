@@ -6,7 +6,8 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from fuzzywuzzy import utils # type: ignore
+from core.utils.text_encoder import validate_text
+from core.utils.text_validator import special_chars, get_char_num
 
 logger = logging.getLogger(__name__)
 
@@ -24,66 +25,63 @@ class TextCleaner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("text_cleaner", {})        
-        # Lista de caracteres especiales a eliminar si aparecen solos.
-        # Configurada directamente en el worker en lugar de leerla desde un YAML.
-        self.chars = [
-            ")", "(", "]", "[", "{", "}", "|", "*", "^", "@",
-            "-", "~", "_", "+", "=", "<", ">", ";", ":",
-            "'", "!", "¡", "?", "¿", "'", "/", "\\", "''",
-        ]
-
-        # normalizar a conjunto de caracteres de longitud 1
+        self.worker_config = config.get("text_cleaner", {})
+        self.min_confidence: float  = self.worker_config.get("min_confidence")
+        self.min_char = int(self.worker_config.get("min_char"))
+        self.min_probability = float(self.worker_config.get("min_probability"))
+        self.char_num: List[str] = get_char_num()
+        self.chars: List[str] = special_chars()
         self.drop_single_chars = set(c for c in self.chars if isinstance(c, str) and len(c) == 1) # type: ignore
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        self.min_confidence: float  = self.worker_config.get("min_confidence")
-
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCleaner: No hay polígonos en el workflow para procesar.")
             return True
 
-        polygons_in: Dict[str, Polygons] = manager.workflow.polygons
-        
-        list_of_final_polygons: List[Polygons] = []
-        
+        polygons_in: Dict[str, Polygons] = manager.workflow.polygons        
         sorted_poly_ids = sorted(
             polygons_in.keys(), 
             key=lambda p_id: (polygons_in[p_id].geometry.centroid[1], polygons_in[p_id].geometry.centroid[0])
         )
+
         logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+        list_of_final_polygons: List[Polygons] = []
         eliminated_count = 0
+
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
             confidence = polygon.ocr_confidence or 0.0
             sc = polygon.semantic_clasification or 0
             text = polygon.ocr_text or ""
-            if not utils.validate_string(text): # type: ignore
-                logger.debug(f"Eliminado {poly_id}: | Texto: {text}, conf: sin texto")
+
+            if not validate_text(text):
+                logger.info(f"Eliminado {poly_id} sin texto inicial")
+                eliminated_count += 1
                 continue
             
-            if self._is_polygon_single_special(text):
-                logger.debug(f"Eliminado {poly_id} unico:'{text}'")
+            fil_text = self._filter_low_prob_tokens(text, polygon, manager)
+            if not validate_text(fil_text):
+                logger.info(f"Eliminado {poly_id} sin texto después de filtrado de probabilidad")
+                eliminated_count += 1
                 continue
-            
-            text = self._filter_low_prob_tokens(text, polygon, manager)
-            text = text or ""
 
             text = self._remove_special_chars(text)
 
-            if (not text.strip() or
-                (confidence < self.min_confidence and not (sc == 1 or sc == 2 or sc == -2)) or
-                re.fullmatch(r'[\s\.\-_,;:]+', text)):
-                logger.debug(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence}")
+            if (not validate_text(text) or
+                (confidence < self.min_confidence and not (sc == 1 or sc == 2 or sc == -2)) or re.fullmatch(r'[\s\.\-_,;:]+', text)):
+                logger.info(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence} o sin texto")
+                eliminated_count += 1
                 continue
 
             # 3. Ruta Normal: Limpiar texto del polígono vacío
             cleaned_text = self._process_single_text(text, polygon)
-            if cleaned_text:
+            if validate_text(cleaned_text):
                 updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text, was_refined=True)
                 list_of_final_polygons.append(updated_polygon)
+                
             else:
-                logger.debug(f"Eliminado {poly_id}: | Texto: '{text}'")
+                logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
+                eliminated_count += 1
 
         eliminated_count += 1
 
@@ -97,7 +95,7 @@ class TextCleaner(OCRAbstractWorker):
             # 5. Reemplazo directo en el manager
         manager.workflow.polygons = final_polygons_dict
 
-        logger.debug(f"{eliminated_count} eliminados. Total final: {len(final_polygons_dict)}")
+        logger.info(f"{eliminated_count} limpios. Total final: {len(final_polygons_dict)}")
             
         return True
 
@@ -112,13 +110,13 @@ class TextCleaner(OCRAbstractWorker):
         processed_words: List[str] = []
 
         for token in words:
-            if not token.strip():  # Evitar procesar tokens vacíos
+            if validate_text(token):  # Evitar procesar tokens vacíos
                 processed_words.append(token)
                 continue
             
             # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if self._is_stray_single_special(token):
-                logger.debug(f"Eliminado unico: '{token}' in {polygon.polygon_id if polygon else ''}")
+                logger.info(f"Eliminado unico: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
         
             else:
@@ -127,14 +125,12 @@ class TextCleaner(OCRAbstractWorker):
         return ' '.join(processed_words)
 
     def _filter_low_prob_tokens(self, text: str, polygon: Polygons, manager: DataFormatter) -> str:
-        min_char = int(self.worker_config.get("min_char"))
-        min_probability = float(self.worker_config.get("min_probability"))
         if polygon.ocr_confidence and polygon.ocr_confidence >= self.min_confidence:
             return text
             
         try:
             sc = polygon.semantic_clasification
-            if sc == 1 or sc == 2:
+            if sc == 1 or sc == 2 or sc == -2:
                 return text
 
             tokens = text.split(' ')
@@ -143,23 +139,23 @@ class TextCleaner(OCRAbstractWorker):
             total = 0
             for tok in tokens:
                 t = tok.strip()
-                if not t:
+                if not validate_text(t):
                     kept.append(tok)
                     continue
 
                 total += 1
 
-                if any(ch.isdigit() for ch in t):
+                if any(ch in self.char_num for ch in t):
                     kept.append(tok)
                     continue
 
                 eff_len = len(''.join(ch for ch in t if not ch.isspace()))
-                if eff_len <= min_char:
+                if eff_len < self.min_char:
                     score = self._token_freq_score(t, manager)
                     
-                    if score < min_probability:
+                    if score < self.min_probability:
                         removed += 1
-                        logger.debug(f"Eliminado:{polygon.polygon_id} | Texto:'{t}' | Probabilidad: {score:.4f}")
+                        logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{t}' | Probabilidad: {score:.4f}")
                         continue
                     kept.append(tok)
                 else:
@@ -167,7 +163,7 @@ class TextCleaner(OCRAbstractWorker):
 
             out = ' '.join(kept)
             if removed > 0:
-                logger.debug(f"{polygon.polygon_id} | Texto: '{text}' => '{out}'")
+                logger.info(f"{polygon.polygon_id} | Texto: '{text}' => '{out}'")
             return out
         
         except Exception as e:
@@ -200,8 +196,9 @@ class TextCleaner(OCRAbstractWorker):
         y ese carácter está en la lista drop_single_chars.
         (Esta verificación ignora la confianza del OCR.)
         """
-        if not text:
+        if not validate_text(text):
             return False
+            
         t = text.strip()
         return len(t) == 1 and t in self.drop_single_chars
 
@@ -241,7 +238,7 @@ class TextCleaner(OCRAbstractWorker):
         Elimina todos los caracteres especiales, tanto solitarios como en secuencia.
         Preserva dígitos, letras y espacios.
         """
-        if not text:
+        if not validate_text(text):
             return text
 
         special_chars = self.drop_single_chars
@@ -249,7 +246,6 @@ class TextCleaner(OCRAbstractWorker):
             logger.warning("Usando patron regex")
             pattern = r'[^A-Za-z0-9\s$¢.,\/\\]'
         else:
-            # escapamos los caracteres especiales para regex
             chars_escaped = re.escape("".join(special_chars))
             pattern = r'[' + chars_escaped + r']'
 

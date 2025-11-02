@@ -1,11 +1,11 @@
 # PerfectOCR/core/image_preparation/image_loader.py
 import cv2
-import numpy as np
 import logging
 from datetime import datetime
 from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.utils.image_normalicer import validate_full_image
 
 logger = logging.getLogger(__name__)
 
@@ -38,25 +38,25 @@ class ImageLoader(ImagePrepAbstractWorker):
             "date_creation": None
         }
         try:
+            now = datetime.now()
+            date_creation = now.isoformat()
+
             gray_img = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
-            if gray_img is None:
+
+            if gray_img is None: # type: ignore
                 logger.error(f"No se cargó:'{image_name}'")
                 return False
 
-            now = datetime.now()
-            date_creation = now.isoformat()
-            logger.info(f"Imagen: {image_name} cargada, {now}")
-            if np.all(gray_img == 255):
+            logger.critical(f"Imagen: {image_name} cargada, {now}")
+            img_dims = validate_full_image(gray_img)
+            if not img_dims:
                 logger.error(f"Imagen {image_name} totalmente en blanco")
                 return False
             
-            cv2_height, cv2_width = gray_img.shape[:2]
-            cv2_size: float = gray_img.size
-            if cv2_size == 0:
-                logger.error(f"Imagen vacía o corrupta en '{input_path}'")
-                return False
+            cv2_height, cv2_width = img_dims
+            cv2_size = float(cv2_height * cv2_width)
             
-            logger.debug(f"Size de la imagen completa: {cv2_size}")
+            logger.debug(f"Dimensiones de la imagen '{image_name}': '{cv2_height, cv2_width}', size='{cv2_size}'")
 
             metadata["img_dims"] = {
                         "width": float(cv2_width), 
@@ -65,14 +65,12 @@ class ImageLoader(ImagePrepAbstractWorker):
                     }
             
             metadata["date_creation"] = date_creation
-            
-            logger.debug(f"Dimensiones imagen:{cv2_width, cv2_height}")
-                
+                            
             fecha = now.strftime("%Y%m%d")
             decimales = f"{now.microsecond:04d}"
             IDRegistro: str= f"{metadata.get('image_name')}_{fecha}{decimales}"
 
-            if manager.create_workflow(IDRegistro, gray_img, metadata):
+            if manager.create_workflow(IDRegistro, gray_img, metadata): # type: ignore
                 logger.debug(f"Imagen '{image_name}' cargada en el manager")
                 return True
             else:

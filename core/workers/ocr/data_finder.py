@@ -5,7 +5,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from fuzzywuzzy import utils # type: ignore
+from core.utils.text_encoder import validate_text
 from core.utils.pattern_finder import find_rfc, find_iva, find_date
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ class DataFinder(OCRAbstractWorker):
                 ocr_text = poly.ocr_text or ""
 
                 # Validación del texto antes de procesar
-                if not utils.validate_string(ocr_text): #type: ignore
+                if not validate_text(ocr_text): #type: ignore
                     logger.debug(msg=f"Polygono sin texto: {pid}")
                     continue
 

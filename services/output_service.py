@@ -62,31 +62,32 @@ def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Di
     except Exception as e:
         logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
     
-def save_debug_ocr(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str):
+def save_debug_ocr(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
     try:
         if isinstance(output_paths, str):
             output_paths = [output_paths]
         for path in output_paths:
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.json"
-            save_json(results, output_dir, file_name)
-            
-        logger.warning(f"JSON de {worker_name} generado para '{file_name}'.")
+            if save_json(results, output_dir, file_name):    
+                logger.warning(f"JSON de {worker_name} generado para '{file_name}'.")
+                return True
         
     except Exception as e:
         logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
+        return False
 
-def save_json(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: str):
+def save_json(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: str) -> bool:
     """Guarda un JSON en disco."""
     try:
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, file_name)
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=4, ensure_ascii=False)
-        return output_file
+        return True
     except Exception as e:
         logger.error(f"Error guardando JSON: {e}", exc_info=True)
-        return None
+        return False
         
 def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: List[str] | str, worker_name: str, header_polygons: List[Any]):
     try:

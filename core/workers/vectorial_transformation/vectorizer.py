@@ -7,7 +7,8 @@ from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
-from core.utils.text_encoder import encode_text, get_morphological_map
+from core.utils.text_validator import get_char_num
+from core.utils.math_utils import alignment, bbox_alignment
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,6 @@ class Vectorizer(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('vectorizer', {})
-        self.morphological_map = get_morphological_map()
         self.keywords_interval_enabled = self.worker_config.get('keywords_interval_enabled', True)
         self.exclude_types =  self.worker_config.get('exclude_types', [])
         self.enabled_outputs = self.config.get("enabled_outputs", {})
@@ -24,6 +24,7 @@ class Vectorizer(VectorizationAbstractWorker):
         self.second_output = self.enabled_outputs.get("encoded_lines", False)
         self.features_output = self.enabled_outputs.get("features", False)
         self.image_features = self.enabled_outputs.get("image_features", False)
+        self.char_num = get_char_num()
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
@@ -177,7 +178,7 @@ class Vectorizer(VectorizationAbstractWorker):
 
             all_lines_features: Dict[str, Dict[str, float]] = {}
             num_lines: float = len(sorted_lines)
-            encoded_values = self._calculate_encoding_values(manager, sorted_lines)
+            # encoded_values = self._calculate_encoding_values(manager, sorted_lines)
 
             for i, (line_id, line_data) in enumerate(sorted_lines):
 
@@ -207,7 +208,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 num_mean: float = all_numerics / num_lines if num_lines > 0 else 0.0  # Promedio global de tokens numéricos por línea; sirve como referencia.
                 num_above: float = 1.0 if numeric_count >= num_mean else -1.0  # Indicador (1/0) si la línea supera el promedio global de tokens numéricos.
                 # Usa el mapa morfológico para contar los dígitos (caracteres "0-9", ".", ",", "$") en el texto de la línea.
-                digit_char_count = sum(1 for ch in line_text if ch in self.morphological_map)
+                digit_char_count = sum(1 for ch in line_text if ch in self.char_num)
                 has_digit = 1.0 if digit_char_count > 1.0 else -1.0
                 digit_char_frec: float = digit_char_count / max_digit_count if max_digit_count > 0.0 else 0.0  # Proporción de caracteres dígito en la línea respecto al máximo global visto.
 
@@ -306,8 +307,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 current_xmax = bbox[2]
 
                 prev_bbox, next_bbox, prev_centroid, next_centroid = _calculate_line_coords(sorted_lines, i)
-                
-                from core.utils.fun_cosine_similarity import alignment, bbox_alignment
                 
                 prev_xmin_align: Optional[float] = bbox_alignment(current_xmin, prev_bbox, 0) if prev_bbox else 1.0
                 prev_xmax_align: Optional[float] = bbox_alignment(current_xmax, prev_bbox, 2) if prev_bbox else 1.0
@@ -526,71 +525,8 @@ class Vectorizer(VectorizationAbstractWorker):
         tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
         logger.debug(f"Tabular lines desde vectorizeier: {tabular_line_ids}")
         return tabular_line_ids
-    
-    def _calculate_encoding_values(self, manager: DataFormatter, sorted_lines: List[Tuple[str, AllLines]]):
-        
-        all_lines_stats = {}
-        den_encoder = manager.get_density_encoder()
-        frec_encoder = manager.get_inverse_frecuency_encoder()
-        for line_id, line_data in sorted_lines:
-            if not line_data:
-                logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")
-                continue
-            
-            line_txt = line_data.text
-            density_line = encode_text(line_txt, den_encoder)
-            frecuency_line = encode_text(line_txt, frec_encoder)
 
-            if not frecuency_line: # or not density_line:
-                logger.warning(f"Línea {line_id} sin codificación será ignorada.")
-                continue
-
-            mean_frecuency, std_frecuency, var_frecuency = self.vectorice_values(frecuency_line)
-            mean_den, std_den, var_den = self.vectorice_values(density_line)
-
-            # logger.info(
-            #    "\n"f"{line_id}:"
-            #     "\n"f"FRECUENCY=mean: {mean_frecuency:.6f}, std: {std_frecuency:.6f}, var: {var_frecuency:.6f}"
-            #     "\n"f"DENSITY=mean: {mean_den:.6f}, std: {std_den:.6f}, var: {var_den:.6f}"
-            #     )
-
-            all_lines_stats[line_id] = {
-                "mean_frecuency": mean_frecuency,
-                "std_frecuency": std_frecuency,
-                "var_frecuency": var_frecuency,
-                "mean_density": mean_den,
-                "std_density": std_den,
-                "var_density": var_den
-            }
-
-        if not all_lines_stats:
-            return {}
-
-        # Encontrar los valores máximos y sus line_id
-        max_mean_freq = max(all_lines_stats.items(), key=lambda item: item[1]['mean_frecuency'])
-        max_std_freq = max(all_lines_stats.items(), key=lambda item: item[1]['std_frecuency'])
-        max_var_freq = max(all_lines_stats.items(), key=lambda item: item[1]['var_frecuency'])
-
-        max_mean_den = max(all_lines_stats.items(), key=lambda item: item[1]['mean_density'])
-        max_std_den = max(all_lines_stats.items(), key=lambda item: item[1]['std_density'])
-        max_var_den = max(all_lines_stats.items(), key=lambda item: item[1]['var_density'])
-
-        # logger.info(
-        #     "\n--- Valores Máximos Globales ---\n"
-        #     f"Max Mean Frecuencia: {max_mean_freq[1]['mean_frecuency']:.6f} (Línea: {max_mean_freq[0]})\n"
-        #     f"Max Std Frecuencia:  {max_std_freq[1]['std_frecuency']:.6f} (Línea: {max_std_freq[0]})\n"
-        #     f"Max Var Frecuencia:  {max_var_freq[1]['var_frecuency']:.6f} (Línea: {max_var_freq[0]})\n"
-        #     f"Max Mean Densidad:   {max_mean_den[1]['mean_density']:.6f} (Línea: {max_mean_den[0]})\n"
-        #     f"Max Std Densidad:    {max_std_den[1]['std_density']:.6f} (Línea: {max_std_den[0]})\n"
-        #     f"Max Var Densidad:    {max_var_den[1]['var_density']:.6f} (Línea: {max_var_den[0]})\n"
-        #     "---------------------------------"
-        # )
-
-        # Devuelve las estadísticas de la última línea como hacía antes, pero ahora con los máximos calculados.
-        # Opcionalmente, podrías devolver `all_lines_stats` si lo necesitas en otro lugar.
-        return all_lines_stats.get(sorted_lines[-1][0], {})
-
-    def _is_numeric_polygon(self, semantic_clasification: int, manager: DataFormatter) -> bool:
+    def _is_numeric_polygon(self, semantic_clasification: int | List[int], manager: DataFormatter) -> bool:
         """
         Determina si un polígono debe contarse como numérico basado en su clasificación semántica.
         Usa la configuración del YAML para determinar qué tipos excluir.
@@ -610,17 +546,3 @@ class Vectorizer(VectorizationAbstractWorker):
         
         # Por defecto, considerar numérico si es quantitative (2) o numeric (1)
         return semantic_clasification in [1, 2]
-
-    def vectorice_values(self, data_list: List[float]) -> List[float]:
-        """
-        Calcula estadísticas vectorizadas (media, desviación estándar, varianza) de una lista de valores.
-        """
-        if not data_list:
-            return [0.0, 0.0, 0.0]
-
-        value_array = np.array(data_list, dtype=np.float32)
-        line_mean = np.mean(value_array)
-        line_std = np.std(value_array)
-        line_var = np.var(value_array)
-        
-        return [float(line_mean), float(line_std), float(line_var)]

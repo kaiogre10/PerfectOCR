@@ -3,11 +3,12 @@ import numpy as np
 import logging
 import math
 import time
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 import dataclasses
+from core.utils.image_normalicer import validate_full_image
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         self.project_root = project_root
         self.config = config
         self.worker_config = config.get('polygon_extractor', {})
-        self.bin_interval: Tuple[int, int] = self.worker_config["bin_interval"]
+        self.bin_interval = self.worker_config["bin_interval"]
         self.percentil = float(self.worker_config.get("percentil"))
         self.padding = self.worker_config.get("cropping_padding")
         self.angle_thr = self.worker_config["angle_thr"]
@@ -28,32 +29,28 @@ class PolygonExtractor(ImagePrepAbstractWorker):
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte.
         Siguiendo el patrón: Análisis → Decisión Vectorizada → Aplicación"""
-
+        start_time = time.time()
         try:
-            start_time = time.time()
-            
+            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+
             img_obj = manager.get_full_img()
             full_img = img_obj.full_img if img_obj is not None else None
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
                 
-            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-            image_mean = full_img.mean()
-            if image_mean < self.bin_interval[0] or image_mean > self.bin_interval[1]:
-                logger.error(f"Imagen '{image_name}' fuera de rango: {image_mean} {self.bin_interval}")
+            img_dims = validate_full_image(full_img)
+            if not img_dims:
+                logger.error(f"Imagen '{image_name}' no válida")
                 return False
+            
+            img_h = img_dims[0]
+            img_w = img_dims[1]
 
             logger.debug("Full_img obtenida con éxito")
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            img_dims: Dict[str, int] = {}
-            if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
-                img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
-                
-            img_h = img_dims.get("height") or 0
-            img_w = img_dims.get("width") or 0
-                        
+                            
             if not polygons:
                 logger.warning("PolygonExtractor: No se encontraron polígonos para procesar.")
                 return True
@@ -89,7 +86,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             py2 = np.minimum(img_h, y2 + self.padding)
             
             # Liberar la imagen completa lo antes posible
-            if manager.update_full_img(None):
+            if manager.update_full_img(corrected=False, full_img=None):
                 logger.info(f"full_img: '{image_name}' liberada")
             
             # Validar dimensiones usando operaciones vectorizadas

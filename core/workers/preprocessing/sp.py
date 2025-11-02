@@ -15,6 +15,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = self.config.get('sp_config', {})
+        self.sobel_threshold = self.worker_config.get("sobel_threshold")
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("sp_poly", False)
     
@@ -45,10 +46,6 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                     logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
                 
-                if cropped_img.size == 0:
-                    logger.warning(f"Imagen vacía o corrupta en '{poly_id}'")
-                    continue
-
                 analysis = self._analyze_image_for_sp(cropped_img)
                 if analysis:
                     metrics.append(analysis)
@@ -64,13 +61,13 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             min_dims = np.array([min(m['h'], m['w']) for m in metrics], dtype=np.int32)
 
             cond_small = areas < 2000
-            cond_medium = (areas >= 2000) & (areas < 10000)
+            cond_medium = (areas > 2000) & (areas < 10000)
             
             ratio_thrs = np.select([cond_small, cond_medium], [0.06, 0.03], default=0.015)
             min_isos = np.select([cond_small, cond_medium], [10, 20], default=30)
             ksizes = np.select([cond_small, cond_medium], [3, 3], default=5)
             
-            ksizes = np.where(min_dims >= 50, np.maximum(ksizes, 5), ksizes)
+            ksizes = np.where(min_dims > 50, np.maximum(ksizes, 5), ksizes)
             ksizes = np.where(ksizes % 2 == 0, ksizes + 1, ksizes)
 
             needs_correction = (sp_ratios > ratio_thrs) & (isolated_counts >= min_isos)
@@ -116,7 +113,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         p1, p99 = np.percentile(cropped_img, [1, 99])
         low, high = int(max(0, p1)), int(min(255, p99))
         
-        extreme_mask = (cropped_img <= low) | (cropped_img >= high)
+        extreme_mask = (cropped_img < low) | (cropped_img > high)
         sp_ratio = np.count_nonzero(extreme_mask) / area
 
         kernel = np.ones((3, 3), np.uint8)
@@ -134,7 +131,6 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         }
 
     def _apply_sp_correction(self, analysis: Dict[str, Any], ksize: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        sobel_threshold = self.worker_config.get("sobel_threshold")
         original_img: np.ndarray[Any, np.dtype[np.uint8]] = analysis['original_img']
         filtered = cv2.medianBlur(original_img, ksize)
         
@@ -143,7 +139,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
 
         sobel_after = np.mean(np.abs(cv2.Sobel(result, cv2.CV_64F, 1, 1, ksize=3)))
         
-        if sobel_after < sobel_threshold * analysis['sobel_before']:
+        if sobel_after < self.sobel_threshold * analysis['sobel_before']:
             logger.debug("Corrección S&P revertida por pérdida de nitidez.")
             return original_img
         

@@ -8,24 +8,24 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-    - "moire"
+    # - "moire"
     - "sp"
     - "gauss"
-    - "ink_enhancement"
+    # - "ink_enhancement"
     - "clahe"
     - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -46,7 +46,7 @@ enabled_outputs:
   ocr_raw: false
   fragmented_polys: false
   reconstructed_lines: false
-  semantic_field: true
+  semantic_field: false
   table_lines: false
   encoded_lines: false
   features: false

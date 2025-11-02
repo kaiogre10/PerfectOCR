@@ -29,39 +29,39 @@ class Refiner(OCRAbstractWorker):
         Ejecuta el ciclo de refinamiento con clasificación selectiva.
         """
         start_time = time.perf_counter()
-        logger.debug(f"Refinador inicializado para {self.num_passes} pasadas.")
+        logger.info(f"Refinador inicializado para {self.num_passes} pasadas.")
 
         try:
             for i in range(self.num_passes):
                 pass_num = i + 1
-                logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
+                logger.info(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
                 
                 # Determinar si usar filtro selectivo (solo en pasadas 2+)
                 use_filter = (i > 0)
         
-                logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (filtro={use_filter})")
+                logger.info(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (filtro={use_filter})")
                 self.clasificator.transcribe(context, manager, filter_modified=use_filter)
                 
-                logger.debug(f"Bucle #{pass_num}: Limpieza de Texto")
+                logger.info(f"Bucle #{pass_num}: Limpieza de Texto")
                 self.cleaner.transcribe(context, manager)
 
-                logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo corregidos)")
+                logger.info(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo corregidos)")
                 self.clasificator.transcribe(context, manager, filter_modified=True)
                 
-                logger.debug(f"Bucle #{pass_num}: Fragmentación de Texto")
+                logger.info(f"Bucle #{pass_num}: Fragmentación de Texto")
                 self.fragmenter.transcribe(context, manager)
 
-                logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
+                logger.info(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
                 self.clasificator.transcribe(context, manager, filter_modified=True)
                 
-                logger.debug(f"Bucle #{pass_num}: Corrección textual")
+                logger.info(f"Bucle #{pass_num}: Corrección textual")
                 self.corrector.transcribe(context, manager)
 
             # Clasificación final completa para asegurar consistencia
-            logger.debug(f"Pasada final: Clasificación Semántica (completa)")
+            logger.info(f"Pasada final: Clasificación Semántica (completa)")
             self.clasificator.transcribe(context, manager, filter_modified=False)
             
-            logger.debug(f"Clasificación Semántica Final Completada en: {time.perf_counter()-start_time:.6f}s")
+            logger.info(f"Limpieza textual completa en: {time.perf_counter()-start_time:.6f}s")
             return True
         
         except Exception as e:

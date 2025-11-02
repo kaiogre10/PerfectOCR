@@ -1,7 +1,7 @@
 import re
 import logging
 from typing import List, Tuple, Dict
-from fuzzywuzzy import utils #type: ignore
+from core.utils.text_encoder import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ def is_acronym(text: str) -> bool:
         Detecta siglas del tipo A.B.C. o P.U.C.D con punto final opcional
         y, a partir de ahora, admite un signo ':' ';' ',' opcional al final.
         """
-        if not utils.validate_string(text): #type: ignore
+        if not validate_text(text):
             return False
             
         pattern = r'^([A-Za-z]\.){2,}[A-Za-z]\.?(?:[:;,])?$'
@@ -23,7 +23,7 @@ def is_acronym(text: str) -> bool:
 
 def find_umd(s: str) -> bool:
     try:
-        if not utils.validate_string(s): #type: ignore
+        if not validate_text(s): #type: ignore
             return False
 
         # Regex Maestra para capturar la unidad y el valor
@@ -39,7 +39,7 @@ def find_umd(s: str) -> bool:
 
 def find_rfc(s: str) -> bool:
     try:
-        if not utils.validate_string(s): #type: ignore
+        if not validate_text(s): #type: ignore
             return False
 
         rfc_code = r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$'
@@ -59,7 +59,7 @@ def find_rfc(s: str) -> bool:
 
 def find_iva(s: str) -> bool:
     try:
-        if not utils.validate_string(s): #type: ignore
+        if not validate_text(s):
             return False
 
         iva_word = r'\b(I\.?V\.?A\.?)\b'

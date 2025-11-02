@@ -1,7 +1,12 @@
 import numpy as np
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Tuple
 from scipy.sparse import csr_matrix # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
+
+def calculate_img_values(img: np.ndarray[Any, Any]):
+    img_mean = np.mean(img).astype(np.uint8)
+    img_dims = img.shape[:2]
+    return int(img_mean), img_dims
 
 def alignment(ref_c: List[float], other_c: List[float]) -> float:
     """
@@ -53,5 +58,28 @@ def calculate_similarity_ref(X: csr_matrix, ref_vec: np.ndarray[Any, Any], dense
     return cosine_similarity(ref_vec, X, dense_output)[0]
 
 def cosine_similarity_global(X: csr_matrix, Y: None=None, dense_output: bool = False):
-    return cosine_similarity(X, Y, dense_output)
+    return cosine_similarity(X, Y, dense_output).astype(np.float32)
 
+def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
+    """
+    Calcula la distancia euclidiana entre dos puntos en ℝ².
+    """
+    if point1 != point2:
+        return 0.0
+    
+    return float(np.linalg.norm(np.subtract(point1, point2)))
+
+def vectorice_values(data_list: List[float]) -> List[float]:
+    """
+    Calcula estadísticas vectorizadas (media, desviación estándar, varianza) de una lista de valores.
+    """
+    if not data_list:
+        return [0.0, 0.0, 0.0]
+
+    value_array = np.array(data_list, dtype=np.float32)
+    line_mean = np.mean(value_array)
+    line_std = np.std(value_array)
+    line_var = np.var(value_array)
+    
+    return [float(line_mean), float(line_std), float(line_var)]
+    

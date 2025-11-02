@@ -14,16 +14,15 @@ class ImageCleaner(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('cleaner', {})
+        self.std_low = self.worker_config.get("std_low")
+        self.sp_thr: float = self.worker_config.get("sp_thr")
+        self.clahe_clip_base = self.worker_config.get("clahe_clip")
+        self.clahe_grid = self.worker_config["clahe_grid"]
+        self.kernel_size: int = self.worker_config.get("kernel_size")
         self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("pre_clean", False)
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        std_low = self.worker_config.get("std_low")
-        sp_thr: float = self.worker_config.get("sp_thr")
-        clahe_clip_base = self.worker_config.get("clahe_clip")
-        clahe_grid = self.worker_config.get("clahe_grid", [])
-        kernel_size: int = self.worker_config.get("kernel_size")
-
         try:
             img_obj = manager.get_full_img()
             full_img = img_obj.full_img if img_obj is not None else None
@@ -47,23 +46,23 @@ class ImageCleaner(ImagePrepAbstractWorker):
             sp_ratio = (ext_low + ext_high) / size
     
             # 1) Desruido sal‑y‑pimienta (rápido, solo si aplica)
-            if sp_ratio > sp_thr:
-                den = cv2.medianBlur(src=full_img, ksize=kernel_size)
+            if sp_ratio > self.sp_thr:
+                den = cv2.medianBlur(src=full_img, ksize=self.kernel_size)
                 full_img[...] = den
 
             # Recalcular contraste
             std1 = float(np.std(full_img))
 
             # 2) Contraste local con CLAHE (solo si contraste bajo)
-            if std1 < std_low:
-                clahe = cv2.createCLAHE(clipLimit=clahe_clip_base, tileGridSize=clahe_grid)
+            if std1 < self.std_low:
+                clahe = cv2.createCLAHE(clipLimit=self.clahe_clip_base, tileGridSize=self.clahe_grid)
                 en1 = clahe.apply(full_img)
                 full_img[...] = en1
 
                 # Si siguió bajo, subir ligeramente el clipLimit
                 std2 = float(np.std(full_img))
-                if std2 < std_low:
-                    clahe2 = cv2.createCLAHE(clipLimit=clahe_clip_base + 0.5, tileGridSize=clahe_grid)
+                if std2 < self.std_low:
+                    clahe2 = cv2.createCLAHE(clipLimit=self.clahe_clip_base + 0.5, tileGridSize=self.clahe_grid)
                     en2 = clahe2.apply(full_img)
                     full_img[...] = en2
 

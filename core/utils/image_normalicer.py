@@ -1,9 +1,13 @@
 import cv2
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 import logging
+from core.utils.math_utils import calculate_img_values
 
 logger = logging.getLogger(__name__)
+
+min_threshold = 10
+max_threshold = 250
 
 def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     """
@@ -24,13 +28,9 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
             return None
 
         try:
-            img_arr = np.asarray(img,dtype=np.uint8)
+            img_arr = np.asarray(img, dtype=np.uint8)
         except Exception as e:
             logger.error(f"normalice_image: no se pudo convertir a ndarray: {e}", exc_info=True)
-            return None
-
-        if img_arr.size == 0:
-            logger.error("normalice_image: ndarray vacío.")
             return None
 
         # Si llega en color, convertir a gris (BGR->GRAY)
@@ -78,17 +78,29 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
             vmin, vmax, f"{vmean:.2f}" if vmean is not None else None
         )
     
-        return img_arr
+        return img_arr # type: ignore
         
     except Exception  as e:
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)
     return None
 
 def validate_image(img: np.ndarray[Any, Any]) -> bool:
-    min_threshold = 5
-    max_threshold = 250
-    img_mean =  np.mean(img).astype(np.uint8)
-    if img_mean < min_threshold or max_threshold < img_mean:
+    img_mean, img_dims = calculate_img_values(img)
+    img_size = img_dims[0] * img_dims[1] 
+
+    if img_mean < min_threshold or max_threshold < img_mean or img_size==0:
         return False
+    
     else:
         return True
+
+def validate_full_image(img: np.ndarray[Any, Any]):
+    _, img_dims = calculate_img_values(img)
+    img_size = img_dims[0] * img_dims[1]
+    
+    if np.all(img)==255 or np.all(img)==0 or img_size==0:
+        return img_dims
+    
+    else:
+        return [0, 0]
+

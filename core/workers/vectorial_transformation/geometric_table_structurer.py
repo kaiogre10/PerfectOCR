@@ -6,7 +6,7 @@ import pandas as pd #type: ignore
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
-from core.utils.fun_cosine_similarity import alignment
+from core.utils.math_utils import alignment, euclidean_distance
 
 logger = logging.getLogger(__name__)
 
@@ -185,10 +185,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
                 # CASO A: L_k ≥ H (Más palabras que columnas)
                 if L_k >= H:
+                    # logger.info(f"Asignación A para {line_id}, elementos {L_k}")
                     row_cells = self._case_a_assignment(row_elements, H, L_k)
                 
                 # CASO B: L_k < H (Menos palabras que columnas)
                 if L_k < H:
+                    # logger.info(f"Asignación B para {line_id}, elementos: {L_k}")
                     row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids)
                 
                 # Generar texto de celda
@@ -243,11 +245,11 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
 
             # 1. Calcular distancias horizontales Δ_i
-            horizontal_distances: List[tuple[float, int]] = []
+            horizontal_distances: List[Tuple[float, float]] = []
             for i in range(L_k - 1):
                 x_i_max = float(row_elements[i].get('xmax', 0))
                 x_i1_min = float(row_elements[i + 1].get('xmin', 0))
-                delta_i = max(0.001, x_i1_min - x_i_max)  # ε = 0.001 para solapamientos
+                delta_i = max(0.001, x_i1_min - x_i_max) 
                 horizontal_distances.append((delta_i, i))
             
             # 2. Seleccionar H-1 mayores Δ_i como puntos de corte J
@@ -306,7 +308,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 element_semantic = element.get('semantic_clasification', '')
                 
                 # 1. Filtrar celdas semánticamente disponibles
-                available_columns: List[str] = []
+                available_columns: List[int] = []
                 for col_idx in range(H):
                     cell_content = row_cells[col_idx]['words']
                     
@@ -321,7 +323,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     for col_idx in available_columns:
                         if col_idx < len(header_centroids):
                             header_centroid = header_centroids[col_idx]
-                            distance = self._euclidean_distance(element_centroid, header_centroid)
+                            distance: float = euclidean_distance(element_centroid, header_centroid)
+                            col_idx = float(col_idx)
                             distances.append((distance, col_idx))
                     
                     # Asignar a la columna con menor distancia si hay distancias calculadas
@@ -336,7 +339,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 else:
                     # No hay columnas disponibles, usar algoritmo original como fallback
                     try:
-                        sims = []
+                        sims: List[float] = []
                         for hc_idx, hc in enumerate(header_centroids):
                             if hc_idx < H:  # Limitar a H centroides
                                 sim = alignment(hc, element_centroid)
@@ -399,22 +402,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"Error verificando disponibilidad semántica: {e}", exc_info=True)
             return True  # En caso de error, permitir asignación
-
-    def _euclidean_distance(self, point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
-        """
-        Calcula la distancia euclidiana entre dos puntos en ℝ².
-        """
-        try:
-            if len(point1) < 2 or len(point2) < 2:
-                return float('inf')
-            
-            dx = point1[0] - point2[0]
-            dy = point1[1] - point2[1]
-            return (dx ** 2 + dy ** 2) ** 0.5
-        
-        except Exception as e:
-            logger.error(f"Error calculando distancia euclidiana: {e}", exc_info=True)
-            return float('inf')
         
     def _create_structured_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> pd.DataFrame:
         """

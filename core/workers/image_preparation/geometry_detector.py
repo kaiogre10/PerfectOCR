@@ -1,5 +1,6 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
+import time
 from typing import Dict, Any, Optional, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -21,32 +22,36 @@ class GeometryDetector(ImagePrepAbstractWorker):
         if self._engine is None:
             from core.domain.models_manager import ModelsManager
             paddle_manager = ModelsManager.get_instance()
-            self._engine = paddle_manager.detection_engine
-            
+            self._engine = paddle_manager.detection_engine            
             if self._engine is None:
                 logger.error("GeometryDetector: Motor de detección no disponible en PaddleManager")
-            else:
-                logger.debug("GeometryDetector: Motor de detección obtenido del PaddleManager")
+        
+            logger.debug("GeometryDetector: Motor de detección obtenido del PaddleManager")
     
         return self._engine
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        start_time = time.perf_counter()
         try:
             engine = self.engine
             if engine is None:
                 logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")
                 return False
+
             img_obj = manager.get_full_img()
             img = img_obj.full_img if img_obj is not None else None
             if img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
+
             logger.debug("Full_img obtenida con éxito")
 
             results: Optional[List[List[int]]] = engine.ocr(img=img, det=True, cls=False, rec=False)
-            logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos.")
+            total_time = time.perf_counter() - start_time
 
-            if not (results and len(results) > 0 and results[0] is not None):
+            logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos en {total_time:.6f}s.") # type: ignore
+
+            if not (results and len(results) > 0 and results[0] is not None): # type: ignore
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
                 return False
 

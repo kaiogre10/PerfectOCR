@@ -5,7 +5,8 @@ from typing import Dict, Any, Tuple, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_encoder import encode_text, get_morphological_encode, get_morphological_map
+from core.utils.text_encoder import encode_text, get_morphological_encode
+from core.utils.text_validator import get_char_num
 from core.utils.pattern_finder import find_umd, find_quantitative, contains_quantitative
 
 logger = logging.getLogger(__name__)
@@ -16,12 +17,15 @@ class SemanticClasificator(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get("semantic_clasificator", {})
+        self.semantic_range: Tuple[float, float] = self.worker_config["semantic_range"]
+        self.encode_mean: Tuple[float, float] = self.worker_config["encode_mean"]
+        self.morph_mean: Tuple[float, float] = self.worker_config["morph_mean"]
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("semantic_field", False)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter, filter_modified: bool = False) -> bool:
         """Clasifica polígonos semánticamente"""
-        logger.debug(f"Clasificador iniciado (filter_modified={filter_modified})")
+        logger.info(f"Clasificador iniciado, modo={filter_modified}")
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para procesar")
@@ -35,13 +39,13 @@ class SemanticClasificator(OCRAbstractWorker):
                     pid: p for pid, p in all_polygons.items() 
                     if p.was_refined
                 }
-                logger.debug(f"Modo selectivo: {len(polygons_to_classify)}/{len(all_polygons)} polígonos modificados para reclasificar")
+                logger.info(f"Modo selectivo: {len(polygons_to_classify)}/{len(all_polygons)} polígonos modificados para reclasificar")
             else:
                 polygons_to_classify = all_polygons
                 logger.info(f"Modo completo: clasificando todos los {len(all_polygons)} polígonos")
             
             if not polygons_to_classify:
-                logger.debug("No hay polígonos que clasificar")
+                logger.warning("No hay polígonos que clasificar")
                 return True
 
             # Clasificar solo los polígonos seleccionados
@@ -49,14 +53,16 @@ class SemanticClasificator(OCRAbstractWorker):
             inv_encoder: Dict[str, float] = manager.get_inverse_frecuency_encoder()
             final_results: Dict[str, int | List[int]] = self._clasify_words(polygons_to_classify, encoder, inv_encoder)
             
-            for poly_id, sc in final_results.items():
-                logger.info(f"CLASIFICACIÓN {poly_id}: '{sc}'")
-            
             classified_count = len(final_results)
-            logger.debug(f"Total clasificados: {classified_count}")
+            logger.info(f"Total clasificados: {classified_count}")
 
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results, reset_refined=filter_modified)
+
+            for poly_id, polygon in polygons_to_classify.items():
+                text = polygon.ocr_text
+                sc = polygon.semantic_clasification
+                logger.debug(f"Clasificación {poly_id}: '{text}', '{sc}'")
 
             if self.output:
                 from services.output_service import save_debug_ocr
@@ -81,12 +87,7 @@ class SemanticClasificator(OCRAbstractWorker):
             logger.warning(f"Error en el clasificador: {e}", exc_info=True)
             return False
             
-    # Cambiar el método _clasify_words para devolver Dict[str, int] en lugar de Dict[str, SemanticClassification]
     def _clasify_words(self, polygons: Dict[str, Polygons], encoder: Dict[str, float], inv_encoder: Dict[str, float]) -> Dict[str, int | List[int]]:
-        semantic_range: Tuple[float, float] = self.worker_config.get("semantic_range", [])
-        encode_mean: Tuple[float, float] = self.worker_config.get("encode_mean", [])
-        morph_mean: Tuple[float, float] = self.worker_config.get("morph_mean", [])
-
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
         final_results: Dict[str, int | list[int]] = {}
 
@@ -94,7 +95,7 @@ class SemanticClasificator(OCRAbstractWorker):
             s = tok.strip(' ')
             chars = [ch for ch in s if not ch.isspace()]
             total = len(chars)
-            char_num = get_morphological_map()
+            char_num = get_char_num()
             pct = (sum(1 for ch in chars if ch in char_num) / total) * 100.0 if total else 0.0
 
             encoded_poly = encode_text(s, encoder)
@@ -109,13 +110,13 @@ class SemanticClasificator(OCRAbstractWorker):
                 semantic_type = 2  # quantitative
             elif find_umd(s):
                 semantic_type = -2  # umd
-            elif  morph_mean[1] < poly_morph_mean and poly_mean < encode_mean[0] and encode_mean[1] < inv_poly_mean and semantic_range[1] < pct :
+            elif self.morph_mean[1] < poly_morph_mean and poly_mean < self.encode_mean[0] and self.encode_mean[1] < inv_poly_mean and self.semantic_range[1] < pct :
                 has_quantitative = find_quantitative(s)
                 if has_quantitative:
                     semantic_type = 2
                 else:
                     semantic_type = 1  # numeric
-            elif semantic_range[0] < pct < semantic_range[1] and morph_mean[0] < poly_morph_mean < morph_mean[1]:
+            elif self.semantic_range[0] < pct < self.semantic_range[1] and self.morph_mean[0] < poly_morph_mean < self.morph_mean[1]:
                 semantic_type = -1  # code
             else:
                 semantic_type = 0  # descriptive
@@ -127,11 +128,9 @@ class SemanticClasificator(OCRAbstractWorker):
 
             if len(tokens) <= 1:
                 sc_val = classify_token(s)
-                # logger.info(f"{pid}: '{s}' | sc={sc_val}")
                 final_results[pid] = sc_val
             else:
                 sc_list = [classify_token(t) for t in tokens]
-                # logger.info(f"{pid}: '{s}' | sc={sc_list}")
                 final_results[pid] = sc_list
                 
         return final_results

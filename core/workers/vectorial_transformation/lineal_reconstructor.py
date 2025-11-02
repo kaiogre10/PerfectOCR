@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from fuzzywuzzy import utils # type: ignore
+from core.utils.text_validator import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('lineal', {})
+        self.overlap_threshold = self.worker_config.get('overlap_threshold')
         self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("reconstructed_lines", False)
         
@@ -42,7 +43,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     from services.output_service import save_debug_ocr
                     file_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     worker_name = context.get("worker_name") or "lineal"
-                    output_paths = context.get("output_paths", [])
+                    output_paths = context["output_paths"]
                     save_debug_ocr( output_paths, worker_name, lines_info, file_name)
 
                 return True
@@ -56,7 +57,6 @@ class LinealReconstructor(VectorizationAbstractWorker):
         Reconstruye líneas agrupando polígonos y devuelve un dict con la debug completa de cada línea,
         incluyendo los textos OCR concatenados.
         """
-        overlap_threshold = self.worker_config.get('overlap_threshold', {})
         prepared_sorted = sorted(
             polygons.values(),
             key=lambda p: p.geometry.centroid[1])
@@ -81,7 +81,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 min_h = min(y1_max - y1_min, y2_max - y2_min)
                 overlap = overlap_abs / min_h if min_h > 1e-5 else 0.0
 
-                if overlap > overlap_threshold:
+                if overlap > self.overlap_threshold:
                     current_line_polys.append(poly)
                     all_bboxes = [p.geometry.bounding_box for p in current_line_polys]
                     if all_bboxes:
@@ -101,7 +101,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     joined_text = " ".join(texts).strip()
                     
                     # Validar el texto antes de crear la entrada
-                    if not utils.validate_string(joined_text): #type: ignore
+                    if not validate_text(joined_text):
                         # Si no es válido, iniciar una nueva línea sin incrementar el contador
                         current_line_polys = [poly]
                         current_line_bbox = list(bbox)
@@ -125,8 +125,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_polys = [poly]
                     current_line_bbox = list(bbox)
                 
-                    #logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                    logger.info(f"{line_id}: '{joined_text}'")
+                    # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
+                    # logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -135,7 +135,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             joined_text = " ".join(texts).strip()
             
             # Validar también el texto de la última línea
-            if utils.validate_string(joined_text): #type: ignore
+            if validate_text(joined_text): #type: ignore
                 current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
                 line_centroid = [
                     (current_line_bbox[0] + current_line_bbox[2]) / 2,
@@ -150,7 +150,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     "text": joined_text
                 }
 
-                #logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
+                # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
                 # logger.info(f"{line_id}: '{joined_text}'")
 
         return lines_info

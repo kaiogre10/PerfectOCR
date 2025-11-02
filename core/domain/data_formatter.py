@@ -243,7 +243,7 @@ class DataFormatter:
             logger.error(f"Error obteniendo lineas tabulares: {e}", exc_info=True)
             return {} if return_objects else []
 
-    def update_full_img(self, corrected: bool, full_img: (Optional[np.ndarray[Any, np.dtype[np.uint8]]])=None) -> bool:
+    def update_full_img(self, corrected: bool, full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""
         try:
             if not self.workflow:
@@ -253,7 +253,7 @@ class DataFormatter:
             if full_img is None:
                 # Si se pasa None, vaciamos la imagen para liberar memoria
                 self.workflow = dataclasses.replace(self.workflow, full_img=None)
-                logger.debug(f"Imagen liberada con éxito: {full_img}")
+                logger.info(f"Imagen liberada con éxito: {full_img}")
                 return True
             
             # Normalizar si se recibe la dataclass FullImage
@@ -276,10 +276,10 @@ class DataFormatter:
                 # Wrap en la dataclass FullImage y actualizar workflow
                 full_image_obj = FullImage(full_img=img_arr)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
-                logger.debug("Imagen actualizada con éxito.")
+                logger.info("Imagen actualizada con éxito.")
                 return True
             else:
-                logger.debug("Imagen completa sin modificaciones")
+                logger.info("Imagen completa sin modificaciones")
                 return True
             
         except Exception as e:
@@ -363,7 +363,7 @@ class DataFormatter:
             remaining_polygons = list(self.workflow.polygons.items())
             new_polygons: Dict[str, Polygons] = {}
             
-            for idx, (old_id, poly_obj) in enumerate(remaining_polygons):
+            for idx, (old_id, poly_obj) in enumerate(remaining_polygons): # type: ignore
                 new_id = f"poly_{idx:04d}"
                 updated_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = updated_poly_obj
@@ -411,10 +411,6 @@ class DataFormatter:
     def update_semantic_clasification(self, final_results: Dict[str, List[int] | int], reset_refined: bool = False) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
-        
-        Args:
-            final_results: Diccionario {poly_id: List[int] | int} donde int es el tipo semántico
-            reset_refined: Si True, resetea was_refined=False después de actualizar
         """
         try:
             if not self.workflow:
@@ -441,7 +437,7 @@ class DataFormatter:
                     updated_count += 1
 
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con semantic_clasifications (reset_refined={reset_refined})")
+                logger.info(f"Actualizados {updated_count} polígonos con semantic_clasifications")
             return True
             
         except Exception as e:
@@ -495,7 +491,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field={key_field}, text='{polygon.ocr_text or ''}'")
+                    logger.debug(f"UPDATED: poly_id: {poly_id}, key_field={key_field}, text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
