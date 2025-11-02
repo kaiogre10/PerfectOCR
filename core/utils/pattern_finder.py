@@ -134,8 +134,9 @@ def find_quantitative(s: str) -> bool:
         return False
 
     amounts = re.findall(r"\d+", s_norm)
-    if any(c == "00" for c in amounts if len(amounts) > 1 or c != "00"):
-        return False
+    if not (s_norm.endswith('.00') or s_norm.endswith(',00')):
+        if any(c == "00" for c in amounts if len(amounts) > 1 or c != "00"):
+            return False
 
     return bool(
         re.match(patterns["start"], s_norm) or
@@ -150,7 +151,7 @@ def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
     aceptando la letra o/O como posible dígito.
     """
     s = (s or "").strip()
-    if not s:
+    if not validate_text(s):
         return []
     
     patterns = get_quantitative_patterns()
@@ -176,7 +177,7 @@ def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
 
 def find_date(s: str) -> bool:
     try:
-        if not s or not s.strip():
+        if not validate_text(s):
             return False
 
         moth_pattern = r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(tiembre)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b'

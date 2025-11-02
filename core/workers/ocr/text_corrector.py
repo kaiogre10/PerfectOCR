@@ -36,7 +36,7 @@ class TextCorrector(OCRAbstractWorker):
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
 
         corrected_polygons: Dict[str, Polygons] = polygons_in
-        correction_stats = {
+        correction_stats: Dict[str, int] = {
             "numeric": 0,
             "quantitative": 0,
             "code": 0,
@@ -66,18 +66,10 @@ class TextCorrector(OCRAbstractWorker):
                 continue
             
             # Aplicar corrección según tipo semántico
-            corrected_text = self._apply_corrections(
-                text=original_text,
-                semantic_clasification=polygon.semantic_clasification,
-                polygon_id=poly_id
-            )
+            corrected_text = self._apply_corrections(text=original_text, semantic_clasification=polygon.semantic_clasification, polygon_id=poly_id)
             # Si hubo cambios, actualizar el polígono
             if corrected_text != original_text:
-                updated_polygon = dataclasses.replace(
-                    polygon,
-                    ocr_text=corrected_text,
-                    was_refined=True
-                )
+                updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text, was_refined=True)
                 corrected_polygons[poly_id] = updated_polygon
                 sc = polygon.semantic_clasification
                 semantic_type = "numeric" if sc == 1 else "quantitative" if sc == 2 else "descriptive" if sc == 0 else "umd" if sc == -2 else "code"
@@ -86,8 +78,8 @@ class TextCorrector(OCRAbstractWorker):
                 
                 logger.info(
                     f"Corrección {poly_id}: "
-                    f"Tipo: {semantic_type} | "
-                    f"Confianza: {confidence:.4f} | "
+                    f"Tipo: '{semantic_type}' | "
+                    f"Confianza: '{confidence}' | "
                     f"Original: '{original_text}' → Corregido: '{corrected_text}'"
                 )
             else:
@@ -109,47 +101,63 @@ class TextCorrector(OCRAbstractWorker):
         return True
 
     def _apply_corrections(self, text: str, semantic_clasification:  List[int] | int, polygon_id: str) -> str:
-        """
-        Aplica las correcciones quirúrgicas según el tipo semántico.
-        Solo corrige caracteres AISLADOS (sin vecinos del mismo tipo).
-        """
         if not validate_text(text):
             return text
-                
-        if semantic_clasification == -1 or semantic_clasification == -2:
-            semantic_type = "umd" if semantic_clasification == -2 else "code"
-            logger.info(f"Omitiendo corrección para tipo '{semantic_type}' ({polygon_id}: {text} )")
+
+        tokens = text.split(' ')
+        
+        # Si la clasificación es una lista, debe corresponder con los tokens
+        is_list_classification = isinstance(semantic_clasification, list)
+        logger.info(f"Procesando {polygon_id}: '{text}' | Clasificación: {semantic_clasification}")
+        if is_list_classification and len(semantic_clasification) != len(tokens):
+            logger.warning(f"Discrepancia en {polygon_id}: {len(tokens)} tokens vs {len(semantic_clasification)} clasificaciones. No se corrige.")
             return text
+
+        corrected_tokens: List[str] = []
+        for i, token in enumerate(tokens):
+            # Obtener la clasificación para el token actual
+            token_sc = semantic_clasification[i] if is_list_classification else semantic_clasification
+
+            # Lógica de corrección principal (movida a un método auxiliar)
+            corrected_token = self._correct_token(token, token_sc, polygon_id)
+            corrected_tokens.append(corrected_token)
+            
+        return ' '.join(corrected_tokens)
+    
+    def _correct_token(self, token: str, semantic_clasification: int, polygon_id: str) -> str:
+        """Aplica correcciones a un único token basado en su clasificación semántica."""
+        if semantic_clasification in [-1, -2]:
+            semantic_type = "umd" if semantic_clasification == -2 else "code"
+            logger.info(f"Omitiendo corrección de token en {polygon_id}: '{semantic_type}', '{token}'")
+            return token
             
         # Seleccionar el diccionario de correcciones apropiado
         corrections_map = self._get_corrections_map(semantic_clasification)
         
         if not corrections_map:
-            logger.warning(
-                f"No hay reglas de corrección para tipo: {semantic_clasification} "
-                f"(poly_id: {polygon_id})"
-            )
-            return text
+            return token
             
         # Aplicar reemplazos quirúrgicos solo si el carácter está AISLADO
-        corrected_chars = list(text)
+        corrected_chars = list(token)
         
-        for i, char in enumerate(text):
+        for i, char in enumerate(token):
             if char not in corrections_map:
                 continue
 
             # Mantener tu chequeo de aislamiento
-            if not self._is_isolated(text, i):
+            if not self._is_isolated(token, i):
+                logger.debug(f"{polygon_id}: Carácter '{char}' en '{token}' no está aislado, se omite corrección.")
                 continue
 
-            if char == 'S' and self._should_use_five_instead_of_dollar(text, i, semantic_clasification):
+            if char == 'S' and self._should_use_five_instead_of_dollar(token, i, semantic_clasification):
                 replacement = '5'
+                logger.info(f"{polygon_id}: Regla especial S->5 en '{token}'")
             else:
                 replacement = corrections_map[char]
 
             logger.info(
                 f"{polygon_id}: Clasificación: {semantic_clasification} Corrigiendo: '{char}' => '{replacement}'"
-                f"en texto original: '{text}'"
+                f"en texto original: '{token}'"
             )
             corrected_chars[i] = replacement
             
@@ -204,7 +212,7 @@ class TextCorrector(OCRAbstractWorker):
         # Está aislado si NO tiene ningún vecino del mismo tipo
         return not (has_left_match or has_right_match)
         
-    def _get_corrections_map(self, semantic_clasification:  List[int] | int) -> Dict[str, str]:
+    def _get_corrections_map(self, semantic_clasification:  int) -> Dict[str, str]:
         """Devuelve el mapa de correcciones para un tipo semántico dado."""
         if not self.numeric_corrections:
             logger.error("Sin mapa de correcciones")
@@ -219,7 +227,7 @@ class TextCorrector(OCRAbstractWorker):
         else:
             return {}
         
-    def _should_use_five_instead_of_dollar(self, text: str, index: int, semantic_clasification:  List[int] | int) -> bool:
+    def _should_use_five_instead_of_dollar(self, text: str, index: int, semantic_clasification:  int) -> bool:
         if semantic_clasification not in (1, 2):
             return False
 

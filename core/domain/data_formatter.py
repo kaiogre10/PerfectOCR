@@ -408,7 +408,7 @@ class DataFormatter:
             return False
                         
         # Cambiar update_semantic_clasification para recibir Dict[str, int]
-    def update_semantic_clasification(self, final_results: Dict[str, List[int] | int], reset_refined: bool = False) -> bool:
+    def update_semantic_clasification(self, final_results: Dict[str, List[int] | int]) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
         """
@@ -424,14 +424,11 @@ class DataFormatter:
                     polygon = self.workflow.polygons[poly_id]
 
                     # Actualizar semantic_clasification y opcionalmente resetear was_refined
-                    if reset_refined:
-                        updated_polygon = dataclasses.replace(
-                            polygon, 
-                            semantic_clasification=semantic_type,
-                            was_refined=False
-                        )
-                    else:
-                        updated_polygon = dataclasses.replace(polygon, semantic_clasification=semantic_type)
+                    updated_polygon = dataclasses.replace(
+                        polygon, 
+                        semantic_clasification=semantic_type,
+                        was_refined=False
+                    )
                     
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1

@@ -69,17 +69,29 @@ def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float])
     
     return float(np.linalg.norm(np.subtract(point1, point2)))
 
-def vectorice_values(data_list: List[float]) -> List[float]:
+def vectorice_values(data_list: List[float], value: Optional[str]) -> float | List[float]:
     """
     Calcula estadísticas vectorizadas (media, desviación estándar, varianza) de una lista de valores.
     """
     if not data_list:
-        return [0.0, 0.0, 0.0]
+        if value in ["mean", "std", "var"]:
+            return 0.0  # Retorna float para casos específicos
+        else:
+            return [0.0, 0.0, 0.0]  # Retorna lista [mean, std, var] para caso general
 
     value_array = np.array(data_list, dtype=np.float32)
-    line_mean = np.mean(value_array)
-    line_std = np.std(value_array)
-    line_var = np.var(value_array)
+
+    if value == "mean":
+        return float(np.mean(value_array))
     
-    return [float(line_mean), float(line_std), float(line_var)]
+    elif value == "std":
+        return float(np.std(value_array))
+        
+    elif value == "var":
+        return float(np.var(value_array))
     
+    else:
+        line_mean = np.mean(value_array)
+        line_std = np.std(value_array)
+        line_var = np.var(value_array)
+        return [float(line_mean), float(line_std), float(line_var)]

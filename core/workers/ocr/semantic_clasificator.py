@@ -1,6 +1,5 @@
 # core/workers/ocr/semantic_clasificator.py
 import logging
-import numpy as np
 from typing import Dict, Any, Tuple, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -8,6 +7,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_encoder import encode_text, get_morphological_encode
 from core.utils.text_validator import get_char_num
 from core.utils.pattern_finder import find_umd, find_quantitative, contains_quantitative
+from core.utils.math_utils import vectorice_values
 
 logger = logging.getLogger(__name__)
 
@@ -23,26 +23,14 @@ class SemanticClasificator(OCRAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("semantic_field", False)
             
-    def transcribe(self, context: Dict[str, Any], manager: DataFormatter, filter_modified: bool = False) -> bool:
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Clasifica polígonos semánticamente"""
-        logger.info(f"Clasificador iniciado, modo={filter_modified}")
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para procesar")
                 return False
                 
-            all_polygons: Dict[str, Polygons] = manager.workflow.polygons
-            
-            # FILTRO SELECTIVO: Solo clasificar polígonos modificados si filter_modified=True
-            if filter_modified:
-                polygons_to_classify = {
-                    pid: p for pid, p in all_polygons.items() 
-                    if p.was_refined
-                }
-                logger.info(f"Modo selectivo: {len(polygons_to_classify)}/{len(all_polygons)} polígonos modificados para reclasificar")
-            else:
-                polygons_to_classify = all_polygons
-                logger.info(f"Modo completo: clasificando todos los {len(all_polygons)} polígonos")
+            polygons_to_classify: Dict[str, Polygons] = manager.workflow.polygons
             
             if not polygons_to_classify:
                 logger.warning("No hay polígonos que clasificar")
@@ -57,12 +45,12 @@ class SemanticClasificator(OCRAbstractWorker):
             logger.info(f"Total clasificados: {classified_count}")
 
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
-            manager.update_semantic_clasification(final_results, reset_refined=filter_modified)
+            manager.update_semantic_clasification(final_results)
 
             for poly_id, polygon in polygons_to_classify.items():
                 text = polygon.ocr_text
                 sc = polygon.semantic_clasification
-                logger.debug(f"Clasificación {poly_id}: '{text}', '{sc}'")
+                logger.info(f"Clasificación {poly_id}: '{text}', '{sc}'")
 
             if self.output:
                 from services.output_service import save_debug_ocr
@@ -99,11 +87,11 @@ class SemanticClasificator(OCRAbstractWorker):
             pct = (sum(1 for ch in chars if ch in char_num) / total) * 100.0 if total else 0.0
 
             encoded_poly = encode_text(s, encoder)
-            poly_mean = np.mean(encoded_poly)
+            poly_mean: float = vectorice_values(encoded_poly, value="mean") # type: ignore
             inv_encoded_poly = encode_text(s, inv_encoder)
-            inv_poly_mean = np.mean(inv_encoded_poly)
+            inv_poly_mean: float = vectorice_values(inv_encoded_poly, value="mean") # type: ignore
             morph_text = get_morphological_encode(s)
-            poly_morph_mean = np.mean(morph_text) if morph_text else - 1.0
+            poly_morph_mean: float = vectorice_values(morph_text, value="mean") # type: ignore
 
             semantic_type = 0  # descriptive
             if contains_quantitative(s):
@@ -116,6 +104,7 @@ class SemanticClasificator(OCRAbstractWorker):
                     semantic_type = 2
                 else:
                     semantic_type = 1  # numeric
+                    
             elif self.semantic_range[0] < pct < self.semantic_range[1] and self.morph_mean[0] < poly_morph_mean < self.morph_mean[1]:
                 semantic_type = -1  # code
             else:

@@ -15,8 +15,7 @@ class TextCleaner(OCRAbstractWorker):
     """
     Limpiador de texto de alta seguridad para ruido OCR y analizador de contenido.
     - Limpia el texto de forma conservadora, protegiendo datos numéricos.
-    - Identifica polígonos que contienen múltiples palabras y los fragmenta
-      geométricamente si hay suficiente evidencia visual (contornos).
+    - Identifica polígonos que contienen múltiples palabras y los fragmenta geométricamente si hay suficiente evidencia visual (contornos).
     - NO corrige palabras.
     - NO elimina dígitos bajo ninguna circunstancia.
     - Preserva el espaciado para mantener la geometría.
@@ -51,7 +50,7 @@ class TextCleaner(OCRAbstractWorker):
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
             confidence = polygon.ocr_confidence or 0.0
-            sc = polygon.semantic_clasification or 0
+            sc: List[int] | int = polygon.semantic_clasification or 0
             text = polygon.ocr_text or ""
 
             if not validate_text(text):
@@ -67,9 +66,15 @@ class TextCleaner(OCRAbstractWorker):
 
             text = self._remove_special_chars(text)
 
+            is_numeric_like = (isinstance(sc, list) and any(c in [1, 2, -2] for c in sc)) or \
+                            (isinstance(sc, int) and sc in [1, 2, -2])
+
             if (not validate_text(text) or
-                (confidence < self.min_confidence and not (sc == 1 or sc == 2 or sc == -2)) or re.fullmatch(r'[\s\.\-_,;:]+', text)):
-                logger.info(f"Eliminado {poly_id}: | Texto: {text}, conf: {confidence} o sin texto")
+                (confidence < self.min_confidence and not is_numeric_like) or re.fullmatch(r'[\s\.\-_,;:]+', text)):
+                reason = "sin texto" if not validate_text(text) \
+                    else f"baja confianza ({confidence:.2f})" if confidence < self.min_confidence and not is_numeric_like \
+                    else "solo caracteres de puntuación"
+                logger.info(f"Eliminado {poly_id}: '{text}' (Razón: {reason})")
                 eliminated_count += 1
                 continue
 
@@ -130,7 +135,9 @@ class TextCleaner(OCRAbstractWorker):
             
         try:
             sc = polygon.semantic_clasification
-            if sc == 1 or sc == 2 or sc == -2:
+            is_numeric_like = (isinstance(sc, list) and any(c in [1, 2, -2] for c in sc)) or \
+                            (isinstance(sc, int) and sc in [1, 2, -2])
+            if is_numeric_like:
                 return text
 
             tokens = text.split(' ')
@@ -250,4 +257,6 @@ class TextCleaner(OCRAbstractWorker):
             pattern = r'[' + chars_escaped + r']'
 
         cleaned = re.sub(pattern, '', text)
+        if cleaned != text:
+            logger.debug(f"Caracteres especiales eliminados de '{text}' -> '{cleaned}'")
         return cleaned

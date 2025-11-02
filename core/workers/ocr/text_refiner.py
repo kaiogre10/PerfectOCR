@@ -35,31 +35,28 @@ class Refiner(OCRAbstractWorker):
             for i in range(self.num_passes):
                 pass_num = i + 1
                 logger.info(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
-                
-                # Determinar si usar filtro selectivo (solo en pasadas 2+)
-                use_filter = (i > 0)
-        
-                logger.info(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (filtro={use_filter})")
-                self.clasificator.transcribe(context, manager, filter_modified=use_filter)
+
+                logger.info(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
+                self.clasificator.transcribe(context, manager)
                 
                 logger.info(f"Bucle #{pass_num}: Limpieza de Texto")
                 self.cleaner.transcribe(context, manager)
 
                 logger.info(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo corregidos)")
-                self.clasificator.transcribe(context, manager, filter_modified=True)
+                self.clasificator.transcribe(context, manager)
                 
                 logger.info(f"Bucle #{pass_num}: Fragmentación de Texto")
                 self.fragmenter.transcribe(context, manager)
 
                 logger.info(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
-                self.clasificator.transcribe(context, manager, filter_modified=True)
+                self.clasificator.transcribe(context, manager)
                 
                 logger.info(f"Bucle #{pass_num}: Corrección textual")
                 self.corrector.transcribe(context, manager)
 
             # Clasificación final completa para asegurar consistencia
             logger.info(f"Pasada final: Clasificación Semántica (completa)")
-            self.clasificator.transcribe(context, manager, filter_modified=False)
+            self.clasificator.transcribe(context, manager)
             
             logger.info(f"Limpieza textual completa en: {time.perf_counter()-start_time:.6f}s")
             return True

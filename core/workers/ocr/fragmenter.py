@@ -58,7 +58,7 @@ class Fragmenter(OCRAbstractWorker):
                 # logger.info(f"{poly_id}: cantidad de blob ='{blob_metrics.get("num_blobs")}'")
                 
                 # Adapt to use the new SemanticClassification dataclass, and handle booleans
-                sc = polygon.semantic_clasification or 0
+                sc: List[int] | int = polygon.semantic_clasification or 0
                 ocr_text: str = polygon.ocr_text or ""
                 
                 if not validate_text(ocr_text): 
@@ -72,19 +72,19 @@ class Fragmenter(OCRAbstractWorker):
                     continue
 
                 text_needs_frag = (
-                    not (sc == 1 or sc == 2 or sc == -2) and
+                    not (all(cls in (1, 2, -2) for cls in sc) if isinstance(sc, list) else sc in (1, 2, -2)) and
                     " " in (ocr_text or "").strip()
                 )
 
                 punctuation_needs_frag = (
-                    not (sc == 1 or sc == 2 or sc == -2) and
+                    not (all(cls in (1, 2, -2) for cls in sc) if isinstance(sc, list) else sc in (1, 2, -2)) and
                     not text_needs_frag and
                     (any(punct in (ocr_text or "") for punct in [";", ":", "!", "?"]) or
                     (ocr_text or "").count('.') == 1)
                 )
 
                 quant_runs = []
-                if sc == 2:
+                if (isinstance(sc, list) and any(cls == 2 for cls in sc)) or (isinstance(sc, int) and sc == 2):
                     quant_runs = find_quantitative_runs(ocr_text)
 
                 quant_needs_frag = len(quant_runs) > 1
@@ -148,7 +148,7 @@ class Fragmenter(OCRAbstractWorker):
                 
         except Exception as e:
             logger.warning(f"Error fragmentando: {e}", exc_info=True)
-            return False
+        return False
 
     def fragment_by_blobs(self, polygon: Polygons, blob_metrics: Dict[str, Any]) -> List[Polygons]:
         """
@@ -284,7 +284,8 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
 
         sc = polygon.semantic_clasification
-        if sc == 1 or sc == 2 or sc == -2 or sc == -1:
+        if (isinstance(sc, list) and all(cls in (1, 2, -2, -1) for cls in sc)) or \
+           (isinstance(sc, int) and sc in (1, 2, -2, -1)):
             return [polygon]
         
         point_count = text.count('.')
@@ -366,6 +367,7 @@ class Fragmenter(OCRAbstractWorker):
                 filtered_parts.append(part)
         
         if len(filtered_parts) < 2:
+            logger.info(f"No se fragmenta por puntuación '{text}', no hay suficientes partes válidas.")
             return [polygon]
 
         # Longitud de caracteres visibles para el cálculo proporcional
