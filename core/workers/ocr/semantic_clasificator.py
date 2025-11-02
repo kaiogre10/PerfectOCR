@@ -1,7 +1,7 @@
 # core/workers/ocr/semantic_clasificator.py
 import logging
 import numpy as np
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -47,7 +47,10 @@ class SemanticClasificator(OCRAbstractWorker):
             # Clasificar solo los polígonos seleccionados
             encoder: Dict[str, float] = manager.get_density_encoder()
             inv_encoder: Dict[str, float] = manager.get_inverse_frecuency_encoder()
-            final_results: Dict[str, int] = self._clasify_words(polygons_to_classify, encoder, inv_encoder)
+            final_results: Dict[str, int | List[int]] = self._clasify_words(polygons_to_classify, encoder, inv_encoder)
+            
+            for poly_id, sc in final_results.items():
+                logger.info(f"CLASIFICACIÓN {poly_id}: '{sc}'")
             
             classified_count = len(final_results)
             logger.debug(f"Total clasificados: {classified_count}")
@@ -79,15 +82,16 @@ class SemanticClasificator(OCRAbstractWorker):
             return False
             
     # Cambiar el método _clasify_words para devolver Dict[str, int] en lugar de Dict[str, SemanticClassification]
-    def _clasify_words(self, polygons: Dict[str, Polygons], encoder: Dict[str, float], inv_encoder: Dict[str, float]) -> Dict[str, int]:
+    def _clasify_words(self, polygons: Dict[str, Polygons], encoder: Dict[str, float], inv_encoder: Dict[str, float]) -> Dict[str, int | List[int]]:
         semantic_range: Tuple[float, float] = self.worker_config.get("semantic_range", [])
         encode_mean: Tuple[float, float] = self.worker_config.get("encode_mean", [])
         morph_mean: Tuple[float, float] = self.worker_config.get("morph_mean", [])
 
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
-        final_results: Dict[str, int] = {}
+        final_results: Dict[str, int | list[int]] = {}
 
-        for pid, s in texts.items():
+        def classify_token(tok: str) -> int:
+            s = tok.strip(' ')
             chars = [ch for ch in s if not ch.isspace()]
             total = len(chars)
             char_num = get_morphological_map()
@@ -95,34 +99,39 @@ class SemanticClasificator(OCRAbstractWorker):
 
             encoded_poly = encode_text(s, encoder)
             poly_mean = np.mean(encoded_poly)
-
             inv_encoded_poly = encode_text(s, inv_encoder)
             inv_poly_mean = np.mean(inv_encoded_poly)
-
             morph_text = get_morphological_encode(s)
             poly_morph_mean = np.mean(morph_text) if morph_text else - 1.0
 
-            # Lógica de clasificación simplificada a enteros
-            semantic_type = 0  # descriptive por defecto
-            
+            semantic_type = 0  # descriptive
             if contains_quantitative(s):
-               semantic_type = 2  # quantitative
+                semantic_type = 2  # quantitative
             elif find_umd(s):
                 semantic_type = -2  # umd
             elif  morph_mean[1] < poly_morph_mean and poly_mean < encode_mean[0] and encode_mean[1] < inv_poly_mean and semantic_range[1] < pct :
                 has_quantitative = find_quantitative(s)
                 if has_quantitative:
-                    semantic_type = 2  # quantitative
+                    semantic_type = 2
                 else:
                     semantic_type = 1  # numeric
             elif semantic_range[0] < pct < semantic_range[1] and morph_mean[0] < poly_morph_mean < morph_mean[1]:
                 semantic_type = -1  # code
             else:
-                # pct < semantic_range[0] and poly_morph_mean < morph_mean[0]
-                semantic_type = 0  # Descriptive
+                semantic_type = 0  # descriptive
+            return int(semantic_type)
 
-            logger.debug(f"{pid}: '{s}'| mean: {poly_mean:.4f}, inv_mean: {inv_poly_mean}, morph: {poly_morph_mean}, {pct}% | sc: {semantic_type}")
+        for pid, word in texts.items():
+            s = word.strip(' ')
+            tokens = [t for t in s.split(' ') if t != '']
 
-            final_results[pid] = semantic_type
-
+            if len(tokens) <= 1:
+                sc_val = classify_token(s)
+                # logger.info(f"{pid}: '{s}' | sc={sc_val}")
+                final_results[pid] = sc_val
+            else:
+                sc_list = [classify_token(t) for t in tokens]
+                # logger.info(f"{pid}: '{s}' | sc={sc_list}")
+                final_results[pid] = sc_list
+                
         return final_results

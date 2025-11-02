@@ -14,13 +14,9 @@ import pandas as pd #type: ignore
 logger = logging.getLogger(__name__)
 
 class DataFormatter:
-    """
-    Válvula de entrada/salida para todas las operaciones del workflow.
-    Los workers NO tocan directamente el workflow, solo pasan por aquí.
-    """
+    """Válvula de entrada/salida para todas las operaciones del workflow."""
     def __init__(self):
         self.workflow: Optional[WorkflowDict] = None
-
         self.density_encoder: Optional[Dict[str, float]] = None
         self.frecuency_encoder: Optional[Dict[str, float]] = None
         self.inv_frecuency: Optional[Dict[str, float]] = None
@@ -30,8 +26,7 @@ class DataFormatter:
         self.semantic_map: Optional[Dict[str, int]] = None
     
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
-        """Crea un nuevo workflow usando solo dataclasses"""
-        
+        """Crea un nuevo workflow usando dataclasses"""
         try:
             full_img = normalice_image(gray_img)
             
@@ -141,7 +136,7 @@ class DataFormatter:
 
     def get_density_encoder(self) -> Dict[str, float]:
         """
-        Obtiene los valores de densidad para letras.
+        Obtiene los valores de densidad por letra.
         """
         try:
             if self.density_encoder is None:
@@ -154,7 +149,7 @@ class DataFormatter:
 
     def get_frecuency_char(self) -> Dict[str, float]:
         """
-        Obtiene los valores de densos frecuencia para letras.
+        Obtiene los valores de frecuencia por letra.
         """
         try:
             if self.frecuency_encoder is None:
@@ -167,7 +162,7 @@ class DataFormatter:
 
     def get_inverse_frecuency_encoder(self) -> Dict[str, float]:
         """
-        Obtiene los valores de densos frecuencia para letras.
+        Obtiene los valores densos de frecuencia inversa por letra.
         """
         try:
             if self.inv_frecuency is None:
@@ -180,7 +175,7 @@ class DataFormatter:
 
     def get_semmantic_types(self) -> Dict[str, int]:
         """
-        Obtiene los valores de densos frecuencia para letras.
+        Obtiene los valores morfológicos por letra.
         """
         try:
             if self.semantic_map is None:
@@ -192,10 +187,6 @@ class DataFormatter:
             return {}
 
     def get_mean_dummie(self) -> Dict[str, float]:
-        """
-        Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
-        Si no se especifican line_ids, codifica todas las líneas existentes.
-        """
         try:
             if self.mean_dummie is None:
                 self.mean_dummie = VECTOR_MEAN_DUMMIE
@@ -206,10 +197,6 @@ class DataFormatter:
             return {}
 
     def get_median_dummie(self) -> Dict[str, float]:
-        """
-        Codifica líneas específicas usando DENSITY_ENCODER con operaciones optimizadas.
-        Si no se especifican line_ids, codifica todas las líneas existentes.
-        """
         try:
             if self.median_dummie is None:
                 self.median_dummie = VECTOR_MEDIAN_DUMMIE
@@ -305,6 +292,15 @@ class DataFormatter:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para guardar imágenes recortadas.")
                 return False
+
+            total_img = len(cropped_images)
+            total_geo = len(cropped_geometries)
+
+            if total_img != total_geo:
+                logger.error(f"El número de imágenes recortadas '{total_img}' no coincide con el número de geometrías recortadas: '{total_geo}'")
+                return False
+
+            logger.warning(f"'{total_img}' imágenes recortadas recibidas para guardar.")
 
             for poly_id, img in cropped_images.items():
                 if poly_id in self.workflow.polygons:
@@ -412,12 +408,12 @@ class DataFormatter:
             return False
                         
         # Cambiar update_semantic_clasification para recibir Dict[str, int]
-    def update_semantic_clasification(self, final_results: Dict[str, int], reset_refined: bool = False) -> bool:
+    def update_semantic_clasification(self, final_results: Dict[str, List[int] | int], reset_refined: bool = False) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
         
         Args:
-            final_results: Diccionario {poly_id: int} donde int es el tipo semántico
+            final_results: Diccionario {poly_id: List[int] | int} donde int es el tipo semántico
             reset_refined: Si True, resetea was_refined=False después de actualizar
         """
         try:

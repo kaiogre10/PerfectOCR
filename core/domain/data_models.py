@@ -36,7 +36,7 @@ class Polygons:
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
     key_field: Optional[str]
-    semantic_clasification: int
+    semantic_clasification: Optional[List[int]] | int
         # quantitative: 2
         # numeric: 1
         # descriptive: 0
