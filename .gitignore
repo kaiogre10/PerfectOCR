@@ -19,6 +19,10 @@ __pycache__/
 
 # Ignorar carpeta
 input/
+.github/chatmodes/
+documentation/
+test/
+tools/
 output/
 data/models/
 input2/
@@ -37,7 +41,7 @@ input3/
 *.jpeg
 
 # Ignorar perfectocr.txt
-*cursorignore
+*.cursorignore
 *cursorignore/
 cursorignore
 *perfectocr.txt
