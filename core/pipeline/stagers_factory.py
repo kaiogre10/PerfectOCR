@@ -1,18 +1,16 @@
 # core/pipeline/stagers_factory.py
-from typing import Dict, Any, List
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
 from core.factory.main_factory import MainFactory
+from typing import Dict, Any, List
 
 class StagersFactory:
     """
-    Fábrica centralizada de stagers.
     Reutiliza una única instancia de MainFactory.
     Crea workers y ensambla stagers de forma uniforme.
     """
-
     def __init__(self, modules_config: Dict[str, Any], workers_order: Dict[str, List[str]] ,manager_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.modules_config = modules_config
@@ -29,7 +27,7 @@ class StagersFactory:
         factory = self.main_factory.get_image_preparation_factory()
 
         # Agregar configuraciones específicas de image_preparation al contexto
-        context_with_config = {
+        context_with_config: Dict[str, Any] = {
             **context,
             "image_preparation_config": self.modules_config.get("image_preparation", {}),
             "manager_config": self.manager_config
@@ -47,12 +45,12 @@ class StagersFactory:
     def create_preprocessing_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> PreprocessingStager:
         """Crea stager de preprocessing con configuraciones específicas del master config."""
         if not self.preprocessing_workers:
-            return {}
+            return {}# type: ignore
 
         factory = self.main_factory.get_preprocessing_factory()
         
         # Agregar configuraciones específicas de preprocessing al contexto
-        context_with_config = {
+        context_with_config: Dict[str, Any] = {
             **context,
             "preprocessing_config": self.modules_config.get("preprocessing", {}),
             "manager_config": self.manager_config
@@ -72,7 +70,7 @@ class StagersFactory:
         factory = self.main_factory.get_ocr_factory()
         
         # Agregar configuraciones específicas de OCR al contexto
-        context_with_config = {
+        context_with_config: Dict[str, Any] = {
             **context,
             "ocr_config": self.modules_config.get("ocr", {}),
             "manager_config": self.manager_config
@@ -90,12 +88,12 @@ class StagersFactory:
     def create_vectorization_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> VectorizationStager:
         """Crea stager de vectorización con configuraciones específicas del master config."""
         if not self.vectorizing_workers:
-            return {}
+            return {} # type: ignore
 
         factory = self.main_factory.get_vectorizing_factory()
         
         # Agregar configuraciones específicas de vectorización al contexto
-        context_with_config = {
+        context_with_config: Dict[str, Any] = {
             **context,
             "vectorization_config": self.modules_config.get("vectorization", {}),
             "manager_config": self.manager_config

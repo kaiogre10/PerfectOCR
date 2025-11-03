@@ -50,21 +50,7 @@ class ModelsConfig(ConfigWithNumpy):
     rec_model_dir: str
     cls_model_dir: str
     model_path: str
-
-class BinariceConfig(ConfigWithNumpy):
-    height_thresholds_px: List[int]
-    c_value: int
-    block_sizes_map: List[int]
-    min_cc_for_frag: int
-    density_threshold: float
-    max_cc_for_density_rule: int
-    width_var_threshold: float
-    k_sigma: float
-    min_gap_outlier: float
-    min_area_factor: float
-    min_blobs_for_frag: int
-    gap_threshold_norm: float
-
+    
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
     radius: float
@@ -78,8 +64,19 @@ class MoireConfig(ConfigWithNumpy):
     absolute_threshold: int
     
 class Fragmenter(ConfigWithNumpy):
-    binarizator: BinariceConfig
     min_contours_for_frag: int
+    height_thresholds_px: List[int]
+    c_value: int
+    block_sizes_map: List[int]
+    min_cc_for_frag: int
+    density_threshold: float
+    max_cc_for_density_rule: int
+    width_var_threshold: float
+    k_sigma: float
+    min_gap_outlier: float
+    min_area_factor: float
+    min_blobs_for_frag: int
+    gap_threshold_norm: float
     
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
@@ -156,7 +153,6 @@ class SemanticClasificator(ConfigWithNumpy):
     morph_mean: Tuple[float, float]
         
 class DataFinder(ConfigWithNumpy):
-    wordfinder_model_path: str
     min_similarity: float
     max_q_lenght: int
     
@@ -181,7 +177,6 @@ class OCRConfig(ConfigWithNumpy):
 class DBSCAN(ConfigWithNumpy):
     eps: float
     min_cluster_size: int
-    hmin_cluster_size: int
 
 class Lineal(ConfigWithNumpy):
     overlap_threshold: float

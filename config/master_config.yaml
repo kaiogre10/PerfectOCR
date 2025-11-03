@@ -2,18 +2,18 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "cleaner"
-    # - "angle_corrector"
+    - "cleaner"
+    - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
     # - "moire"
-    # - "sp"
-    # - "gauss"
-    # # - "ink_enhancement"
-    # - "clahe"
-    # - "sharp"
+    - "sp"
+    - "gauss"
+    # - "ink_enhancement"
+    - "clahe"
+    - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
@@ -21,7 +21,7 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-    - "lineal"
+    # - "lineal"
     # - "vectorizer"
     # - "dbscan"
     # - "cos_sim"
@@ -46,7 +46,7 @@ enabled_outputs:
   ocr_raw: false
   fragmented_polys: false
   reconstructed_lines: false
-  semantic_field: false
+  semantic_field: true
   table_lines: false
   encoded_lines: false
   features: false
@@ -77,10 +77,8 @@ processing:
   batch_size_factor: 2
   auto_mode: true
 
-# Configuración específica de cada módulo (SIN rutas)
 modules:
   image_preparation:
-  
     angle_corrector:
       min_angle_for_correction: 2.0
       canny_thresholds: [50, 150]
@@ -146,19 +144,18 @@ modules:
 
     fragmenter:
       min_contours_for_frag: 2
-      binarizator:
-        c_value: 7
-        height_thresholds_px: [100, 800, 1500, 2500]
-        block_sizes_map: [15, 21, 25, 35, 41]
-        min_cc_for_frag: 2
-        density_threshold: 0.65
-        max_cc_for_density_rule: 5
-        width_var_threshold: 0.25
-        k_sigma: 1.25
-        min_gap_outlier: 0.5
-        min_area_factor: 0.01
-        min_blobs_for_frag: 3
-        gap_threshold_norm: 0.01
+      c_value: 7
+      height_thresholds_px: [100, 800, 1500, 2500]
+      block_sizes_map: [15, 21, 25, 35, 41]
+      min_cc_for_frag: 2
+      density_threshold: 0.65
+      max_cc_for_density_rule: 5
+      width_var_threshold: 0.25
+      k_sigma: 1.25
+      min_gap_outlier: 0.5
+      min_area_factor: 0.01
+      min_blobs_for_frag: 3
+      gap_threshold_norm: 0.01
       
     text_refiner:
       num_passes: 2
@@ -175,7 +172,6 @@ modules:
       morph_mean: [-0.3, 0.35] # Promedio morfológico
         
     data_finder:
-      wordfinder_model_path: C:/word_finder_model/models/wf_model.pkl
       min_similarity: 0.92
       max_q_lenght: 20
 
@@ -187,7 +183,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: false
+      keywords_interval_enabled: true
       exclude_types: [
         "descriptive",
         "code", 

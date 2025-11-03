@@ -406,7 +406,6 @@ class DataFormatter:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
                         
-        # Cambiar update_semantic_clasification para recibir Dict[str, int]
     def update_semantic_clasification(self, final_results: Dict[str, List[int] | int]) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
@@ -507,8 +506,8 @@ class DataFormatter:
             if not self.workflow:
                 return None
             
-            polygons = self.workflow.polygons if self.workflow else{}
-            all_lines = self.workflow.all_lines if self.workflow else{}
+            polygons = self.workflow.polygons if self.workflow else {}
+            all_lines = self.workflow.all_lines if self.workflow else {}
 
             # Cambio: buscar key_field == 6 (int) en lugar de "HeaderWords"
             hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == 6] 
@@ -520,7 +519,7 @@ class DataFormatter:
                 return None
             
             header_line_id = None
-            max_header_count = 0 
+            max_header_count = 0
 
             for line_id, line_data in all_lines.items():
                 polygon_ids = getattr(line_data, "polygon_ids", [])
@@ -569,8 +568,7 @@ class DataFormatter:
             
             marked_as_header = 0
             cleared_header = 0
-            
-            # Actualizar todos los polígonos
+
             for poly_id, polygon in self.workflow.polygons.items():
                 current_key_field = getattr(polygon, "key_field", None)
                 
@@ -602,10 +600,9 @@ class DataFormatter:
             if not self.workflow:
                 return None
             
-            polygons = self.workflow.polygons if self.workflow else{}
-            all_lines = self.workflow.all_lines if self.workflow else{}
-            
-            # Cambio: buscar key_field == 2 (TotalProductos) o 1 (MontoTotalDocumento)
+            polygons = self.workflow.polygons if self.workflow else {}
+            all_lines = self.workflow.all_lines if self.workflow else {}
+
             footer_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) in (1, 2)]
             header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None) is not None]
             header_line_id = header_line_ids[0] if header_line_ids else None
@@ -715,7 +712,6 @@ class DataFormatter:
             if not self.workflow:
                 return False
 
-            # 1) Limpiar todos los flags tabular_line existentes
             cleared_count = 0
             for lid, line_obj in self.workflow.all_lines.items():
                 try:

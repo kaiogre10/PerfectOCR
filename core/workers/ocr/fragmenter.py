@@ -20,7 +20,6 @@ class Fragmenter(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('fragmenter', {})
-        self.binarizator_config = self.worker_config.get('binarizator', {})
         self.min_contours_for_frag = self.worker_config.get("min_contours_for_frag")
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("fragmented_polys", False)
@@ -41,13 +40,13 @@ class Fragmenter(OCRAbstractWorker):
             for poly_id in sorted_poly_ids:
                 polygon = polygons_in[poly_id]
                 
-                cropped_img = polygon.cropped_img.cropped_img #type: ignore
+                cropped_img = polygon.cropped_img.cropped_img # type: ignore
                 
                 if cropped_img is None:
                     logger.warning(f"Cropped_img de {poly_id} es None")
                     continue
                 
-                binarizator_config: Dict[str, Any] = self.binarizator_config
+                binarizator_config: Dict[str, Any] = self.worker_config
                 blob_metrics = binarice_img(cropped_img, binarizator_config)
 
                 if not blob_metrics:
@@ -57,7 +56,6 @@ class Fragmenter(OCRAbstractWorker):
                     
                 # logger.info(f"{poly_id}: cantidad de blob ='{blob_metrics.get("num_blobs")}'")
                 
-                # Adapt to use the new SemanticClassification dataclass, and handle booleans
                 sc: List[int] | int = polygon.semantic_clasification or 0
                 ocr_text: str = polygon.ocr_text or ""
                 
@@ -166,7 +164,7 @@ class Fragmenter(OCRAbstractWorker):
 
         # Debe existir correspondencia exacta blobs ↔ palabras
         if not blobs_norm_boxes or num_blobs < self.min_contours_for_frag or len(text_parts) != num_blobs:
-            logger.info(f"No se fragmenta: blobs/palabras {num_blobs}/{len(text_parts)}")
+            logger.debug(f"No se fragmenta: blobs/palabras {num_blobs}/{len(text_parts)}")
             return [polygon]
 
         # Padding coords = referencia absoluta del recorte
@@ -282,7 +280,7 @@ class Fragmenter(OCRAbstractWorker):
         if not validate_text(text):
             return [polygon]
 
-        sc = polygon.semantic_clasification
+        sc: List[int] | int = polygon.semantic_clasification
         if (isinstance(sc, list) and all(cls in (1, 2, -2, -1) for cls in sc)) or \
            (isinstance(sc, int) and sc in (1, 2, -2, -1)):
             return [polygon]
@@ -319,9 +317,7 @@ class Fragmenter(OCRAbstractWorker):
                 for i, part in enumerate(filtered_parts):
                     part_ratio = char_lengths[i] / total_chars
                     part_width = part_ratio * width
-                    
-                    new_xmax = current_x + part_width
-                    
+                    new_xmax = current_x + part_width            
                     new_bbox = np.array([current_x, ymin, new_xmax, ymax])
                     new_centroid = np.array([(current_x + new_xmax) / 2, (ymin + ymax) / 2])
 
@@ -436,8 +432,7 @@ class Fragmenter(OCRAbstractWorker):
         text: str = (polygon.ocr_text or "").strip()
         if not validate_text(text) or not quant_runs:
             return [polygon]
-
-        # --- INICIO DE LÓGICA NO DESTRUCTIVA ---
+        
         parts: List[str] = []
         last_index = 0
 
@@ -465,7 +460,7 @@ class Fragmenter(OCRAbstractWorker):
         parts = [p for p in parts if p]
 
         # Si el resultado es menos de 2 fragmentos, no hacer nada.
-        if len(parts) < self.min_contours_for_frag or len(parts) < 2:
+        if len(parts) < self.min_contours_for_frag:
              logger.info(f"Fragmentación cuantitativa cancelada para '{text}'. Partes resultantes: {parts}")
              return [polygon]
 
@@ -478,7 +473,6 @@ class Fragmenter(OCRAbstractWorker):
                 logger.debug(f"Fragmentando '{text}' en {parts} usando {len(selected)} blobs visuales.")
                 return self._fragment_using_boxes(polygon, parts, selected)
         
-        # Fallback: Usar geometría proporcional si los blobs fallan
         logger.debug(f"Fragmentando '{text}' en {parts} usando geometría proporcional.")
         
         char_lengths = [len(p) for p in parts]

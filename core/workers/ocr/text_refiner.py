@@ -37,19 +37,19 @@ class Refiner(OCRAbstractWorker):
                 logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
 
                 logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
-                self.clasificator.transcribe(context, manager)
+                self.clasificator.transcribe(context, manager, pass_num)
                 
                 logger.debug(f"Bucle #{pass_num}: Limpieza de Texto")
                 self.cleaner.transcribe(context, manager)
 
                 logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo corregidos)")
-                self.clasificator.transcribe(context, manager)
+                self.clasificator.transcribe(context, manager, pass_num)
                 
                 logger.debug(f"Bucle #{pass_num}: Fragmentación de Texto")
                 self.fragmenter.transcribe(context, manager)
 
                 logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
-                self.clasificator.transcribe(context, manager)
+                self.clasificator.transcribe(context, manager, pass_num)
                 
                 logger.debug(f"Bucle #{pass_num}: Corrección textual")
                 self.corrector.transcribe(context, manager)
@@ -57,9 +57,8 @@ class Refiner(OCRAbstractWorker):
             if manager.delete_cropped_images():
                 logger.warning(f"Imagenes recortadas liberadas exitosamente")
 
-            # Clasificación final completa para asegurar consistencia
-            logger.debug(f"Pasada final: Clasificación Semántica (completa)")
-            self.clasificator.transcribe(context, manager)
+            logger.debug(f"Pasada final: Clasificación Semántica completa")
+            self.clasificator.transcribe(context, manager, pass_num)
             
             logger.debug(f"Limpieza textual completa en: {time.perf_counter()-start_time:.6f}s")
             return True

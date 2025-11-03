@@ -11,8 +11,7 @@ from core.utils.math_utils import vectorice_values
 
 logger = logging.getLogger(__name__)
 
-class SemanticClasificator(OCRAbstractWorker):
-    
+class SemanticClasificator(OCRAbstractWorker):    
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -23,7 +22,7 @@ class SemanticClasificator(OCRAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("semantic_field", False)
             
-    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter, pass_num: int = None) -> bool:
         """Clasifica polígonos semánticamente"""
         try:
             if not manager.workflow or not manager.workflow.polygons:
@@ -53,9 +52,10 @@ class SemanticClasificator(OCRAbstractWorker):
                 logger.debug(f"Clasificación {poly_id}: '{text}', '{sc}'")
 
             if self.output:
-                from services.output_service import save_debug_ocr
+                from services.output_service import save_json_debug
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore
-                worker_name = "semantic_clasificator"
+                name = "semantic_clasificator"
+                worker_name = f"{name}_{pass_num}"
                 output_paths = context["output_paths"]
                 polygons = manager.workflow.polygons if manager.workflow else {}
                 results: Dict[str, Any] = {}
@@ -67,7 +67,7 @@ class SemanticClasificator(OCRAbstractWorker):
                         "semantic_clasification": sc
                     }
 
-                save_debug_ocr( output_paths, worker_name, results, file_name)
+                save_json_debug( output_paths, worker_name, results, file_name)
             
             return True
 

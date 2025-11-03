@@ -11,7 +11,6 @@ field_conversion_map: Dict[str, int] = {
     "RFCProveedor": 7,
     "MontoIVAGeneral": 8,
     "FechaDocumento": 9
-
 }
 
 DENSITY_ENCODER: Dict[str, float] = {
