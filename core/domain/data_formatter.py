@@ -464,7 +464,7 @@ class DataFormatter:
             logger.debug(f"Unificados {updated_count} polígonos de 'quantitative' a 'numeric'.")
         return True
                 
-    def update_key_field(self, polygon_updates: Optional[Dict[str, str]]) -> bool:
+    def update_key_field(self, polygon_updates: Optional[Dict[str, int]]) -> bool:
         """
         Actualiza los datos de los polígonos en las dataclasses de polígonos.
         """
@@ -487,10 +487,10 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.debug(f"UPDATED: poly_id: {poly_id}, key_field={key_field}, text='{polygon.ocr_text}'")
+                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field={key_field}, text='{polygon.ocr_text}'")
 
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
+                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
             else:
@@ -510,41 +510,35 @@ class DataFormatter:
             polygons = self.workflow.polygons if self.workflow else{}
             all_lines = self.workflow.all_lines if self.workflow else{}
 
-            hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == "HeaderWords"] 
+            # Cambio: buscar key_field == 6 (int) en lugar de "HeaderWords"
+            hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == 6] 
 
-            logger.debug(f"Header_polys: {hdr_poly_ids}")
+            logger.info(f"Header_polys: {hdr_poly_ids}")
             
-            # LOG CRÍTICO: Verificar si all_lines tiene datos
             if not all_lines:
                 logger.error("all_lines está vacío! No se puede buscar el header.")
                 return None
             
-            # Buscar la línea que contiene el mayor número de polígonos de encabezado
             header_line_id = None
             max_header_count = 0 
 
             for line_id, line_data in all_lines.items():
                 polygon_ids = getattr(line_data, "polygon_ids", [])
-                # Contar cuántos polígonos de encabezado están en esta línea
                 header_count = sum(1 for pid in hdr_poly_ids if pid in polygon_ids)
                 
-                # LOG: Mostrar líneas que tienen al menos un HeaderWord
                 if header_count > 0:
-                    logger.debug(f"Línea {line_id} tiene {header_count} HeaderWords: {[pid for pid in hdr_poly_ids if pid in polygon_ids]}")
+                    logger.info(f"Línea {line_id} tiene {header_count} HeaderWords: {[pid for pid in hdr_poly_ids if pid in polygon_ids]}")
 
                 if header_count > max_header_count:
-                    # Si esta línea tiene más polígonos de encabezado, actualizar
                     header_line_id = line_id
                     max_header_count = header_count
 
             if header_line_id is not None:
-                # Marcar la línea como header
                 current = self.workflow.all_lines.get(header_line_id)
                 if current:
                     updated_line = dataclasses.replace(current, header_line=header_line_id)
                     self.workflow.all_lines[header_line_id] = updated_line
                     
-                    # Actualizar todos los polígonos según la línea de encabezado
                     self.update_headers(header_line_id)
                     
                     logger.info(f"Header_line_id={header_line_id} guardado correctamente")
@@ -559,14 +553,13 @@ class DataFormatter:
     def update_headers(self, header_line_id: str) -> bool:
         """
         Actualiza los key_field de todos los polígonos según la línea de encabezado:
-        1. Todos los polígonos de la línea de encabezado → key_field="HeaderWords"
-        2. Todos los demás polígonos con key_field="HeaderWords" → key_field=None
+        1. Todos los polígonos de la línea de encabezado → key_field=6
+        2. Todos los demás polígonos con key_field=6 → key_field=None
         """
         try:
             if not self.workflow:
                 return False
             
-            # Obtener los polygon_ids de la línea de encabezado
             header_line = self.workflow.all_lines.get(header_line_id)
             if not header_line:
                 logger.warning(f"No se encontró la línea de encabezado {header_line_id}")
@@ -582,28 +575,28 @@ class DataFormatter:
                 current_key_field = getattr(polygon, "key_field", None)
                 
                 if poly_id in header_polygon_ids:
-                    # Este polígono pertenece a la línea de encabezado
-                    if current_key_field != "HeaderWords":
-                        updated_polygon = dataclasses.replace(polygon, key_field="HeaderWords")
+                    # Cambio: asignar 6 (int) en lugar de "HeaderWords"
+                    if current_key_field != 6:
+                        updated_polygon = dataclasses.replace(polygon, key_field=6)
                         self.workflow.polygons[poly_id] = updated_polygon
                         marked_as_header += 1
                     logger.info(f"Polígono {poly_id} marcado como encabezado: '{polygon.ocr_text}' en línea {header_line_id}")
                 
                 else:
-                    # Este polígono NO pertenece a la línea de encabezado
-                    if current_key_field == "HeaderWords":
+                    # Cambio: limpiar si tiene key_field == 6
+                    if current_key_field == 6:
                         updated_polygon = dataclasses.replace(polygon, key_field=None)
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_header += 1
                         logger.info(f"Polígono {poly_id} limpiado de HeaderWords (fuera de línea {header_line_id})")
             
-            logger.debug(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
+            logger.info(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
             return True
             
         except Exception as e:
             logger.error(f"Error actualizando polígonos de encabezado: {e}", exc_info=True)
             return False
-            
+        
     def _get_footer(self) -> Optional[str]:
         try:
             if not self.workflow:
@@ -611,7 +604,9 @@ class DataFormatter:
             
             polygons = self.workflow.polygons if self.workflow else{}
             all_lines = self.workflow.all_lines if self.workflow else{}
-            footer_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) in ("TotalProductos", "MontoTotalDocumento")]
+            
+            # Cambio: buscar key_field == 2 (TotalProductos) o 1 (MontoTotalDocumento)
+            footer_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) in (1, 2)]
             header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None) is not None]
             header_line_id = header_line_ids[0] if header_line_ids else None
             
@@ -622,8 +617,7 @@ class DataFormatter:
                     if pid in line_obj.polygon_ids:
                         polyid_to_lineid[pid] = line_id
                         break
-                    
-            # Elegir el footer más cercano al header_line_id o de menor valor si es que no hay 
+                
             min_distance = None
             for pid, line_id in polyid_to_lineid.items():
                 if line_id in all_lines:
@@ -652,13 +646,13 @@ class DataFormatter:
                     return footer_line
             else: 
                 logger.warning(f"No se encontró ninguna línea para pie de tabla")
-                
+            
             return None
                 
         except Exception as e:
             logger.info(f"Error buscando footer: {e}", exc_info=True)
             return None
-            
+
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
         Guarda las líneas reconstruidas en el workflow_dict y, más importante,

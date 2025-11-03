@@ -35,7 +35,7 @@ class Polygons:
     perimeter: Optional[float]
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
-    key_field: Optional[str]
+    key_field: Optional[int]
     semantic_clasification: List[int] | int
         # quantitative: 2
         # numeric: 1

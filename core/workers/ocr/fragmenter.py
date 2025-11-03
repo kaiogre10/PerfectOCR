@@ -51,7 +51,7 @@ class Fragmenter(OCRAbstractWorker):
                 blob_metrics = binarice_img(cropped_img, binarizator_config)
 
                 if not blob_metrics:
-                    logger.info(f"Sin Metricas para: {poly_id}")
+                    logger.debug(f"Sin Metricas para: {poly_id}")
                     final_polygons.append(polygon)
                     continue
                     
@@ -62,7 +62,7 @@ class Fragmenter(OCRAbstractWorker):
                 ocr_text: str = polygon.ocr_text or ""
                 
                 if not validate_text(ocr_text): 
-                    logger.info(f"Polygono sin texto: {poly_id}")
+                    logger.debug(f"Polygono sin texto: {poly_id}")
                     continue
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
@@ -106,7 +106,7 @@ class Fragmenter(OCRAbstractWorker):
                         reason = "puntuación"
 
                     semantic_type_name = self.get_semantic_type_name(sc, manager)
-                    logger.info(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
+                    logger.debug(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
 
                     if visual_needs_frag:
                         fragments = self.fragment_by_blobs(polygon, blob_metrics)
@@ -260,7 +260,7 @@ class Fragmenter(OCRAbstractWorker):
                 ])
             )
             
-            logger.info(f"Fragmentos textuales: '{part}'")#, bbox={new_bbox.tolist()}")
+            logger.debug(f"Fragmentos textuales: '{part}'")#, bbox={new_bbox.tolist()}")
 
             new_poly = dataclasses.replace(
                 polygon,
@@ -271,7 +271,7 @@ class Fragmenter(OCRAbstractWorker):
             new_polys.append(new_poly)
             current_x = new_xmax
 
-        logger.info(f"'{len(parts)}' Fragmentos totales para {polygon.polygon_id}")
+        logger.debug(f"'{len(parts)}' Fragmentos totales para {polygon.polygon_id}")
         return new_polys
 
     def fragment_by_punctuation(self, polygon: Polygons) -> List[Polygons]:
@@ -337,7 +337,7 @@ class Fragmenter(OCRAbstractWorker):
                         ])
                     )
                     
-                    logger.info(f"División por puntuación: texto='{part}'")#, bbox={new_bbox.tolist()}")
+                    logger.debug(f"División por puntuación: texto='{part}'")#, bbox={new_bbox.tolist()}")
 
                     new_poly = dataclasses.replace(
                         polygon,

@@ -1,5 +1,19 @@
 from typing import Dict
 
+field_conversion_map: Dict[str, int] = {
+    'noise_words': 0,
+    'MontoTotalDocumento': 1,
+    'TotalProductos': 2,
+    'Subtotal': 3,
+    'FolioDocumento': 4,
+    "NombreCliente": 5,
+    "HeaderWords": 6,
+    "RFCProveedor": 7,
+    "MontoIVAGeneral": 8,
+    "FechaDocumento": 9
+
+}
+
 DENSITY_ENCODER: Dict[str, float] = {
     "0": 0.0,
     "1": 1.0,

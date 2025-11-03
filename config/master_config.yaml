@@ -2,18 +2,18 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "cleaner"
-    - "angle_corrector"
+    # - "cleaner"
+    # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
     # - "moire"
-    - "sp"
-    - "gauss"
-    # - "ink_enhancement"
-    - "clahe"
-    - "sharp"
+    # - "sp"
+    # - "gauss"
+    # # - "ink_enhancement"
+    # - "clahe"
+    # - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
@@ -22,10 +22,10 @@ pipeline_secuence:
     
   vector_stage:
     - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
+    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
