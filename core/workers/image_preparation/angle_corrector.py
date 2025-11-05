@@ -26,6 +26,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         self.hough_angle_filter_range_degrees = self.worker_config['hough_angle_filter_range_degrees']
         self.hough_min_line_length_cap_px = self.worker_config.get('hough_min_line_length_cap_px')
         self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("angle_corrected", False)
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
@@ -40,6 +41,15 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
             manager.update_full_img(corrected, full_img)
             logger.debug(f"Imagen inclinada corregida actualiada en el manager")
+            if self.output:
+                from services.output_service import save_croped_image
+                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                worker_name = context.get("worker_name") or "angle_corrector"
+                output_paths = context["output_paths"]
+                poly_id = "1"
+                method = "angle_corrected"
+                save_croped_image(image_name, poly_id, full_img, output_paths, worker_name, method)
+                logger.debug(f"Imagen inclinada corregida guardada como output intermedio 'angle_corrected'")
                 
             return True
             
