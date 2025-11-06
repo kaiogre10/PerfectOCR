@@ -384,9 +384,9 @@ VECTOR_MEDIAN_DUMMIE: Dict[str, float] = {
 }
 
 SEMATIC_TYPES_MAP: Dict[str, int] = {
-    "quantitative": 2,
-    "numeric": 1, 
-    "descriptive": 0,
-    "code": -1,
-    "umd": -2
+    "quantitative": 2, # Cantidades monetarias, sub clasificación de numeric
+    "numeric": 1, # Strings numericos refernte a cantidades generales
+    "descriptive": 0, # Palabras en general, siglas aquí
+    "code": -1, # Códigos generales tipo SKU, de identificación, contienen letras y números.
+    "umd": -2 # Sub clasificación de code, son str cortos que suelen informar el contenido de los productos
 }

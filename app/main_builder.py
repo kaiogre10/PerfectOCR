@@ -60,7 +60,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         results = execute_processing(builders, workflow_report)
         logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
         logger.info(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
-        return results
+        return results #type: ignore
         
     except Exception as e:
         logger.fatal(f"Error fatal en main: {e}", exc_info=True)
@@ -118,6 +118,7 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
     image_info_list = workflow_report.get('image_info', [])
     total_processing_time = 0.0
     builders_amount = len(builders)
+    total_img = 0
     logger.info(f"Cantidad de Builder creados: {builders_amount}")
 
     try:
@@ -126,13 +127,15 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
                 image_data = image_info_list[i]
                 start_time = time.perf_counter()
                 db_path = builder.process_single_image()
-                end_time = time.perf_counter()
-                total_processing_time += (end_time - start_time)
+                total_img +=1
+                image_processing_time = time.perf_counter() - start_time
+                total_processing_time += image_processing_time
                 db_paths[image_data.get('name', f'imagen_{i}')] = db_path
+                logger.warning(f"IMAGEN '{image_data.get('name')}' {total_img} de {builders_amount} PROCESADA EN: {image_processing_time:.6f}s")
 
         if db_paths:
             mean_time = total_processing_time / len(db_paths)
-            logger.info(f"Total de imágenes: {len(db_paths)} en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
+            logger.warning(f"Total de imágenes: {len(db_paths)} en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
 
         return ["db_path"]
 

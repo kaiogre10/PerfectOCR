@@ -362,7 +362,7 @@ class Fragmenter(OCRAbstractWorker):
                 filtered_parts.append(part)
         
         if len(filtered_parts) < 2:
-            logger.info(f"No se fragmenta por puntuación '{text}', no hay suficientes partes válidas.")
+            logger.debug(f"No se fragmenta por puntuación '{text}', no hay suficientes partes válidas.")
             return [polygon]
 
         # Longitud de caracteres visibles para el cálculo proporcional

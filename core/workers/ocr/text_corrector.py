@@ -7,6 +7,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_encoder import get_char_num, validate_text
 from core.utils.text_validator import numeric_corrections, descritive_corrections
+from core.utils.pattern_finder import termination_detect
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,6 @@ class TextCorrector(OCRAbstractWorker):
     - Solo hace reemplazos de caracteres, no corrección ortográfica.
     - Es recursivo: itera sobre todos los polígonos aplicando correcciones especializadas.
     """
-
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -25,7 +25,7 @@ class TextCorrector(OCRAbstractWorker):
         self.conf_threshold = (self.worker_config.get("confidence_threshold") * 100.0)
         self.numeric_corrections: Dict[str, str] = numeric_corrections()
         self.descriptive_corrections: Dict[str, str] = descritive_corrections()
-        self.char_num: List[str] = get_char_num()    
+        self.char_num: List[str] = get_char_num()
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
 
@@ -58,6 +58,8 @@ class TextCorrector(OCRAbstractWorker):
             if not validate_text(original_text):
                 logger.debug(f"Sin texto: {poly_id}: '{original_text}'")
                 continue
+
+            # token_corr = correct_termination(token)
             
             # Filtro de confianza
             if confidence > self.conf_threshold:
@@ -76,7 +78,7 @@ class TextCorrector(OCRAbstractWorker):
                 correction_stats[semantic_type] += 1
                 correction_stats["total_corrections"] += 1
                 
-                logger.debug(
+                logger.info(
                     f"Corrección {poly_id}: "
                     f"Tipo: '{semantic_type}' | "
                     f"Confianza: '{confidence}' | "
@@ -149,16 +151,17 @@ class TextCorrector(OCRAbstractWorker):
                 logger.debug(f"{polygon_id}: Carácter '{char}' en '{token}' no está aislado, se omite corrección.")
                 continue
 
+            if char == "0" and self.termination_correct(token, semantic_clasification):
+                replacement = 'o'
+                logger.info(f"{polygon_id}: Corrección de terminación")
+
             if char == 'S' and self._should_use_five_instead_of_dollar(token, i, semantic_clasification):
                 replacement = '5'
-                logger.debug(f"{polygon_id}: Regla especial S->5 en '{token}'")
+                logger.info(f"{polygon_id}: Regla especial S->5 en '{token}'")
             else:
                 replacement = corrections_map[char]
 
-            logger.debug(
-                f"{polygon_id}: Clasificación: {semantic_clasification} Corrigiendo: '{char}' => '{replacement}'"
-                f"en texto original: '{token}'"
-            )
+            logger.info(f"{polygon_id}: Corrigiendo: '{char}' => '{replacement}'en texto original: '{token}'")
             corrected_chars[i] = replacement
             
         return ''.join(corrected_chars)
@@ -263,3 +266,12 @@ class TextCorrector(OCRAbstractWorker):
         # Si hay '$' antes en el token o está en contexto numérico → usar '5'
         has_currency_before = '$' in token[:index - l]
         return (has_currency_before or left_numish or right_numish)
+
+    def termination_correct(self, text: str, semantic_clasification: int) -> bool:
+        if semantic_clasification != 0:
+            return False
+
+        if termination_detect(text):
+            return True
+        else:
+            return False

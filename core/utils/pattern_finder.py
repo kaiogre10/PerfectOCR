@@ -5,6 +5,19 @@ from core.utils.text_validator import validate_text
 
 logger = logging.getLogger(__name__)
 
+def termination_detect(text: str) -> bool:
+    if not validate_text(text):
+        return False
+
+    minus_text = text.lower()
+
+    pattern = r'(?i)(s|c|r)?i0n\b'
+    if re.search(pattern, minus_text):
+        return True
+
+    else:
+        return False
+
 def is_acronym(text: str) -> bool:
     """Detecta siglas del tipo A.B.C. o P.U.C.D con punto final opcional y, admite un signo ':' ';' ',' opcional al final. """
     try:
@@ -15,7 +28,7 @@ def is_acronym(text: str) -> bool:
         return re.search(pattern, text.strip()) is not None
         
     except Exception as e:
-        logger.info(f"Error buscando siglas: {e}", exc_info=True)
+        logger.error(f"Error buscando siglas: {e}", exc_info=True)
     return False
 
 def find_umd(s: str) -> bool:

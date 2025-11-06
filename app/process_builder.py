@@ -1,7 +1,7 @@
 # PerfectOCR/app/process_builder.py
 import time
 import logging
-from typing import Optional, Dict
+from typing import Optional
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager

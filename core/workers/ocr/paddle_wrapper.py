@@ -7,7 +7,6 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_validator import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -129,16 +128,15 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         confidence_pct = round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
                         
                         # Aplicar filtro de confianza mínima
-                        if confidence_pct > min_confidence and validate_text(text):
+                        if confidence_pct > min_confidence:
                             final_results[poly_id] = {
                                 "text": str(text).strip(),
                                 "confidence": confidence_pct
                             }
+                            logger.debug(f"Resultados: {poly_id}: Texto='{text}', Confianza='{confidence_pct}%'")
 
                         else:
-                            logger.warning(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
-
-                        logger.debug(f"Resultados: {poly_id}: Texto='{text}', Confianza='{confidence_pct}%'")
+                            logger.warning(f"Texto basuta filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
                         
                     total_results = len(final_results)
                     logger.warning(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")

@@ -62,13 +62,22 @@ def get_alone_chars() -> List[str]:
     return ["a", "e", "y", "o", "u", "&"]
 
 def validate_alone_chars(text: str) -> bool:
-    minus_text = text.lower()
-    valid_chars = get_alone_chars()
-    if len(minus_text) > 2:
+    if len(text) > 1:
         return True
     
+    minus_text = text.lower()
+    
+    nums = get_char_num()
+    if minus_text in nums:
+        return True
+    
+    valid_chars = get_alone_chars()
     if minus_text in valid_chars:
         return True
+
+    spec_char = special_chars()
+    if minus_text in spec_char:
+        return False
     
     else:
         return False
