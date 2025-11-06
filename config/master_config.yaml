@@ -2,27 +2,27 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "cleaner"
-    - "angle_corrector"
+    # - "cleaner"
+    # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
     # - "moire"
-    - "sp"
-    - "gauss"
+    # - "sp"
+    # - "gauss"
     # - "ink_enhancement"
-    - "clahe"
-    - "sharp"
+    # - "clahe"
+    # - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
-    - "text_refiner"
-    - "data_finder"
+    # - "text_refiner"
+    # - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
+    - "lineal"
+    - "vectorizer"
     # - "dbscan"
     # - "cos_sim"
     # - "table_structurer"
@@ -35,6 +35,7 @@ enabled_outputs:
   angle_corrected: false
   preprocessed_image: false
   cropped_img: false
+  filtered_polys: false
   discarded_polys: false
   moire_poly: false
   sp_poly: false
@@ -173,7 +174,7 @@ modules:
         
     data_finder:
       min_similarity: 0.92
-      max_q_lenght: 20
+      max_q_lenght: [2, 25]
 
     text_corrector:
       confidence_threshold: 0.90
@@ -183,21 +184,20 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: true
+      keywords_interval_enabled: false
       exclude_types: [
         "descriptive",
         "code", 
         "umd"
       ]
       include_types: [
-        "numeric", 
+        "numeric",
         "quantitative"
       ]
       
     dbscan:
       eps: 1.0
       min_cluster_size: 2
-      hmin_cluster_size: 3
 
     cos_sim:
       min_cluster: 1

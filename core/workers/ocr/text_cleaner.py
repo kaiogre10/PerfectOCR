@@ -6,8 +6,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_encoder import validate_text
-from core.utils.text_validator import special_chars, get_char_num
+from core.utils.text_validator import validate_text, validate_alone_chars, special_chars, get_char_num
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +54,11 @@ class TextCleaner(OCRAbstractWorker):
 
             if not validate_text(text):
                 logger.debug(f"Eliminado {poly_id} sin texto inicial")
+                eliminated_count += 1
+                continue
+
+            if not validate_alone_chars(text):
+                logger.info(f"Eliminado {poly_id} por soledad: '{text}'")
                 eliminated_count += 1
                 continue
             

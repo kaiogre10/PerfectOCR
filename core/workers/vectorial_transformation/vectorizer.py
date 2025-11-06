@@ -73,10 +73,6 @@ class Vectorizer(VectorizationAbstractWorker):
             return False
             
     def _vectorize_text(self, manager: DataFormatter, context: Dict[str, Any]) -> Optional[Dict[str, Dict[str, float]]]:
-        """
-        Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado por el scanner.
-        No usa el header como referencia para el intervalo; el header sólo se añade si el intervalo es válido.
-        """
         try:
             t0 = time.perf_counter()
             all_lines: Dict[str, AllLines] = {}
@@ -144,8 +140,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Línea inferior
                 table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 table_str = "\n".join(table)
-                logger.debug(f"\nTabla unificada características:\n{table_str}")
-                logger.debug(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
+                logger.info(f"\nTabla unificada características:\n{table_str}")
+                logger.warning(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
                 return all_features
             else:
                 logger.warning("No se pudieron calcular features para ninguna línea")
@@ -386,12 +382,11 @@ class Vectorizer(VectorizationAbstractWorker):
                 numeric_counts_by_line[line_id] = ncount
                 
                 line_text = getattr(line_data, "text", "") or ""
-                dcount = sum(ch.isdigit() for ch in line_text)
+                dcount = sum(1 for ch in line_text if ch in self.char_num)
                 dcount += 1.0
                 digit_count_by_line[line_id] = dcount
 
             if sorted_lines:
-                # Para obtener la mediana correctamente, convierte los valores a una lista antes de pasarlos a np.median
                 numeric_counts_list = list(numeric_counts_by_line.values())
                 total_numerics_global: float = float(sum(numeric_counts_list)) if numeric_counts_list else 0.0
                 max_numeric_count_global = max(numeric_counts_list) if numeric_counts_list else 0.0
@@ -399,7 +394,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 digit_counts_list = list(digit_count_by_line.values())
                 max_digit_count_global = max(digit_counts_list) if digit_counts_list else -1.0
                 
-                line_features = {
+                line_features: Dict[str, float] = {
                     "total_numerics_global": total_numerics_global,
                     "max_numeric_count_global": max_numeric_count_global,
                     "max_digit_count_global": max_digit_count_global,

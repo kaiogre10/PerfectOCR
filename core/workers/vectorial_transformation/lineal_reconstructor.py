@@ -126,7 +126,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                    # logger.info(f"{line_id}: '{joined_text}'")
+                    logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -151,6 +151,6 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 }
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                # logger.info(f"{line_id}: '{joined_text}'")
+                logger.info(f"{line_id}: '{joined_text}'")
 
         return lines_info

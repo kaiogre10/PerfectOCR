@@ -24,6 +24,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         self.angle_thr = self.worker_config["angle_thr"]
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("cropped_img", False)
+        self.filtered_ouputs = self.enabled_outputs.get("filtered_polys", False)
         self.disoutput = self.enabled_outputs.get("discarded_polys", False)        
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -109,10 +110,16 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             poly_data_to_filter: List[Dict[str, Any]] = []
             for i, idx in enumerate(valid_indices):
-                poly_id: str = poly_ids_order[idx]  # type: ignore
+                poly_id: str = poly_ids_order[idx] # type: ignore
                 crop_x1, crop_y1 = int(px1[idx]), int(py1[idx])
                 crop_x2, crop_y2 = int(px2[idx]), int(py2[idx])
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
+
+                if self.output:
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name") or "poly_gone"
+                    output_paths = context["output_paths"]
+                    save_croped_image(image_name, poly_id, cropped, output_paths, worker_name, method="all_polys") # type: ignore
                 
                 bbox_width = crop_x2 - crop_x1
                 bbox_height = crop_y2 - crop_y1
@@ -188,38 +195,36 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                         "poly_width": poly_width,
                     }
                 }
-                
-                # logger.info(f"{new_id}: angle = '{p_data['angle']}°'")
 
-                if self.output:
+                if self.filtered_ouputs:
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "poly_gone"
                     output_paths = context["output_paths"]
-                    save_croped_image(image_name, new_id, p_data['cropped'], output_paths, worker_name, method="all_polys")
+                    save_croped_image(image_name, new_id, p_data['cropped'], output_paths, worker_name, method="filtered_polys")
 
             # Eliminar los descartados del manager.workflow.polygons
             for poly_id in discarded_poly_ids:
                 pid = poly_id.split(" ")[0]
 
                 if pid in manager.workflow.polygons if manager.workflow else None:
-                    del manager.workflow.polygons[pid]
+                    del manager.workflow.polygons[pid] # type: ignore
 
                 pid = poly_id.split(" ")[0]
                 if pid in manager.workflow.polygons if manager.workflow else None:
-                    del manager.workflow.polygons[pid]
+                    del manager.workflow.polygons[pid]# type: ignore
 
             # Reindexar los polígonos válidos en el manager
             new_polygons = {}
             for idx, old_id in enumerate(valid_poly_ids):
 
-                if old_id not in manager.workflow.polygons:
+                if old_id not in manager.workflow.polygons:# type: ignore
                     continue
 
                 new_id = f"poly_{idx:04d}"
-                poly_obj = manager.workflow.polygons[old_id] 
+                poly_obj = manager.workflow.polygons[old_id] # type: ignore
                 poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = poly_obj
-            manager.workflow.polygons = new_polygons
+            manager.workflow.polygons = new_polygons# type: ignore
             
             # Guardar resultados
             if not manager.save_cropped_images(cropped_images, cropped_geometries):

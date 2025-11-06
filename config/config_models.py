@@ -10,6 +10,7 @@ class OutputFlag(ConfigWithNumpy):
     angle_corrected: bool
     preprocessed_image: bool
     cropped_img: bool
+    filtered_polys: bool
     discarded_polys: bool
     moire_poly: bool
     sp_poly: bool
@@ -154,7 +155,7 @@ class SemanticClasificator(ConfigWithNumpy):
         
 class DataFinder(ConfigWithNumpy):
     min_similarity: float
-    max_q_lenght: int
+    max_q_lenght: Tuple[int, int]
     
 class TextRefiner(ConfigWithNumpy):
     num_passes: int

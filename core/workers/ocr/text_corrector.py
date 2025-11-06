@@ -5,7 +5,8 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_validator import get_char_num, validate_text, numeric_corrections, descritive_corrections
+from core.utils.text_encoder import get_char_num, validate_text
+from core.utils.text_validator import numeric_corrections, descritive_corrections
 
 logger = logging.getLogger(__name__)
 

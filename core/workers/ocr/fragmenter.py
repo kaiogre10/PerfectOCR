@@ -9,7 +9,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.pattern_finder import is_acronym, find_quantitative_runs
 from core.utils.binarizator import binarice_img
-from core.utils.text_encoder import validate_text
+from core.utils.text_validator import validate_text
 from core.utils.text_validator import punc_chars
 
 logger = logging.getLogger(__name__)

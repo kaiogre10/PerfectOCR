@@ -4,8 +4,7 @@ from typing import Dict, Any, Tuple, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_encoder import encode_text, get_morphological_encode
-from core.utils.text_validator import get_char_num
+from core.utils.text_encoder import encode_text, get_morphological_encode, get_char_num
 from core.utils.pattern_finder import find_umd, find_quantitative, contains_quantitative
 from core.utils.math_utils import vectorice_values
 
@@ -22,7 +21,7 @@ class SemanticClasificator(OCRAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("semantic_field", False)
             
-    def transcribe(self, context: Dict[str, Any], manager: DataFormatter, pass_num: int = None) -> bool:
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter, pass_num: int = None) -> bool: # type: ignore
         """Clasifica polígonos semánticamente"""
         try:
             if not manager.workflow or not manager.workflow.polygons:
@@ -52,7 +51,7 @@ class SemanticClasificator(OCRAbstractWorker):
                 logger.debug(f"Clasificación {poly_id}: '{text}', '{sc}'")
 
             if self.output:
-                from services.output_service import save_json_debug
+                from services.output_service import save_raw_json
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore
                 name = "semantic_clasificator"
                 worker_name = f"{name}_{pass_num}"
@@ -67,7 +66,7 @@ class SemanticClasificator(OCRAbstractWorker):
                         "semantic_clasification": sc
                     }
 
-                save_json_debug( output_paths, worker_name, results, file_name)
+                save_raw_json( output_paths, worker_name, results, file_name)
             
             return True
 

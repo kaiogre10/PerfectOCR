@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_encoder import validate_text
+from core.utils.text_validator import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -74,11 +74,11 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 processed_count = len(final_results) if success else 0
                 
                 if self.output:
-                    from services.output_service import save_debug_ocr
+                    from services.output_service import save_raw_json
                     file_name: str = manager.workflow.metadata.image_name #type: ignore
                     worker_name = context.get("worker_name") or "paddle_wrapper"
                     output_paths = context["output_paths"]
-                    save_debug_ocr( output_paths, worker_name, final_results, file_name)
+                    save_raw_json( output_paths, worker_name, final_results, file_name)
             
             total_time = time.perf_counter() - start_time
             logger.debug(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.6f}s.")
@@ -136,12 +136,12 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             }
 
                         else:
-                            logger.debug(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
+                            logger.warning(f"Resultado filtrado por baja confianza para {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
 
                         logger.debug(f"Resultados: {poly_id}: Texto='{text}', Confianza='{confidence_pct}%'")
                         
                     total_results = len(final_results)
-                    logger.info(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")
+                    logger.warning(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes.")

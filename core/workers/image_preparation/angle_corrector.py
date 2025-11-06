@@ -65,8 +65,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         try:
             img_dims: Dict[str, int] = manager.workflow.metadata.img_dims if manager.workflow else {}
                 
-            h = img_dims.get("height") 
-            
+            h = img_dims.get("height")
             w = img_dims.get("width") 
 
             if h is None or w is None:
@@ -74,7 +73,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 return full_img, False
             
             center = w // 2, h // 2
-            min_len = min((w) // 3, self.hough_min_line_length_cap_px)
+            min_len = min(w // 3, self.hough_min_line_length_cap_px)
             
             edges = cv2.Canny(full_img, self.canny_thresholds[0], self.canny_thresholds[1])
             lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=self.hough_threshold, minLineLength=min_len, maxLineGap=self.hough_max_line_gap_px)
@@ -94,7 +93,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             if abs(angle) > self.min_angle_for_correction:
                 rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
                 deskew_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE).astype(np.uint8)
-                logger.info(f"Imagen rotada '{angle}°' en {time.perf_counter() - total_time:.6f}s")
+                logger.info(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
                 return deskew_img, True
             
             else:             
@@ -104,48 +103,3 @@ class AngleCorrector(ImagePrepAbstractWorker):
         except Exception as e:
             logger.error(f"ERRROR; {e}", exc_info=True)
         return full_img, False
-            
-#     def _trim_using_hough(self, full_img: np.ndarray[Any, Any], lines: np.ndarray[Any, Any], img_dims: Dict[str, int]) -> np.ndarray[Any, Any]:
-#         """Trim usando líneas de Hough detectadas"""
-        
-#         h = img_dims.get("height")
-#         w = img_dims.get("width")
-        
-#         # Encontrar extremos de todas las líneas
-#         min_x, max_x = w, 0
-#         min_y, max_y = h, 0
-        
-#         for line in lines:
-#             x1, y1, x2, y2 = line[0]
-#             min_x = min(min_x, x1, x2)
-#             max_x = max(max_x, x1, x2)
-#             min_y = min(min_y, y1, y2)
-#             max_y = max(max_y, y1, y2)
-        
-#         # Margen de seguridad
-#         margin = 10
-
-#         # Asegurarse de que min_x, min_y, max_x, max_y no sean None y sean valores válidos
-#         if min_x is None or min_y is None or max_x is None or max_y is None:
-#             logger.warning("No se pudo determinar los extremos de las líneas de Hough para recorte. Se devuelve la imagen completa.")
-#             return full_img
-
-#         x1 = max(0, int(min_x) - margin)
-#         y1 = max(0, int(min_y) - margin)
-#         x2 = min(int(w), int(max_x) + margin)
-#         y2 = min(int(h), int(max_y) + margin)
-
-#         logger.debug(f"Recorte usando Hough: x1={x1}, y1={y1}, x2={x2}, y2={y2} (w={w}, h={h})")
-#         # ...existing code...
-#         if x1 == 0 and y1 == 0 and x2 == w and y2 == h:
-#             logger.debug("El recorte coincide con la imagen completa. No se realiza recorte adicional.")
-#         else:
-#             logger.debug("Se detectó región a recortar usando líneas de Hough.")
-
-#         # Log de las nuevas dimensiones
-#         new_height = y2 - y1
-#         new_width = x2 - x1
-#         logger.debug(f"Nuevas dimensiones tras recorte: width={new_width}, height={new_height}")
-
-#         return full_img[y1:y2, x1:x2]
-# #

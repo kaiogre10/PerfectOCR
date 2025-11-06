@@ -1,7 +1,7 @@
 import re
 import logging
 from typing import List, Tuple, Dict
-from core.utils.text_encoder import validate_text
+from core.utils.text_validator import validate_text
 
 logger = logging.getLogger(__name__)
 

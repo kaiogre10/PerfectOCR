@@ -62,7 +62,7 @@ def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Di
     except Exception as e:
         logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
     
-def save_json_debug(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
+def save_raw_json(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
     try:
         if isinstance(output_paths, str):
             output_paths = [output_paths]

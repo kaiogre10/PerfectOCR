@@ -1,9 +1,8 @@
 # core/utils/text_validator.py
-from fuzzywuzzy import utils #type: ignore
 from typing import List, Dict
 
 def validate_text(text: str) -> bool:
-    if utils.validate_string(text): #type: ignore
+    if len(text) > 0:
         return True
     else:
         return False
@@ -26,9 +25,9 @@ def not_valid_chars() -> List[str]:
     
 def special_chars() -> List[str]:
     return [
-            ")", "(", "]", "[", "{", "}", "|", "*", "^",
-            "-", "_", "+", "=", "<", ">", ";", ":", "@",
-            "'", "!", "¡", "?", "¿", "'", "\\", "''",
+        ")", "(", "]", "[", "{", "}", "|", "*", "^",
+        "-", "_", "+", "=", "<", ">", ";", ":", "@",
+        "'", "!", "¡", "?", "¿", "'", "\\", "''",
         ]
 def numeric_corrections() -> Dict[str, str]:
     return {
@@ -58,3 +57,18 @@ def descritive_corrections() -> Dict[str, str]:
 
 def punc_chars() -> List[str]:
     return [".", ";", ":", "!", "?"]
+
+def get_alone_chars() -> List[str]:
+    return ["a", "e", "y", "o", "u", "&"]
+
+def validate_alone_chars(text: str) -> bool:
+    minus_text = text.lower()
+    valid_chars = get_alone_chars()
+    if len(minus_text) > 2:
+        return True
+    
+    if minus_text in valid_chars:
+        return True
+    
+    else:
+        return False
