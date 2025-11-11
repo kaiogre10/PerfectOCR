@@ -67,7 +67,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             else:
                 return_objects: bool = False
                 tabular_lines: List[str]= manager.get_tabular_lines(return_objects) #type: ignore
-                logger.debug(f"TABULAR LINES: {tabular_lines}")
+                logger.info(f"TABULAR LINES: {tabular_lines}")
                 header_idx = line_ids.index(header_line_id)
                                 
                 if tabular_lines:
@@ -75,14 +75,14 @@ class MatricialCusine(VectorizationAbstractWorker):
                     table_line_ids = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, manager, header_line_id, line_ids, header_idx, feature_keys, all_lines)
                     if table_line_ids:
                         total_time = time.time() - start_time
-                        logger.debug(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
+                        logger.info(f"Validación coseno completada en {total_time:.6f}s. Líneas: {table_line_ids}")
                         return table_line_ids
                 else:
                     logger.warning("Ejecutando fallback: buscando líneas tabulares por similitud coseno con el encabezado")
                     table_line_ids = self._fallback_cosine(analysis, header_line_id, line_ids, header_idx, feature_keys)
                     if table_line_ids:
                         total_time = time.time() - start_time
-                        logger.debug(f"Fallback coseno completado en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
+                        logger.info(f"Fallback coseno completado en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                         return table_line_ids
                     else:
                         table_line_ids = self._emergency_fallback(analysis, line_ids, feature_keys, all_lines, manager)

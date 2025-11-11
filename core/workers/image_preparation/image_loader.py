@@ -5,24 +5,18 @@ from datetime import datetime
 from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_normalicer import validate_full_image
+from core.utils.image_normalicer import validate_full_image, validate_image
 
 logger = logging.getLogger(__name__)
 
 class ImageLoader(ImagePrepAbstractWorker):
-    """
-    Módulo especializado en carga de imágenes y metadatos.
-    Responsabilidad única: cargar imagen + extraer metadatos en una sola operación.
-    """
     def __init__(self, config: Dict[str, Any], image_data: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.image_data = image_data
-        self.worker_config = self.config.get('image_loader', {})
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """Carga la imagen y extrae metadatos.
-        Devuelve (None, metadata_con_error) si falla."""
+        """Carga la imagen y extrae metadatos."""
         logger.debug(f"LOADER INCIADO")
         image_data = self.image_data
         image_name = image_data.get('name', "")
@@ -43,7 +37,7 @@ class ImageLoader(ImagePrepAbstractWorker):
 
             gray_img = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
 
-            if gray_img is None: # type: ignore
+            if not validate_image(gray_img):
                 logger.error(f"No se cargó:'{image_name}'")
                 return False
 

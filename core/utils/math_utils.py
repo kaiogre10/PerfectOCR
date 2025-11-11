@@ -3,11 +3,6 @@ from typing import List, Any, Optional, Tuple
 from scipy.sparse import csr_matrix # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 
-def calculate_img_values(img: np.ndarray[Any, Any]):
-    img_mean = np.mean(img).astype(np.uint8)
-    img_dims = img.shape[:2]
-    return int(img_mean), img_dims
-
 def alignment(ref_c: List[float], other_c: List[float]) -> float:
     """
     Primer parametro es el valor de referencia que es ortogonal al eje X, mientra que el segundo parametro es que queremos comparar

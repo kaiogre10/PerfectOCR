@@ -1,8 +1,7 @@
 import cv2
 import numpy as np
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 import logging
-from core.utils.math_utils import calculate_img_values
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +82,11 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
     except Exception  as e:
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)
     return None
+
+def calculate_img_values(img: np.ndarray[Any, Any]):
+    img_mean = np.mean(img).astype(np.uint8)
+    img_dims = img.shape[:2]
+    return int(img_mean), img_dims
 
 def validate_image(img: np.ndarray[Any, Any]) -> bool:
     img_mean, img_dims = calculate_img_values(img)

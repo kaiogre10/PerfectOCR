@@ -1,3 +1,4 @@
+# core/workers/ocr/data_finder.py
 import time
 from typing import Dict, Any, Optional, List, Tuple
 import logging
@@ -72,13 +73,14 @@ class DataFinder(OCRAbstractWorker):
 
                 sc = poly.semantic_clasification
                 if sc == 1 or sc == 2 or sc == -1 or sc == -2:
+                    logger.debug(f"{pid} omitido semanticamente sc= '{sc}'")
                     skipped_semantic += 1
                     continue
 
                 ocr_text = poly.ocr_text or ""
                 word_lenght = len(ocr_text)
                 if not validate_text(ocr_text) or word_lenght < self.max_q_lenght[0] or word_lenght > self.max_q_lenght[1]:
-                    logger.debug(f"Polygono {pid} sin texto o excede longitud: '{ocr_text}', letras: '{word_lenght}'")
+                    logger.debug(f"{pid} sin texto o excede longitud: '{ocr_text}', letras: '{word_lenght}'")
                     skipped_len += 1
                     continue
 

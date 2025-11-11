@@ -1,4 +1,4 @@
-# PerfectOCR/core/workers/vectorial_transformation/geometric_table_structurer.py
+# core/workers/vectorial_transformation/geometric_table_structurer.py
 import logging
 import time
 from typing import List, Dict, Any, Tuple
@@ -114,8 +114,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
             return False
 
-    def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], 
-                                 polygons: Dict[str, Polygons]) -> List[List[float]]:
+    def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> List[List[float]]:
         """
         Extrae centroides de referencia c_j = (c_x,h_j, c_y,h_j) del encabezado H*
         usando acceso directo a data classes.
@@ -318,12 +317,11 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
                 # 2. Determinar la mejor columna basada en disponibilidad
                 if len(available_columns) > 1:
-                    # Múltiples opciones: usar distancia euclidiana
                     distances: List[Tuple[float, int]] = []
                     for col_idx in available_columns:
                         if col_idx < len(header_centroids):
                             header_centroid = header_centroids[col_idx]
-                            distance: float = euclidean_distance(element_centroid, header_centroid)
+                            distance = euclidean_distance(element_centroid, header_centroid) # type: ignore
                             distances.append((distance, col_idx))
                     
                     # Asignar a la columna con menor distancia si hay distancias calculadas
@@ -377,7 +375,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         try:
             # Tipos que tienen restricciones (solo uno por celda)
             restricted_types = {1, 2}
-            
             current_semantics = set(element_semantic if isinstance(element_semantic, list) else [element_semantic])
 
             # Si el elemento no es restrictivo, siempre puede ir
@@ -387,7 +384,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # Si el elemento ES restrictivo, verificar que no haya otros restrictivos en la celda
             for existing_element in cell_content:
                 existing_semantic_val = existing_element.get('semantic_clasification', 0)
-                existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val])
+                existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val]) # type: ignore
                 
                 if existing_semantics & restricted_types:
                     return False

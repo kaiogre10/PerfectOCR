@@ -1,16 +1,14 @@
 # PerfectOCr/core/workers/ocr/fragmenter.py
 import dataclasses
 import logging
-import re
 import numpy as np
 from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.pattern_finder import is_acronym, find_quantitative_runs
+from core.utils.pattern_finder import is_acronym, find_quantitative_runs, separate_punt
 from core.utils.binarizator import binarice_img
-from core.utils.text_validator import validate_text
-from core.utils.text_validator import punc_chars
+from core.utils.text_validator import validate_text, punc_chars
 
 logger = logging.getLogger(__name__)
 
@@ -346,7 +344,7 @@ class Fragmenter(OCRAbstractWorker):
 
                 return new_polys
 
-        parts = re.split(r'([.,;:!?])', text)
+        parts = separate_punt(text)
         
         # Filtrar partes vacías y reconstruir con puntuación (excepto el punto)
         filtered_parts: List[str] = []

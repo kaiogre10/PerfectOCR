@@ -1,7 +1,7 @@
 import re
 import logging
 from typing import List, Tuple, Dict
-from core.utils.text_validator import validate_text
+from core.utils.text_validator import validate_text, get_special_chars
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +33,6 @@ def is_acronym(text: str) -> bool:
 
 def find_umd(s: str) -> bool:
     try:
-        if not validate_text(s): #type: ignore
-            return False
-
         umd_patterns = r'\b(\d+([,\.]\d+)?)\s*(/)?\s*(k(g(r)?|ilo(s)?)|g(r|ramo(s)?|m)?|mg|m(t(r)?|etro(s)?|2|\\^2)?|cm|l(t(r)?|itro(s)?|ml)?|cc|ud(s)?|pza(s)?|cj(s)?)\b'
         if re.search(umd_patterns, s):
                 return True
@@ -47,9 +44,6 @@ def find_umd(s: str) -> bool:
 
 def find_rfc(s: str) -> bool:
     try:
-        if not validate_text(s): #type: ignore
-            return False
-
         rfc_code = r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$'
         rfc_word = r'\b(R\.?F\.?C\.?)\b'
 
@@ -67,9 +61,6 @@ def find_rfc(s: str) -> bool:
 
 def find_iva(s: str) -> bool:
     try:
-        if not validate_text(s):
-            return False
-
         iva_word = r'\b(I\.?V\.?A\.?)\b'
 
         if is_acronym(s):
@@ -210,3 +201,31 @@ def find_date(s: str) -> bool:
     except Exception as e:
         logger.info(f"Error buscando Fecha: {e}", exc_info=True)
         return False
+
+def separate_punt(text: str):
+    return re.split(r'([.,;:!?])', text)
+
+def detect_punt(text: str):
+    return re.fullmatch(r'[\s\.\-_,;:]+', text) is not None
+
+def remove_special_chars(text: str) -> str:
+    """
+    Elimina todos los caracteres especiales, tanto solitarios como en secuencia.
+    Preserva dígitos, letras y espacios.
+    """
+    if not validate_text(text):
+        return text
+    
+    special_chars  = get_special_chars()
+
+    if not special_chars:
+        logger.warning("Usando patron regex")
+        pattern = r'[^A-Za-z0-9\s$¢.,\/\\]'
+    else:
+        chars_escaped = re.escape("".join(special_chars))
+        pattern = r'[' + chars_escaped + r']'
+
+    cleaned = re.sub(pattern, '', text)
+    if cleaned != text:
+        logger.debug(f"Caracteres especiales eliminados de '{text}' -> '{cleaned}'")
+    return cleaned

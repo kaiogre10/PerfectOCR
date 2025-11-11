@@ -140,7 +140,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Línea inferior
                 table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 table_str = "\n".join(table)
-                logger.info(f"\nTabla unificada características:\n{table_str}")
+                logger.debug(f"\nTabla unificada características:\n{table_str}")
                 logger.warning(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
                 return all_features
             else:
@@ -202,7 +202,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 # num_median_norm = numeric_count / median_numeric if numeric_count else 0.0
                 num_mean: float = all_numerics / num_lines if num_lines > 0 else 0.0  # Promedio global de tokens numéricos por línea; sirve como referencia.
                 num_above: float = 1.0 if numeric_count >= num_mean else -1.0  # Indicador (1/0) si la línea supera el promedio global de tokens numéricos.
-                # Usa el mapa morfológico para contar los dígitos (caracteres "0-9", ".", ",", "$") en el texto de la línea.
                 digit_char_count = sum(1 for ch in line_text if ch in self.char_num)
                 has_digit = 1.0 if digit_char_count > 1.0 else -1.0
                 digit_char_frec: float = digit_char_count / max_digit_count if max_digit_count > 0.0 else 0.0  # Proporción de caracteres dígito en la línea respecto al máximo global visto.
@@ -353,11 +352,11 @@ class Vectorizer(VectorizationAbstractWorker):
                 all_lines_features[line_id] = line_all_features
 
             if self.second_output:
-                from services.output_service import save_debug_ocr
+                from services.output_service import save_raw_json
                 file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "vectorizer"
                 output_paths = context.get("output_paths", [])
-                save_debug_ocr(output_paths, worker_name, all_lines_features, file_name)
+                save_raw_json(output_paths, worker_name, all_lines_features, file_name)
 
             return all_lines_features
 

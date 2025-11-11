@@ -136,7 +136,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             logger.debug(f"Resultados: {poly_id}: Texto='{text}', Confianza='{confidence_pct}%'")
 
                         else:
-                            logger.warning(f"Texto basuta filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
+                            logger.debug(f"Texto basuta filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
                         
                     total_results = len(final_results)
                     logger.warning(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")

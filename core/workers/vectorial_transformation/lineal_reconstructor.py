@@ -20,9 +20,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
         self.output = self.enabled_outputs.get("reconstructed_lines", False)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        
         try:
-            start_time = time.time()
+            start_time = time.perf_counter()
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
@@ -32,19 +31,17 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
                 return False
             
-            total_time1 = time.time() - start_time
-
-            logger.debug(f"'{len(lines_info)}' líneas amadas en {total_time1:.10f}")
+            logger.debug(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
 
             success = manager.create_text_lines(lines_info)
             if success:
                 logger.debug(f"Lineas guardads correctamente en el manager")
                 if self.output:
-                    from services.output_service import save_debug_ocr
+                    from services.output_service import save_raw_json
                     file_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     worker_name = context.get("worker_name") or "lineal"
                     output_paths = context["output_paths"]
-                    save_debug_ocr( output_paths, worker_name, lines_info, file_name)
+                    save_raw_json( output_paths, worker_name, lines_info, file_name)
 
                 return True
                             
@@ -126,7 +123,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                    logger.info(f"{line_id}: '{joined_text}'")
+                    #logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -151,6 +148,6 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 }
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                logger.info(f"{line_id}: '{joined_text}'")
+#                logger.info(f"{line_id}: '{joined_text}'")
 
         return lines_info

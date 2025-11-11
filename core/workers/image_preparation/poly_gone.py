@@ -1,13 +1,13 @@
-# PerfectOCR/core/preprocessing/poly_gone.py
+# core/preprocessing/poly_gone.py
 import numpy as np
 import logging
 import math
 import time
+import dataclasses
 from typing import Dict, Any, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-import dataclasses
 from core.utils.image_normalicer import validate_full_image
 
 logger = logging.getLogger(__name__)

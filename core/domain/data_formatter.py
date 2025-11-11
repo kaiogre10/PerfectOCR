@@ -344,13 +344,9 @@ class DataFormatter:
         # Detectar polígonos blancos/inválidos usando el normalicer
         for poly_id, polygon in self.workflow.polygons.items():
             cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-            try:
-                if normalice_image(cropped_img) is None:  # None = imagen inválida
-                    white_poly_ids.append(poly_id)
-            except Exception as e:
-                logger.error(f"Imagen: {poly_id} con error: {e}", exc_info=True)
+            if normalice_image(cropped_img) is None:  # None = imagen inválida
+                white_poly_ids.append(poly_id)
         
-        # Eliminar polígonos blancos (FUERA del bucle)
         if white_poly_ids:
             logger.info(f"Eliminando {len(white_poly_ids)} polígonos blancos/inválidos")
             
@@ -486,7 +482,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.debug(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
+                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
@@ -573,7 +569,6 @@ class DataFormatter:
                 current_key_field = getattr(polygon, "key_field", None)
                 
                 if poly_id in header_polygon_ids:
-                    # Cambio: asignar 6 (int) en lugar de "HeaderWords"
                     if current_key_field != 6:
                         updated_polygon = dataclasses.replace(polygon, key_field=6)
                         self.workflow.polygons[poly_id] = updated_polygon

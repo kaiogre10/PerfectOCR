@@ -23,7 +23,7 @@ def not_valid_chars() -> List[str]:
         "÷"
         ]
     
-def special_chars() -> List[str]:
+def get_special_chars() -> List[str]:
     return [
         ")", "(", "]", "[", "{", "}", "|", "*", "^",
         "-", "_", "+", "=", "<", ">", ";", ":", "@",
@@ -75,7 +75,7 @@ def validate_alone_chars(text: str) -> bool:
     if minus_text in valid_chars:
         return True
 
-    spec_char = special_chars()
+    spec_char = get_special_chars()
     if minus_text in spec_char:
         return False
     
