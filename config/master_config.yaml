@@ -8,7 +8,7 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-    # - "moire"
+    - "moire"
     - "sp"
     - "gauss"
     # - "ink_enhancement"
@@ -18,14 +18,14 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -141,7 +141,7 @@ modules:
         
   ocr:
     paddle_wrapper:
-      min_confidence: 60.0
+      min_confidence: 20.0
 
     fragmenter:
       min_contours_for_frag: 2
@@ -184,7 +184,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: false
+      keywords_interval_enabled: true
       exclude_types: [
         "descriptive",
         "code", 

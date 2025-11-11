@@ -57,7 +57,7 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
 
-            if not validate_alone_chars(text):
+            if not validate_alone_chars(text) and not polygon.was_refined:
                 logger.info(f"Eliminado {poly_id} por soledad: '{text}'")
                 eliminated_count += 1
                 continue

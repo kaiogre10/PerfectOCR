@@ -131,7 +131,7 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
                 image_processing_time = time.perf_counter() - start_time
                 total_processing_time += image_processing_time
                 db_paths[image_data.get('name', f'imagen_{i}')] = db_path
-                logger.warning(f"IMAGEN '{image_data.get('name')}' {total_img} de {builders_amount} PROCESADA EN: {image_processing_time:.6f}s")
+                logger.warning(f"IMAGEN '{image_data.get('name')}', procesadas '{total_img}/{builders_amount}' imágenes en: {image_processing_time:.6f}s")
 
         if db_paths:
             mean_time = total_processing_time / len(db_paths)

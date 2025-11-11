@@ -76,7 +76,8 @@ def validate_alone_chars(text: str) -> bool:
         return True
 
     spec_char = special_chars()
-    if minus_text in spec_char:
+    not_valid_chr = not_valid_chars()
+    if minus_text in spec_char or minus_text in not_valid_chr:
         return False
     
     else:

@@ -140,7 +140,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Línea inferior
                 table.append("+" + "+".join("-" * w for w in col_widths) + "+")
                 table_str = "\n".join(table)
-                logger.info(f"\nTabla unificada características:\n{table_str}")
+                logger.debug(f"\nTabla unificada características:\n{table_str}")
                 logger.warning(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
                 return all_features
             else:
