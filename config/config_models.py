@@ -8,7 +8,6 @@ class ConfigWithNumpy(BaseModel):
 class OutputFlag(ConfigWithNumpy):
     pre_clean: bool
     angle_corrected: bool
-    preprocessed_image: bool
     cropped_img: bool
     filtered_polys: bool
     discarded_polys: bool
@@ -66,18 +65,16 @@ class MoireConfig(ConfigWithNumpy):
     
 class Fragmenter(ConfigWithNumpy):
     min_contours_for_frag: int
-    height_thresholds_px: List[int]
     c_value: int
+    height_thresholds_px: List[int]
     block_sizes_map: List[int]
+    min_area_factor: float
+    k_sigma: float
     min_cc_for_frag: int
+    min_gap_outlier: float
     density_threshold: float
     max_cc_for_density_rule: int
     width_var_threshold: float
-    k_sigma: float
-    min_gap_outlier: float
-    min_area_factor: float
-    min_blobs_for_frag: int
-    gap_threshold_norm: float
     
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
@@ -110,7 +107,8 @@ class CleaningConfig(ConfigWithNumpy):
     std_low: float
     sp_thr: float
     clahe_clip: float
-    clahe_grid: Tuple[int, int]
+    dimension_thresholds_px: List[int]
+    clahe_grid: List[Tuple[int, int]]
     kernel_size: int
 
 class ImagePreparation(ConfigWithNumpy):

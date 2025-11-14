@@ -17,18 +17,21 @@ class InkEnhancer(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = self.config.get('ink_enhancement', {})
+        self.faded_threshold = self.worker_config.get('faded_detection_threshold')
+        self.contrast_boost = self.worker_config.get('contrast_boost_factor')
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("ink_poly", False)
-        self.faded_threshold = self.worker_config.get('faded_detection_threshold', 0.4)
-        self.contrast_boost = self.worker_config.get('contrast_boost_factor', 1.5)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y restaura texto con tinta gastada."""
         try:
             start_time = time.time()
+            logger.debug("Mejoramiento de tinta empezado con éxito")
             if not manager.validate_cropped_img():
                 logger.info(f"Sin cropped_img en el formatter")
                 return False
+                
+            logger.debug("Polygonos revisados")
             
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
@@ -40,7 +43,7 @@ class InkEnhancer(PreprocessingAbstractWorker):
 
             for poly_id, polygon in polygons.items():
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                if cropped_img is None or cropped_img.size == 0:
+                if cropped_img is None:
                     continue
 
                 analysis = self._analyze_ink_quality(cropped_img)

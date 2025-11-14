@@ -46,9 +46,8 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "angle_corrector"
                 output_paths = context["output_paths"]
-                poly_id = "1"
-                method = "angle_corrected"
-                save_croped_image(image_name, poly_id, full_img, output_paths, worker_name, method)
+                poly_id = f"full_img_{image_name}_{worker_name}"
+                save_croped_image(image_name, poly_id, full_img, output_paths, worker_name, method=None)
                 logger.debug(f"Imagen inclinada corregida guardada como output intermedio 'angle_corrected'")
                 
             return True

@@ -15,6 +15,11 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = self.config.get('contrast', {})
+        self.contrast_threshold = self.worker_config.get('contrast_threshold')
+        self.page_dimensions = self.worker_config['dimension_thresholds_px']
+        self.grid_maps = self.worker_config['grid_sizes_map']
+        self.window_size = self.worker_config.get("window_size")
+        self.std_dev_threshold = self.worker_config.get("std_dev_threshold")
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("clahe_poly", False)
 
@@ -23,9 +28,6 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         Analiza el contraste de todos los polígonos, decide la corrección con CLAHE de forma
         vectorizada y la aplica in-place.
         """
-        contrast_threshold = self.worker_config.get('contrast_threshold')
-        page_dimensions = self.worker_config.get('dimension_thresholds_px', [])
-        grid_maps = self.worker_config.get('grid_sizes_map', [])
         try:            
             if not manager.validate_cropped_img():
                 logger.info(f"Sin cropped_img en el formatter")
@@ -65,20 +67,19 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
             widths = np.array([res['w'] for res in analysis_results], dtype=np.int32)
 
             dynamic_intervals = np.maximum(30.0, variances * 0.6)
-            adaptive_thresholds = np.where(dyn_ranges > contrast_threshold, dynamic_intervals, 20.0)
+            adaptive_thresholds = np.where(dyn_ranges > self.contrast_threshold, dynamic_intervals, 20.0)
             needs_correction = stds < adaptive_thresholds
 
             max_dims = np.maximum(heights, widths)
-            cond_small = max_dims < page_dimensions[0]
-            cond_medium = max_dims < page_dimensions[1]
+            cond_small = max_dims < self.page_dimensions[0]
+            cond_medium = max_dims < self.page_dimensions[1]
             
             # Vectoriza los tamaños de grid para cada polígono
-            grid_small = np.tile(grid_maps[0], (len(max_dims), 1))
-            grid_medium = np.tile(grid_maps[1], (len(max_dims), 1))
-            grid_large = np.tile(grid_maps[2], (len(max_dims), 1))
+            grid_small = np.tile(self.grid_maps[0], (len(max_dims), 1))
+            grid_medium = np.tile(self.grid_maps[1], (len(max_dims), 1))
+            grid_large = np.tile(self.grid_maps[2], (len(max_dims), 1))
 
-            grid_sizes = np.where(cond_small[:, None], grid_small,
-                          np.where(cond_medium[:, None], grid_medium, grid_large))
+            grid_sizes = np.where(cond_small[:, None], grid_small, np.where(cond_medium[:, None], grid_medium, grid_large))
             clip_limits = np.clip(dyn_ranges * 0.01, 1.0, 3.0)
 
             # 3. Fase de Aplicación
@@ -94,13 +95,13 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
                 # logger.debug(f"Poly '{poly_id}': Aplicando CLAHE (Grid: {grid_size}, Clip: {clip_limit:.2f})")
 
                 corrected_img = self._apply_clahe_correction(original_img, clip_limit, grid_size)
-                polygon.cropped_img.cropped_img = corrected_img
+                polygon.cropped_img.cropped_img = corrected_img # type: ignore
                 
                 if self.output:
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "clahe"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    output_paths = context.get("output_paths", [])
+                    output_paths = context["output_paths"]
                     save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
 
             return True

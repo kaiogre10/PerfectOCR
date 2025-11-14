@@ -1,4 +1,4 @@
-# PerfectOCR/core/workers/image_preparation/cleanner.py
+# PerfectOCR/core/workers/image_preparation/pre_cleanner.py
 import cv2
 import logging
 from typing import Dict, Any
@@ -18,6 +18,7 @@ class ImageCleaner(ImagePrepAbstractWorker):
         self.sp_thr: float = self.worker_config.get("sp_thr")
         self.clahe_clip_base = self.worker_config.get("clahe_clip")
         self.clahe_grid = self.worker_config["clahe_grid"]
+        self.dimension_thresholds_px = self.worker_config["dimension_thresholds_px"]
         self.kernel_size: int = self.worker_config.get("kernel_size")
         self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("pre_clean", False)
@@ -35,11 +36,7 @@ class ImageCleaner(ImagePrepAbstractWorker):
             if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
                 img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
 
-            size = img_dims.get("size")
-            if size is None:
-                size = full_img.size
-            else:
-                size = float(size)
+            size = img_dims.get("size") or full_img.size
                 
             ext_low = float((full_img <= 5).sum())
             ext_high = float((full_img >= 250).sum())
@@ -55,14 +52,26 @@ class ImageCleaner(ImagePrepAbstractWorker):
 
             # 2) Contraste local con CLAHE (solo si contraste bajo)
             if std1 < self.std_low:
-                clahe = cv2.createCLAHE(clipLimit=self.clahe_clip_base, tileGridSize=self.clahe_grid)
+                h, w = full_img.shape[:2]
+                max_dim = max(h, w)
+                
+                if max_dim < self.dimension_thresholds_px[0]:
+                    grid_size = tuple(self.clahe_grid[0])
+                elif max_dim < self.dimension_thresholds_px[1]:
+                    grid_size = tuple(self.clahe_grid[1])
+                else:
+                    grid_size = tuple(self.clahe_grid[2])
+                
+                logger.debug(f"CLAHE para full_img con grid: {grid_size} basado en max_dim: {max_dim}")
+
+                clahe = cv2.createCLAHE(clipLimit=self.clahe_clip_base, tileGridSize=grid_size)
                 en1 = clahe.apply(full_img)
                 full_img[...] = en1
 
                 # Si siguió bajo, subir ligeramente el clipLimit
                 std2 = float(np.std(full_img))
                 if std2 < self.std_low:
-                    clahe2 = cv2.createCLAHE(clipLimit=self.clahe_clip_base + 0.5, tileGridSize=self.clahe_grid)
+                    clahe2 = cv2.createCLAHE(clipLimit=self.clahe_clip_base + 0.5, tileGridSize=grid_size)
                     en2 = clahe2.apply(full_img)
                     full_img[...] = en2
 
@@ -86,6 +95,15 @@ class ImageCleaner(ImagePrepAbstractWorker):
 
             full_img[...] = sharp
             corrected = True
+            if self.output:
+                from services.output_service import save_croped_image
+                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                worker_name = context.get("worker_name") or "pre_cleanner"
+                output_paths = context["output_paths"]
+                poly_id = f"full_img_{image_name}_{worker_name}"
+                save_croped_image(image_name, poly_id, full_img, output_paths, worker_name, method=None)
+                logger.debug(f"Imagen preprocesada  guardada como output intermedio 'pre_cleanner'")
+                
             manager.update_full_img(corrected, full_img)
                 
             return True

@@ -8,7 +8,7 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-    # - "moire"
+    - "moire"
     - "sp"
     - "gauss"
     # - "ink_enhancement"
@@ -18,14 +18,14 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -33,7 +33,6 @@ pipeline_secuence:
 enabled_outputs:
   pre_clean: false
   angle_corrected: false
-  preprocessed_image: false
   cropped_img: false
   filtered_polys: false
   discarded_polys: false
@@ -90,9 +89,10 @@ modules:
         
     cleaner:
       std_low: 15.0
-      sp_thr: 0.0125
+      sp_thr: 0.0015
       clahe_clip: 2.0
-      clahe_grid: [6, 6]
+      dimension_thresholds_px: [1000, 2500, 4000]
+      clahe_grid: [[6, 6], [8, 8], [10, 10]]
       kernel_size: 3
     
     polygon_extractor:
@@ -148,15 +148,13 @@ modules:
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]
+      min_area_factor: 0.01
+      k_sigma: 1.25
       min_cc_for_frag: 2
+      min_gap_outlier: 0.5
       density_threshold: 0.65
       max_cc_for_density_rule: 5
       width_var_threshold: 0.25
-      k_sigma: 1.25
-      min_gap_outlier: 0.5
-      min_area_factor: 0.01
-      min_blobs_for_frag: 3
-      gap_threshold_norm: 0.01
       
     text_refiner:
       num_passes: 2
@@ -184,7 +182,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: false
+      keywords_interval_enabled: true
       exclude_types: [
         "descriptive",
         "code", 

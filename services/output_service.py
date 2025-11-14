@@ -127,7 +127,7 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]],
         if image_features:
             import matplotlib.pyplot as plt
             features_data = df.drop('line_id', axis=1)
-            feature_names: List[str] = list(features_data.columns.tolist())
+            feature_names: List[str] = list(features_data.columns.tolist()) # type: ignore
             
             # Crear la figura
             plt.figure(figsize=(12, 8)) #type: ignore
@@ -146,10 +146,10 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]],
             
             # Calcular los límites del eje Y y poner los ticks de 1 en 1
             if not features_data.empty:
-                ymin = features_data.min().min()
-                ymax = features_data.max().max()
-                ymin_tick = int(np.floor(ymin))
-                ymax_tick = int(np.ceil(ymax))
+                ymin = features_data.min().min()# type: ignore
+                ymax = features_data.max().max()# type: ignore
+                ymin_tick = int(np.floor(ymin))# type: ignore
+                ymax_tick = int(np.ceil(ymax))# type: ignore
                 plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1)) #type: ignore
             
             # Limitar leyenda si hay muchas líneas

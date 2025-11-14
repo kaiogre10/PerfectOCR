@@ -215,12 +215,12 @@ def decide_split(metrics: Dict[str, Any], cfg: Dict[str, Any]) -> Tuple[bool, Di
     Toma las métricas de CC robustas y aplica reglas heurísticas
     para decidir si un polígono debe ser fragmentado.
     """
-    k_sigma = cfg.get("k_sigma", 1.25)
-    min_cc_for_frag: int = cfg.get("min_cc_for_frag", 2)
-    min_gap_outlier = cfg.get("min_gap_outlier", 0.5)
-    density_threshold = cfg.get("density_threshold", 0.65)
-    max_cc_for_density_rule = cfg.get("max_cc_for_density_rule", 5)
-    width_var_threshold = cfg.get("width_var_threshold", 0.25)
+    k_sigma = cfg.get("k_sigma", {})
+    min_cc_for_frag: int = cfg.get("min_cc_for_frag", {})
+    min_gap_outlier = cfg.get("min_gap_outlier", {})
+    density_threshold = cfg.get("density_threshold", {})
+    max_cc_for_density_rule = cfg.get("max_cc_for_density_rule", {})
+    width_var_threshold = cfg.get("width_var_threshold", {})
     n_cc = metrics["n_cc"]
 
     # Regla 1: No fragmentar si hay muy pocos blobs

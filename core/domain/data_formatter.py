@@ -8,7 +8,7 @@ import json
 import time
 from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
-from core.utils.image_normalicer import normalice_image
+from core.utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)

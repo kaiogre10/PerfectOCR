@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_normalicer import validate_full_image, validate_image
+from core.utils.image_utils import validate_full_image, validate_image
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.image_normalicer import validate_full_image
+from core.utils.image_utils import validate_full_image
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("cropped_img", False)
         self.filtered_ouputs = self.enabled_outputs.get("filtered_polys", False)
-        self.disoutput = self.enabled_outputs.get("discarded_polys", False)        
+        self.disoutput = self.enabled_outputs.get("discarded_polys", False)
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte.
