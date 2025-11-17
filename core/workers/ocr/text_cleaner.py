@@ -19,7 +19,6 @@ class TextCleaner(OCRAbstractWorker):
     - NO elimina dígitos bajo ninguna circunstancia.
     - Preserva el espaciado para mantener la geometría.
     """
-    
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root

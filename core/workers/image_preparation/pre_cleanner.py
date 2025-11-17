@@ -92,9 +92,11 @@ class ImageCleaner(ImagePrepAbstractWorker):
             np.clip(sharp, 0, 255, out=sharp)
             if sharp.dtype != np.uint8:
                 sharp = sharp.astype(np.uint8, copy=False)
+                corrected = False
 
             full_img[...] = sharp
             corrected = True
+
             if self.output:
                 from services.output_service import save_croped_image
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""

@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -107,4 +107,77 @@ def validate_full_image(img: np.ndarray[Any, Any]):
     
     else:
         return [0, 0]
+ 
+def correct_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    worker_config = config.get('cleaner', {})
+    std_low = worker_config.get("std_low")
+    sp_thr: float = worker_config.get("sp_thr")
+    clahe_clip_base = worker_config.get("clahe_clip")
+    clahe_grid = worker_config["clahe_grid"]
+    dimension_thresholds_px = worker_config["dimension_thresholds_px"]
+    kernel_size: int = worker_config.get("kernel_size")
+    try:
+        size = full_img.size
+            
+        ext_low = float((full_img <= 5).sum())
+        ext_high = float((full_img >= 250).sum())
+        sp_ratio = (ext_low + ext_high) / size
 
+        # 1) Desruido sal‑y‑pimienta (rápido, solo si aplica)
+        if sp_ratio > sp_thr:
+            den = cv2.medianBlur(src=full_img, ksize=kernel_size)
+            full_img[...] = den
+
+        # Recalcular contraste
+        std1 = float(np.std(full_img))
+
+        # 2) Contraste local con CLAHE (solo si contraste bajo)
+        if std1 < std_low:
+            h, w = full_img.shape[:2]
+            max_dim = max(h, w)
+            
+            if max_dim < dimension_thresholds_px[0]:
+                grid_size = tuple(clahe_grid[0])
+            elif max_dim < dimension_thresholds_px[1]:
+                grid_size = tuple(clahe_grid[1])
+            else:
+                grid_size = tuple(clahe_grid[2])
+            
+            logger.debug(f"CLAHE para full_img con grid: {grid_size} basado en max_dim: {max_dim}")
+
+            clahe = cv2.createCLAHE(clipLimit=clahe_clip_base, tileGridSize=grid_size)
+            en1 = clahe.apply(full_img)
+            full_img[...] = en1
+
+            # Si siguió bajo, subir ligeramente el clipLimit
+            std2 = float(np.std(full_img))
+            if std2 < std_low:
+                clahe2 = cv2.createCLAHE(clipLimit=clahe_clip_base + 0.5, tileGridSize=grid_size)
+                en2 = clahe2.apply(full_img)
+                full_img[...] = en2
+
+        # 3) Nitidez local (unsharp adaptativo)
+        lap = cv2.Laplacian(full_img, cv2.CV_64F)
+        lap_var = float(lap.var())
+        stdf = float(np.std(full_img))
+
+        if lap_var < 20.0 or stdf <= 25.0:
+            alpha, beta = 1.2, -0.2  # suave
+        elif lap_var < 60.0:
+            alpha, beta = 1.4, -0.4  # medio
+        else:
+            alpha, beta = 1.1, -0.1  # mínimo
+
+        blur = cv2.GaussianBlur(full_img, (3, 3), 0)
+        sharp = cv2.addWeighted(full_img, alpha, blur, beta, 0)
+        np.clip(sharp, 0, 255, out=sharp)
+        if sharp.dtype != np.uint8:
+            sharp = sharp.astype(np.uint8, copy=False)
+
+            full_img[...] = sharp
+            
+        return full_img
+        
+    except Exception as e:
+        logger.error(f"Cleaner: {e}", exc_info=True)
+        return full_img
