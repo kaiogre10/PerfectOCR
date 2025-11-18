@@ -1,3 +1,4 @@
+
 # PerfectOCR/main.py
 import os
 import sys
@@ -20,7 +21,7 @@ os.environ.update({
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 DEFAULT_INPUT_PATH = [
 #"input",
-"input2",
+# "input2",
 "input3",
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]

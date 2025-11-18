@@ -84,25 +84,25 @@ class DataFinder(OCRAbstractWorker):
                     skipped_len += 1
                     continue
 
+                date_key = find_date(ocr_text)
+                if date_key:
+                    skipped_semantic +=1
+                    logger.warning(f"FECHA encontrado en {pid}, '{ocr_text}'")
+                    polygon_updates[pid] = 9
+                    continue
+
                 rfc_key = find_rfc(ocr_text)
                 if rfc_key:
                     skipped_semantic +=1
-                    logger.warning(f"RFC encontrado en {pid}, '{ocr_text}', {rfc_key}")
+                    logger.warning(f"RFC encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 7
                     continue
 
                 iva_key = find_iva(ocr_text)
                 if iva_key:
                     skipped_semantic +=1
-                    logger.warning(f"IVA encontrado en {pid}, '{ocr_text}', {iva_key}")
+                    logger.warning(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
-                    continue
-
-                date_key = find_date(ocr_text)
-                if date_key:
-                    skipped_semantic +=1
-                    logger.warning(f"FECHA encontrado en {pid}, '{ocr_text}', {date_key}")
-                    polygon_updates[pid] = 9
                     continue
 
                 valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text, self.threshold)
@@ -115,7 +115,7 @@ class DataFinder(OCRAbstractWorker):
 
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.info(f"Resultado de {pid}: {best_result}")
+                        logger.debug(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"{skipped_semantic} polígonos semánticos omitidos")

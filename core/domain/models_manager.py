@@ -43,21 +43,21 @@ class ModelsManager:
                     cls._instance = cls()
         return cls._instance
     
-    def initialize_models(self, models_config: Dict[str, Any]):
+    def initialize_models(self, models_cfg: Dict[str, Any]):
         init_time = time.perf_counter()
-        self.models_config: Dict[str, Any] = models_config.get("models_config", {})
+        models_config: Dict[str, Any] = models_cfg.get("models_config", {})
         try:
             self._shared_engine = PaddleOCR(
                 det=True, rec=True, cls=False,
-                det_model_dir=self.models_config['det_model_dir'],
-                rec_model_dir=models_config.get('rec_model_dir'),
-                use_angle_cls=models_config.get('use_angle_cls', False),
-                show_log=models_config.get('show_log', False),
-                use_gpu=models_config.get('use_gpu', False),
-                enable_mkldnn=models_config.get('enable_mkldnn', True),
-                lang=models_config.get('lang', 'es'),
-                rec_batch_num = models_config.get('rec_batch_num', 64)
-            )        
+                det_model_dir=models_config['det_model_dir'],
+                rec_model_dir=models_config['rec_model_dir'],
+                use_angle_cls=models_config.get('use_angle_cls'),
+                show_log=models_config.get('show_log'),
+                use_gpu=models_config.get('use_gpu'),
+                enable_mkldnn=models_config.get('enable_mkldnn'),
+                lang=models_config.get('lang'),
+                rec_batch_num = models_config.get('rec_batch_num')
+                )
             # Compartir la MISMA instancia
             self._detection_engine = self._shared_engine
             self._recognition_engine = self._shared_engine
@@ -71,9 +71,9 @@ class ModelsManager:
 
         try:
             if self._shared_engine or self._detection_engine or self._recognition_engine:
-                ocr_stage = models_config.get("ocr_stage", {})
+                ocr_stage = models_cfg.get("ocr_stage", {})
                 if "data_finder" in ocr_stage:
-                    model_path=self.models_config.get("model_path", "")
+                    model_path=models_config.get("model_path", "")
                     self._word_finder: WordFinder = WordFinder(
                         model_path=model_path
                     )
