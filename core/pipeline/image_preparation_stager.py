@@ -1,4 +1,4 @@
-# PerfectOCR/core/pipeline/input_stager.py
+#PerfectOCR/core/pipeline/input_stager.py
 import logging
 import time
 from typing import Optional, Tuple, Dict, Any
@@ -25,8 +25,7 @@ class ImagePreparationStager(AbstractStager):
                 "worker_name": worker_name,
                 "output_paths": self.output_paths,
                 "project_root": self.project_root
-            }
-            
+            } 
             if not worker.process(context, manager):
                 logger.error(f"Fallo en {worker.__class__.__name__}")
                 return None, 0.0

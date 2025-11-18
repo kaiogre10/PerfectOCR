@@ -16,6 +16,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('moire', {})
+        self.dpi_range = config["dpi_range"]
         self.notch_radius_conf = self.worker_config.get('notch_radius')
         self.min_dist_conf = self.worker_config.get('min_distance_from_center')
         self.enabled_outputs = config.get("enabled_outputs", {})
@@ -41,6 +42,9 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             # Fase de Análisis: Recopilar métricas
             metrics: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
+            dpi = manager.workflow.metadata.dpi if manager.workflow else None
+            logger.info(f"DPI: {dpi}")
+            
             for poly_id, polygon in polygons.items():
                 # Acceso correcto a la imagen desde la dataclass
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None

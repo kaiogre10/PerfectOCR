@@ -12,7 +12,7 @@ class ConfigService:
         self.config_path = config_path
         self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
-        self.min_workers: List[str] | str = ["image_loader"]#, "geometry_detector", "polygon_extractor", "paddle_wrapper"]
+        self.min_workers: List[str] | str = ["image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"]
                 
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
@@ -59,7 +59,8 @@ class ConfigService:
         return {
             "enabled_outputs": self.config.get("enabled_outputs", {}),
             "stage_secuence": self.workers_order,
-            "modules_config": self.config.get("modules", {})
+            "modules_config": self.config.get("modules", {}),
+            "utils_config": self.config.get("utils", {})
         }
 
     def validate_pipeline_config(self) -> bool:
@@ -108,10 +109,3 @@ class ConfigService:
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
             return False
-
-    def validate_models_load(self) -> bool:
-        if len(self.min_workers) == 1 and self.min_workers == "image_loader":
-            return False
-        
-        else:
-            return True

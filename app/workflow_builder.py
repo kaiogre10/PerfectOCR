@@ -34,7 +34,6 @@ class WorkFlowBuilder:
                     with Image.open(full_path) as img:
                         dpi_aprox = img.info["dpi"][1]
                         dpi_cal = self.closest_int(dpi_aprox, self.dpi_range)
-                        logger.debug(f"{image_name}, DPI: {dpi_cal}")
 
                     # Obtener ruta relativa desde input_folder para mejor organización
                     relative_path = os.path.relpath(root, input_folder)
@@ -66,7 +65,7 @@ class WorkFlowBuilder:
         REPORTA a Main: cuántos builders crear y qué modo usar.
         """
         # Si recibimos input_paths, expandimos; si no, usamos la carpeta del YAML
-        image_info: List[Dict[str, str]] = []
+        image_info: List[Dict[str, Any]] = []
         if self.input_paths:
             for path in self.input_paths:
                 if os.path.isdir(path):
@@ -95,5 +94,4 @@ class WorkFlowBuilder:
         }
 
     def closest_int(self, value: float, candidates: List[int]) -> int:
-        val = min(candidates, key=lambda x: abs(x - value))
-        return val
+       return min(candidates, key=lambda x: abs(x - value))

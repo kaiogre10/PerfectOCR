@@ -16,6 +16,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = self.config.get('sharpening', {})
+        self.dpi_range = config["dpi_range"] 
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("sharp_poly", False)
 
@@ -32,7 +33,8 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
-
+            dpi = manager.workflow.metadata.dpi if manager.workflow else None
+            logger.info(f"DPI: {dpi}")
             # 1. Fase de Análisis
             analysis_results: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []

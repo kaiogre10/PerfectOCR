@@ -90,3 +90,4 @@ def vectorice_values(data_list: List[float], value: Optional[str]) -> float | Li
         line_std = np.std(value_array)
         line_var = np.var(value_array)
         return [float(line_mean), float(line_std), float(line_var)]
+    

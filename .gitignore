@@ -7,7 +7,6 @@ __pycache__/
 .txt/
 .log/
 .ini/
-.cursorignore/
 .vscode/
 .idea/
 .cursor/
@@ -16,12 +15,13 @@ __pycache__/
 .idea/
 
 # Ignorar carpeta
-input
-.github/chatmodes/
+.github/
 documentation/
 test/
 tools/
 data/models/
+C:/PerfectOCR/data/models/
+input/
 # input2/
 # input3/
 

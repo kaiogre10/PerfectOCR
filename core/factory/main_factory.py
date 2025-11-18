@@ -13,13 +13,14 @@ class MainFactory:
         self.modules_config = self.manager_config.get("modules_config", {})
         self.workers_order = self.manager_config.get("stage_secuence", {})
         self.stage_outputs = self.manager_config.get("enabled_outputs", {})
+        self.utils_config = self.manager_config.get("utils_config", {})
         self.project_root = project_root
         
         image_preparation_config = self.modules_config["image_preparation"]
         image_preparation_config['enabled_outputs'] = self.stage_outputs["image_load_outputs"]
 
         preprocessing_config = self.modules_config['preprocessing']
-        # preprocessing_config["dpi_range"] = self.modules_config["utils"]
+        preprocessing_config["dpi_range"] = self.utils_config["dpi_range"]
         preprocessing_config['enabled_outputs'] = self.stage_outputs["preprocessing_outputs"]
         
         ocr_config = self.modules_config['ocr']

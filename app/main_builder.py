@@ -72,7 +72,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
 def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str] | str) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
     builders: List[ProcessingBuilder] = []
-    image_info_list = workflow_report['image_info']
+    image_info_list = workflow_report.get('image_info', {}) 
 
     try:
         for image_data in image_info_list:

@@ -15,7 +15,7 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('gauss_params', {})
-        # Los parámetros fijos se eliminan, se calcularán dinámicamente.
+        self.dpi_range = config["dpi_range"] 
         self.gauss_threshold = self.worker_config.get('laplacian_variance_threshold')
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("gauss_poly", False)
@@ -34,6 +34,9 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
+           
+            dpi = manager.workflow.metadata.dpi if manager.workflow else None
+            logger.info(f"DPI: {dpi}")
 
             # 1. Fase de Análisis
             analysis_results: List[Dict[str, Any]] = []

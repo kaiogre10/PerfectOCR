@@ -8,17 +8,17 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-    # - "moire"
-    # - "sp"
-    # - "gauss"
-    # - "ink_enhancement"
-    # - "clahe"
-    # - "sharp"
+    - "moire"
+    - "sp"
+    - "gauss"
+    - "ink_enhancement"
+    - "clahe"
+    - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
     # - "text_refiner"
-    - "data_finder"
+    #- "data_finder"
     
   vector_stage:
     # - "lineal"
@@ -35,12 +35,12 @@ enabled_outputs:
     pre_clean: false
     angle_corrected: false
     cropped_img: false
-    filtered_polys: true
+    filtered_polys: false
     discarded_polys: false
   
   preprocessing_outputs:
     moire_poly: false
-    sp_poly: true
+    sp_poly: false 
     gauss_poly: false
     ink_poly: false
     clahe_poly: false
