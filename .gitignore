@@ -14,17 +14,14 @@ __pycache__/
 .github/
 .typings/
 .idea/
-.input2/
-.input3/
 
 # Ignorar carpeta
-input/
+input
 .github/chatmodes/
 documentation/
 test/
 tools/
-output/
-# data/models/
+data/models/
 # input2/
 # input3/
 
