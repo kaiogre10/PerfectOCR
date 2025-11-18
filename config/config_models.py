@@ -5,12 +5,14 @@ from typing import List, Tuple, Optional
 class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-class OutputFlag(ConfigWithNumpy):
+class ImgLoadOutputs(ConfigWithNumpy):
     pre_clean: bool
     angle_corrected: bool
     cropped_img: bool
     filtered_polys: bool
     discarded_polys: bool
+
+class PreprocessingOutputs(ConfigWithNumpy):
     moire_poly: bool
     sp_poly: bool
     gauss_poly: bool
@@ -18,16 +20,26 @@ class OutputFlag(ConfigWithNumpy):
     clahe_poly: bool
     sharp_poly: bool
     binarized_polygons: bool
+
+class OCROutputs(ConfigWithNumpy):
     ocr_raw: bool
     fragmented_polys: bool
     reconstructed_lines: bool
     semantic_field: bool
+
+class VectorizingOutputs(ConfigWithNumpy):
     table_lines: bool
     encoded_lines: bool
     features: bool
     image_features: bool
     table_structured: bool
     math_max_corrected: bool
+
+class OutputFlags(ConfigWithNumpy):
+    image_load_outputs: ImgLoadOutputs
+    preprocessing_outputs: PreprocessingOutputs
+    ocr_outputs: OCROutputs
+    vectorization_outputs: VectorizingOutputs
     
 class Processing(ConfigWithNumpy):
     max_workers: int
@@ -79,15 +91,12 @@ class Fragmenter(ConfigWithNumpy):
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
     salt_pepper_threshold: float
-    salt_pepper_low: int
+    # salt_pepper_low: int
     salt_pepper_high: int
     sobel_threshold: float
 
 class GaussianConfig(ConfigWithNumpy):
     laplacian_variance_threshold: float
-    d: int
-    sigma_color: int
-    sigma_space: int
 
 class DeskewConfig(ConfigWithNumpy):
     min_angle_for_correction: float
@@ -201,6 +210,9 @@ class VectorConfig(ConfigWithNumpy):
     cos_sim: CosineSimilarity
     math_max: MathMaxConfig
     table_structurer: TableStructurer
+
+class UtilsConfig(ConfigWithNumpy):
+    dpi_range: List[int]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation
@@ -216,7 +228,8 @@ class PipelineConfig(ConfigWithNumpy):
 
 class MasterConfig(ConfigWithNumpy):
     pipeline_secuence: PipelineConfig
-    enabled_outputs: OutputFlag
+    enabled_outputs: OutputFlags
     processing: Processing
     models_config: ModelsConfig
     modules: ModulesConfig
+    utils: UtilsConfig

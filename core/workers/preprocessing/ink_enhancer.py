@@ -80,7 +80,7 @@ class InkEnhancer(PreprocessingAbstractWorker):
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     output_paths = context.get("output_paths", [])
                     
-                    save_croped_image(image_name, poly_id, enhanced_img, output_paths, worker_name)
+                    save_croped_image(image_name, poly_id, enhanced_img, output_paths, worker_name, method=worker_name)
                     
             total_time = time.time() - start_time
             

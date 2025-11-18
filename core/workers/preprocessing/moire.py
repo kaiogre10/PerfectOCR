@@ -15,10 +15,10 @@ class MoireDenoiser(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('moire', {})
+        self.worker_config = config.get('moire', {})
         self.notch_radius_conf = self.worker_config.get('notch_radius')
         self.min_dist_conf = self.worker_config.get('min_distance_from_center')
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("moire_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -104,8 +104,8 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "moire"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    output_paths = context.get("output_paths", [])
-                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
+                    output_paths = context["output_paths"]
+                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name, method=worker_name)
                     
             total_time = time.time() - start_time
             logger.debug(f"Moire batch completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")

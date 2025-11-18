@@ -14,8 +14,12 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('sp_config', {})
+        self.worker_config = config.get('sp_config', {})
+        # self.dpi_range = config["dpi_range"]
         self.sobel_threshold = self.worker_config.get("sobel_threshold")
+        self.salt_pepper_high = self.worker_config.get("salt_pepper_high")
+        self.salt_pepper_threshold = self.worker_config.get("salt_pepper_threshold")
+        self.kernel_size = self.worker_config.get("kernel_size")
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("sp_poly", False)
     
@@ -35,10 +39,13 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
-
+            
+            dpi = manager.workflow.metadata.dpi if manager.workflow else None
+            
             # 1. Analysis Phase
             metrics: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
+            corrected_poly = 0
             for poly_id, polygon in polygons.items():
                 # Acceso correcto a la imagen desde la dataclass
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
@@ -55,33 +62,39 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 return True
 
             # 2. Vectorized Decision Phase
-            areas = np.array([m['area'] for m in metrics], dtype=np.int32)
+            areas = np.array([m['area'] for m in metrics], dtype=np.uint32)
             sp_ratios = np.array([m['sp_ratio'] for m in metrics], dtype=np.float32)
-            isolated_counts = np.array([m['isolated_count'] for m in metrics], dtype=np.int32)
-            min_dims = np.array([min(m['h'], m['w']) for m in metrics], dtype=np.int32)
+            isolated_counts = np.array([m['isolated_count'] for m in metrics], dtype=np.uint32)
+            min_dims = np.array([min(m['h'], m['w']) for m in metrics], dtype=np.uint32)
 
-            cond_small = areas < 2000
-            cond_medium = (areas > 2000) & (areas < 10000)
+            cond_small = areas < 1500  # Reducido de 2000
+            cond_medium = (areas >= 1500) & (areas < 5000)  # Ajustado de 2000-10000
             
-            ratio_thrs = np.select([cond_small, cond_medium], [0.06, 0.03], default=0.015)
-            min_isos = np.select([cond_small, cond_medium], [10, 20], default=30)
+            # Ajuste de umbrales y ksizes para tamaños más realistas
+            ratio_thrs = np.select([cond_small, cond_medium], [0.05, 0.025], default=self.salt_pepper_threshold)
+            min_isos = np.select([cond_small, cond_medium], [8, 15], default=25)
             ksizes = np.select([cond_small, cond_medium], [3, 3], default=5)
             
-            ksizes = np.where(min_dims > 50, np.maximum(ksizes, 5), ksizes)
+            ksizes = np.where(min_dims > 40, np.maximum(ksizes, 5), ksizes) # Reducido de 50
             ksizes = np.where(ksizes % 2 == 0, ksizes + 1, ksizes)
 
-            needs_correction = (sp_ratios > ratio_thrs) & (isolated_counts >= min_isos)
+            logger.info(f"DPI: {dpi}")
+            logger.info(f"AREAS: {areas}")
+
+            needs_correction = (sp_ratios > ratio_thrs) & (isolated_counts > min_isos)
 
             # 3. Application Phase
             for idx, poly_id in enumerate(poly_ids_order):
                 if not needs_correction[idx]:
                     continue
 
+                corrected_poly += 1
+
                 polygon = polygons[poly_id]
                 analysis_results = metrics[idx]
                 ksize = int(ksizes[idx])
 
-                # logger.debug(f"Poly '{poly_id}': Aplicando filtro S&P con k-size: {ksize}")
+                # logger.info(f"{poly_id}:")
 
                 corrected_img = self._apply_sp_correction(
                     analysis_results,
@@ -92,34 +105,38 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 
                 if self.output:
                     from services.output_service import save_croped_image
-                    worker_name = context.get("worker_name", [])
+                    worker_name = context.get("worker_name") or "sp"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    output_paths = context.get("output_paths", [])
-                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
+                    output_paths = context["output_paths"]
+                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name, method=worker_name)
 
             total_time = time.time() - start_time
-            logger.debug(f"S&P batch completado para {len(poly_ids_order)} polígonos en: {total_time:.3f}s")
+            logger.info(f"Corregidos: {corrected_poly}/{len(poly_ids_order)} polígonos en: {total_time:.6f}s")
             return True
+        
         except Exception as e:
             logger.error(f"Error en el procesamiento por lotes de S&P: {e}", exc_info=True)
             return False
 
     def _analyze_image_for_sp(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> Dict[str, Any]:
         h, w = cropped_img.shape[:2]
-        area = h*w
-        if area == 0:
+        if h == 0 or w == 0:
+            logger.warning("imagen no válida")
             return {}
+        
+        area = h * w
 
         p1, p99 = np.percentile(cropped_img, [1, 99])
-        low, high = int(max(0, p1)), int(min(255, p99))
+        low, high = int(max(0, p1)), int(min(self.salt_pepper_high, p99))
         
-        extreme_mask = (cropped_img < low) | (cropped_img > high)
+        extreme_mask = (cropped_img < low).astype(np.uint8) | (cropped_img > high).astype(np.uint8)
         sp_ratio = np.count_nonzero(extreme_mask) / area
 
         kernel = np.ones((3, 3), np.uint8)
         neighbor_count = cv2.filter2D(extreme_mask.astype(np.uint8), -1, kernel, borderType=cv2.BORDER_REPLICATE)
-        isolated_mask = extreme_mask & (neighbor_count <= 1)
+        isolated_mask = extreme_mask & (neighbor_count < 2)
         isolated_count = np.count_nonzero(isolated_mask)
+        sobel_before = np.mean(np.abs(cv2.Sobel(cropped_img, cv2.CV_64F, 1, 1, ksize=self.kernel_size)))
 
         return {
             "original_img": cropped_img,
@@ -127,7 +144,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             "sp_ratio": sp_ratio,
             "isolated_count": isolated_count,
             "extreme_mask": extreme_mask,
-            "sobel_before": np.mean(np.abs(cv2.Sobel(cropped_img, cv2.CV_64F, 1, 1, ksize=3)))
+            "sobel_before": sobel_before
         }
 
     def _apply_sp_correction(self, analysis: Dict[str, Any], ksize: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
@@ -135,12 +152,18 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         filtered = cv2.medianBlur(original_img, ksize)
         
         result = original_img.copy()
+        # logger.info(f"extreme_mask: {analysis['extreme_mask']}")
         result[analysis['extreme_mask']] = filtered[analysis['extreme_mask']]
 
-        sobel_after = np.mean(np.abs(cv2.Sobel(result, cv2.CV_64F, 1, 1, ksize=3)))
+        sobel_after = np.mean(np.abs(cv2.Sobel(result, cv2.CV_64F, 1, 1, ksize=self.kernel_size)))
+        sobel_before = analysis["sobel_before"]
+        sobel_thr = self.sobel_threshold * sobel_before
+        # logger.info(f"SOBEL BEFORE: {sobel_before} y AFTER: {sobel_after} | condición: {sobel_thr}")
+
+        if sobel_after > sobel_thr:
+            # logger.debug("Corregido S&P")
+            return result
         
-        if sobel_after < self.sobel_threshold * analysis['sobel_before']:
-            logger.debug("Corrección S&P revertida por pérdida de nitidez.")
+        else:
+            logger.info(f"Corrección S&P revertida por pérdida de nitidez")
             return original_img
-        
-        return result

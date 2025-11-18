@@ -56,7 +56,7 @@ class TextCleaner(OCRAbstractWorker):
                 continue
 
             if not validate_alone_chars(text):
-                logger.info(f"Eliminado {poly_id} por soledad: '{text}'")
+                logger.debug(f"Eliminado {poly_id} por soledad: '{text}'")
                 eliminated_count += 1
                 continue
             

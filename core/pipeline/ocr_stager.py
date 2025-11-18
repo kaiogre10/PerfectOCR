@@ -9,12 +9,7 @@ logger = logging.getLogger(__name__)
 
 class OCRStager(AbstractStager):
     """Stager de reconocimiento óptico de caracteres."""
-
-    @property
-    def config(self):
-        """Alias para compatibilidad."""
-        return self.stage_config
-
+    
     def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         """Ejecuta la fase de OCR completa."""
         return self.run_ocr_on_polygons(manager)

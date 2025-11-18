@@ -4,20 +4,20 @@ from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
 from core.factory.main_factory import MainFactory
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 class StagersFactory:
     """
     Reutiliza una única instancia de MainFactory.
     Crea workers y ensambla stagers de forma uniforme.
     """
-    def __init__(self, modules_config: Dict[str, Any], workers_order: Dict[str, List[str]] ,manager_config: Dict[str, Any], project_root: str):
+    def __init__(self, manager_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.modules_config = modules_config
-        self.workers_order = workers_order
         self.manager_config = manager_config
-        self.main_factory = MainFactory(modules_config, project_root)
-        self.image_workers = self.workers_order.get("imagepre_stage" , [])
+        self.main_factory = MainFactory(manager_config, project_root)
+        self.modules_config = self.manager_config.get("modules_config", {})
+        self.workers_order = self.manager_config.get("stage_secuence", {})
+        self.image_workers = self.workers_order["imagepre_stage"]
         self.preprocessing_workers = self.workers_order.get("preprocessing_stage", [])
         self.ocr_workers = self.workers_order.get("ocr_stage", [])
         self.vectorizing_workers = self.workers_order.get("vector_stage", [])
@@ -42,10 +42,10 @@ class StagersFactory:
             project_root=self.project_root
         )
 
-    def create_preprocessing_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> PreprocessingStager:
+    def create_preprocessing_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> Optional[PreprocessingStager]:
         """Crea stager de preprocessing con configuraciones específicas del master config."""
         if not self.preprocessing_workers:
-            return {}# type: ignore
+            return None
 
         factory = self.main_factory.get_preprocessing_factory()
         
@@ -65,8 +65,11 @@ class StagersFactory:
             project_root=self.project_root
         )
 
-    def create_ocr_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> OCRStager:
+    def create_ocr_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> Optional[OCRStager]:
         """Crea stager de OCR con configuraciones específicas del master config."""
+        if not self.ocr_workers:
+            return None
+        
         factory = self.main_factory.get_ocr_factory()
         
         # Agregar configuraciones específicas de OCR al contexto
@@ -85,10 +88,10 @@ class StagersFactory:
             project_root=self.project_root
         )
 
-    def create_vectorization_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> VectorizationStager:
+    def create_vectorization_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> Optional[VectorizationStager]:
         """Crea stager de vectorización con configuraciones específicas del master config."""
         if not self.vectorizing_workers:
-            return {} # type: ignore
+            return None
 
         factory = self.main_factory.get_vectorizing_factory()
         

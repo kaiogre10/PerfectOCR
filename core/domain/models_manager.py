@@ -45,8 +45,10 @@ class ModelsManager:
     def initialize_models(self, models_config: Dict[str, Any]):
         init_time = time.perf_counter()
         self.models_config: Dict[str, Any] = models_config.get("models_config", {})
+        ocr_stage: List[str] = models_config.get("ocr_stage", [])
 
         try:
+        
             self._shared_engine = PaddleOCR(
                 det=True, rec=True, cls=False,
                 det_model_dir=self.models_config['det_model_dir'],
@@ -64,14 +66,13 @@ class ModelsManager:
             self._initialized = True
             logger.debug(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
             logger.debug(f"PADDLE Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
-                
+
         except Exception as e:
             logger.error(f"No se pudo iniciar Paddle se deiene el proceso completo{e}", exc_info=True)
             return None
 
         try:
             if self._shared_engine or self._detection_engine or self._recognition_engine:
-                ocr_stage: List[str] = models_config.get("ocr_stage", [])
                 if "data_finder" in ocr_stage:
                     model_path=self.models_config.get("model_path", "")
                     self._word_finder: WordFinder = WordFinder( #type: ignore
@@ -84,7 +85,7 @@ class ModelsManager:
                     self._word_finder = None
                     logger.warning(f"Word Finder no se cargó porque no se usará en el pipeline")
             else:
-                logger.critical(f"No se pudo iniciar Paddle, no se cargará WF")
+                logger.critical(f"No se pudo iniciar Paddle, no se cargará WordFinder")
                 return None
 
         except Exception as e:
@@ -99,5 +100,5 @@ class ModelsManager:
         return self._recognition_engine
         
     @property    
-    def word_finder(self) -> Optional[WordFinder]: 
-        return self._word_finder
+    def word_finder(self) -> Optional[WordFinder]: # type: ignore
+        return self._word_finder# type: ignore

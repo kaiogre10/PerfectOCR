@@ -8,24 +8,25 @@ from core.workers.vectorial_transformation.vectorizing_factory import Vectorizin
 class MainFactory:
     """Factory universal que coordina todas las factories de módulos."""
 
-    def __init__(self, modules_config: Dict[str, Any], project_root: str):
-        self.modules_config = modules_config
+    def __init__(self, manager_config: Dict[str, Any], project_root: str):
+        self.manager_config = manager_config
+        self.modules_config = self.manager_config.get("modules_config", {})
+        self.workers_order = self.manager_config.get("stage_secuence", {})
+        self.stage_outputs = self.manager_config.get("enabled_outputs", {})
         self.project_root = project_root
         
-        # Extraer la configuración anidada y los outputs globales
-        enabled_outputs = self.modules_config.get('enabled_outputs', {})
-        
-        image_preparation_config = self.modules_config["modules"]["image_preparation"]
-        image_preparation_config['enabled_outputs'] = enabled_outputs
+        image_preparation_config = self.modules_config["image_preparation"]
+        image_preparation_config['enabled_outputs'] = self.stage_outputs["image_load_outputs"]
 
-        preprocessing_config = self.modules_config["modules"]['preprocessing']
-        preprocessing_config['enabled_outputs'] = enabled_outputs
+        preprocessing_config = self.modules_config['preprocessing']
+        # preprocessing_config["dpi_range"] = self.modules_config["utils"]
+        preprocessing_config['enabled_outputs'] = self.stage_outputs["preprocessing_outputs"]
         
-        ocr_config = self.modules_config["modules"]['ocr']
-        ocr_config['enabled_outputs'] = enabled_outputs
+        ocr_config = self.modules_config['ocr']
+        ocr_config['enabled_outputs'] = self.stage_outputs["ocr_outputs"]
  
-        vectorizing_config = self.modules_config["modules"]['vectorization']
-        vectorizing_config['enabled_outputs'] = enabled_outputs
+        vectorizing_config = self.modules_config['vectorization']
+        vectorizing_config['enabled_outputs'] = self.stage_outputs["vectorization_outputs"]
 
         # Registro de fábricas por nombre de módulo
         self.module_factories: Dict[str, Any] = {

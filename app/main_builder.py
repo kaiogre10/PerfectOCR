@@ -1,14 +1,13 @@
 # PerfectOCR/main_builder.py
 import time
-import logging
 from typing import Optional, List, Dict, Any
 from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.stagers_factory import StagersFactory
 from core.domain.data_formatter import DataFormatter
-from core.domain.models_manager import ModelsManager
 from services.config_service import ConfigService
-from services.cache_service import cleanup_project_cache
+from core.domain.models_manager import ModelsManager
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +21,12 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         if config_services.validate_pipeline_config():
             logger.debug("Número mínimo de workers activos, se inicia el pipeline")
         else:
-            logger.fatal(f"Proceso terminado en: {time.perf_counter()-t0:.6f}s debido a configuración insuficiente")
+            logger.error(f"Proceso terminado en: {time.perf_counter()-t0:.6f}s debido a configuración insuficiente")
             return []
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
         workflow_manager = WorkFlowBuilder(
-            config_services=config_services,
+            config=config_services.processing_config,
             project_root=project_root,
             input_paths=input_paths,
         )
@@ -37,13 +36,10 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         
         # 4. Iniciar modelos Singleton
         models_manager = ModelsManager.get_instance()
-        models_config = config_services.models_config
-        models_manager.initialize_models(models_config)
+        models_manager.initialize_models(config_services.models_config)
 
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
         stagers_factory = StagersFactory(
-            modules_config=config_services.modules_config,
-            workers_order=config_services.workers_order,
             manager_config=config_services.manager_config,
             project_root=project_root
         )
@@ -68,19 +64,15 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         
     finally:
         try:
+            from services.cache_service import cleanup_project_cache
             cleanup_project_cache(project_root)
         except Exception as e:
             logging.error(f"Error durante la limpieza de caché: {e}", exc_info=True)
 
-def create_builders_with_factory(
-    stagers_factory: StagersFactory,
-    workflow_report: Dict[str, Any],
-    output_paths: List[str] | str,
-) -> List[ProcessingBuilder]:
+def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str] | str) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
-    
     builders: List[ProcessingBuilder] = []
-    image_info_list = workflow_report.get('image_info', [])
+    image_info_list = workflow_report['image_info']
 
     try:
         for image_data in image_info_list:

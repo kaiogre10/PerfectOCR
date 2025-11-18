@@ -1,8 +1,8 @@
 # services/config_service.py
 import yaml
-import logging
 from typing import Dict, Any, cast, List, Set
 from config.config_models import MasterConfig
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +12,7 @@ class ConfigService:
         self.config_path = config_path
         self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
+        self.min_workers: List[str] | str = ["image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"]
                 
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
@@ -26,23 +27,13 @@ class ConfigService:
         except Exception as e:
             logger.error(f"Error validando configuración desde {self.config_path}: {e}")
             raise
-
-    @property
-    def enabled_outputs(self) -> Dict[str, bool]:
-        """Obtiene flags de salida habilitados."""
-        return self.config.get('enabled_outputs', {})
-
+    
     @property
     def processing_config(self) -> Dict[str, Any]:
         """Obtiene configuración de procesamiento."""
-        return self.config.get('processing', {})
-        
-    @property
-    def modules_config(self) -> Dict[str, Dict[str, Any]]:
-        """Obtiene configuración de módulos."""
         return {
-            "modules": self.config.get("modules", {}),
-            "enabled_outputs": self.enabled_outputs,
+            "processing": self.config.get('processing', {}),
+            "utils_config": self.config.get("utils", {})
         }
 
     @property
@@ -59,21 +50,21 @@ class ConfigService:
         """Obtiene la configuración global para modelos ML"""
         return { 
             "models_config": self.config.get("models_config", {}),
-            "ocr_stage": self.workers_order.get("ocr_stage", [])
+            "ocr_stage": self.workers_order["ocr_stage"]
         }
 
     @property
     def manager_config(self) -> Dict[str, Any]:
         """Devuelve el paquete estándar de configuraciones de los managers"""
         return {
-            "enabled_outputs": self.enabled_outputs,
-            'secuence': self.workers_order
+            "enabled_outputs": self.config.get("enabled_outputs", {}),
+            "stage_secuence": self.workers_order,
+            "modules_config": self.config.get("modules", {})
         }
 
     def validate_pipeline_config(self) -> bool:
-        min_workers: List[str] = ["image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"]
-        set_min_workers: Set[str] = set(min_workers)
-
+        self.set_min_workers: Set[str] = set(self.min_workers)
+        
         if not self.workers_order:
             logger.error("No hay configuración de workers disponible")
             return False
@@ -94,7 +85,7 @@ class ConfigService:
                 else:
                     logger.debug(f"Stage '{stage}' con tipo inesperado {type(stage_workers).__name__}, se ignora")
 
-            if set_min_workers.issubset(set_worker_config):
+            if self.set_min_workers.issubset(set_worker_config):
                 # Loguear conteo por stage de forma segura
                 for stage, stage_workers in self.workers_order.items():
                     if isinstance(stage_workers, (list, tuple, set)): #type: ignore
@@ -109,11 +100,18 @@ class ConfigService:
                     logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
                 return True
             else:
-                workers_missing = set_min_workers - set_worker_config
+                workers_missing = self.set_min_workers - set_worker_config
                 logger.warning(
-                    f"Faltan: {workers_missing} de los '{len(set_min_workers)}' workers mínimos para el pipeline")
+                    f"Faltan: {workers_missing} de los '{len(self.set_min_workers)}' workers mínimos para el pipeline")
                 return False
 
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
             return False
+
+    def validate_models_load(self) -> bool:
+        if len(self.min_workers) == 1 and self.min_workers == "image_loader":
+            return False
+        
+        else:
+            return True

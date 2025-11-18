@@ -75,8 +75,6 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
                 radius = radii[idx]
                 amount = amounts[idx]
 
-                # logger.debug(f"Poly '{poly_id}': Aplicando Sharpen (Radius: {radius:.2f}, Amount: {amount:.2f})")
-
                 corrected_img = self._apply_sharpening_correction(cropped_img_np, radius, amount)
                 polygon.cropped_img.cropped_img = corrected_img
                 
@@ -85,7 +83,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
                     worker_name = context.get("worker_name") or "sharp"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     output_paths = context.get("output_paths", [])
-                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
+                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name, method=worker_name)
 
             return True
         except Exception as e:

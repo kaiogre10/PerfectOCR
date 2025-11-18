@@ -108,24 +108,25 @@ def validate_full_image(img: np.ndarray[Any, Any]):
     else:
         return [0, 0]
  
-def correct_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    worker_config = config.get('cleaner', {})
-    std_low = worker_config.get("std_low")
-    sp_thr: float = worker_config.get("sp_thr")
-    clahe_clip_base = worker_config.get("clahe_clip")
+def clean_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    std_low = worker_config.get("std_low", {})
+    sp_thr = worker_config.get("sp_thr", {})
+    clahe_clip_base = worker_config.get("clahe_clip", {})
     clahe_grid = worker_config["clahe_grid"]
     dimension_thresholds_px = worker_config["dimension_thresholds_px"]
-    kernel_size: int = worker_config.get("kernel_size")
+    kernel_size = worker_config.get("kernel_size", {})
     try:
-        size = full_img.size
+        h, w = full_img.shape[:2]
+        size = h * w
             
-        ext_low = float((full_img <= 5).sum())
-        ext_high = float((full_img >= 250).sum())
+        ext_low = (full_img < 5).sum()
+        ext_high = (full_img > 250).sum()
         sp_ratio = (ext_low + ext_high) / size
+        logger.info(f"ratio SP: {sp_ratio}, UMBRAL: {sp_thr}")
 
         # 1) Desruido sal‑y‑pimienta (rápido, solo si aplica)
         if sp_ratio > sp_thr:
-            den = cv2.medianBlur(src=full_img, ksize=kernel_size)
+            den = cv2.medianBlur(src=full_img, ksize=kernel_size).astype(np.uint8)
             full_img[...] = den
 
         # Recalcular contraste
@@ -133,7 +134,6 @@ def correct_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], config: Dict[str,
 
         # 2) Contraste local con CLAHE (solo si contraste bajo)
         if std1 < std_low:
-            h, w = full_img.shape[:2]
             max_dim = max(h, w)
             
             if max_dim < dimension_thresholds_px[0]:
@@ -143,7 +143,7 @@ def correct_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], config: Dict[str,
             else:
                 grid_size = tuple(clahe_grid[2])
             
-            logger.debug(f"CLAHE para full_img con grid: {grid_size} basado en max_dim: {max_dim}")
+            logger.info(f"CLAHE para full_img con grid: {grid_size} basado en max_dim: {max_dim}")
 
             clahe = cv2.createCLAHE(clipLimit=clahe_clip_base, tileGridSize=grid_size)
             en1 = clahe.apply(full_img)
@@ -172,7 +172,7 @@ def correct_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], config: Dict[str,
         sharp = cv2.addWeighted(full_img, alpha, blur, beta, 0)
         np.clip(sharp, 0, 255, out=sharp)
         if sharp.dtype != np.uint8:
-            sharp = sharp.astype(np.uint8, copy=False)
+            sharp = normalice_image(sharp)
 
             full_img[...] = sharp
             

@@ -3,57 +3,64 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "cleaner"
-    - "angle_corrector"
+    # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-    - "moire"
+    # - "moire"
     - "sp"
-    - "gauss"
+    # - "gauss"
     # - "ink_enhancement"
-    - "clahe"
-    - "sharp"
+    # - "clahe"
+    # - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
-    - "text_refiner"
-#    - "data_finder"
+    # - "text_refiner"
+    # - "data_finder"
     
   vector_stage:
- #   - "lineal"
-  #  - "vectorizer"
-   # - "dbscan"
-    #- "cos_sim"
-   # - "table_structurer"
-    # - "table_validated"
+    # - "lineal"
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
+    # - "table_structurer"
+    # # - "table_validated"
     # - "math_max"
 
 # Configuración de salida
 enabled_outputs:
-  pre_clean: false
-  angle_corrected: false
-  cropped_img: false
-  filtered_polys: false
-  discarded_polys: false
-  moire_poly: false
-  sp_poly: false
-  gauss_poly: false
-  ink_poly: false
-  clahe_poly: false
-  sharp_poly: false
-  binarized_polygons: false
-  ocr_raw: false
-  fragmented_polys: false
-  reconstructed_lines: false
-  semantic_field: false
-  table_lines: false
-  encoded_lines: false
-  features: false
-  image_features: false
-  table_structured: false
-  math_max_corrected: false
+  image_load_outputs:
+    pre_clean: false
+    angle_corrected: false
+    cropped_img: false
+    filtered_polys: true
+    discarded_polys: false
   
+  preprocessing_outputs:
+    moire_poly: false
+    sp_poly: true
+    gauss_poly: false
+    ink_poly: false
+    clahe_poly: false
+    sharp_poly: false
+    binarized_polygons: false
+  
+  ocr_outputs:
+    ocr_raw: false
+    fragmented_polys: false
+    reconstructed_lines: false
+    semantic_field: false
+  
+  vectorization_outputs:
+    table_lines: false
+    encoded_lines: false
+    features: false
+    image_features: false
+    table_structured: false
+    math_max_corrected: false
+
 models_config:
   use_angle_cls: false
   lang: "es"
@@ -111,16 +118,13 @@ modules:
 
     sp_config:
       kernel_size: 3
-      salt_pepper_threshold: 0.0015
-      salt_pepper_low: 15
-      salt_pepper_high: 253
+      salt_pepper_threshold: 0.015
+      # salt_pepper_low: 15
+      salt_pepper_high: 250
       sobel_threshold: 0.85
 
     gauss_params:
       laplacian_variance_threshold: 80.0
-      d: 9
-      sigma_color: 75
-      sigma_space: 75
 
     ink_enhancement:
       faded_detection_threshold: 0.4
@@ -210,3 +214,6 @@ modules:
     math_max:
       total_mtl_abs_tolerance: 0.05
       row_relative_tolerance: 0.05
+
+utils:
+  dpi_range: [100, 200, 300, 400, 600, 1200]

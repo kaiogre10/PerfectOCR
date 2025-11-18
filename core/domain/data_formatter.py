@@ -42,6 +42,7 @@ class DataFormatter:
                     "size": int(metadata.get("img_dims", {}).get("size") or 0),
                 },
                 date_creation=str(metadata.get("date_creation" or "")),
+                dpi=int(metadata.get("dpi", {}))
             )
 
             self.workflow = WorkflowDict(
@@ -482,7 +483,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
+                    logger.debug(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
@@ -505,7 +506,6 @@ class DataFormatter:
             polygons = self.workflow.polygons if self.workflow else {}
             all_lines = self.workflow.all_lines if self.workflow else {}
 
-            # Cambio: buscar key_field == 6 (int) en lugar de "HeaderWords"
             hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == 6] 
 
             logger.debug(f"Header_polys: {hdr_poly_ids}")

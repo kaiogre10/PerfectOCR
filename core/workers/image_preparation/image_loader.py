@@ -17,10 +17,10 @@ class ImageLoader(ImagePrepAbstractWorker):
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Carga la imagen y extrae metadatos."""
-        logger.debug(f"LOADER INCIADO")
-        image_data = self.image_data
-        image_name = image_data.get('name', "")
-        input_path = image_data.get('full_path',"")
+
+        image_name = self.image_data.get('name', "")
+        input_path = self.image_data.get('full_path',"")
+        dpi = self.image_data.get('dpi', {})
         
         metadata: Dict[str, Any] = {
             "image_name": image_name,
@@ -29,7 +29,8 @@ class ImageLoader(ImagePrepAbstractWorker):
                     "height": None,
                     "size": None
                 },
-            "date_creation": None
+            "date_creation": None,
+            "dpi": dpi
         }
         try:
             now = datetime.now()
@@ -41,7 +42,7 @@ class ImageLoader(ImagePrepAbstractWorker):
                 logger.error(f"No se cargó:'{image_name}'")
                 return False
 
-            logger.critical(f"Imagen: {image_name} cargada, {now}")
+            logger.critical(f"Imagen: '{image_name}' cargada el {now}")
             img_dims = validate_full_image(gray_img)
             if not img_dims:
                 logger.error(f"Imagen {image_name} totalmente en blanco")
@@ -53,10 +54,10 @@ class ImageLoader(ImagePrepAbstractWorker):
             logger.debug(f"Dimensiones de la imagen '{image_name}': '{cv2_height, cv2_width}', size='{cv2_size}'")
 
             metadata["img_dims"] = {
-                        "width": float(cv2_width), 
-                        "height": float(cv2_height),
-                        "size": float(cv2_size)
-                    }
+                "width": float(cv2_width), 
+                "height": float(cv2_height),
+                "size": float(cv2_size)
+            }
             
             metadata["date_creation"] = date_creation
                             

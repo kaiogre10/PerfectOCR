@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
     """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados ycoordina el procesamiento técnico de una sola imagen."""    
-    def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: PreprocessingStager, ocr_stager: OCRStager, vectorization_stager: VectorizationStager ,manager: DataFormatter):
+    def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: Optional[PreprocessingStager], ocr_stager: Optional[OCRStager], vectorization_stager: Optional[VectorizationStager] ,manager: DataFormatter):
         self.manager = manager
         self.input_stager = input_stager
         self.preprocessing_stager = preprocessing_stager
@@ -43,11 +43,12 @@ class ProcessingBuilder:
                 logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
             # FASE 3: OCR (usa execute() del AbstractStager)
-            manager, ocr_time = self.ocr_stager.execute(manager)
-            if manager is None:
-                logger.error("Fallo en OCR")
-                return None
-            logger.debug(f"OCR completado en: {ocr_time:.6f}s")
+            if self.ocr_stager:
+                manager, ocr_time = self.ocr_stager.execute(manager)
+                if manager is None:
+                    logger.error("Fallo en OCR")
+                    return None
+                logger.debug(f"OCR completado en: {ocr_time:.6f}s")
                     
             # FASE 4: Vectorización (usa execute() del AbstractStager)
             if self.vectorization_stager:

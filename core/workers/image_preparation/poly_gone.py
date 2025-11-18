@@ -16,7 +16,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config
         self.worker_config = config.get('polygon_extractor', {})
         self.bin_interval = self.worker_config["bin_interval"]
         self.percentil = float(self.worker_config.get("percentil"))
@@ -196,12 +195,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     }
                 }
 
-                if self.filtered_ouputs:
-                    from services.output_service import save_croped_image
-                    worker_name = context.get("worker_name") or "poly_gone"
-                    output_paths = context["output_paths"]
-                    save_croped_image(image_name, new_id, p_data['cropped'], output_paths, worker_name, method="filtered_polys")
-
             # Eliminar los descartados del manager.workflow.polygons
             for poly_id in discarded_poly_ids:
                 pid = poly_id.split(" ")[0]
@@ -224,6 +217,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 poly_obj = manager.workflow.polygons[old_id] # type: ignore
                 poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = poly_obj
+                    
             manager.workflow.polygons = new_polygons# type: ignore
             
             # Guardar resultados
@@ -235,6 +229,17 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 
             extracted_count = len(cropped_images)
             logger.info(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
+
+            if self.filtered_ouputs:
+                from services.output_service import save_croped_image
+                worker_name = context.get("worker_name") or "poly_gone"
+                output_paths = context["output_paths"]
+
+                polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+
+                for poly_id, polygon in polygons.items():
+                    cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
+                    save_croped_image(image_name, poly_id, cropped_img, output_paths, worker_name, method="filtered_polys")
             
             return True
 
