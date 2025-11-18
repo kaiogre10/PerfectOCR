@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class WordFinder:
     def __init__(self, model_path: str):
         self.model: Dict[str, Any] = self._load_model(model_path)
-        self.wf_path: str = "C:/word_finder_model/src/word_finder.py"
+        self.wf_path: str = "C:/PerfectOCR/core/utils/word_finder.py"
         self.params = self.model.get("params", {})
         self.global_words: List[str] = self.model["global_words"]
         self.variant_to_field = self.model.get("variant_to_field", {})

@@ -115,7 +115,7 @@ class DataFinder(OCRAbstractWorker):
 
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Resultado de {pid}: {best_result}")
+                        logger.info(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"{skipped_semantic} polígonos semánticos omitidos")

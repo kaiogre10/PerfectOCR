@@ -2,21 +2,21 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "cleaner"
+    # - "cleaner"
     # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
     # - "moire"
-    - "sp"
+    # - "sp"
     # - "gauss"
     # - "ink_enhancement"
     # - "clahe"
     # - "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
+    # - "paddle_wrapper"
     # - "text_refiner"
     # - "data_finder"
     
@@ -71,7 +71,7 @@ models_config:
   det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
   rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
   cls_model_dir: C:/PerfectOCR/data/models/paddle/cls
-  model_path: C:/word_finder_model/models/wf_model.pkl
+  model_path: C:/PerfectOCR/data/models/wf/wf_model.pkl
   
 # Configuración de procesamiento
 processing:

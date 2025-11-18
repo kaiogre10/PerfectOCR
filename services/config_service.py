@@ -12,7 +12,7 @@ class ConfigService:
         self.config_path = config_path
         self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
-        self.min_workers: List[str] | str = ["image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"]
+        self.min_workers: List[str] | str = ["image_loader"]#, "geometry_detector", "polygon_extractor", "paddle_wrapper"]
                 
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
@@ -50,7 +50,7 @@ class ConfigService:
         """Obtiene la configuración global para modelos ML"""
         return { 
             "models_config": self.config.get("models_config", {}),
-            "ocr_stage": self.workers_order["ocr_stage"]
+            "ocr_stage": self.workers_order.get("ocr_stage", [])
         }
 
     @property

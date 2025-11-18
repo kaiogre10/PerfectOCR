@@ -24,12 +24,11 @@ documentation/
 test/
 tools/
 output/
-data/models/
-input2/
-input3/
+# data/models/
+# input2/
+# input3/
 
 # Excepción
-!density_encoder.json
 !especificaciones_inspiron.txt
 !especificaciones_latitude.txt
 

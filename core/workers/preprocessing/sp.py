@@ -40,7 +40,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             if not polygons:
                 return False
             
-            dpi = manager.workflow.metadata.dpi if manager.workflow else None
+            # dpi = manager.workflow.metadata.dpi if manager.workflow else None
             
             # 1. Analysis Phase
             metrics: List[Dict[str, Any]] = []
@@ -78,8 +78,8 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             ksizes = np.where(min_dims > 40, np.maximum(ksizes, 5), ksizes) # Reducido de 50
             ksizes = np.where(ksizes % 2 == 0, ksizes + 1, ksizes)
 
-            logger.info(f"DPI: {dpi}")
-            logger.info(f"AREAS: {areas}")
+            # logger.info(f"DPI: {dpi}")
+            # logger.info(f"AREAS: {areas}")
 
             needs_correction = (sp_ratios > ratio_thrs) & (isolated_counts > min_isos)
 

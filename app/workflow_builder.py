@@ -34,7 +34,7 @@ class WorkFlowBuilder:
                     with Image.open(full_path) as img:
                         dpi_aprox = img.info["dpi"][1]
                         dpi_cal = self.closest_int(dpi_aprox, self.dpi_range)
-                        logger.info(f"{image_name}, DPI: {dpi_cal}")
+                        logger.debug(f"{image_name}, DPI: {dpi_cal}")
 
                     # Obtener ruta relativa desde input_folder para mejor organización
                     relative_path = os.path.relpath(root, input_folder)

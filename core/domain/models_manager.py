@@ -2,18 +2,19 @@
 import logging
 import threading
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from paddleocr import PaddleOCR # type: ignore
-import sys
+from core.utils.word_finder import WordFinder
+# import sys
 
-try:
-    word_finder = r"C:\word_finder_model\src"
-    if word_finder not in sys.path:
-        sys.path.insert(0, word_finder)
-    from word_finder import WordFinder #type: ignore
+# try:
+#     word_finder = r"C:\word_finder_model\src"
+#     if word_finder not in sys.path:
+#         sys.path.insert(0, word_finder)
+#     from word_finder import WordFinder #type: ignore
     
-except Exception as e:
-    logging.error(f"No se pudo importar WORD_FINDER; {e}", exc_info=True)
+# except Exception as e:
+#     logging.error(f"No se pudo importar WORD_FINDER; {e}", exc_info=True)
     
 logger = logging.getLogger(__name__)
 
@@ -45,10 +46,7 @@ class ModelsManager:
     def initialize_models(self, models_config: Dict[str, Any]):
         init_time = time.perf_counter()
         self.models_config: Dict[str, Any] = models_config.get("models_config", {})
-        ocr_stage: List[str] = models_config.get("ocr_stage", [])
-
         try:
-        
             self._shared_engine = PaddleOCR(
                 det=True, rec=True, cls=False,
                 det_model_dir=self.models_config['det_model_dir'],
@@ -73,9 +71,10 @@ class ModelsManager:
 
         try:
             if self._shared_engine or self._detection_engine or self._recognition_engine:
+                ocr_stage = models_config.get("ocr_stage", {})
                 if "data_finder" in ocr_stage:
                     model_path=self.models_config.get("model_path", "")
-                    self._word_finder: WordFinder = WordFinder( #type: ignore
+                    self._word_finder: WordFinder = WordFinder(
                         model_path=model_path
                     )
                     self._active = True
@@ -100,5 +99,5 @@ class ModelsManager:
         return self._recognition_engine
         
     @property    
-    def word_finder(self) -> Optional[WordFinder]: # type: ignore
-        return self._word_finder# type: ignore
+    def word_finder(self) -> Optional[WordFinder]:
+        return self._word_finder
