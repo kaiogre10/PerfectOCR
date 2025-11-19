@@ -2,10 +2,10 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "cleaner"
-    # - "angle_corrector"
-    - "geometry_detector"
-    - "polygon_extractor"
+    #- "cleaner"
+    - "angle_corrector"
+    #- "geometry_detector"
+    #- "polygon_extractor"
 
   preprocessing_stage:
     # - "moire"
@@ -16,8 +16,8 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    # - "paddle_wrapper"
-    # # - "text_refiner"
+    #- "paddle_wrapper"
+    #- "text_refiner"
     # - "data_finder"
     
   vector_stage:
@@ -34,7 +34,7 @@ enabled_outputs:
   image_load_outputs:
     deleted_polys: false
     pre_clean: false
-    angle_corrected: false
+    angle_corrected: true
     cropped_img: false
     filtered_polys: false
     discarded_polys: false

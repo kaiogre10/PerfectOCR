@@ -7,7 +7,7 @@ from skimage.filters import threshold_sauvola  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
+def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """
     Binariza la imagen, extrae métricas robustas de componentes conectados (CC) y decide si necesita fragmentación.
     """
@@ -32,7 +32,14 @@ def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config
         bin_img = adaptive_mean_fallback(cropped_img, block, c_value)
 
     bin_img = cv2.bitwise_not(bin_img).astype(np.uint8)
-    
+   
+    return bin_img
+
+def analize_bin_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
+    bin_img = binarice_img(cropped_img, worker_config)
+    min_area_factor: float = worker_config.get("min_area_factor", {})
+    area = cropped_img.size
+    area_min = area * min_area_factor
     cc_metrics = extract_cc_metrics(bin_img, area_min)
 
     if not cc_metrics or cc_metrics["n_cc"] == 0:
@@ -64,7 +71,7 @@ def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config
         # Los boxes ya están ordenados por 'x' desde extract_cc_metrics
         blob_metrics["blobs_norm_boxes"] = valid_boxes_norm
 
-    # logger.info(f"Metricas: {blob_metrics}")
+   # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
 def get_adaptive_block_size(height: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:

@@ -11,6 +11,7 @@ __pycache__/
 .idea/
 .cursor/
 .github/
+.github/chatmodes/
 .typings/
 .idea/
 
@@ -22,7 +23,8 @@ tools/
 data/models/
 C:/PerfectOCR/data/models/
 input/
-# input2/
+input2/
+output/
 # input3/
 
 # Excepción

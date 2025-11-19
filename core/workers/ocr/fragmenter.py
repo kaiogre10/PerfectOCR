@@ -7,7 +7,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.pattern_finder import is_acronym, find_quantitative_runs, separate_punt
-from core.utils.binarizator import binarice_img
+from core.utils.binarizator import analize_bin_img
 from core.utils.text_validator import validate_text, punc_chars
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class Fragmenter(OCRAbstractWorker):
                     continue
                 
                 binarizator_config: Dict[str, Any] = self.worker_config
-                blob_metrics = binarice_img(cropped_img, binarizator_config)
+                blob_metrics = analize_bin_img(cropped_img, binarizator_config)
 
                 if not blob_metrics:
                     logger.debug(f"Sin Metricas para: {poly_id}")

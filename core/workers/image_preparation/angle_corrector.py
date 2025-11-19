@@ -18,7 +18,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.config = config
-        self.worker_config = self.config.get('angle_corrector', {})
+        self.worker_config = config.get('angle_corrector', {})
         self.min_angle_for_correction = self.worker_config.get('min_angle_for_correction')
         self.canny_thresholds = self.worker_config['canny_thresholds']
         self.hough_threshold = self.worker_config.get('hough_threshold')
@@ -38,17 +38,19 @@ class AngleCorrector(ImagePrepAbstractWorker):
             logger.debug("Full_img obtenida con éxito")
 
             full_img, corrected = self.correct_angle(full_img, manager)
-            
-            manager.update_full_img(corrected, full_img)
-            logger.debug(f"Imagen inclinada corregida actualiada en el manager")
-            if self.output:
+           
+            if corrected:
+
+            if not manager.update_full_img(corrected, full_img):
+               logger.error(f"Error al actualizar la imagen corregida en el manager")
+
+            if self.output and corrected:
                 from services.output_service import save_croped_image
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "angle_corrector"
                 output_paths = context["output_paths"]
                 poly_id = f"full_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, poly_id, full_img, output_paths, worker_name, method=None)
-                logger.debug(f"Imagen inclinada corregida guardada como output intermedio 'angle_corrected'")
+                save_croped_image(image_name, poly_id, full_img, output_paths, worker_name, method="angle_corrected")
                 
             return True
             
