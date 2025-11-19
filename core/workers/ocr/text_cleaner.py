@@ -68,14 +68,11 @@ class TextCleaner(OCRAbstractWorker):
 
             text = remove_special_chars(text)
 
-            is_numeric_like = (isinstance(sc, list) and any(c in [1, 2, -2] for c in sc)) or \
-                            (isinstance(sc, int) and sc in [1, 2, -2])
+            is_numeric_like = (isinstance(sc, list) and any(c in [1, 2, -2] for c in sc)) or (isinstance(sc, int) and sc in [1, 2, -2])
 
             if (not validate_text(text) or
                 (confidence < self.min_confidence and not is_numeric_like) or detect_punt(text)):
-                reason = "sin texto" if not validate_text(text) \
-                    else f"baja confianza ({confidence:.2f})" if confidence < self.min_confidence and not is_numeric_like \
-                    else "solo caracteres de puntuación"
+                reason = "sin texto" if not validate_text(text) else f"baja confianza ({confidence:.2f})" if confidence < self.min_confidence and not is_numeric_like else "solo caracteres de puntuación"
                 logger.debug(f"Eliminado {poly_id}: '{text}' (Razón: {reason})")
                 eliminated_count += 1
                 continue

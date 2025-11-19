@@ -1,14 +1,13 @@
 # core/preprocessing/poly_gone.py
 import numpy as np
 import logging
-import math
 import time
 import dataclasses
 from typing import Dict, Any, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.image_utils import validate_full_image
+from core.utils.image_utils import calculate_img_values
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         self.bin_interval = self.worker_config["bin_interval"]
         self.percentil = float(self.worker_config.get("percentil"))
         self.padding = self.worker_config.get("cropping_padding")
-        self.angle_thr = self.worker_config["angle_thr"]
         self.enabled_outputs = self.config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("cropped_img", False)
         self.filtered_ouputs = self.enabled_outputs.get("filtered_polys", False)
@@ -39,13 +37,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
                 
-            img_dims = validate_full_image(full_img)
-            if not img_dims:
-                logger.error(f"Imagen '{image_name}' no válida")
-                return False
-            
-            img_h = img_dims[0]
-            img_w = img_dims[1]
+            img_h = full_img.shape[0]
+            img_w = full_img.shape[1]
 
             logger.debug("Full_img obtenida con éxito")
 
@@ -60,7 +53,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             all_bboxes: List[np.ndarray[Any, Any]] = []
             
             for poly_id, polygon in polygons.items():
-                bbox = polygon.geometry.bounding_box 
+                bbox = polygon.geometry.bounding_box
                 if bbox.size != 4:
                     logger.warning(f"PolygonExtractor: Bounding box inválido para {poly_id}")
                     continue
@@ -90,7 +83,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.info(f"full_img: '{image_name}' liberada")
             
             # Validar dimensiones usando operaciones vectorizadas
-            valid_dims: np.ndarray[Any, Any] = (px2 > px1) & (py2 > py1).astype(np.uint8)
+            valid_dims: np.ndarray[Any, Any] = (px2 > px1) & (py2 > py1)
             valid_indices = np.where(valid_dims)[0]
             
             if len(valid_indices) == 0:
@@ -120,10 +113,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     output_paths = context["output_paths"]
                     save_croped_image(image_name, poly_id, cropped, output_paths, worker_name, method="all_polys") # type: ignore
                 
-                bbox_width = crop_x2 - crop_x1
-                bbox_height = crop_y2 - crop_y1
-                angle = math.degrees(math.atan2(bbox_height, bbox_width))
-                poly_mean = cropped.mean()
+                poly_mean, _ = calculate_img_values(cropped)
                 
                 poly_area = cropped.size
                 poly_data_to_filter.append({
@@ -132,7 +122,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     "cropped": cropped,
                     "i": i,
                     "coords": (crop_x1, crop_y1, crop_x2, crop_y2),
-                    "angle": angle,
                     "poly_mean": poly_mean
                 })
 
@@ -145,34 +134,20 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             valid_polygons_data: List[Dict[str, Any]] = []
             for p_data in poly_data_to_filter:
-                from services.output_service import save_croped_image
 
-                if p_data['angle'] < self.angle_thr[1] and self.angle_thr[0] < p_data['angle']:
-                    discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['angle']}")
-                    logger.info(f"ELIMINADO '{p_data['poly_id']}': ÁNGULO = {p_data['angle']}°")
-                    
-                    if self.disoutput:
-                        worker_name = context.get("worker_name") or "poly_gone"
-                        output_paths = context.get("output_paths", [])
-                        save_croped_image(image_name, p_data['poly_id'], p_data['cropped'], output_paths, worker_name, method="deleted")
-
-                elif p_data['area'] < percentile_value or p_data['area'] == 0:
+                if p_data['area'] < percentile_value or p_data['area'] == 0:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['area']}")
                     logger.info(f"ELIMINADO '{p_data['poly_id']}': ÁREA= {p_data['area']}")
-
-                    if self.disoutput:
-                        worker_name = context.get("worker_name") or "poly_gone"
-                        output_paths = context.get("output_paths", [])
-                        save_croped_image(image_name, p_data['poly_id'], p_data['cropped'], output_paths, worker_name, method="deleted")
 
                 elif p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
                     logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO = {p_data['poly_mean']}")
                     
-                    if self.disoutput:
-                        worker_name = context.get("worker_name") or "poly_gone"
-                        output_paths = context.get("output_paths", [])
-                        save_croped_image(image_name, p_data['poly_id'], p_data['cropped'], output_paths, worker_name, method="deleted")
+                if self.disoutput:
+                    from services.output_service import save_croped_image
+                    worker_name = context.get("worker_name") or "poly_gone"
+                    output_paths = context["output_paths"]
+                    save_croped_image(image_name, p_data['poly_id'], p_data['cropped'], output_paths, worker_name, method="deleted")
 
                 else:
                     valid_polygons_data.append(p_data)

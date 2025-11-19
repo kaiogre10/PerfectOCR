@@ -35,7 +35,7 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         }
         
     def _create_paddle_wrapper(self, context: Dict[str, Any]) -> PaddleOCRWrapper:
-        return PaddleOCRWrapper(config=self.module_config, project_root=self.project_root) 
+        return PaddleOCRWrapper(config=self.module_config, project_root=self.project_root)
     
     def _create_refiner(self, context: Dict[str, Any]) -> Refiner:
         workers = self.shared_refiner_workers

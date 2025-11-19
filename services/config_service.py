@@ -1,18 +1,18 @@
 # services/config_service.py
 import yaml
-from typing import Dict, Any, cast, List, Set
+from typing import Dict, Any, cast, List, Set, Optional
 from config.config_models import MasterConfig
 import logging
 
 logger = logging.getLogger(__name__)
 
 class ConfigService:
-    """Fragmentador centralizado con validación robusta y flexibilidad."""
+    """Gestor de los parametros de configuración"""
     def __init__(self, config_path: str):
         self.config_path = config_path
         self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
-        self.min_workers: List[str] | str = ["image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"]
+        self.min_workers: List[str] | str = ["image_loader"]#, "geometry_detector", "polygon_extractor", "paddle_wrapper"]
                 
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
@@ -42,7 +42,7 @@ class ConfigService:
         return self.validated_config.modules
     
     @property
-    def workers_order(self) -> Dict[str, List[str]]:
+    def workers_order(self) -> Dict[str, Optional[List[str]]]:
         return self.config.get("pipeline_secuence", {})
 
     @property
@@ -50,7 +50,7 @@ class ConfigService:
         """Obtiene la configuración global para modelos ML"""
         return { 
             "models_config": self.config.get("models_config", {}),
-            "ocr_stage": self.workers_order.get("ocr_stage", [])
+            "ocr_stage": self.workers_order["ocr_stage"]
         }
 
     @property

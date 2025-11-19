@@ -43,19 +43,18 @@ class ModelsManager:
                     cls._instance = cls()
         return cls._instance
     
-    def initialize_models(self, models_cfg: Dict[str, Any]):
+    def initialize_models(self, config: Dict[str, Any]) -> bool:
         init_time = time.perf_counter()
-        models_config: Dict[str, Any] = models_cfg.get("models_config", {})
         try:
+            models_config=config.get("models_config", {})
             self._shared_engine = PaddleOCR(
                 det=True, rec=True, cls=False,
-                det_model_dir=models_config['det_model_dir'],
-                rec_model_dir=models_config['rec_model_dir'],
-                use_angle_cls=models_config.get('use_angle_cls'),
+                det_model_dir=models_config.get('det_model_dir'),
+                rec_model_dir=models_config.get('rec_model_dir'),
                 show_log=models_config.get('show_log'),
                 use_gpu=models_config.get('use_gpu'),
                 enable_mkldnn=models_config.get('enable_mkldnn'),
-                lang=models_config.get('lang'),
+                lang=models_config.get("lang"),
                 rec_batch_num = models_config.get('rec_batch_num')
                 )
             # Compartir la MISMA instancia
@@ -66,29 +65,32 @@ class ModelsManager:
             logger.debug(f"PADDLE Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
 
         except Exception as e:
-            logger.error(f"No se pudo iniciar Paddle se deiene el proceso completo{e}", exc_info=True)
-            return None
+            logger.error(f"No se pudo iniciar Paddle se deiene el proceso completo: {e}", exc_info=True)
+            return False
 
         try:
-            if self._shared_engine or self._detection_engine or self._recognition_engine:
-                ocr_stage = models_cfg.get("ocr_stage", {})
+            ocr_stage = config["ocr_stage"]
+            if ocr_stage and self._shared_engine or self._detection_engine or self._recognition_engine:
                 if "data_finder" in ocr_stage:
-                    model_path=models_config.get("model_path", "")
+                    model_path=models_config.get("wf_model_path")
                     self._word_finder: WordFinder = WordFinder(
                         model_path=model_path
                     )
                     self._active = True
                     logger.debug(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
+                    return True
 
                 else:
                     self._word_finder = None
                     logger.warning(f"Word Finder no se cargó porque no se usará en el pipeline")
+                    return True
             else:
                 logger.critical(f"No se pudo iniciar Paddle, no se cargará WordFinder")
-                return None
+                return False
 
         except Exception as e:
             logger.warning(f"No se pudo iniciar WordFinder: {e}", exc_info=True)
+            return True
             
     @property
     def detection_engine(self) -> Optional[PaddleOCR]:

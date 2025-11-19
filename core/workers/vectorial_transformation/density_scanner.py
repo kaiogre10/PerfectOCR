@@ -15,6 +15,8 @@ class DensityScanner(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('dbscan', {})
+        self.min_cluster_size = int(self.worker_config.get("min_cluster_size")) 
+        self.eps = float(self.worker_config.get("eps")) 
         self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
 
@@ -60,9 +62,7 @@ class DensityScanner(VectorizationAbstractWorker):
 
     def _apply_dbscan_clustering(self, valid_analyses: Dict[str, Dict[str, float]]) -> List[str]:
         """Aplica DBSCAN para agrupar líneas similares - versión que acepta diccionario."""
-        min_cluster_size = int(self.worker_config.get("min_cluster_size", [])) 
-        eps = float(self.worker_config.get("eps", [])) 
-        if len(valid_analyses) < min_cluster_size:
+        if len(valid_analyses) < self.min_cluster_size:
             logger.warning("No hay suficientes líneas válidas para clustering.")
             return []
                 
@@ -74,7 +74,7 @@ class DensityScanner(VectorizationAbstractWorker):
             
         features_array = np.array(features, dtype=np.float32)
 
-        clustering = DBSCAN(eps=eps, min_samples=min_cluster_size)
+        clustering = DBSCAN(eps=self.eps, min_samples=self.min_cluster_size)
         labels: np.ndarray[Any, Any] = clustering.fit_predict(features_array)
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]

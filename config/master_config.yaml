@@ -2,23 +2,23 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "cleaner"
+    - "cleaner"
     # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-    - "moire"
-    - "sp"
-    - "gauss"
-    - "ink_enhancement"
-    - "clahe"
-    - "sharp"
+    # - "moire"
+    # - "sp"
+    # - "gauss"
+    # - "ink_enhancement"
+    # - "clahe"
+    # - "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
-    # - "text_refiner"
-    #- "data_finder"
+    # - "paddle_wrapper"
+    # # - "text_refiner"
+    # - "data_finder"
     
   vector_stage:
     # - "lineal"
@@ -32,6 +32,7 @@ pipeline_secuence:
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
+    deleted_polys: false
     pre_clean: false
     angle_corrected: false
     cropped_img: false
@@ -70,8 +71,7 @@ models_config:
   rec_batch_num: 64
   det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
   rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
-  cls_model_dir: C:/PerfectOCR/data/models/paddle/cls
-  model_path: C:/PerfectOCR/data/models/wf/wf_model.pkl
+  wf_model_path: C:/PerfectOCR/data/models/wf/wf_model.pkl
   
 # Configuración de procesamiento
 processing:
@@ -101,12 +101,14 @@ modules:
       dimension_thresholds_px: [1000, 2500, 4000]
       clahe_grid: [[6, 6], [8, 8], [10, 10]]
       kernel_size: 3
+
+    geometry_detector:
+      angle_thr: [44.5, 45.5]
     
     polygon_extractor:
       cropping_padding: 2
       bin_interval: [10, 250]
       percentil: 0.5
-      angle_thr: [44.5, 45.5]
 
   preprocessing:
     moire:

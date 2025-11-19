@@ -30,8 +30,7 @@ class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
         return AngleCorrector(config=self.module_config, project_root=self.project_root)
     
     def _create_geometry_detector(self, context: Dict[str, Any]) -> GeometryDetector:
-        paddleocr = context.get('paddle_det_config', {})
-        return GeometryDetector(config=paddleocr, project_root=self.project_root)
+        return GeometryDetector(config=self.module_config, project_root=self.project_root)
     
     def _create_polygon_extractor(self, context: Dict[str, Any]) -> PolygonExtractor:
         return PolygonExtractor(config=self.module_config, project_root=self.project_root)

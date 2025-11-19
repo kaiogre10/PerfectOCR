@@ -6,6 +6,7 @@ class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 class ImgLoadOutputs(ConfigWithNumpy):
+    deleted_polys: bool
     pre_clean: bool
     angle_corrected: bool
     cropped_img: bool
@@ -60,8 +61,8 @@ class ModelsConfig(ConfigWithNumpy):
     rec_batch_num: int
     det_model_dir: str
     rec_model_dir: str
-    cls_model_dir: str
-    model_path: str
+    # cls_model_dir: str
+    wf_model_path: str
     
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
@@ -106,11 +107,13 @@ class DeskewConfig(ConfigWithNumpy):
     hough_max_line_gap_px: int
     hough_angle_filter_range_degrees: List[int]
 
+class GeoDetector(ConfigWithNumpy):
+    angle_thr: Tuple[float, float]
+
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
     bin_interval: Tuple[int, int]
     percentil : float
-    angle_thr: Tuple[float, float]
 
 class CleaningConfig(ConfigWithNumpy):
     std_low: float
@@ -123,6 +126,7 @@ class CleaningConfig(ConfigWithNumpy):
 class ImagePreparation(ConfigWithNumpy):
     angle_corrector: DeskewConfig
     cleaner: CleaningConfig
+    geometry_detector: GeoDetector
     polygon_extractor: CuttingConfig
 
 class ContrastConfig(ConfigWithNumpy):

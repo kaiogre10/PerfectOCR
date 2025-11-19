@@ -1,9 +1,12 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
 import time
+import numpy as np
+import math
 from typing import Dict, Any, Optional, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.utils.image_utils import validate_image
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +17,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config
+        self.worker_config = config.get('geometry_detector', {})
+        self.angle_thr = self.worker_config["angle_thr"]
+        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.output = self.enabled_outputs.get("deleted_polys", False)
         self._engine = None
             
     @property
@@ -35,32 +41,75 @@ class GeometryDetector(ImagePrepAbstractWorker):
         try:
             engine = self.engine
             if engine is None:
-                logger.error("GeometryDetector: Motor PaddleOCR no inicializado.")
+                logger.error("PaddleOCR no inicializado.")
                 return False
 
             img_obj = manager.get_full_img()
             img = img_obj.full_img if img_obj is not None else None
-            if img is None:
+            if not validate_image(img):
+            # if img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
 
             logger.debug("Full_img obtenida con éxito")
 
-            results: Optional[List[List[int]]] = engine.ocr(img=img, det=True, cls=False, rec=False)
-            total_time = time.perf_counter() - start_time
+            polygons: List[List[float]] = engine.ocr(img=img, det=True, cls=False, rec=False)
 
-            logger.info(f"GeometryDetector: Resultados de OCR obtenidos: {len(results[0]) if results and results[0] is not None else 0} polígonos en {total_time:.6f}s.") # type: ignore
-
-            if not (results and len(results) > 0 and results[0] is not None): # type: ignore
+            if not (polygons and len(polygons) > 0 and polygons[0] is not None): # type: ignore
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
                 return False
+            
+            # discarted_polys = 0
+            final_polygons_list: List[Dict[str, Any]] = []
+            
+            for idx, poly_pts in enumerate(polygons[0]):
+                poly_id = f"poly_{idx:04d}"
+                coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts])
+                bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()])
+                centroid = coords.mean(axis=0)
 
-            success = manager.create_polygon_dicts(results)
-            if not success:
+                # Calcular ángulo para este bbox
+                bbox_width = bbox[2] - bbox[0]
+                bbox_height = bbox[3] - bbox[1]
+                angle = math.degrees(math.atan2(bbox_height, bbox_width))
+
+                if angle < self.angle_thr[1] and self.angle_thr[0] < angle:
+                    # discarted_polys += 1
+
+                    if self.output:
+                        from services.output_service import save_croped_image
+                        from core.utils.image_utils import cropp_img
+                        cropped = cropp_img(img, bbox)
+                        cropped2 = cropp_img(img, bbox, padding=5)
+                        worker_name = context.get("worker_name") or "geometry_detector"
+                        output_paths = context["output_paths"]
+                        image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                        save_croped_image(image_name, poly_id, cropped, output_paths, worker_name, method="geo_eliminated")
+                        save_croped_image(image_name, poly_id, cropped2, output_paths, worker_name, method="geo_eliminated2")
+
+                    continue
+
+                final_polygons_list.append({
+                    "polygon_coords": coords,
+                    "bounding_box": bbox,
+                    "centroid": centroid
+                })
+
+            final_polygons: Dict[str, Dict[str, Any]] = {}
+            for new_idx, poly_data in enumerate(final_polygons_list):
+                poly_id = f"poly_{new_idx:04d}"
+                final_polygons[poly_id] = poly_data
+
+            # logger.info(f"FINAL: {final_polygons}")
+            # logger.info(f"TOAL: {len(final_polygons)}, descartados: {discarted_polys}, INICIALES: {len(polygons[0])}")
+
+            if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")
                 return False
 
-            return True
+            else:
+                logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
+                return True
         
         except Exception as e:
             logger.error(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)

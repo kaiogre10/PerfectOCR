@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, List
 import logging
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,10 @@ def calculate_img_values(img: np.ndarray[Any, Any]):
     img_dims = img.shape[:2]
     return int(img_mean), img_dims
 
-def validate_image(img: np.ndarray[Any, Any]) -> bool:
+def validate_image(img: Optional[np.ndarray[Any, Any]]) -> bool:
+    if img is None:
+        return False
+    
     img_mean, img_dims = calculate_img_values(img)
     img_size = img_dims[0] * img_dims[1] 
 
@@ -122,8 +125,7 @@ def clean_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict
         ext_low = (full_img < 5).sum()
         ext_high = (full_img > 250).sum()
         sp_ratio = (ext_low + ext_high) / size
-        logger.info(f"ratio SP: {sp_ratio}, UMBRAL: {sp_thr}")
-
+    
         # 1) Desruido sal‑y‑pimienta (rápido, solo si aplica)
         if sp_ratio > sp_thr:
             den = cv2.medianBlur(src=full_img, ksize=kernel_size).astype(np.uint8)
@@ -181,3 +183,29 @@ def clean_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict
     except Exception as e:
         logger.error(f"Cleaner: {e}", exc_info=True)
         return full_img
+
+def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np.ndarray[Any, Any]] | np.ndarray[Any, Any], padding: Optional[int] = None) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
+    img_h = full_img.shape[0]
+    img_w = full_img.shape[1]
+
+    if padding is None:
+        padding = 0
+
+    bboxes_array = np.array(all_bboxes)
+    
+    if bboxes_array.ndim == 1 and bboxes_array.shape[0] == 4:
+        bboxes_array = bboxes_array.reshape(1, 4)
+
+    x1, y1, x2, y2 = bboxes_array[0, 0], bboxes_array[0, 1], bboxes_array[0, 2], bboxes_array[0, 3]
+
+    # Aplicar padding y clipping
+    px1 = max(0, x1 - padding)
+    py1 = max(0, y1 - padding)
+    px2 = min(img_w, x2 + padding)
+    py2 = min(img_h, y2 + padding)
+
+    crop_x1, crop_y1 = int(px1), int(py1)
+    crop_x2, crop_y2 = int(px2), int(py2)
+
+    cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
+    return cropped

@@ -58,25 +58,19 @@ class DataFormatter:
             logger.error(f"No se pudo crear el workflowDict: {e}", exc_info=True)
         return False
     
-    def create_polygon_dicts(self, results: Optional[List[Any]]) -> bool:
+    def create_polygon_dicts(self, results: Dict[str, Dict[str, Any]]) -> bool:
         """Refactorizado para usar validación + dataclasses"""
         try:
             if self.workflow is None:
                 return False
-                
-            if results is None:
-                return False
             
             polygons_dataclass: Dict[str, Polygons] = {}
             
-            for idx, poly_pts in enumerate(results[0]):
-                poly_id = f"poly_{idx:04d}"
-                
-                # Cálculos vectorizados
-                coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts])
-                bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), 
-                            coords[:, 0].max(), coords[:, 1].max()])
-                centroid = coords.mean(axis=0)
+            for pid, poly_data in results.items():
+                poly_id = pid
+                coords = poly_data["polygon_coords"]
+                bbox = poly_data["bounding_box"]
+                centroid = poly_data["centroid"]
 
                 # Crear objeto Geometry
                 geometry = Geometry(

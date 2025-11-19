@@ -21,6 +21,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         self.project_root = project_root
         self.config = config
         self.worker_config = config.get("paddle_wrapper", {})
+        self.min_confidence = self.worker_config.get("min_confidence")
         self.enabled_outputs = config.get("enabled_outputs", {})
         self.output = self.enabled_outputs.get("ocr_raw", False)
         self._engine = None
@@ -93,7 +94,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         Está adaptado para manejar el caso en que PaddleOCR devuelve una única
         lista consolidada de resultados.
         """
-        min_confidence = self.worker_config.get("min_confidence")
         if self.engine is None:
             logger.error("PaddleOCR recognition engine not initialized. Cannot recognize text.")
             return {}
@@ -128,7 +128,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         confidence_pct = round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
                         
                         # Aplicar filtro de confianza mínima
-                        if confidence_pct > min_confidence:
+                        if confidence_pct > self.min_confidence:
                             final_results[poly_id] = {
                                 "text": str(text).strip(),
                                 "confidence": confidence_pct
@@ -136,7 +136,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             logger.debug(f"Resultados: {poly_id}: Texto='{text}', Confianza='{confidence_pct}%'")
 
                         else:
-                            logger.debug(f"Texto basuta filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{min_confidence}%'")
+                            logger.debug(f"Texto basuta filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{self.min_confidence}%'")
                         
                     total_results = len(final_results)
                     logger.warning(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")
