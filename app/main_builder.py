@@ -83,25 +83,13 @@ def create_builders_with_factory(stagers: List[str], stagers_factory: StagersFac
                 "image_data": image_data,
             }
             
-            stagers_created = 0
-            if "imagepre_stage" in stagers:
-                input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
-                stagers_created += 1
+            input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
 
-            if "preprocessing_stage" in stagers:
-                preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
-                stagers_created += 1
+            preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
+
+            ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
 
-            if "ocr_stage" in stagers:
-                ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
-                stagers_created += 1
-
-            if "vector_stage" in stagers:
-                vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
-
-                stagers_created += 1
-
-            logger.info(f"STAGER CREADOS: {stagers_created}")
+            vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
 
             # Crear DataFormatter y ProcessingBuilder
             manager = DataFormatter()
