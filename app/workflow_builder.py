@@ -13,10 +13,8 @@ class WorkFlowBuilder:
     """
     def __init__(self, config: Dict[str, Any], project_root: str, input_paths: List[str] | str):
         self.project_root = project_root
-        self.utils_config = config.get("utils_config", {})
-        self.dpi_range: List[int] = self.utils_config["dpi_range"]
-        self.builder_config = config.get("processing", {})
-        self.small_batch_limit: int = self.builder_config.get('small_batch_limit')
+        self.builder_config = config
+        self.small_batch_limit = self.builder_config.get('small_batch_limit', 5)
         self.valid_extensions = self.builder_config['valid_image_extensions']
         self.input_paths = input_paths
         

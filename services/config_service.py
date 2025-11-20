@@ -12,7 +12,7 @@ class ConfigService:
         self.config_path = config_path
         self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
-        self.min_workers: List[str] | str = ["image_loader"]#, "geometry_detector", "polygon_extractor", "paddle_wrapper"]
+        self.min_workers: List[str] = ["image_loader"]#, "geometry_detector", "polygon_extractor", "paddle_wrapper"]
                 
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
@@ -31,10 +31,7 @@ class ConfigService:
     @property
     def processing_config(self) -> Dict[str, Any]:
         """Obtiene configuración de procesamiento."""
-        return {
-            "processing": self.config.get('processing', {}),
-            "utils_config": self.config.get("utils", {})
-        }
+        return self.config.get('processing', {})
 
     @property
     def enabled_outputs(self) -> Dict[str, Any]:
@@ -58,48 +55,56 @@ class ConfigService:
         }
 
     @property
+    def models_config_validated(self) -> Dict[str, Any]:
+        model_workers = ["geometry_detector", "paddle_wrapper"]
+        if not self.validate_min_workers(model_workers):
+            return {}
+        else:
+            return self.models_config
+        
+    @property
     def modules_config(self) -> Dict[str, Any]:
         return self.config.get("modules", {})
       
     @property
     def img_prep_config(self) -> Dict[str, Any]:
-        if "imagepre_stage" in self.create_stager():
+        if "imagepre_stage" in self.create_stager:
             return {
-                "image_preparation": self.modules_config.get("image_preparation", {}),
-                "image_load_outputs": self.enabled_outputs["image_load_outputs"]
+                **self.modules_config.get("image_preparation", {}),
+                **self.enabled_outputs.get("image_load_outputs", {})
             }
         
         else:
             return {}
        
     @property
-    def preprocessing_config(self)->Dict[str, Any]:
-        if "preprocessing_stage" in self.create_stager():
+    def preprocessing_config(self)-> Dict[str, Any]:
+        if "preprocessing_stage" in self.create_stager:
             return {
-                "preprocessing_stage": self.modules_config.get("preprocessing", {}),
-                "preprocessing_outputs": self.enabled_outputs.get("preprocessing_outputs", {})
+                **self.modules_config.get("preprocessing", {}),
+                **self.enabled_outputs.get("preprocessing_outputs", {})
             }
         
         else:
             return {}
 
     @property
-    def ocr_config(self) ->Dict[str, Any]:
-        if "ocr_stage" in self.create_stager():
+    def ocr_config(self) -> Dict[str, Any]:
+        if "ocr_stage" in self.create_stager:
             return {
-                "ocr": self.modules_config.get("ocr", {}),
-                "ocr_outputs": self.enabled_outputs.get("ocr_outputs", {})
+                **self.modules_config.get("ocr", {}),
+                **self.enabled_outputs.get("ocr_outputs", {})
             }
 
         else:
             return {}
        
     @property
-    def vectorization_config(self) ->Dict[str, Any]:
-        if "vector_stage" in self.create_stager():
+    def vectorization_config(self) -> Dict[str, Any]:
+        if "vector_stage" in self.create_stager:
             return {
-                "vectorization": self.modules_config.get("vectorization", {}),
-                "vectorization_outputs": self.enabled_outputs.get("vectorization_outputs", {})
+                **self.modules_config.get("vectorization", {}),
+                **self.enabled_outputs.get("vectorization_outputs", {})
             }
         
         else:
@@ -119,12 +124,14 @@ class ConfigService:
         """Devuelve el paquete estándar de configuraciones de los managers"""
         return {
             "stage_secuence": self.workers_order,
-            "modules_config": self.valid_modules_config,
-            "utils_config": self.config.get("utils", {}),
+            "modules_config": self.valid_modules_config, 
         }
 
-    def validate_pipeline_config(self) -> bool:
-        self.set_min_workers: Set[str] = set(self.min_workers)
+    def validate_min_workers(self, workers: List[str]) -> bool:
+        if not workers:
+            workers = self.min_workers
+
+        self.set_min_workers: Set[str] = set(workers)
         
         if not self.workers_order:
             logger.error("No hay configuración de workers disponible")
@@ -133,8 +140,10 @@ class ConfigService:
         try:
             set_worker_config: Set[str] = set()
             # Construir conjunto de workers sólo desde stages válidos
+            empty_stage: List[str] = []
             for stage, stage_workers in self.workers_order.items():
                 if not stage_workers:
+                    empty_stage.append(stage)
                     logger.debug(f"Stage '{stage}' sin workers, se ignora")
                     continue
 
@@ -162,14 +171,14 @@ class ConfigService:
                 return True
             else:
                 workers_missing = self.set_min_workers - set_worker_config
-                logger.warning(
-                    f"Faltan: {workers_missing} de los '{len(self.set_min_workers)}' workers mínimos para el pipeline")
+                logger.warning(f"Faltan: {workers_missing} de los '{len(self.set_min_workers)}' workers mínimos para el pipeline")
                 return False
 
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
             return False
 
+    @property
     def create_stager(self) -> List[str]:
         active_stages: List[str] = []
         for stage, stage_workers in self.workers_order.items():

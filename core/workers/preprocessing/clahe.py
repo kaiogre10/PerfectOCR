@@ -15,14 +15,12 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = self.config.get('contrast', {})
-        self.dpi_range = config["dpi_range"] 
         self.contrast_threshold = self.worker_config.get('contrast_threshold')
         self.page_dimensions = self.worker_config['dimension_thresholds_px']
         self.grid_maps = self.worker_config['grid_sizes_map']
         self.window_size = self.worker_config.get("window_size")
         self.std_dev_threshold = self.worker_config.get("std_dev_threshold")
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("clahe_poly", False)
+        self.output = config.get("clahe_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -37,9 +35,6 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
-           
-            dpi = manager.workflow.metadata.dpi if manager.workflow else None
-            logger.info(f"DPI: {dpi}")
 
             # 1. Fase de Análisis
             analysis_results: List[Dict[str, Any]] = []

@@ -45,12 +45,6 @@ class OutputFlags(ConfigWithNumpy):
 class Processing(ConfigWithNumpy):
     small_batch_limit: int
     valid_image_extensions: Tuple[str, ...]
-    # max_workers: int
-    # batch_mode: bool
-    # max_physical_cores: int
-    # add_extra_worker: bool
-    # batch_size_factor: int
-    # auto_mode: bool
 
 class ModelsConfig(ConfigWithNumpy):
     use_angle_cls: bool
@@ -61,13 +55,11 @@ class ModelsConfig(ConfigWithNumpy):
     rec_batch_num: int
     det_model_dir: str
     rec_model_dir: str
-    # cls_model_dir: str
     wf_model_path: str
     
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
-    radius: float
-    amount: float
+    kernel: int
 
 class MoireConfig(ConfigWithNumpy):
     min_distance_from_center: int

@@ -15,20 +15,16 @@ class PolygonExtractor(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config.get("image_preparation", {})
-        logger.info(f"{self.config}")
-        self.worker_config = self.config.get('polygon_extractor', {})
+        self.worker_config = config.get('polygon_extractor', {})
         self.bin_interval = self.worker_config["bin_interval"]
         self.percentil = float(self.worker_config.get("percentil"))
         self.padding = self.worker_config.get("cropping_padding")
-       # self.enabled_outputs = self.config["image_load_outputs"]
-        self.output = self.config.get("cropped_img", False)
-        self.filtered_ouputs = self.config.get("filtered_polys", False)
-        self.disoutput = self.config.get("discarded_polys", False)
+        self.output = config.get("cropped_img", False)
+        self.filtered_ouputs = config.get("filtered_polys", False)
+        self.disoutput = config.get("discarded_polys", False)
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte.
-        Siguiendo el patrón: Análisis → Decisión Vectorizada → Aplicación"""
+        """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte."""
         start_time = time.time()
         try:
             image_name = manager.workflow.metadata.image_name if manager.workflow else ""

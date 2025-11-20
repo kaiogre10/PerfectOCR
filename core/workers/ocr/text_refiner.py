@@ -17,7 +17,7 @@ class Refiner(OCRAbstractWorker):
     """
     def __init__(self, config: Dict[str, Any], project_root: str, clasificator: SemanticClasificator, cleaner: TextCleaner, fragmenter: Fragmenter, corrector: TextCorrector):
         super().__init__(config, project_root)
-        self.worker_config = self.config.get("text_refiner", {})
+        self.worker_config = config.get("text_refiner", {})
         self.num_passes = self.worker_config.get("num_passes")
         self.clasificator = clasificator
         self.cleaner = cleaner

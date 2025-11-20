@@ -1,33 +1,24 @@
 # core/workers/factory/main_factory.py
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from core.workers.image_preparation.image_preparation_factory import ImagePreparationFactory
 from core.workers.preprocessing.preprocessing_factory import PreprocessingFactory
 from core.workers.ocr.ocr_factory import OCRFactory
 from core.workers.vectorial_transformation.vectorizing_factory import VectorizingFactory
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MainFactory:
     """Factory universal que coordina todas las factories de módulos."""
 
-    def __init__(self, manager_config: Dict[str, Any], project_root: str):
-        self.manager_config = manager_config
-        self.modules_config = self.manager_config.get("modules_config", {})
-        self.workers_order = self.manager_config.get("stage_secuence", {})
-        #self.stage_outputs = self.manager_config.get("image_load_outputs", {})
-        self.utils_config = self.manager_config.get("utils_config", {})
+    def __init__(self, modules_config: Dict[str, Any], project_root: str):
+        self.modules_config = modules_config
         self.project_root = project_root
         
-        image_preparation_config = self.modules_config.get("image_preparation", {})
-        #image_preparation_config['enabled_outputs'] = self.stage_outputs["image_load_outputs"]
-
+        image_preparation_config = self.modules_config["image_preparation"]
         preprocessing_config = self.modules_config['preprocessing']
-        preprocessing_config["dpi_range"] = self.utils_config["dpi_range"]
-      #  preprocessing_config['enabled_outputs'] = self.stage_outputs["preprocessing_outputs"]
-        
         ocr_config = self.modules_config['ocr']
-        #ocr_config['enabled_outputs'] = self.stage_outputs["ocr_outputs"]
- 
         vectorizing_config = self.modules_config['vectorization']
-       # vectorizing_config['enabled_outputs'] = self.stage_outputs["vectorization_outputs"]
 
         # Registro de fábricas por nombre de módulo
         self.module_factories: Dict[str, Any] = {
@@ -38,37 +29,34 @@ class MainFactory:
             "preprocessing": PreprocessingFactory(
                 preprocessing_config,
                 project_root
-            ),
+            ) if preprocessing_config else None,
             "ocr": OCRFactory(
                 ocr_config,
                 project_root
-            ),
+            ) if ocr_config else None,
             "vectorization": VectorizingFactory(
                 vectorizing_config,
                 project_root
-            ),
+            ) if vectorizing_config else None,
         }
-
-    def get_factory(self, module_name: str):
-        """Devuelve la fábrica para el módulo solicitado, o None si no existe."""
-        return self.module_factories.get(module_name)
+        # logger.info(f"{self.module_factories}")
 
     def get_image_preparation_factory(self) -> ImagePreparationFactory:
         return self.module_factories["image_preparation"]
         # assert isinstance(factory, ImagePreparationFactory)
         # return factory
 
-    def get_preprocessing_factory(self) -> PreprocessingFactory:
+    def get_preprocessing_factory(self) -> Optional[PreprocessingFactory]:
         return self.module_factories["preprocessing"]
         # assert isinstance(factory, PreprocessingFactory)
         # return factory
         
-    def get_ocr_factory(self) -> OCRFactory:
+    def get_ocr_factory(self) -> Optional[OCRFactory]:
         return self.module_factories["ocr"] 
         # assert isinstance(factory, OCRFactory) 
         # return factory
         
-    def get_vectorizing_factory(self) -> VectorizingFactory:
+    def get_vectorizing_factory(self) -> Optional[VectorizingFactory]:
         return self.module_factories["vectorization"]
         # assert isinstance(factory, VectorizingFactory)
         # return factory

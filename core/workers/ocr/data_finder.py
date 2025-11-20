@@ -1,6 +1,6 @@
 # core/workers/ocr/data_finder.py
 import time
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List
 import logging
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -15,10 +15,9 @@ class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config=config
-        self.worker_config = self.config.get('data_finder', {})
+        self.worker_config = config.get('data_finder', {})
         self.threshold = float(self.worker_config.get("min_similarity"))
-        self.max_q_lenght: Tuple[int, int] = self.worker_config["max_q_lenght"]
+        self.max_q_lenght = self.worker_config["max_q_lenght"]
         self._model = None
 
     @property

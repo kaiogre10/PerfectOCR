@@ -19,8 +19,7 @@ class Fragmenter(OCRAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('fragmenter', {})
         self.min_contours_for_frag = self.worker_config.get("min_contours_for_frag")
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("fragmented_polys", False)
+        self.output = config.get("fragmented_polys", False)
         self.punc_chars: List[str] = punc_chars()
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool: 

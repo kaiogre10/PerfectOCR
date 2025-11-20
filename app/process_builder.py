@@ -35,7 +35,7 @@ class ProcessingBuilder:
             logger.debug(f"Fase de preparación completada en: {time_poly:.6f}s")
 
             # FASE 2: Preprocesamiento (usa execute() del AbstractStager)
-            if self.preprocessing_stager:
+            if self.preprocessing_stager is not None:
                 manager, elapsed = self.preprocessing_stager.execute(manager)
                 if manager is None:
                     logger.error("Fallo en preprocesamiento")
@@ -43,7 +43,7 @@ class ProcessingBuilder:
                 logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
             # FASE 3: OCR (usa execute() del AbstractStager)
-            if self.ocr_stager:
+            if self.ocr_stager is not None:
                 manager, ocr_time = self.ocr_stager.execute(manager)
                 if manager is None:
                     logger.error("Fallo en OCR")
@@ -51,7 +51,7 @@ class ProcessingBuilder:
                 logger.debug(f"OCR completado en: {ocr_time:.6f}s")
                     
             # FASE 4: Vectorización (usa execute() del AbstractStager)
-            if self.vectorization_stager:
+            if self.vectorization_stager is not None:
                 manager, vect_time = self.vectorization_stager.execute(manager)
                 if manager is None:
                     logger.error("Fallo en vectorización")

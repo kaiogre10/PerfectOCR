@@ -3,31 +3,31 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     #- "cleaner"
-    # - "angle_corrector"
-    - "geometry_detector"
+    - "angle_corrector"
+    # - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
-    # - "moire"
-    # - "sp"
-    # - "gauss"
-    # - "ink_enhancement"
-    # - "clahe"
-    # - "sharp"
+    - "moire"
+    - "sp"
+    - "gauss"
+    - "ink_enhancement"
+    - "clahe"
+    - "sharp"
 
   ocr_stage:
     # - "paddle_wrapper"
-    # - "text_refiner"
-    # - "data_finder"
+    - "text_refiner"
+    - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
-    # # - "table_validated"
-    # - "math_max"
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
+    - "table_validated"
+    - "math_max"
 
 # Configuración de salida
 enabled_outputs:
@@ -35,7 +35,7 @@ enabled_outputs:
     deleted_polys: false
     pre_clean: false
     angle_corrected: false
-    cropped_img: true
+    cropped_img: false
     filtered_polys: false
     discarded_polys: false
   
@@ -77,12 +77,6 @@ models_config:
 processing:
   valid_image_extensions: [.png, .jpg, .jpeg, .bmp, .tif, .tiff, .webp, .gif, .pbm, .pgm, .ppm, .jp2, .ico]
   small_batch_limit: 5
-  # max_workers: 1
-  # batch_mode: true
-  # max_physical_cores: 4
-  # add_extra_worker: true
-  # batch_size_factor: 2
-  # auto_mode: true
 
 modules:
   image_preparation:
@@ -142,8 +136,7 @@ modules:
     
     sharpening:
       sharpness_threshold: 50.0
-      radius: 1.0
-      amount: 1.5
+      kernel: 3
         
   ocr:
     paddle_wrapper:

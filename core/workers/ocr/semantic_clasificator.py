@@ -1,6 +1,6 @@
 # core/workers/ocr/semantic_clasificator.py
 import logging
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -16,11 +16,10 @@ class SemanticClasificator(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get("semantic_clasificator", {})
-        self.semantic_range: Tuple[float, float] = self.worker_config["semantic_range"]
-        self.encode_mean: Tuple[float, float] = self.worker_config["encode_mean"]
-        self.morph_mean: Tuple[float, float] = self.worker_config["morph_mean"]
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("semantic_field", False)
+        self.semantic_range= self.worker_config["semantic_range"]
+        self.encode_mean= self.worker_config["encode_mean"]
+        self.morph_mean = self.worker_config["morph_mean"]
+        self.output = config.get("semantic_field", False)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter, final_pass: str = "") -> bool:
         """Clasifica polígonos semánticamente"""

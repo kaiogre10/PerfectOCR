@@ -17,11 +17,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.config = config.get("image_preparation", {})
-        self.worker_config = self.config.get('geometry_detector', {})
+        self.worker_config = config.get('geometry_detector', {})
         self.angle_thr = self.worker_config["angle_thr"]
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("deleted_polys", False)
+        self.output = config.get("deleted_polys", False)
         self._engine = None
             
     @property

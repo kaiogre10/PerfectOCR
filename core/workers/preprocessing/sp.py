@@ -15,13 +15,11 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('sp_config', {})
-        self.dpi_range = config["dpi_range"]
         self.sobel_threshold = self.worker_config.get("sobel_threshold")
         self.salt_pepper_high = self.worker_config.get("salt_pepper_high")
         self.salt_pepper_threshold = self.worker_config.get("salt_pepper_threshold")
         self.kernel_size = self.worker_config.get("kernel_size")
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("sp_poly", False)
+        self.output = config.get("sp_poly", False)
     
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -40,8 +38,6 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             if not polygons:
                 return False
             
-            dpi = manager.workflow.metadata.dpi if manager.workflow else None
-            logger.info(f"DPI: {dpi}")
             # 1. Analysis Phase
             metrics: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []

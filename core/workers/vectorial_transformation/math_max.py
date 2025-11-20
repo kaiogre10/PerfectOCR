@@ -20,10 +20,9 @@ class MatrixSolver(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('math_max', {})
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("math_max_corrected", False)
-        self.total_mtl_tolerance = self.worker_config.get('total_mtl_abs_tolerance', 0.05)
-        self.arithmetic_tolerance = self.worker_config.get('row_relative_tolerance', 0.05)
+        self.output = config.get("math_max_corrected", False)
+        self.total_mtl_tolerance = self.worker_config.get('total_mtl_abs_tolerance')
+        self.arithmetic_tolerance = self.worker_config.get('row_relative_tolerance')
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:

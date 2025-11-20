@@ -16,12 +16,10 @@ class InkEnhancer(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('ink_enhancement', {})
-        self.dpi_range = config["dpi_range"] 
+        self.worker_config = config.get('ink_enhancement', {}) 
         self.faded_threshold = self.worker_config.get('faded_detection_threshold')
         self.contrast_boost = self.worker_config.get('contrast_boost_factor')
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("ink_poly", False)
+        self.output = config.get("ink_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y restaura texto con tinta gastada."""
@@ -37,9 +35,6 @@ class InkEnhancer(PreprocessingAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
-           
-            dpi = manager.workflow.metadata.dpi if manager.workflow else None
-            logger.info(f"DPI: {dpi}")
 
             # 1. Fase de Análisis
             analysis_results: List[Dict[str, Any]] = []

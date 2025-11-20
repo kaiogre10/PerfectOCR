@@ -18,7 +18,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         t0 = time.perf_counter()
         config_services = ConfigService(config_path)
 
-        if config_services.validate_pipeline_config():
+        if config_services.validate_min_workers(workers=[]):
             logger.debug("Número mínimo de workers activos, se inicia el pipeline")
         else:
             logger.error(f"Proceso terminado en: {time.perf_counter()-t0:.6f}s debido a configuración insuficiente")
@@ -36,10 +36,9 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         
         # 4. Iniciar modelos Singleton
         models_manager = ModelsManager.get_instance()
-        models_manager.initialize_models(config_services.models_config)
+        models_manager.initialize_models(config_services.models_config_validated)
 
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
-        logger.info(f"comfig: {config_services.manager_config}")
         stagers_factory = StagersFactory(
             manager_config=config_services.manager_config,
             project_root=project_root
@@ -83,11 +82,8 @@ def create_builders_with_factory(stagers_factory: StagersFactory, workflow_repor
             }
             
             input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
-
             preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
-
             ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
-
             vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
            
             # Crear DataFormatter y ProcessingBuilder

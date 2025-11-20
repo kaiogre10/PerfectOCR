@@ -33,7 +33,7 @@ class ModelsManager:
             self._word_finder = None
             self._active = False
         except Exception as e:
-            logger.error(f"Error Manager{e}", exc_info=True)
+            logger.error(f"Error Manager: '{e}'", exc_info=True)
     
     @classmethod
     def get_instance(cls):
@@ -46,6 +46,10 @@ class ModelsManager:
     def initialize_models(self, config: Dict[str, Any]) -> bool:
         init_time = time.perf_counter()
         try:
+            if not config:
+                logger.info("No se ejecutará paddle, se detine models manager")
+                return False
+            
             models_config=config.get("models_config", {})
             self._shared_engine = PaddleOCR(
                 det=True, rec=True, cls=False,

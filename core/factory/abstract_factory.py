@@ -7,7 +7,6 @@ T = TypeVar('T', bound=BaseWorker)
 
 class AbstractBaseFactory(ABC, Generic[T]):
     """Factory base para todos los módulos."""
-    
     def __init__(self, module_config: Dict[str, Any], project_root: str):
         self.module_config = module_config
         self.project_root = project_root

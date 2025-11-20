@@ -19,11 +19,10 @@ class Vectorizer(VectorizationAbstractWorker):
         self.worker_config = config.get('vectorizer', {})
         self.keywords_interval_enabled = self.worker_config.get('keywords_interval_enabled', True)
         self.exclude_types =  self.worker_config['exclude_types']
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("table_lines", False)
-        self.second_output = self.enabled_outputs.get("encoded_lines", False)
-        self.features_output = self.enabled_outputs.get("features", False)
-        self.image_features = self.enabled_outputs.get("image_features", False)
+        self.output = config.get("table_lines", False)
+        self.second_output = config.get("encoded_lines", False)
+        self.features_output = config.get("features", False)
+        self.image_features = config.get("image_features", False)
         self.char_num = get_char_num()
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

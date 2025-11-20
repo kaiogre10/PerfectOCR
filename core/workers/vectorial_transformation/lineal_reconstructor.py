@@ -16,8 +16,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('lineal', {})
         self.overlap_threshold = self.worker_config.get('overlap_threshold')
-        self.enabled_outputs = config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("reconstructed_lines", False)
+        self.output = config.get("reconstructed_lines", False)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:

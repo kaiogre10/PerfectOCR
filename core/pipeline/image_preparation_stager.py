@@ -15,9 +15,9 @@ class ImagePreparationStager(AbstractStager):
         return self.prepare_image(manager)
 
     def prepare_image(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
-        start_time = time.time()
+        start_time = time.perf_counter()
         for worker_idx, worker in enumerate(self.workers):
-            worker_start = time.time()
+            worker_start = time.perf_counter()
             worker_name = worker.__class__.__name__
             logger.debug(f"Ejecutando worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
 
@@ -32,6 +32,6 @@ class ImagePreparationStager(AbstractStager):
 
             logger.info(f" {worker.__class__.__name__} completado en {time.perf_counter() - worker_start:.6f}s")
         
-        total_time = time.time() - start_time
+        total_time = time.perf_counter() - start_time
         logger.debug(f" Completado en {total_time:.6f}s")
         return manager, total_time

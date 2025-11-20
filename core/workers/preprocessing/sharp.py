@@ -15,10 +15,10 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('sharpening', {})
-        self.dpi_range = config["dpi_range"] 
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("sharp_poly", False)
+        self.worker_config = config.get('sharpening', {})
+        self.sharpness_threshold = self.worker_config.get("sharpness_threshold")
+        self.kernel = self.worker_config.get("kernel")
+        self.output = config.get("sharp_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -33,8 +33,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
-            dpi = manager.workflow.metadata.dpi if manager.workflow else None
-            logger.info(f"DPI: {dpi}")
+
             # 1. Fase de Análisis
             analysis_results: List[Dict[str, Any]] = []
             poly_ids_order: List[str] = []
@@ -61,7 +60,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
             sharpness_metrics = np.array([res['sharpness'] for res in analysis_results], dtype=np.float32)
             variances = np.array([res['variance'] for res in analysis_results], dtype=np.float32)
 
-            adaptive_thresholds = np.maximum(30.0, variances * 0.5)
+            adaptive_thresholds = np.maximum(self.sharpness_threshold, variances * 0.5)
             needs_correction = sharpness_metrics < adaptive_thresholds
 
             radii = np.clip(variances - 0.02, 0.5, 2.0)
@@ -84,7 +83,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "sharp"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    output_paths = context.get("output_paths", [])
+                    output_paths = context["output_paths"]
                     save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name, method=worker_name)
 
             return True
@@ -95,7 +94,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
     def _analyze_image_for_sharpness(self, cropped_img_np: np.ndarray[Any, Any]) -> Dict[str, Any]:
         """Calcula métricas de nitidez para una imagen."""
         try:
-            sobel: np.ndarray[Any, np.dtype[np.float64]] = cv2.Sobel(cropped_img_np, cv2.CV_64F, 1, 1, ksize=3).astype(dtype=np.float64)
+            sobel: np.ndarray[Any, np.dtype[np.float64]] = cv2.Sobel(cropped_img_np, cv2.CV_64F, 1, 1, ksize=self.kernel).astype(dtype=np.float64)
             sharpness = np.mean(np.abs(sobel))
             variance = np.var(cropped_img_np)
             return {
