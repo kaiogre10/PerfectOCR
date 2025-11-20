@@ -17,7 +17,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
         self.project_root = project_root
         self.worker_config = self.config.get('sharpening', {})
         self.dpi_range = config["dpi_range"] 
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("sharp_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

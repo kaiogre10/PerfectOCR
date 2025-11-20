@@ -22,7 +22,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         self.config = config
         self.worker_config = config.get("paddle_wrapper", {})
         self.min_confidence = self.worker_config.get("min_confidence")
-        self.enabled_outputs = config.get("enabled_outputs", {})
+        self.enabled_outputs = config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("ocr_raw", False)
         self._engine = None
         

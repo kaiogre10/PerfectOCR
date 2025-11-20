@@ -14,7 +14,7 @@ class ImageCleaner(ImagePrepAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('cleaner', {})
         # self.dpi_range = config["dpi_range"]
-        self.enabled_outputs = config.get("enabled_outputs", {})
+        self.enabled_outputs = config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("pre_clean", False)
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

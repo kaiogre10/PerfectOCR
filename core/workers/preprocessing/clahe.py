@@ -21,7 +21,7 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         self.grid_maps = self.worker_config['grid_sizes_map']
         self.window_size = self.worker_config.get("window_size")
         self.std_dev_threshold = self.worker_config.get("std_dev_threshold")
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("clahe_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

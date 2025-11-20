@@ -19,7 +19,7 @@ class Vectorizer(VectorizationAbstractWorker):
         self.worker_config = config.get('vectorizer', {})
         self.keywords_interval_enabled = self.worker_config.get('keywords_interval_enabled', True)
         self.exclude_types =  self.worker_config['exclude_types']
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
         self.second_output = self.enabled_outputs.get("encoded_lines", False)
         self.features_output = self.enabled_outputs.get("features", False)

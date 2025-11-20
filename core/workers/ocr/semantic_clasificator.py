@@ -19,7 +19,7 @@ class SemanticClasificator(OCRAbstractWorker):
         self.semantic_range: Tuple[float, float] = self.worker_config["semantic_range"]
         self.encode_mean: Tuple[float, float] = self.worker_config["encode_mean"]
         self.morph_mean: Tuple[float, float] = self.worker_config["morph_mean"]
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("semantic_field", False)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter, final_pass: str = "") -> bool:

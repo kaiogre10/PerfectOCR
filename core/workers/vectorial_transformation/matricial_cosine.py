@@ -15,7 +15,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('cos_sim', {})
-        self.enabled_outputs = config.get("enabled_outputs", {})
+        self.enabled_outputs = config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

@@ -35,7 +35,7 @@ enabled_outputs:
     deleted_polys: false
     pre_clean: false
     angle_corrected: false
-    cropped_img: false
+    cropped_img: true
     filtered_polys: false
     discarded_polys: false
   

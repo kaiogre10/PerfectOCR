@@ -25,7 +25,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         self.hough_max_line_gap_px = self.worker_config.get('hough_max_line_gap_px')
         self.hough_angle_filter_range_degrees = self.worker_config['hough_angle_filter_range_degrees']
         self.hough_min_line_length_cap_px = self.worker_config.get('hough_min_line_length_cap_px')
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("angle_corrected", False)
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

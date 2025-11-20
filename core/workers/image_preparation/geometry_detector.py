@@ -17,9 +17,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('geometry_detector', {})
+        self.config = config.get("image_preparation", {})
+        self.worker_config = self.config.get('geometry_detector', {})
         self.angle_thr = self.worker_config["angle_thr"]
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("deleted_polys", False)
         self._engine = None
             
@@ -99,14 +100,14 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")
-            logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
+            logger.debug(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")
                 return False
 
             else:
-                logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
+                logger.debug(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
                 return True
         
         except Exception as e:

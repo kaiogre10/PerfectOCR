@@ -19,7 +19,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         self.dpi_range = config["dpi_range"]
         self.notch_radius_conf = self.worker_config.get('notch_radius')
         self.min_dist_conf = self.worker_config.get('min_distance_from_center')
-        self.enabled_outputs = config.get("enabled_outputs", {})
+        self.enabled_outputs = config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("moire_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

@@ -17,7 +17,7 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
         self.worker_config = config.get('gauss_params', {})
         self.dpi_range = config["dpi_range"] 
         self.gauss_threshold = self.worker_config.get('laplacian_variance_threshold')
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("gauss_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

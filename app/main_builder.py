@@ -18,8 +18,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         t0 = time.perf_counter()
         config_services = ConfigService(config_path)
 
-        min_config, stagers = config_services.validate_pipeline_config()
-        if min_config:
+        if config_services.validate_pipeline_config():
             logger.debug("Número mínimo de workers activos, se inicia el pipeline")
         else:
             logger.error(f"Proceso terminado en: {time.perf_counter()-t0:.6f}s debido a configuración insuficiente")
@@ -40,6 +39,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         models_manager.initialize_models(config_services.models_config)
 
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
+        logger.info(f"comfig: {config_services.manager_config}")
         stagers_factory = StagersFactory(
             manager_config=config_services.manager_config,
             project_root=project_root
@@ -47,7 +47,6 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
 
         # 6. CREAR BUILDERS USANDO LA FACTORY
         builders = create_builders_with_factory(
-            stagers=stagers,
             stagers_factory=stagers_factory,
             workflow_report=workflow_report,
             output_paths=output_paths
@@ -71,7 +70,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         except Exception as e:
             logging.error(f"Error durante la limpieza de caché: {e}", exc_info=True)
 
-def create_builders_with_factory(stagers: List[str], stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str] | str) -> List[ProcessingBuilder]:
+def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str] | str) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
     builders: List[ProcessingBuilder] = []
     image_info_list = workflow_report.get('image_info', {}) 
@@ -83,14 +82,14 @@ def create_builders_with_factory(stagers: List[str], stagers_factory: StagersFac
                 "image_data": image_data,
             }
             
-            input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
+            input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
 
-            preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
-
+            preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
+
             ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
 
-            vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
-
+            vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
+           
             # Crear DataFormatter y ProcessingBuilder
             manager = DataFormatter()
 

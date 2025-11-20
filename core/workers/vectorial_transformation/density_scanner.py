@@ -17,7 +17,7 @@ class DensityScanner(VectorizationAbstractWorker):
         self.worker_config = config.get('dbscan', {})
         self.min_cluster_size = int(self.worker_config.get("min_cluster_size")) 
         self.eps = float(self.worker_config.get("eps")) 
-        self.enabled_outputs = config.get("enabled_outputs", {})
+        self.enabled_outputs = config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("table_lines", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

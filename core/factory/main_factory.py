@@ -12,22 +12,22 @@ class MainFactory:
         self.manager_config = manager_config
         self.modules_config = self.manager_config.get("modules_config", {})
         self.workers_order = self.manager_config.get("stage_secuence", {})
-        self.stage_outputs = self.manager_config.get("enabled_outputs", {})
+        #self.stage_outputs = self.manager_config.get("image_load_outputs", {})
         self.utils_config = self.manager_config.get("utils_config", {})
         self.project_root = project_root
         
-        image_preparation_config = self.modules_config["image_preparation"]
-        image_preparation_config['enabled_outputs'] = self.stage_outputs["image_load_outputs"]
+        image_preparation_config = self.modules_config.get("image_preparation", {})
+        #image_preparation_config['enabled_outputs'] = self.stage_outputs["image_load_outputs"]
 
         preprocessing_config = self.modules_config['preprocessing']
         preprocessing_config["dpi_range"] = self.utils_config["dpi_range"]
-        preprocessing_config['enabled_outputs'] = self.stage_outputs["preprocessing_outputs"]
+      #  preprocessing_config['enabled_outputs'] = self.stage_outputs["preprocessing_outputs"]
         
         ocr_config = self.modules_config['ocr']
-        ocr_config['enabled_outputs'] = self.stage_outputs["ocr_outputs"]
+        #ocr_config['enabled_outputs'] = self.stage_outputs["ocr_outputs"]
  
         vectorizing_config = self.modules_config['vectorization']
-        vectorizing_config['enabled_outputs'] = self.stage_outputs["vectorization_outputs"]
+       # vectorizing_config['enabled_outputs'] = self.stage_outputs["vectorization_outputs"]
 
         # Registro de fábricas por nombre de módulo
         self.module_factories: Dict[str, Any] = {

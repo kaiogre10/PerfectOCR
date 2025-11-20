@@ -20,7 +20,7 @@ class InkEnhancer(PreprocessingAbstractWorker):
         self.dpi_range = config["dpi_range"] 
         self.faded_threshold = self.worker_config.get('faded_detection_threshold')
         self.contrast_boost = self.worker_config.get('contrast_boost_factor')
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("ink_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

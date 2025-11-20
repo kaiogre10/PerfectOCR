@@ -20,7 +20,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         self.salt_pepper_high = self.worker_config.get("salt_pepper_high")
         self.salt_pepper_threshold = self.worker_config.get("salt_pepper_threshold")
         self.kernel_size = self.worker_config.get("kernel_size")
-        self.enabled_outputs = self.config.get("enabled_outputs", {})
+        self.enabled_outputs = self.config.get("image_load_outputs", {})
         self.output = self.enabled_outputs.get("sp_poly", False)
     
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

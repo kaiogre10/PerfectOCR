@@ -1,6 +1,6 @@
 # services/config_service.py
 import yaml
-from typing import Dict, Any, cast, List, Set, Optional, Tuple
+from typing import Dict, Any, cast, List, Set, Optional
 from config.config_models import MasterConfig
 import logging
 
@@ -37,6 +37,10 @@ class ConfigService:
         }
 
     @property
+    def enabled_outputs(self) -> Dict[str, Any]:
+        return self.config.get("enabled_outputs", {})
+    
+    @property
     def validated_modules_config(self):
         """Acceso directo al objeto Pydantic validado."""
         return self.validated_config.modules
@@ -54,21 +58,77 @@ class ConfigService:
         }
 
     @property
+    def modules_config(self) -> Dict[str, Any]:
+        return self.config.get("modules", {})
+      
+    @property
+    def img_prep_config(self) -> Dict[str, Any]:
+        if "imagepre_stage" in self.create_stager():
+            return {
+                "image_preparation": self.modules_config.get("image_preparation", {}),
+                "image_load_outputs": self.enabled_outputs["image_load_outputs"]
+            }
+        
+        else:
+            return {}
+       
+    @property
+    def preprocessing_config(self)->Dict[str, Any]:
+        if "preprocessing_stage" in self.create_stager():
+            return {
+                "preprocessing_stage": self.modules_config.get("preprocessing", {}),
+                "preprocessing_outputs": self.enabled_outputs.get("preprocessing_outputs", {})
+            }
+        
+        else:
+            return {}
+
+    @property
+    def ocr_config(self) ->Dict[str, Any]:
+        if "ocr_stage" in self.create_stager():
+            return {
+                "ocr": self.modules_config.get("ocr", {}),
+                "ocr_outputs": self.enabled_outputs.get("ocr_outputs", {})
+            }
+
+        else:
+            return {}
+       
+    @property
+    def vectorization_config(self) ->Dict[str, Any]:
+        if "vector_stage" in self.create_stager():
+            return {
+                "vectorization": self.modules_config.get("vectorization", {}),
+                "vectorization_outputs": self.enabled_outputs.get("vectorization_outputs", {})
+            }
+        
+        else:
+            return {}
+        
+    @property
+    def valid_modules_config(self) -> Dict[str, Any]:
+        return {
+            "image_preparation": self.img_prep_config,
+            "preprocessing": self.preprocessing_config,
+            "ocr": self.ocr_config,
+            "vectorization": self.vectorization_config
+        }
+    
+    @property
     def manager_config(self) -> Dict[str, Any]:
         """Devuelve el paquete estándar de configuraciones de los managers"""
         return {
-            "enabled_outputs": self.config.get("enabled_outputs", {}),
             "stage_secuence": self.workers_order,
-            "modules_config": self.config.get("modules", {}),
-            "utils_config": self.config.get("utils", {})
+            "modules_config": self.valid_modules_config,
+            "utils_config": self.config.get("utils", {}),
         }
 
-    def validate_pipeline_config(self) -> Tuple[bool, List[str]]:
+    def validate_pipeline_config(self) -> bool:
         self.set_min_workers: Set[str] = set(self.min_workers)
         
         if not self.workers_order:
             logger.error("No hay configuración de workers disponible")
-            return False, [0]
+            return False
 
         try:
             set_worker_config: Set[str] = set()
@@ -99,17 +159,16 @@ class ConfigService:
                         count = 0
                         workers_set: Set[str] = set()
                     logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
-                stagers = self.create_stager()
-                return True, stagers
+                return True
             else:
                 workers_missing = self.set_min_workers - set_worker_config
                 logger.warning(
                     f"Faltan: {workers_missing} de los '{len(self.set_min_workers)}' workers mínimos para el pipeline")
-                return False, []
+                return False
 
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
-            return False, []
+            return False
 
     def create_stager(self) -> List[str]:
         active_stages: List[str] = []
