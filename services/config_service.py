@@ -109,3 +109,13 @@ class ConfigService:
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
             return False
+
+    def create_stager(self) -> List[str]:
+        active_stages: List[str] = []
+        for stage, stage_workers in self.workers_order.items():
+            if stage_workers:
+                active_stages.append(stage)
+            else:
+                logger.debug(f"Stage '{stage}' sin workers, se ignora")
+
+        return active_stages

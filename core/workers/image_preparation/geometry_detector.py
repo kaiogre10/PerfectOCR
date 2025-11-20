@@ -59,12 +59,12 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
                 return False
             
-            # discarted_polys = 0
+            discarted_polys: List[str] = []
             final_polygons_list: List[Dict[str, Any]] = []
             
             for idx, poly_pts in enumerate(polygons[0]):
                 poly_id = f"poly_{idx:04d}"
-                coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts])
+                coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts]) # type: ignore
                 bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()])
                 centroid = coords.mean(axis=0)
 
@@ -74,18 +74,16 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 angle = math.degrees(math.atan2(bbox_height, bbox_width))
 
                 if angle < self.angle_thr[1] and self.angle_thr[0] < angle:
-                    # discarted_polys += 1
+                    discarted_polys.append(poly_id)
 
                     if self.output:
                         from services.output_service import save_croped_image
                         from core.utils.image_utils import cropp_img
-                        cropped = cropp_img(img, bbox)
-                        cropped2 = cropp_img(img, bbox, padding=5)
+                        cropped = cropp_img(img, bbox) # type: ignore
                         worker_name = context.get("worker_name") or "geometry_detector"
                         output_paths = context["output_paths"]
                         image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                        save_croped_image(image_name, poly_id, cropped, output_paths, worker_name, method="geo_eliminated")
-                        save_croped_image(image_name, poly_id, cropped2, output_paths, worker_name, method="geo_eliminated2")
+                        save_croped_image(image_name, poly_id, cropped, output_paths, worker_name, method="geo_eliminated") # type: ignore
 
                     continue
 
@@ -101,7 +99,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")
-            # logger.info(f"TOAL: {len(final_polygons)}, descartados: {discarted_polys}, INICIALES: {len(polygons[0])}")
+            logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")

@@ -18,9 +18,9 @@ class StagersFactory:
         self.modules_config = self.manager_config.get("modules_config", {})
         self.workers_order = self.manager_config.get("stage_secuence", {})
         self.image_workers = self.workers_order["imagepre_stage"]
-        self.preprocessing_workers = self.workers_order.get("preprocessing_stage", [])
-        self.ocr_workers = self.workers_order.get("ocr_stage", [])
-        self.vectorizing_workers = self.workers_order.get("vector_stage", [])
+        self.preprocessing_workers = self.workers_order["preprocessing_stage"]
+        self.ocr_workers = self.workers_order["ocr_stage"]
+        self.vectorizing_workers = self.workers_order["vector_stage"]
 
     def create_image_prep_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> ImagePreparationStager:
         """Crea stager de preparación de imagen con configuraciones específicas del master config."""

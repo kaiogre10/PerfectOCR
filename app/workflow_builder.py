@@ -9,8 +9,7 @@ logger = logging.getLogger(__name__)
 class WorkFlowBuilder:
     """
     Director de Logística: Planifica, cuenta y reporta a Main.
-    HIPER-ESPECIALIZADO en: contar imágenes, decidir modo, generar reporte.
-    NO procesa imágenes - solo planifica.
+    HIPER-ESPECIALIZADO en: contar imágenes, decidir modo, generar reporte. N procesa imágenes - solo planifica.
     """
     def __init__(self, config: Dict[str, Any], project_root: str, input_paths: List[str] | str):
         self.project_root = project_root
@@ -33,7 +32,7 @@ class WorkFlowBuilder:
 
                     with Image.open(full_path) as img:
                         dpi_aprox = img.info["dpi"][1]
-                        dpi_cal = self.closest_int(dpi_aprox, self.dpi_range)
+                        dpi_cal = round(dpi_aprox)
 
                     # Obtener ruta relativa desde input_folder para mejor organización
                     relative_path = os.path.relpath(root, input_folder)
@@ -92,6 +91,4 @@ class WorkFlowBuilder:
             "mode": mode,
             "image_info": image_info,
         }
-
-    def closest_int(self, value: float, candidates: List[int]) -> int:
-       return min(candidates, key=lambda x: abs(x - value))
+    

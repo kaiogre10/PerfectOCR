@@ -45,7 +45,9 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         )
 
         # 6. CREAR BUILDERS USANDO LA FACTORY
+        stagers = config_services.create_stager()
         builders = create_builders_with_factory(
+            stagers = stagers,
             stagers_factory=stagers_factory,
             workflow_report=workflow_report,
             output_paths=output_paths
@@ -69,7 +71,7 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         except Exception as e:
             logging.error(f"Error durante la limpieza de caché: {e}", exc_info=True)
 
-def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str] | str) -> List[ProcessingBuilder]:
+def create_builders_with_factory(stagers: List[str], stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str] | str) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
     builders: List[ProcessingBuilder] = []
     image_info_list = workflow_report.get('image_info', {}) 
@@ -80,11 +82,26 @@ def create_builders_with_factory(stagers_factory: StagersFactory, workflow_repor
             context: Dict[str, Any] = {
                 "image_data": image_data,
             }
+            
+            stagers_created = 0
+            if "imagepre_stage" in stagers:
+                input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
+                stagers_created += 1
 
-            input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
-            preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
-            ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
-            vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
+            if "preprocessing_stage" in stagers:
+                preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
+                stagers_created += 1
+
+            if "ocr_stage" in stagers:
+                ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
+                stagers_created += 1
+
+            if "vector_stage" in stagers:
+                vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
+
+                stagers_created += 1
+
+            logger.info(f"STAGER CREADOS: {stagers_created}")
 
             # Crear DataFormatter y ProcessingBuilder
             manager = DataFormatter()

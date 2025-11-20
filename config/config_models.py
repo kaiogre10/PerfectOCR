@@ -43,14 +43,14 @@ class OutputFlags(ConfigWithNumpy):
     vectorization_outputs: VectorizingOutputs
     
 class Processing(ConfigWithNumpy):
-    max_workers: int
-    valid_image_extensions: Tuple[str, ...]
-    batch_mode: bool
     small_batch_limit: int
-    max_physical_cores: int
-    add_extra_worker: bool
-    batch_size_factor: int
-    auto_mode: bool
+    valid_image_extensions: Tuple[str, ...]
+    # max_workers: int
+    # batch_mode: bool
+    # max_physical_cores: int
+    # add_extra_worker: bool
+    # batch_size_factor: int
+    # auto_mode: bool
 
 class ModelsConfig(ConfigWithNumpy):
     use_angle_cls: bool

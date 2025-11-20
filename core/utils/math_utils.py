@@ -91,3 +91,5 @@ def vectorice_values(data_list: List[float], value: Optional[str]) -> float | Li
         line_var = np.var(value_array)
         return [float(line_mean), float(line_std), float(line_var)]
     
+def closest_int(value: float, candidates: List[int]) -> int:
+    return min(candidates, key=lambda x: abs(x - value))

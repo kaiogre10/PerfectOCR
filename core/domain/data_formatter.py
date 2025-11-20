@@ -249,17 +249,17 @@ class DataFormatter:
                 # Si se pasa None, vaciamos la imagen para liberar memoria
                 self.workflow = dataclasses.replace(self.workflow, full_img=None)
                 return True
-            
-            # Normalizar si se recibe la dataclass FullImage
-            if isinstance(full_img, FullImage):
-                img_arr = getattr(full_img, "full_img", None)
-            else:
-                img_arr = full_img
-                                
-            img_arr = normalice_image(full_img)
-            
-            # Actualizar dimensiones en metadata de forma consistente
             if corrected:
+                # Normalizar si se recibe la dataclass FullImage corregida
+                if isinstance(full_img, FullImage):
+                    img_arr = getattr(full_img, "full_img", None)
+                else:
+                    img_arr = full_img
+                                    
+                img_arr = normalice_image(full_img)
+            
+                # Actualizar dimensiones en metadata de forma consistente
+            
                 h = int(img_arr.shape[0]) if img_arr is not None else 0
                 w = int(img_arr.shape[1]) if img_arr is not None else 0
                 size = int(img_arr.size) if img_arr is not None and hasattr(img_arr, "size") else 0
@@ -272,8 +272,9 @@ class DataFormatter:
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
                 logger.info("Imagen actualizada con éxito.")
                 return True
+            
             else:
-                logger.info("Imagen completa sin modificaciones")
+                logger.warning("Imagen completa sin modificaciones")
                 return True
             
         except Exception as e:

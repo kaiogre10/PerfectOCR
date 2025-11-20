@@ -29,9 +29,8 @@ class ImagePreparationStager(AbstractStager):
             if not worker.process(context, manager):
                 logger.error(f"Fallo en {worker.__class__.__name__}")
                 return None, 0.0
-            
-            worker_time = time.time() - worker_start
-            logger.debug(f" {worker.__class__.__name__} completado en {worker_time:.6f}s")
+
+            logger.info(f" {worker.__class__.__name__} completado en {time.perf_counter() - worker_start:.6f}s")
         
         total_time = time.time() - start_time
         logger.debug(f" Completado en {total_time:.6f}s")

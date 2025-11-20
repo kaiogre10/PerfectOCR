@@ -65,8 +65,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.warning("PolygonExtractor: No hay bboxes válidos para procesar.")
                 return True
 
-            # 2. Fase de Decisión Vectorizada: Calcular todos los recortes con self.padding            
-            # Convertir a array NumPy para operaciones vectorizadas
+            # 2. Fase de Decisión Vectorizada: Calcular todos los recortes con self.padding
             bboxes_array = np.array(all_bboxes)  # shape: (n_polygons, 4)
             
             # Calcular coordenadas con self.padding usando operaciones vectorizadas
@@ -116,6 +115,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 poly_mean, _ = calculate_img_values(cropped)
                 
                 poly_area = cropped.size
+                # logger.info(f"{poly_id} AREA: {poly_area}")
                 poly_data_to_filter.append({
                     "poly_id": poly_id,
                     "area": poly_area,
@@ -210,7 +210,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 worker_name = context.get("worker_name") or "poly_gone"
                 output_paths = context["output_paths"]
 
-                polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+                polygons = manager.workflow.polygons if manager.workflow else {}
 
                 for poly_id, polygon in polygons.items():
                     cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None

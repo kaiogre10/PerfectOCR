@@ -3,9 +3,9 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     #- "cleaner"
-    - "angle_corrector"
-    #- "geometry_detector"
-    #- "polygon_extractor"
+    # - "angle_corrector"
+    - "geometry_detector"
+    - "polygon_extractor"
 
   preprocessing_stage:
     # - "moire"
@@ -16,8 +16,8 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    #- "paddle_wrapper"
-    #- "text_refiner"
+    # - "paddle_wrapper"
+    # - "text_refiner"
     # - "data_finder"
     
   vector_stage:
@@ -34,7 +34,7 @@ enabled_outputs:
   image_load_outputs:
     deleted_polys: false
     pre_clean: false
-    angle_corrected: true
+    angle_corrected: false
     cropped_img: false
     filtered_polys: false
     discarded_polys: false
@@ -75,14 +75,14 @@ models_config:
   
 # Configuración de procesamiento
 processing:
-  max_workers: 1
   valid_image_extensions: [.png, .jpg, .jpeg, .bmp, .tif, .tiff, .webp, .gif, .pbm, .pgm, .ppm, .jp2, .ico]
-  batch_mode: true
   small_batch_limit: 5
-  max_physical_cores: 4
-  add_extra_worker: true
-  batch_size_factor: 2
-  auto_mode: true
+  # max_workers: 1
+  # batch_mode: true
+  # max_physical_cores: 4
+  # add_extra_worker: true
+  # batch_size_factor: 2
+  # auto_mode: true
 
 modules:
   image_preparation:
@@ -106,7 +106,7 @@ modules:
       angle_thr: [44.5, 45.5]
     
     polygon_extractor:
-      cropping_padding: 2
+      cropping_padding: 1
       bin_interval: [10, 250]
       percentil: 0.5
 

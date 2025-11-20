@@ -38,11 +38,6 @@ class AngleCorrector(ImagePrepAbstractWorker):
             logger.debug("Full_img obtenida con éxito")
 
             full_img, corrected = self.correct_angle(full_img, manager)
-           
-            if corrected:
-
-            if not manager.update_full_img(corrected, full_img):
-               logger.error(f"Error al actualizar la imagen corregida en el manager")
 
             if self.output and corrected:
                 from services.output_service import save_croped_image
@@ -50,7 +45,10 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 worker_name = context.get("worker_name") or "angle_corrector"
                 output_paths = context["output_paths"]
                 poly_id = f"full_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, poly_id, full_img, output_paths, worker_name, method="angle_corrected")
+                save_croped_image(image_name, poly_id, full_img, output_paths, worker_name, method="deskewed")
+
+            if not manager.update_full_img(corrected, full_img):
+               logger.error(f"Error al actualizar la imagen corregida en el manager")
                 
             return True
             
@@ -66,12 +64,8 @@ class AngleCorrector(ImagePrepAbstractWorker):
         try:
             img_dims: Dict[str, int] = manager.workflow.metadata.img_dims if manager.workflow else {}
                 
-            h = img_dims.get("height")
-            w = img_dims.get("width") 
-
-            if h is None or w is None:
-                logger.warning("Dimensiones de imagen inválidas (None o 0) para la corrección de ángulo.")
-                return full_img, False
+            h = img_dims.get("height") or full_img.shape[0]
+            w = img_dims.get("width") or full_img.shape[1]
             
             center = w // 2, h // 2
             min_len = min(w // 3, self.hough_min_line_length_cap_px)
