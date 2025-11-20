@@ -1,6 +1,6 @@
 # services/config_service.py
 import yaml
-from typing import Dict, Any, cast, List, Set, Optional
+from typing import Dict, Any, cast, List, Set, Optional, Tuple
 from config.config_models import MasterConfig
 import logging
 
@@ -63,12 +63,12 @@ class ConfigService:
             "utils_config": self.config.get("utils", {})
         }
 
-    def validate_pipeline_config(self) -> bool:
+    def validate_pipeline_config(self) -> Tuple[bool, List[str]]:
         self.set_min_workers: Set[str] = set(self.min_workers)
         
         if not self.workers_order:
             logger.error("No hay configuración de workers disponible")
-            return False
+            return False, [0]
 
         try:
             set_worker_config: Set[str] = set()
@@ -99,16 +99,17 @@ class ConfigService:
                         count = 0
                         workers_set: Set[str] = set()
                     logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
-                return True
+                stagers = self.create_stager()
+                return True, stagers
             else:
                 workers_missing = self.set_min_workers - set_worker_config
                 logger.warning(
                     f"Faltan: {workers_missing} de los '{len(self.set_min_workers)}' workers mínimos para el pipeline")
-                return False
+                return False, []
 
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
-            return False
+            return False, []
 
     def create_stager(self) -> List[str]:
         active_stages: List[str] = []

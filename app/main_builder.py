@@ -18,7 +18,8 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         t0 = time.perf_counter()
         config_services = ConfigService(config_path)
 
-        if config_services.validate_pipeline_config():
+        min_config, stagers = config_services.validate_pipeline_config()
+        if min_config:
             logger.debug("Número mínimo de workers activos, se inicia el pipeline")
         else:
             logger.error(f"Proceso terminado en: {time.perf_counter()-t0:.6f}s debido a configuración insuficiente")
@@ -45,9 +46,8 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         )
 
         # 6. CREAR BUILDERS USANDO LA FACTORY
-        stagers = config_services.create_stager()
         builders = create_builders_with_factory(
-            stagers = stagers,
+            stagers=stagers,
             stagers_factory=stagers_factory,
             workflow_report=workflow_report,
             output_paths=output_paths
