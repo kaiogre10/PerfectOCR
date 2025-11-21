@@ -53,6 +53,7 @@ class WorkFlowBuilder:
                 logger.debug(f"Subcarpetas con imágenes: {sorted(folders_found)}")
         else:
             logger.warning(f"No se encontraron imágenes con extensiones {valid_extensions} en {input_folder}")
+            return []
             
         return image_info
 

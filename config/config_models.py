@@ -10,7 +10,7 @@ class ImgLoadOutputs(ConfigWithNumpy):
     pre_clean: bool
     angle_corrected: bool
     cropped_img: bool
-    filtered_polys: bool
+    final_polys: bool
     discarded_polys: bool
 
 class PreprocessingOutputs(ConfigWithNumpy):
@@ -65,21 +65,9 @@ class MoireConfig(ConfigWithNumpy):
     min_distance_from_center: int
     notch_radius: int
     percentile_threshold: int
-    mean_factor_threshold: int
-    absolute_threshold: int
     
 class Fragmenter(ConfigWithNumpy):
     min_contours_for_frag: int
-    c_value: int
-    height_thresholds_px: List[int]
-    block_sizes_map: List[int]
-    min_area_factor: float
-    k_sigma: float
-    min_cc_for_frag: int
-    min_gap_outlier: float
-    density_threshold: float
-    max_cc_for_density_rule: int
-    width_var_threshold: float
     
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
@@ -100,24 +88,15 @@ class DeskewConfig(ConfigWithNumpy):
     hough_angle_filter_range_degrees: List[int]
 
 class GeoDetector(ConfigWithNumpy):
-    angle_thr: Tuple[float, float]
+    min_area: int
 
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
+    angle_thr: Tuple[float, float]
     bin_interval: Tuple[int, int]
-    percentil : float
-
-class CleaningConfig(ConfigWithNumpy):
-    std_low: float
-    sp_thr: float
-    clahe_clip: float
-    dimension_thresholds_px: List[int]
-    clahe_grid: List[Tuple[int, int]]
-    kernel_size: int
 
 class ImagePreparation(ConfigWithNumpy):
     angle_corrector: DeskewConfig
-    cleaner: CleaningConfig
     geometry_detector: GeoDetector
     polygon_extractor: CuttingConfig
 
@@ -126,9 +105,7 @@ class ContrastConfig(ConfigWithNumpy):
     contrast_threshold: int
     dimension_thresholds_px: List[int]
     grid_sizes_map: List[Tuple[int, int]]
-    window_size: int
-    std_dev_threshold: float
-    
+        
 class MathMaxConfig(ConfigWithNumpy):
     total_mtl_abs_tolerance: float
     row_relative_tolerance: float
@@ -138,11 +115,11 @@ class InkConfig(ConfigWithNumpy):
     contrast_boost_factor: float
 
 class PreprocessingConfig(ConfigWithNumpy):
-    moire: MoireConfig  
+    moire: MoireConfig
     sp_config: SaltPepper 
     gauss_params: GaussianConfig
     ink_enhancement: InkConfig
-    contrast: ContrastConfig  
+    contrast: ContrastConfig
     sharpening: SharpeningConfig
 
 class TextualCleanConfig(ConfigWithNumpy):
@@ -162,6 +139,16 @@ class DataFinder(ConfigWithNumpy):
     
 class TextRefiner(ConfigWithNumpy):
     num_passes: int
+    c_value: int
+    height_thresholds_px: List[int]
+    block_sizes_map: List[int]
+    min_area_factor: float
+    k_sigma: float
+    min_cc_for_frag: int
+    min_gap_outlier: float
+    density_threshold: float
+    max_cc_for_density_rule: int
+    width_var_threshold: float
 
 class TextCorrector(ConfigWithNumpy):
     confidence_threshold: float

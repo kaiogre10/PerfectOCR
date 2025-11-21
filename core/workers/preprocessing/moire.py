@@ -16,10 +16,10 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('moire', {})
-        self.notch_radius_conf = self.worker_config.get('notch_radius')
+        self.notch_radius = self.worker_config.get('notch_radius')
         self.min_dist_conf = self.worker_config.get('min_distance_from_center')
-        self.enabled_outputs = config.get("image_load_outputs", {})
-        self.output = self.enabled_outputs.get("moire_poly", False)
+        self.percentile_threshold = self.worker_config.get("percentile_threshold")
+        self.output = config.get("moire_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Analiza y corrige el moiré."""
@@ -71,7 +71,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             cond_percentile = (std_energies / safe_mean_energies > 0.5) & (skewness_values > 1.0)
             cond_factor = (std_energies / safe_mean_energies > 0.3) & (skewness_values < 0.5)
 
-            thresholds_percentile = np.array([np.percentile(vs, 98) if vs.size > 0 else 0 for vs in valid_spectrums], dtype=np.float32)
+            thresholds_percentile = np.array([np.percentile(vs, self.percentile_threshold) if vs.size > 0 else 0 for vs in valid_spectrums], dtype=np.float32)
             
             adaptive_thresholds = np.select(
                 [cond_percentile, cond_factor],
@@ -126,8 +126,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             magnitude_spectrum = cv2.magnitude(f_shifted[:, :, 0], f_shifted[:, :, 1])
             magnitude_spectrum = 20 * np.log(magnitude_spectrum + 1)
             
-            min_dist_conf = self.worker_config.get('min_distance_from_center')
-            adaptive_min_dist = max(50, min(300, int(min_dist_conf * (max(h, w) / 2000.0))))
+            adaptive_min_dist = max(50, min(300, int(self.min_dist_conf * (max(h, w) / 2000.0))))
             
             temp_spectrum = magnitude_spectrum.copy()
             cv2.circle(temp_spectrum, (w // 2, h // 2), adaptive_min_dist, (0.0,), -1)
@@ -157,7 +156,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         max_dim = max(h, w)
         spectrum_var = analysis['spectrum_var']
         
-        adaptive_notch = max(2, min(6, int(self.notch_radius_conf * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
+        adaptive_notch = max(2, min(6, int(self.notch_radius * (spectrum_var / 1000.0) * (max_dim / 1000.0))))
         adaptive_min_dist = max(50, min(300, int(self.min_dist_conf * (max_dim / 2000.0))))
 
         peaks_coords = np.argwhere(analysis['magnitude_spectrum'] > adaptive_threshold)
@@ -179,7 +178,8 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             moire_img = np.clip(np.real(moire_complex), 0, 255).astype(np.uint8)
 
             if spectrum_var > 1000:
-                moire_img = cv2.bilateralFilter(moire_img, d=5, sigmaColor=50, sigmaSpace=50)
+                from core.utils.image_utils import use_bilateral_filter
+                moire_img = use_bilateral_filter(moire_img, d=5, sigma_space=50, sigma_color=50)
             
             corrected_img =np.array(moire_img, dtype=np.uint8)
             return corrected_img 

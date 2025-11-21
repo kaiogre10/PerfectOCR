@@ -1,5 +1,4 @@
 # PerfectOCR/main_builder.py
-import time
 from typing import Optional, List, Dict, Any
 from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
@@ -7,49 +6,37 @@ from core.pipeline.stagers_factory import StagersFactory
 from core.domain.data_formatter import DataFormatter
 from services.config_service import ConfigService
 from core.domain.models_manager import ModelsManager
+import time
 import logging
 
 logger = logging.getLogger(__name__)
 
-def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, config_path: str, project_root: str) -> List[str]:
-    
+def activate_main(input_paths: List[str], output_paths: List[str], config_path: str, project_root: str) -> List[str]:
     try:
         # 1. Main activa al Configurador y valida parametros mínimos
         t0 = time.perf_counter()
         config_services = ConfigService(config_path)
-
-        if config_services.validate_min_workers(workers=[]):
-            logger.debug("Número mínimo de workers activos, se inicia el pipeline")
-        else:
-            logger.error(f"Proceso terminado en: {time.perf_counter()-t0:.6f}s debido a configuración insuficiente")
-            return []
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
-        workflow_manager = WorkFlowBuilder(
-            config=config_services.processing_config,
-            project_root=project_root,
-            input_paths=input_paths,
-        )
+        workflow_manager = WorkFlowBuilder(config=config_services.processing_config, project_root=project_root, input_paths=input_paths)
         
         # 3. WorkflowManager analiza y reporta
         workflow_report = workflow_manager.count_and_plan()
+
+        if not workflow_report:
+            logger.error("Error en rutas para imágenes, abortando proceso")
+            return []
         
         # 4. Iniciar modelos Singleton
-        models_manager = ModelsManager.get_instance()
-        models_manager.initialize_models(config_services.models_config_validated)
-
+        if config_services.models_config:
+            models_manager = ModelsManager.get_instance()
+            models_manager.initialize_models(config_services.models_config)
+        
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
-        stagers_factory = StagersFactory(
-            manager_config=config_services.manager_config,
-            project_root=project_root
-        )
+        stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=project_root)
 
         # 6. CREAR BUILDERS USANDO LA FACTORY
-        builders = create_builders_with_factory(
-            stagers_factory=stagers_factory,
-            workflow_report=workflow_report,
-            output_paths=output_paths
-        )
+        builders = create_builders_with_factory(stagers_factory=stagers_factory, workflow_report=workflow_report, output_paths=output_paths)
         
         # 7. Main ejecuta procesamiento
         t4 = time.perf_counter()
@@ -69,14 +56,13 @@ def activate_main(input_paths: List[str] | str, output_paths: List[str] | str, c
         except Exception as e:
             logging.error(f"Error durante la limpieza de caché: {e}", exc_info=True)
 
-def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str] | str) -> List[ProcessingBuilder]:
+def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str]) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
     builders: List[ProcessingBuilder] = []
     image_info_list = workflow_report.get('image_info', {}) 
 
     try:
         for image_data in image_info_list:
-            # Contexto común para todos los stagers
             context: Dict[str, Any] = {
                 "image_data": image_data,
             }
@@ -101,7 +87,7 @@ def create_builders_with_factory(stagers_factory: StagersFactory, workflow_repor
         return builders
 
     except Exception as e:
-        logging.error(f"Error fatal en create_builders: {e}", exc_info=True)
+        logger.error(f"Error fatal en create_builders: {e}", exc_info=True)
     return []
 
 def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dict[str, Any]) -> Optional[List[str]]:

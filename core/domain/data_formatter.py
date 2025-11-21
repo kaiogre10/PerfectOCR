@@ -91,7 +91,6 @@ class DataFormatter:
                     was_refined=False,
                     key_field=None,
                     semantic_clasification=0,
-                    binarized=False
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -258,8 +257,7 @@ class DataFormatter:
                                     
                 img_arr = normalice_image(full_img)
             
-                # Actualizar dimensiones en metadata de forma consistente
-            
+                # Actualizar dimensiones en metadata de forma consistente            
                 h = int(img_arr.shape[0]) if img_arr is not None else 0
                 w = int(img_arr.shape[1]) if img_arr is not None else 0
                 size = int(img_arr.size) if img_arr is not None and hasattr(img_arr, "size") else 0

@@ -23,8 +23,7 @@ class ImagePreparationStager(AbstractStager):
 
             context: Dict[str, Any] = {
                 "worker_name": worker_name,
-                "output_paths": self.output_paths,
-                "project_root": self.project_root
+                "output_paths": self.output_paths
             } 
             if not worker.process(context, manager):
                 logger.error(f"Fallo en {worker.__class__.__name__}")

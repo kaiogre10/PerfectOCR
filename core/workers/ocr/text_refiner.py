@@ -1,6 +1,5 @@
 #core/workers/ocr/text_refiner.py
 import logging
-import time
 from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -8,6 +7,8 @@ from core.workers.ocr.semantic_clasificator import SemanticClasificator
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.fragmenter import Fragmenter
+from core.utils.binarizator import analize_bin_img
+from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +29,31 @@ class Refiner(OCRAbstractWorker):
         """
         Ejecuta el ciclo de refinamiento con clasificación selectiva.
         """
-        start_time = time.perf_counter()
         logger.debug(f"Refinador inicializado para {self.num_passes} pasadas.")
 
         try:
+            polygons_in: Dict[str, Polygons] = manager.workflow.polygons
+            sorted_poly_ids = sorted(polygons_in.keys())
+            blob_metrics: Dict[str, Any] = {}
+
+            for poly_id in sorted_poly_ids:
+                polygon = polygons_in[poly_id]
+                
+                cropped_img = polygon.cropped_img.cropped_img # type: ignore
+                
+                if cropped_img is None:
+                    logger.warning(f"Cropped_img de {poly_id} es None")
+                    continue
+                
+                binarizator_config: Dict[str, Any] = self.worker_config
+                blob_metric = analize_bin_img(cropped_img, binarizator_config)
+                blob_metrics[poly_id] = blob_metric[poly_id]
+
+            context["blob_metrics"] = blob_metrics
+            
+            if self.num_passes == 1:
+                context["num_analisys"] = 1
+
             for i in range(self.num_passes):
                 pass_num = i + 1
                 logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
@@ -59,8 +81,7 @@ class Refiner(OCRAbstractWorker):
 
             logger.debug(f"Pasada final: Clasificación Semántica completa")
             self.clasificator.transcribe(context, manager, final_pass='final_class')
-            
-            logger.debug(f"Limpieza textual completa en: {time.perf_counter()-start_time:.6f}s")
+        
             return True
         
         except Exception as e:

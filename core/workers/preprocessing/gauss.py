@@ -6,6 +6,7 @@ from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
+from core.utils.image_utils import use_bilateral_filter
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,7 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
         Analiza todos los polígonos en un lote para detectar ruido Gaussiano, determina la corrección
         necesaria mediante operaciones vectorizadas y la aplica in-place.
         """
-        try:
-            
+        try:            
             if not manager.validate_cropped_img():
                 logger.error(f"Sin cropped_img en el formatter")
                 return False
@@ -116,5 +116,4 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
         sigma_space = sigma_color
 
         # logger.debug(f"Parámetros adaptativos: d={d}, sigma_color={sigma_color}, sigma_space={sigma_space}")
-
-        return cv2.bilateralFilter(original_img, d, sigma_color, sigma_space).astype(np.uint8)
+        return use_bilateral_filter(original_img, d, sigma_space, sigma_color)

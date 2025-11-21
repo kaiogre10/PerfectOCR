@@ -1,5 +1,4 @@
 # PerfectOCR/core/workers/preprocessing/sharp.py
-import cv2
 import numpy as np
 import logging
 from typing import Dict, Any, List
@@ -7,6 +6,7 @@ from skimage.filters import unsharp_mask # type: ignore
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
+from core.utils.image_utils import use_sobel
 
 logger = logging.getLogger(__name__)
 
@@ -94,15 +94,15 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
     def _analyze_image_for_sharpness(self, cropped_img_np: np.ndarray[Any, Any]) -> Dict[str, Any]:
         """Calcula métricas de nitidez para una imagen."""
         try:
-            sobel: np.ndarray[Any, np.dtype[np.float64]] = cv2.Sobel(cropped_img_np, cv2.CV_64F, 1, 1, ksize=self.kernel).astype(dtype=np.float64)
-            sharpness = np.mean(np.abs(sobel))
+            # sobel: np.ndarray[Any, np.dtype[np.float64]] = cv2.Sobel(cropped_img_np, cv2.CV_64F, 1, 1, ksize=self.kernel).astype(dtype=np.float64)
+            sharpness = use_sobel(cropped_img_np, self.kernel)
             variance = np.var(cropped_img_np)
             return {
                 "cropped_img_np": cropped_img_np,
                 "sharpness": sharpness,
                 "variance": variance
             }
-        except cv2.error as e:
+        except Exception as e:
             logger.warning(f"OpenCV Sobel falló durante el análisis de nitidez: {e}. Se omite la imagen.")
             return {}
 

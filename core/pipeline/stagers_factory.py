@@ -13,13 +13,11 @@ class StagersFactory:
     """
     def __init__(self, manager_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.manager_config = manager_config
-        self.modules_config = self.manager_config.get("modules_config", {})
-        self.workers_order = self.manager_config.get("stage_secuence", {})
-        self.image_workers = self.workers_order["imagepre_stage"]
-        self.preprocessing_workers = self.workers_order["preprocessing_stage"]
-        self.ocr_workers = self.workers_order["ocr_stage"]
-        self.vectorizing_workers = self.workers_order["vector_stage"]
+        self.modules_config = manager_config
+        self.image_workers = self.modules_config.get("image_preparation", []).get("imagepre_stage", [])
+        self.preprocessing_workers = self.modules_config.get("preprocessing", []).get("preprocessing_stage", [])
+        self.ocr_workers = self.modules_config.get("ocr", []).get("ocr_stage", [])
+        self.vectorizing_workers = self.modules_config.get("vectorization", []).get("vectorization_stage", [])
         self.main_factory = MainFactory(self.modules_config, project_root)
 
     def create_image_prep_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> ImagePreparationStager:
@@ -29,7 +27,7 @@ class StagersFactory:
         
         return ImagePreparationStager(
             workers=image_workers,
-            stage_config=self.manager_config,
+            stage_config=self.modules_config,
             output_paths=output_paths,
             project_root=self.project_root
         )
@@ -47,7 +45,7 @@ class StagersFactory:
         
         return PreprocessingStager(
             workers=preprocessing_workers,
-            stage_config=self.manager_config,
+            stage_config=self.modules_config,
             output_paths=output_paths,
             project_root=self.project_root
         )
@@ -65,7 +63,7 @@ class StagersFactory:
         
         return OCRStager(
             workers=ocr_workers,
-            stage_config=self.manager_config,
+            stage_config=self.modules_config,
             output_paths=output_paths,
             project_root=self.project_root
         )
@@ -83,7 +81,7 @@ class StagersFactory:
         
         return VectorizationStager(
             workers=vectorizing_workers,
-            stage_config=self.manager_config,
+            stage_config=self.modules_config,
             output_paths=output_paths,
             project_root=self.project_root
         )

@@ -2,7 +2,6 @@
 import logging
 import time
 import numpy as np
-import math
 from typing import Dict, Any, Optional, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -18,7 +17,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('geometry_detector', {})
-        self.angle_thr = self.worker_config["angle_thr"]
+        self.min_area = self.worker_config.get("min_area")
         self.output = config.get("deleted_polys", False)
         self._engine = None
             
@@ -60,6 +59,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             
             discarted_polys: List[str] = []
             final_polygons_list: List[Dict[str, Any]] = []
+            areas: List[int] = []
             
             for idx, poly_pts in enumerate(polygons[0]):
                 poly_id = f"poly_{idx:04d}"
@@ -70,9 +70,11 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 # Calcular ángulo para este bbox
                 bbox_width = bbox[2] - bbox[0]
                 bbox_height = bbox[3] - bbox[1]
-                angle = math.degrees(math.atan2(bbox_height, bbox_width))
+                area = bbox_height * bbox_width
+                areas.append(area)
 
-                if angle < self.angle_thr[1] and self.angle_thr[0] < angle:
+                if area < self.min_area:
+                    logger.info(f"Polígono {poly_id} descarcatdo por mínima área")
                     discarted_polys.append(poly_id)
 
                     if self.output:
@@ -89,16 +91,17 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 final_polygons_list.append({
                     "polygon_coords": coords,
                     "bounding_box": bbox,
-                    "centroid": centroid
+                    "centroid": centroid,
                 })
 
+            logger.info(f"MINIMO DE AREAS: {min(areas), poly_id}")
             final_polygons: Dict[str, Dict[str, Any]] = {}
             for new_idx, poly_data in enumerate(final_polygons_list):
                 poly_id = f"poly_{new_idx:04d}"
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")
-            logger.debug(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
+            logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")

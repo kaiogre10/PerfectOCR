@@ -1,12 +1,9 @@
 import cv2
 import numpy as np
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, List
 import logging
 
 logger = logging.getLogger(__name__)
-
-min_threshold = 10
-max_threshold = 250
 
 def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     """
@@ -89,6 +86,8 @@ def calculate_img_values(img: np.ndarray[Any, Any]):
     return int(img_mean), img_dims
 
 def validate_image(img: Optional[np.ndarray[Any, Any]]) -> bool:
+    min_threshold = 10
+    max_threshold = 250
     if img is None:
         return False
     
@@ -110,79 +109,6 @@ def validate_full_image(img: np.ndarray[Any, Any]):
     
     else:
         return [0, 0]
- 
-def clean_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    std_low = worker_config.get("std_low", {})
-    sp_thr = worker_config.get("sp_thr", {})
-    clahe_clip_base = worker_config.get("clahe_clip", {})
-    clahe_grid = worker_config["clahe_grid"]
-    dimension_thresholds_px = worker_config["dimension_thresholds_px"]
-    kernel_size = worker_config.get("kernel_size", {})
-    try:
-        h, w = full_img.shape[:2]
-        size = h * w
-            
-        ext_low = (full_img < 5).sum()
-        ext_high = (full_img > 250).sum()
-        sp_ratio = (ext_low + ext_high) / size
-    
-        # 1) Desruido sal‑y‑pimienta (rápido, solo si aplica)
-        if sp_ratio > sp_thr:
-            den = cv2.medianBlur(src=full_img, ksize=kernel_size).astype(np.uint8)
-            full_img[...] = den
-
-        # Recalcular contraste
-        std1 = float(np.std(full_img))
-
-        # 2) Contraste local con CLAHE (solo si contraste bajo)
-        if std1 < std_low:
-            max_dim = max(h, w)
-            
-            if max_dim < dimension_thresholds_px[0]:
-                grid_size = tuple(clahe_grid[0])
-            elif max_dim < dimension_thresholds_px[1]:
-                grid_size = tuple(clahe_grid[1])
-            else:
-                grid_size = tuple(clahe_grid[2])
-            
-            logger.info(f"CLAHE para full_img con grid: {grid_size} basado en max_dim: {max_dim}")
-
-            clahe = cv2.createCLAHE(clipLimit=clahe_clip_base, tileGridSize=grid_size)
-            en1 = clahe.apply(full_img)
-            full_img[...] = en1
-
-            # Si siguió bajo, subir ligeramente el clipLimit
-            std2 = float(np.std(full_img))
-            if std2 < std_low:
-                clahe2 = cv2.createCLAHE(clipLimit=clahe_clip_base + 0.5, tileGridSize=grid_size)
-                en2 = clahe2.apply(full_img)
-                full_img[...] = en2
-
-        # 3) Nitidez local (unsharp adaptativo)
-        lap = cv2.Laplacian(full_img, cv2.CV_64F)
-        lap_var = float(lap.var())
-        stdf = float(np.std(full_img))
-
-        if lap_var < 20.0 or stdf <= 25.0:
-            alpha, beta = 1.2, -0.2  # suave
-        elif lap_var < 60.0:
-            alpha, beta = 1.4, -0.4  # medio
-        else:
-            alpha, beta = 1.1, -0.1  # mínimo
-
-        blur = cv2.GaussianBlur(full_img, (3, 3), 0)
-        sharp = cv2.addWeighted(full_img, alpha, blur, beta, 0)
-        np.clip(sharp, 0, 255, out=sharp)
-        if sharp.dtype != np.uint8:
-            sharp = normalice_image(sharp)
-
-            full_img[...] = sharp
-            
-        return full_img
-        
-    except Exception as e:
-        logger.error(f"Cleaner: {e}", exc_info=True)
-        return full_img
 
 def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np.ndarray[Any, Any]] | np.ndarray[Any, Any], padding: Optional[int] = None) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     img_h = full_img.shape[0]
@@ -209,3 +135,9 @@ def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np
 
     cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
     return cropped
+
+def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:
+    return cv2.bilateralFilter(img, d, sigma_color, sigma_space).astype(np.uint8)
+
+def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
+    return np.mean(np.abs(cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize)))

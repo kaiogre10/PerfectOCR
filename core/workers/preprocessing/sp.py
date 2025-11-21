@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
+from core.utils.image_utils import use_sobel
 
 logger = logging.getLogger(__name__)
     
@@ -132,7 +133,8 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         neighbor_count = cv2.filter2D(extreme_mask.astype(np.uint8), -1, kernel, borderType=cv2.BORDER_REPLICATE)
         isolated_mask = extreme_mask & (neighbor_count < 2)
         isolated_count = np.count_nonzero(isolated_mask)
-        sobel_before = np.mean(np.abs(cv2.Sobel(cropped_img, cv2.CV_64F, 1, 1, ksize=self.kernel_size)))
+        sobel_before = use_sobel(cropped_img, self.kernel_size)
+        # sobel_before = np.mean(np.abs(cv2.Sobel(cropped_img, cv2.CV_64F, 1, 1, ksize=self.kernel_size)))
 
         return {
             "original_img": cropped_img,
@@ -148,10 +150,9 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         filtered = cv2.medianBlur(original_img, ksize)
         
         result = original_img.copy()
-        # logger.info(f"extreme_mask: {analysis['extreme_mask']}")
         result[analysis['extreme_mask']] = filtered[analysis['extreme_mask']]
-
-        sobel_after = np.mean(np.abs(cv2.Sobel(result, cv2.CV_64F, 1, 1, ksize=self.kernel_size)))
+        
+        sobel_after = use_sobel(result, self.kernel_size)
         sobel_before = analysis["sobel_before"]
         sobel_thr = self.sobel_threshold * sobel_before
         # logger.info(f"SOBEL BEFORE: {sobel_before} y AFTER: {sobel_after} | condición: {sobel_thr}")

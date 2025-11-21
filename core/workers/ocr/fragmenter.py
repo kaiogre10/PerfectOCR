@@ -7,7 +7,6 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.pattern_finder import is_acronym, find_quantitative_runs, separate_punt
-from core.utils.binarizator import analize_bin_img
 from core.utils.text_validator import validate_text, punc_chars
 
 logger = logging.getLogger(__name__)
@@ -30,23 +29,16 @@ class Fragmenter(OCRAbstractWorker):
             
             polygons_in: Dict[str, Polygons] = manager.workflow.polygons
             sorted_poly_ids = sorted(polygons_in.keys())
+            blob_metrics = context.get("blob_metrics", {})
             logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
             fragmented_count = 0
             final_polygons: List[Polygons] = []
             
             for poly_id in sorted_poly_ids:
                 polygon = polygons_in[poly_id]
-                
-                cropped_img = polygon.cropped_img.cropped_img # type: ignore
-                
-                if cropped_img is None:
-                    logger.warning(f"Cropped_img de {poly_id} es None")
-                    continue
-                
-                binarizator_config: Dict[str, Any] = self.worker_config
-                blob_metrics = analize_bin_img(cropped_img, binarizator_config)
+                poly_blob_metrics = blob_metrics.get(poly_id, {})
 
-                if not blob_metrics:
+                if not poly_blob_metrics:
                     logger.debug(f"Sin Metricas para: {poly_id}")
                     final_polygons.append(polygon)
                     continue
@@ -84,10 +76,10 @@ class Fragmenter(OCRAbstractWorker):
 
                 quant_needs_frag = len(quant_runs) > 1
 
-                if not blob_metrics:
+                if not poly_blob_metrics:
                     visual_needs_frag = False
                     
-                visual_needs_frag: bool = blob_metrics.get('needs_fragmentation', False)
+                visual_needs_frag: bool = poly_blob_metrics.get('needs_fragmentation', False)
 
                 if visual_needs_frag or text_needs_frag or punctuation_needs_frag or quant_needs_frag:
 
@@ -104,9 +96,9 @@ class Fragmenter(OCRAbstractWorker):
                     logger.debug(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
 
                     if visual_needs_frag:
-                        fragments = self.fragment_by_blobs(polygon, blob_metrics)
+                        fragments = self.fragment_by_blobs(polygon, poly_blob_metrics)
                     elif quant_needs_frag:
-                        fragments = self.fragment_by_quantitative(polygon, quant_runs, blob_metrics)
+                        fragments = self.fragment_by_quantitative(polygon, quant_runs, poly_blob_metrics)
                     elif text_needs_frag:
                         fragments = self.fragment_by_text(polygon)
                     elif punctuation_needs_frag:

@@ -99,7 +99,7 @@ class InkEnhancer(PreprocessingAbstractWorker):
         std_val = np.std(img)
 
         # Detectar predominio de grises medios (característica de tinta gastada)
-        mid_gray_ratio = np.sum((img >= 80) & (img <= 180)) / img.size
+        mid_gray_ratio = np.sum((img > 80) & (img < 180)) / img.size
 
         # Calcular contraste local usando filtros
         kernel = np.ones((3, 3), np.float32) / 9
@@ -157,17 +157,3 @@ class InkEnhancer(PreprocessingAbstractWorker):
         final_enhanced = cv2.bilateralFilter(final_enhanced, 5, 20, 20)
 
         return final_enhanced
-
-    def _save_debug_image(self, context: Dict[str, Any], poly_id: str, image: np.ndarray[Any, Any]):
-        """Guarda una imagen de depuración."""
-        from services.output_service import save_image
-        import os
-
-        output_paths = context.get("output_paths", [])
-        for path in output_paths:
-            output_dir = os.path.join(path, "inker")
-            file_name = f"{poly_id}_inker_debug.png"
-            save_image(image, output_dir, file_name)
-
-        if output_paths:
-            logger.debug(f"Imagen de debug de inker para '{poly_id}' guardada en {len(output_paths)} ubicaciones.")
