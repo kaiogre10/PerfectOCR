@@ -43,7 +43,6 @@ class Polygons:
         # code: -1
         # umd: -2
     was_refined: bool
-    binarized: bool
     
 @dataclass
 class LineGeometry:
