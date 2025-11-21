@@ -15,24 +15,27 @@ class OCRStager(AbstractStager):
         return self.run_ocr_on_polygons(manager)
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
-        start_time = time.time()
-        worker_start = time.time()
+     start_time = time.time()       
+        context: Dict[str, Any] = {
+            "output_paths": self.output_paths,
+            "project_root": self.project_root,
+        }
+
         for worker_idx, worker in enumerate(self.workers):
-
+            worker_start = time.time()
             worker_name = worker.__class__.__name__
-            logger.debug(f"Ejecutando Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
-            
-            context: Dict[str, Any] = {
-                    "worker_name": worker_name,
-                    "output_paths": self.output_paths,
-                    "project_root": self.project_root
-                }    
-                
-            if not worker.transcribe(context, manager):
-                logger.error(f"Fallo en OCR: {worker.__class__.__name__}")
-                return None, 0.0
+            logger.debug(f"Inicia Worker: {worker_idx + 1}/{len(self.workers)}: {worker_name}")
 
-            worker_time = time.time() - worker_start
-            logger.debug(f"Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
-        ocr_time = time.time() - start_time
-        return manager, ocr_time
+            context["worker_name"] = worker_name  # Actualiza el nombre en cada iteración
+
+            if not worker.vectorize(context, manager):
+                logger.error(f"Worker {worker_name} falló o devolvió resultados vacíos")
+                return None, 0.0
+            if manager.workflow:
+                worker_time = time.time() - worker_start
+                logger.debug(f"Worker {worker_name} completado en: {worker_time:.6f}s")
+            # continue no es necesario aquí
+
+        vect_time = time.time() - start_time
+        logger.debug(f"Etapa 4 completado en: {vect_time:.6f}s")
+        return manager, vect_time
