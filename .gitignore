@@ -20,11 +20,11 @@ __pycache__/
 documentation/
 test/
 tools/
-C:/PerfectOCR/data/models/
+# C:/PerfectOCR/data/models/
 input/
 input2/
 output/
-# input3/
+input3/
 
 # Excepción
 !especificaciones_inspiron.txt
