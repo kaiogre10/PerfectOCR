@@ -59,7 +59,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
             
             discarted_polys: List[str] = []
             final_polygons_list: List[Dict[str, Any]] = []
-            areas: List[int] = []
             
             for idx, poly_pts in enumerate(polygons[0]):
                 poly_id = f"poly_{idx:04d}"
@@ -67,11 +66,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()])
                 centroid = coords.mean(axis=0)
 
-                # Calcular ángulo para este bbox
+                # Calcular área para este bbox
                 bbox_width = bbox[2] - bbox[0]
                 bbox_height = bbox[3] - bbox[1]
                 area = bbox_height * bbox_width
-                areas.append(area)
 
                 if area < self.min_area:
                     logger.info(f"Polígono {poly_id} descarcatdo por mínima área")
@@ -94,14 +92,13 @@ class GeometryDetector(ImagePrepAbstractWorker):
                     "centroid": centroid,
                 })
 
-            logger.info(f"MINIMO DE AREAS: {min(areas), poly_id}")
             final_polygons: Dict[str, Dict[str, Any]] = {}
             for new_idx, poly_data in enumerate(final_polygons_list):
                 poly_id = f"poly_{new_idx:04d}"
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")
-            logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
+            #logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")

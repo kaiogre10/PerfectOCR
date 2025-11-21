@@ -20,7 +20,8 @@ __pycache__/
 documentation/
 test/
 tools/
-# C:/PerfectOCR/data/models/
+data/
+C:/PerfectOCR/data/models/
 input/
 input2/
 output/

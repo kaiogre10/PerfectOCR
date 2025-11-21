@@ -111,8 +111,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     save_croped_image(image_name, poly_id, cropped, output_paths, worker_name, method="all_polys") # type: ignore
                 
                 poly_mean, dims = calculate_img_values(cropped)
-                bbox_width = dims[0]
-                bbox_height = dims[1]
+                bbox_width = dims[1]
+                bbox_height = dims[0]
                 angle = math.degrees(math.atan2(bbox_height, bbox_width))
                 
                 # logger.info(f"{poly_id} AREA: {cropped.size}")
@@ -127,7 +127,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             if not poly_data_to_filter:
                 logger.warning("PolygonExtractor: No hay polígonos válidos para procesar.")
-                return True
+                return False 
 
             valid_polygons_data: List[Dict[str, Any]] = []
             for p_data in poly_data_to_filter:
@@ -200,7 +200,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             total_time = time.time() - start_time
                 
             extracted_count = len(cropped_images)
-            logger.info(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
+            logger.debug(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
 
             if self.filtered_ouputs:
                 from services.output_service import save_croped_image

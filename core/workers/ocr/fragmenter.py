@@ -30,7 +30,7 @@ class Fragmenter(OCRAbstractWorker):
             polygons_in: Dict[str, Polygons] = manager.workflow.polygons
             sorted_poly_ids = sorted(polygons_in.keys())
             blob_metrics = context.get("blob_metrics", {})
-            logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+            logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
             fragmented_count = 0
             final_polygons: List[Polygons] = []
             
@@ -43,7 +43,7 @@ class Fragmenter(OCRAbstractWorker):
                     final_polygons.append(polygon)
                     continue
                     
-                # logger.info(f"{poly_id}: cantidad de blob ='{blob_metrics.get("num_blobs")}'")
+                #logger.info(f"{poly_id}: cantidad de blob ='{blob_metrics.get("num_blobs")}'")
                 
                 sc: List[int] | int = polygon.semantic_clasification or 0
                 ocr_text: str = polygon.ocr_text or ""
@@ -130,7 +130,7 @@ class Fragmenter(OCRAbstractWorker):
                 manager.workflow.polygons = final_polygons_dict
             
             if fragmented_count > 0:
-                logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
+                logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
                 return True
                 
         except Exception as e:
@@ -194,7 +194,7 @@ class Fragmenter(OCRAbstractWorker):
 
             frag_text = text_parts[i]  # 1-a-1 con blobs
             
-            logger.info(f"Fragmento visual: texto='{frag_text}'") #, bbox={new_bbox.tolist()}")
+            logger.debug(f"Fragmento visual: texto='{frag_text}'") #, bbox={new_bbox.tolist()}")
             new_poly = dataclasses.replace(
                 polygon,
                 geometry=new_geom,
@@ -498,7 +498,7 @@ class Fragmenter(OCRAbstractWorker):
                 ], dtype=np.float32)
             )
 
-            logger.info(f"Fragmento cuantitativo/mixto: texto nuevo='{part}'")
+            logger.debug(f"Fragmento cuantitativo/mixto: texto nuevo='{part}'")
 
             new_polys.append(dataclasses.replace(
                 polygon,

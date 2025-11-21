@@ -8,7 +8,7 @@ from core.factory.abstract_stager import AbstractStager
 logger = logging.getLogger(__name__)
 
 class OCRStager(AbstractStager):
-    """Stager de reconocimiento óptico de caracteres."""
+    """Stager ee reconocimiento óptico de caracteres."""
     
     def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         """Ejecuta la fase de OCR completa."""

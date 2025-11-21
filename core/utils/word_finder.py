@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class WordFinder:
     def __init__(self, model_path: str):
         self.model: Dict[str, Any] = self._load_model(model_path)
-        self.wf_path: str = "C:/PerfectOCR/core/utils/word_finder.py"
+      #  self.wf_path: str = "C:/PerfectOCR/core/utils/word_finder.py"
         self.params = self.model.get("params", {})
         self.global_words: List[str] = self.model["global_words"]
         self.variant_to_field = self.model.get("variant_to_field", {})
@@ -33,9 +33,9 @@ class WordFinder:
         self.global_counter = self.global_filter.get("global_counter", None)
         self.global_vocab = self.global_filter.get("global_vocab", None)
         self.model_time = self.model.get("model_time")
-        timestamp_model = os.path.getmtime(self.wf_path)
-        fecha_wf = datetime.fromtimestamp(timestamp_model).isoformat()
-        logger.critical(f"FECHA DE GENERACIÓN DEL MODELO: {self.model_time}, FECHA DEL SCRIPT WORD_FINDER.PY: {fecha_wf}")
+        #timestamp_model = os.path.getmtime(self.wf_path)
+    #    fecha_wf = datetime.fromtimestamp(timestamp_model).isoformat()
+       # logger.critical(f"FECHA DE GENERACIÓN DEL MODELO: {self.model_time}, FECHA DEL SCRIPT WORD_FINDER.PY: {fecha_wf}")
 
     def _load_model(self, model_path: str) -> Dict[str, Any]:
         try:

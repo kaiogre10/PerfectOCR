@@ -51,6 +51,8 @@ class ModelsManager:
                 return False
             
             models_config=config.get("models_config", {})
+            model_path=models_config.get("wf_model_path")
+            logger.info(f"modelpath: {model_path}")
 
             self._shared_engine = PaddleOCR(
                 det=True, rec=True, cls=False,

@@ -44,13 +44,19 @@ class Refiner(OCRAbstractWorker):
                 if cropped_img is None:
                     logger.warning(f"Cropped_img de {poly_id} es None")
                     continue
-                
-                binarizator_config: Dict[str, Any] = self.worker_config
-                blob_metric = analize_bin_img(cropped_img, binarizator_config)
-                blob_metrics[poly_id] = blob_metric[poly_id]
 
+                # Analiza la imagen y asigna el diccionario de métricas resultante
+                # a la clave correspondiente al poly_id actual.
+                metrics = analize_bin_img(cropped_img, self.worker_config)
+                blob_metrics[poly_id] = metrics
+               # logger.info(f"{poly_id}: {metrics}")
+
+            logger.info(f"Métricas de blobs generadas para {blob_metrics} polígonos.")
             context["blob_metrics"] = blob_metrics
-            
+           
+            if manager.delete_cropped_images():
+                logger.info("Cropped_img liberadas")
+             
             if self.num_passes == 1:
                 context["num_analisys"] = 1
 
@@ -75,9 +81,6 @@ class Refiner(OCRAbstractWorker):
                 
                 logger.debug(f"Bucle #{pass_num}: Corrección textual")
                 self.corrector.transcribe(context, manager)
-
-            if manager.delete_cropped_images():
-                logger.warning(f"Imagenes recortadas liberadas exitosamente")
 
             logger.debug(f"Pasada final: Clasificación Semántica completa")
             self.clasificator.transcribe(context, manager, final_pass='final_class')

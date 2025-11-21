@@ -17,7 +17,7 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
     # - "lineal"
@@ -31,12 +31,12 @@ pipeline_secuence:
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
-    deleted_polys: true
+    deleted_polys: false
     pre_clean: false
     angle_corrected: false
     cropped_img: false
     final_polys: false
-    discarded_polys: true
+    discarded_polys: false
   
   preprocessing_outputs:
     moire_poly: false

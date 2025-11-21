@@ -71,7 +71,7 @@ def analize_bin_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_con
         # Los boxes ya están ordenados por 'x' desde extract_cc_metrics
         blob_metrics["blobs_norm_boxes"] = valid_boxes_norm
 
-   # logger.info(f"Metricas: {blob_metrics}")
+    #logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
 def get_adaptive_block_size(height: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
