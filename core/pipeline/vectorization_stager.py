@@ -1,7 +1,6 @@
 # PerfectOCR/coordinators/tensoring_coordinator.py
 import logging
 import time
-import pandas as pd # type: ignore
 from typing import Any, Dict, Tuple, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_stager import AbstractStager

@@ -15,7 +15,7 @@ class OCRStager(AbstractStager):
         return self.run_ocr_on_polygons(manager)
         
     def run_ocr_on_polygons(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
-     start_time = time.time()       
+        start_time = time.time()       
         context: Dict[str, Any] = {
             "output_paths": self.output_paths,
             "project_root": self.project_root,
@@ -28,7 +28,7 @@ class OCRStager(AbstractStager):
 
             context["worker_name"] = worker_name  # Actualiza el nombre en cada iteración
 
-            if not worker.vectorize(context, manager):
+            if not worker.transcribe(context, manager):
                 logger.error(f"Worker {worker_name} falló o devolvió resultados vacíos")
                 return None, 0.0
             if manager.workflow:

@@ -18,7 +18,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('polygon_extractor', {})
         self.angle_thr = self.worker_config["angle_thr"]
-        self.bin_interval = self.worker_config["bin_interval"]
+        self.bin_interval = config["bin_interval"]
         self.padding = self.worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
         self.filtered_ouputs = config.get("final_polys", False)
@@ -28,14 +28,13 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte."""
         start_time = time.time()
         try:
-            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-
             img_obj = manager.get_full_img()
             full_img = img_obj.full_img if img_obj is not None else None
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
                 
+            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
             img_h = full_img.shape[0]
             img_w = full_img.shape[1]
 
@@ -134,7 +133,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 if p_data['angle'] < self.angle_thr[1] and self.angle_thr[0] < p_data['angle']:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['angle']}")
-                    logger.info(f"ELIMINADO '{p_data['poly_id']}': Angulo = {p_data['angle']}°")
+                    # logger.info(f"ELIMINADO '{p_data['poly_id']}': Angulo = {p_data['angle']}°")
 
                 elif p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")

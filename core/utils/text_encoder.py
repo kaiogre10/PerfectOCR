@@ -44,5 +44,8 @@ def get_morphological_encode(text: str) -> List[float]:
     return []
 
 def text_compacter(text: str) -> str:
-    minus_text = text.lower()
-    return ''.join(minus_text.split())
+    if not validate_text(text):
+        return " "
+    else:
+        minus_text = text.lower()
+        return ''.join(minus_text.split())

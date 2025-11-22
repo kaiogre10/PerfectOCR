@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Dict
 import logging
+from skimage.filters import threshold_sauvola #type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -140,4 +141,81 @@ def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma
     return cv2.bilateralFilter(img, d, sigma_color, sigma_space).astype(np.uint8)
 
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
-    return np.mean(np.abs(cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize)))
+    sobel, _ = calculate_img_values(np.abs(cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize))) #type: ignore
+    return float(sobel)
+
+def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    """
+    Binariza la imagen, extrae métricas robustas de componentes conectados (CC) y decide si necesita fragmentación.
+    """
+    c_value: int = worker_config.get('c_value', 7)
+    height_thresholds: List[int] = worker_config.get('height_thresholds_px', [100, 800, 1500, 2500])
+    block_sizes_map: List[int] = worker_config.get('block_sizes_map', [15, 21, 25, 35, 41])
+    height = int(cropped_img.shape[0])
+
+    block = get_adaptive_block_size(height, height_thresholds, block_sizes_map)
+    mode: str = measure_polygon_quality(cropped_img)
+
+    if mode == "otsu":
+        bin_img = otsu_binarize(cropped_img)
+    elif mode == "adaptive_gaussian":
+        bin_img = adaptive_binarize(cropped_img, block, c_value)
+    elif mode == "sauvola":
+        bin_img = sauvola_binarize(cropped_img, block)
+    else:
+        bin_img = adaptive_mean_fallback(cropped_img, block, c_value)
+
+    bin_img = cv2.bitwise_not(bin_img).astype(np.uint8)
+   
+    return bin_img
+
+def get_adaptive_block_size(height: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
+    """Calcula el tamaño de bloque adaptativo basado en la altura del polígono."""
+    for i, threshold in enumerate(height_thresholds):
+        if height < threshold:
+            block_size = block_sizes_map[min(i, len(block_sizes_map) - 1)]
+            return max(3, block_size if block_size % 2 != 0 else block_size + 1)
+    final_block_size = block_sizes_map[-1]
+    return max(3, final_block_size if final_block_size % 2 != 0 else final_block_size + 1)
+
+def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> str:
+    """
+    Analiza la imagen en escala de grises (histograma, std) para
+    decidir el mejor método de binarización.
+    """
+    std = np.std(cropped_img)
+    if std == 0: return "adaptive_mean"
+    hist = cv2.calcHist([cropped_img], [0], None, [255], [0, 255]).flatten()
+    peaks = np.sum((hist[1:-1] > hist[:-2]) & (hist[1:-1] > hist[2:]))
+    prob = hist / np.sum(hist)
+    entropy = -np.sum(prob * np.log2(prob + 1e-8))
+
+    if peaks > 1 and std > 30:
+        return "otsu"  # Alto contraste, bimodal
+
+    elif std > 20 and entropy > 5.0:
+        return "adaptive_gaussian"  # Contraste variable
+
+    elif std > 10:
+        return "sauvola"  # Texto sobre fondo no uniforme
+
+    else:
+        return "adaptive_mean"  # Bajo contraste, imagen "plana"
+
+def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    resultis = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    bin_img = resultis[1].astype(np.uint8)
+    return bin_img
+
+def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value).astype(np.uint8)
+
+def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
+    thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size)  # type: ignore
+    bin_bool: np.ndarray[np.uint8, Any] = (cropped_img > thresh_sauvola)  # type: ignore
+    bin_img = (bin_bool.astype(np.uint8) * 255)  # type: ignore
+    return bin_img  # type: ignore
+
+def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)).astype(np.uint8)

@@ -7,7 +7,6 @@ class ConfigWithNumpy(BaseModel):
 
 class ImgLoadOutputs(ConfigWithNumpy):
     deleted_polys: bool
-    pre_clean: bool
     angle_corrected: bool
     cropped_img: bool
     final_polys: bool
@@ -20,10 +19,10 @@ class PreprocessingOutputs(ConfigWithNumpy):
     ink_poly: bool
     clahe_poly: bool
     sharp_poly: bool
-    binarized_polygons: bool
 
 class OCROutputs(ConfigWithNumpy):
     ocr_raw: bool
+    binarized_polygons: bool
     fragmented_polys: bool
     reconstructed_lines: bool
     semantic_field: bool
@@ -66,9 +65,6 @@ class MoireConfig(ConfigWithNumpy):
     notch_radius: int
     percentile_threshold: int
     
-class Fragmenter(ConfigWithNumpy):
-    min_contours_for_frag: int
-    
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
     salt_pepper_threshold: float
@@ -93,8 +89,7 @@ class GeoDetector(ConfigWithNumpy):
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
     angle_thr: Tuple[float, float]
-    bin_interval: Tuple[int, int]
-
+    
 class ImagePreparation(ConfigWithNumpy):
     angle_corrector: DeskewConfig
     geometry_detector: GeoDetector
@@ -147,8 +142,9 @@ class TextRefiner(ConfigWithNumpy):
     min_cc_for_frag: int
     min_gap_outlier: float
     density_threshold: float
-    max_cc_for_density_rule: int
     width_var_threshold: float
+    solidity_threshold: float
+    connectivity: int
 
 class TextCorrector(ConfigWithNumpy):
     confidence_threshold: float
@@ -162,7 +158,6 @@ class OCRConfig(ConfigWithNumpy):
     text_cleaner: TextualCleanConfig
     semantic_clasificator: SemanticClasificator
     data_finder: DataFinder
-    fragmenter: Fragmenter
     text_corrector: TextCorrector
 
 class DBSCAN(ConfigWithNumpy):
@@ -196,6 +191,8 @@ class VectorConfig(ConfigWithNumpy):
 
 class UtilsConfig(ConfigWithNumpy):
     dpi_range: List[int]
+    bin_interval: Tuple[int, int]
+    percentile: Tuple[int, int]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation

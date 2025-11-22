@@ -356,7 +356,7 @@ class WordFinder:
 
     def _clean_text(self, s: str) -> Optional[str]:
         try:
-            if s is None:
+            if not s:
                 return None
 
             q = clean(

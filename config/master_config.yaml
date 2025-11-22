@@ -17,7 +17,7 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
     # - "lineal"
@@ -32,7 +32,6 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     deleted_polys: false
-    pre_clean: false
     angle_corrected: false
     cropped_img: false
     final_polys: false
@@ -45,10 +44,10 @@ enabled_outputs:
     ink_poly: false
     clahe_poly: false
     sharp_poly: false
-    binarized_polygons: false
   
   ocr_outputs:
     ocr_raw: false
+    binarized_polygons: true
     fragmented_polys: false
     reconstructed_lines: false
     semantic_field: false
@@ -93,7 +92,6 @@ modules:
     polygon_extractor:
       angle_thr: [44.5, 45.5]
       cropping_padding: 1
-      bin_interval: [10, 245]
 
   preprocessing:
     moire:
@@ -128,22 +126,20 @@ modules:
   ocr:
     paddle_wrapper:
       min_confidence: 60.0
-
-    fragmenter:
-      min_contours_for_frag: 2
       
     text_refiner:
-      num_passes: 2
+      num_passes: 0
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]
-      min_area_factor: 0.01
+      min_area_factor: 0.015
       k_sigma: 1.25
       min_cc_for_frag: 2
       min_gap_outlier: 0.5
-      density_threshold: 0.65
-      max_cc_for_density_rule: 5
-      width_var_threshold: 0.25
+      density_threshold: 0.75
+      width_var_threshold: 0.15
+      solidity_threshold: 0.35
+      connectivity: 4
   
     text_cleaner:
       min_probability: 75.0
@@ -199,3 +195,5 @@ modules:
 
 utils:
   dpi_range: [100, 200, 300, 400, 600, 1200]
+  bin_interval: [10, 245]
+  percentile: [1, 99]

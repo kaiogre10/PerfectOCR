@@ -22,6 +22,8 @@ test/
 tools/
 data/
 C:/PerfectOCR/data/models/
+data/models/wf/
+data/models/paddle/
 input/
 input2/
 output/
@@ -37,6 +39,7 @@ input3/
 *.png
 *.jpg
 *.jpeg
+*.pkl
 
 # Ignorar perfectocr.txt
 *.cursorignore

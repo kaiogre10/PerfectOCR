@@ -5,17 +5,7 @@ import time
 from typing import Dict, Any, Optional
 from paddleocr import PaddleOCR # type: ignore
 from core.utils.word_finder import WordFinder
-# import sys
 
-# try:
-#     word_finder = r"C:\word_finder_model\src"
-#     if word_finder not in sys.path:
-#         sys.path.insert(0, word_finder)
-#     from word_finder import WordFinder #type: ignore
-    
-# except Exception as e:
-#     logging.error(f"No se pudo importar WORD_FINDER; {e}", exc_info=True)
-    
 logger = logging.getLogger(__name__)
 
 class ModelsManager:
@@ -51,8 +41,6 @@ class ModelsManager:
                 return False
             
             models_config=config.get("models_config", {})
-            model_path=models_config.get("wf_model_path")
-            logger.info(f"modelpath: {model_path}")
 
             self._shared_engine = PaddleOCR(
                 det=True, rec=True, cls=False,
@@ -69,7 +57,7 @@ class ModelsManager:
             self._recognition_engine = self._shared_engine
             self._initialized = True
             logger.debug(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
-            logger.info(f"PADDLE Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
+            logger.debug(f"PADDLE Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
 
         except Exception as e:
             logger.error(f"No se pudo iniciar Paddle se deiene el proceso completo: {e}", exc_info=True)

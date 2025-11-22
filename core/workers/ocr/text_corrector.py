@@ -112,7 +112,7 @@ class TextCorrector(OCRAbstractWorker):
         is_list_classification = isinstance(semantic_clasification, list)
         logger.debug(f"Procesando {polygon_id}: '{text}' | Clasificación: {semantic_clasification}")
         if is_list_classification and len(semantic_clasification) != len(tokens):
-            logger.warning(f"Discrepancia en {polygon_id}: {len(tokens)} tokens vs {len(semantic_clasification)} clasificaciones. No se corrige.")
+            logger.debug(f"Discrepancia en {polygon_id}: {len(tokens)} tokens vs {len(semantic_clasification)} clasificaciones. No se corrige.")
             return text
 
         corrected_tokens: List[str] = []
@@ -161,7 +161,7 @@ class TextCorrector(OCRAbstractWorker):
             else:
                 replacement = corrections_map[char]
 
-            logger.info(f"{polygon_id}: Corrigiendo: '{char}' => '{replacement}'en texto original: '{token}'")
+            logger.debug(f"{polygon_id}: Corrigiendo: '{char}' => '{replacement}'en texto original: '{token}'")
             corrected_chars[i] = replacement
             
         return ''.join(corrected_chars)

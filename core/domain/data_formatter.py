@@ -89,6 +89,7 @@ class DataFormatter:
                     ocr_text=None,
                     ocr_confidence=None,
                     was_refined=False,
+                    was_fragmented=False,
                     key_field=None,
                     semantic_clasification=0,
                 )

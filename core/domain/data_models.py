@@ -43,6 +43,7 @@ class Polygons:
         # code: -1
         # umd: -2
     was_refined: bool
+    was_fragmented: bool
     
 @dataclass
 class LineGeometry:

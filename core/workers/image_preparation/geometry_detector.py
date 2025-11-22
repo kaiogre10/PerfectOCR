@@ -72,7 +72,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 area = bbox_height * bbox_width
 
                 if area < self.min_area:
-                    logger.info(f"Polígono {poly_id} descarcatdo por mínima área")
+                    # logger.info(f"Polígono {poly_id} descarcatdo por mínima área")
                     discarted_polys.append(poly_id)
 
                     if self.output:

@@ -66,6 +66,7 @@ class ConfigService:
         return {
             **self.modules_config.get("image_preparation", {}),
             **self.enabled_outputs.get("image_load_outputs", {}),
+            **self.config.get("utils", {}),
             "imagepre_stage": self.workers_order["imagepre_stage"]
         }
        
@@ -77,6 +78,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("preprocessing", {}),
                 **self.enabled_outputs.get("preprocessing_outputs", {}),
+                **self.config.get("utils", {}),
                 "preprocessing_stage": self.workers_order["preprocessing_stage"]
             }
 

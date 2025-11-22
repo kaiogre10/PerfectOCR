@@ -7,6 +7,8 @@ from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
+from core.utils.image_analizer import extract_cc_metrics
+from core.utils.image_utils import binarice_img
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +20,13 @@ class InkEnhancer(PreprocessingAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('ink_enhancement', {}) 
         self.faded_threshold = self.worker_config.get('faded_detection_threshold')
-        self.contrast_boost = self.worker_config.get('contrast_boost_factor')
         self.output = config.get("ink_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y restaura texto con tinta gastada."""
         try:
             start_time = time.time()
-            logger.debug("Mejoramiento de tinta empezado con éxito")
+            logger.info("Mejoramiento de tinta empezado con éxito")
             if not manager.validate_cropped_img():
                 logger.info(f"Sin cropped_img en el formatter")
                 return False
@@ -43,8 +44,13 @@ class InkEnhancer(PreprocessingAbstractWorker):
             for poly_id, polygon in polygons.items():
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 if cropped_img is None:
+                    logger.warning(f"{poly_id} sin imagen")
                     continue
 
+                bin_img = binarice_img(cropped_img.copy(), {})
+                metrics = extract_cc_metrics(bin_img, 0.5)
+                # logger.info(f"{metrics}")
+                
                 analysis = self._analyze_ink_quality(cropped_img)
                 if analysis:
                     analysis_results.append(analysis)
@@ -56,6 +62,7 @@ class InkEnhancer(PreprocessingAbstractWorker):
             # 2. Fase de Decisión
             faded_scores = np.array([res['faded_score'] for res in analysis_results], dtype=np.float32)
             needs_enhancement = faded_scores > self.faded_threshold
+            # logger.info(f"score: {faded_scores}")
 
             # 3. Fase de Aplicación
             enhanced_count = 0
@@ -67,7 +74,7 @@ class InkEnhancer(PreprocessingAbstractWorker):
                 original_img = analysis_results[idx]['original_img']
                 faded_score = faded_scores[idx]
 
-                # logger.debug(f"Poly '{poly_id}': Restaurando tinta gastada (score: {faded_score:.2f})")
+                # logger.info(f"Poly '{poly_id}': Restaurando tinta gastada (score: {faded_score:.2f})")
 
                 enhanced_img = self._restore_faded_ink(original_img, faded_score)
                 polygon.cropped_img.cropped_img = enhanced_img
@@ -77,14 +84,12 @@ class InkEnhancer(PreprocessingAbstractWorker):
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "inker"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    output_paths = context.get("output_paths", [])
-                    
+                    output_paths = context["output_paths"]                    
                     save_croped_image(image_name, poly_id, enhanced_img, output_paths, worker_name, method=worker_name)
                     
             total_time = time.time() - start_time
             
-            logger.debug(
-                f"Restauración de tinta completada para {enhanced_count}/{len(poly_ids_order)} polígonos en: {total_time:.3f}s")
+            logger.debug(f"Restauración de tinta completada para {enhanced_count}/{len(poly_ids_order)} polígonos en: {total_time:.3f}s")
             
             return True
             
@@ -132,7 +137,6 @@ class InkEnhancer(PreprocessingAbstractWorker):
 
     def _restore_faded_ink(self, img: np.ndarray[Any, np.dtype[np.uint8]], faded_score: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """Restaura la intensidad del texto con tinta gastada."""
-
         # 1. Estiramiento adaptativo del histograma
         p1, p99 = np.percentile(img, [1, 99])
         if p99 > p1:
