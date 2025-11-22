@@ -113,8 +113,9 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
         try:
             # Crear una máscara solo para este blob
             component_mask: np.ndarray[Any, np.dtype[np.uint8]] = ((labels == top_labels).astype(np.uint8))
+            
             # Encontrar contornos solo en esta máscara (muy rápido)
-            contours, _ = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contours = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
             logger.info(f"{len(contours[0])} vs {top_labels}")
             # logger.info(f"{np.mean(component_mask)}")
 
