@@ -1,7 +1,7 @@
 # PerfectOCR/core/workers/ocr/text_corrector.py
 import logging
 import dataclasses
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -25,7 +25,7 @@ class TextCorrector(OCRAbstractWorker):
         self.conf_threshold = (self.worker_config.get("confidence_threshold") * 100.0)
         self.numeric_corrections: Dict[str, str] = numeric_corrections()
         self.descriptive_corrections: Dict[str, str] = descritive_corrections()
-        self.char_num: List[str] = get_char_num()
+        self.char_num: Set[str] = get_char_num()
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
 

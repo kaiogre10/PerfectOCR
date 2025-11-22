@@ -192,7 +192,7 @@ class VectorConfig(ConfigWithNumpy):
 class UtilsConfig(ConfigWithNumpy):
     dpi_range: List[int]
     bin_interval: Tuple[int, int]
-    percentile: Tuple[int, int]
+    percentile: Tuple[float, float]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation

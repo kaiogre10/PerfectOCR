@@ -2,9 +2,10 @@
 import cv2
 import numpy as np
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from core.utils.image_utils import binarice_img
 from core.utils.text_encoder import text_compacter
+from core.utils.text_validator import valid_punt_chars
 
 logger = logging.getLogger(__name__)
 
@@ -64,20 +65,21 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     usando Área y Solidez.
     bin_img: np.uint8, foreground=255, background=0
     """
-    percentile = worker_config["percentile"]
+    valid_punt = valid_punt_chars()
+    percentile: Tuple[float, float] = worker_config["percentile"]
     num_words = len(text.split())
     wgaps = num_words - 1 
     chars = list(text_compacter(text))
     clean_txt: List[str] = []
-    for ch in chars: 
-        if ch.isalnum() and not ch.isspace():
-            clean_txt.append(ch)
+    for ch in chars:
+        if ch.isascii() and not ch in valid_punt and not ch.isspace():
+                clean_txt.append(ch)
         else:
             chars.remove(ch)
 
     max_elements = len(clean_txt)
 
-    # logger.info(f"Origial: {text}, limpio: {clean_txt}, gaps: {wgaps}")
+    logger.info(f"Origial: {text}, limpio: {clean_txt}, gaps: {wgaps}")
 
     connectivity = worker_config.get("connectivity", {})
     min_area_factor = worker_config.get("min_area_factor", {})
@@ -86,37 +88,35 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     min_area = bbox_area*min_area_factor
 
     # 1. Etiquetado rápido
-    n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity)
+    cc = cv2.connectedComponentsWithStats(bin_img, connectivity)
 
-    #logger.info(f"numero de labels: {n_labels}")
-
-    areas = stats[1:, cv2.CC_STAT_AREA]  # Excluye el fondo (label 0)
-    sorted_indices = np.argsort(areas)[::-1]  # Índices ordenados (0 es el blob más grande)
-    top_labels = sorted_indices[:max_elements] + 1  # +1 porque stats[0] es fondo
+    areas = cc[2][1:, cv2.CC_STAT_AREA]  # Excluye el fondo (label 0)
+    top_indices = np.argsort(areas)[::-1]  # Índices ordenados (0 es el blob más grande)
+    top_labels = top_indices[:max_elements] + 1  # +1 porque cc[2][0] es fondo
+    logger.info(f"numero de labels: {cc[0]}, top_labels: {len(top_labels)}")
     areas_array = np.array(areas, dtype=np.float32)
-    min_area_per=np.percentile(areas_array, percentile)[1]
-   # logger.info(f"Factor: {min_area}, Percentil: {min_area_per}")
+    min_area_quan = np.quantile(areas_array, percentile[0])
+    logger.info(f"Factor: {min_area}, Cuantil: {min_area_quan}")
 
     cc_list: List[Any]= []
+    logger.info(f"{top_labels}")
 
-    for top_labels in range(1, n_labels):
-        x, y, w, h, area = (stats[top_labels, cv2.CC_STAT_LEFT], stats[top_labels, cv2.CC_STAT_TOP], stats[top_labels, cv2.CC_STAT_WIDTH], stats[top_labels, cv2.CC_STAT_HEIGHT], stats[top_labels, cv2.CC_STAT_AREA])
+    for label in top_labels:
+        x, y, w, h, area = (cc[2][label, cv2.CC_STAT_LEFT], cc[2][label, cv2.CC_STAT_TOP], cc[2][label, cv2.CC_STAT_WIDTH], cc[2][label, cv2.CC_STAT_HEIGHT], cc[2][label, cv2.CC_STAT_AREA])
 
         # cx, cy = centroids[lab]
         # logger.info(f"Componente {lab}: x={x}, y={y}, w={w}, h={h}, area={area}, centro=({cx},{cy})")
-        # logger.info(f"{lab}, {n_labels}")
-        if area < min_area:
-            continue
+        if area < min_area_quan: #or area < min_area:
         
-        # logger.info(f"Area aprobada: {area}")
-        # --- Filtro 3: Solidez (Filtro robusto contra manchas/ruido) ---
+            continue
+        logger.info(f"Area aprobada: '{area}' para {label}")
         try:
             # Crear una máscara solo para este blob
-            component_mask: np.ndarray[Any, np.dtype[np.uint8]] = ((labels == top_labels).astype(np.uint8))
+            component_mask: np.ndarray[Any, np.dtype[np.uint8]] = ((label == top_labels).astype(np.uint8))
             
             # Encontrar contornos solo en esta máscara (muy rápido)
-            contours = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[1]
-            logger.info(f"{len(contours)} vs {top_labels}")
+            contours = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+            # logger.info(f"{len(contours)} vs {top_labels}")
         #    logger.info(f"{np.mean(component_mask)}")
 
             if not contours:
@@ -133,7 +133,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
 
             solidity = float(area) / hull_area
 
-            logger.info(f"SOLIDUTY:{solidity}")
+            # logger.info(f"SOLIDUTY:{solidity}")
 
             # Descartar formas "dispersas" o "huecas" (ruido)
             if solidity < solidity_threshold:
@@ -142,7 +142,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
         except cv2.error:
             continue  # Proteger contra contornos degenerados
 
-        cx, cy = centroids[top_labels]
+        cx, cy = cc[3][top_labels]
         cc_list.append({
             "label": top_labels,
             "x": int(x), "y": int(y), "w": int(w), "h": int(h),
@@ -167,6 +167,8 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
 
     # Ordenar por 'x' (para calcular gaps)
     cc_sorted: List[Any] = sorted(cc_list, key=lambda z: z["x"])
+
+    logger.info(f"Cantidad de cc:{len(cc_sorted)}")
 
     gaps: List[Any] = []
     for i in range(len(cc_sorted) - 1):

@@ -52,7 +52,7 @@ class Refiner(OCRAbstractWorker):
                     continue
 
                 # Analiza la imagen y asigna el diccionario de métricas resultante a la clave correspondiente al poly_id actual.
-                # logger.info(f"{poly_id}:")
+                logger.info(f"{poly_id}:")
                 bin_img = binarice_img(cropped_img, {})
 
                 if self.output:

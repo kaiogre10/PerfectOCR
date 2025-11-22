@@ -1,5 +1,5 @@
 # core/utils/text_validator.py
-from typing import List, Dict
+from typing import Set, Dict
 
 def validate_text(text: str) -> bool:
     if len(text) > 0:
@@ -7,12 +7,12 @@ def validate_text(text: str) -> bool:
     else:
         return False
     
-def get_char_num() -> List[str]:
-    char_num: List[str] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"]
+def get_char_num() -> Set[str]:
+    char_num: Set[str] = set(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"])
     return char_num
 
-def not_valid_chars() -> List[str]:
-    return [
+def not_valid_chars() -> Set[str]:
+    return {
         "~",
         "©",
         "®",
@@ -20,15 +20,16 @@ def not_valid_chars() -> List[str]:
         "`",
         "¬",
         "¨",
-        "÷"
-        ]
+        "÷",
+        "°"
+    }
     
-def get_special_chars() -> List[str]:
-    return [
+def get_special_chars() -> Set[str]:
+    return {
         ")", "(", "]", "[", "{", "}", "|", "*", "^",
         "-", "_", "+", "=", "<", ">", ";", ":", "@",
         "'", "!", "¡", "?", "¿", "'", "\\", "''",
-        ]
+    }
 def numeric_corrections() -> Dict[str, str]:
     return {
         "O": "0",
@@ -55,11 +56,20 @@ def descritive_corrections() -> Dict[str, str]:
         "0": "O"
     }
 
-def punc_chars() -> List[str]:
-    return [".", ";", ":", "!", "?"]
+def valid_punt_chars() -> Set[str]:
+    not_valid_punt_chars: Set[str] = set({
+        ".", "*", "^", "°"
+        "-", "_", "=",  ";", ":",
+        "'",  "´", "''", "¨"
+    })
+    
+    return not_valid_punt_chars.union(not_valid_chars())
 
-def get_alone_chars() -> List[str]:
-    return ["a", "e", "y", "o", "u", "&"]
+def punc_chars() -> Set[str]:
+    return {".", ";", ":", "!", "?"}
+
+def get_alone_chars() -> Set[str]:
+    return {"a", "e", "y", "o", "u", "&"}
 
 def validate_alone_chars(text: str) -> bool:
     if len(text) > 1:

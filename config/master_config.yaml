@@ -128,7 +128,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 0
+      num_passes: 1
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]
@@ -196,4 +196,4 @@ modules:
 utils:
   dpi_range: [100, 200, 300, 400, 600, 1200]
   bin_interval: [10, 245]
-  percentile: [2, 99]
+  percentile: [0.10, 0.99]
