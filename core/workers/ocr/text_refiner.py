@@ -21,6 +21,8 @@ class Refiner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str, clasificator: SemanticClasificator, cleaner: TextCleaner, fragmenter: Fragmenter, corrector: TextCorrector):
         super().__init__(config, project_root)
         self.worker_config = config.get("text_refiner", {})
+        self.percentile = config["percentile"]
+        self.worker_config["percentile"] = self.percentile 
         self.num_passes = self.worker_config.get("num_passes")
         self.delete_cropp = config.get("fragmented_polys")
         self.output = config.get("binarized_polygons")

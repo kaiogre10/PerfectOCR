@@ -64,6 +64,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     usando Área y Solidez.
     bin_img: np.uint8, foreground=255, background=0
     """
+    percentile = worker_config["percentile"]
     num_words = len(text.split())
     wgaps = num_words - 1 
     chars = list(text_compacter(text))
@@ -87,15 +88,14 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     # 1. Etiquetado rápido
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity)
 
-    # logger.info(f"{len(text)}, numero de labels: {n_labels}")
+    #logger.info(f"numero de labels: {n_labels}")
 
     areas = stats[1:, cv2.CC_STAT_AREA]  # Excluye el fondo (label 0)
     sorted_indices = np.argsort(areas)[::-1]  # Índices ordenados (0 es el blob más grande)
     top_labels = sorted_indices[:max_elements] + 1  # +1 porque stats[0] es fondo
-
-    # logger.info(f"LABELS: {top_labels}, Area: {areas}")
-    
-    # logger.info(f"LABELS: {n_labels}, OBJETOS: {max_elements}")
+    areas_array = np.array(areas, dtype=np.float32)
+    min_area_per=np.percentile(areas_array, percentile)[1]
+   # logger.info(f"Factor: {min_area}, Percentil: {min_area_per}")
 
     cc_list: List[Any]= []
 
@@ -115,9 +115,9 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
             component_mask: np.ndarray[Any, np.dtype[np.uint8]] = ((labels == top_labels).astype(np.uint8))
             
             # Encontrar contornos solo en esta máscara (muy rápido)
-            contours = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-            logger.info(f"{len(contours[0])} vs {top_labels}")
-            # logger.info(f"{np.mean(component_mask)}")
+            contours = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[1]
+            logger.info(f"{len(contours)} vs {top_labels}")
+        #    logger.info(f"{np.mean(component_mask)}")
 
             if not contours:
                 logger.warning("Sin contornos")
@@ -133,7 +133,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
 
             solidity = float(area) / hull_area
 
-            # logger.info(f"SOLIDUTY:{solidity}")
+            logger.info(f"SOLIDUTY:{solidity}")
 
             # Descartar formas "dispersas" o "huecas" (ruido)
             if solidity < solidity_threshold:
@@ -143,7 +143,6 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
             continue  # Proteger contra contornos degenerados
 
         cx, cy = centroids[top_labels]
-        # logger.info(f"{top_labels}")
         cc_list.append({
             "label": top_labels,
             "x": int(x), "y": int(y), "w": int(w), "h": int(h),

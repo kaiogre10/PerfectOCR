@@ -90,6 +90,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("ocr", {}),
                 **self.enabled_outputs.get("ocr_outputs", {}),
+                **self.config.get("utils", {}),
                 "ocr_stage": self.workers_order["ocr_stage"]
             }
        

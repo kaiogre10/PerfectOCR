@@ -196,4 +196,4 @@ modules:
 utils:
   dpi_range: [100, 200, 300, 400, 600, 1200]
   bin_interval: [10, 245]
-  percentile: [1, 99]
+  percentile: [2, 99]
