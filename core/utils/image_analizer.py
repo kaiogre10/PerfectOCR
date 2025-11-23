@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 import logging
 from typing import Dict, Any, List, Tuple
-from services.output_service import save_croped_image
 from core.utils.image_utils import binarice_img, cropp_img
 from core.utils.text_encoder import text_compacter
 from core.utils.text_validator import valid_punt_chars
@@ -73,12 +72,12 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     chars = list(text_compacter(text))
     clean_txt: List[str] = []
     for ch in chars:
-        if ch.isascii() and not ch in valid_punt and not ch.isspace():
+        if ch.isascii() and not ch in valid_punt:
                 clean_txt.append(ch)
         else:
             chars.remove(ch)
 
-    logger.info(f"Origial: {text}, limpio: {clean_txt}, gaps: {wgaps}")
+    # logger.info(f"Origial: {text}, limpio: {clean_txt}, gaps: {wgaps}")
 
     connectivity = worker_config.get("connectivity", {})
     min_area_factor = worker_config.get("min_area_factor", {})
@@ -89,48 +88,53 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     max_elements = len(clean_txt)
 
     # 1. Etiquetado rápido
-    cc = cv2.connectedComponentsWithStats(bin_img, connectivity)
-
-    logger.info(f"{np.array(cc[1]).shape}")
-
-    areas = cc[2][1:, cv2.CC_STAT_AREA]  # Excluye el fondo (label 0)
-    sorted_desc_idx = np.argsort(areas)[::-1]  # Índices ordenados (0 es el blob más grande)
-    top_indices = sorted_desc_idx[:max_elements] + 1  # +1 porque cc[2][0] es fondo
-    top_indices_sorted = np.sort(top_indices)
-    top_labels = top_indices_sorted
-    areas_array = np.array(areas, dtype=np.float32)
-    min_area_quan = np.quantile(areas_array, percentile[0])
-    # logger.info(f"Factor: {min_area}, Cuantil: {min_area_quan}")
-    # logger.info(f"Top labels: {len(top_labels)}, max elements: {len(clean_txt)}")
-
+    n_labels, _, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity)
+    
+    logger.info(f"Max elements: {max_elements}")
     text_array = np.array(clean_txt)
-    logger.info(f"TEXT ARRAY: {text_array}")
+    label_labeled = np.arange(1, n_labels).astype(np.uint16)
+    areas_array = np.ravel(stats[1:, cv2.CC_STAT_AREA]).astype(np.uint16)
+
+    # Ahora 'areas' tiene valores únicos
+    map_areas = np.stack([label_labeled, areas_array], axis=0).astype(np.uint16)
+    sorted_areas = np.sort(areas_array)[::-1]  # Índices ordenados (0 es el blob más grande)
+    sorted_labels = sorted_areas[:max_elements]
+    condition = np.isin(map_areas[1], sorted_labels, False)
+    top_labels = np.compress(condition, map_areas, axis=1)
+    map_array = np.row_stack([top_labels, text_array])
+    min_area_quan = np.quantile(areas_array, percentile[0])
+    logger.info(f"{top_labels[0]}")
+    
+    # logger.info(f"FULL ARRAY: {map_array}, SHAPE: {map_array.shape}")
+    # logger.info(f" Stats: {stats.shape}, n_labels: {n_labels},  {len(top_labels)} txt: {len(clean_txt)}")
+    
+    
     cc_list: List[Any]= []
 
-    for label in top_labels:
-        x, y, w, h, area = (cc[2][label, cv2.CC_STAT_LEFT], cc[2][label, cv2.CC_STAT_TOP], cc[2][label, cv2.CC_STAT_WIDTH], cc[2][label, cv2.CC_STAT_HEIGHT], cc[2][label, cv2.CC_STAT_AREA])
+    for label in np.flatiter(top_labels[0]):
+        x, y, w, h = (stats[sorted_labels:, cv2.CC_STAT_LEFT], stats[sorted_labels:, cv2.CC_STAT_TOP], stats[sorted_labels:, cv2.CC_STAT_WIDTH], stats[sorted_labels:, cv2.CC_STAT_HEIGHT])
 
         # centroid = cc[3][label] #type: ignore
-        # logger.info(f"Componente {label}: x={x}, y={y}, w={w}, h={h}, area={area}, centro=({centroid[0]}, {centroid[1]})")
+        logger.info(f"Componente {label}: x={x}, y={y}, w={w}, h={h}, area={map_array[1]}, centro=({centroids[0]}, {centroids[1]})")
         
         if image_name:
             from services.output_service import save_croped_image
             worker_name = "image_analizer"
             output_paths = worker_config["output_paths"]
             poly = worker_config["poly_id"]
-            poly_id = f"{poly}_{label}"
+            poly_id = f"{poly}_{map_array[0]}_{map_array[2]}"
             bbox = [x, y, x + w, y + h]
             cropped_img = cropp_img(bin_img, bbox)
             save_croped_image(image_name, poly_id, cropped_img, output_paths, worker_name, method="components") # type: ignore
 
-        if area < min_area_quan: #or area < min_area:
-        
+        # if area < min_area_quan or area < min_area:
+            
             continue
         # logger.info(f"Area aprobada: '{area}' para {label}")
 
         try:
             # Crear una máscara solo para este blob
-            component_mask: np.ndarray[Any, np.dtype[np.uint8]] = ((label == top_labels).astype(np.uint8))
+            component_mask: np.ndarray[Any, np.dtype[np.uint8]] = ((label == sorted_labels).astype(np.uint8))
             
             # Encontrar contornos solo en esta máscara (muy rápido)
             contours = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
@@ -160,7 +164,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
         except cv2.error:
             continue  # Proteger contra contornos degenerados
 
-        cx, cy = cc[3][top_labels]
+        cx, cy = centroids[top_labels]
         cc_list.append({
             "label": top_labels,
             "x": int(x), "y": int(y), "w": int(w), "h": int(h),
@@ -197,7 +201,6 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     # logger.info(f"DIVISIONES PRECALCULADAS: '{num_words}', NUM_BLOBS: '{len(cc_sorted)}")
     metrics: Dict[str, Any] = {
         "cc": cc_sorted,
-        "H_median": H_median,
         "density": density,
         "gaps_norm": gaps,
         "num_blobs": len(cc_sorted),
