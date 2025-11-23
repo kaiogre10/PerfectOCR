@@ -139,8 +139,8 @@ modules:
       min_gap_outlier: 0.5
       density_threshold: 0.75
       width_var_threshold: 0.15
-      solidity_threshold: 0.35
-      connectivity: 4
+      solidity_threshold: 0.30
+      connectivity: 8
   
     text_cleaner:
       min_probability: 75.0

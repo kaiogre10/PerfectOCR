@@ -112,30 +112,35 @@ def validate_full_image(img: np.ndarray[Any, Any]):
         return [0, 0]
 
 def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np.ndarray[Any, Any]] | np.ndarray[Any, Any], padding: Optional[int] = None) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
-    img_h = full_img.shape[0]
-    img_w = full_img.shape[1]
+    try:
+        img_h = full_img.shape[0]
+        img_w = full_img.shape[1]
 
-    if padding is None:
-        padding = 0
+        if padding is None:
+            padding = 5
 
-    bboxes_array = np.array(all_bboxes)
-    
-    if bboxes_array.ndim == 1 and bboxes_array.shape[0] == 4:
-        bboxes_array = bboxes_array.reshape(1, 4)
+        bboxes_array = np.array(all_bboxes)
+        
+        if bboxes_array.ndim == 1 and bboxes_array.shape[0] == 4:
+            bboxes_array = bboxes_array.reshape(1, 4)
 
-    x1, y1, x2, y2 = bboxes_array[0, 0], bboxes_array[0, 1], bboxes_array[0, 2], bboxes_array[0, 3]
+        x1, y1, x2, y2 = bboxes_array[0, 0], bboxes_array[0, 1], bboxes_array[0, 2], bboxes_array[0, 3]
 
-    # Aplicar padding y clipping
-    px1 = max(0, x1 - padding)
-    py1 = max(0, y1 - padding)
-    px2 = min(img_w, x2 + padding)
-    py2 = min(img_h, y2 + padding)
+        logger.info(f"{bboxes_array}")
 
-    crop_x1, crop_y1 = int(px1), int(py1)
-    crop_x2, crop_y2 = int(px2), int(py2)
+        # Aplicar padding y clipping
+        px1 = max(0, x1 - padding)
+        py1 = max(0, y1 - padding)
+        px2 = min(img_w, x2 + padding)
+        py2 = min(img_h, y2 + padding)
 
-    cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
-    return cropped
+        crop_x1, crop_y1 = int(px1), int(py1)
+        crop_x2, crop_y2 = int(px2), int(py2)
+
+        cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
+        return cropped
+    except Exception as e:
+        logger.error(f"Error en output: {e}", exc_info=True)
 
 def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:
     return cv2.bilateralFilter(img, d, sigma_color, sigma_space).astype(np.uint8)

@@ -51,7 +51,7 @@ class Refiner(OCRAbstractWorker):
                 if cropped_img is None:
                     logger.warning(f"Cropped_img de {poly_id} es None")
                     continue
-
+                self.worker_config["poly_id"] = poly_id
                 # Analiza la imagen y asigna el diccionario de métricas resultante a la clave correspondiente al poly_id actual.
                 # logger.info(f"{poly_id}:")
                 bin_img = binarice_img(cropped_img, {})
@@ -67,11 +67,10 @@ class Refiner(OCRAbstractWorker):
                     continue
                 
                 if self.output_blobs:
+                    self.worker_config["output"] = self.output_blobs
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    output_paths = context["output_paths"]
-                    self.worker_config["output_paths"] = output_paths
+                    self.worker_config["output_paths"] = context["output_paths"]
                     self.worker_config["image_name"] = image_name
-                    self.worker_config["poly_id"] = poly_id
 
                 self.worker_config["text"] = polygon.ocr_text
                 metrics = analize_bin_img(bin_img, self.worker_config, False)
