@@ -23,6 +23,7 @@ class PreprocessingOutputs(ConfigWithNumpy):
 class OCROutputs(ConfigWithNumpy):
     ocr_raw: bool
     binarized_polygons: bool
+    cropp_blobs: bool
     fragmented_polys: bool
     reconstructed_lines: bool
     semantic_field: bool

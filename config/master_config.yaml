@@ -47,7 +47,8 @@ enabled_outputs:
   
   ocr_outputs:
     ocr_raw: false
-    binarized_polygons: true
+    binarized_polygons: false
+    cropp_blobs: true
     fragmented_polys: false
     reconstructed_lines: false
     semantic_field: false

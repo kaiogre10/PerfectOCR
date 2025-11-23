@@ -25,6 +25,7 @@ class Refiner(OCRAbstractWorker):
         self.worker_config["percentile"] = self.percentile 
         self.num_passes = self.worker_config.get("num_passes")
         self.delete_cropp = config.get("fragmented_polys")
+        self.output_blobs = config.get("cropp_blobs")
         self.output = config.get("binarized_polygons")
         self.clasificator = clasificator
         self.cleaner = cleaner
@@ -52,7 +53,7 @@ class Refiner(OCRAbstractWorker):
                     continue
 
                 # Analiza la imagen y asigna el diccionario de métricas resultante a la clave correspondiente al poly_id actual.
-                logger.info(f"{poly_id}:")
+                # logger.info(f"{poly_id}:")
                 bin_img = binarice_img(cropped_img, {})
 
                 if self.output:
@@ -65,6 +66,13 @@ class Refiner(OCRAbstractWorker):
                 if not validate_text(polygon.ocr_text or ""):
                     continue
                 
+                if self.output_blobs:
+                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                    output_paths = context["output_paths"]
+                    self.worker_config["output_paths"] = output_paths
+                    self.worker_config["image_name"] = image_name
+                    self.worker_config["poly_id"] = poly_id
+
                 self.worker_config["text"] = polygon.ocr_text
                 metrics = analize_bin_img(bin_img, self.worker_config, False)
                 if metrics.get('needs_fragmentation'):

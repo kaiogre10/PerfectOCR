@@ -3,7 +3,8 @@ import cv2
 import numpy as np
 import logging
 from typing import Dict, Any, List, Tuple
-from core.utils.image_utils import binarice_img
+from services.output_service import save_croped_image
+from core.utils.image_utils import binarice_img, cropp_img
 from core.utils.text_encoder import text_compacter
 from core.utils.text_validator import valid_punt_chars
 
@@ -77,8 +78,6 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
         else:
             chars.remove(ch)
 
-    max_elements = len(clean_txt)
-
     logger.info(f"Origial: {text}, limpio: {clean_txt}, gaps: {wgaps}")
 
     connectivity = worker_config.get("connectivity", {})
@@ -86,30 +85,49 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     solidity_threshold =  worker_config.get("solidity_threshold", {})
     bbox_area =  bin_img.size
     min_area = bbox_area*min_area_factor
+    image_name = worker_config["image_name"]
+    max_elements = len(clean_txt)
 
     # 1. Etiquetado rápido
     cc = cv2.connectedComponentsWithStats(bin_img, connectivity)
 
+    logger.info(f"{np.array(cc[1]).shape}")
+
     areas = cc[2][1:, cv2.CC_STAT_AREA]  # Excluye el fondo (label 0)
-    top_indices = np.argsort(areas)[::-1]  # Índices ordenados (0 es el blob más grande)
-    top_labels = top_indices[:max_elements] + 1  # +1 porque cc[2][0] es fondo
-    logger.info(f"numero de labels: {cc[0]}, top_labels: {len(top_labels)}")
+    sorted_desc_idx = np.argsort(areas)[::-1]  # Índices ordenados (0 es el blob más grande)
+    top_indices = sorted_desc_idx[:max_elements] + 1  # +1 porque cc[2][0] es fondo
+    top_indices_sorted = np.sort(top_indices)
+    top_labels = top_indices_sorted
     areas_array = np.array(areas, dtype=np.float32)
     min_area_quan = np.quantile(areas_array, percentile[0])
-    logger.info(f"Factor: {min_area}, Cuantil: {min_area_quan}")
+    # logger.info(f"Factor: {min_area}, Cuantil: {min_area_quan}")
+    # logger.info(f"Top labels: {len(top_labels)}, max elements: {len(clean_txt)}")
 
+    text_array = np.array(clean_txt)
+    logger.info(f"TEXT ARRAY: {text_array}")
     cc_list: List[Any]= []
-    logger.info(f"{top_labels}")
 
     for label in top_labels:
         x, y, w, h, area = (cc[2][label, cv2.CC_STAT_LEFT], cc[2][label, cv2.CC_STAT_TOP], cc[2][label, cv2.CC_STAT_WIDTH], cc[2][label, cv2.CC_STAT_HEIGHT], cc[2][label, cv2.CC_STAT_AREA])
 
-        # cx, cy = centroids[lab]
-        # logger.info(f"Componente {lab}: x={x}, y={y}, w={w}, h={h}, area={area}, centro=({cx},{cy})")
+        # centroid = cc[3][label] #type: ignore
+        # logger.info(f"Componente {label}: x={x}, y={y}, w={w}, h={h}, area={area}, centro=({centroid[0]}, {centroid[1]})")
+        
+        if image_name:
+            from services.output_service import save_croped_image
+            worker_name = "image_analizer"
+            output_paths = worker_config["output_paths"]
+            poly = worker_config["poly_id"]
+            poly_id = f"{poly}_{label}"
+            bbox = [x, y, x + w, y + h]
+            cropped_img = cropp_img(bin_img, bbox)
+            save_croped_image(image_name, poly_id, cropped_img, output_paths, worker_name, method="components") # type: ignore
+
         if area < min_area_quan: #or area < min_area:
         
             continue
-        logger.info(f"Area aprobada: '{area}' para {label}")
+        # logger.info(f"Area aprobada: '{area}' para {label}")
+
         try:
             # Crear una máscara solo para este blob
             component_mask: np.ndarray[Any, np.dtype[np.uint8]] = ((label == top_labels).astype(np.uint8))

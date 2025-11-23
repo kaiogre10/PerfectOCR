@@ -10,19 +10,6 @@ def validate_text(text: str) -> bool:
 def get_char_num() -> Set[str]:
     char_num: Set[str] = set(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"])
     return char_num
-
-def not_valid_chars() -> Set[str]:
-    return {
-        "~",
-        "©",
-        "®",
-        "™",
-        "`",
-        "¬",
-        "¨",
-        "÷",
-        "°"
-    }
     
 def get_special_chars() -> Set[str]:
     return {
@@ -56,13 +43,25 @@ def descritive_corrections() -> Dict[str, str]:
         "0": "O"
     }
 
+def not_valid_chars() -> Set[str]:
+    return {
+        "~",
+        "©",
+        "®",
+        "™",
+        "`",
+        "¬",
+        "¨",
+        "÷",
+        "°"
+    }
+
 def valid_punt_chars() -> Set[str]:
     not_valid_punt_chars: Set[str] = set({
-        ".", "*", "^", "°"
+        ".", "*", "^", "°", ",",
         "-", "_", "=",  ";", ":",
         "'",  "´", "''", "¨"
     })
-    
     return not_valid_punt_chars.union(not_valid_chars())
 
 def punc_chars() -> Set[str]:
