@@ -38,6 +38,7 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
             "needs_fragmentation": needs_fragmentation,
             "cause": "not_enought_data"
         }
+    
     num_blobs = cc_metrics["num_blobs"]
     blob_metrics: Dict[str, Any] = {
         "needs_fragmentation": needs_fragmentation,
@@ -69,7 +70,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     poly = worker_config["poly_id"]
     valid_punt = valid_punt_chars()
     # percentile: Tuple[float, float] = worker_config["percentile"]
-    num_words = len(text.split())
+    # num_words = len(text.split())
     # wgaps = num_words - 1
     chars = list(text_compacter(text))
     clean_txt: List[str] = []
@@ -98,18 +99,15 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
 
     label_labeled = np.arange(1, n_labels).astype(np.uint16)
     cx, cy = np.hsplit(centroids[:-1], (2))
-    # logger.info(f"cx shape: {cx.shape} | cy shape: {cy.shape}")
     
     mapped_stats = np.column_stack([label_labeled, stats[1:, cv2.CC_STAT_AREA], stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP], stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT], cx, cy]).astype(np.uint16)
     logger.info(f"Full matrix: {mapped_stats.shape}, LABELS: {labels[+1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
     logger.info(f"Tmaño imagne: '{bin_img.shape}'")
-    # # logger.info(f"N_LABELS: '{len(labels[1:])}'")
-    # logger.info(f"STATS: {stats[1:].shape}")
     unique_labs = np.unique(labels, return_index=True, axis=0)[0]
 
     # logger.info(f"LABELS: {unique_labs}")
     extract_labs = np.extract(unique_labs, labels)
-    # logger.info(f"{extract_labs}")
+    logger.info(f"{extract_labs}")
 
     # Ahora 'areas' tiene valores únicos
     text_array = np.array(clean_txt, dtype=np.unicode_)
@@ -132,6 +130,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
 
         # Recorre cada blob y guarda su recorte
     cc_list: List[Any]= []
+    contours_list: List[Any] = []
     for i in range(full_array.shape[0]):
         pos = int(full_array[i, 0])
         area = int(full_array[i, 1])
@@ -143,35 +142,32 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
         cy = int(full_array[i, 7])
         
         try:
+            # if area < min_area:
+            #     # logger.info(f"Demasiado pequeño")
+            #     continue
             # Crear una máscara solo para este blob
-            component_mask = (labels).astype(np.uint8)
+            component_mask: np.ndarray[Any, np.dtype[np.uint8]] = (labels[:, 1]).astype(np.uint8)
             
             # Encontrar contornos solo en esta máscara (muy rápido)
             contours, _ = cv2.findContours(component_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            # logger.info(f"{len(contours)} vs {sorted_labels}")
-            # logger.info(f"{np.mean(component_mask)}")
-
             if not contours:
                 logger.warning("Sin contornos")
                 return {}
-            
+
             c = max(contours, key=cv2.contourArea)
             hull = cv2.convexHull(c)
             hull_area: float = cv2.contourArea(hull)
-            # logger.info(f"HULL: {hull}, HULL AREA: {hull_area}")
 
             if hull_area == 0.0:
-                logger.info(f"{poly} descartado por area de hull")
+                # logger.info(f"{poly} descartado por area de hull")
                 continue
 
             solidity = float(area) / hull_area
 
-            # logger.info(f"SOLIDUTY:{solidity}")
-
             # Descartar formas "dispersas" o "huecas" (ruido)
             if solidity < solidity_threshold:
-                logger.info(f"{poly} descartada por solidez")
+                # logger.info(f"{poly} descartada por solidez")
                 continue
 
         except cv2.error:
@@ -179,11 +175,12 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
 
         cc_list.append({
             "label": pos,
+            "contours": contours,
             "x": int(x), "y": int(y), "w": int(w), "h": int(h),
             "area": int(area),
             "cx": float(cx), "cy": float(cy)
         })
-            
+
     if not cc_list:
         # logger.error("SIN CCLIST")
         return {}
@@ -195,6 +192,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
 
     # Normalizar características por H_mean (inmune a DPI)
     for c in cc_list:
+        logger.info(f"{c["label"]}")
         c["w_norm"] = c["w"] / max(1.0, H_median)
         c["h_norm"] = c["h"] / max(1.0, H_median)
         c["area_norm"] = c["area"] / max(1.0, bbox_area)
@@ -230,6 +228,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
 
     # logger.info(f"DIVISIONES PRECALCULADAS: '{num_words}', NUM_BLOBS: '{len(cc_sorted)}")
     metrics: Dict[str, Any] = {
+        "contours": contours_list,
         "cc": cc_sorted,
         "density": density,
         "gaps_norm": gaps,

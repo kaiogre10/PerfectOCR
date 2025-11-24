@@ -47,8 +47,8 @@ class InkEnhancer(PreprocessingAbstractWorker):
                     logger.warning(f"{poly_id} sin imagen")
                     continue
 
-                bin_img = binarice_img(cropped_img.copy(), {})
-                metrics = extract_cc_metrics(bin_img, 0.5)
+                # bin_img = binarice_img(cropped_img.copy(), {})
+                # metrics = extract_cc_metrics(bin_img, 0.5)
                 # logger.info(f"{metrics}")
                 
                 analysis = self._analyze_ink_quality(cropped_img)
