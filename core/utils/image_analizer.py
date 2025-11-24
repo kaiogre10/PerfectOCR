@@ -23,7 +23,7 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     else:
         bin_img = img    
 
-    cc_metrics = extract_cc_metrics(bin_img, worker_config, text)
+    cc_metrics = analice_cc_metrics(bin_img, worker_config)
 
     if not cc_metrics or len(cc_metrics["cc"]) == 0:
         logger.debug("No se detectaron componentes conectados válidos tras el filtrado.")
@@ -61,7 +61,7 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], text: str) -> np.ndarray[str, Any]:
+def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[str, Any]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
@@ -72,52 +72,67 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     # percentile: Tuple[float, float] = worker_config["percentile"]
     # num_words = len(text.split())
     # wgaps = num_words - 1
-    chars = list(text_compacter(text))
-    clean_txt: List[str] = []
-    for ch in chars:
-        if not ch.isalnum():
-            if ch in valid_punt:
-                continue
-            if not ch.isascii():
-                continue
-
-            clean_txt.append(ch)
-        clean_txt.append(ch)
-
-    # logger.info(f"{poly}: Origial: {text}, limpio: {clean_txt}")
 
     connectivity: int = worker_config.get("connectivity", {})
     min_area_factor = worker_config.get("min_area_factor", {})
     solidity_threshold =  worker_config.get("solidity_threshold", {})
-    output = worker_config.get("output")
-    bbox_area =  bin_img.size
-    min_area = bbox_area*min_area_factor
     
     # 1. Etiquetado rápido
-    logger.info(f"{poly}, connectividad: {connectivity}")
+    logger.info(f"{poly}")
+   
+    contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cont_coords = contours[0].reshape(-1, 2)
+
+  #  x, y, w, h = cv2.boundingRect(contours[i])
+    
+    logger.info(f"CONTORNO: {cont_coords}")
+    contours_array = np.array(cont_coords, dtype=np.uint16)
+    logger.info(f"SHAPE: {contours_array.shape}")
+                
+    contours_area = cv2.c
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity= connectivity)
 
     label_labeled = np.arange(1, n_labels).astype(np.uint16)
     cx, cy = np.hsplit(centroids[:-1], (2))
     
     mapped_stats = np.column_stack([label_labeled, stats[1:, cv2.CC_STAT_AREA], stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP], stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT], cx, cy]).astype(np.uint16)
-    logger.info(f"Full matrix: {mapped_stats.shape}, LABELS: {labels[+1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
-    logger.info(f"Tmaño imagne: '{bin_img.shape}'")
-    unique_labs = np.unique(labels, return_index=True, axis=0)[0]
+    logger.debug(f"Full matrix: {mapped_stats.shape}, LABELS: {labels[+1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
+  #  logger.info(f"Tmaño imagne: '{bin_img.shape}'")
+   # unique_labs = np.unique(labels, return_index=True, axis=0)[0]
 
     # logger.info(f"LABELS: {unique_labs}")
-    extract_labs = np.extract(unique_labs, labels)
-    logger.info(f"{extract_labs}")
+   ##extract_labs = np.extract(unique_labs, labels)
+   # logger.info(f"{extract_labs}")
 
-    # Ahora 'areas' tiene valores únicos
+    return mapped_stats
+
+def analice_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
+   
+    text = worker_config.get("text", "")
+    valid_punt = valid_punt_chars()
+    poly = worker_config.get("poly_id")
+    solidity_threshold = worker_config.get("solidity_threshold")
+    # percentile: Tuple[float, float] = worker_config["percentile"]
+    # num_words = len(text.split())
+    # wgaps = num_words - 1
+    chars = list(text_compacter(text))
+    clean_txt: List[str] = []
+    for ch in chars:
+        if not ch.isalnum():
+            if ch in valid_punt:
+                continue 
+
+            if not ch.isascii():
+                continue 
+
+            clean_txt.append(ch)
+        clean_txt.append(ch)
+   
     text_array = np.array(clean_txt, dtype=np.unicode_)
-    logger.info(f"MAX ELEMENTS{len(text_array)}")
+    mapped_stats = extract_cc_metrics(bin_img, worker_config)
+    return {}
     sorted_areas = np.sort(mapped_stats[:, 1])[::-1]
 
-    return sorted_areas
-
-def analice_cc_metrics():
-    
     sorted_labels = sorted_areas[:len(text_array)]
     
     condition = np.isin(mapped_stats[: ,1], sorted_labels, invert=False)
@@ -132,6 +147,7 @@ def analice_cc_metrics():
     # logger.info(f"{full_array[0]}")
     
         # Recorre cada blob y guarda su recorte
+    cc_list: List[Any] = []
     for i in range(full_array.shape[0]):
         pos = int(full_array[i, 0])
         area = int(full_array[i, 1])
@@ -185,6 +201,8 @@ def analice_cc_metrics():
     if not cc_list:
         # logger.error("SIN CCLIST")
         return {}
+   
+    bbox_area = bin_img.size
 
     heights = np.array([c["h"] for c in cc_list], dtype=np.float32)
     H_median = np.median(heights).astype(np.float32)
@@ -203,6 +221,7 @@ def analice_cc_metrics():
 
     logger.info(f"Cantidad de cc:{len(cc_sorted)}")
 
+    output = worker_config.get("output")
     if output:
         worker_name = "image_analizer"
         image_name = worker_config["image_name"]
@@ -229,7 +248,7 @@ def analice_cc_metrics():
 
     # logger.info(f"DIVISIONES PRECALCULADAS: '{num_words}', NUM_BLOBS: '{len(cc_sorted)}")
     metrics: Dict[str, Any] = {
-        "contours": contours_list,
+        #"contours": contours,
         "cc": cc_sorted,
         "density": density,
         "gaps_norm": gaps,
