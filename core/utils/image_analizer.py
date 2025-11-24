@@ -61,7 +61,7 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], text: str) -> Dict[str, Any]:
+def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], text: str) -> np.ndarray[str, Any]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
@@ -113,6 +113,11 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     text_array = np.array(clean_txt, dtype=np.unicode_)
     logger.info(f"MAX ELEMENTS{len(text_array)}")
     sorted_areas = np.sort(mapped_stats[:, 1])[::-1]
+
+    return sorted_areas
+
+def analice_cc_metrics():
+    
     sorted_labels = sorted_areas[:len(text_array)]
     
     condition = np.isin(mapped_stats[: ,1], sorted_labels, invert=False)
@@ -125,12 +130,8 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     # logger.info(f"FULL ARRAY:"
     #             "\n"f"{full_array}, SHAPE: {full_array.shape}") 
     # logger.info(f"{full_array[0]}")
-    # return {}
     
-
         # Recorre cada blob y guarda su recorte
-    cc_list: List[Any]= []
-    contours_list: List[Any] = []
     for i in range(full_array.shape[0]):
         pos = int(full_array[i, 0])
         area = int(full_array[i, 1])
