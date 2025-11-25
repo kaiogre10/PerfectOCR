@@ -8,15 +8,15 @@ pipeline_secuence:
 
   preprocessing_stage:
     #- "moire"
-    #- "sp"
+    - "sp"
     #- "gauss"
     # - "ink_enhancement"
    # - "clahe"
     #- "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
-    - "text_refiner"
+  #  - "paddle_wrapper"
+  ## - "text_refiner"
     # - "data_finder"
     
   vector_stage:
@@ -103,7 +103,7 @@ modules:
     sp_config:
       kernel_size: 3
       salt_pepper_threshold: 0.015
-      # salt_pepper_low: 15
+      salt_pepper_low: 10
       salt_pepper_high: 250
       sobel_threshold: 0.85
 

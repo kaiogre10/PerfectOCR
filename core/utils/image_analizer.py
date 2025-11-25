@@ -2,7 +2,7 @@
 import cv2
 import numpy as np
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 from services.output_service import save_croped_image
 from core.utils.image_utils import binarice_img
 from core.utils.text_encoder import text_compacter
@@ -23,7 +23,7 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     else:
         bin_img = img    
 
-    cc_metrics = analice_cc_metrics(bin_img, worker_config)
+    cc_metrics, cc = analice_cc_metrics(bin_img, worker_config)
 
     if not cc_metrics or len(cc_metrics["cc"]) == 0:
         logger.debug("No se detectaron componentes conectados válidos tras el filtrado.")
@@ -61,24 +61,25 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]):
+def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], binarice: Optional[bool] = False) -> Tuple[np.ndarray[Any, np.dtype[np.uint16]], Dict[str, Any]]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
     bin_img: np.uint8, foreground=255, background=0
     """
-    poly = worker_config["poly_id"]
-    valid_punt = valid_punt_chars()
-    # percentile: Tuple[float, float] = worker_config["percentile"]
-    # num_words = len(text.split())
-    # wgaps = num_words - 1
+    if not binarice or binarice is None:
+        bin_img = img
 
-    connectivity: int = worker_config.get("connectivity", {})
-    min_area_factor = worker_config.get("min_area_factor", {})
-    solidity_threshold =  worker_config.get("solidity_threshold", {})
+    else:
+        bin_img = binarice_img(img, worker_config={})
+  
+
+    #poly = worker_config["poly_id"]
+
+    connectivity: int = worker_config.get("connectivity", 8)
     
     # 1. Etiquetado rápido
-    logger.info(f"{poly}")
+    #logger.info(f"{poly}")
    
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cont_array_dict: Dict[int, Dict[str, Any]]= {}
@@ -90,14 +91,14 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
         cont_area = cv2.contourArea(cont_coords)
         hull_area = cv2.contourArea(convex_hull)
         cont_array_dict[i] = {
-                "cont_coords": cont_coords,
-                "count_bbox": count_bbox,
-                "convex_hull": convex_hull,
-                "cont_area": cont_area,
-                "hull_area": hull_area
+            "pos_cont": i,
+            "cont_coords": cont_coords,
+            "count_bbox": count_bbox,
+            "convex_hull": convex_hull,
+            "cont_area": cont_area,
+            "hull_area": hull_area
         }
 
-        pos_cont.append(i)
         #  x, y, w, h = cv2.boundingRect(contours[i])
         # logger.info(f" CONTORNO: {i}: Coordenadas: {cont_coords}, AREA: {cont_area}, CONVEX AREA: {hull_area}")
                 
@@ -106,7 +107,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     label_labeled = np.arange(1, n_labels).astype(np.uint16)
     cx, cy = np.hsplit(centroids[:-1], (2))    
     mapped_stats = np.column_stack([label_labeled, stats[1:, cv2.CC_STAT_AREA], stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP], stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT], cx, cy]).astype(np.uint16)
-    logger.info(f"MAPPED_STATS: {mapped_stats.shape}") 
+   # logger.info(f"MAPPED_STATS: {mapped_stats.shape}") 
     logger.debug(f"LABELS: {labels[+1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
   #  logger.info(f"Tmaño imagne: '{bin_img.shape}'")
    # unique_labs = np.unique(labels, return_index=True, axis=0)[0]
@@ -115,7 +116,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
    ##extract_labs = np.extract(unique_labs, labels)
    # logger.info(f"{extract_labs}")
 
-    return mapped_stats, cont_array_dict
+    return [mapped_stats, cont_array_dict]
 
 def analice_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
    

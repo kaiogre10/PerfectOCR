@@ -69,7 +69,7 @@ class MoireConfig(ConfigWithNumpy):
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
     salt_pepper_threshold: float
-    # salt_pepper_low: int
+    salt_pepper_low: int
     salt_pepper_high: int
     sobel_threshold: float
 
