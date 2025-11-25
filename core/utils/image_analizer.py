@@ -61,7 +61,7 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[str, Any]:
+def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]):
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
@@ -81,22 +81,33 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
     logger.info(f"{poly}")
    
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cont_coords = contours[0].reshape(-1, 2)
+    cont_array_dict: Dict[int, Dict[str, Any]]= {}
+    pos_cont: List[int] = []
+    for i, cont in enumerate(contours):
+        cont_coords = cont.reshape(-1, 2)
+        count_bbox = cv2.boundingRect(cont_coords)
+        convex_hull = np.array(cv2.convexHull(cont_coords))
+        cont_area = cv2.contourArea(cont_coords)
+        hull_area = cv2.contourArea(convex_hull)
+        cont_array_dict[i] = {
+                "cont_coords": cont_coords,
+                "count_bbox": count_bbox,
+                "convex_hull": convex_hull,
+                "cont_area": cont_area,
+                "hull_area": hull_area
+        }
 
-  #  x, y, w, h = cv2.boundingRect(contours[i])
-    
-    logger.info(f"CONTORNO: {cont_coords}")
-    contours_array = np.array(cont_coords, dtype=np.uint16)
-    logger.info(f"SHAPE: {contours_array.shape}")
+        pos_cont.append(i)
+        #  x, y, w, h = cv2.boundingRect(contours[i])
+        # logger.info(f" CONTORNO: {i}: Coordenadas: {cont_coords}, AREA: {cont_area}, CONVEX AREA: {hull_area}")
                 
-    contours_area = cv2.c
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity= connectivity)
 
     label_labeled = np.arange(1, n_labels).astype(np.uint16)
-    cx, cy = np.hsplit(centroids[:-1], (2))
-    
+    cx, cy = np.hsplit(centroids[:-1], (2))    
     mapped_stats = np.column_stack([label_labeled, stats[1:, cv2.CC_STAT_AREA], stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP], stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT], cx, cy]).astype(np.uint16)
-    logger.debug(f"Full matrix: {mapped_stats.shape}, LABELS: {labels[+1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
+    logger.info(f"MAPPED_STATS: {mapped_stats.shape}") 
+    logger.debug(f"LABELS: {labels[+1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
   #  logger.info(f"Tmaño imagne: '{bin_img.shape}'")
    # unique_labs = np.unique(labels, return_index=True, axis=0)[0]
 
@@ -104,7 +115,7 @@ def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
    ##extract_labs = np.extract(unique_labs, labels)
    # logger.info(f"{extract_labs}")
 
-    return mapped_stats
+    return mapped_stats, cont_array_dict
 
 def analice_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
    
@@ -129,11 +140,11 @@ def analice_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_conf
         clean_txt.append(ch)
    
     text_array = np.array(clean_txt, dtype=np.unicode_)
-    mapped_stats = extract_cc_metrics(bin_img, worker_config)
-    return {}
-    sorted_areas = np.sort(mapped_stats[:, 1])[::-1]
+    mapped_stats, cont_array_dict = extract_cc_metrics(bin_img, worker_config)
 
-    sorted_labels = sorted_areas[:len(text_array)]
+    sorted_cc = np.sort(mapped_stats[:, 1])[::-1]
+
+    sorted_labels = sorted_cc[:len(text_array)]
     
     condition = np.isin(mapped_stats[: ,1], sorted_labels, invert=False)
     top_labels = np.compress(condition, mapped_stats, axis=0)
