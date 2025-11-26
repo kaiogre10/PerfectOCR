@@ -87,7 +87,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
     for i, cont in enumerate(contours):
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
         cont_bbox = cv2.boundingRect(cont_coords)
-        convex_hull = cv2.convexHull(cont_coords)
+        convex_hull = np.array(cv2.convexHull(cont_coords))
         cont_area = cv2.contourArea(cont_coords)
         hull_area = cv2.contourArea(convex_hull)
         

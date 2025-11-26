@@ -114,6 +114,7 @@ class InkConfig(ConfigWithNumpy):
 
 class RestoreConfig(ConfigWithNumpy):
     area_threshold: int
+    kernel_threshold: int
 
 class PreprocessingConfig(ConfigWithNumpy):
     restorer: RestoreConfig
