@@ -29,7 +29,7 @@ class OCRStager(AbstractStager):
             context["worker_name"] = worker_name  # Actualiza el nombre en cada iteración
 
             if not worker.transcribe(context, manager):
-                logger.error(f"Worker {worker_name} falló o devolvió resultados vacíos")
+                logger.error(f"Worker {worker_name} falló o devolvió resultados vacíos", exc_info=True)
                 return None, 0.0
             if manager.workflow:
                 worker_time = time.time() - worker_start

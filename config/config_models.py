@@ -13,6 +13,8 @@ class ImgLoadOutputs(ConfigWithNumpy):
     discarded_polys: bool
 
 class PreprocessingOutputs(ConfigWithNumpy):
+    contours: bool
+    components: bool
     moire_poly: bool
     sp_poly: bool
     gauss_poly: bool
@@ -110,7 +112,11 @@ class InkConfig(ConfigWithNumpy):
     faded_detection_threshold: float
     contrast_boost_factor: float
 
+class RestoreConfig(ConfigWithNumpy):
+    area_threshold: int
+
 class PreprocessingConfig(ConfigWithNumpy):
+    restorer: RestoreConfig
     moire: MoireConfig
     sp_config: SaltPepper 
     gauss_params: GaussianConfig

@@ -30,7 +30,7 @@ class PreprocessingStager(AbstractStager):
                 
             # Worker procesa esta imagen específica
             if not worker.preprocess(context, manager):
-                logger.error(f"Worker {worker_name} falló")
+                logger.error(f"Worker {worker_name} falló", exc_info=True)
                 return None, 0.0
 
             worker_time = time.time() - worker_start

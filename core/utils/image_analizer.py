@@ -23,7 +23,7 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     else:
         bin_img = img    
 
-    cc_metrics, cc = analice_cc_metrics(bin_img, worker_config)
+    cc_metrics, _, _ = analice_cc_metrics(bin_img, worker_config)
 
     if not cc_metrics or len(cc_metrics["cc"]) == 0:
         logger.debug("No se detectaron componentes conectados válidos tras el filtrado.")
@@ -61,19 +61,19 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], binarice: Optional[bool] = False) -> Tuple[np.ndarray[Any, np.dtype[np.uint16]], Dict[str, Any]]:
+def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], binarice: Optional[bool] = False) -> Tuple[Dict[int, Any], Optional[np.ndarray[Any, np.dtype[np.uint8]]]]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
     bin_img: np.uint8, foreground=255, background=0
     """
     if not binarice or binarice is None:
+        binarice = False
         bin_img = img
 
     else:
         bin_img = binarice_img(img, worker_config={})
   
-
     #poly = worker_config["poly_id"]
 
     connectivity: int = worker_config.get("connectivity", 8)
@@ -82,33 +82,30 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
     #logger.info(f"{poly}")
    
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cont_array_dict: Dict[int, Dict[str, Any]]= {}
-    pos_cont: List[int] = []
+    cont_array_dict: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.uint16]]] | float]= {}
+    
     for i, cont in enumerate(contours):
-        cont_coords = cont.reshape(-1, 2)
-        count_bbox = cv2.boundingRect(cont_coords)
-        convex_hull = np.array(cv2.convexHull(cont_coords))
+        cont_coords = cont.reshape(-1, 2).astype(np.int32)
+        cont_bbox = cv2.boundingRect(cont_coords)
+        convex_hull = cv2.convexHull(cont_coords)
         cont_area = cv2.contourArea(cont_coords)
         hull_area = cv2.contourArea(convex_hull)
+        
         cont_array_dict[i] = {
-            "pos_cont": i,
             "cont_coords": cont_coords,
-            "count_bbox": count_bbox,
+            "cont_bbox": cont_bbox,
             "convex_hull": convex_hull,
             "cont_area": cont_area,
             "hull_area": hull_area
         }
-
-        #  x, y, w, h = cv2.boundingRect(contours[i])
-        # logger.info(f" CONTORNO: {i}: Coordenadas: {cont_coords}, AREA: {cont_area}, CONVEX AREA: {hull_area}")
-                
+    
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity= connectivity)
 
     label_labeled = np.arange(1, n_labels).astype(np.uint16)
     cx, cy = np.hsplit(centroids[:-1], (2))    
     mapped_stats = np.column_stack([label_labeled, stats[1:, cv2.CC_STAT_AREA], stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP], stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT], cx, cy]).astype(np.uint16)
    # logger.info(f"MAPPED_STATS: {mapped_stats.shape}") 
-    logger.debug(f"LABELS: {labels[+1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
+    logger.debug(f"LABELS: {labels[1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
   #  logger.info(f"Tmaño imagne: '{bin_img.shape}'")
    # unique_labs = np.unique(labels, return_index=True, axis=0)[0]
 
@@ -116,7 +113,15 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
    ##extract_labs = np.extract(unique_labs, labels)
    # logger.info(f"{extract_labs}")
 
-    return [mapped_stats, cont_array_dict]
+    image_metrics: Dict[str, Any] = { 
+        "mapped_stats": mapped_stats, 
+        "cont_array_dict": cont_array_dict
+    }
+    if binarice:
+        return image_metrics, bin_img
+    
+    else:
+        return image_metrics, None
 
 def analice_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
    

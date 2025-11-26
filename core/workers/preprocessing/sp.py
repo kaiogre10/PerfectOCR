@@ -8,7 +8,6 @@ from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.utils.image_utils import use_sobel
-from core.utils.image_analizer import extract_cc_metrics
 
 logger = logging.getLogger(__name__)
     
@@ -51,8 +50,6 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 if cropped_img is None:
                     logger.warning(f"Imagen no encontrada para el polígono '{poly_id}'")
                     continue
-               
-                corrected2 = self.analized_blobs(cropped_img.copy())
                 
                 analysis = self._analyze_image_for_sp(cropped_img)
                 if analysis:
@@ -95,7 +92,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 analysis_results = metrics[idx]
                 ksize = int(ksizes[idx])
 
-                # logger.info(f"{poly_id}:")
+                logger.info(f"{poly_id}:")
 
                 corrected_img = self._apply_sp_correction(
                     analysis_results,
@@ -104,8 +101,6 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 
                 polygon.cropped_img.cropped_img = corrected_img
                
-                
-                
                 if self.output:
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "sp"
@@ -170,11 +165,3 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         else:
             logger.info(f"Corrección S&P revertida por pérdida de nitidez")
             return original_img
-
-    def analized_blobs(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        cc, contours = extract_cc_metrics(cropped_img, worker_config={}, binarice=True)
-        logger.info(f"Shaoe: {cc.shape}")
-        mask = cc[:, 1] < self.salt_pepper_low
-        blobs = cc[mask]
-        logger.info(f" blobs {blobs[:, 1]}")
-        noise = contours.get("")

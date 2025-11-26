@@ -26,7 +26,7 @@ class ImagePreparationStager(AbstractStager):
                 "output_paths": self.output_paths
             } 
             if not worker.process(context, manager):
-                logger.error(f"Fallo en {worker.__class__.__name__}")
+                logger.error(f"Fallo en {worker.__class__.__name__}", exc_info=True)
                 return None, 0.0
 
             logger.debug(f" {worker.__class__.__name__} completado en {time.perf_counter() - worker_start:.6f}s")

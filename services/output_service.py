@@ -8,6 +8,21 @@ from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
+def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, np.dtype[np.uint8]], output_paths: List[str] | str, worker_name: str, contours1: List[np.ndarray[Any, Any]], contours2: List[np.ndarray[Any, Any]], method: str):
+    """Guarda una imagen con los contornos marcados sobre ella"""
+    import cv2
+    if isinstance(output_paths, str):
+        output_paths = [output_paths]
+
+    for path in output_paths:
+        output_dir = os.path.join(path, worker_name, image_name, method)
+        file_name = f"{poly_id}.png"
+        # Dibuja todos los contornos sobre la imagen
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) #type: ignore
+        cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 0, 255), thickness=1) # ruido
+        cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 255, 0), thickness=1) # blobs
+        save_image(image, output_dir, file_name)
+
 def save_croped_image(image_name: str, poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, method: Optional[str] = None): 
     """Guarda una imagen de depuración si la salida está habilitada."""
     if isinstance(output_paths, str):
@@ -34,6 +49,7 @@ def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file
         os.makedirs(output_dir, exist_ok=True)
         img_path = os.path.join(output_dir, file_name)
         cv2.imwrite(img_path, image)
+        
         return img_path
     except Exception as e:
         logger.error(f"Error guardando '{file_name}' imagen: {e}")
