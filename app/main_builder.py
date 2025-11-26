@@ -6,16 +6,25 @@ from core.pipeline.stagers_factory import StagersFactory
 from core.domain.data_formatter import DataFormatter
 from services.config_service import ConfigService
 from core.domain.models_manager import ModelsManager
+from services.cache_service import cleanup_project_cache
 import time
 import logging
 
 logger = logging.getLogger(__name__)
 
-def activate_main(input_paths: List[str], output_paths: List[str], config_path: str, project_root: str) -> List[str]:
+def activate_main(input_paths: List[str], output_paths: List[str], config_path: str, project_root: str, TEST_MODE: bool) -> List[str]:
+    t0 = time.perf_counter()
     try:
+        if not input_paths or not config_path or not project_root:
+            import os
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            cleanup_project_cache(project_root)
+            logger.error("NO HAY RUTAS PRINCIPALES PARA PIPELINE, REVISAR MAIN"
+                         "\n"f"PROCESO DETENIDO: {time.perf_counter() - t0}s")
+            return  []
+        
         # 1. Main activa al Configurador y valida parametros mínimos
-        t0 = time.perf_counter()
-        config_services = ConfigService(config_path)
+        config_services = ConfigService(config_path, TEST_MODE)
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
         workflow_manager = WorkFlowBuilder(config=config_services.processing_config, project_root=project_root, input_paths=input_paths)
@@ -24,6 +33,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         workflow_report = workflow_manager.count_and_plan()
 
         if not workflow_report:
+            cleanup_project_cache(project_root)
             logger.error("Error en rutas para imágenes, abortando proceso")
             return []
         
@@ -43,18 +53,14 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         results = execute_processing(builders, workflow_report)
         logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
         logger.info(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
+
+        cleanup_project_cache(project_root)
         return results #type: ignore
         
     except Exception as e:
-        logger.fatal(f"Error fatal en main: {e}", exc_info=True)
-        return []
-        
-    finally:
-        try:
-            from services.cache_service import cleanup_project_cache
-            cleanup_project_cache(project_root)
-        except Exception as e:
-            logging.error(f"Error durante la limpieza de caché: {e}", exc_info=True)
+        logger.error(f"Error fatal en MAIN BUILDER: {e}", exc_info=True)
+    return []
+    
 
 def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str]) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""

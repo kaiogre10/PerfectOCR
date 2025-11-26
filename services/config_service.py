@@ -8,13 +8,18 @@ logger = logging.getLogger(__name__)
 
 class ConfigService:
     """Gestor de los parametros de configuración"""
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, TEST_MODE: bool):
         self.config_path = config_path
         self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
-        self.min_workers: Set[str] = {"image_loader"}#, "geometry_detector", "polygon_extractor", "paddle_wrapper"}
+        self.test_mode = TEST_MODE
+        if not self.test_mode and self._validate_min_workers():
+            logger.warning("Modo de producción activado, se cargan configuraciones robustas")
 
-        if not self.validate_min_workers():
+        elif self.test_mode and "image_loader" in self.create_stager[0][1]:
+            logger.warning(f"Modo de debug, restricciones robustas desactivadas")
+
+        else:
             self.config = {}
                 
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
@@ -46,14 +51,34 @@ class ConfigService:
 
     @property
     def models_config(self) -> Dict[str, Any]:
-        model_workers = "geometry_detector", "paddle_wrapper"
-        set_model_workers = set(model_workers)
+        ocr_workers = {"geometry_detector", "paddle_wrapper"}
         all_workers = self.get_all_workers
-        if set_model_workers:#.issubset(all_workers):
+        ocr_active = ocr_workers.isdisjoint(all_workers)
+
+        if not all_workers:
+            return {}
+         
+        elif ocr_active:
+            return {}
+        
+        elif not ocr_active:
             return {
                 "models_config": self.config.get("models_config", {}),
-                "activate_wf": "data_finder" and "paddle_wrapper" in all_workers,
+                "activate_wf": False
             }
+        
+        elif "data_finder" in all_workers and ocr_workers.issubset(all_workers):
+            return {
+                "models_config": self.config.get("models_config", {}),
+                "activate_wf": True,
+            }
+        
+        elif not "paddle_wrapper" in all_workers:
+            return {
+                "models_config": self.config.get("models_config", {}),
+                "activate_wf": False
+            }
+        
         else:
             return {}
         
@@ -66,7 +91,7 @@ class ConfigService:
         return {
             **self.modules_config.get("image_preparation", {}),
             **self.enabled_outputs.get("image_load_outputs", {}),
-            **self.config.get("utils", {}),
+            **self.modules_config.get("utils", {}),
             "imagepre_stage": self.workers_order["imagepre_stage"]
         }
        
@@ -78,7 +103,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("preprocessing", {}),
                 **self.enabled_outputs.get("preprocessing_outputs", {}),
-                **self.config.get("utils", {}),
+                **self.modules_config.get("utils", {}),
                 "preprocessing_stage": self.workers_order["preprocessing_stage"]
             }
 
@@ -90,7 +115,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("ocr", {}),
                 **self.enabled_outputs.get("ocr_outputs", {}),
-                **self.config.get("utils", {}),
+                **self.modules_config.get("utils", {}),
                 "ocr_stage": self.workers_order["ocr_stage"]
             }
        
@@ -102,6 +127,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("vectorization", {}),
                 **self.enabled_outputs.get("vectorization_outputs", {}),
+                **self.modules_config.get("utils", {}),
                 "vector_stage": self.workers_order["vector_stage"]
             }
         
@@ -115,14 +141,14 @@ class ConfigService:
             "vectorization": self.vectorization_config
         }
 
-    def validate_min_workers(self) -> bool:
+    def _validate_min_workers(self) -> bool:
+        min_workers: Set[str] = {"image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"}
         if not self.workers_order:
             logger.error("No hay configuración de workers disponible")
             return False
-
         try:
             set_worker_config = self.get_all_workers
-            if self.min_workers.issubset(set_worker_config):
+            if min_workers.issubset(set_worker_config):
                 # Loguear conteo por stage de forma segura
                 for stage, stage_workers in self.workers_order.items():
                     if isinstance(stage_workers, (list, tuple, set)): #type: ignore
@@ -137,8 +163,8 @@ class ConfigService:
                     logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
                 return True
             else:
-                workers_missing = self.min_workers - set_worker_config
-                logger.warning(f"Faltan: {workers_missing} de los '{len(self.min_workers)}' workers mínimos para el pipeline")
+                workers_missing = min_workers - set_worker_config
+                logger.warning(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
                 return False
 
         except Exception as e:
@@ -146,26 +172,31 @@ class ConfigService:
             return False
     
     @property
-    def create_stager(self) -> List[List[str]]:
-        full_stage: List[List[str]] = []
+    def create_stager(self) -> List[str]:
+        full_stage: List[str] = []
         for stage_workers in self.workers_order.items():
-            full_stage.append(stage_workers) #type: ignore
+            full_stage.append(stage_workers) # type: ignore
         return full_stage
     
     @property
     def get_all_workers(self) -> Set[str]:
         all_workers = set(self.create_stager[0][1])
 
-        if self.create_stager[1][1]:
-            prep = set(self.create_stager[1][1])
-            all_workers.update(prep)
+        if not self.test_mode:
+        
+            if self.create_stager[1][1]:
+                prep = set(self.create_stager[1][1])
+                all_workers.update(prep)
 
-        if self.create_stager[2][1]:
-            ocr = set(self.create_stager[2][1])
-            all_workers.update(ocr)
+            if self.create_stager[2][1]:
+                ocr = set(self.create_stager[2][1])
+                all_workers.update(ocr)
 
-        if self.create_stager[3][1]:
-            vect = set(self.create_stager[3][1])
-            all_workers.update(vect)
+            if self.create_stager[3][1]:
+                vect = set(self.create_stager[3][1])
+                all_workers.update(vect)
 
-        return all_workers
+            return all_workers
+        
+        else:
+            return all_workers

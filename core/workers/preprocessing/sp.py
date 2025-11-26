@@ -92,8 +92,6 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 analysis_results = metrics[idx]
                 ksize = int(ksizes[idx])
 
-                logger.info(f"{poly_id}:")
-
                 corrected_img = self._apply_sp_correction(
                     analysis_results,
                     ksize

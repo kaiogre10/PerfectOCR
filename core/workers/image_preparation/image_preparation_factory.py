@@ -3,6 +3,7 @@ from typing import Dict, Callable, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.image_preparation.image_loader import ImageLoader
+from core.workers.preprocessing.ink_enhancer import InkEnhancer
 from core.workers.image_preparation.angle_corrector import AngleCorrector
 from core.workers.image_preparation.geometry_detector import GeometryDetector
 from core.workers.image_preparation.poly_gone import PolygonExtractor
@@ -12,7 +13,7 @@ class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
         
         return {
             'image_loader': self._create_loader,
-            # "cleaner": self._create_cleaner,
+            "ink_enhancement": self._create_inker,
             "angle_corrector": self._create_angle_corrector,
             "geometry_detector": self._create_geometry_detector,
             "polygon_extractor": self._create_polygon_extractor
@@ -21,6 +22,9 @@ class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
     def _create_loader(self, context: Dict[str, Any]) -> ImageLoader:
         image_data = context.get('image_data', {})
         return ImageLoader(config=self.module_config, image_data=image_data, project_root=self.project_root)
+    
+    def _create_inker(self, context: Dict[str, Any]) -> InkEnhancer:
+        return InkEnhancer(config=self.module_config, project_root=self.project_root)
     
     def _create_angle_corrector(self, context: Dict[str, Any]) -> AngleCorrector:
         return AngleCorrector(config=self.module_config, project_root=self.project_root)

@@ -15,10 +15,10 @@ class MainFactory:
         self.modules_config = modules_config
         self.project_root = project_root
         
-        image_preparation_config = self.modules_config["image_preparation"]
-        preprocessing_config = self.modules_config['preprocessing']
-        ocr_config = self.modules_config['ocr']
-        vectorizing_config = self.modules_config['vectorization']
+        image_preparation_config = self.modules_config.get("image_preparation", {})
+        preprocessing_config = self.modules_config.get('preprocessing', {})
+        ocr_config = self.modules_config.get('ocr', {})
+        vectorizing_config = self.modules_config.get('vectorization', {})
 
         # Registro de fábricas por nombre de módulo
         self.module_factories: Dict[str, Any] = {

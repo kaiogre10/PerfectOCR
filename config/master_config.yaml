@@ -2,23 +2,23 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
+    - "ink_enhancement"
     # - "angle_corrector"
-    - "geometry_detector"
-    - "polygon_extractor"
+    # - "geometry_detector"
+    # - "polygon_extractor"
 
   preprocessing_stage:
-    - restorer
-    #- "moire"
+    # - restorer
+    # - "moire"
     # - "sp"
-    #- "gauss"
-    # - "ink_enhancement"
-   # - "clahe"
-    #- "sharp"
+    # - "gauss"
+    # - "clahe"
+    # - "sharp"
 
   ocr_stage:
   #  - "paddle_wrapper"
-  ## - "text_refiner"
-    # - "data_finder"
+  #  - "text_refiner"
+  #  - "data_finder"
     
   vector_stage:
     # - "lineal"
@@ -33,6 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     deleted_polys: false
+    bin_full_img: false
     angle_corrected: false
     cropped_img: false
     final_polys: false
@@ -44,7 +45,6 @@ enabled_outputs:
     moire_poly: false
     sp_poly: false 
     gauss_poly: false
-    ink_poly: false
     clahe_poly: false
     sharp_poly: false
   
@@ -201,7 +201,7 @@ modules:
       total_mtl_abs_tolerance: 0.05
       row_relative_tolerance: 0.05
 
-utils:
-  dpi_range: [100, 200, 300, 400, 600, 1200]
-  bin_interval: [10, 245]
-  percentile: [0.10, 0.99]
+  utils:
+    dpi_range: [100, 200, 300, 400, 600, 1200]
+    bin_interval: [10, 245]
+    percentile: [0.10, 0.99]

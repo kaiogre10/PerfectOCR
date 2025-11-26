@@ -18,10 +18,12 @@ os.environ.update({
     'FLAGS_use_mkldnn': '1',
 })
 
+TEST_MODE = True
+
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 DEFAULT_INPUT_PATH = [
    "input",
-  #"input2",
+#   "input2",
 #   "input3",
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
@@ -69,7 +71,7 @@ def main():
         project_root = PROJECT_ROOT
         
         clear_output_folders(output_paths, project_root)
-        return activate_main(input_paths, output_paths, config_path, project_root)
+        return activate_main(input_paths, output_paths, config_path, project_root, TEST_MODE)
 
 if __name__ == "__main__":
     main()

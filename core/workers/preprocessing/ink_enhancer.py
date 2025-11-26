@@ -4,92 +4,57 @@ import numpy as np
 import logging
 import time
 from typing import Dict, Any, List
-from core.factory.abstract_worker import PreprocessingAbstractWorker
+from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
 from core.utils.image_analizer import extract_cc_metrics
-from core.utils.image_utils import binarice_img
 
 logger = logging.getLogger(__name__)
 
-class InkEnhancer(PreprocessingAbstractWorker):
+class InkEnhancer(ImagePrepAbstractWorker):
     """Worker especializado en restaurar texto con tinta gastada o de baja intensidad."""
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('ink_enhancement', {}) 
+        self.worker_config = config.get('ink_enhancement', {})
+        self.bin_interval = config["bin_interval"]
+        self.kernel_threshold: int = self.worker_config.get("kernel_threshold", 3)
+        self.area_threshold: int = self.worker_config.get("area_threshold", 12)
+        self.iterations: int = self.worker_config.get("iterations", 2)
         self.faded_threshold = self.worker_config.get('faded_detection_threshold')
         self.output = config.get("ink_poly", False)
 
-    def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y restaura texto con tinta gastada."""
         try:
-            start_time = time.time()
+            start_time = time.perf_counter()
             logger.info("Mejoramiento de tinta empezado con éxito")
-            if not manager.validate_cropped_img():
-                logger.info(f"Sin cropped_img en el formatter")
+            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+
+            img_obj = manager.get_full_img()
+            full_img = img_obj.full_img if img_obj is not None else None
+            if full_img is None:
+                logger.error(f"No Hay full_img en el Formatter")
                 return False
-                
-            logger.debug("Polygonos revisados")
-            
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            if not polygons:
-                return False
-
-            # 1. Fase de Análisis
-            analysis_results: List[Dict[str, Any]] = []
-            poly_ids_order: List[str] = []
-
-            for poly_id, polygon in polygons.items():
-                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                if cropped_img is None:
-                    logger.warning(f"{poly_id} sin imagen")
-                    continue
-
-                # bin_img = binarice_img(cropped_img.copy(), {})
-                # metrics = extract_cc_metrics(bin_img, 0.5)
-                # logger.info(f"{metrics}")
-                
-                analysis = self._analyze_ink_quality(cropped_img)
-                if analysis:
-                    analysis_results.append(analysis)
-                    poly_ids_order.append(poly_id)
-
-            if not analysis_results:
-                return True
-
-            # 2. Fase de Decisión
-            faded_scores = np.array([res['faded_score'] for res in analysis_results], dtype=np.float32)
-            needs_enhancement = faded_scores > self.faded_threshold
-            # logger.info(f"score: {faded_scores}")
-
-            # 3. Fase de Aplicación
-            enhanced_count = 0
-            for idx, poly_id in enumerate(poly_ids_order):
-                if not needs_enhancement[idx]:
-                    continue
-
-                polygon = polygons[poly_id]
-                original_img = analysis_results[idx]['original_img']
-                faded_score = faded_scores[idx]
-
-                # logger.info(f"Poly '{poly_id}': Restaurando tinta gastada (score: {faded_score:.2f})")
-
-                enhanced_img = self._restore_faded_ink(original_img, faded_score)
-                polygon.cropped_img.cropped_img = enhanced_img
-                enhanced_count += 1
-
-                if self.output:
-                    from services.output_service import save_croped_image
-                    worker_name = context.get("worker_name") or "inker"
-                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    output_paths = context["output_paths"]                    
-                    save_croped_image(image_name, poly_id, enhanced_img, output_paths, worker_name, method=worker_name)
                     
-            total_time = time.time() - start_time
+            _, full_bin_img = extract_cc_metrics(full_img, worker_config={}, binarice=True)
+            if full_bin_img is None:
+                return False
             
-            logger.debug(f"Restauración de tinta completada para {enhanced_count}/{len(poly_ids_order)} polígonos en: {total_time:.3f}s")
+            if self.output:
+                from services.output_service import save_croped_image
+                worker_name = context.get("worker_name") or "inker"
+                output_paths = context["output_paths"]
+                img_id = f"full_img_{image_name}_{worker_name}"
+                save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name, method="deskewed")
+
+            full_bin_img_rest = self._restore_faded_ink(full_bin_img)
+
+            _, full_bin_img = extract_cc_metrics(full_bin_img, worker_config={}, binarice=False)
+            if full_bin_img is None:
+                return False
+                    
+            logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
             
             return True
             
@@ -97,45 +62,7 @@ class InkEnhancer(PreprocessingAbstractWorker):
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
             return False
 
-    def _analyze_ink_quality(self, img: np.ndarray[Any, np.dtype[np.uint8]]) -> Dict[str, Any]:
-        """Analiza la calidad de la tinta y detecta si está gastada."""
-        # Calcular estadísticas básicas
-        mean_val = np.mean(img)
-        std_val = np.std(img)
-
-        # Detectar predominio de grises medios (característica de tinta gastada)
-        mid_gray_ratio = np.sum((img > 80) & (img < 180)) / img.size
-
-        # Calcular contraste local usando filtros
-        kernel = np.ones((3, 3), np.float32) / 9
-        local_mean = cv2.filter2D(img.astype(np.float32), -1, kernel)
-        local_contrast = np.mean(np.abs(img.astype(np.float32) - local_mean))
-
-        # Analizar histograma
-        hist = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
-        hist_normalized = hist / np.sum(hist)
-
-        # El pico del histograma en grises medios indica tinta gastada
-        mid_gray_peak = np.max(hist_normalized[80:180])
-
-        # Calcular score de tinta gastada (0-1, donde 1 = muy gastada)
-        faded_score = (
-                (mid_gray_ratio * 0.4) +
-                (min(1.0, (150 - mean_val) / 100) * 0.3) +  # Penalizar intensidades muy bajas
-                (max(0, (40 - std_val) / 40) * 0.2) +  # Penalizar bajo contraste
-                (mid_gray_peak * 0.1)
-        )
-
-        return {
-            "original_img": img,
-            "faded_score": min(1.0, faded_score),
-            "mean_val": mean_val,
-            "std_val": std_val,
-            "mid_gray_ratio": mid_gray_ratio,
-            "local_contrast": local_contrast
-        }
-
-    def _restore_faded_ink(self, img: np.ndarray[Any, np.dtype[np.uint8]], faded_score: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    def _restore_faded_ink(self, full_bin_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """Restaura la intensidad del texto con tinta gastada."""
         # 1. Estiramiento adaptativo del histograma
         p1, p99 = np.percentile(img, [1, 99])

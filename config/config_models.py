@@ -7,6 +7,7 @@ class ConfigWithNumpy(BaseModel):
 
 class ImgLoadOutputs(ConfigWithNumpy):
     deleted_polys: bool
+    bin_full_img: bool
     angle_corrected: bool
     cropped_img: bool
     final_polys: bool
@@ -18,7 +19,6 @@ class PreprocessingOutputs(ConfigWithNumpy):
     moire_poly: bool
     sp_poly: bool
     gauss_poly: bool
-    ink_poly: bool
     clahe_poly: bool
     sharp_poly: bool
 
@@ -207,6 +207,7 @@ class ModulesConfig(ConfigWithNumpy):
     preprocessing: PreprocessingConfig
     ocr: OCRConfig
     vectorization: VectorConfig
+    utils: UtilsConfig
 
 class PipelineConfig(ConfigWithNumpy):
     imagepre_stage: Optional[List[str]] = None
@@ -220,4 +221,3 @@ class MasterConfig(ConfigWithNumpy):
     processing: Processing
     models_config: ModelsConfig
     modules: ModulesConfig
-    utils: UtilsConfig

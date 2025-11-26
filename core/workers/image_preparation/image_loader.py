@@ -19,7 +19,7 @@ class ImageLoader(ImagePrepAbstractWorker):
         """Carga la imagen y extrae metadatos."""
 
         image_name = self.image_data.get('name', "")
-        input_path = self.image_data.get('full_path',"")
+        input_path = self.image_data.get('full_path', "")
         dpi = self.image_data.get('dpi', {})
         
         metadata: Dict[str, Any] = {
@@ -71,6 +71,6 @@ class ImageLoader(ImagePrepAbstractWorker):
             else:
                 logger.error(f"Error cargando '{image_name}'")
                 return False
-        except Exception as e:
+        except cv2.error as e:
             logger.error(f"Error al cargar la imagen: {image_name}; {e}", exc_info=True)
             return False

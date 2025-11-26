@@ -82,6 +82,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
     #logger.info(f"{poly}")
    
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    logger.info(f"Numero de contornos: {len(contours)}")
     cont_array_dict: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.uint16]]] | float]= {}
     
     for i, cont in enumerate(contours):
@@ -90,6 +91,8 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
         convex_hull = np.array(cv2.convexHull(cont_coords))
         cont_area = cv2.contourArea(cont_coords)
         hull_area = cv2.contourArea(convex_hull)
+
+        logger.info(f"Promedio de contorno '{i}': {cv2.mean(cont_coords)}")
         
         cont_array_dict[i] = {
             "cont_coords": cont_coords,

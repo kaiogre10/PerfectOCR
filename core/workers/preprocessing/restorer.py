@@ -117,7 +117,7 @@ class ImageRestorer(PreprocessingAbstractWorker):
                     continue
                 
                 logger.info(f"VENTANA{window.shape}")
-                mean = np.mean(window)[0]
+                mean = cv2.mean(window)[0]
                 white_pixels = np.sum(window >= self.bin_interval[1])
                 black_pixels = np.sum(self.bin_interval[0] >= window)
                 if not white_pixels and not black_pixels:
