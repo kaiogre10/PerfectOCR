@@ -19,6 +19,7 @@ class InkEnhancer(ImagePrepAbstractWorker):
         self.worker_config = config.get('ink_enhancement', {})
         self.bin_interval = config["bin_interval"]
         self.kernel_threshold: int = self.worker_config.get("kernel_threshold", 3)
+self.kernel = np.ones((self.kernel_threshold, self.kernel_threshold), np.uint8) 
         self.area_threshold: int = self.worker_config.get("area_threshold", 12)
         self.iterations: int = self.worker_config.get("iterations", 2)
         self.output = config.get("bin_full_img", False)
@@ -49,9 +50,8 @@ class InkEnhancer(ImagePrepAbstractWorker):
                 save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name, method="binarized")
 
             for i in range(0, self.iterations):
-                kernel = np.ones((self.kernel_threshold, self.kernel_threshold), np.uint8)
-                opening = cv2.morphologyEx(full_bin_img.copy(), cv2.MORPH_OPEN, kernel, iterations= i+1)
-                closing = cv2.morphologyEx(full_bin_img.copy(), cv2.MORPH_CLOSE, kernel, iterations= i+1)
+                opening = cv2.morphologyEx(full_bin_img.copy(), cv2.MORPH_OPEN, self.kernel, iterations= i+1)
+                closing = cv2.morphologyEx(full_bin_img.copy(), cv2.MORPH_CLOSE, self.kernel, iterations= i+1)
 
                 logger.info(f"Conteo de fondo interación: '{i+1}': Opening: '{np.count_nonzero(opening)}', Closing: '{np.count_nonzero(closing)}'")
 
@@ -85,51 +85,62 @@ class InkEnhancer(ImagePrepAbstractWorker):
             # hull_area = countours["hull_area"]
             cont_area = countours["cont_area"]
             cont_bbox = countours["cont_bbox"]
+                
+            if self.area_threshold >= cont_area:
+                cont_bbox = countours["cont_bbox"]
+                # Crear una copia de la imagen para dibujar
+                img_with_rect = bin_img.copy()
+                
+                # Asumir que cont_bbox es [x, y, width, height]
+                if len(cont_bbox) == 4:
+                    x, y, w, h = cont_bbox
+                    cx = int((x + w) / 2)
+                    cy = int((y + h) / 2)
 
-            logger.info(f"Promedio de contorno '{pos}': {np.mean(cont_coords, axis=0)}")
+                    # Crear ventana fija usando array
+                    window_size = self.kernel_threshold
+                    half_size = window_size // 2
+                    
+                    # Calcular límites de la ventana
+                    start_y = max(0, cy - half_size)
+                    end_y = min(img_h, cy + half_size)
+                    start_x = max(0, cx - half_size)
+                    end_x = min(img_w, cx + half_size)
+                    
+                    # Crear ventana fija (rellenar con ceros si está en el borde)
+                    window = np.zeros((window_size, window_size), dtype=np.uint8)
+                    
+                    # Extraer la región disponible
+                    # region = bin_img[start_y:end_y, start_x:end_x]
+                    region = cropped_img[start_y:end_y, start_x:end_x]
+                    
+                    # Calcular offsets para centrar en la ventana fija
+                    offset_y = half_size - (cy - start_y)
+                    offset_x = half_size - (cx - start_x)
+                    
+                    # Colocar la región en la ventana fija
+                    window[offset_y:offset_y + region.shape[0], 
+                           offset_x:offset_x + region.shape[1]] = region
+                    
+                    # Dibujar rectángulo en la imagen
+                    cv2.rectangle(img_with_rect, (start_x, start_y), (end_x, end_y), (255), 1)
+                    
+                else:
+                    logger.warning(f"cont_bbox formato inesperado: {cont_bbox}")
+                    continue
+                
+                logger.info(f"VENTANA{window.shape}")
+                mean = cv2.mean(window)[0]
+                white_pixels = np.sum(window >= self.bin_interval[1])
+                black_pixels = np.sum(self.bin_interval[0] >= window)
+                if not white_pixels and not black_pixels:
+                    grey_pixels = window.size - white_pixels - black_pixels
+                    logger.info(f"Grises: {grey_pixels}")
 
-        
+                logger.info(f"MEAN: {mean:.4f}, Blancos: {white_pixels}, Negros: {black_pixels}")
 
+            convex_array = np.array(convex_hull).reshape(-1, 2)
 
-        cc = np.compress(mask, bboxes_cc, axis=0).astype(np.int32)
-
-        # logger.info(f"cc: {cc}, noise_cc: {noise_cc}")
-        
-
-        if self.output2:
-            from services.output_service import save_shapes
-            worker_name = context.get("worker_name") or "restorer"
-            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-            output_paths = context["output_paths"]
-    
-            if self.output2:
-                contours1: List[np.ndarray[Any, Any]] = []
-                for item in noise_cont.values():
-                    contour1 = np.array(item["cont_coords"], dtype=np.int32)
-                    contours1.append(contour1)
-
-                contours2: List[np.ndarray[Any, Any]] = []
-                for item in blobs_cont.values():
-                    contour2 = np.array(item["cont_coords"], dtype=np.int32)
-                    contours2.append(contour2)
-
-                # logger.info(f"Comparativa CONT: {contours2}")
-                                    
-                save_shapes(image_name, poly_id, cropped_img, output_paths, worker_name, contours1, contours2, method="contours")
-
-            if self.output2:
-                noise_cc_reshaped = noise_cc.reshape(-1, 2)
-                cc_reshaped=cc.reshape(-1, 2)
-                contours1: List[np.ndarray[Any, Any]]  = list(noise_cc)
-                contours2: List[np.ndarray[Any, Any]]  = list(cc_reshaped)
-                logger.info(f"SHAPES CC: {cc_reshaped.shape, noise_cc.shape}")
-                # logger.info(f"Comparativa: CC: {cc}, Reshaped: {cc_reshaped}")
-
-                cropped_image1 = cropp_img(bin_img, noise_cc)
-                # cropped_image2 = cropp_img(bin_img, cc_reshaped)
-                save_shapes(image_name, poly_id, cropped_image1, output_paths, worker_name, contours1, contours2, method="cc")
-                # save_shapes(image_name, poly_id, cropped_image2, output_paths, worker_name, contours1, contours2, method="reshaped")
-
-        return [noise_cc, cc, noise_cont, blobs_cont, bin_img]
-    
-    # def _restore_morphology(self, morph_stats: List[Any], cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+            convex_array_reshape = np.delete(convex_array, 0, axis=0).astype(np.int32)
+            convex_list.append({
+                "convex_array_reshape":
