@@ -43,7 +43,7 @@ class InkEnhancer(ImagePrepAbstractWorker):
             #     logger.info("Nose devolvio imagen binarizada")
             #     return False
             
-            if not self.output:
+            if self.output:
                 from services.output_service import save_croped_image
                 img_id = f"full_bin_img_{image_name}_{worker_name}"
                 save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name, method="binarized")
@@ -55,12 +55,12 @@ class InkEnhancer(ImagePrepAbstractWorker):
 
                 logger.info(f"Conteo de fondo interación: '{i+1}': Opening: '{np.count_nonzero(opening)}', Closing: '{np.count_nonzero(closing)}'")
 
-
                 if self.output:
                     from services.output_service import save_croped_image
-                    img_id = f"full_morph_img_{image_name}_{worker_name}_{i}"
+                    img_id = f"open_img_{image_name}_{worker_name}_{i+1}"
+                    image_id = f"close_img_{image_name}_{worker_name}_{i+1}"
                     save_croped_image(image_name, img_id, opening, output_paths, worker_name, method="opening")
-                    save_croped_image(image_name, img_id, closing, output_paths, worker_name, method="closing")
+                    save_croped_image(image_name, image_id, closing, output_paths, worker_name, method="closing")
 
                 # metrics, _ = extract_cc_metrics(full_bin_img_rest, worker_config={}, binarice=False)
                 # if full_bin_img is None:
@@ -74,22 +74,62 @@ class InkEnhancer(ImagePrepAbstractWorker):
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
             return False
 
-    # def _restore_faded_ink(self, full_bin_img: np.ndarray[Any, Any], metrics: Dict[str, Any]) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
-    #     """Restaura la intensidad del texto con tinta gastada."""
+    def _restore_faded_ink(self, full_bin_img: np.ndarray[Any, Any], metrics: Dict[str, Any]) -> np.ndarray[Any, Any]:
+        """Restaura la intensidad del texto con tinta gastada."""
+        
+        cont_array_dict: Dict[int, Dict[str, Any]] = metrics["cont_array_dict"]
+        
+        for pos, countours in cont_array_dict.items():
+            cont_coords = countours["cont_coords"]
+            # convex_hull = countours["convex_hull"]
+            # hull_area = countours["hull_area"]
+            cont_area = countours["cont_area"]
+            cont_bbox = countours["cont_bbox"]
+
+            logger.info(f"Promedio de contorno '{pos}': {np.mean(cont_coords, axis=0)}")
 
         
 
-    #     return opening, closing
-        
-        # cont_array_dict: Dict[int, Dict[str, Any]] = metrics["cont_array_dict"]
-        
-        # for pos, countours in cont_array_dict.items():
-        #     cont_coords = countours["cont_coords"]
-        #     # convex_hull = countours["convex_hull"]
-        #     # hull_area = countours["hull_area"]
-        #     # cont_area = countours["cont_area"]
-        #     # cont_bbox = countours["cont_bbox"]
 
-        #     logger.info(f"Promedio de contorno '{pos}': {np.mean(cont_coords, axis=0)}")
+        cc = np.compress(mask, bboxes_cc, axis=0).astype(np.int32)
 
-        # return opening
+        # logger.info(f"cc: {cc}, noise_cc: {noise_cc}")
+        
+
+        if self.output2:
+            from services.output_service import save_shapes
+            worker_name = context.get("worker_name") or "restorer"
+            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+            output_paths = context["output_paths"]
+    
+            if self.output2:
+                contours1: List[np.ndarray[Any, Any]] = []
+                for item in noise_cont.values():
+                    contour1 = np.array(item["cont_coords"], dtype=np.int32)
+                    contours1.append(contour1)
+
+                contours2: List[np.ndarray[Any, Any]] = []
+                for item in blobs_cont.values():
+                    contour2 = np.array(item["cont_coords"], dtype=np.int32)
+                    contours2.append(contour2)
+
+                # logger.info(f"Comparativa CONT: {contours2}")
+                                    
+                save_shapes(image_name, poly_id, cropped_img, output_paths, worker_name, contours1, contours2, method="contours")
+
+            if self.output2:
+                noise_cc_reshaped = noise_cc.reshape(-1, 2)
+                cc_reshaped=cc.reshape(-1, 2)
+                contours1: List[np.ndarray[Any, Any]]  = list(noise_cc)
+                contours2: List[np.ndarray[Any, Any]]  = list(cc_reshaped)
+                logger.info(f"SHAPES CC: {cc_reshaped.shape, noise_cc.shape}")
+                # logger.info(f"Comparativa: CC: {cc}, Reshaped: {cc_reshaped}")
+
+                cropped_image1 = cropp_img(bin_img, noise_cc)
+                # cropped_image2 = cropp_img(bin_img, cc_reshaped)
+                save_shapes(image_name, poly_id, cropped_image1, output_paths, worker_name, contours1, contours2, method="cc")
+                # save_shapes(image_name, poly_id, cropped_image2, output_paths, worker_name, contours1, contours2, method="reshaped")
+
+        return [noise_cc, cc, noise_cont, blobs_cont, bin_img]
+    
+    # def _restore_morphology(self, morph_stats: List[Any], cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:

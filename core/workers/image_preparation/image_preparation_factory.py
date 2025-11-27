@@ -3,7 +3,7 @@ from typing import Dict, Callable, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.image_preparation.image_loader import ImageLoader
-from core.workers.preprocessing.ink_enhancer import InkEnhancer
+from core.workers.image_preparation.ink_enhancer import InkEnhancer
 from core.workers.image_preparation.angle_corrector import AngleCorrector
 from core.workers.image_preparation.geometry_detector import GeometryDetector
 from core.workers.image_preparation.poly_gone import PolygonExtractor

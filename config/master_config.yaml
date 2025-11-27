@@ -86,7 +86,7 @@ modules:
     ink_enhancement:
       kernel_threshold: 3
       area_threshold: 12
-      iterations: 3
+      iterations: 2
 
     angle_corrector:
       min_angle_for_correction: 2.0
