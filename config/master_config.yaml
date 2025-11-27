@@ -34,6 +34,7 @@ enabled_outputs:
   image_load_outputs:
     deleted_polys: false
     bin_full_img: true
+    morphology: true
     angle_corrected: false
     cropped_img: false
     final_polys: false

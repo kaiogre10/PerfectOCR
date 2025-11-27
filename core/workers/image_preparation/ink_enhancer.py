@@ -3,10 +3,11 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_cc_metrics
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +20,11 @@ class InkEnhancer(ImagePrepAbstractWorker):
         self.worker_config = config.get('ink_enhancement', {})
         self.bin_interval = config["bin_interval"]
         self.kernel_threshold: int = self.worker_config.get("kernel_threshold", 3)
-self.kernel = np.ones((self.kernel_threshold, self.kernel_threshold), np.uint8) 
+        self.kernel = np.ones((self.kernel_threshold, self.kernel_threshold), np.uint8) 
         self.area_threshold: int = self.worker_config.get("area_threshold", 12)
         self.iterations: int = self.worker_config.get("iterations", 2)
-        self.output = config.get("bin_full_img", False)
+        self.output = config.get("bin_full_img")
+        self.output_morph = config.get("morphology")
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y restaura texto con tinta gastada."""
@@ -39,32 +41,32 @@ self.kernel = np.ones((self.kernel_threshold, self.kernel_threshold), np.uint8)
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
                     
-            _, full_bin_img = extract_cc_metrics(full_img, worker_config={}, binarice=True)
+            metrics, full_bin_img = extract_cc_metrics(full_img, worker_config={}, binarice=True)
             # if full_bin_img is None:
             #     logger.info("Nose devolvio imagen binarizada")
             #     return False
             
             if self.output:
-                from services.output_service import save_croped_image
                 img_id = f"full_bin_img_{image_name}_{worker_name}"
                 save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name, method="binarized")
+               
+            corrected = self._restore_faded_ink(full_bin_img, metrics)
+            logger.info(f"Cantidad de texto binarizads: '{np.count_nonzero(full_bin_img)}, blobs eliminados: '{np.count_nonzero(corrected)}'")
+            if self.output:
+                img_id = f"corrected_blobs_{image_name}_{worker_name}"
+                save_croped_image(image_name, img_id, corrected, output_paths, worker_name, method="blobs")
 
             for i in range(0, self.iterations):
-                opening = cv2.morphologyEx(full_bin_img.copy(), cv2.MORPH_OPEN, self.kernel, iterations= i+1)
-                closing = cv2.morphologyEx(full_bin_img.copy(), cv2.MORPH_CLOSE, self.kernel, iterations= i+1)
+                opening = cv2.morphologyEx(corrected.copy(), cv2.MORPH_OPEN, self.kernel, iterations= i+1)
+                closing = cv2.morphologyEx(corrected.copy(), cv2.MORPH_CLOSE, self.kernel, iterations= i+1)
 
                 logger.info(f"Conteo de fondo interación: '{i+1}': Opening: '{np.count_nonzero(opening)}', Closing: '{np.count_nonzero(closing)}'")
 
-                if self.output:
-                    from services.output_service import save_croped_image
+                if self.output_morph:
                     img_id = f"open_img_{image_name}_{worker_name}_{i+1}"
                     image_id = f"close_img_{image_name}_{worker_name}_{i+1}"
                     save_croped_image(image_name, img_id, opening, output_paths, worker_name, method="opening")
                     save_croped_image(image_name, image_id, closing, output_paths, worker_name, method="closing")
-
-                # metrics, _ = extract_cc_metrics(full_bin_img_rest, worker_config={}, binarice=False)
-                # if full_bin_img is None:
-                #     return False
                     
             logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
             
@@ -75,72 +77,46 @@ self.kernel = np.ones((self.kernel_threshold, self.kernel_threshold), np.uint8)
             return False
 
     def _restore_faded_ink(self, full_bin_img: np.ndarray[Any, Any], metrics: Dict[str, Any]) -> np.ndarray[Any, Any]:
-        """Restaura la intensidad del texto con tinta gastada."""
-        
+        """
+        Restaura la intensidad del texto y elimina el ruido aislado.
+        Para cada componente pequeño, se analiza una ventana a su alrededor. Si el borde de
+        la ventana es completamente negro (fondo), se considera ruido y se elimina.
+        """
+        img_h, img_w = full_bin_img.shape
         cont_array_dict: Dict[int, Dict[str, Any]] = metrics["cont_array_dict"]
         
         for pos, countours in cont_array_dict.items():
-            cont_coords = countours["cont_coords"]
-            # convex_hull = countours["convex_hull"]
-            # hull_area = countours["hull_area"]
             cont_area = countours["cont_area"]
-            cont_bbox = countours["cont_bbox"]
                 
             if self.area_threshold >= cont_area:
                 cont_bbox = countours["cont_bbox"]
-                # Crear una copia de la imagen para dibujar
-                img_with_rect = bin_img.copy()
+                cont_coords = countours["cont_coords"]
                 
-                # Asumir que cont_bbox es [x, y, width, height]
-                if len(cont_bbox) == 4:
-                    x, y, w, h = cont_bbox
-                    cx = int((x + w) / 2)
-                    cy = int((y + h) / 2)
+                x, y, w, h = cont_bbox
 
-                    # Crear ventana fija usando array
-                    window_size = self.kernel_threshold
-                    half_size = window_size // 2
-                    
-                    # Calcular límites de la ventana
-                    start_y = max(0, cy - half_size)
-                    end_y = min(img_h, cy + half_size)
-                    start_x = max(0, cx - half_size)
-                    end_x = min(img_w, cx + half_size)
-                    
-                    # Crear ventana fija (rellenar con ceros si está en el borde)
-                    window = np.zeros((window_size, window_size), dtype=np.uint8)
-                    
-                    # Extraer la región disponible
-                    # region = bin_img[start_y:end_y, start_x:end_x]
-                    region = cropped_img[start_y:end_y, start_x:end_x]
-                    
-                    # Calcular offsets para centrar en la ventana fija
-                    offset_y = half_size - (cy - start_y)
-                    offset_x = half_size - (cx - start_x)
-                    
-                    # Colocar la región en la ventana fija
-                    window[offset_y:offset_y + region.shape[0], 
-                           offset_x:offset_x + region.shape[1]] = region
-                    
-                    # Dibujar rectángulo en la imagen
-                    cv2.rectangle(img_with_rect, (start_x, start_y), (end_x, end_y), (255), 1)
-                    
-                else:
-                    logger.warning(f"cont_bbox formato inesperado: {cont_bbox}")
-                    continue
-                
-                logger.info(f"VENTANA{window.shape}")
-                mean = cv2.mean(window)[0]
-                white_pixels = np.sum(window >= self.bin_interval[1])
-                black_pixels = np.sum(self.bin_interval[0] >= window)
-                if not white_pixels and not black_pixels:
-                    grey_pixels = window.size - white_pixels - black_pixels
-                    logger.info(f"Grises: {grey_pixels}")
+                # Define la ventana de análisis alrededor del blob con un padding
+                win_x1 = max(0, x - self.kernel_threshold)
+                win_y1 = max(0, y - self.kernel_threshold)
+                win_x2 = min(img_w, x + w + self.kernel_threshold )
+                win_y2 = min(img_h, y + h + self.kernel_threshold)
 
-                logger.info(f"MEAN: {mean:.4f}, Blancos: {white_pixels}, Negros: {black_pixels}")
+                # Extrae la región de la ventana
+                window = full_bin_img[win_y1:win_y2, win_x1:win_x2]
 
-            convex_array = np.array(convex_hull).reshape(-1, 2)
+                # Extrae los bordes de la ventana
+                border_top = window[0, :]
+                border_bottom = window[-1, :]
+                border_left = window[1:-1, 0]
+                border_right = window[1:-1, -1]
 
-            convex_array_reshape = np.delete(convex_array, 0, axis=0).astype(np.int32)
-            convex_list.append({
-                "convex_array_reshape":
+                # Concatena todos los píxeles del borde
+                border_pixels = np.concatenate([border_top, border_bottom, border_left, border_right])
+
+                # Si la suma de los píxeles del borde es 0, significa que todos son negros (fondo) y el blob está aislado.
+                if np.sum(border_pixels) == 0:
+                    # Rellena el contorno del blob con negro (0) en la imagen original
+                    cv2.drawContours(full_bin_img, [cont_coords], -1, color=0, thickness=cv2.FILLED)
+                    logger.debug(f"Eliminado blob de ruido aislado en la posición {x, y} con área {cont_area}")
+
+        return full_bin_img
+

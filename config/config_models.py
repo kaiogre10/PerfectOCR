@@ -8,6 +8,7 @@ class ConfigWithNumpy(BaseModel):
 class ImgLoadOutputs(ConfigWithNumpy):
     deleted_polys: bool
     bin_full_img: bool
+    morphology: bool
     angle_corrected: bool
     cropped_img: bool
     final_polys: bool
