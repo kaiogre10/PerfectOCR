@@ -1,6 +1,6 @@
 # services/config_service.py
 import yaml
-from typing import Dict, Any, cast, List, Set
+from typing import Dict, Any, cast, List, Set, Optional
 from config.config_models import MasterConfig
 import logging
 
@@ -46,7 +46,7 @@ class ConfigService:
         return self.config.get("enabled_outputs", {})
     
     @property
-    def workers_order(self) -> Dict[str, List[str]]:
+    def workers_order(self) -> Dict[str, Optional[List[str]]]:
         return self.config.get("pipeline_secuence", {})
 
     @property

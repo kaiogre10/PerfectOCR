@@ -64,27 +64,28 @@ class ModelsManager:
             return False
 
         try:
-            if self._shared_engine or self._detection_engine or self._recognition_engine:
-                if config.get("activate_wf"):
-                    model_path=models_config.get("wf_model_path")
-                    self._word_finder: WordFinder = WordFinder(
-                        model_path=model_path
-                    )
-                    self._active = True
-                    logger.debug(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
-                    return True
-
-                else:
-                    self._word_finder = None
-                    logger.warning(f"Word Finder no se cargó porque no se usará en el pipeline")
-                    return True
-            else:
+            if not self._shared_engine or not self._detection_engine or not self._recognition_engine:
                 logger.critical(f"No se pudo iniciar Paddle, no se cargará WordFinder")
+                self._word_finder = None
                 return False
+            
+            elif config.get("activate_wf") is not False:
+                model_path=models_config.get("wf_model_path")
+                self._word_finder: WordFinder = WordFinder(
+                    model_path=model_path
+                )
+                self._active = True
+                logger.debug(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
+                return True
+
+            else:
+                self._word_finder = None
+                logger.warning(f"Word Finder no se cargó porque no se usará en el pipeline")
+                return True
 
         except Exception as e:
             logger.warning(f"No se pudo iniciar WordFinder: {e}", exc_info=True)
-            return True
+        return True
             
     @property
     def detection_engine(self) -> Optional[PaddleOCR]:

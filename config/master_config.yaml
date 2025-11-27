@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     deleted_polys: false
-    bin_full_img: false
+    bin_full_img: true
     angle_corrected: false
     cropped_img: false
     final_polys: false
@@ -82,6 +82,12 @@ processing:
 
 modules:
   image_preparation:
+
+    ink_enhancement:
+      kernel_threshold: 3
+      area_threshold: 12
+      iterations: 3
+
     angle_corrector:
       min_angle_for_correction: 2.0
       canny_thresholds: [50, 150]
@@ -116,10 +122,6 @@ modules:
 
     gauss_params:
       laplacian_variance_threshold: 80.0
-
-    ink_enhancement:
-      faded_detection_threshold: 0.4
-      contrast_boost_factor: 1.5
 
     contrast:
       clahe_clip_limit: 2.0

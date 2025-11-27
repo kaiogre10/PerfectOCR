@@ -59,6 +59,11 @@ class ModelsConfig(ConfigWithNumpy):
     rec_model_dir: str
     wf_model_path: str
     
+class InkConfig(ConfigWithNumpy):
+    kernel_threshold: int
+    area_threshold: int
+    iterations: int
+
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
     kernel: int
@@ -94,6 +99,7 @@ class CuttingConfig(ConfigWithNumpy):
     angle_thr: Tuple[float, float]
     
 class ImagePreparation(ConfigWithNumpy):
+    ink_enhancement: InkConfig
     angle_corrector: DeskewConfig
     geometry_detector: GeoDetector
     polygon_extractor: CuttingConfig
@@ -108,10 +114,6 @@ class MathMaxConfig(ConfigWithNumpy):
     total_mtl_abs_tolerance: float
     row_relative_tolerance: float
 
-class InkConfig(ConfigWithNumpy):
-    faded_detection_threshold: float
-    contrast_boost_factor: float
-
 class RestoreConfig(ConfigWithNumpy):
     area_threshold: int
     kernel_threshold: int
@@ -121,7 +123,6 @@ class PreprocessingConfig(ConfigWithNumpy):
     moire: MoireConfig
     sp_config: SaltPepper 
     gauss_params: GaussianConfig
-    ink_enhancement: InkConfig
     contrast: ContrastConfig
     sharpening: SharpeningConfig
 

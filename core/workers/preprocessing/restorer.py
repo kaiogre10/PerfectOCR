@@ -70,7 +70,7 @@ class ImageRestorer(PreprocessingAbstractWorker):
             cont_area = countours["cont_area"]
                 
             if self.area_threshold >= cont_area:
-                cont_bbox = countours["cont_bbox"]                
+                cont_bbox = countours["cont_bbox"]
                 # Crear una copia de la imagen para dibujar
                 img_with_rect = bin_img.copy()
                 

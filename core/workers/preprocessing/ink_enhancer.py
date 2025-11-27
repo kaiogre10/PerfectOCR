@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_cc_metrics
@@ -21,8 +21,7 @@ class InkEnhancer(ImagePrepAbstractWorker):
         self.kernel_threshold: int = self.worker_config.get("kernel_threshold", 3)
         self.area_threshold: int = self.worker_config.get("area_threshold", 12)
         self.iterations: int = self.worker_config.get("iterations", 2)
-        self.faded_threshold = self.worker_config.get('faded_detection_threshold')
-        self.output = config.get("ink_poly", False)
+        self.output = config.get("bin_full_img", False)
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y restaura texto con tinta gastada."""
@@ -30,6 +29,8 @@ class InkEnhancer(ImagePrepAbstractWorker):
             start_time = time.perf_counter()
             logger.info("Mejoramiento de tinta empezado con éxito")
             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+            worker_name = context.get("worker_name") or "inker"
+            output_paths = context["output_paths"]
 
             img_obj = manager.get_full_img()
             full_img = img_obj.full_img if img_obj is not None else None
@@ -38,21 +39,32 @@ class InkEnhancer(ImagePrepAbstractWorker):
                 return False
                     
             _, full_bin_img = extract_cc_metrics(full_img, worker_config={}, binarice=True)
-            if full_bin_img is None:
-                return False
+            # if full_bin_img is None:
+            #     logger.info("Nose devolvio imagen binarizada")
+            #     return False
             
-            if self.output:
+            if not self.output:
                 from services.output_service import save_croped_image
-                worker_name = context.get("worker_name") or "inker"
-                output_paths = context["output_paths"]
-                img_id = f"full_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name, method="deskewed")
+                img_id = f"full_bin_img_{image_name}_{worker_name}"
+                save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name, method="binarized")
 
-            full_bin_img_rest = self._restore_faded_ink(full_bin_img)
+            for i in range(0, self.iterations):
+                kernel = np.ones((self.kernel_threshold, self.kernel_threshold), np.uint8)
+                opening = cv2.morphologyEx(full_bin_img.copy(), cv2.MORPH_OPEN, kernel, iterations= i+1)
+                closing = cv2.morphologyEx(full_bin_img.copy(), cv2.MORPH_CLOSE, kernel, iterations= i+1)
 
-            _, full_bin_img = extract_cc_metrics(full_bin_img, worker_config={}, binarice=False)
-            if full_bin_img is None:
-                return False
+                logger.info(f"Conteo de fondo interación: '{i+1}': Opening: '{np.count_nonzero(opening)}', Closing: '{np.count_nonzero(closing)}'")
+
+
+                if self.output:
+                    from services.output_service import save_croped_image
+                    img_id = f"full_morph_img_{image_name}_{worker_name}_{i}"
+                    save_croped_image(image_name, img_id, opening, output_paths, worker_name, method="opening")
+                    save_croped_image(image_name, img_id, closing, output_paths, worker_name, method="closing")
+
+                # metrics, _ = extract_cc_metrics(full_bin_img_rest, worker_config={}, binarice=False)
+                # if full_bin_img is None:
+                #     return False
                     
             logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
             
@@ -62,29 +74,22 @@ class InkEnhancer(ImagePrepAbstractWorker):
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
             return False
 
-    def _restore_faded_ink(self, full_bin_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        """Restaura la intensidad del texto con tinta gastada."""
-        # 1. Estiramiento adaptativo del histograma
-        p1, p99 = np.percentile(img, [1, 99])
-        if p99 > p1:
-            stretched = np.clip((img - p1) * (255 / (p99 - p1)), 0, 255)
-        else:
-            stretched = img.astype(np.float32)
+    # def _restore_faded_ink(self, full_bin_img: np.ndarray[Any, Any], metrics: Dict[str, Any]) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
+    #     """Restaura la intensidad del texto con tinta gastada."""
 
-        # 2. Gamma correction adaptativa basada en el score de desvanecimiento
-        gamma = 0.5 + (1.0 - faded_score) * 0.3  # Gamma entre 0.5-0.8
-        gamma_corrected = np.power(stretched / 255.0, gamma) * 255
+        
 
-        # 3. Realce de contraste local usando operador unsharp mask
-        gaussian_blurred = cv2.GaussianBlur(gamma_corrected, (3, 3), 1.0)
-        unsharp_strength = faded_score * 0.8  # Más fuerza para tinta más gastada
-        unsharp_enhanced = gamma_corrected + unsharp_strength * (gamma_corrected - gaussian_blurred)
+    #     return opening, closing
+        
+        # cont_array_dict: Dict[int, Dict[str, Any]] = metrics["cont_array_dict"]
+        
+        # for pos, countours in cont_array_dict.items():
+        #     cont_coords = countours["cont_coords"]
+        #     # convex_hull = countours["convex_hull"]
+        #     # hull_area = countours["hull_area"]
+        #     # cont_area = countours["cont_area"]
+        #     # cont_bbox = countours["cont_bbox"]
 
-        # 4. Aplicar CLAHE localizado para mejorar contraste
-        clahe = cv2.createCLAHE(clipLimit=2.0 + faded_score * 2.0, tileGridSize=(4, 4))
-        final_enhanced = clahe.apply(np.clip(unsharp_enhanced, 0, 255).astype(np.uint8))
+        #     logger.info(f"Promedio de contorno '{pos}': {np.mean(cont_coords, axis=0)}")
 
-        # 5. Post-procesamiento: suavizado ligero para reducir artefactos
-        final_enhanced = cv2.bilateralFilter(final_enhanced, 5, 20, 20)
-
-        return final_enhanced
+        # return opening
