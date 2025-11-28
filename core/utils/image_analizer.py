@@ -98,7 +98,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
             "cont_area": cont_area,
             "hull_area": hull_area
         }
-    logger.info(f"Numero de contornos: {len(contours)}")
+    logger.info(f"Numero de contornos: {i}")
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity= connectivity)
 
     label_labeled = np.arange(1, n_labels).astype(np.uint16)

@@ -51,7 +51,6 @@ class InkEnhancer(ImagePrepAbstractWorker):
                 save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name, method="binarized")
                
             corrected = self._restore_faded_ink(full_bin_img, metrics)
-            logger.info(f"Cantidad de texto binarizads: '{np.count_nonzero(full_bin_img)}, blobs eliminados: '{np.count_nonzero(corrected)}'")
             if self.output:
                 img_id = f"corrected_blobs_{image_name}_{worker_name}"
                 save_croped_image(image_name, img_id, corrected, output_paths, worker_name, method="blobs")
@@ -84,9 +83,11 @@ class InkEnhancer(ImagePrepAbstractWorker):
         """
         img_h, img_w = full_bin_img.shape
         cont_array_dict: Dict[int, Dict[str, Any]] = metrics["cont_array_dict"]
+        first_black = np.count_nonzero(full_bin_img)
         
         for pos, countours in cont_array_dict.items():
             cont_area = countours["cont_area"]
+            convex_hull = countours["convex_hull"]
                 
             if self.area_threshold >= cont_area:
                 cont_bbox = countours["cont_bbox"]
@@ -113,10 +114,10 @@ class InkEnhancer(ImagePrepAbstractWorker):
                 border_pixels = np.concatenate([border_top, border_bottom, border_left, border_right])
 
                 # Si la suma de los píxeles del borde es 0, significa que todos son negros (fondo) y el blob está aislado.
-                if np.sum(border_pixels) == 0:
+                if np.all(border_pixels) == 0:
                     # Rellena el contorno del blob con negro (0) en la imagen original
                     cv2.drawContours(full_bin_img, [cont_coords], -1, color=0, thickness=cv2.FILLED)
-                    logger.debug(f"Eliminado blob de ruido aislado en la posición {x, y} con área {cont_area}")
 
+        logger.info(f"Total de fondo incial: {first_black}, corregido: {first_black - np.count_nonzero(full_bin_img)}")
         return full_bin_img
 

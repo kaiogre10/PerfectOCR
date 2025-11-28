@@ -15,7 +15,7 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, np.dtype[n
         output_paths = [output_paths]
 
     for path in output_paths:
-        output_dir = os.path.join(path, worker_name, image_name, method)
+        output_dir = os.path.join(path, worker_name, image_name)
         file_name = f"{poly_id}.png"
         # Dibuja todos los contornos sobre la imagen
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) #type: ignore
@@ -30,7 +30,7 @@ def save_croped_image(image_name: str, poly_id: str, image: np.ndarray[Any, Any]
 
     for path in output_paths:
         if method:
-            output_dir = os.path.join(path, worker_name, image_name, method)
+            output_dir = os.path.join(path, worker_name, image_name)
             file_name = f"{poly_id}.png"
             save_image(image, output_dir, file_name)
 
