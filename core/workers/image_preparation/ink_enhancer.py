@@ -7,6 +7,7 @@ from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_cc_metrics
+from core.utils.image_utils import binarice_img
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -40,28 +41,30 @@ class InkEnhancer(ImagePrepAbstractWorker):
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-                    
+                   
+          #  eroded = cv2.erode(full_img.copy(), None, iterations=1)
+            #bin_eroded = binarice_img(eroded, worker_config={})
+
             metrics, full_bin_img = extract_cc_metrics(full_img, worker_config={}, binarice=True)
-            # if full_bin_img is None:
-            #     logger.info("Nose devolvio imagen binarizada")
-            #     return False
-            
+            corrected = self._restore_faded_ink(full_bin_img.copy(), metrics)
+            bin_eroded = cv2.dilate(corrected.copy(), None, iterations=1)
+
             if self.output:
                 img_id = f"full_bin_img_{image_name}_{worker_name}"
+                image_id = f"full_eroded_{image_name}_{worker_name}"
                 save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name, method="binarized")
+                save_croped_image(image_name, image_id, bin_eroded, output_paths, worker_name, method="eroded")
                
-            corrected = self._restore_faded_ink(full_bin_img, metrics)
-            if self.output:
                 img_id = f"corrected_blobs_{image_name}_{worker_name}"
                 save_croped_image(image_name, img_id, corrected, output_paths, worker_name, method="blobs")
 
-            for i in range(0, self.iterations):
-                opening = cv2.morphologyEx(corrected.copy(), cv2.MORPH_OPEN, self.kernel, iterations= i+1)
-                closing = cv2.morphologyEx(corrected.copy(), cv2.MORPH_CLOSE, self.kernel, iterations= i+1)
+            if self.output_morph:
+                for i in range(0, self.iterations):
+                    opening = cv2.morphologyEx(corrected.copy(), cv2.MORPH_OPEN, self.kernel, iterations= i+1)
+                    closing = cv2.morphologyEx(corrected.copy(), cv2.MORPH_CLOSE, self.kernel, iterations= i+1)
 
-                logger.info(f"Conteo de fondo interación: '{i+1}': Opening: '{np.count_nonzero(opening)}', Closing: '{np.count_nonzero(closing)}'")
+                    logger.info(f"Conteo de fondo interación: '{i+1}': Opening: '{np.count_nonzero(opening)}', Closing: '{np.count_nonzero(closing)}'")
 
-                if self.output_morph:
                     img_id = f"open_img_{image_name}_{worker_name}_{i+1}"
                     image_id = f"close_img_{image_name}_{worker_name}_{i+1}"
                     save_croped_image(image_name, img_id, opening, output_paths, worker_name, method="opening")
