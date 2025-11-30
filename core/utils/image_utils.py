@@ -112,17 +112,16 @@ def validate_full_image(img: np.ndarray[Any, Any]):
         return [0, 0]
 
 def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np.ndarray[Any, Any]] | np.ndarray[Any, Any], padding: Optional[int] = None) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    
     img_h = full_img.shape[0]
     img_w = full_img.shape[1]
 
     if padding is None:
         padding = 1
 
-    bboxes_array = np.array(all_bboxes)
+    bboxes_array = np.array(all_bboxes).astype(np.int16)
 
-    logger.info(f"{bboxes_array.shape}")
-    
+    # logger.info(f"{bboxes_array.shape}")
+
     if bboxes_array.ndim == 1 and bboxes_array.shape[0] == 4:
         bboxes_array = bboxes_array.reshape(1, 4)
 
@@ -133,16 +132,14 @@ def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np
     if not np.any(valid_dims):
         logger.warning("Dimensiones no validas")
 
-    
-
     # Aplicar padding y clipping
-    px1 = np.max(0, np.add.reduce(x1 - padding))
-    py1 = np.max(0, np.add.reduce(y1 - padding))
-    px2 = np.min(img_w, np.sum(x2 + padding))
-    py2 = np.min(img_h, np.sum(y2 + padding))
+    px1 = max(0, int(np.min(x1 - padding)))
+    py1 = max(0, int(np.min(y1 - padding)))
+    px2 = min(img_w, int(np.max(x2 + padding)))
+    py2 = min(img_h, int(np.max(y2 + padding)))
 
-    crop_x1, crop_y1 = int(px1), int(py1)
-    crop_x2, crop_y2 = int(px2), int(py2)
+    crop_x1, crop_y1 = px1, py1
+    crop_x2, crop_y2 = px2, py2
 
     cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
     return cropped

@@ -4,7 +4,7 @@ pipeline_secuence:
     - "image_loader"
     - "ink_enhancement"
     # - "angle_corrector"
-    # - "geometry_detector"
+    - "geometry_detector"
     # - "polygon_extractor"
 
   preprocessing_stage:
@@ -32,7 +32,7 @@ pipeline_secuence:
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
-    deleted_polys: false
+    deleted_polys: true
     bin_full_img: true
     morphology: false
     angle_corrected: false
@@ -85,7 +85,7 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      kernel_threshold: 3
+      kernel_threshold: 5
       area_threshold: 12
       iterations: 2
 

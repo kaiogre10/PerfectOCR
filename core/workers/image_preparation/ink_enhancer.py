@@ -20,10 +20,10 @@ class InkEnhancer(ImagePrepAbstractWorker):
         self.project_root = project_root
         self.worker_config = config.get('ink_enhancement', {})
         self.bin_interval = config["bin_interval"]
-        self.kernel_threshold: int = self.worker_config.get("kernel_threshold", 3)
+        self.kernel_threshold: int = self.worker_config.get("kernel_threshold", {})
         self.kernel = np.ones((self.kernel_threshold, self.kernel_threshold), np.uint8) 
-        self.area_threshold: int = self.worker_config.get("area_threshold", 12)
-        self.iterations: int = self.worker_config.get("iterations", 2)
+        self.area_threshold: int = self.worker_config.get("area_threshold", {})
+        self.iterations: int = self.worker_config.get("iterations", {})
         self.output = config.get("bin_full_img")
         self.output_morph = config.get("morphology")
 
@@ -49,6 +49,11 @@ class InkEnhancer(ImagePrepAbstractWorker):
             corrected = self._restore_faded_ink(full_bin_img.copy(), metrics)
             bin_eroded = cv2.dilate(corrected.copy(), None, iterations=1)
 
+            if not manager.update_full_img(corrected=True, full_img=bin_eroded):
+                logger.info(f"Imagen no guardada")
+
+
+            logger.info(f"Imagen corregida guardada")
             if self.output:
                 img_id = f"full_bin_img_{image_name}_{worker_name}"
                 image_id = f"full_eroded_{image_name}_{worker_name}"
@@ -90,11 +95,11 @@ class InkEnhancer(ImagePrepAbstractWorker):
         
         for pos, countours in cont_array_dict.items():
             cont_area = countours["cont_area"]
-            convex_hull = countours["convex_hull"]
+            #convex_hull = countours["convex_hull"]
+            cont_coords = countours["cont_coords"]
                 
             if self.area_threshold >= cont_area:
                 cont_bbox = countours["cont_bbox"]
-                cont_coords = countours["cont_coords"]
                 
                 x, y, w, h = cont_bbox
 
@@ -115,12 +120,11 @@ class InkEnhancer(ImagePrepAbstractWorker):
 
                 # Concatena todos los píxeles del borde
                 border_pixels = np.concatenate([border_top, border_bottom, border_left, border_right])
-
                 # Si la suma de los píxeles del borde es 0, significa que todos son negros (fondo) y el blob está aislado.
                 if np.all(border_pixels) == 0:
                     # Rellena el contorno del blob con negro (0) en la imagen original
                     cv2.drawContours(full_bin_img, [cont_coords], -1, color=0, thickness=cv2.FILLED)
-
+ 
         logger.info(f"Total de fondo incial: {first_black}, corregido: {first_black - np.count_nonzero(full_bin_img)}")
         return full_bin_img
 

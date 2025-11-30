@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 from typing import List, Any, Optional, Tuple
 from scipy.sparse import csr_matrix # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
@@ -93,3 +94,15 @@ def vectorice_values(data_list: List[float], value: Optional[str]) -> float | Li
     
 def closest_int(value: float, candidates: List[int]) -> int:
     return min(candidates, key=lambda x: abs(x - value))
+
+def contour_eccentricity(contour: np.ndarray[Any, Any]) -> float:
+    if len(contour) < 5:
+        return 0.0  # No se puede ajustar una elipse
+    ellipse = cv2.fitEllipse(contour)
+    (center, axes, angle) = ellipse
+    a = max(axes) / 2  # semieje mayor
+    b = min(axes) / 2  # semieje menor
+    if a == 0:
+        return 0.0
+    ecc = np.sqrt(1 - (b ** 2) / (a ** 2))
+    return float(ecc)
