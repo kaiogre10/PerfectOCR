@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_cc_metrics
@@ -41,9 +41,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 return False
                 
             gray_img = self._decolorate(full_img)
-            kernel=np.zeros((self.kernel_threshold, self.kernel_threshold), dtype=np.uint8)
-            fisrt_dil = cv2.dilate(gray_img, kernel, iterations=2) # type: ignore
-            metrics, full_bin_img = extract_cc_metrics(fisrt_dil.copy(), worker_config={}, binarice=True)
+            metrics, full_bin_img = extract_cc_metrics(gray_img.copy(), worker_config={}, binarice=True)
             correct = self._restore_faded_ink(gray_img, full_bin_img, metrics)
             dilated = cv2.dilate(correct, None, iterations=1) # type: ignore
 
@@ -51,14 +49,12 @@ class InkCorrector(ImagePrepAbstractWorker):
                 worker_name = context.get("worker_name") or "inker"
                 output_paths = context["output_paths"]
                 img_id = f"full_bin_img_{image_name}_{worker_name}"
-                image_id = f"full_dilated_{image_name}_{worker_name}"
                 imag_id = f"corrected_blobs_{image_name}_{worker_name}"
                 id = f"decolored_{image_name}_{worker_name}"
 
                 save_croped_image(image_name, id, gray_img, output_paths, worker_name)
                 save_croped_image(image_name, id, gray_img, output_paths, worker_name)
                 save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name)
-                save_croped_image(image_name, image_id, fisrt_dil, output_paths, worker_name) # type: ignore
                 save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
 
             # if self.output_morph:
@@ -93,8 +89,12 @@ class InkCorrector(ImagePrepAbstractWorker):
         first_black = np.count_nonzero(full_bin_img)
         corrected_blobs = 0
         
+        
+        areas_hist: List[int] = []
         for pos, countours in cont_array_dict.items(): # type: ignore
             cont_area = countours["cont_area"]
+
+            areas_hist.append(cont_area)
                 
             if self.area_threshold >= cont_area:
                 cont_bbox = countours["cont_bbox"]
@@ -131,7 +131,23 @@ class InkCorrector(ImagePrepAbstractWorker):
                 #     cv2.drawContours(full_img, [cont_coords], -1, color=0, thickness=cv2.FILLED)
                 #     corrected_blobs += 1
 
-        logger.info(f"Total de texto: {first_black}, blobs corregidos: {corrected_blobs}")
+        
+        bin_edges = np.histogram_bin_edges(areas_hist, bins='sturges')
+        areas_histogram, _ = np.histogram(areas_hist, bin_edges)
+
+        # Log detallado del histograma
+        logger.info("=== Histograma de Áreas de Blobs (Método Sturges) ===")
+        logger.info(f"{'Rango de Área':<30} | {'Cantidad de Blobs':<10}")
+        logger.info("-" * 45)
+        
+        for i in range(len(areas_histogram)):
+            range_str = f"[{bin_edges[i]:.2f} - {bin_edges[i+1]:.2f})"
+            count = areas_histogram[i]
+            if count > 0: # Opcional: Solo mostrar bins con datos para reducir ruido
+                logger.info(f"{range_str:<30} | {count:<10}")
+        
+        logger.info("-" * 45)
+        logger.debug(f"Total de texto: {first_black}, blobs corregidos: {corrected_blobs}")
         return full_img
 
     def _decolorate(self, full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
