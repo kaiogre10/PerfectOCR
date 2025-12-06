@@ -4,7 +4,7 @@ pipeline_secuence:
     - "image_loader"
     - "ink_enhancement"
     # - "angle_corrector"
-    - "geometry_detector"
+    # - "geometry_detector"
     # - "polygon_extractor"
 
   preprocessing_stage:
@@ -16,9 +16,9 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-  #  - "paddle_wrapper"
-  #  - "text_refiner"
-  #  - "data_finder"
+    # - "paddle_wrapper"
+    # - "text_refiner"
+    # - "data_finder"
     
   vector_stage:
     # - "lineal"
@@ -32,8 +32,9 @@ pipeline_secuence:
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
-    deleted_polys: true
+    full_img: false
     bin_full_img: true
+    deleted_polys: false
     morphology: false
     angle_corrected: false
     cropped_img: false
@@ -208,3 +209,4 @@ modules:
     dpi_range: [100, 200, 300, 400, 600, 1200]
     bin_interval: [10, 245]
     percentile: [0.10, 0.99]
+  

@@ -13,6 +13,7 @@ class ImageLoader(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], image_data: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
+        self.output = config.get("full_img")
         self.image_data = image_data
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -36,14 +37,22 @@ class ImageLoader(ImagePrepAbstractWorker):
             now = datetime.now()
             date_creation = now.isoformat()
 
-            gray_img = cv2.imread(input_path, cv2.IMREAD_GRAYSCALE)
+            full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
 
-            if not validate_image(gray_img):
+            if not validate_image(full_image):
                 logger.error(f"No se cargó:'{image_name}'")
                 return False
+                
+            if self.output:
+                from services.output_service import save_croped_image
+                output_paths = context["output_paths"]
+                worker_name = context.get("worker_name") or "loader"
+                img_id = f"full_img_{image_name}_{worker_name}"
+                save_croped_image(image_name, img_id, full_image, output_paths, worker_name)
 
             logger.critical(f"Imagen: '{image_name}' cargada el {now}")
-            img_dims = validate_full_image(gray_img)
+            img_dims = validate_full_image(full_image)
+            
             if not img_dims:
                 logger.error(f"Imagen {image_name} totalmente en blanco")
                 return False
@@ -65,7 +74,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             decimales = f"{now.microsecond:04d}"
             IDRegistro: str= f"{metadata.get('image_name')}_{fecha}{decimales}"
 
-            if manager.create_workflow(IDRegistro, gray_img, metadata): # type: ignore
+            if manager.create_workflow(IDRegistro, full_image, metadata): # type: ignore
                 logger.debug(f"Imagen '{image_name}' cargada en el manager")
                 return True
             else:

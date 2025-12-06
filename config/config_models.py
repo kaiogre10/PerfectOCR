@@ -6,6 +6,7 @@ class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 class ImgLoadOutputs(ConfigWithNumpy):
+    full_img: bool
     deleted_polys: bool
     bin_full_img: bool
     morphology: bool

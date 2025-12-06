@@ -69,7 +69,7 @@ class Metadata:
 
 @dataclass
 class FullImage:
-    full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
+    full_img: Optional[np.ndarray[Any, Any]]
 
 @dataclass
 class WorkflowDict:

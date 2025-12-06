@@ -73,17 +73,18 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
                 if area < self.min_area:
                     # logger.info(f"Polígono {poly_id} descarcatdo por mínima área")
-                    discarted_polys.append(poly_id)
-
+                    
                     if self.output:
                         from services.output_service import save_croped_image
                         from core.utils.image_utils import cropp_img
                         cropped = cropp_img(img, bbox) # type: ignore
                         worker_name = context.get("worker_name") or "geometry_detector"
                         output_paths = context["output_paths"]
+                        pid = f"{poly_id}_{worker_name}"
                         image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                        save_croped_image(image_name, poly_id, cropped, output_paths, worker_name, method="geo_eliminated") # type: ignore
-
+                        save_croped_image(image_name, pid, cropped, output_paths, worker_name) # type: ignore
+                        
+                    discarted_polys.append(poly_id)
                     continue
 
                 final_polygons_list.append({

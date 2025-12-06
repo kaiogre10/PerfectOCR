@@ -28,10 +28,8 @@ class DataFormatter:
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
         try:
-            full_img = normalice_image(gray_img)
-            
             full_image = FullImage(
-                full_img=(full_img)
+                full_img=(gray_img)
                 )
             
             metadata_obj = Metadata(

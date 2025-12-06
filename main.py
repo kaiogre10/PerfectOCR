@@ -1,5 +1,4 @@
-
-# PerfectOCR/main.py
+# main.py
 import os
 import sys
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -21,10 +20,11 @@ os.environ.update({
 TEST_MODE = True
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
+
 DEFAULT_INPUT_PATH = [
-     "input",
-      # "input2",
-          #"input3",
+        # "input",
+        # "input2",
+        "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 
@@ -70,7 +70,7 @@ def main():
         config_path = DEFAULT_CONFIG_FILE
         project_root = PROJECT_ROOT
         
-        clear_output_folders(output_paths, project_root)
+        clear_output_folders(output_paths)
         return activate_main(input_paths, output_paths, config_path, project_root, TEST_MODE)
 
 if __name__ == "__main__":

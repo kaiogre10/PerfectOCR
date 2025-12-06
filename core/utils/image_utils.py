@@ -45,14 +45,18 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
                     mx = float(img_arr.max()) if img_arr.size > 0 else 0.0
                     if mx <= 1.0:
                         img_arr = (img_arr * 255.0).round().astype(np.uint8)
+                        
                     else:
                         img_arr = np.clip(img_arr, 0, 255).round().astype(np.uint8)
                     logger.info("normalice_image: convertida imagen float->uint8 (escalada si hizo falta)")
+                    
                 else:
                     img_arr = img_arr.astype(np.uint8, copy=False)
                     logger.info("normalice_image: casteada imagen a uint8")
+                    
             except Exception as e:
                 logger.error(f"normalice_image: fallo al convertir dtype: {e}", exc_info=True)
+                
                 try:
                     img_arr = np.array(img_arr, dtype=np.uint8)
                 except Exception:

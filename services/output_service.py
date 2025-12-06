@@ -4,7 +4,7 @@ import json
 import logging
 import numpy as np
 import pandas as pd # type: ignore
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +23,16 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, np.dtype[n
         cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 255, 0), thickness=1) # blobs
         save_image(image, output_dir, file_name)
 
-def save_croped_image(image_name: str, poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, method: Optional[str] = None): 
+def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str): 
     """Guarda una imagen de depuración si la salida está habilitada."""
     if isinstance(output_paths, str):
         output_paths = [output_paths]
 
     for path in output_paths:
-        if method:
-            output_dir = os.path.join(path, worker_name, image_name)
-            file_name = f"{poly_id}.png"
-            save_image(image, output_dir, file_name)
-
-        else:
-            output_dir = os.path.join(path, image_name)
-            file_name = f"{poly_id}.png"
-            save_image(image, output_dir, file_name)
-            output_dir = os.path.join(path, worker_name, image_name)
+        output_dir = os.path.join(path, image_name)
+        file_name = f"{img_id}.png"
+        save_image(image, output_dir, file_name)
+        output_dir = os.path.join(path, worker_name, image_name)
 
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
 

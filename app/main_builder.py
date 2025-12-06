@@ -31,10 +31,9 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         
         # 3. WorkflowManager analiza y reporta
         workflow_report = workflow_manager.count_and_plan()
-
         if not workflow_report:
+            logger.error(f"Error en rutas para imágenes, abortando proceso:", exc_info=True)
             cleanup_project_cache(project_root)
-            logger.error("Error en rutas para imágenes, abortando proceso")
             return []
         
         # 4. Iniciar modelos Singleton
