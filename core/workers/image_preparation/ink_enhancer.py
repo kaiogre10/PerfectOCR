@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_cc_metrics
@@ -13,170 +13,204 @@ from core.utils.image_utils import normalice_image
 logger = logging.getLogger(__name__)
 
 class InkCorrector(ImagePrepAbstractWorker):
-    """Worker especializado en restaurar texto con tinta gastada o de baja intensidad."""
+    """
+    Worker robusto para restauración de tinta y eliminación de ruido adaptativo.
+    Utiliza análisis estadístico (histograma) para diferenciar ruido de puntuación
+    y morfología matemática segura (Closing) para reparar trazos rotos.
+    """
 
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.worker_config = config.get('ink_enhancement', {})
-        self.bin_interval = config["bin_interval"]
-        self.kernel_threshold: int = self.worker_config.get("kernel_threshold", {})
-        self.area_threshold: int = self.worker_config.get("area_threshold", {})
-        self.iterations: int = self.worker_config.get("iterations", {})
-        self.output = config.get("bin_full_img")
-        # self.output_morph = config.get("morphology")
+        
+        # Configuración base (se usa como fallback o para la ventana de análisis)
+        self.kernel_threshold: int = self.worker_config.get("kernel_threshold", 2) # Tamaño del padding para análisis de vecinos
+        self.output = config.get("bin_full_img", False)
+        
+        # Configuración para reparación morfológica (segura)
+        self.morph_kernel_size = (2, 2) # Kernel conservador para Closing
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """Detecta y restaura texto con tinta gastada."""
+        """Flujo principal de corrección de tinta."""
         try:
             start_time = time.perf_counter()
-            logger.debug("Mejoramiento de tinta empezado con éxito")
-            image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+            logger.info("Iniciando InkCorrector (Modo Robusto/Adaptativo)...")
+            
+            image_name = manager.workflow.metadata.image_name if manager.workflow else "unknown"
+            worker_name = context.get("worker_name") or "ink_corrector"
+            output_paths = context.get("output_paths", [])
 
+            # 1. Obtener imagen original
             img_obj = manager.get_full_img()
             full_img = img_obj.full_img if img_obj is not None else None
             
             if full_img is None:
-                logger.error(f"No Hay full_img en el Formatter")
+                logger.error("No se encontró full_img en el DataFormatter")
                 return False
                 
+            # 2. Pre-procesamiento: Decoloración y Binarización para análisis
+            # Convertimos a gris limpiando colores de fondo/resaltadores
             gray_img = self._decolorate(full_img)
+            
+            # Obtenemos métricas de componentes conectados (CC) para el análisis estadístico
+            # extract_cc_metrics devuelve el diccionario de contornos y la imagen binaria (Text=255, BG=0)
             metrics, full_bin_img = extract_cc_metrics(gray_img.copy(), worker_config={}, binarice=True)
-            correct = self._restore_faded_ink(gray_img, full_bin_img, metrics)
-            dilated = cv2.dilate(correct, None, iterations=1) # type: ignore
+            
+            # 3. FASE 1: Limpieza Estadística (Sustractiva)
+            # Analiza el histograma y elimina ruido sin tocar la estructura
+            cleaned_img = self._adaptive_noise_removal(gray_img.copy(), full_bin_img, metrics)
+            
+            # 4. FASE 2: Reparación Estructural (Aditiva/Constructiva)
+            # Aplica Morphological Closing para unir tinta rota
+            final_img = self._apply_morphological_repair(cleaned_img)
+
+            # 5. Guardar resultado y generar salidas de depuración
+            if not manager.update_full_img(corrected=True, full_img=final_img):
+                logger.warning("No se pudo actualizar la imagen en el manager")
 
             if self.output:
-                worker_name = context.get("worker_name") or "inker"
-                output_paths = context["output_paths"]
-                img_id = f"full_bin_img_{image_name}_{worker_name}"
-                imag_id = f"corrected_blobs_{image_name}_{worker_name}"
-                id = f"decolored_{image_name}_{worker_name}"
-
-                save_croped_image(image_name, id, gray_img, output_paths, worker_name)
-                save_croped_image(image_name, id, gray_img, output_paths, worker_name)
-                save_croped_image(image_name, img_id, full_bin_img, output_paths, worker_name)
-                save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
-
-            # if self.output_morph:
-            #     kernel = np.ones(self.kernel_threshold, dtype=np.uint8)
-            #     for i in range(0, self.iterations):
-            #         opening = cv2.morphologyEx(correct.copy(), cv2.MORPH_OPEN, kernel, iterations= i+1)
-            #         closing = cv2.morphologyEx(correct.copy(), cv2.MORPH_CLOSE, kernel, iterations= i+1)
-
-            #         logger.info(f"Conteo de fondo interación: '{i+1}': Opening: '{np.count_nonzero(opening)}', Closing: '{np.count_nonzero(closing)}'")
-
-            #         img_id = f"open_img_{image_name}_{worker_name}_{i+1}"
-            #         image_id = f"close_img_{image_name}_{worker_name}_{i+1}"
-            #         save_croped_image(image_name, img_id, opening, output_paths, worker_name)
-            #         save_croped_image(image_name, image_id, closing, output_paths, worker_name)
+                self._save_debug_images(image_name, worker_name, output_paths, gray_img, full_bin_img, cleaned_img, final_img)
                     
-            logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
+            elapsed = time.perf_counter() - start_time
+            logger.info(f"InkCorrector completado para '{image_name}' en {elapsed:.4f}s")
             
             return True
             
         except Exception as e:
-            logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
+            logger.error(f"Error crítico en InkCorrector: {e}", exc_info=True)
             return False
 
-    def _restore_faded_ink(self, full_img: np.ndarray[Any, np.dtype[np.uint8]], full_bin_img: np.ndarray[Any, Any], metrics: Dict[str, Any]) -> np.ndarray[Any, Any]:
+    def _adaptive_noise_removal(self, target_img: np.ndarray, bin_img: np.ndarray, metrics: Dict[str, Any]) -> np.ndarray:
         """
-        Restaura la intensidad del texto y elimina el ruido aislado.
-        Para cada componente pequeño, se analiza una ventana a su alrededor. Si el borde de
-        la ventana es completamente negro (fondo), se considera ruido y se elimina.
+        Elimina el ruido basándose en la distribución estadística de las áreas de los blobs.
+        Determina automáticamente si la imagen está 'sucia' o 'limpia'.
         """
-        img_h, img_w = full_bin_img.shape
+        img_h, img_w = bin_img.shape
         cont_array_dict: Dict[int, Dict[str, Any]] = metrics.get("cont_array_dict", {})
-        first_black = np.count_nonzero(full_bin_img)
-        corrected_blobs = 0
         
+        # A. Recolectar datos estadísticos
+        all_areas = [c["cont_area"] for c in cont_array_dict.values()]
         
-        areas_hist: List[int] = []
-        for pos, countours in cont_array_dict.items(): # type: ignore
-            cont_area = countours["cont_area"]
+        if not all_areas:
+            logger.warning("No se detectaron blobs para analizar.")
+            return target_img
 
-            areas_hist.append(cont_area)
-                
-            if self.area_threshold >= cont_area:
-                cont_bbox = countours["cont_bbox"]
-                cont_coords = countours["cont_coords"]
-                
-                x, y, w, h = cont_bbox
-
-                # Define la ventana de análisis alrededor del blob con un padding
-                win_x1 = max(0, x - self.kernel_threshold)
-                win_y1 = max(0, y - self.kernel_threshold)
-                win_x2 = min(img_w, x + w + self.kernel_threshold)
-                win_y2 = min(img_h, y + h + self.kernel_threshold)
-
-                # Extrae la región de la ventana
-                window = full_bin_img[win_y1:win_y2, win_x1:win_x2]
-
-                # Extrae los bordes de la ventana
-                border_top = window[0, :]
-                border_bottom = window[-1, :]
-                border_left = window[1:-1, 0]
-                border_right = window[1:-1, -1]
-
-                # Concatena todos los píxeles del borde
-                border_pixels = np.concatenate([border_top, border_bottom, border_left, border_right]).astype(np.uint8)
-
-                # Si todos los píxeles del borde son negros (fondo), el blob está aislado
-                if self.bin_interval[0] >= np.mean(border_pixels):
-                # if np.all(border_pixels == 0):
-                    # Pinta el blob de blanco (255) en la imagen original para corregir ruido
-                    cv2.drawContours(full_img, [cont_coords], -1, color=255, thickness=cv2.FILLED) # type: ignore
-                    corrected_blobs += 1
-                    
-                # if np.all(border_pixels == 255):
-                #     cv2.drawContours(full_img, [cont_coords], -1, color=0, thickness=cv2.FILLED)
-                #     corrected_blobs += 1
-
+        # B. Calcular Histograma (Auto-calibración)
+        # Usamos 'fd' (Freedman-Diaconis) para una elección robusta del ancho del bin
+        hist_counts, bin_edges = np.histogram(all_areas, bins='auto')
         
-        bin_edges = np.histogram_bin_edges(areas_hist, bins='sturges')
-        areas_histogram, _ = np.histogram(areas_hist, bin_edges)
-
-        # Log detallado del histograma
-        logger.info("=== Histograma de Áreas de Blobs (Método Sturges) ===")
-        logger.info(f"{'Rango de Área':<30} | {'Cantidad de Blobs':<10}")
-        logger.info("-" * 45)
+        total_blobs = len(all_areas)
+        blobs_in_first_bin = hist_counts[0]
+        first_bin_ratio = blobs_in_first_bin / total_blobs
         
-        for i in range(len(areas_histogram)):
-            range_str = f"[{bin_edges[i]:.2f} - {bin_edges[i+1]:.2f})"
-            count = areas_histogram[i]
-            if count > 0: # Opcional: Solo mostrar bins con datos para reducir ruido
-                logger.info(f"{range_str:<30} | {count:<10}")
+        # C. El "Test de Pánico": Decidir Umbral Dinámico
+        # Si > 30% de los blobs están en el primer bin, asumimos imagen sucia.
+        PANIC_THRESHOLD_RATIO = 0.30
         
-        logger.info("-" * 45)
-        logger.debug(f"Total de texto: {first_black}, blobs corregidos: {corrected_blobs}")
-        return full_img
+        if first_bin_ratio > PANIC_THRESHOLD_RATIO:
+            # Escenario SUCIO: Umbral agresivo (Límite superior del primer bin)
+            dynamic_threshold = bin_edges[1]
+            logger.info(f"DISTRIBUCIÓN SUCIA DETECTADA (Ratio: {first_bin_ratio:.2%}). Umbral dinámico fijado en: {dynamic_threshold:.2f} px")
+        else:
+            # Escenario LIMPIO: Umbral mínimo de seguridad (bypass)
+            dynamic_threshold = 5.0 # Solo borrar cosas microscópicas
+            logger.info(f"DISTRIBUCIÓN LIMPIA DETECTADA (Ratio: {first_bin_ratio:.2%}). Modo Bypass activo.")
 
-    def _decolorate(self, full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        # D. Ejecución Selectiva (Divide y Vencerás)
+        blobs_removed = 0
+        
+        for countours in cont_array_dict.values():
+            area = countours["cont_area"]
+            
+            # REGLA 1: Inmunidad Diplomática
+            if area >= dynamic_threshold:
+                continue # Es texto grande, ignorar.
+            
+            # REGLA 2: Juicio a los Sospechosos (Test de Aislamiento)
+            # Solo analizamos vecinos si el blob es menor al umbral dinámico
+            bbox = countours["cont_bbox"]
+            coords = countours["cont_coords"]
+            x, y, w, h = bbox
+            
+            # Definir ventana con padding (kernel_threshold)
+            win_x1 = max(0, x - self.kernel_threshold)
+            win_y1 = max(0, y - self.kernel_threshold)
+            win_x2 = min(img_w, x + w + self.kernel_threshold)
+            win_y2 = min(img_h, y + h + self.kernel_threshold)
+            
+            window = bin_img[win_y1:win_y2, win_x1:win_x2]
+            
+            # Optimización: Si la ventana completa es negra (0), es ruido aislado instantáneo.
+            # (Asumiendo bin_img: Texto=255, Fondo=0)
+            if np.sum(window) == 0:
+                # Caso imposible si el blob existe, pero por seguridad
+                continue
+
+            # Verificar bordes de la ventana
+            border_mask = np.zeros_like(window, dtype=bool)
+            border_mask[0, :] = True
+            border_mask[-1, :] = True
+            border_mask[:, 0] = True
+            border_mask[:, -1] = True
+            
+            border_pixels = window[border_mask]
+            
+            # Si todos los píxeles del borde son 0 (Fondo), está aislado -> ELIMINAR
+            if np.all(border_pixels == 0):
+                # Pintamos de blanco (255) en la imagen destino (asumiendo fondo blanco)
+                cv2.drawContours(target_img, [coords], -1, color=(255, 255, 255), thickness=cv2.FILLED)
+                blobs_removed += 1
+
+        logger.info(f"Limpieza completada. Blobs eliminados: {blobs_removed} de {total_blobs}")
+        return target_img
+
+    def _apply_morphological_repair(self, img: np.ndarray) -> np.ndarray:
         """
-        Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro.
+        Aplica Cierre Morfológico (Closing) para reparar tinta rota.
+        Seguro de usar porque el ruido ya fue eliminado.
         """
-        # Detecta píxeles que no sean casi blancos ni casi negros (o sea, que tengan color) y los reemplaza por blanco.
-        # Se asume imagen en BGR.
-        threshold_black = 160  # Píxeles con todos los canales <= 60 se consideran negro
-        threshold_white = 180 # Píxeles con todos los canales >= 200 se consideran blanco
+        # Kernel rectangular pequeño (2x2) para no fusionar líneas de texto
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, self.morph_kernel_size)
+        
+        # MORPH_CLOSE = Dilatación seguida de Erosión
+        # Une grietas internas sin engrosar excesivamente el contorno exterior
+        repaired = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+        
+        logger.debug(f"Reparación morfológica aplicada con kernel {self.morph_kernel_size}")
+        return repaired
 
-        # Máscara para píxeles negros (todos los canales <= threshold_black)
+    def _decolorate(self, full_img: np.ndarray) -> np.ndarray:
+        """
+        Elimina colores (rayones, resaltados) dejando solo blanco y negro.
+        Mantiene la lógica original del usuario.
+        """
+        # Umbrales para detectar "no blanco" y "no negro"
+        threshold_black = 160 
+        threshold_white = 180 
+
+        # Máscaras
         mask_black = np.all(full_img <= threshold_black, axis=2)
-        
-        # Máscara para píxeles blancos (todos los canales >= threshold_white)
         mask_white = np.all(full_img >= threshold_white, axis=2)
-        
-        # Máscara de píxeles válidos (negro o blanco)
         mask_valid = mask_black | mask_white
         
-        # Reemplaza los píxeles de color (no válidos) por blanco
-        full_img[~mask_valid] = [255, 255, 255]
+        # Limpiar píxeles de color -> Blanco
+        clean_img = full_img.copy()
+        clean_img[~mask_valid] = [255, 255, 255]
 
-        # Convierte a escala de grises para continuar el flujo normal
-        gray = normalice_image(full_img.copy())
+        # Normalizar a escala de grises
+        gray = normalice_image(clean_img)
         
         if gray is not None:
             return gray
-            
         else:
-            logger.info("Normalice IMG devolvío imagen, Imagen en grises de cv2")
-            return cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
+            return cv2.cvtColor(clean_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
+
+    def _save_debug_images(self, base_name: str, worker: str, paths: List[str], 
+                          original: np.ndarray, binary: np.ndarray, 
+                          cleaned: np.ndarray, final: np.ndarray):
+        """Guarda pasos intermedios para depuración."""
+        save_croped_image(base_name, f"01_gray_input_{worker}", original, paths, worker)
+        save_croped_image(base_name, f"02_binary_analysis_{worker}", binary, paths, worker)
+        save_croped_image(base_name, f"03_cleaned_noise_{worker}", cleaned, paths, worker)
+        save_croped_image(base_name, f"04_repaired_final_{worker}", final, paths, worker)
