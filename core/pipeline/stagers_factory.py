@@ -17,7 +17,7 @@ class StagersFactory:
         self.image_workers = self.modules_config.get("image_preparation", {}).get("imagepre_stage", [])
         self.preprocessing_workers = self.modules_config.get("preprocessing", {}).get("preprocessing_stage", [])
         self.ocr_workers = self.modules_config.get("ocr", {}).get("ocr_stage", [])
-        self.vectorizing_workers = self.modules_config.get("vectorization", {}).get("vectorization_stage", [])
+        self.vectorizing_workers = self.modules_config.get("vectorization", {}).get("vector_stage", [])
         self.main_factory = MainFactory(self.modules_config, project_root)
 
     def create_image_prep_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> ImagePreparationStager:

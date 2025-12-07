@@ -300,7 +300,7 @@ class DataFormatter:
                     cropped_geo = cropped_geometries.get(poly_id)
 
                     # Crear nuevo objeto CroppedImage
-                    cropped_image_obj = CroppedImage(img)
+                    cropped_image_obj = CroppedImage(normalice_image(img))
 
                     # Crear nuevo objeto CroppedGeometry
                     cropped_geometry_obj = CroppedGeometry(
@@ -498,9 +498,9 @@ class DataFormatter:
             polygons = self.workflow.polygons if self.workflow else {}
             all_lines = self.workflow.all_lines if self.workflow else {}
 
-            hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == 6] 
+            hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == 6]
 
-            logger.debug(f"Header_polys: {hdr_poly_ids}")
+            logger.info(f"Header_polys: {hdr_poly_ids}")
             
             if not all_lines:
                 logger.error("all_lines está vacío! No se puede buscar el header.")
@@ -528,7 +528,7 @@ class DataFormatter:
                     
                     self.update_headers(header_line_id)
                     
-                    logger.debug(f"Header_line_id={header_line_id} guardado correctamente")
+                    logger.info(f"Header_line_id={header_line_id} guardado correctamente")
                     return header_line_id
             else:
                 logger.warning(f"No se encontró ninguna línea con HeaderWords. hdr_poly_ids={hdr_poly_ids}")
@@ -565,7 +565,7 @@ class DataFormatter:
                         updated_polygon = dataclasses.replace(polygon, key_field=6)
                         self.workflow.polygons[poly_id] = updated_polygon
                         marked_as_header += 1
-                    logger.debug(f"Polígono {poly_id} marcado como encabezado: '{polygon.ocr_text}' en línea {header_line_id}")
+                    logger.info(f"Polígono {poly_id} marcado como encabezado: '{polygon.ocr_text}' en línea {header_line_id}")
                 
                 else:
                     # Cambio: limpiar si tiene key_field == 6
@@ -573,9 +573,9 @@ class DataFormatter:
                         updated_polygon = dataclasses.replace(polygon, key_field=None)
                         self.workflow.polygons[poly_id] = updated_polygon
                         cleared_header += 1
-                        logger.debug(f"Polígono {poly_id} limpiado de HeaderWords (fuera de línea {header_line_id})")
+                        logger.info(f"Polígono {poly_id} limpiado de HeaderWords (fuera de línea {header_line_id})")
             
-            logger.debug(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
+            logger.info(f"Actualización de polígonos de encabezado: {marked_as_header} marcados, {cleared_header} limpiados")
             return True
             
         except Exception as e:

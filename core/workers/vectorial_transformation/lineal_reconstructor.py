@@ -21,6 +21,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             start_time = time.perf_counter()
+            logger.info(f"Inicio de ineal reconstructor")
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False

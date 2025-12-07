@@ -3,9 +3,9 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "ink_enhancement"
-    - "angle_corrector"
-    - "geometry_detector"
-    - "polygon_extractor"
+    # - "angle_corrector"
+    # - "geometry_detector"
+    # - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -16,16 +16,16 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
-    - "text_refiner"
-    - "data_finder"
+    # - "paddle_wrapper"
+    # - "text_refiner"
+    # - "data_finder"
     
   vector_stage:
-    - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
+    # - "lineal"
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
+    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -91,7 +91,7 @@ modules:
       iterations: 2
 
     angle_corrector:
-      min_angle_for_correction: 2.0
+      min_angle_for_correction: 0.5
       canny_thresholds: [50, 150]
       hough_threshold: 150
       hough_min_line_length_cap_px: 300
@@ -140,7 +140,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 0
+      num_passes: 1
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]

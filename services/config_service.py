@@ -56,24 +56,25 @@ class ConfigService:
         ocr_active = ocr_workers.isdisjoint(all_workers)
 
         if not all_workers:
-            return {}
-         
-        elif ocr_active:
+            # logger.info("Sin all workers")
             return {}
         
-        elif not ocr_active:
+        elif ocr_active:
+            # logger.info("NO OCR ACTIVE")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": False
             }
         
         elif "data_finder" in all_workers and ocr_workers.issubset(all_workers):
+            # logger.info("Data finder en all workers")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": True,
             }
         
-        elif not "paddle_wrapper" in all_workers:
+        elif "paddle_wrapper" not in all_workers:
+            # logger.info("No paddle wrapper")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": False
@@ -85,13 +86,17 @@ class ConfigService:
     @property
     def modules_config(self) -> Dict[str, Any]:
         return self.config.get("modules", {})
+    
+    @property
+    def utils_config(self) -> Dict[str, Any]:
+        return self.modules_config.get("utils", {})
       
     @property
     def img_prep_config(self) -> Dict[str, Any]:
         return {
             **self.modules_config.get("image_preparation", {}),
             **self.enabled_outputs.get("image_load_outputs", {}),
-            **self.modules_config.get("utils", {}),
+            **self.utils_config,
             "imagepre_stage": self.workers_order["imagepre_stage"]
         }
        
@@ -103,7 +108,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("preprocessing", {}),
                 **self.enabled_outputs.get("preprocessing_outputs", {}),
-                **self.modules_config.get("utils", {}),
+                **self.utils_config,
                 "preprocessing_stage": self.workers_order["preprocessing_stage"]
             }
 
@@ -115,7 +120,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("ocr", {}),
                 **self.enabled_outputs.get("ocr_outputs", {}),
-                **self.modules_config.get("utils", {}),
+                **self.utils_config,
                 "ocr_stage": self.workers_order["ocr_stage"]
             }
        
@@ -127,7 +132,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("vectorization", {}),
                 **self.enabled_outputs.get("vectorization_outputs", {}),
-                **self.modules_config.get("utils", {}),
+                **self.utils_config,
                 "vector_stage": self.workers_order["vector_stage"]
             }
         
@@ -183,21 +188,17 @@ class ConfigService:
     def get_all_workers(self) -> Set[str]:
         all_workers = set(self.create_stager[0][1])
 
-        if not self.test_mode:
+        if self.create_stager[1][1]:
+            prep = set(self.create_stager[1][1])
+            all_workers.update(prep)
+
+        if self.create_stager[2][1]:
+            ocr = set(self.create_stager[2][1])
+            all_workers.update(ocr)
+
+        if self.create_stager[3][1]:
+            vect = set(self.create_stager[3][1])
+            all_workers.update(vect)
+
+        return all_workers
         
-            if self.create_stager[1][1]:
-                prep = set(self.create_stager[1][1])
-                all_workers.update(prep)
-
-            if self.create_stager[2][1]:
-                ocr = set(self.create_stager[2][1])
-                all_workers.update(ocr)
-
-            if self.create_stager[3][1]:
-                vect = set(self.create_stager[3][1])
-                all_workers.update(vect)
-
-            return all_workers
-        
-        else:
-            return all_workers

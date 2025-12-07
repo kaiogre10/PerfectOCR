@@ -69,13 +69,13 @@ class ModelsManager:
                 self._word_finder = None
                 return False
             
-            elif config.get("activate_wf") is not False:
+            elif config.get("activate_wf"):
                 model_path=models_config.get("wf_model_path")
                 self._word_finder: WordFinder = WordFinder(
                     model_path=model_path
                 )
                 self._active = True
-                logger.info(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
+                logger.debug(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
                 return True
 
             else:

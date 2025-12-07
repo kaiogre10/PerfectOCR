@@ -39,64 +39,64 @@ class Refiner(OCRAbstractWorker):
         logger.debug(f"Refinador inicializado para {self.num_passes} pasadas.")
 
         try:
-            polygons_in: Dict[str, Polygons] = manager.workflow.polygons
-            sorted_poly_ids = sorted(polygons_in.keys())
-            blob_metrics: Dict[str, Any] = {}
+        #     polygons_in: Dict[str, Polygons] = manager.workflow.polygons
+        #     sorted_poly_ids = sorted(polygons_in.keys())
+        #     blob_metrics: Dict[str, Any] = {}
 
-            for poly_id in sorted_poly_ids:
-                polygon = polygons_in[poly_id]
+        #     for poly_id in sorted_poly_ids:
+        #         polygon = polygons_in[poly_id]
                 
-                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
+        #         cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 
-                if cropped_img is None:
-                    logger.warning(f"Cropped_img de {poly_id} es None")
-                    continue
+        #         if cropped_img is None:
+        #             logger.warning(f"Cropped_img de {poly_id} es None")
+        #             continue
 
-                # self.worker_config["poly_id"] = poly_id
-                # # Analiza la imagen y asigna el diccionario de métricas resultante a la clave correspondiente al poly_id actual.
-                # # logger.info(f"{poly_id}:")
-                # bin_img = binarice_img(cropped_img, {})
+        #         # self.worker_config["poly_id"] = poly_id
+        #         # # Analiza la imagen y asigna el diccionario de métricas resultante a la clave correspondiente al poly_id actual.
+        #         # # logger.info(f"{poly_id}:")
+        #         # bin_img = binarice_img(cropped_img, {})
 
-                # if self.output:
-                #     from services.output_service import save_croped_image
-                #     worker_name = "binarized"
-                #     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                #     output_paths = context["output_paths"]
-                #     save_croped_image(image_name, poly_id, bin_img, output_paths, worker_name, method=worker_name)
+        #         # if self.output:
+        #         #     from services.output_service import save_croped_image
+        #         #     worker_name = "binarized"
+        #         #     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+        #         #     output_paths = context["output_paths"]
+        #         #     save_croped_image(image_name, poly_id, bin_img, output_paths, worker_name, method=worker_name)
                 
-                # if not validate_text(polygon.ocr_text or ""):
-                #     continue
+        #         # if not validate_text(polygon.ocr_text or ""):
+        #         #     continue
                 
-                # if self.output_blobs:
-                #     self.worker_config["output"] = self.output_blobs
-                #     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                #     self.worker_config["output_paths"] = context["output_paths"]
-                #     self.worker_config["image_name"] = image_name
+        #         # if self.output_blobs:
+        #         #     self.worker_config["output"] = self.output_blobs
+        #         #     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+        #         #     self.worker_config["output_paths"] = context["output_paths"]
+        #         #     self.worker_config["image_name"] = image_name
 
-                # self.worker_config["text"] = polygon.ocr_text
-                # metrics = analize_bin_img(bin_img, self.worker_config, False)
-                # if metrics.get('needs_fragmentation'):
+        #         # self.worker_config["text"] = polygon.ocr_text
+        #         # metrics = analize_bin_img(bin_img, self.worker_config, False)
+        #         # if metrics.get('needs_fragmentation'):
 
-                #     logger.info(f"{poly_id}: para fragmentar: {polygon.ocr_text} en: {metrics.get("num_blobs", {})}")
+        #         #     logger.info(f"{poly_id}: para fragmentar: {polygon.ocr_text} en: {metrics.get("num_blobs", {})}")
                     
-                # blob_metrics[poly_id] = metrics
+        #         # blob_metrics[poly_id] = metrics
     
-                # logger.info(f"{poly_id}: Blobs={metrics.get('num_blobs', {})} | Palabras: {num_words} | Texto: '{polygon.ocr_text}'")
+        #         # logger.info(f"{poly_id}: Blobs={metrics.get('num_blobs', {})} | Palabras: {num_words} | Texto: '{polygon.ocr_text}'")
 
-            if self.delete_cropp:
-                logger.info("Fragmenter liberara las imagenes")
+        #     if self.delete_cropp:
+        #         logger.info("Fragmenter liberara las imagenes")
 
-            else:
-                manager.delete_cropped_images()
-                logger.info("Cropped_img liberadas")
+        #     else:
+        #         manager.delete_cropped_images()
+        #         logger.info("Cropped_img liberadas")
 
-            # logger.info(f"Métricas :{blob_metrics}.")
+        #     # logger.info(f"Métricas :{blob_metrics}.")
 
-            if not blob_metrics:
-                context["blob_metrics"] = None
+        #     if not blob_metrics:
+        #         context["blob_metrics"] = None
 
-            else: 
-                context["blob_metrics"] = blob_metrics
+        #     else: 
+        #         context["blob_metrics"] = blob_metrics
              
             for i in range(self.num_passes):
                 pass_num = i + 1

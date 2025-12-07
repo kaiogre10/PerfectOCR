@@ -48,7 +48,7 @@ class DataFinder(OCRAbstractWorker):
 
             # Actualiza los key_fields
             if manager.update_key_field(polygon_updates):
-                logger.debug(f"Key Fields detectados en {time.perf_counter() - start_time:.6f}s")
+                logger.info(f"Key Fields detectados en {time.perf_counter() - start_time:.6f}s")
                 return True
                 
         except Exception as e:
@@ -114,7 +114,7 @@ class DataFinder(OCRAbstractWorker):
 
                     if key_field:
                         polygon_updates[pid] = key_field
-                        logger.debug(f"Resultado de {pid}: {best_result}")
+                        logger.info(f"Resultado de {pid}: {best_result}")
 
             if polygon_updates:
                 logger.debug(f"{skipped_semantic} polígonos semánticos omitidos")

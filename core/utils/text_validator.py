@@ -19,6 +19,7 @@ def get_special_chars() -> Set[str]:
     }
 def numeric_corrections() -> Dict[str, str]:
     return {
+        "Q": "0",
         "O": "0",
         "o": "0",
         "I": "1",

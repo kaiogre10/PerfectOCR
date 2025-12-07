@@ -34,7 +34,7 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
         if img_arr.ndim == 3 and img_arr.shape[2] in (3, 4):
             try:
                 img_arr = cv2.cvtColor(img_arr, cv2.COLOR_BGR2GRAY)
-                logger.info("normalice_image: convertida imagen BGR->GRAY")
+                logger.debug("normalice_image: convertida imagen BGR->GRAY")
             except Exception as e:
                 logger.warning(f"normalice_image: no se pudo convertir BGR->GRAY: {e}", exc_info=True)
 

@@ -79,7 +79,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     save_raw_json( output_paths, worker_name, final_results, file_name)
             
             total_time = time.perf_counter() - start_time
-            logger.debug(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.6f}s.")
+            logger.info(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.6f}s.")
             
             return True
         except Exception as e:

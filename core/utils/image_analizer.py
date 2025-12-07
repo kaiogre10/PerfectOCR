@@ -82,14 +82,17 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
     #logger.info(f"{poly}")
    
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cont_array_dict: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.uint16]]] | float]= {}
+    cont_array_dict: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]] | float]= {}
     
+    areas_hist: List[float] = []
     for i, cont in enumerate(contours):
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
         cont_bbox = cv2.boundingRect(cont_coords)
         # convex_hull = np.array(cv2.convexHull(cont_coords))
         cont_area = cv2.contourArea(cont_coords)
         # hull_area = cv2.contourArea(convex_hull)
+
+        areas_hist.append(cont_area)
         
         cont_array_dict[i] = {
             "cont_coords": cont_coords,
@@ -98,7 +101,26 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
             "cont_area": cont_area,
             # "hull_area": hull_area
         }
+
     logger.info(f"Numero de contornos: {i}")
+
+    areas_histogram, bin_edges = np.histogram(areas_hist, (np.histogram_bin_edges(areas_hist, bins='auto')))
+
+    logger.info(f"MEDIANA: {np.mean(areas_hist)}")
+    
+    logger.info(f"EDGES: {bin_edges}")
+    logger.info(f"HISTOGRAMA: {areas_histogram}")
+
+    logger.debug("=== Histograma de Áreas de Blobs ===")
+    logger.debug(f"{'Rango de Área':<30} | {'Cantidad de Blobs':<10}")
+    logger.debug("-" * 45)
+    
+    for i in range(len(areas_histogram)):
+        range_str = f"[{bin_edges[i]:.2f} - {bin_edges[i+1]:.2f})"
+        count = areas_histogram[i]
+        if count > 0: # Opcional: Solo mostrar bins con datos para reducir ruido
+            logger.info(f"{range_str:<30} | {count:<10}")
+    
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity= connectivity)
 
     label_labeled = np.arange(1, n_labels).astype(np.uint16)
@@ -114,8 +136,10 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
    # logger.info(f"{extract_labs}")
 
     image_metrics: Dict[str, Any] = { 
-        "mapped_stats": mapped_stats, 
-        "cont_array_dict": cont_array_dict
+        "mapped_stats": mapped_stats,
+        "cont_array_dict": cont_array_dict,
+        "areas_histogram": areas_histogram, 
+        "bin_edges": bin_edges
     }
 
     return image_metrics, bin_img

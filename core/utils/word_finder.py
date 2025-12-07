@@ -354,9 +354,9 @@ class WordFinder:
             logger.error(f"Error verificando palabra prohibida: {e}", exc_info=True)
             return False
 
-    def _clean_text(self, s: str) -> Optional[str]:
+    def _clean_text(self, s: Optional[str]) -> Optional[str]:
         try:
-            if not s:
+            if s is None:
                 return None
 
             q = clean(
