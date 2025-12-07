@@ -98,7 +98,8 @@ class InkCorrector(ImagePrepAbstractWorker):
 
         # B. Calcular Histograma (Auto-calibración)
         # Usamos 'fd' (Freedman-Diaconis) para una elección robusta del ancho del bin
-        hist_counts, bin_edges = np.histogram(all_areas, bins='auto')
+        bin_edges = np.histogram_bin_edges(all_areas, bins='fd')
+        hist_counts, _ = np.histogram(all_areas, bin_edges)
         
         total_blobs = len(all_areas)
         blobs_in_first_bin = hist_counts[0]

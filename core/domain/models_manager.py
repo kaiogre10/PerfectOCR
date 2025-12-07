@@ -75,7 +75,7 @@ class ModelsManager:
                     model_path=model_path
                 )
                 self._active = True
-                logger.debug(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
+                logger.info(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
                 return True
 
             else:

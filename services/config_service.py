@@ -143,10 +143,11 @@ class ConfigService:
 
     def _validate_min_workers(self) -> bool:
         min_workers: Set[str] = {"image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"}
-        if not self.workers_order:
-            logger.error("No hay configuración de workers disponible")
-            return False
         try:
+            if not self.workers_order:
+                logger.error("No hay configuración de workers disponible")
+                return False
+            
             set_worker_config = self.get_all_workers
             if min_workers.issubset(set_worker_config):
                 # Loguear conteo por stage de forma segura
@@ -169,7 +170,7 @@ class ConfigService:
 
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
-            return False
+        return False
     
     @property
     def create_stager(self) -> List[str]:
