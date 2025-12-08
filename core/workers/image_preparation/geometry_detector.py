@@ -5,7 +5,7 @@ import numpy as np
 from typing import Dict, Any, Optional, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import validate_image
+from core.utils.image_utils import binarice_img, normalice_image
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +43,18 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             img_obj = manager.get_full_img()
-            img = img_obj.full_img if img_obj is not None else None
-            if not validate_image(img):
-            # if img is None:
+            full_image = img_obj.full_img if img_obj is not None else None
+            
+            full_img = normalice_image(full_image) 
+            
+            if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
 
             logger.debug("Full_img obtenida con éxito")
-
+    
+            img = binarice_img(full_img, worker_config={})
+                
             polygons: List[List[float]] = engine.ocr(img=img, det=True, cls=False, rec=False)
 
             if not (polygons and len(polygons) > 0 and polygons[0] is not None): # type: ignore
@@ -99,7 +103,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")
-            logger.debug(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
+            logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")

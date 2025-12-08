@@ -107,7 +107,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "poly_gone"
                     output_paths = context["output_paths"]
-                    save_croped_image(image_name, poly_id, cropped, output_paths, worker_name, method="all_polys") # type: ignore
+                    pid = f"{poly_id}_{image_name}_{worker_name}"
+                    save_croped_image(image_name, pid, cropped, output_paths, worker_name) # type: ignore
                 
                 poly_mean, dims = calculate_img_values(cropped)
                 bbox_width = dims[1]

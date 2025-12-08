@@ -9,7 +9,6 @@ class ImgLoadOutputs(ConfigWithNumpy):
     full_img: bool
     deleted_polys: bool
     bin_full_img: bool
-    morphology: bool
     angle_corrected: bool
     cropped_img: bool
     final_polys: bool
@@ -62,9 +61,11 @@ class ModelsConfig(ConfigWithNumpy):
     wf_model_path: str
     
 class InkConfig(ConfigWithNumpy):
-    kernel_threshold: int
-    area_threshold: int
+    kernel_threshold: Tuple[int, int]
     iterations: int
+    window_size: int
+    threshold_black: int
+    threshold_white: int
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float

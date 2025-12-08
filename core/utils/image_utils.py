@@ -156,9 +156,7 @@ def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
     return float(sobel)
 
 def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    """
-    Binariza la imagen, extrae métricas robustas de componentes conectados (CC) y decide si necesita fragmentación.
-    """
+    
     c_value: int = worker_config.get('c_value', 7)
     height_thresholds: List[int] = worker_config.get('height_thresholds_px', [100, 800, 1500, 2500])
     block_sizes_map: List[int] = worker_config.get('block_sizes_map', [15, 21, 25, 35, 41])

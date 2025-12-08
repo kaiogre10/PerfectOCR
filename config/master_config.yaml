@@ -2,10 +2,10 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "ink_enhancement"
+    # - "ink_enhancement"
     # - "angle_corrector"
-    # - "geometry_detector"
-    # - "polygon_extractor"
+    - "geometry_detector"
+    - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -33,11 +33,10 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: true
+    bin_full_img: false
     deleted_polys: false
-    morphology: false
     angle_corrected: false
-    cropped_img: false
+    cropped_img: true
     final_polys: false
     discarded_polys: false
   
@@ -86,9 +85,11 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      kernel_threshold: 5
-      area_threshold: 12
-      iterations: 2
+      kernel_threshold: [1, 3]
+      iterations: 1
+      window_size: 5
+      threshold_black: 160
+      threshold_white: 180
 
     angle_corrector:
       min_angle_for_correction: 0.5
@@ -99,7 +100,7 @@ modules:
       hough_angle_filter_range_degrees: [-20.0, 20.0]
         
     geometry_detector:
-      min_area: 500
+      min_area: 1
       
     polygon_extractor:
       angle_thr: [44.5, 45.5]
