@@ -13,7 +13,7 @@ class StructuredTable:
 @dataclass
 class CroppedGeometry:
     padd_centroid: np.ndarray[Any, Any]  # shape: (2,)
-    padding_coords: np.ndarray[Any, Any]  # shape: (4,) 
+    padding_coords: np.ndarray[Any, Any]  # shape: (4,)
     croppy_dims: Dict[str, int]
     
 @dataclass
@@ -28,11 +28,10 @@ class Geometry:
 
 @dataclass
 class Polygons:
-    polygon_id: Optional[str]
+    polygon_id: str
     geometry: Geometry
     cropedd_geometry: CroppedGeometry
     cropped_img: Optional[CroppedImage]
-    perimeter: Optional[float]
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
     key_field: Optional[int]

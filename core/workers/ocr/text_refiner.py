@@ -9,7 +9,7 @@ from core.workers.ocr.fragmenter import Fragmenter
 # from core.utils.image_analizer import analize_bin_img
 # from core.utils.image_utils import binarice_img
 # from core.utils.text_validator import validate_text
-from core.domain.data_models import Polygons
+# from core.domain.data_models import Polygons
 import logging
 
 logger = logging.getLogger(__name__)

@@ -107,7 +107,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "poly_gone"
                     output_paths = context["output_paths"]
-                    pid = f"{poly_id}_{image_name}_{worker_name}"
+                    pid = f"{image_name}_{poly_id}_all_{worker_name}"
                     save_croped_image(image_name, pid, cropped, output_paths, worker_name) # type: ignore
                 
                 poly_mean, dims = calculate_img_values(cropped)
@@ -144,7 +144,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "poly_gone"
                     output_paths = context["output_paths"]
-                    save_croped_image(image_name, p_data['poly_id'], p_data['cropped'], output_paths, worker_name, method="deleted")
+                    pid = f"{image_name}_{p_data['poly_id']}_deleted_{worker_name}"
+                    save_croped_image(image_name, pid, p_data['cropped'], output_paths, worker_name)
 
                 else:
                     valid_polygons_data.append(p_data)
@@ -179,10 +180,10 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     del manager.workflow.polygons[pid]# type: ignore
 
             # Reindexar los polígonos válidos en el manager
-            new_polygons = {}
+            new_polygons: Dict[str, Polygons] = {}
             for idx, old_id in enumerate(valid_poly_ids):
 
-                if old_id not in manager.workflow.polygons:# type: ignore
+                if old_id not in manager.workflow.polygons:
                     continue
 
                 new_id = f"poly_{idx:04d}"
@@ -190,9 +191,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = poly_obj
                     
-            # manager.workflow.polygons = new_polygons# type: ignore
+            manager.workflow.polygons = new_polygons
             
-            # Guardar resultados
             if not manager.save_cropped_images(cropped_images, cropped_geometries):
                 logger.error("No se pudieron guardar las imagenes en el manager")
                 return False
@@ -206,12 +206,12 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 from services.output_service import save_croped_image
                 worker_name = context.get("worker_name") or "poly_gone"
                 output_paths = context["output_paths"]
-
                 polygons = manager.workflow.polygons if manager.workflow else {}
 
                 for poly_id, polygon in polygons.items():
+                    pid = f"{image_name}_{poly_id}_filtered_{worker_name}"
                     cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                    save_croped_image(image_name, poly_id, cropped_img, output_paths, worker_name, method="final_polys")
+                    save_croped_image(image_name, pid, cropped_img, output_paths, worker_name) #type: ignore
             
             return True
 

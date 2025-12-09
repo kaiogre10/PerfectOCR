@@ -83,7 +83,6 @@ class DataFormatter:
                     geometry=geometry,
                     cropedd_geometry=None, #type:ignore
                     cropped_img=None,
-                    perimeter=None,
                     ocr_text=None,
                     ocr_confidence=None,
                     was_refined=False,

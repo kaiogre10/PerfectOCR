@@ -13,6 +13,7 @@ class ImgLoadOutputs(ConfigWithNumpy):
     cropped_img: bool
     final_polys: bool
     discarded_polys: bool
+    opened: bool
 
 class PreprocessingOutputs(ConfigWithNumpy):
     contours: bool
@@ -61,9 +62,9 @@ class ModelsConfig(ConfigWithNumpy):
     wf_model_path: str
     
 class InkConfig(ConfigWithNumpy):
-    kernel_threshold: Tuple[int, int]
     iterations: int
     window_size: int
+    isolation_range: Tuple[float, float]
     threshold_black: int
     threshold_white: int
 
@@ -205,6 +206,7 @@ class UtilsConfig(ConfigWithNumpy):
     dpi_range: List[int]
     bin_interval: Tuple[int, int]
     percentile: Tuple[float, float]
+    morph_kernel: Tuple[int, int]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation

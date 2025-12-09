@@ -2,6 +2,7 @@
 import cv2
 import numpy as np
 import logging
+import matplotlib.pyplot as plt
 from typing import Dict, Any, List, Optional, Tuple
 from services.output_service import save_croped_image
 from core.utils.image_utils import binarice_img
@@ -61,22 +62,21 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], binarice: Optional[bool] = False) -> Tuple[Dict[str, Any], np.ndarray[Any, Any]]:
+def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], binarice: Optional[bool] = False) -> Tuple[Dict[str, Any], Optional[np.ndarray[Any, Any]]]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
     bin_img: np.uint8, foreground=255, background=0
     """
     if not binarice or binarice is None:
-        binarice = False
-        bin_img = img
+        bin_img = binarice_img(img, worker_config={})
 
     else:
         bin_img = binarice_img(img, worker_config={})
   
     #poly = worker_config["poly_id"]
 
-    connectivity: int = worker_config.get("connectivity", 8)
+    # connectivity: int = worker_config.get("connectivity", 8)
     
     # 1. Etiquetado rápido
     #logger.info(f"{poly}")
@@ -89,45 +89,55 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
         cont_area = cv2.contourArea(cont_coords)
         
-        if cont_area > 0:
-            # hull_area = cv2.contourArea(convex_hull)
-            # convex_hull = np.array(cv2.convexHull(cont_coords))
-            cont_bbox = cv2.boundingRect(cont_coords)
-            areas_hist.append(cont_area)
-            
-            cont_array_dict[i] = {
-                "cont_coords": cont_coords,
-                "cont_bbox": cont_bbox,
-                # "convex_hull": convex_hull,
-                "cont_area": cont_area,
-                # "hull_area": hull_area
-            }
+        if cont_area == 0 or not cont_area or cont_area is None or len(cont_coords) < 4:
+            continue
+        
+        # hull_area = cv2.contourArea(convex_hull)
+        # convex_hull = np.array(cv2.convexHull(cont_coords))
+        cont_bbox = cv2.boundingRect(cont_coords)
+        areas_hist.append(cont_area)
+        
+        cont_array_dict[i] = {
+            "cont_coords": cont_coords,
+            "cont_bbox": cont_bbox,
+            "cont_area": cont_area,
+            # "hull_area": hull_area,
+            # "convex_hull": convex_hull,
+        }
 
     logger.info(f"Numero de contornos: {i}")
 
-    areas_histogram, bin_edges = np.histogram(areas_hist, (np.histogram_bin_edges(areas_hist, bins='fd')))
+    _, bin_edges = np.histogram(areas_hist, (np.histogram_bin_edges(areas_hist, bins='fd').astype(np.float16)))
     
     # logger.info(f"EDGES: {bin_edges}")
     # logger.info(f"HISTOGRAMA: {areas_histogram}")
 
-    logger.debug("=== Histograma de Áreas de Blobs ===")
-    logger.debug(f"{'Rango de Área':<30} | {'Cantidad de Blobs':<10}")
-    logger.debug("-" * 45)
+    # logger.debug("=== Histograma de Áreas de Blobs ===")
+    # logger.info(f"{'Rango de Área':<30} | {'Cantidad de Blobs':<10}")
+    # logger.debug("-" * 45)
     
-    for i in range(len(areas_histogram)):
-        range_str = f"[{bin_edges[i]:.2f} - {bin_edges[i+1]:.2f})"
-        count = areas_histogram[i]
-        if count > 0: # Opcional: Solo mostrar bins con datos para reducir ruido
-            logger.debug(f"{range_str:<30} | {count:<10}")
+    # for i in range(len(areas_histogram)):
+    #     range_str = f"[{bin_edges[i]:.2f} - {bin_edges[i+1]:.2f})"
+    #     count = areas_histogram[i]
+    #     if count > 0: # Opcional: Solo mostrar bins con datos para reducir ruido
+    #         logger.info(f"{range_str:<30} | {count:<10}")
+            
+    # plt.figure(figsize=(10, 6))
+    # plt.hist(areas_hist, bins=bin_edges, edgecolor='black')
+    # plt.title("Histograma de Áreas de Blobs")
+    # plt.xlabel("Área")
+    # plt.ylabel("Cantidad de blobs")
+    # plt.grid(True)
+    # plt.show()
     
-    n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity= connectivity)
+#     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_img, connectivity= connectivity)
 
-    label_labeled = np.arange(1, n_labels).astype(np.uint16)
-    cx, cy = np.hsplit(centroids[:-1], (2))    
-    mapped_stats = np.column_stack([label_labeled, stats[1:, cv2.CC_STAT_AREA], stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP], stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT], cx, cy]).astype(np.uint16)
-   # logger.info(f"MAPPED_STATS: {mapped_stats.shape}") 
-    logger.debug(f"LABELS: {labels[1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
-  #  logger.info(f"Tmaño imagne: '{bin_img.shape}'")
+#     label_labeled = np.arange(1, n_labels).astype(np.uint16)
+#     cx, cy = np.hsplit(centroids[:-1], (2))    
+#     mapped_stats = np.column_stack([label_labeled, stats[1:, cv2.CC_STAT_AREA], stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP], stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT], cx, cy]).astype(np.uint16)
+#    # logger.info(f"MAPPED_STATS: {mapped_stats.shape}") 
+#     logger.debug(f"LABELS: {labels[1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
+#   #  logger.info(f"Tmaño imagne: '{bin_img.shape}'")
    # unique_labs = np.unique(labels, return_index=True, axis=0)[0]
 
     # logger.info(f"LABELS: {unique_labs}")
@@ -135,13 +145,17 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
    # logger.info(f"{extract_labs}")
 
     image_metrics: Dict[str, Any] = { 
-        "mapped_stats": mapped_stats,
+        # "mapped_stats": mapped_stats,
         "cont_array_dict": cont_array_dict,
-        "areas_histogram": areas_histogram, 
+        # "areas_histogram": areas_histogram, 
         "bin_edges": bin_edges
     }
 
-    return image_metrics, bin_img
+    if not binarice or binarice is None:
+        return image_metrics, None
+        
+    else:
+        return image_metrics, bin_img
 
 def analice_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
    
