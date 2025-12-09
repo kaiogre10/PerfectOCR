@@ -73,14 +73,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
 
     else:
         bin_img = binarice_img(img, worker_config={})
-  
-    #poly = worker_config["poly_id"]
-
-    # connectivity: int = worker_config.get("connectivity", 8)
     
-    # 1. Etiquetado rápido
-    #logger.info(f"{poly}")
-   
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cont_array_dict: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]] | float]= {}
     
@@ -89,7 +82,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
         cont_area = cv2.contourArea(cont_coords)
         
-        if cont_area == 0 or not cont_area or cont_area is None or len(cont_coords) < 4:
+        if cont_area == 0 or not cont_area or cont_area is None or len(cont_coords) < 3:
             continue
         
         # hull_area = cv2.contourArea(convex_hull)

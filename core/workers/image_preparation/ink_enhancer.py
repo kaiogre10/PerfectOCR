@@ -42,7 +42,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 
             gray_img = self._decolorate(full_img)
             metrics = extract_cc_metrics(gray_img.copy(), worker_config={}, binarice=False)
-            correct, contours_list = self._restore_faded_ink(gray_img.copy(), metrics[0])
+            correct, contours_list = self._restore_faded_ink(gray_img.copy(), metrics[0], context)
             
             if not manager.update_full_img(True, correct):
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
@@ -72,15 +72,18 @@ class InkCorrector(ImagePrepAbstractWorker):
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
             return False
 
-    def _restore_faded_ink(self, gray_img: np.ndarray[Any, Any], metrics: Dict[str, Any]) -> Tuple[np.ndarray[Any, Any], List[np.ndarray[Any, Any]]]:
+    def _restore_faded_ink(self, gray_img: np.ndarray[Any, Any], metrics: Dict[str, Any], context: Dict[str, Any]) -> Tuple[np.ndarray[Any, Any], List[np.ndarray[Any, Any]]]:
         """
         Restaura la intensidad del texto y elimina el ruido aislado usando Inpainting.
         """
         img_h, img_w = gray_img.shape
+        worker_name = context.get("worker_name") or "inker"
+        output_paths = context["output_paths"]
+        image_name = f"2"
         cont_array_dict: Dict[int, Dict[str, Any]] = metrics.get("cont_array_dict", {})
         bin_edges = metrics["bin_edges"]
         k_size = 2 * self.window_size + 1
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k_size, k_size))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (k_size, k_size))
         
         logger.info(f"Umbral dinámico: {bin_edges[1]}")
 
@@ -88,17 +91,30 @@ class InkCorrector(ImagePrepAbstractWorker):
         
         contours_list: List[np.ndarray[Any, Any]] = []
         cleaned_blobs: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]] | float]= {}
-        for pos, countours in cont_array_dict.items():
-            cont_area = countours["cont_area"]
+        
+        # 1. PRE-FILTRADO: Identificamos solo los candidatos a ruido (blobs pequeños)
+        # Guardamos solo el ID ('pos') porque los datos geométricos ya están en cont_array_dict
+        # Esto evita iterar sobre letras grandes o elementos que ya sabemos que no son ruido.
+        noise_candidates = [
+            pos for pos, data in cont_array_dict.items() 
+            if data["cont_area"] < bin_edges[1]
+        ]
             
-            # Su lógica de filtro: Si el área cae en el primer bin de ruido
-            if bin_edges[1] > cont_area:
-                cont_bbox = countours["cont_bbox"]
-                cont_coords = countours["cont_coords"]
+        for i in range(0, self.iterations):
+            blobs_removed_this_pass = 0
+            next_pass_candidates = [] # Lista para los que sobrevivan a esta ronda
+
+            for pos in noise_candidates:
+                # Recuperamos datos geométricos reutilizables (sin recalculardos)
+                contours = cont_array_dict[pos]
+                cont_bbox = contours["cont_bbox"]
+                cont_coords = contours["cont_coords"]
+                cont_area = contours["cont_area"]
                 
                 x, y, w, h = cont_bbox
 
-                # [Lógica de Ventana de Aislamiento]
+                # [Lógica de Ventana] 
+                # Siempre tomamos una vista fresca de gray_img para ver los cambios recientes
                 win_x1 = max(0, x - self.window_size)
                 win_y1 = max(0, y - self.window_size)
                 win_x2 = min(img_w, x + w + self.window_size)
@@ -106,38 +122,56 @@ class InkCorrector(ImagePrepAbstractWorker):
 
                 window_gray = gray_img[win_y1:win_y2, win_x1:win_x2]
 
-                # Ajustamos las coordenadas del contorno al sistema local de la ventana
+                # Ajuste de coordenadas al sistema local
                 cont_coords_window = cont_coords - np.array([[win_x1, win_y1]])
 
-                # 1. Crear máscara del blob exacto
+                # 1. Máscara del blob
                 mask_blob = np.zeros(window_gray.shape, dtype=np.uint8)
                 cv2.drawContours(mask_blob, [cont_coords_window], -1, 255, thickness=cv2.FILLED)
 
-                # 2. Dilatar para obtener el área circundante exacta
-                # Usamos iterations=1 porque el kernel ya tiene el tamaño correcto
-                mask_dilated = cv2.dilate(mask_blob, kernel, iterations=self.iterations)
-
-                # 3. Obtener solo el anillo exterior (Dilatado - Original)
+                # 2. Anillo exterior
+                mask_dilated = cv2.dilate(mask_blob, kernel, iterations=1)
                 mask_surroundings = cv2.subtract(mask_dilated, mask_blob)
                 
-                # 4. Extraer los valores de los píxeles que rodean la forma
+                # 3. Análisis de píxeles circundantes
                 surrounding_pixels = window_gray[mask_surroundings == 255]
 
+                # Si el promedio es alto (blanco), es ruido aislado
                 if np.mean(surrounding_pixels) >= self.isolation_range[1]:
+                    # GUARDAR: Lo añadimos a la lista de correcciones
                     array_coords = np.array(cont_coords, np.int32)
                     contours_list.append(array_coords)
                     
-                    # Pintamos sobre la imagen original (gray_img o full_bin_img según necesites)
+                    # ACCIÓN: Pintamos BLANCO sobre la imagen original
+                    # Esto "despeja el camino" para los vecinos en la siguiente iteración
                     cv2.drawContours(gray_img, [cont_coords], -1, color=255, thickness=cv2.FILLED)
+                                        
                     corrected_blobs += 1
-                    
-                cleaned_blobs[pos] = {
-                    "cont_coords": cont_coords,
-                    "cont_bbox": cont_bbox,
-                    "cont_area": cont_area,
-                }
+                    blobs_removed_this_pass += 1
+                
+                    cleaned_blobs[pos] = {
+                        "cont_coords": cont_coords,
+                        "cont_bbox": cont_bbox,
+                        "cont_area": cont_area,
+                        "surrounding_pixels": surrounding_pixels # Opcional si quieres ahorrar RAM
+                    }
+                    # NOTA: Al no añadirlo a 'next_pass_candidates', lo sacamos del ciclo
+                else:
+                    # Si todavía no parece ruido (quizás tiene basura pegada), lo guardamos para intentarlo en la siguiente pasada.
+                    next_pass_candidates.append(pos)
 
-        logger.info(f"Blobs corregidos: {corrected_blobs}")
+            # Actualizamos la lista de candidatos para la siguiente vuelta (se va reduciendo)
+            noise_candidates = next_pass_candidates
+
+            logger.info(f"Blobs corregidos: {blobs_removed_this_pass}, pasada: {i+1}")
+
+            # image_id = f"deleted_blobs_{image_name}_{worker_name}_{i+1}"
+            # save_shapes(image_name, image_id, gray_img, output_paths, worker_name, contours_list, contours2=None)
+
+            # Si en esta vuelta no pudimos limpiar nada, terminamos para no perder tiempo
+            if blobs_removed_this_pass == 0:
+                break
+
         
         return gray_img, contours_list
 
