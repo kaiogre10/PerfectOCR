@@ -88,12 +88,17 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
         # hull_area = cv2.contourArea(convex_hull)
         # convex_hull = np.array(cv2.convexHull(cont_coords))
         cont_bbox = cv2.boundingRect(cont_coords)
+        M = cv2.moments(cont_coords)
+        cx = M['m10'] / M['m00']
+        cy = M['m01'] / M['m00']
+        blob_centroid = np.array([cx, cy])
         areas_hist.append(cont_area)
         
         cont_array_dict[i] = {
             "cont_coords": cont_coords,
             "cont_bbox": cont_bbox,
             "cont_area": cont_area,
+            "blob_centroid": blob_centroid,
             # "hull_area": hull_area,
             # "convex_hull": convex_hull,
         }

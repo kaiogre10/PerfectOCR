@@ -110,6 +110,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 cont_bbox = contours["cont_bbox"]
                 cont_coords = contours["cont_coords"]
                 cont_area = contours["cont_area"]
+                blob_centroid = contours["blob_centroid"]
                 
                 x, y, w, h = cont_bbox
 
