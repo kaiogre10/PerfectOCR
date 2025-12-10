@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_cc_metrics
@@ -41,16 +41,23 @@ class InkCorrector(ImagePrepAbstractWorker):
                 return False
                 
             gray_img = self._decolorate(full_img)
-            metrics = extract_cc_metrics(gray_img.copy(), worker_config={}, binarice=False)
-            correct, contours_list = self._restore_faded_ink(gray_img.copy(), metrics[0], context)
+            metrics = extract_cc_metrics(gray_img.copy())
+            correct, contours_list, cleaned_blobs = self._restore_faded_ink(gray_img.copy(), metrics, context)
+
+            lines = self.line_estimation(cleaned_blobs)
             
             if not manager.update_full_img(True, correct):
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
                 return False
                 
             else:
-                # dilated = cv2.dilate(full_bin_img, kernel, iterations=self.iterations, borderType=cv2.BORDER_CONSTANT, borderValue=[0, 0, 255])
 
+                blob_centroids = np.array([
+                    data["blob_centroid"] for pos, data in cleaned_blobs.items()
+                    if "blob_centroid" in data
+                ]).astype(np.float32)
+
+                context["blob_centroids"] = blob_centroids
                 if self.output:
                     worker_name = context.get("worker_name") or "inker"
                     output_paths = context["output_paths"]
@@ -72,7 +79,7 @@ class InkCorrector(ImagePrepAbstractWorker):
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
             return False
 
-    def _restore_faded_ink(self, gray_img: np.ndarray[Any, Any], metrics: Dict[str, Any], context: Dict[str, Any]) -> Tuple[np.ndarray[Any, Any], List[np.ndarray[Any, Any]]]:
+    def _restore_faded_ink(self, gray_img: np.ndarray[Any, Any], metrics: Dict[str, Any], context: Dict[str, Any]) -> Tuple[np.ndarray[Any, Any], List[np.ndarray[Any, Any]], Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]]]]:
         """
         Restaura la intensidad del texto y elimina el ruido aislado usando Inpainting.
         """
@@ -90,11 +97,9 @@ class InkCorrector(ImagePrepAbstractWorker):
         corrected_blobs = 0
         
         contours_list: List[np.ndarray[Any, Any]] = []
-        cleaned_blobs: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]] | float]= {}
+        cleaned_blobs: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]]] = {}
         
         # 1. PRE-FILTRADO: Identificamos solo los candidatos a ruido (blobs pequeños)
-        # Guardamos solo el ID ('pos') porque los datos geométricos ya están en cont_array_dict
-        # Esto evita iterar sobre letras grandes o elementos que ya sabemos que no son ruido.
         noise_candidates = [
             pos for pos, data in cont_array_dict.items() 
             if data["cont_area"] < bin_edges[1]
@@ -102,10 +107,9 @@ class InkCorrector(ImagePrepAbstractWorker):
             
         for i in range(0, self.iterations):
             blobs_removed_this_pass = 0
-            next_pass_candidates = [] # Lista para los que sobrevivan a esta ronda
+            next_pass_candidates: List[int] = []
 
             for pos in noise_candidates:
-                # Recuperamos datos geométricos reutilizables (sin recalculardos)
                 contours = cont_array_dict[pos]
                 cont_bbox = contours["cont_bbox"]
                 cont_coords = contours["cont_coords"]
@@ -139,7 +143,6 @@ class InkCorrector(ImagePrepAbstractWorker):
 
                 # Si el promedio es alto (blanco), es ruido aislado
                 if np.mean(surrounding_pixels) >= self.isolation_range[1]:
-                    # GUARDAR: Lo añadimos a la lista de correcciones
                     array_coords = np.array(cont_coords, np.int32)
                     contours_list.append(array_coords)
                     
@@ -154,6 +157,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                         "cont_coords": cont_coords,
                         "cont_bbox": cont_bbox,
                         "cont_area": cont_area,
+                        "blob_centroid": blob_centroid,
                         "surrounding_pixels": surrounding_pixels # Opcional si quieres ahorrar RAM
                     }
                     # NOTA: Al no añadirlo a 'next_pass_candidates', lo sacamos del ciclo
@@ -165,7 +169,6 @@ class InkCorrector(ImagePrepAbstractWorker):
             noise_candidates = next_pass_candidates
 
             logger.info(f"Blobs corregidos: {blobs_removed_this_pass}, pasada: {i+1}")
-
             # image_id = f"deleted_blobs_{image_name}_{worker_name}_{i+1}"
             # save_shapes(image_name, image_id, gray_img, output_paths, worker_name, contours_list, contours2=None)
 
@@ -173,8 +176,7 @@ class InkCorrector(ImagePrepAbstractWorker):
             if blobs_removed_this_pass == 0:
                 break
 
-        
-        return gray_img, contours_list
+        return gray_img, contours_list, cleaned_blobs
 
     def _decolorate(self, full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """
@@ -201,3 +203,39 @@ class InkCorrector(ImagePrepAbstractWorker):
         else:
             logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
             return cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
+
+    def line_estimation(self, cleaned_blobs: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]]]):
+        
+        try:
+            overlap_threshold = .50
+            lines_info: Dict[str, Any] = {}
+            current_line_polys = []
+            current_line_bbox: Optional[List[Any]] = None
+            line_counter = 0
+            cont_bbox = [
+                data["cont_bbox"] for pos, data in cleaned_blobs.items()
+                if"cont_bbox" in data
+            ]
+
+            blob_centroid = np.array([
+                data["blob_centroid"] for pos, data in cleaned_blobs.items()
+                if"blob_centroid" in data
+            ])
+
+            sorted = np.argsort(blob_centroid[:, 1])
+            prepared_sorted = blob_centroid[sorted]
+            logger.info(f"PREPARED: {prepared_sorted}")
+
+            if not current_line_polys or current_line_bbox is None:
+                current_line_bbox = list(cont_bbox)
+            else:
+                y1_min, y1_max = current_line_bbox[1], current_line_bbox[3]
+                y2_min, y2_max = cont_bbox[1], cont_bbox[3]
+                overlap_abs = max(0.0, min(y1_max, y2_max) - max(y1_min, y2_min))
+                min_h = min(y1_max - y1_min, y2_max - y2_min)
+                overlap = overlap_abs / min_h if min_h > 1e-5 else 0.0
+
+                if overlap > overlap_threshold:
+
+        except Exception as e:
+            logger.info(f"Error: {e}", exc_info=True)

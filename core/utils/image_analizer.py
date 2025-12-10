@@ -62,18 +62,13 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], binarice: Optional[bool] = False) -> Tuple[Dict[str, Any], Optional[np.ndarray[Any, Any]]]:
+def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Dict[str, Any]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
     bin_img: np.uint8, foreground=255, background=0
     """
-    if not binarice or binarice is None:
-        bin_img = binarice_img(img, worker_config={})
-
-    else:
-        bin_img = binarice_img(img, worker_config={})
-    
+    bin_img = binarice_img(img, worker_config={})
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cont_array_dict: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]] | float]= {}
     
@@ -149,11 +144,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
         "bin_edges": bin_edges
     }
 
-    if not binarice or binarice is None:
-        return image_metrics, None
-        
-    else:
-        return image_metrics, bin_img
+    return image_metrics
 
 def analice_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
    
