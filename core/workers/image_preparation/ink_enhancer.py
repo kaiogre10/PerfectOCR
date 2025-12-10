@@ -212,30 +212,32 @@ class InkCorrector(ImagePrepAbstractWorker):
             current_line_polys = []
             current_line_bbox: Optional[List[Any]] = None
             line_counter = 0
-            cont_bbox = [
+            cont_bbox = np.array([
                 data["cont_bbox"] for pos, data in cleaned_blobs.items()
                 if"cont_bbox" in data
-            ]
+            ]).astype(np.float32)
 
             blob_centroid = np.array([
                 data["blob_centroid"] for pos, data in cleaned_blobs.items()
                 if"blob_centroid" in data
-            ])
+            ]).astype(np.float32)
 
-            sorted = np.argsort(blob_centroid[:, 1])
-            prepared_sorted = blob_centroid[sorted]
-            logger.info(f"PREPARED: {prepared_sorted}")
+            logger.info(f"Shapes: bbox: {cont_bbox.shape}, centroid: {blob_centroid.shape}")
+           
+            cen_bbox = np.column_stack([blob_centroid, cont_bbox])
+            logger.info(f"Unidos: {cen_bbox.shape}")
+            sorted = np.argsort(cen_bbox[:, 1])
+            prepared_sorted = cen_bbox[sorted]
+            logger.info(f"Prepared sorted: {prepared_sorted[:, 1]}")
 
             if not current_line_polys or current_line_bbox is None:
-                current_line_bbox = list(cont_bbox)
+                current_line_bbox = prepared_sorted[2], prepared_sorted[3], prepared_sorted[4], prepared_sorted[5]
             else:
                 y1_min, y1_max = current_line_bbox[1], current_line_bbox[3]
                 y2_min, y2_max = cont_bbox[1], cont_bbox[3]
                 overlap_abs = max(0.0, min(y1_max, y2_max) - max(y1_min, y2_min))
                 min_h = min(y1_max - y1_min, y2_max - y2_min)
                 overlap = overlap_abs / min_h if min_h > 1e-5 else 0.0
-
-                if overlap > overlap_threshold:
 
         except Exception as e:
             logger.info(f"Error: {e}", exc_info=True)

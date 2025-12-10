@@ -4,8 +4,8 @@ pipeline_secuence:
     - "image_loader"
     - "ink_enhancement"
     # - "angle_corrector"
-    - "geometry_detector"
-    - "polygon_extractor"
+   # - "geometry_detector"
+    #- "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
