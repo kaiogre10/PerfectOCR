@@ -16,18 +16,24 @@ class ImagePreparationStager(AbstractStager):
 
     def prepare_image(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
+        context: Dict[str, Any] = {
+                "output_paths": self.output_paths
+        }
+
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.perf_counter()
             worker_name = worker.__class__.__name__
             logger.debug(f"Ejecutando worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
 
-            context: Dict[str, Any] = {
-                "worker_name": worker_name,
-                "output_paths": self.output_paths
-            } 
+            context["worker_name"] = worker_name  # Actualiza el nombre en cada iteración
+
             if not worker.process(context, manager):
                 logger.error(f"Fallo en {worker.__class__.__name__}", exc_info=True)
                 return None, 0.0
+            
+            if manager.workflow:
+                worker_time = time.time() - worker_start
+                logger.debug(f"Worker {worker_name} completado en: {worker_time:.6f}s")
 
             logger.debug(f" {worker.__class__.__name__} completado en {time.perf_counter() - worker_start:.6f}s")
         

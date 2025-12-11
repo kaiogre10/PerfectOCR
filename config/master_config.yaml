@@ -4,8 +4,8 @@ pipeline_secuence:
     - "image_loader"
     - "ink_enhancement"
     # - "angle_corrector"
-    - "geometry_detector"
-    - "polygon_extractor"
+    # - "geometry_detector"
+    # - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -33,13 +33,13 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: true
+    bin_full_img: false
     angle_corrected: false
     cropped_img: false
     final_polys: false
     discarded_polys: false
     deleted_polys: false
-    opened: true
+    opened: false
   
   preprocessing_outputs:
     contours: false
@@ -86,8 +86,8 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      iterations: 1
-      window_size: 13
+      iterations: 3
+      window_size: 15
       isolation_range: [10.0, 245.0]
       threshold_black: 160
       threshold_white: 180

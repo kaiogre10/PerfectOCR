@@ -68,19 +68,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], binarice: Optio
     usando Área y Solidez.
     bin_img: np.uint8, foreground=255, background=0
     """
-    if not binarice or binarice is None:
-        bin_img = binarice_img(img, worker_config={})
-
-    else:
-        bin_img = binarice_img(img, worker_config={})
-  
-    #poly = worker_config["poly_id"]
-
-    # connectivity: int = worker_config.get("connectivity", 8)
-    
-    # 1. Etiquetado rápido
-    #logger.info(f"{poly}")
-   
+    bin_img = binarice_img(img, worker_config={})
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cont_array_dict: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]] | float]= {}
     
@@ -89,18 +77,23 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], binarice: Optio
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
         cont_area = cv2.contourArea(cont_coords)
         
-        if cont_area == 0 or not cont_area or cont_area is None or len(cont_coords) < 4:
+        if cont_area == 0 or not cont_area or cont_area is None or len(cont_coords) < 3:
             continue
         
         # hull_area = cv2.contourArea(convex_hull)
         # convex_hull = np.array(cv2.convexHull(cont_coords))
         cont_bbox = cv2.boundingRect(cont_coords)
+        M = cv2.moments(cont_coords)
+        cx = M['m10'] / M['m00']
+        cy = M['m01'] / M['m00']
+        blob_centroid = np.array([cx, cy])
         areas_hist.append(cont_area)
         
         cont_array_dict[i] = {
             "cont_coords": cont_coords,
             "cont_bbox": cont_bbox,
             "cont_area": cont_area,
+            "blob_centroid": blob_centroid,
             # "hull_area": hull_area,
             # "convex_hull": convex_hull,
         }

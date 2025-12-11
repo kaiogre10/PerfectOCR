@@ -110,7 +110,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     line_centroid = [           
                             (current_line_bbox[0] + current_line_bbox[2]) / 2,
                             (current_line_bbox[1] + current_line_bbox[3]) / 2
-                        ] if current_line_bbox else [0, 0]
+                    ] if current_line_bbox else [0, 0]
                     
                     line_id = f"line_{line_counter:04d}"
                     lines_info[line_id] = {

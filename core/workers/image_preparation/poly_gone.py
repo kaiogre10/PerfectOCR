@@ -63,7 +63,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 return False
 
             # 2. Fase de Decisión Vectorizada: Calcular todos los recortes con self.padding
-            bboxes_array = np.array(all_bboxes)  # shape: (n_polygons, 4)
+            bboxes_array = np.array(all_bboxes).astype(np.int16)  # shape: (n_polygons, 4)
             
             # Calcular coordenadas con self.padding usando operaciones vectorizadas
             x1, y1, x2, y2 = bboxes_array[:, 0], bboxes_array[:, 1], bboxes_array[:, 2], bboxes_array[:, 3]
@@ -77,10 +77,18 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             # Liberar la imagen completa lo antes posible
             if manager.update_full_img(corrected=False, full_img=None):
                 logger.info(f"full_img: '{image_name}' liberada")
-            
+
+            blob_centroids = context["blob_centroids"]
+            areas = (x2 - x1) * (y2 - y1)
+            sorted_indices = np.argsort(-areas)
+
             # Validar dimensiones usando operaciones vectorizadas
+            in_x = (blob_centroids[:, 0] >= x1) & (blob_centroids[:, 0] <= x2)
+            in_y = (blob_centroids[:, 1] >= y1) & (blob_centroids[:, 1] <= y2)
+            valid = in_x & in_y
+            valid_poly = np.any(valid, axis=1)
             valid_dims: np.ndarray[Any, Any] = (px2 > px1) & (py2 > py1)
-            valid_indices = np.where(valid_dims)[0]
+            valid_indices = np.where((valid_dims & valid_poly))[0]
             
             if len(valid_indices) == 0:
                 logger.warning("PolygonExtractor: No hay recortes válidos después del padding.")
@@ -115,7 +123,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 bbox_height = dims[0]
                 angle = math.degrees(math.atan2(bbox_height, bbox_width))
                 
-                # logger.info(f"{poly_id} AREA: {cropped.size}")
                 poly_data_to_filter.append({
                     "poly_id": poly_id,
                     "cropped": cropped,
