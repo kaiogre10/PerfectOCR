@@ -41,8 +41,8 @@ class InkCorrector(ImagePrepAbstractWorker):
                 return False
                 
             gray_img = self._decolorate(full_img)
-            metrics = extract_cc_metrics(gray_img.copy(), worker_config={}, binarice=False)
-            correct, contours_list = self._restore_faded_ink(gray_img.copy(), metrics[0])
+            metrics = extract_cc_metrics(gray_img.copy(), binarice=False)
+            correct, contours_list = self._restore_faded_ink(gray_img.copy(), metrics)
             
             if not manager.update_full_img(True, correct):
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)

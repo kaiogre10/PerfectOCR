@@ -6,6 +6,7 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.utils.text_validator import validate_text
+from core.utils.math_utils import define_intervals
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +57,14 @@ class LinealReconstructor(VectorizationAbstractWorker):
         """
         prepared_sorted = sorted(
             polygons.values(),
-            key=lambda p: p.geometry.centroid[1])
+            key=lambda p: p.geometry.centroid[1]
+        )
                 
         lines_info: Dict[str, Any] = {}
         current_line_polys: List[Polygons] = []
         current_line_bbox: Optional[List[float]] = None
         line_counter = 0
-        
+                
         for poly in prepared_sorted:
             bbox = poly.geometry.bounding_box
             if bbox.size == 0:

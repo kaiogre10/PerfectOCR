@@ -218,3 +218,4 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         except Exception as e:
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
             return False
+        

@@ -106,3 +106,65 @@ def contour_eccentricity(contour: np.ndarray[Any, Any]) -> float:
         return 0.0
     ecc = np.sqrt(1 - (b ** 2) / (a ** 2))
     return float(ecc)
+        
+def define_intervals(bboxes: np.ndarray[Any, Any], overlap_threshold: float) -> List[np.ndarray[Any, Any]]:
+    """
+    Agrupa bounding boxes en líneas de texto de manera secuencial, procesándolos
+    en orden vertical (de arriba hacia abajo).
+    """
+    if bboxes.shape[0] == 0:
+        return []
+
+    # 1. Obtener los índices originales y ordenar los bboxes por su coordenada Y inicial.
+    # Esto asegura que procesamos de arriba hacia abajo.
+    original_indices = np.arange(bboxes.shape[0])
+    sorted_order = np.argsort(bboxes[:, 1])
+    
+    sorted_bboxes = bboxes[sorted_order]
+    sorted_original_indices = original_indices[sorted_order]
+
+    line_groups: List[np.ndarray[Any, Any]] = []
+    if sorted_bboxes.shape[0] == 0:
+        return line_groups
+
+    # 2. Inicializar la primera línea con el primer bbox.
+    current_line_indices = [sorted_original_indices[0]]
+    current_line_bbox = sorted_bboxes[0].copy()
+
+    # Función auxiliar para calcular el solapamiento vertical
+    def get_vertical_overlap(bbox1: np.ndarray[Any, Any], bbox2: np.ndarray[Any, Any]) -> float:
+        y1_max = max(bbox1[1], bbox2[1])
+        y2_min = min(bbox1[3], bbox2[3])
+        overlap_height = max(0, y2_min - y1_max)
+        
+        min_height = min(bbox1[3] - bbox1[1], bbox2[3] - bbox2[1])
+        if min_height <= 1e-6: # Evitar división por cero
+            return 0.0
+        return overlap_height / min_height
+
+    # 3. Iterar sobre el resto de los bboxes para agruparlos.
+    for i in range(1, len(sorted_bboxes)):
+        poly_bbox = sorted_bboxes[i]
+        
+        # Comprobar si el bbox actual se solapa con la línea actual
+        if get_vertical_overlap(current_line_bbox, poly_bbox) > overlap_threshold:
+            # Si pertenece a la línea, añadir su índice original y expandir el BBox de la línea
+            current_line_indices.append(sorted_original_indices[i])
+            current_line_bbox[0] = min(current_line_bbox[0], poly_bbox[0])
+            current_line_bbox[1] = min(current_line_bbox[1], poly_bbox[1])
+            current_line_bbox[2] = max(current_line_bbox[2], poly_bbox[2])
+            current_line_bbox[3] = max(current_line_bbox[3], poly_bbox[3])
+        else:
+            # Si no pertenece, la línea anterior está completa. La guardamos.
+            line_groups.append(np.array(current_line_indices))
+            
+            # Iniciar una nueva línea con el bbox actual
+            current_line_indices = [sorted_original_indices[i]]
+            current_line_bbox = poly_bbox.copy()
+
+    # 4. Guardar la última línea que quedó en el bucle.
+    if current_line_indices:
+        line_groups.append(np.array(current_line_indices))
+
+    return line_groups
+    

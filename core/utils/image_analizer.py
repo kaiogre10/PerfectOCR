@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 import matplotlib.pyplot as plt
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from services.output_service import save_croped_image
 from core.utils.image_utils import binarice_img
 from core.utils.text_encoder import text_compacter
@@ -62,7 +62,7 @@ def analize_bin_img(img: np.ndarray[Any, Any], worker_config: Dict[str, Any], bi
     # logger.info(f"Metricas: {blob_metrics}")
     return blob_metrics
 
-def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any], binarice: Optional[bool] = False) -> Tuple[Dict[str, Any], Optional[np.ndarray[Any, Any]]]:
+def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], binarice: Optional[bool] = False) -> Dict[str, Any]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
@@ -150,12 +150,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: 
         # "areas_histogram": areas_histogram, 
         "bin_edges": bin_edges
     }
-
-    if not binarice or binarice is None:
-        return image_metrics, None
-        
-    else:
-        return image_metrics, bin_img
+    return image_metrics
 
 def analice_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> Dict[str, Any]:
    
