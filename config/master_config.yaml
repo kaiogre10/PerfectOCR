@@ -3,9 +3,9 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "ink_enhancement"
-    # - "angle_corrector"
-    # - "geometry_detector"
-    # - "polygon_extractor"
+    - "angle_corrector"
+    - "geometry_detector"
+    - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -16,7 +16,7 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
+    # - "paddle_wrapper"
     # - "text_refiner"
     # - "data_finder"
     

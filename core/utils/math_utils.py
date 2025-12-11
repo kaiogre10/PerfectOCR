@@ -3,6 +3,9 @@ import cv2
 from typing import List, Any, Optional, Tuple
 from scipy.sparse import csr_matrix # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
+import logging
+
+logger = logging.getLogger(__name__)
 
 def alignment(ref_c: List[float], other_c: List[float]) -> float:
     """
@@ -107,64 +110,85 @@ def contour_eccentricity(contour: np.ndarray[Any, Any]) -> float:
     ecc = np.sqrt(1 - (b ** 2) / (a ** 2))
     return float(ecc)
         
-def define_intervals(bboxes: np.ndarray[Any, Any], overlap_threshold: float) -> List[np.ndarray[Any, Any]]:
+def define_intervals(bboxes_array: np.ndarray[Any, Any], overlap_threshold: float) -> List[np.ndarray[Any, Any]]:
     """
-    Agrupa bounding boxes en líneas de texto de manera secuencial, procesándolos
-    en orden vertical (de arriba hacia abajo).
+    Agrupa bounding boxes en líneas de texto replicando exactamente LinealReconstructor.
+    Asume que bboxes_array ya está ordenado por centroide Y (como en lineal_reconstructor.py).
+    Usa promedios para Y y min/max para X en el bbox de la línea.
+    Ordena cada línea por centroide X.
+    Retorna una lista de arrays 2D, cada uno con forma (n, 4) para las bounding boxes de la línea.
     """
-    if bboxes.shape[0] == 0:
+    if bboxes_array.shape[0] == 0:
         return []
 
-    # 1. Obtener los índices originales y ordenar los bboxes por su coordenada Y inicial.
-    # Esto asegura que procesamos de arriba hacia abajo.
-    original_indices = np.arange(bboxes.shape[0])
-    sorted_order = np.argsort(bboxes[:, 1])
-    
-    sorted_bboxes = bboxes[sorted_order]
-    sorted_original_indices = original_indices[sorted_order]
-
     line_groups: List[np.ndarray[Any, Any]] = []
-    if sorted_bboxes.shape[0] == 0:
-        return line_groups
-
-    # 2. Inicializar la primera línea con el primer bbox.
-    current_line_indices = [sorted_original_indices[0]]
-    current_line_bbox = sorted_bboxes[0].copy()
-
-    # Función auxiliar para calcular el solapamiento vertical
-    def get_vertical_overlap(bbox1: np.ndarray[Any, Any], bbox2: np.ndarray[Any, Any]) -> float:
-        y1_max = max(bbox1[1], bbox2[1])
-        y2_min = min(bbox1[3], bbox2[3])
-        overlap_height = max(0, y2_min - y1_max)
-        
-        min_height = min(bbox1[3] - bbox1[1], bbox2[3] - bbox2[1])
-        if min_height <= 1e-6: # Evitar división por cero
-            return 0.0
-        return overlap_height / min_height
-
-    # 3. Iterar sobre el resto de los bboxes para agruparlos.
-    for i in range(1, len(sorted_bboxes)):
-        poly_bbox = sorted_bboxes[i]
-        
-        # Comprobar si el bbox actual se solapa con la línea actual
-        if get_vertical_overlap(current_line_bbox, poly_bbox) > overlap_threshold:
-            # Si pertenece a la línea, añadir su índice original y expandir el BBox de la línea
-            current_line_indices.append(sorted_original_indices[i])
-            current_line_bbox[0] = min(current_line_bbox[0], poly_bbox[0])
-            current_line_bbox[1] = min(current_line_bbox[1], poly_bbox[1])
-            current_line_bbox[2] = max(current_line_bbox[2], poly_bbox[2])
-            current_line_bbox[3] = max(current_line_bbox[3], poly_bbox[3])
-        else:
-            # Si no pertenece, la línea anterior está completa. La guardamos.
-            line_groups.append(np.array(current_line_indices))
-            
-            # Iniciar una nueva línea con el bbox actual
-            current_line_indices = [sorted_original_indices[i]]
-            current_line_bbox = poly_bbox.copy()
-
-    # 4. Guardar la última línea que quedó en el bucle.
-    if current_line_indices:
-        line_groups.append(np.array(current_line_indices))
-
-    return line_groups
     
+    # Asumir que bboxes_array ya está ordenado por centroide Y (no reordenar)
+    # Usar índices directos (0, 1, 2, ...)
+    
+    # 3. Inicializar la primera línea
+    current_line_indices = [0]  # Índices directos
+    current_sum_y1 = float(bboxes_array[0, 1])
+    current_sum_y2 = float(bboxes_array[0, 3])
+    current_count = 1
+    current_min_x = float(bboxes_array[0, 0])
+    current_max_x = float(bboxes_array[0, 2])
+
+    # 4. Iterar sobre el resto
+    for i in range(1, len(bboxes_array)):
+        bbox = bboxes_array[i]
+        bbox_y1 = float(bbox[1])
+        bbox_y2 = float(bbox[3])
+        bbox_x1 = float(bbox[0])
+        bbox_x2 = float(bbox[2])
+        
+        # Calcular límites de la línea usando promedios en Y y min/max en X
+        line_y1 = current_sum_y1 / current_count
+        line_y2 = current_sum_y2 / current_count
+        
+        # Calcular solapamiento vertical
+        overlap_abs = max(0.0, min(line_y2, bbox_y2) - max(line_y1, bbox_y1))
+        min_h = min(line_y2 - line_y1, bbox_y2 - bbox_y1)
+        overlap = overlap_abs / min_h if min_h > 1e-5 else 0.0
+        
+        if overlap > overlap_threshold:
+            # Agregar a la línea
+            current_line_indices.append(i)
+            current_sum_y1 += bbox_y1
+            current_sum_y2 += bbox_y2
+            current_count += 1
+            current_min_x = min(current_min_x, bbox_x1)
+            current_max_x = max(current_max_x, bbox_x2)
+        else:
+            # Finalizar línea anterior
+            group_indices = np.array(current_line_indices)
+            
+            # Obtener las bounding boxes del grupo
+            group_bboxes = bboxes_array[group_indices]
+            
+            # Ordenar por centroide X dentro de la línea
+            group_cx = (group_bboxes[:, 0] + group_bboxes[:, 2]) / 2.0
+            x_sort_order = np.argsort(group_cx)
+            
+            # Agregar las bounding boxes ordenadas
+            line_groups.append(group_bboxes[x_sort_order])
+            
+            # Iniciar nueva línea
+            current_line_indices = [i]
+            current_sum_y1 = bbox_y1
+            current_sum_y2 = bbox_y2
+            current_count = 1
+            current_min_x = bbox_x1
+            current_max_x = bbox_x2
+
+    # 5. Guardar la última línea
+    if current_line_indices:
+        group_indices = np.array(current_line_indices)
+        group_bboxes = bboxes_array[group_indices]
+        group_cx = (group_bboxes[:, 0] + group_bboxes[:, 2]) / 2.0
+        x_sort_order = np.argsort(group_cx)
+        line_groups.append(group_bboxes[x_sort_order])
+
+    logger.info(f"Line groups: {np.array(line_groups[0])} lines")
+    # logger.info(f"Line groups reshaped:: {np.array(line_groups[0])} lines")
+    return line_groups

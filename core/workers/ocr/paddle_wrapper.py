@@ -79,7 +79,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     save_raw_json( output_paths, worker_name, final_results, file_name)
             
             total_time = time.perf_counter() - start_time
-            logger.info(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.6f}s.")
+            logger.debug(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.6f}s.")
             
             return True
         except Exception as e:
@@ -137,7 +137,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             logger.debug(f"Texto basuta filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{self.min_confidence}%'")
                         
                     total_results = len(final_results)
-                    logger.warning(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")
+                    logger.debug(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes.")

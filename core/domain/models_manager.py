@@ -36,10 +36,6 @@ class ModelsManager:
     def initialize_models(self, config: Dict[str, Any]) -> bool:
         init_time = time.perf_counter()
         try:
-            if not config:
-                logger.info("No se ejecutará paddle, se detine models manager")
-                return False
-            
             models_config=config.get("models_config", {})
 
             self._shared_engine = PaddleOCR(
@@ -59,11 +55,6 @@ class ModelsManager:
             logger.debug(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
             logger.debug(f"PADDLE Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
 
-        except Exception as e:
-            logger.error(f"No se pudo iniciar Paddle se deiene el proceso completo: {e}", exc_info=True)
-            return False
-
-        try:
             if not self._shared_engine or not self._detection_engine or not self._recognition_engine:
                 logger.critical(f"No se pudo iniciar Paddle, no se cargará WordFinder")
                 self._word_finder = None

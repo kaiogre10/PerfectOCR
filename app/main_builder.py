@@ -37,9 +37,10 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             return []
         
         # 4. Iniciar modelos Singleton
-        if config_services.models_config:
+        models_config = config_services.models_config
+        if models_config:
             models_manager = ModelsManager.get_instance()
-            models_manager.initialize_models(config_services.models_config)
+            models_manager.initialize_models(models_config)
         
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
         stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=project_root)

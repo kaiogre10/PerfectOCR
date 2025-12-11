@@ -9,6 +9,7 @@ from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_cc_metrics
 from services.output_service import save_croped_image, save_shapes
 from core.utils.image_utils import normalice_image
+from core.utils.math_utils import define_intervals
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 
             gray_img = self._decolorate(full_img)
             metrics = extract_cc_metrics(gray_img.copy(), binarice=False)
-            correct, contours_list = self._restore_faded_ink(gray_img.copy(), metrics)
+            correct, contours_list, cleaned_blobs = self._restore_faded_ink(gray_img.copy(), metrics, context)
             
             if not manager.update_full_img(True, correct):
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
@@ -103,6 +104,7 @@ class InkCorrector(ImagePrepAbstractWorker):
             if data["cont_area"] < bin_edges[1]
         ]
             
+        bboxes: List[float] = []
         for i in range(0, self.iterations):
             blobs_removed_this_pass = 0
             next_pass_candidates: List[int] = []
@@ -151,14 +153,16 @@ class InkCorrector(ImagePrepAbstractWorker):
                     corrected_blobs += 1
                     blobs_removed_this_pass += 1
                 
+                    bboxes.append(cont_bbox)
                     cleaned_blobs[pos] = {
                         "cont_coords": cont_coords,
                         "cont_bbox": cont_bbox,
                         "cont_area": cont_area,
                         "blob_centroid": blob_centroid,
-                        "surrounding_pixels": surrounding_pixels # Opcional si quieres ahorrar RAM
+                        "surrounding_pixels": surrounding_pixels
                     }
                     # NOTA: Al no añadirlo a 'next_pass_candidates', lo sacamos del ciclo
+                    
                 else:
                     # Si todavía no parece ruido (quizás tiene basura pegada), lo guardamos para intentarlo en la siguiente pasada.
                     next_pass_candidates.append(pos)
@@ -174,6 +178,10 @@ class InkCorrector(ImagePrepAbstractWorker):
             if blobs_removed_this_pass == 0:
                 break
 
+        # bboxes_array = np.array(bboxes)
+        # logger.info(f"SHAE:{ bboxes_array.shape}")
+        # intervals = define_intervals(bboxes_array, overlap_threshold=0.50)
+        # logger.info(f"Lineas vectorizadas: {len(intervals)}")
         return gray_img, contours_list, cleaned_blobs
 
     def _decolorate(self, full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:

@@ -9,6 +9,7 @@ from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.utils.image_utils import calculate_img_values
+from core.utils.math_utils import define_intervals
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,10 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # 2. Fase de Decisión Vectorizada: Calcular todos los recortes con self.padding
             bboxes_array = np.array(all_bboxes).astype(np.int16)  # shape: (n_polygons, 4)
+
+            # logger.info(f"SHAE:{ bboxes_array.shape}")
+            # intervals = define_intervals(bboxes_array, overlap_threshold=0.50)
+            # logger.info(f"Lineas vectorizadas: {len(intervals)}")
             
             # Calcular coordenadas con self.padding usando operaciones vectorizadas
             x1, y1, x2, y2 = bboxes_array[:, 0], bboxes_array[:, 1], bboxes_array[:, 2], bboxes_array[:, 3]
@@ -75,20 +80,20 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             py2 = np.minimum(img_h, y2 + self.padding)
             
             # Liberar la imagen completa lo antes posible
-            if manager.update_full_img(corrected=False, full_img=None):
-                logger.info(f"full_img: '{image_name}' liberada")
+            # if manager.update_full_img(corrected=False, full_img=None):
+            #     logger.info(f"full_img: '{image_name}' liberada")
 
-            blob_centroids = context["blob_centroids"]
-            areas = (x2 - x1) * (y2 - y1)
-            sorted_indices = np.argsort(-areas)
+            # blob_centroids = context["blob_centroids"]
+            # areas = (x2 - x1) * (y2 - y1)
+            # sorted_indices = np.argsort(-areas)
 
-            # Validar dimensiones usando operaciones vectorizadas
-            in_x = (blob_centroids[:, 0] >= x1) & (blob_centroids[:, 0] <= x2)
-            in_y = (blob_centroids[:, 1] >= y1) & (blob_centroids[:, 1] <= y2)
-            valid = in_x & in_y
-            valid_poly = np.any(valid, axis=1)
+            # # Validar dimensiones usando operaciones vectorizadas
+            # in_x = (blob_centroids[:, 0] >= x1) & (blob_centroids[:, 0] <= x2)
+            # in_y = (blob_centroids[:, 1] >= y1) & (blob_centroids[:, 1] <= y2)
+            # valid = in_x & in_y
+            # valid_poly = np.any(valid, axis=1)
             valid_dims: np.ndarray[Any, Any] = (px2 > px1) & (py2 > py1)
-            valid_indices = np.where((valid_dims & valid_poly))[0]
+            valid_indices = np.where(valid_dims )[0]
             
             if len(valid_indices) == 0:
                 logger.warning("PolygonExtractor: No hay recortes válidos después del padding.")
@@ -145,7 +150,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 elif p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
-                    logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO = {p_data['poly_mean']}")
+                    # logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO = {p_data['poly_mean']}")
                     
                 if self.disoutput:
                     from services.output_service import save_croped_image

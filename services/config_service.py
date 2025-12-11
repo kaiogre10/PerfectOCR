@@ -15,11 +15,14 @@ class ConfigService:
         self.test_mode = TEST_MODE
         if not self.test_mode and self._validate_min_workers():
             logger.warning("Modo de producción activado, se cargan configuraciones robustas")
+            self.config = self.config
 
         elif self.test_mode and "image_loader" in self.create_stager[0][1]:
             logger.warning(f"Modo de debug, restricciones robustas desactivadas")
+            self.config = self.config
 
         else:
+            logger.error(f"Error de configuración")
             self.config = {}
                 
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
@@ -53,34 +56,35 @@ class ConfigService:
     def models_config(self) -> Dict[str, Any]:
         ocr_workers = {"geometry_detector", "paddle_wrapper"}
         all_workers = self.get_all_workers
-        ocr_active = ocr_workers.isdisjoint(all_workers)
+        ocr_active = not ocr_workers.isdisjoint(all_workers)
 
         if not all_workers:
-            # logger.info("Sin all workers")
+            logger.info("Sin all workers")
             return {}
         
         elif ocr_active:
-            # logger.info("NO OCR ACTIVE")
+            logger.debug("OCR ACTIVE")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": False
             }
         
         elif "data_finder" in all_workers and ocr_workers.issubset(all_workers):
-            # logger.info("Data finder en all workers")
+            logger.info("Data finder en all workers")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": True,
             }
         
         elif "paddle_wrapper" not in all_workers:
-            # logger.info("No paddle wrapper")
+            logger.info("No paddle wrapper")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": False
             }
         
         else:
+            logger.info("Configuración de modelos no cargada")
             return {}
         
     @property

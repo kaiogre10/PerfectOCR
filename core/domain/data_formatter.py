@@ -499,7 +499,7 @@ class DataFormatter:
 
             hdr_poly_ids: List[str] = [pid for pid, p in polygons.items() if getattr(p, "key_field", None) == 6]
 
-            logger.info(f"Header_polys: {hdr_poly_ids}")
+            logger.debug(f"Header_polys: {hdr_poly_ids}")
             
             if not all_lines:
                 logger.error("all_lines está vacío! No se puede buscar el header.")
@@ -530,7 +530,7 @@ class DataFormatter:
                     logger.info(f"Header_line_id={header_line_id} guardado correctamente")
                     return header_line_id
             else:
-                logger.warning(f"No se encontró ninguna línea con HeaderWords. hdr_poly_ids={hdr_poly_ids}")
+                logger.debug(f"No se encontró ninguna línea con HeaderWords. hdr_poly_ids={hdr_poly_ids}")
         
         except Exception as e:
             logger.error(f"No hubo encabezado textual por similitud de encabezado: {e}", exc_info=True)
@@ -628,7 +628,7 @@ class DataFormatter:
                     
                     return footer_line
             else: 
-                logger.warning(f"No se encontró ninguna línea para pie de tabla")
+                logger.debug(f"No se encontró ninguna línea para pie de tabla")
             
             return None
                 
@@ -678,7 +678,7 @@ class DataFormatter:
             
             if header_line is None or footer_line is None:
             
-                logger.warning(F"No se encontró encabezado")
+                logger.debug(F"No se encontró encabezado")
                 return True
                 
             logger.debug(f"Header marcado automáticamente: {header_line}")
