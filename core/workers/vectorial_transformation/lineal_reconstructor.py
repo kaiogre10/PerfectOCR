@@ -140,7 +140,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                    #logger.info(f"{line_id}: '{joined_text}'")
+                    logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -167,20 +167,20 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 }
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-#                logger.info(f"{line_id}: '{joined_text}'")
+                logger.info(f"{line_id}: '{joined_text}'")
 
-        lines_array = np.array(lines_bbox)
+        # lines_array = np.array(lines_bbox)
         # logger.info(f"ARRAY: {lines_array}, SHPAE: {lines_array.shape}")
         # logger.info(f"BBOXES: {lines_bbox}")
-        bboxes_array = np.array(bboxes)
+        # bboxes_array = np.array(bboxes)
         # logger.info(f"SHAE:{bboxes_array.shape}")
-        intervals = define_intervals(bboxes_array, overlap_threshold=0.50)
-        logger.info(f"Lineas vectorizadas: {intervals.reshape}")
+        # intervals = define_intervals(bboxes_array, overlap_threshold=0.50)
+        # logger.info(f"Lineas vectorizadas: {intervals.reshape}")
 
-        image_name = "2"
-        worker_name = context.get("worker_name") or "lineal"
-        output_paths = context["output_paths"]
-        # for i in range(len(intervals)):
+        # image_name = "2"
+        # worker_name = context.get("worker_name") or "lineal"
+        # output_paths = context["output_paths"]
+        # # for i in range(len(intervals)):
         #     image_id = f"vector_{image_name}_{worker_name}_{i+1}"
         #     full_array = cropp_img(full_img.copy(), intervals)
         #     save_croped_image(image_name, image_id, full_array, output_paths, worker_name)

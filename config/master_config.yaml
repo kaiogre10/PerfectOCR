@@ -3,7 +3,7 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "ink_enhancement"
-    - "angle_corrector"
+    # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
 
@@ -16,16 +16,16 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    # - "paddle_wrapper"
-    # - "text_refiner"
-    # - "data_finder"
+    - "paddle_wrapper"
+    - "text_refiner"
+    - "data_finder"
     
   vector_stage:
     - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -63,7 +63,7 @@ enabled_outputs:
     encoded_lines: false
     features: false
     image_features: false
-    table_structured: false
+    table_structured: true
     math_max_corrected: false
 
 models_config:

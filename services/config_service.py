@@ -63,10 +63,10 @@ class ConfigService:
             return {}
         
         elif ocr_active:
-            logger.debug("OCR ACTIVE")
+            logger.info("OCR ACTIVE")
             return {
                 "models_config": self.config.get("models_config", {}),
-                "activate_wf": False
+                "activate_wf": True
             }
         
         elif "data_finder" in all_workers and ocr_workers.issubset(all_workers):
