@@ -53,42 +53,42 @@ class ConfigService:
         return self.config.get("pipeline_secuence", {})
 
     @property
-def models_config(self) -> Dict[str, Any]:
-    ocr_workers = {"geometry_detector", "paddle_wrapper"}
-    all_workers = self.get_all_workers
-    ocr_active = not ocr_workers.isdisjoint(all_workers)
+    def models_config(self) -> Dict[str, Any]:
+        ocr_workers = {"geometry_detector", "paddle_wrapper"}
+        all_workers = self.get_all_workers
+        ocr_active = not ocr_workers.isdisjoint(all_workers)
 
-    if not all_workers:
-        logger.info("Sin all workers")
-        return {}
+        if not all_workers:
+            logger.info("Sin all workers")
+            return {}
 
     # WF solo activo con OCR completo + data_finder
-    elif ocr_workers.issubset(all_workers) and "data_finder" in all_workers:
-        logger.info("OCR completo + data_finder")
-        return {
-            "models_config": self.config.get("models_config", {}),
+        elif ocr_workers.issubset(all_workers) and "data_finder" in all_workers:
+            logger.info("OCR completo + data_finder")
+            return {
+ "models_config": self.config.get("models_config", {}),
             "activate_wf": True
-        }
+            }
 
     # OCR parcial (uno o ambos, pero sin data_finder suficiente)
-    elif ocr_active:
-        logger.info("OCR activo sin condiciones completas para WF")
-        return {
+        elif ocr_active:
+            logger.info("OCR activo sin condiciones completas para WF")
+            return {
             "models_config": self.config.get("models_config", {}),
             "activate_wf": False
         }
 
     # Sin OCR (incluye solo data_finder)
-    elif "data_finder" in all_workers:
-        logger.info("Solo data_finder")
-        return {
+        elif "data_finder" in all_workers:
+            logger.info("Solo data_finder")
+            return {
             "models_config": {},
             "activate_wf": False
         }
 
-    else:
-        logger.info("Configuración de modelos no cargada")
-        return {}
+        else:
+            logger.info("Configuración de modelos no cargada")
+            return {}
         
     @property
     def modules_config(self) -> Dict[str, Any]:
