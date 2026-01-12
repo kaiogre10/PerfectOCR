@@ -2,40 +2,38 @@ import os
 import datetime
 import logging
 import pickle
+import re
+import unicodedata
 from datetime import datetime
 from typing import List, Any, Dict, Optional, Tuple
-from cleantext import clean  # type: ignore
 
 logger = logging.getLogger(__name__)
+
 
 class WordFinder:
     def __init__(self, model_path: str):
         self.model: Dict[str, Any] = self._load_model(model_path)
-       # self.wf_path: str = "C:/word_finder_model/src/word_finder.py"
+        self.wf_path: str = "C:/word_finder_model/src/word_finder.py"
         self.params = self.model.get("params", {})
         self.global_words: List[str] = self.model["global_words"]
         self.variant_to_field = self.model.get("variant_to_field", {})
         self.noise_words = self.model["noise_words"]
-        self.noise_filter = self.model.get("noise_filter", {})
-        self.global_filter = self.model.get("global_filter", {})
+        noise_filter = self.model.get("noise_filter", {})
+        global_filter = self.model.get("global_filter", {})
         self.global_filter_threshold = float(self.params.get("global_filter_threshold"))
-        self.global_ngrams: List[Tuple[str, float]] = self.global_filter["global_ngrams"]
-        self.noise_grams: List[Tuple[str, float]] = self.noise_filter["noise_grams"]
+        self.noise_grams: List[Tuple[str, float]] = noise_filter["noise_grams"]
         self.threshold: float = self.params.get("threshold_similarity")
-        self.gngr: Tuple[int, int] = tuple(self.params["char_ngram_global"])
-        self.ngr: Tuple[int, int] = tuple(self.params["char_ngram_noise"])
+        self.ngrams: Tuple[int, int] = self.params["char_ngrams"]
         self.thresholds_by_len: List[Tuple[int, int, float]] = [tuple(item) for item in self.params["thresholds_by_len"]]
         self.weights_by_n: List[Tuple[int, int, float]] = [tuple(item) for item in self.params["weights_by_n"]]
         self.window_flex = self.params.get("window_flexibility")
         self.forb_match: float = self.params.get("forb_match")
-        self.max_results: int = self.params.get("max_results_per_query")
-        self.field_conversion_map = self.params.get("field_conversion_map", {})
-        self.global_counter = self.global_filter.get("global_counter", None)
-        self.global_vocab = self.global_filter.get("global_vocab", None)
-       # self.model_time = self.model.get("model_time")
-      #  timestamp_model = os.path.getmtime(self.wf_path)
-      #  fecha_wf = datetime.fromtimestamp(timestamp_model).isoformat()
-       # logger.critical(f"FECHA DE GENERACIÓN DEL MODELO: {self.model_time}, FECHA DEL SCRIPT WORD_FINDER.PY: {fecha_wf}")
+        self.global_counter = global_filter.get("global_counter", None)
+        self.top_ngrams_slice: set[str] = global_filter.get("global_ngrams", set())
+        self.model_time = self.model.get("model_time")
+        timestamp_model = os.path.getmtime(self.wf_path)
+        fecha_wf = datetime.fromtimestamp(timestamp_model).isoformat()
+        logger.critical(f"FECHA DE GENERACIÓN DEL MODELO: {self.model_time}, FECHA DEL SCRIPT WORD_FINDER.PY: {fecha_wf}")
 
     def _load_model(self, model_path: str) -> Dict[str, Any]:
         try:
@@ -51,7 +49,7 @@ class WordFinder:
             raise
 
     def find_keywords(self, text: List[str] | str, threshold: Optional[float] = None) -> Optional[List[Dict[str, Any]]]:
-        global_range: Tuple[int, int] = self.gngr
+        global_range: Tuple[int, int] = self.ngrams
         try:
             final_threshold = threshold if threshold is not None else self.threshold
 
@@ -63,7 +61,7 @@ class WordFinder:
                 queue = list(text)
 
             results: List[Dict[str, Any]] = []
-            
+
             while queue:
                 s = queue.pop(0)
 
@@ -72,11 +70,13 @@ class WordFinder:
 
                 q = self._clean_text(s)
                 if not q:
-                    continue 
-
-                if not self._is_potential_keyword(q, global_range):
                     continue
-                
+
+                    # PRE-FILTRO: Si hay match exacto, saltar el filtro de n-gramas
+                if not self._is_exact_global_match(q):
+                    if not self._is_potential_keyword(q, global_range):
+                        continue
+
                 q_cleaned, removed_noise = self._remove_noise_substrings(q)
                 if removed_noise:
                     logger.info(f"Ruido eliminado: '{removed_noise}' | Texto Limpio: '{q_cleaned}'")
@@ -98,25 +98,11 @@ class WordFinder:
                         continue
 
                     max_w = min(len(q), cand_len + self.window_flex)
-                    grams_cand = self.global_ngrams[i]
 
-                    if isinstance(grams_cand, dict):
-                        pass
-
-                    else:
-                        try:
-                            # list/tuple of ngram strings -> group by length
-                            if isinstance(grams_cand, (list, tuple, set)) and all(
-                                    isinstance(x, str) for x in grams_cand):
-                                normalized: Dict[int, set[str]] = {}
-                                for g in grams_cand:
-                                    normalized.setdefault(len(g), set()).add(g)
-                                grams_cand = normalized
-                            else:
-                                # Unknown format (e.g. (word, freq) or other) -> build on the fly
-                                grams_cand = self._build_query_grams(cand, global_range)
-                        except Exception:
-                            grams_cand = self._build_query_grams(cand, global_range)
+                    # CORRECCIÓN: NO accedemos a self.global_ngrams[i] porque es un SET global
+                    # En su lugar, generamos los n-gramas para el candidato actual 'cand'
+                    # Tu función _build_query_grams es muy rápida.
+                    grams_cand = self._build_query_grams(cand, global_range)
 
                     try:
                         for w in range(min_w, max_w + 1):
@@ -129,7 +115,8 @@ class WordFinder:
                                 if sub == cand and len(sub) == cand_len:
                                     ngram_score: float = 1.0
                                 else:
-                                    ngram_score: float = self._score_binary_cosine_multi_n(grams_cand, grams_sub, global_range)
+                                    ngram_score: float = self._score_binary_cosine_multi_n(grams_cand, grams_sub,
+                                                                                           global_range)
                                     len_ratio = max(len(sub), cand_len) / max(1, min(len(sub), cand_len))
                                     if len_ratio >= 2.0:
                                         penalty = min(len(sub), cand_len) / max(len(sub), cand_len)
@@ -151,43 +138,44 @@ class WordFinder:
 
                     except Exception as e:
                         logger.error(f"Error en el bucle de búsqueda de find_keywords: {e}", exc_info=True)
-            
-            # Después de comprobar todos los candidatos, agrupar y seleccionar el mejor por campo
+
+                # Después de comprobar todos los candidatos, agrupar y seleccionar el mejor por campo
                 if found_matches_for_s:
                     best_match_by_field: Dict[str, Dict[str, Any]] = {}
-                
+
                     for match in found_matches_for_s:
                         field = match["key_field"]
-                    
-                    # Si es el primer match para este campo, o si es mejor que el guardado
-                        if field not in best_match_by_field or match["similarity"] > best_match_by_field[field]["similarity"]:
+
+                        # Si es el primer match para este campo, o si es mejor que el guardado
+                        if field not in best_match_by_field or match["similarity"] > best_match_by_field[field][
+                            "similarity"]:
                             best_match_by_field[field] = match
-                  
-                # Desempatar usando la similitud de palabra completa
+
+                    # Desempatar usando la similitud de palabra completa
                     final_matches = self._resolve_ambiguity_by_full_word(list(best_match_by_field.values()))
-                    
+
                     if final_matches:
                         best_match = final_matches[0]
                         results.append(best_match)
-                        
+
                         # Extraer la palabra encontrada y procesar el resto
                         start = best_match.get("start")
                         end = best_match.get("end")
-                        
+
                         if start is not None and end is not None:
                             left_part = q[:start].strip()
                             right_part = q[end:].strip()
-                            
+
                             if left_part:
                                 queue.append(left_part)
                             if right_part:
                                 queue.append(right_part)
-                            
-                            logger.debug(f"Extracted '{best_match['word_found']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
+
+                            logger.debug(
+                                f"Extracted '{best_match['word_found']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
 
             if single:
                 return results if results else []
-            logger.info(f"RESULTS: {results}")
             return results
         except Exception as e:
             logger.error(f"Error buscando palabras clave: '{e}'", exc_info=True)
@@ -201,7 +189,7 @@ class WordFinder:
 
         if not matches:
             return []
-        
+
         if len(matches) == 1:
             return matches
 
@@ -210,10 +198,10 @@ class WordFinder:
             original_text = match['text']
             keyword_found = self._clean_text(match['word_found'])
 
-            grams_text = self._build_query_grams(original_text, self.gngr)
-            grams_keyword = self._build_query_grams(keyword_found, self.gngr)
+            grams_text = self._build_query_grams(original_text, self.ngrams)
+            grams_keyword = self._build_query_grams(keyword_found, self.ngrams)
 
-            tiebreaker_score = self._score_binary_cosine_multi_n(grams_keyword, grams_text, self.gngr)
+            tiebreaker_score = self._score_binary_cosine_multi_n(grams_keyword, grams_text, self.ngrams)
             match['score_final'] = tiebreaker_score
 
             logger.debug(
@@ -272,7 +260,8 @@ class WordFinder:
             return 0.0
         return soft_intersection / float((size_a * size_b) ** 0.5)
 
-    def _score_binary_cosine_multi_n(self, grams_a: Dict[int, set[str]], grams_b: Dict[int, set[str]], nrange: Tuple[int, int]) -> float:
+    def _score_binary_cosine_multi_n(self, grams_a: Dict[int, set[str]], grams_b: Dict[int, set[str]],
+                                     nrange: Tuple[int, int]) -> float:
         """Calcula score ponderado por coseno binario multi-n-grama"""
         num = 0.0
         den = 0.0
@@ -290,7 +279,7 @@ class WordFinder:
                 max_sim = 0.0
                 for gram_b in B:
                     sim = self._ngram_similarity(gram_a, gram_b)
-                    
+
                     if sim > max_sim:
                         max_sim = sim
                 soft_intersection += max_sim
@@ -309,26 +298,55 @@ class WordFinder:
         return default
 
     def _is_potential_keyword(self, q: str, nrange: Tuple[int, int]) -> bool:
-        """Filtro rápido: suma de frecuencias normalizadas de n-gramas globales."""
+        """
+        Filtro rapido con Similitud Suave Directa.
+        Compara los n-gramas del input contra el Slice de Top N-gramas
+        usando similitud porcentual plana (sin pesos por longitud).
+        """
         try:
-            grams: List[str] = []
-            for n in range(nrange[0], nrange[1] + 1):
-                grams.extend(self._ngrams(q, n))
-            if not grams or self.global_counter is None or self.global_vocab is None:
+            if not q or not self.top_ngrams_slice:
                 return False
 
-            # Transforma el texto en matriz de n-gramas usando el vocabulario global
-            X = self.global_counter.transform([" ".join(grams)])
-            # Suma de frecuencias normalizadas
-            total = X.sum()
-            score = total / max(1, len(grams))
+            # Generar todos los n-gramas del input
+            input_ngrams: List[str] = []
+            for n in range(nrange[0], nrange[1] + 1):
+                input_ngrams.extend(self._ngrams(q, n))
+
+            if not input_ngrams:
+                return False
+
+            # Calcular score usando similitud suave
+            total_max_similarities = 0.0
+
+            for input_gram in input_ngrams:
+                max_sim = 0.0
+                input_len = len(input_gram)
+
+                # Comparar contra el slice (set de strings)
+                for top_gram in self.top_ngrams_slice:
+                    # Solo comparar n-gramas de la misma longitud
+                    if len(top_gram) != input_len:
+                        continue
+
+                    # Reutilizar la función existente
+                    sim = self._ngram_similarity(input_gram, top_gram)
+
+                    if sim > max_sim:
+                        max_sim = sim
+                        if max_sim == 1.0:
+                            break
+
+                total_max_similarities += max_sim
+
+            # Score final: promedio simple
+            score = total_max_similarities / len(input_ngrams)
 
             if score < self.global_filter_threshold:
-                logger.debug(f"Filtro rechazado para '{q}' Score={score:.4f}, ngrams={grams}")
+                logger.debug(f"Filtro rechazado para '{q}' Score={score:.4f}")
                 return False
-            else:
-                logger.debug(f"Filtro pasado para '{q}' Score={score:.4f}, ngrams={grams}")
-                return score > self.global_filter_threshold
+
+            logger.debug(f"Filtro pasado para '{q}' Score={score:.4f}")
+            return True
 
         except Exception as e:
             logger.error("Error en filtro global: %s", e, exc_info=True)
@@ -336,7 +354,7 @@ class WordFinder:
 
     def _is_forbidden(self, candidate: str) -> bool:
         """Verifica si un candidato coincide con alguna palabra prohibida usando los mismos umbrales"""
-        nrange: Tuple[int, int] = self.ngr
+        nrange: Tuple[int, int] = self.ngrams
         try:
             for i, noise_word in enumerate(self.noise_words):
                 if not noise_word:
@@ -346,37 +364,34 @@ class WordFinder:
                 min_w = max(1, noise_len - self.window_flex)
                 if min_w > len(candidate):
                     continue
+                # Optimizacion: Si candidato es mucho mas grande que la palabra prohibida, no es match prohibido estricto
+                # (aunque _remove_noise usaria logica de substring, aqui verificamos identidad de candidato)
                 max_w = min(len(candidate), noise_len + self.window_flex)
 
+                # CAMBIO: Ya viene como Dict[int, set[str]] desde el pickle optimizado
                 grams_forbidden = self.noise_grams[i]
-                if isinstance(grams_forbidden, dict):
-                    pass  # ya está en formato correcto
-                elif isinstance(grams_forbidden, (list, tuple, set)) and all(isinstance(x, str) for x in grams_forbidden): # type: ignore
-                    normalized: Dict[int, set[str]] = {}
-                    for g in grams_forbidden:
-                        normalized.setdefault(len(g), set()).add(g)
-                    grams_forbidden = normalized
-                else:
-                    grams_forbidden = self._build_query_grams(noise_word, nrange)
 
                 for w in range(min_w, max_w + 1):
                     if w > len(candidate):
                         break
                     for j in range(0, len(candidate) - w + 1):
                         sub = candidate[j:j + w]
-                        grams_sub = self._build_query_grams(sub, nrange)
 
-                        if sub == noise_word and len(sub) == noise_len:
+                        if sub == noise_word:
                             similarity = 1.0
                         else:
+                            # Solo calculamos n-gramas del candidato al vuelo
+                            grams_sub = self._build_query_grams(sub, nrange)
                             similarity = self._score_binary_cosine_multi_n(grams_forbidden, grams_sub, nrange)
+
                             len_ratio = max(len(sub), noise_len) / max(1, min(len(sub), noise_len))
                             if len_ratio >= 2.0:
                                 penalty = min(len(sub), noise_len) / max(len(sub), noise_len)
                                 similarity *= penalty
 
                         if similarity > self.forb_match:
-                            logger.info(f"RUIDO: '{candidate}', Similitud: {similarity:.4f}, n-gramas: {grams_sub}")
+                            logger.info(
+                                f"RUIDO: '{candidate}', Similitud: {similarity:.4f}, n-gramas: {grams_forbidden}")
                             return True
 
             return False
@@ -389,30 +404,21 @@ class WordFinder:
             if not s:
                 return ""
 
-            q = clean(
-                s,
-                clean_all=False,
-                extra_spaces=True,
-                stemming=False,
-                stopwords=False,
-                lowercase=True,
-                numbers=True,
-                punct=True,
-            )
+            # Normalizar para separar tildes y convertir a minúsculas
+            q = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8').lower()
 
-            if not q:
-                return ""
+            # CAMBIO: eliminar todo lo que no sean letras a-z y espacios SIN INYECTAR ESPACIOS
+            q = re.sub(r"[^a-z\s]+", "", q)
 
-            return q
-
+            # dejar solo un espacio entre palabras y quitar extremos
+            return re.sub(r"\s+", " ", q).strip()
         except Exception as e:
             logger.error(msg=f"Error limpiando texto: {e}", exc_info=True)
         return ""
 
     def get_model_info(self) -> Dict[str, Any]:
         return {
-            "noise_words": self.noise_words,
-            "field_conversion_map": self.field_conversion_map
+            "params": self.params
         }
 
     def _remove_noise_substrings(self, text: str) -> Tuple[str, List[str]]:
@@ -422,60 +428,87 @@ class WordFinder:
         """
         cleaned = text
         removed_noise: List[str] = []
-        nrange: Tuple[int, int] = self.ngr
-        
-        try:
-            for i, noise_word in enumerate(self.noise_words):
-                if not noise_word:
-                    continue
+        nrange: Tuple[int, int] = self.ngrams
 
+        try:
+            # PASO 1: Emparejar palabras con sus perfiles de n-gramas precalculados
+            candidates: List[Tuple[str, Any]] = []
+            for i, word in enumerate(self.noise_words):
+                if word and i < len(self.noise_grams):
+                    candidates.append((word, self.noise_grams[i]))
+
+            # PASO 2: Ordenar por longitud descendente.
+            candidates.sort(key=lambda x: len(x[0]), reverse=True)
+
+            for noise_word, grams_forbidden_tuple in candidates:
                 noise_len = len(noise_word)
                 min_w = max(1, noise_len - self.window_flex)
-                max_w = min(len(cleaned), noise_len + self.window_flex)
 
-                grams_forbidden = self.noise_grams[i]
-                if isinstance(grams_forbidden, dict):
-                    pass
-                elif isinstance(grams_forbidden, (list, tuple, set)) and all(isinstance(x, str) for x in grams_forbidden):
-                    normalized: Dict[int, set[str]] = {}
-                    for g in grams_forbidden:
-                        normalized.setdefault(len(g), set()).add(g)
-                    grams_forbidden = normalized
+                # grams_forbidden_tuple is Tuple[str, float], but we need Dict[int, set[str]]
+                # If your pickle stores Dict[int, set[str]], assign accordingly:
+                if isinstance(grams_forbidden_tuple, dict):
+                    grams_forbidden = grams_forbidden_tuple
+                elif isinstance(grams_forbidden_tuple, tuple) and isinstance(grams_forbidden_tuple[0], dict):
+                    grams_forbidden = grams_forbidden_tuple[0]
                 else:
-                    grams_forbidden = self._build_query_grams(noise_word, nrange)
+                    grams_forbidden = {}
 
-                # Buscar todas las coincidencias (múltiples pases)
+                # Buscar coincidencias (múltiples pases para eliminar repeticiones de la misma palabra)
                 found_any = True
                 while found_any:
                     found_any = False
-                    for w in range(min_w, max_w + 1):
+
+                    # Calculamos el max_w dinámicamente sobre el texto que se va reduciendo
+                    current_max_w = min(len(cleaned), noise_len + self.window_flex)
+
+                    # Iterar de ventana GRANDE a ventana PEQUEÑA
+                    for w in range(current_max_w, min_w - 1, -1):
                         if w > len(cleaned):
-                            break
+                            continue
                         for j in range(0, len(cleaned) - w + 1):
                             sub = cleaned[j:j + w]
-                            grams_sub = self._build_query_grams(sub, nrange)
 
-                            if sub == noise_word and len(sub) == noise_len:
+                            # Comparación rápida primero
+                            if sub == noise_word:
                                 similarity = 1.0
                             else:
+                                grams_sub = self._build_query_grams(sub, nrange)
+                                # grams_forbidden ya es el diccionario óptimo
                                 similarity = self._score_binary_cosine_multi_n(grams_forbidden, grams_sub, nrange)
+
                                 len_ratio = max(len(sub), noise_len) / max(1, min(len(sub), noise_len))
                                 if len_ratio >= 2.0:
                                     penalty = min(len(sub), noise_len) / max(len(sub), noise_len)
                                     similarity *= penalty
 
                             if similarity > self.forb_match:
-                                # Eliminar el substring
-                                cleaned = (cleaned[:j] + cleaned[j + w:]).strip()
+                                # Eliminar el substring agregando un espacio de seguridad para no fusionar palabras
+                                cleaned = (cleaned[:j] + " " + cleaned[j + w:]).strip()
+                                # Limpiar dobles espacios generados
+                                cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
                                 removed_noise.append(sub)
-                                logger.info(f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | Texto restante: '{cleaned}'")
+                                logger.info(
+                                    f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
                                 found_any = True
-                                break
+                                break  # Romper bucle interno j para reiniciar escaneo
                         if found_any:
-                            break
+                            break  # Romper bucle de ventana para reiniciar
 
             return cleaned, removed_noise
 
         except Exception as e:
             logger.error(f"Error eliminando substrings de ruido: {e}", exc_info=True)
             return text, []
+
+    def _is_exact_global_match(self, q: str) -> bool:
+        """
+        Pre-filtro rápido: verifica si el texto limpio coincide exactamente
+        con alguna palabra del vocabulario global.
+        Evita rechazos por el filtro de n-gramas cuando hay match directo.
+        """
+        if q in set(self.global_words):
+            logger.info(f"Match exacto para '{q}'")
+            return True
+        else:
+            return False

@@ -63,7 +63,7 @@ enabled_outputs:
     encoded_lines: false
     features: false
     image_features: false
-    table_structured: true
+    table_structured: false
     math_max_corrected: false
 
 models_config:
