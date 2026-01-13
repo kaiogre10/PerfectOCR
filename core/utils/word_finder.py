@@ -1,10 +1,10 @@
 import os
-import datetime
+#ort datetime
 import logging
 import pickle
 import re
 import unicodedata
-from datetime import datetime
+#om datetime import datetime
 from typing import List, Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -31,9 +31,9 @@ class WordFinder:
         self.global_counter = global_filter.get("global_counter", None)
         self.top_ngrams_slice: set[str] = global_filter.get("global_ngrams", set())
         self.model_time = self.model.get("model_time")
-        timestamp_model = os.path.getmtime(self.wf_path)
-        fecha_wf = datetime.fromtimestamp(timestamp_model).isoformat()
-        logger.critical(f"FECHA DE GENERACIÓN DEL MODELO: {self.model_time}, FECHA DEL SCRIPT WORD_FINDER.PY: {fecha_wf}")
+        # timestamp_model = os.path.getmtime(self.wf_path)
+        # fecha_wf = datetime.fromtimestamp(timestamp_model).isoformat()
+        # logger.critical(f"FECHA DE GENERACIÓN DEL MODELO: {self.model_time}, FECHA DEL SCRIPT WORD_FINDER.PY: {fecha_wf}")
 
     def _load_model(self, model_path: str) -> Dict[str, Any]:
         try:
@@ -79,7 +79,7 @@ class WordFinder:
 
                 q_cleaned, removed_noise = self._remove_noise_substrings(q)
                 if removed_noise:
-                    logger.info(f"Ruido eliminado: '{removed_noise}' | Texto Limpio: '{q_cleaned}'")
+                    logger.debug(f"Ruido eliminado: '{removed_noise}' | Texto Limpio: '{q_cleaned}'")
                     q = q_cleaned
                     if not q:
                         continue
@@ -147,8 +147,7 @@ class WordFinder:
                         field = match["key_field"]
 
                         # Si es el primer match para este campo, o si es mejor que el guardado
-                        if field not in best_match_by_field or match["similarity"] > best_match_by_field[field][
-                            "similarity"]:
+                        if field not in best_match_by_field or match["similarity"] > best_match_by_field[field]["similarity"]:
                             best_match_by_field[field] = match
 
                     # Desempatar usando la similitud de palabra completa
@@ -171,8 +170,7 @@ class WordFinder:
                             if right_part:
                                 queue.append(right_part)
 
-                            logger.debug(
-                                f"Extracted '{best_match['word_found']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
+                            logger.info(f"Extracted '{best_match['word_found']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
 
             if single:
                 return results if results else []
@@ -488,7 +486,7 @@ class WordFinder:
                                 cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
                                 removed_noise.append(sub)
-                                logger.info(
+                                logger.debug(
                                     f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
                                 found_any = True
                                 break  # Romper bucle interno j para reiniciar escaneo
