@@ -17,7 +17,7 @@ os.environ.update({
     'FLAGS_use_mkldnn': '1',
 })
 
-TEST_MODE = False
+TEST_MODE = True
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 

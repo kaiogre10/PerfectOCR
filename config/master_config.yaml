@@ -178,7 +178,7 @@ modules:
       overlap_threshold: 0.50
       
     vectorizer:
-      keywords_interval_enabled: true
+      keywords_interval_enabled: True
       exclude_types: [
         "descriptive",
         "code", 
