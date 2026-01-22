@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "ink_enhancement"
+    # - "ink_enhancement"
     # - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
@@ -21,11 +21,11 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-    - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
+    # - "lineal"
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
+    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -76,6 +76,7 @@ models_config:
   det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
   rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
   wf_model_path: C:/PerfectOCR/data/models/wf/wf_model.pkl
+  set_wf_params: False  
   
 # Configuración de procesamiento
 processing:
@@ -167,7 +168,6 @@ modules:
       morph_mean: [-0.3, 0.35] # Promedio morfológico
         
     data_finder:
-      min_similarity: 0.92
       max_q_lenght: [2, 25]
 
     text_corrector:

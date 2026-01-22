@@ -7,6 +7,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
+from core.utils.text_validator import clean_spaces
 
 logger = logging.getLogger(__name__)
 
@@ -127,8 +128,10 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         
                         # Aplicar filtro de confianza mínima
                         if confidence_pct > self.min_confidence:
+                            clean_text = clean_spaces(text)
+
                             final_results[poly_id] = {
-                                "text": str(text).strip(),
+                                "text": clean_text,
                                 "confidence": confidence_pct
                             }
                             logger.debug(f"Resultados: {poly_id}: Texto='{text}', Confianza='{confidence_pct}%'")

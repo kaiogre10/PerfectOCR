@@ -60,6 +60,7 @@ class ModelsConfig(ConfigWithNumpy):
     det_model_dir: str
     rec_model_dir: str
     wf_model_path: str
+    set_wf_params: bool
     
 class InkConfig(ConfigWithNumpy):
     iterations: int
@@ -142,7 +143,6 @@ class SemanticClasificator(ConfigWithNumpy):
     morph_mean: Tuple[float, float]
         
 class DataFinder(ConfigWithNumpy):
-    min_similarity: float
     max_q_lenght: Tuple[int, int]
     
 class TextRefiner(ConfigWithNumpy):

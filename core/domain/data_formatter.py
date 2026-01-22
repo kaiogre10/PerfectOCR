@@ -291,7 +291,7 @@ class DataFormatter:
                 logger.error(f"El número de imágenes recortadas '{total_img}' no coincide con el número de geometrías recortadas: '{total_geo}'")
                 return False
 
-            logger.warning(f"'{total_img}' imágenes recortadas recibidas para guardar.")
+            logger.debug(f"'{total_img}' imágenes recortadas recibidas para guardar.")
 
             for poly_id, img in cropped_images.items():
                 if poly_id in self.workflow.polygons:
