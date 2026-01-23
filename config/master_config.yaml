@@ -21,11 +21,11 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-    - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
+    # - "lineal"
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
+    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -166,9 +166,6 @@ modules:
       semantic_range: [45.0, 66.5] # Cantidad de digitos
       encode_mean: [25.1, 39.1] # Promedio de densidad
       morph_mean: [-0.3, 0.35] # Promedio morfológico
-        
-    data_finder:
-      max_q_lenght: [2, 30]
 
     text_corrector:
       confidence_threshold: 0.90

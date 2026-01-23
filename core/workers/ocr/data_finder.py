@@ -7,7 +7,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
 from core.utils.text_validator import validate_text, estandarice_uppers_lowers
-from core.utils.pattern_finder import find_rfc, find_iva, find_date
+from core.utils.pattern_finder import find_rfc, find_iva, find_date, find_umd
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +15,6 @@ class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('data_finder', {})
-        self.max_q_lenght = self.worker_config["max_q_lenght"]
         self._model = None
 
     @property
@@ -70,62 +68,71 @@ class DataFinder(OCRAbstractWorker):
 
                 sc = poly.semantic_clasification
                 if sc == 1 or sc == 2 or sc == -1 or sc == -2:
-                    logger.debug(f"{pid} omitido semanticamente sc= '{sc}'")
+                    logger.debug(f"{pid} omitido semanticamente sc= '{sc}': ")
                     skipped_semantic += 1
                     continue
 
                 ocr_text = poly.ocr_text or ""
                 word_lenght = len(ocr_text)
-                if not validate_text(ocr_text) or word_lenght < self.max_q_lenght[0] or word_lenght > self.max_q_lenght[1]:
-                    logger.debug(f"{pid} sin texto o excede longitud: '{ocr_text}', letras: '{word_lenght}'")
+                if not validate_text(ocr_text) or word_lenght < 2:
+                    logger.info(f"{pid} sin texto o excede longitud: '{ocr_text}', letras: '{word_lenght}'")
                     skipped_len += 1
+                    continue
+
+                if find_umd(ocr_text):
+                    skipped_semantic += 1
+                    logger.info(f"'{pid}' UMD: {ocr_text}")
                     continue
 
                 date_key = find_date(ocr_text)
                 if date_key:
                     skipped_semantic +=1
-                    logger.warning(f"FECHA encontrado en {pid}, '{ocr_text}'")
+                    logger.info(f"FECHA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 9
                     continue
 
                 rfc_key = find_rfc(ocr_text)
                 if rfc_key:
                     skipped_semantic +=1
-                    logger.warning(f"RFC encontrado en {pid}, '{ocr_text}'")
+                    logger.info(f"RFC encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 7
                     continue
 
                 iva_key = find_iva(ocr_text)
                 if iva_key:
                     skipped_semantic +=1
-                    logger.warning(f"IVA encontrado en {pid}, '{ocr_text}'")
+                    logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
                     continue
                 
                 valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
-                if not valid_results:
+                if valid_results:
+                    # continue
+
+                    num_keywords = len(valid_results)
+                    all_key_fields = [result['key_field'] for result in valid_results]
+                    
+                    # Verificar si todos son headers (key_field == 6)
+                    if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
+                        # Múltiples headers: asignar como lista
+                        polygon_updates[pid] = all_key_fields
+                        pot_headers = " ".join(result["key_word"] for result in valid_results)
+                        head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
+                        poly.ocr_text = head_standar
+                        logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
+
+                    else:
+                        key_field = valid_results[0]['key_field']
+                        polygon_updates[pid] = key_field
+                        logger.debug(f"'{pid}': Key_Field {key_field}")
+
                     continue
 
-                num_keywords = len(valid_results)
-                all_key_fields = [result['key_field'] for result in valid_results]
-                
-                # Verificar si todos son headers (key_field == 6)
-                if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
-                    # Múltiples headers: asignar como lista
-                    polygon_updates[pid] = all_key_fields
-                    pot_headers = " ".join(result["key_word"] for result in valid_results)
-                    head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
-                    poly.ocr_text = head_standar
-                    logger.info(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
-
-                else:
-                    key_field = valid_results[0]['key_field']
-                    polygon_updates[pid] = key_field
-                    logger.info(f"'{pid}': Key_Field {key_field}")
+                # logger.info(f"{pid}: exto superviviente {ocr_text}")
 
             if polygon_updates:
-                logger.info(f"KEY_FIELDS: {polygon_updates}")
-                logger.debug(f"Cantidad de keyfields: {len(polygon_updates)}")
+                logger.debug(f"KEY_FIELDS: {polygon_updates}")
+                logger.debug(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
                 return polygon_updates
             
             else:

@@ -476,7 +476,7 @@ class DataFormatter:
                     logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
-                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
+                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
             else:

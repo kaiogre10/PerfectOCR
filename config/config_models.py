@@ -141,10 +141,7 @@ class SemanticClasificator(ConfigWithNumpy):
     semantic_range: Tuple[float, float]
     encode_mean: Tuple[float, float]
     morph_mean: Tuple[float, float]
-        
-class DataFinder(ConfigWithNumpy):
-    max_q_lenght: Tuple[int, int]
-    
+            
 class TextRefiner(ConfigWithNumpy):
     num_passes: int
     c_value: int
@@ -170,7 +167,6 @@ class OCRConfig(ConfigWithNumpy):
     text_refiner: TextRefiner
     text_cleaner: TextualCleanConfig
     semantic_clasificator: SemanticClasificator
-    data_finder: DataFinder
     text_corrector: TextCorrector
 
 class DBSCAN(ConfigWithNumpy):

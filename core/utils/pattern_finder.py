@@ -12,12 +12,48 @@ def termination_detect(text: str) -> bool:
     minus_text = text.lower()
 
     pattern = r'(?i)(s|c|r)?i0n\b'
-    if re.search(pattern, minus_text):
+    if re.search(pattern, minus_text, flags=re.IGNORECASE):
         return True
 
     else:
         return False
+    
+def find_date(s: str) -> bool:
+    """Detecta subpatrones de fecha/hora en texto."""
+    try:
+        if not validate_text(s):
+            return False
+        
+        subpatterns = [
+            # Meses en español (abreviados o completos)
+            r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b',
+            
+            # Fecha numérica completa: dd/mm/yyyy o dd/mm/yy
+            r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b',
+            
+            # Fecha parcial con día válido (01-31) y mes válido (01-12)
+            r'\b(0?[1-9]|[12]\d|3[01])[\/\-\.](0?[1-9]|1[0-2])\b',
+            
+            # Año solo (4 dígitos entre 1990-2099)
+            r'\b(199\d|20\d{2})\b',
+            
+            # Hora con separador: 12:30, 9:45:30
+            r'\b([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?\b',
+            
+            # Hora 4 dígitos + AM/PM: 1131AM, 0149 PM (solo si empieza con 0-2)
+            r'\b([01]\d|2[0-3])[0-5]\d\s*[AaPp]\.?[Mm]\.?\b',
+        ]
+        
+        for pattern in subpatterns:
+            if re.search(pattern, s, re.IGNORECASE):
+                return True
+        
+        return False
 
+    except Exception as e:
+        logger.error(f"Error buscando fecha: {e}", exc_info=True)
+        return False
+    
 def is_acronym(text: str) -> bool:
     """Detecta siglas del tipo A.B.C. o P.U.C.D con punto final opcional y, admite un signo ':' ';' ',' opcional al final. """
     try:
@@ -25,34 +61,65 @@ def is_acronym(text: str) -> bool:
             return False
             
         pattern = r'^([A-Za-z]\.){2,}[A-Za-z]\.?(?:[:;,])?$'
-        return re.search(pattern, text.strip()) is not None
+        return re.search(pattern, text.strip(), flags=re.IGNORECASE) is not None
         
     except Exception as e:
         logger.error(f"Error buscando siglas: {e}", exc_info=True)
     return False
 
 def find_umd(s: str) -> bool:
+    """
+    Detecta unidades de medida comunes en texto OCR.
+    Incluye: peso, volumen, longitud, área, unidades, piezas, cajas, etc.
+    """
     try:
-        umd_patterns = r'\b(\d+([,\.]\d+)?)\s*(/)?\s*(k(g(r)?|ilo(s)?)|g(r|ramo(s)?|m)?|mg|m(t(r)?|etro(s)?|2|\\^2)?|cm|l(t(r)?|itro(s)?|ml)?|cc|ud(s)?|pza(s)?|cj(s)?)\b'
-        if re.search(umd_patterns, s):
+        if not validate_text(s):
+            return False
+        
+        # Subpatrones de unidades de medida
+        umd_patterns = [
+            # Peso: kg, kgr, kilo, kilos, g, gr, gramo, gramos, mg, lb, lbs, libra, libras, oz, onza, onzas, ton, tonelada
+            r'\b\d+([.,]\d+)?\s*(kg(r)?|kilo(s)?|g(r|ramo(s)?)?|mg|lb(s)?|libra(s)?|oz|onza(s)?|ton(elada(s)?)?)\b',
+            
+            # Volumen: l, lt, ltr, litro, litros, ml, cc, gal, galon, galones
+            r'\b\d+([.,]\d+)?\s*(l(t(r)?)?|litro(s)?|ml|cc|gal(on(es)?)?)\b',
+            
+            # Longitud: m, mt, mtr, metro, metros, cm, mm, km, in, pulg, pulgada, pulgadas, ft, pie, pies, yd, yarda
+            r'\b\d+([.,]\d+)?\s*(m(t(r)?)?|metro(s)?|cm|mm|km|in|pulg(ada(s)?)?|ft|pie(s)?|yd|yarda(s)?)\b',
+            
+            # Área: m2, m^2, mt2, cm2, km2
+            r'\b\d+([.,]\d+)?\s*(m(t)?(2|\^2|²)|cm(2|\^2|²)|km(2|\^2|²))\b',
+            
+            # Fracciones con unidades: 1/2 kg, 1/4 lt, 1/8 pza
+            r'\b\d+\s*/\s*\d+\s*(kg(r)?|kilo(s)?|g(r)?|l(t(r)?)?|litro(s)?|ml|pz(a)?(s)?|ud(s)?)\b',
+            
+            # Fracciones simples: solo 1 cifra / múltiplos de 2 (2,4,8,16,32,64)
+            r'\b[1-9]\s*/\s*(2|4|8|16|32|64)\b',
+        ]
+        
+        for pattern in umd_patterns:
+            if re.search(pattern, s, re.IGNORECASE):
                 return True
+        
         return False
 
     except Exception as e:
-        logger.warning(f"No se hallaron unidades de medida: {e}", exc_info=True)
-    return False
-
+        logger.warning(f"Error buscando unidades de medida: {e}", exc_info=True)
+        return False
+    
 def find_rfc(s: str) -> bool:
     try:
         rfc_code = r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$'
         rfc_word = r'\b(R\.?F\.?C\.?)\b'
 
-        if is_acronym(s):
-            if re.search(rfc_word, s):
+        if re.search(rfc_word, s, flags=re.IGNORECASE):
+            return True
+            # if is_acronym(s):
+            #     if re.search(rfc_word, s):
+                    # return True
+        else:
+            if re.search(rfc_code, s, flags=re.IGNORECASE):
                 return True
-            else:
-                if re.search(rfc_code, s):
-                    return True
 
         return False
     except Exception as e:
@@ -64,7 +131,7 @@ def find_iva(s: str) -> bool:
         iva_word = r'\b(I\.?V\.?A\.?)\b'
 
         if is_acronym(s):
-            if re.search(iva_word, s):
+            if re.search(iva_word, s, flags=re.IGNORECASE):
                 return True
             else:
                 return False
@@ -128,7 +195,7 @@ def find_quantitative(s: str) -> bool:
                 if idx == 0 or not s_norm[:idx].strip().isdigit():
                     break # Es un candidato válido, proceder a regex
 
-    if re.match(patterns["end"], s_norm):
+    if re.match(patterns["end"], s_norm, flags=re.IGNORECASE):
         return False
 
     amounts = re.findall(r"\d+", s_norm)
@@ -137,10 +204,10 @@ def find_quantitative(s: str) -> bool:
             return False
 
     return bool(
-        re.match(patterns["start"], s_norm) or
-        re.match(patterns["middle"], s_norm) or
-        re.match(patterns["multi"], s_norm) or
-        re.match(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$", s_norm) # Decimal explícito
+        re.match(patterns["start"], s_norm, flags=re.IGNORECASE) or
+        re.match(patterns["middle"], s_norm, flags=re.IGNORECASE) or
+        re.match(patterns["multi"], s_norm, flags=re.IGNORECASE) or
+        re.match(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$", s_norm, flags=re.IGNORECASE) # Decimal explícito
     )
 
 def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
@@ -172,35 +239,6 @@ def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
         return split_runs
 
     return runs
-
-def find_date(s: str) -> bool:
-    try:
-        if not validate_text(s):
-            return False
-
-        moth_pattern = r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(tiembre)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b'
-        date_pattern = r'\b(\d{1,2})?[\/\-\. ]*(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)[\/\-\. ]*(\d{2,4})?\b'
-
-        # Busca primero el patrón corto
-        if re.search(moth_pattern, s):
-            # Si lo encuentra, busca el patrón largo
-
-            if re.search(date_pattern, s):
-                logger.info(f"Resultado de Date: {s}")
-                return True
-
-            else:
-                return False
-
-        # Si no encuentra el corto, busca el largo directamente
-        if re.search(date_pattern, s):
-            return True
-
-        return False
-
-    except Exception as e:
-        logger.info(f"Error buscando Fecha: {e}", exc_info=True)
-        return False
 
 def separate_punt(text: str):
     return re.split(r'([.,;:!?])', text)
