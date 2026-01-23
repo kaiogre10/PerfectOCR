@@ -168,14 +168,14 @@ modules:
       morph_mean: [-0.3, 0.35] # Promedio morfológico
         
     data_finder:
-      max_q_lenght: [2, 25]
+      max_q_lenght: [2, 30]
 
     text_corrector:
       confidence_threshold: 0.90
     
   vectorization:
     lineal:
-      overlap_threshold: 0.50
+      overlap_threshold: 0.60
       
     vectorizer:
       keywords_interval_enabled: True

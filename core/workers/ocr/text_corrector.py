@@ -47,7 +47,7 @@ class TextCorrector(OCRAbstractWorker):
         }
         
         sorted_poly_ids = sorted(polygons_in.keys())
-        logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+        logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
         # Procesar cada polígono recursivamente
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
@@ -78,7 +78,7 @@ class TextCorrector(OCRAbstractWorker):
                 correction_stats[semantic_type] += 1
                 correction_stats["total_corrections"] += 1
                 
-                logger.info(
+                logger.debug(
                     f"Corrección {poly_id}: "
                     f"Tipo: '{semantic_type}' | "
                     f"Confianza: '{confidence}' | "
@@ -153,11 +153,11 @@ class TextCorrector(OCRAbstractWorker):
 
             if char == "0" and self.termination_correct(token, semantic_clasification):
                 replacement = 'o'
-                logger.info(f"{polygon_id}: Corrección de terminación")
+                logger.debug(f"{polygon_id}: Corrección de terminación")
 
             if char == 'S' and self._should_use_five_instead_of_dollar(token, i, semantic_clasification):
                 replacement = '5'
-                logger.info(f"{polygon_id}: Regla especial S->5 en '{token}'")
+                logger.debug(f"{polygon_id}: Regla especial S->5 en '{token}'")
             else:
                 replacement = corrections_map[char]
 

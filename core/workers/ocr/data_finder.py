@@ -115,7 +115,6 @@ class DataFinder(OCRAbstractWorker):
                     # best_result: Dict[str, Any] = max(valid_results, key=lambda x: x['similarity'])
                     key_field: int = result['key_field']
                     ind_header: str = result["word_found"]
-                    begging: int = result["start"]
                     polygon_updates[pid] = key_field
                     header_kw += key_field
                     headers.append(ind_header)
@@ -130,7 +129,8 @@ class DataFinder(OCRAbstractWorker):
                     # logger.info(f"Poligono {pid} a segmentar: {valid_results_sorted}")
                     index_word: List[List[str]] = self.mapp_words(ocr_text)
                     # logger.info(f"Headers ordenados: {headers}")
-                    self.divide_headers(index_word, headers)
+                    new_headers = self.divide_headers(index_word, headers)
+                    logger.info(f"New: {new_headers}")
                     
                     # logger.info(f"Resultado de {pid}: {result}, cantidad de keyfields: {len(valid_results)}")
 
@@ -156,168 +156,61 @@ class DataFinder(OCRAbstractWorker):
         
         return char_mapping
     
-    def divide_headers(self, mapped_text: List[List[Any]], headers: List[str]) -> None:
-        current_index = 0
-        header_number = 0
-        header_ranges: List[Dict[str, Any]] = []
+    def divide_headers(self, mapped_text: List[List[Any]], headers: List[str]) -> List[Dict[str, Any]]:
+        current_pos = 0
+        header_slices: List[Dict[str, Any]] = []
         
+        # 1. Extraer slices de headers en orden
         for header in headers:
-            header_number += 1
-            start_range: Optional[int] = None  # Se asigna al encontrar la primera letra
-            
-            # Asignar cada letra del header (ya viene normalizado y corregido)
+            found_indices = []
             for char in header:
-                found = False
-                
-                # Buscar coincidencia exacta desde current_index en adelante
-                for i in range(current_index, len(mapped_text)):
-                    # Solo considerar posiciones disponibles
+                for i in range(current_pos, len(mapped_text)):
                     if mapped_text[i][3] and mapped_text[i][1] == char:
-                        # Coincidencia exacta encontrada
-                        mapped_text[i][2] = char  # Asignar carácter del header
-                        mapped_text[i][3] = False  # Marcar como no disponible
-                        current_index = i + 1
-                        found = True
-                        if start_range is None:  # Primera letra encontrada
-                            start_range = i
+                        mapped_text[i][3] = False  # Marcar como usado
+                        found_indices.append(int(mapped_text[i][0]))
+                        current_pos = i + 1
                         break
+            
+            if found_indices:
+                header_slices.append({
+                    'type': 'header',
+                    'content': header,
+                    'start_idx': min(found_indices),
+                    'end_idx': max(found_indices) + 1
+                })
+
+        # 2. Recolectar remanentes barriendo el mapeo
+        final_segments: List[Dict[str, Any]] = []
+        temp_rem_indices: List[int] = []
+        
+        for i in range(len(mapped_text)):
+            idx_orig = int(mapped_text[i][0])
+            is_available = mapped_text[i][3]
+
+            if is_available:
+                temp_rem_indices.append(idx_orig)
+            else:
+                # Si encontramos un bloque ocupado (header), cerramos remanente previo
+                if temp_rem_indices:
+                    final_segments.append({
+                        'type': 'remainder',
+                        'start_idx': min(temp_rem_indices),
+                        'end_idx': max(temp_rem_indices) + 1
+                    })
+                    temp_rem_indices = []
                 
-                if not found:
-                    # No hay coincidencia exacta, saltar al siguiente disponible sin asignar
-                    for i in range(current_index, len(mapped_text)):
-                        if mapped_text[i][3]:
-                            # Solo marcar como no disponible, NO asignar carácter
-                            mapped_text[i][3] = False
-                            current_index = i + 1
-                            if start_range is None:  # Primera posición usada
-                                start_range = i
-                            break
-            
-            end_range = current_index
-            if start_range is None:
-                start_range = end_range  # Seguridad si no encontró nada
-            
-            header_ranges.append({
-                'header': header,
-                'start': start_range,
-                'end': end_range
-            })
-        
-        # Después de asignar todos los headers, fusionar caracteres especiales residuales
-        special_chars = '.,;:-_/\\|'
-        for i in range(len(header_ranges)):
-            # Buscar caracteres especiales ANTES del start del header (residuos a la izquierda)
-            header_start = header_ranges[i]['start']
-            while header_start > 0:
-                prev_idx = header_start - 1
-                if mapped_text[prev_idx][3]:  # Si está disponible
-                    char = mapped_text[prev_idx][1]
-                    if char in special_chars:
-                        # Fusionar con el header actual (extender hacia la izquierda)
-                        mapped_text[prev_idx][2] = char
-                        mapped_text[prev_idx][3] = False
-                        header_ranges[i]['start'] = prev_idx
-                        header_start = prev_idx
-                    else:
+                # Añadir el header que corresponde a este índice (si es su inicio)
+                for h in header_slices:
+                    if h['start_idx'] == idx_orig:
+                        final_segments.append(h)
                         break
-                else:
-                    break
-            
-            # Buscar caracteres especiales DESPUÉS del end del header
-            header_end = header_ranges[i]['end']
-            while header_end < len(mapped_text):
-                if mapped_text[header_end][3]:  # Si está disponible
-                    char = mapped_text[header_end][1]
-                    if char in special_chars:
-                        # Fusionar con el header actual
-                        mapped_text[header_end][2] = char
-                        mapped_text[header_end][3] = False
-                        header_ranges[i]['end'] = header_end + 1
-                        header_end += 1
-                    else:
-                        break
-                else:
-                    break
-        
-        logger.info(f"Tabla final mapped_text: {mapped_text}")
-        logger.info(f"Rangos de headers: {header_ranges}")
-        
-        # Analizar qué hay entre los headers
-        divisions: List[Dict[str, Any]] = []
-        
-        for i in range(len(header_ranges)):
-            current_header = header_ranges[i]
-            
-            # Calcular rangos basados en índices originales del mapped_text
-            start_idx = int(mapped_text[current_header['start']][0]) if current_header['start'] < len(mapped_text) else current_header['start']
-            end_idx = int(mapped_text[current_header['end'] - 1][0]) + 1 if current_header['end'] > 0 and current_header['end'] <= len(mapped_text) else current_header['end']
-            
-            # Texto del header usando los caracteres normalizados del mapped_text
-            header_text = ''.join([mapped_text[j][1] for j in range(current_header['start'], current_header['end'])])
-            
-            divisions.append({
-                'type': 'header',
-                'header': current_header['header'],
-                'start_idx': start_idx,
-                'end_idx': end_idx,
-                'text': header_text
+
+        # Cerrar remanente final si quedó algo al final de la cadena
+        if temp_rem_indices:
+            final_segments.append({
+                'type': 'remainder',
+                'start_idx': min(temp_rem_indices),
+                'end_idx': max(temp_rem_indices) + 1
             })
-            
-            # Ver qué hay entre este header y el siguiente
-            if i < len(header_ranges) - 1:
-                next_header = header_ranges[i + 1]
-                between_start = current_header['end']
-                between_end = next_header['start']
-                
-                if between_start < between_end:
-                    # Calcular índices originales para el contenido intermedio
-                    between_start_orig = int(mapped_text[between_start][0]) if between_start < len(mapped_text) else between_start
-                    between_end_orig = int(mapped_text[between_end - 1][0]) + 1 if between_end > 0 and between_end <= len(mapped_text) else between_end
-                    
-                    # Hay contenido entre los headers
-                    between_text = ''.join([mapped_text[j][1] for j in range(between_start, between_end)])
-                    between_text_stripped = between_text.strip()
-                    
-                    # Clasificar el contenido intermedio
-                    if not between_text_stripped:
-                        # Solo espacios - se elimina
-                        divisions.append({
-                            'type': 'spaces',
-                            'action': 'delete',
-                            'start_idx': between_start_orig,
-                            'end_idx': between_end_orig,
-                            'text': between_text
-                        })
-                    elif all(c in ' .,;:-_/\\|' for c in between_text_stripped):
-                        # Solo caracteres especiales - asignar a la izquierda
-                        divisions.append({
-                            'type': 'special_chars',
-                            'action': 'merge_left',
-                            'start_idx': between_start_orig,
-                            'end_idx': between_end_orig,
-                            'text': between_text
-                        })
-                    else:
-                        # Texto o números - crear nuevo polígono
-                        divisions.append({
-                            'type': 'content',
-                            'action': 'new_polygon',
-                            'start_idx': between_start_orig,
-                            'end_idx': between_end_orig,
-                            'text': between_text
-                        })
-        
-        logger.info("=" * 80)
-        logger.info("DIVISIÓN DE POLÍGONO:")
-        for div in divisions:
-            if div['type'] == 'header':
-                logger.info(f"  HEADER '{div['header']}' [{div['start_idx']}-{div['end_idx']}]: '{div['text']}'")
-            elif div['type'] == 'spaces':
-                logger.info(f"  ESPACIOS [{div['start_idx']}-{div['end_idx']}]: '{div['text']}' -> ELIMINAR")
-            elif div['type'] == 'special_chars':
-                logger.info(f"  ESPECIALES [{div['start_idx']}-{div['end_idx']}]: '{div['text']}' -> FUSIONAR A LA IZQUIERDA")
-            elif div['type'] == 'content':
-                logger.info(f"  CONTENIDO [{div['start_idx']}-{div['end_idx']}]: '{div['text']}' -> NUEVO POLÍGONO")
-        logger.info("=" * 80)
-        
-        return None
+
+        return final_segments

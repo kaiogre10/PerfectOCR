@@ -244,7 +244,7 @@ class WordFinder:
 
         for i, match in enumerate(matches):
             norm_text = match['norm_text']
-            word_found = self._normalize(match['word_found'])
+            word_found = match['word_found']
 
             # Construir n-gramas de TODO el texto (sin ventana deslizante)
             grams_text = self._build_query_grams(norm_text)
@@ -473,14 +473,12 @@ class WordFinder:
             return text, []
     
     def check_full_word(self, text: str, place: str) -> bool:
-        try:
-            if place == "global":
-                return text in set(self.global_words)
-            if place == "noise":
-                return text in set(self.noise_words)
-        except Exception as e:
-            logger.info(f"Error buscando string inmediatos: {e}")
-        return False
+        if place == "global":
+            return text in set(self.global_words)
+        elif place == "noise":
+            return text in set(self.noise_words)
+        else:
+            return False
         
     def _normalize(self, s: str) -> str:
         try:
