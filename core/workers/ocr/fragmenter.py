@@ -2,7 +2,7 @@
 import dataclasses
 import logging
 import numpy as np
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Set
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -19,7 +19,7 @@ class Fragmenter(OCRAbstractWorker):
         self.worker_config = config.get("text_refiner", {})
         self.min_contours_for_frag = self.worker_config.get("min_cc_for_frag")
         self.output = config.get("fragmented_polys", False)
-        self.punc_chars: List[str] = punc_chars()
+        self.punc_chars: Set[str] = punc_chars()
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool: 
         try:
@@ -222,9 +222,6 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
             
         parts = [p for p in text.split(' ') if p]
-        
-        if len(parts) < self.min_contours_for_frag:
-            return [polygon]
 
         char_lengths = [len(p) for p in parts]
         total_chars = sum(char_lengths)

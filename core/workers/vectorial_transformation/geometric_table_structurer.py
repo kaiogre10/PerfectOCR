@@ -33,34 +33,43 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # Obtener datos usando data classes modernas
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            
-            # Filtrar líneas tabulares usando propiedades de data class
             tabular_line_ids = [lid for lid, line_obj in all_lines.items() if line_obj.tabular_line]
-            
+                
             if not tabular_line_ids or not all_lines or not polygons:
                 logger.error("Faltan datos necesarios para estructuración tabular")
                 return False
 
             # 1. Detectar encabezado H* usando data classes
             try:
-                # buscar líneas marcadas explícitamente como header_line == True
-                header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
-                header_line_id = header_line_id[0] if header_line_id else None
+                
+            
+                # header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None)]
+                # header_line_id = header_line_id[0] if header_line_id else None
 
-                line_ids: List[str] = list(all_lines.keys())
-                if header_line_id not in line_ids:
-                    logger.warning("Header no encontrado en el manager")
+                # # logger.info(f"{header_line_id}")
+
+                # line_ids: List[str] = list(all_lines.keys())
+                # if header_line_id not in line_ids:
+                #     logger.warning("Header no encontrado en el manager")
+                #     return False
+                
+                # # 2. Extraer centroides de referencia c_j del encabezado
+                # H = len(header_centroids)  # Número de columnas
+                
+                # if H == 0:
+                #     logger.error("No se pudieron extraer centroides del encabezado")
+                #     return False
+                h, header_line_id = self.get_headers(all_lines)
+                if not header_line_id or h==0:
+                    logger.error("No hay encabezados disponibles")
                     return False
                 
-                # 2. Extraer centroides de referencia c_j del encabezado
-                header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons)
-                H = len(header_centroids)  # Número de columnas
+                H = int(h)
                 
-                if H == 0:
-                    logger.error("No se pudieron extraer centroides del encabezado")
-                    return False
-                    
                 logger.debug(f"Encabezado detectado: {header_line_id}, H={H} columnas")
+
+                # Pasar target_columns a la función de extracción
+                header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons, H)
 
                 # 3. Seleccionar filas S para procesamiento
                 selected_lines = self._select_table_rows(header_line_id, tabular_line_ids, all_lines)
@@ -74,8 +83,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
                 total_time = time.time() - start_time
                 if not df.empty:
-                   # logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
-                    logger.info(f"Estructuración de tabla completada en {total_time:.10f} s.")
+                    logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
+                    logger.info(f"Estructuración de tabla completada en {total_time:.10f}s")
 
                    # context["table_copy"] = df.copy()
 
@@ -95,7 +104,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
                         file_name: str = manager.workflow.metadata.image_name # type: ignore
                         worker_name = context.get("worker_name") or "geometrical_structurer"
-                        output_paths = context.get("output_paths", [])
+                        output_paths = context["output_paths"]
                         save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
 
                     if manager.save_structured_table(df=df, columns=list(df.columns)):
@@ -113,32 +122,69 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
             return False
 
-    def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> List[List[float]]:
+    def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], target_columns: int) -> List[List[float]]:
         """
-        Extrae centroides de referencia c_j = (c_x,h_j, c_y,h_j) del encabezado H*
-        usando acceso directo a data classes.
+        Extrae centroides de referencia c_j del encabezado H*.
+        Si hay menos polígonos que columnas necesarias, subdivide los polígonos.
         """
         try:
             header_centroids: List[List[float]] = []
             header_line = all_lines[header_line_id]
             
+            # Obtener polígonos del encabezado ordenados por x (izquierda a derecha)
+            header_polys: List[Tuple[str, Polygons]] = []
             for poly_id in header_line.polygon_ids:
                 poly_data = polygons.get(poly_id)
                 if poly_data and poly_data.geometry:
-                    # Acceso directo a centroide usando data class
+                    header_polys.append((poly_id, poly_data))
+            
+            # Ordenar por posición x (centroide en eje X)
+            header_polys.sort(key=lambda x: x[1].geometry.centroid[0])
+            
+            num_polys = len(header_polys)
+            
+            if num_polys == 0:
+                return []
+            
+            # Si tenemos suficientes polígonos, usar directamente sus centroides
+            if num_polys >= target_columns:
+                for _, poly_data in header_polys[:target_columns]:
                     centroid = poly_data.geometry.centroid.tolist()
                     header_centroids.append(centroid)
-
-            logger.debug(f"HEADER CENTROIDS: {len(header_line.polygon_ids)}")
+            else:
+                # Necesitamos subdivider los polígonos
+                subdivisions_per_poly = target_columns // num_polys
+                remainder = target_columns % num_polys
+                
+                for idx, (poly_id, poly_data) in enumerate(header_polys):
+                    geom = poly_data.geometry
+                    bbox = geom.bounding_box
+                    
+                    # Determinar cuántas subdivisiones para este polígono
+                    num_subdivisions = subdivisions_per_poly
+                    if idx < remainder:
+                        num_subdivisions += 1
+                    
+                    # Calcular centroides de las subdivisiones
+                    x_min, x_max = float(bbox[0]), float(bbox[2])
+                    y_centroid = float(geom.centroid[1])
+                    
+                    # Dividir el ancho en partes iguales
+                    segment_width = (x_max - x_min) / num_subdivisions
+                    
+                    for sub_idx in range(num_subdivisions):
+                        sub_x = x_min + (sub_idx + 0.5) * segment_width
+                        header_centroids.append([sub_x, y_centroid])
+                
+                logger.info(f"Subdivididos {num_polys} polígonos en {len(header_centroids)} centroides para {target_columns} columnas")
  
             return header_centroids
         
         except Exception as e:
-            logger.error(f"Error extrayendo ecabezado: {e}", exc_info=True)
+            logger.error(f"Error extrayendo encabezado: {e}", exc_info=True)
             return []
 
-    def _select_table_rows(self, header_line_id: str, tabular_line_ids: List[str], 
-                          all_lines: Dict[str, AllLines]) -> List[str]:
+    def _select_table_rows(self, header_line_id: str, tabular_line_ids: List[str], all_lines: Dict[str, AllLines]) -> List[str]:
         """
         Selecciona filas S_k del conjunto P  H* para procesamiento tabular.
         """
@@ -416,3 +462,15 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"Error creando datadrame: {e}", exc_info=True)
             return pd.DataFrame()
+
+    def get_headers(self, all_lines: Dict[str, AllLines]) -> Tuple[int, str]:
+        try:
+            for line_id, line_data in all_lines.items():
+                h: int | None = line_data.header_line if line_data.header_line else None
+                if h is not None:
+                    header_line_id = line_id
+                    logger.info(f"H: {h}, id: {line_id}")
+                    return h, header_line_id
+        except Exception as e:
+            logger.error(f"Error buscando encabezados: {e}")
+        return 0, ""

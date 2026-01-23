@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_validator import clean_spaces
+from core.utils.pattern_finder import clean_spaces
 
 logger = logging.getLogger(__name__)
 

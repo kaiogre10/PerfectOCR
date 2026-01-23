@@ -229,3 +229,18 @@ def remove_special_chars(text: str) -> str:
     if cleaned != text:
         logger.debug(f"Caracteres especiales eliminados de '{text}' -> '{cleaned}'")
     return cleaned
+
+def clean_spaces(text: str) -> str:
+    """
+    Limpia espacios múltiples y espacios iniciales/finales de un texto.
+    Reemplaza múltiples espacios consecutivos por un solo espacio y elimina espacios al inicio y final.
+    """
+    if not text:
+        return ""
+    # Reemplazar múltiples espacios consecutivos por un solo espacio
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    # Eliminar espacios iniciales y finales
+    if validate_text(cleaned):
+        return cleaned
+    else:
+        return ""

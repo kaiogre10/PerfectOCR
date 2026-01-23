@@ -1,6 +1,5 @@
 # core/utils/text_validator.py
 from typing import Set, Dict
-import re
 import unicodedata
 
 def validate_text(text: str) -> bool:
@@ -99,21 +98,6 @@ def validate_alone_chars(text: str) -> bool:
     else:
         return False
         
-def clean_spaces(text: str) -> str:
-    """
-    Limpia espacios múltiples y espacios iniciales/finales de un texto.
-    Reemplaza múltiples espacios consecutivos por un solo espacio y elimina espacios al inicio y final.
-    """
-    if not text:
-        return ""
-    # Reemplazar múltiples espacios consecutivos por un solo espacio
-    cleaned = re.sub(r"\s+", " ", text).strip()
-    # Eliminar espacios iniciales y finales
-    if validate_text(cleaned):
-        return cleaned
-    else:
-        return ""
-
 def norm_text(text: str) -> str:
     if not validate_text(text):
         return ""
@@ -121,3 +105,29 @@ def norm_text(text: str) -> str:
     norm_word = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8').lower()
     
     return norm_word
+
+def is_upper(text: str) -> bool:
+    uppers: int = 0
+    for char in text:
+        if char.islower():
+            continue
+        uppers += 1
+    upper_mean = uppers/len(text)
+    # print(f"{upper_mean}")
+    if upper_mean >= 0.67:
+        
+        return True
+    else:
+        return False
+
+def estandarice_uppers_lowers(text_base: str, clean_text: str) -> str:
+    if text_base.isupper():
+        return clean_text.upper()
+    elif is_upper(text_base):
+        return clean_text.upper()
+    elif text_base.islower():
+        return clean_text.lower()
+    elif text_base.istitle():
+        return clean_text.title()
+    else:
+        return clean_text

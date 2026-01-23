@@ -34,7 +34,15 @@ class Polygons:
     cropped_img: Optional[CroppedImage]
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]
-    key_field: Optional[int]
+    key_field: Optional[List[int] | int]
+#    'noise_words': 0
+#    'MontoTotalDocumento': 1
+#    'TotalProductos': 2
+#    'Subtotal': 3
+#    'FolioDocumento': 4
+#    "NombreCliente": 5
+#    "HeaderWords": 6
+
     semantic_clasification: List[int] | int
         # quantitative: 2
         # numeric: 1
@@ -56,7 +64,7 @@ class AllLines:
     polygon_ids: List[str]
     line_geometry: LineGeometry
     tabular_line: bool
-    header_line: Optional[str]
+    header_line: Optional[int]
     footer_line: Optional[str]
     
 @dataclass

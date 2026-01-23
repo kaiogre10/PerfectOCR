@@ -74,7 +74,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         current_line_bbox: Optional[List[float]] = None
         line_counter = 0
 
-        bboxes: List[float] = []        
+        bboxes: List[np.ndarray[Any, Any]] = []        
         lines_bbox: List[Any] = []
         for poly in prepared_sorted:
             bbox = poly.geometry.bounding_box
@@ -113,11 +113,11 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     joined_text = " ".join(texts).strip()
                     
                     # Validar el texto antes de crear la entrada
-                    # if not validate_text(joined_text):
+                    if not validate_text(joined_text):
                         # Si no es válido, iniciar una nueva línea sin incrementar el contador
-                    current_line_polys = [poly]
-                    current_line_bbox = list(bbox)
-                    # continue
+                        current_line_polys = [poly]
+                        current_line_bbox = list(bbox)
+                        continue
                     
                     lines_bbox.append(current_line_bbox)  # Agregar aquí: bbox de la línea completada
                     

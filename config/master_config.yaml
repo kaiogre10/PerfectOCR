@@ -11,7 +11,7 @@ pipeline_secuence:
     # - restorer
     # - "moire"
     # - "sp"
-    # - "gauss"
+    # # - "gauss"
     # - "clahe"
     # - "sharp"
 
@@ -21,11 +21,11 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-    # - "table_structurer"
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -87,7 +87,7 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      iterations: 3
+      iterations: 2
       window_size: 15
       isolation_range: [10.0, 245.0]
       threshold_black: 160
@@ -143,7 +143,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 1
+      num_passes: 2
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]

@@ -21,7 +21,7 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
             return None
         
         if not validate_image(img):
-            logger.error("Imagen blanca/negra completamente")
+            logger.debug("Imagen blanca/negra completamente")
             return None
 
         try:
