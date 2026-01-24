@@ -84,8 +84,8 @@ def find_umd(s: str) -> bool:
             # Volumen: l, lt, ltr, litro, litros, ml, cc, gal, galon, galones
             r'\b\d+([.,]\d+)?\s*(l(t(r)?)?|litro(s)?|ml|cc|gal(on(es)?)?)\b',
             
-            # Longitud: m, mt, mtr, metro, metros, cm, mm, km, in, pulg, pulgada, pulgadas, ft, pie, pies, yd, yarda
-            r'\b\d+([.,]\d+)?\s*(m(t(r)?)?|metro(s)?|cm|mm|km|in|pulg(ada(s)?)?|ft|pie(s)?|yd|yarda(s)?)\b',
+            # Longitud: m, mt, mtr, metro, metros, cm, mm, km, in
+            r'\b\d+([.,]\d+)?\s*(m(t(r)?)?|metro(s)?|cm|mm|km|in|pulg(ada(s)?)?|ft|\b',
             
             # Área: m2, m^2, mt2, cm2, km2
             r'\b\d+([.,]\d+)?\s*(m(t)?(2|\^2|²)|cm(2|\^2|²)|km(2|\^2|²))\b',
