@@ -23,7 +23,7 @@ class DataFinder(OCRAbstractWorker):
             if self._model is None: #type: ignore
                 model_manager = ModelsManager.get_instance()
                 self._model = model_manager.word_finder #type: ignore
-                logger.warning("Modelo de búsqueda obtenido del ModelsManager")
+                logger.debug("Modelo de búsqueda obtenido del ModelsManager")
             return self._model #type: ignore
 
         except Exception as e:

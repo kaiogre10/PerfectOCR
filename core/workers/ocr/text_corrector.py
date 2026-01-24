@@ -29,12 +29,12 @@ class TextCorrector(OCRAbstractWorker):
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
 
+        logger.debug(f"Inicia text_corrector")
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCorrector: No hay polígonos para procesar.")
             return False
             
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-
         corrected_polygons: Dict[str, Polygons] = polygons_in
         correction_stats: Dict[str, int] = {
             "numeric": 0,
@@ -56,7 +56,7 @@ class TextCorrector(OCRAbstractWorker):
             
             # Si el texto está vacío, no hay nada que corregir
             if not validate_text(original_text):
-                logger.debug(f"Sin texto: {poly_id}: '{original_text}'")
+                logger.info(f"Sin texto: {poly_id}: '{original_text}'")
                 continue
 
             # token_corr = correct_termination(token)

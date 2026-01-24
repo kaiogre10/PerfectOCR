@@ -48,7 +48,7 @@ class SemanticClasificator(OCRAbstractWorker):
             for poly_id, polygon in polygons_to_classify.items():
                 text = polygon.ocr_text
                 sc = polygon.semantic_clasification
-                logger.info(f"Clasificación {poly_id}: '{text}', '{sc}'")
+                logger.debug(f"Clasificación {poly_id}: '{text}', '{sc}'")
 
             if self.output and validate_text(final_pass):
                 from services.output_service import save_raw_json

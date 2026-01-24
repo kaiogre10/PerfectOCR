@@ -64,7 +64,7 @@ class ModelsConfig(ConfigWithNumpy):
     
 class InkConfig(ConfigWithNumpy):
     iterations: int
-    window_size: int
+    window_size: Tuple[int, int]
     isolation_range: Tuple[float, float]
     threshold_black: int
     threshold_white: int

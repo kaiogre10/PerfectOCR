@@ -98,7 +98,7 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], binarice: Optio
             # "convex_hull": convex_hull,
         }
 
-    logger.info(f"Numero de contornos: {i}")
+    logger.debug(f"Numero de contornos: {i}")
 
     _, bin_edges = np.histogram(areas_hist, (np.histogram_bin_edges(areas_hist, bins='fd').astype(np.float16)))
     

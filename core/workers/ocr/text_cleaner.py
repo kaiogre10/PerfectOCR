@@ -1,7 +1,7 @@
 # PerfectOCR/core/workers/ocr/text_cleaner.py
 import logging
 import dataclasses
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -26,10 +26,11 @@ class TextCleaner(OCRAbstractWorker):
         self.min_confidence: float  = self.worker_config.get("min_confidence")
         self.min_char = int(self.worker_config.get("min_char"))
         self.min_probability = float(self.worker_config.get("min_probability"))
-        self.char_num: List[str] = get_char_num()
-        self.special_chars: List[str] = get_special_chars()
+        self.char_num: Set[str] = get_char_num()
+        self.special_chars: Set[str] = get_special_chars()
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        logger.debug(f"Inicia cleanner")
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCleaner: No hay polígonos en el workflow para procesar.")
             return True
@@ -55,7 +56,7 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
 
-            if not validate_alone_chars(text):
+            if not validate_alone_chars(text) and not text.isdecimal():
                 logger.debug(f"Eliminado {poly_id} por soledad: '{text}'")
                 eliminated_count += 1
                 continue
@@ -195,7 +196,7 @@ class TextCleaner(OCRAbstractWorker):
         configurada de caracteres a eliminar cuando aparecen aislados.
         """
         t = token.strip()
-        return len(t) == 1 and t in self.special_chars
+        return len(t) == 1 and t.isalnum()
     
     def is_polygon_single_special(self, text: str) -> bool:
         """
