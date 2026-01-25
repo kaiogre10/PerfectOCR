@@ -15,10 +15,10 @@ class SemanticClasificator(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("semantic_clasificator", {})
-        self.semantic_range= self.worker_config["semantic_range"]
-        self.encode_mean= self.worker_config["encode_mean"]
-        self.morph_mean = self.worker_config["morph_mean"]
+        worker_config = config.get("semantic_clasificator", {})
+        self.semantic_range= worker_config["semantic_range"]
+        self.encode_mean= worker_config["encode_mean"]
+        self.morph_mean = worker_config["morph_mean"]
         self.output = config.get("semantic_field", False)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter, final_pass: str = "") -> bool:

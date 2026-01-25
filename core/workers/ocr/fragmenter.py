@@ -16,8 +16,8 @@ class Fragmenter(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("text_refiner", {})
-        self.min_contours_for_frag = self.worker_config.get("min_cc_for_frag")
+        worker_config = config.get("text_refiner", {})
+        self.min_contours_for_frag = worker_config.get("min_cc_for_frag")
         self.output = config.get("fragmented_polys", False)
         self.punc_chars: Set[str] = punc_chars()
 

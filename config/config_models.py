@@ -64,7 +64,9 @@ class ModelsConfig(ConfigWithNumpy):
     
 class InkConfig(ConfigWithNumpy):
     iterations: int
-    window_size: Tuple[int, int]
+    start_restoring: bool
+    noise_kernel: Tuple[int, int]
+    retorer_kernel: Tuple[int, int]
     isolation_range: Tuple[float, float]
     threshold_black: int
     threshold_white: int
@@ -202,7 +204,6 @@ class UtilsConfig(ConfigWithNumpy):
     dpi_range: List[int]
     bin_interval: Tuple[int, int]
     percentile: Tuple[float, float]
-    morph_kernel: Tuple[int, int]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation

@@ -20,10 +20,10 @@ class Refiner(OCRAbstractWorker):
     """
     def __init__(self, config: Dict[str, Any], project_root: str, clasificator: SemanticClasificator, cleaner: TextCleaner, fragmenter: Fragmenter, corrector: TextCorrector):
         super().__init__(config, project_root)
-        self.worker_config = config.get("text_refiner", {})
+        worker_config = config.get("text_refiner", {})
         self.percentile = config["percentile"]
-        self.worker_config["percentile"] = self.percentile 
-        self.num_passes = self.worker_config.get("num_passes", {})
+        worker_config["percentile"] = self.percentile 
+        self.num_passes = worker_config.get("num_passes", {})
         self.delete_cropp = config.get("fragmented_polys")
         self.output_blobs = config.get("cropp_blobs")
         self.output = config.get("binarized_polygons")
@@ -52,7 +52,7 @@ class Refiner(OCRAbstractWorker):
         #             logger.warning(f"Cropped_img de {poly_id} es None")
         #             continue
 
-        #         # self.worker_config["poly_id"] = poly_id
+        #         # worker_config["poly_id"] = poly_id
         #         # # Analiza la imagen y asigna el diccionario de métricas resultante a la clave correspondiente al poly_id actual.
         #         # # logger.info(f"{poly_id}:")
         #         # bin_img = binarice_img(cropped_img, {})
@@ -68,13 +68,13 @@ class Refiner(OCRAbstractWorker):
         #         #     continue
                 
         #         # if self.output_blobs:
-        #         #     self.worker_config["output"] = self.output_blobs
+        #         #     worker_config["output"] = self.output_blobs
         #         #     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-        #         #     self.worker_config["output_paths"] = context["output_paths"]
-        #         #     self.worker_config["image_name"] = image_name
+        #         #     worker_config["output_paths"] = context["output_paths"]
+        #         #     worker_config["image_name"] = image_name
 
-        #         # self.worker_config["text"] = polygon.ocr_text
-        #         # metrics = analize_bin_img(bin_img, self.worker_config, False)
+        #         # worker_config["text"] = polygon.ocr_text
+        #         # metrics = analize_bin_img(bin_img, worker_config, False)
         #         # if metrics.get('needs_fragmentation'):
 
         #         #     logger.info(f"{poly_id}: para fragmentar: {polygon.ocr_text} en: {metrics.get("num_blobs", {})}")

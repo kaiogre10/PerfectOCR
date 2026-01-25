@@ -14,10 +14,10 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = self.config.get('contrast', {})
-        self.contrast_threshold = self.worker_config.get('contrast_threshold')
-        self.page_dimensions = self.worker_config['dimension_thresholds_px']
-        self.grid_maps = self.worker_config['grid_sizes_map']
+        worker_config = self.config.get('contrast', {})
+        self.contrast_threshold = worker_config.get('contrast_threshold')
+        self.page_dimensions = worker_config['dimension_thresholds_px']
+        self.grid_maps = worker_config['grid_sizes_map']
         self.output = config.get("clahe_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

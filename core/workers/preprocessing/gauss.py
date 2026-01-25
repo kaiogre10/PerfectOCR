@@ -15,8 +15,8 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('gauss_params', {})
-        self.gauss_threshold = self.worker_config.get('laplacian_variance_threshold')
+        worker_config = config.get('gauss_params', {})
+        self.gauss_threshold = worker_config.get('laplacian_variance_threshold')
         self.output = config.get("gauss_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

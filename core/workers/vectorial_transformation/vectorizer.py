@@ -16,9 +16,9 @@ class Vectorizer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('vectorizer', {})
-        self.keywords_interval_enabled = self.worker_config.get('keywords_interval_enabled', True)
-        self.exclude_types =  self.worker_config['exclude_types']
+        worker_config = config.get('vectorizer', {})
+        self.keywords_interval_enabled = worker_config.get('keywords_interval_enabled', True)
+        self.exclude_types =  worker_config['exclude_types']
         self.output = config.get("table_lines", False)
         self.second_output = config.get("encoded_lines", False)
         self.features_output = config.get("features", False)

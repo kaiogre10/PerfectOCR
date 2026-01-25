@@ -19,10 +19,10 @@ class MatrixSolver(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('math_max', {})
+        worker_config = config.get('math_max', {})
         self.output = config.get("math_max_corrected", False)
-        self.total_mtl_tolerance = self.worker_config.get('total_mtl_abs_tolerance')
-        self.arithmetic_tolerance = self.worker_config.get('row_relative_tolerance')
+        self.total_mtl_tolerance = worker_config.get('total_mtl_abs_tolerance')
+        self.arithmetic_tolerance = worker_config.get('row_relative_tolerance')
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:

@@ -17,13 +17,13 @@ class AngleCorrector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("angle_corrector", {})
-        self.min_angle_for_correction = self.worker_config.get('min_angle_for_correction')
-        self.canny_thresholds = self.worker_config['canny_thresholds']
-        self.hough_threshold = self.worker_config.get('hough_threshold')
-        self.hough_max_line_gap_px = self.worker_config.get('hough_max_line_gap_px')
-        self.hough_angle_filter_range_degrees = self.worker_config['hough_angle_filter_range_degrees']
-        self.hough_min_line_length_cap_px = self.worker_config.get('hough_min_line_length_cap_px')
+        worker_config = config.get("angle_corrector", {})
+        self.min_angle_for_correction = worker_config.get('min_angle_for_correction')
+        self.canny_thresholds = worker_config['canny_thresholds']
+        self.hough_threshold = worker_config.get('hough_threshold')
+        self.hough_max_line_gap_px = worker_config.get('hough_max_line_gap_px')
+        self.hough_angle_filter_range_degrees = worker_config['hough_angle_filter_range_degrees']
+        self.hough_min_line_length_cap_px = worker_config.get('hough_min_line_length_cap_px')
         self.output = config.get("angle_corrected", False)
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

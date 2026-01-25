@@ -22,10 +22,10 @@ class TextCleaner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("text_cleaner", {})
-        self.min_confidence: float  = self.worker_config.get("min_confidence")
-        self.min_char = int(self.worker_config.get("min_char"))
-        self.min_probability = float(self.worker_config.get("min_probability"))
+        worker_config = config.get("text_cleaner", {})
+        self.min_confidence: float  = worker_config.get("min_confidence")
+        self.min_char = int(worker_config.get("min_char"))
+        self.min_probability = float(worker_config.get("min_probability"))
         self.char_num: Set[str] = get_char_num()
         self.special_chars: Set[str] = get_special_chars()
                     

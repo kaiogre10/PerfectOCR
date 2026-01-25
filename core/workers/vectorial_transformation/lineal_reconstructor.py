@@ -18,8 +18,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('lineal', {})
-        self.overlap_threshold = self.worker_config.get('overlap_threshold')
+        worker_config = config.get('lineal', {})
+        self.overlap_threshold = worker_config.get('overlap_threshold')
         self.output = config.get("reconstructed_lines", False)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

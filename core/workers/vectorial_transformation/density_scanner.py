@@ -14,9 +14,9 @@ class DensityScanner(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('dbscan', {})
-        self.min_cluster_size = int(self.worker_config.get("min_cluster_size")) 
-        self.eps = float(self.worker_config.get("eps")) 
+        worker_config = config.get('dbscan', {})
+        self.min_cluster_size = int(worker_config.get("min_cluster_size")) 
+        self.eps = float(worker_config.get("eps")) 
         self.output = config.get("table_lines", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

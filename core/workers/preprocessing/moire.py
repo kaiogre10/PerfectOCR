@@ -15,10 +15,10 @@ class MoireDenoiser(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('moire', {})
-        self.notch_radius = self.worker_config.get('notch_radius')
-        self.min_dist_conf = self.worker_config.get('min_distance_from_center')
-        self.percentile_threshold = self.worker_config.get("percentile_threshold")
+        worker_config = config.get('moire', {})
+        self.notch_radius = worker_config.get('notch_radius')
+        self.min_dist_conf = worker_config.get('min_distance_from_center')
+        self.percentile_threshold = worker_config.get("percentile_threshold")
         self.output = config.get("moire_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

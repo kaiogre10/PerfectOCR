@@ -21,8 +21,8 @@ class TextCorrector(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("text_corrector", {})
-        self.conf_threshold = (self.worker_config.get("confidence_threshold") * 100.0)
+        worker_config = config.get("text_corrector", {})
+        self.conf_threshold = (worker_config.get("confidence_threshold") * 100.0)
         self.numeric_corrections: Dict[str, str] = numeric_corrections()
         self.descriptive_corrections: Dict[str, str] = descritive_corrections()
         self.char_num: Set[str] = get_char_num()

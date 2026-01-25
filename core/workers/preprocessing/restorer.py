@@ -15,10 +15,10 @@ class ImageRestorer(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("restorer", {})
+        worker_config = config.get("restorer", {})
         self.bin_interval = config["bin_interval"]
-        self.kernel_threshold: int = self.worker_config.get("kernel_threshold", {})
-        self.area_threshold: int = self.worker_config.get("area_threshold", {})
+        self.kernel_threshold: int = worker_config.get("kernel_threshold", {})
+        self.area_threshold: int = worker_config.get("area_threshold", {})
         self.output1 = config.get("contours")
         self.output2 = config.get("components")
 

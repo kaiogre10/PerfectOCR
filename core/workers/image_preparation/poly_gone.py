@@ -9,7 +9,7 @@ from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.utils.image_utils import calculate_img_values
-from core.utils.math_utils import define_intervals
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +17,10 @@ class PolygonExtractor(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('polygon_extractor', {})
-        self.angle_thr = self.worker_config["angle_thr"]
+        worker_config = config.get('polygon_extractor', {})
+        self.angle_thr = worker_config["angle_thr"]
         self.bin_interval = config["bin_interval"]
-        self.padding = self.worker_config.get("cropping_padding")
+        self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
         self.filtered_ouputs = config.get("final_polys", False)
         self.disoutput = config.get("discarded_polys", False)
@@ -36,6 +36,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 return False
                 
             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+            context["image_name"] = image_name
             img_h = full_img.shape[0]
             img_w = full_img.shape[1]
 
@@ -117,11 +118,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
 
                 if self.output:
-                    from services.output_service import save_croped_image
-                    worker_name = context.get("worker_name") or "poly_gone"
+                    self.save_debug(cropped, context, "all")
                     output_paths = context["output_paths"]
-                    pid = f"{image_name}_{poly_id}_all_{worker_name}"
-                    save_croped_image(image_name, pid, cropped, output_paths, worker_name) # type: ignore
                 
                 poly_mean, dims = calculate_img_values(cropped)
                 bbox_width = dims[1]
@@ -146,18 +144,21 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 if p_data['angle'] < self.angle_thr[1] and self.angle_thr[0] < p_data['angle']:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['angle']}")
-                    # logger.info(f"ELIMINADO '{p_data['poly_id']}': Angulo = {p_data['angle']}°")
+                    
+                    # logger.info(f"ELIMINADO: '{p_data['poly_id']}': Angulo = {p_data['angle']}°")
+
+                    if self.disoutput:
+                        status = "small"
+                        self.save_debug(p_data['cropped'], context, status)
 
                 elif p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
-                    # logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO = {p_data['poly_mean']}")
-                    
-                if self.disoutput:
-                    from services.output_service import save_croped_image
-                    worker_name = context.get("worker_name") or "poly_gone"
-                    output_paths = context["output_paths"]
-                    pid = f"{image_name}_{p_data['poly_id']}_deleted_{worker_name}"
-                    save_croped_image(image_name, pid, p_data['cropped'], output_paths, worker_name)
+                    status = "bn"
+                    # logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO DE COLOR '{p_data['poly_mean']}'")
+
+                    if self.disoutput:
+                        status = "bn"
+                        self.save_debug(p_data['cropped'], context, status)
 
                 else:
                     valid_polygons_data.append(p_data)
@@ -214,20 +215,20 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             extracted_count = len(cropped_images)
             logger.debug(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
 
-            if self.filtered_ouputs:
-                from services.output_service import save_croped_image
-                worker_name = context.get("worker_name") or "poly_gone"
-                output_paths = context["output_paths"]
+            if self.filtered_ouputs:                
                 polygons = manager.workflow.polygons if manager.workflow else {}
 
                 for poly_id, polygon in polygons.items():
-                    pid = f"{image_name}_{poly_id}_filtered_{worker_name}"
                     cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                    save_croped_image(image_name, pid, cropped_img, output_paths, worker_name) #type: ignore
-            
+                    self.save_debug(cropped_img, context, "filtered")            
             return True
 
         except Exception as e:
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
             return False
         
+    def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], status: str):
+        worker_name = context.get("worker_name") or "poly_gone"
+        output_paths = context["output_paths"]
+        image_name = context["image_name"]
+        save_croped_image(image_name, status, polygon, output_paths, worker_name)

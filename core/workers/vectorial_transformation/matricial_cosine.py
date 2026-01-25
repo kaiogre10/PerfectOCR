@@ -16,10 +16,10 @@ class MatricialCusine(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('cos_sim', {})
-        self.similarity_threshold: float = self.worker_config.get("similarity_threshold")
-        self.min_cluster = int(self.worker_config.get("min_cluster"))
-        self.interval_margin: int = int(self.worker_config.get("interval"))
+        worker_config = config.get('cos_sim', {})
+        self.similarity_threshold: float = worker_config.get("similarity_threshold")
+        self.min_cluster = int(worker_config.get("min_cluster"))
+        self.interval_margin: int = int(worker_config.get("interval"))
         self.output = config.get("table_lines", False)
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -335,8 +335,8 @@ class MatricialCusine(VectorizationAbstractWorker):
         usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares.
         """
         logger.warning(f"INICIANDO MÉTODO DE EMERGENCA")
-        dummie_weights = self.worker_config["dummie_weights"]
-        emergency_threshold = self.worker_config.get("emergency_threshold")
+        dummie_weights = worker_config["dummie_weights"]
+        emergency_threshold = worker_config.get("emergency_threshold")
         mean_w, median_w = dummie_weights
 
         all_lines_indices = all_lines.keys()

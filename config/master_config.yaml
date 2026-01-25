@@ -16,12 +16,12 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
+    # - "paddle_wrapper"
     # - "text_refiner"
     # - "data_finder"
     
   vector_stage:
-    - "lineal"
+    # - "lineal"
     # - "vectorizer"
     # - "dbscan"
     # - "cos_sim"
@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: False
+    bin_full_img: true
     angle_corrected: false
     cropped_img: false
     final_polys: false
@@ -87,9 +87,11 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      iterations: 2
-      window_size: [5, 13]
-      isolation_range: [10.1, 244.89]
+      iterations: 1
+      start_restoring: True
+      noise_kernel: [7, 7]
+      retorer_kernel: [4, 3]
+      isolation_range: [9.01, 244.601]
       threshold_black: 160
       threshold_white: 180
 
@@ -208,4 +210,3 @@ modules:
     dpi_range: [100, 200, 300, 400, 600, 1200]
     bin_interval: [10, 245]
     percentile: [0.10, 0.99]
-    morph_kernel: [5, 3]

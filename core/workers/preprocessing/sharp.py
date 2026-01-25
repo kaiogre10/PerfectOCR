@@ -15,9 +15,9 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get('sharpening', {})
-        self.sharpness_threshold = self.worker_config.get("sharpness_threshold")
-        self.kernel = self.worker_config.get("kernel")
+        worker_config = config.get('sharpening', {})
+        self.sharpness_threshold = worker_config.get("sharpness_threshold")
+        self.kernel = worker_config.get("kernel")
         self.output = config.get("sharp_poly", False)
 
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

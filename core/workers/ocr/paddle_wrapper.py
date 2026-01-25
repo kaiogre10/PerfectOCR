@@ -20,8 +20,8 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.worker_config = config.get("paddle_wrapper", {})
-        self.min_confidence = self.worker_config.get("min_confidence")
+        worker_config = config.get("paddle_wrapper", {})
+        self.min_confidence = worker_config.get("min_confidence")
         self.output = config.get("ocr_raw", False)
         self._engine = None
         
