@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "ink_enhancement"
+    - "ink_enhancement"
     - "angle_corrector"
     - "geometry_detector"
     - "polygon_extractor"
@@ -88,8 +88,8 @@ modules:
 
     ink_enhancement:
       iterations: 2
-      window_size: [7, 15]
-      isolation_range: [11.6, 244.68]
+      window_size: [5, 13]
+      isolation_range: [10.1, 244.89]
       threshold_black: 160
       threshold_white: 180
 

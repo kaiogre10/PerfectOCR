@@ -87,14 +87,14 @@ class InkCorrector(ImagePrepAbstractWorker):
         
         for i in range(self.iterations):
             if i % 2 == 0:
-                # logger.info("Imagen normal")
+                logger.info("Imagen normal")
                 window_size = self.window_size[1] + i
                 gray_img, c_list, c_blobs = self._restore_faded_ink(gray_img, metrics, window_size, self.isolation_range[1])
                 logger.debug(f"Tinta eliminada: {len(c_list)} blobs")
                 contours_list.extend(c_list)
             else:
-                gray_img_inv = 255 - gray_img
-                # logger.info("Inversión")
+                gray_img_inv = gray_img - 255
+                logger.info("Inversión")
                 window_size = self.window_size[0] + i
                 gray_img, c_list, c_blobs = self._restore_faded_ink(gray_img_inv, metrics, window_size, self.isolation_range[0])
                 logger.debug(f"Tinta restaurada: {len(c_list)} blobs")
