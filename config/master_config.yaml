@@ -2,10 +2,10 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "ink_enhancement"
     - "angle_corrector"
-    - "geometry_detector"
-    - "polygon_extractor"
+    - "ink_enhancement"
+    # - "geometry_detector"
+    # - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -87,11 +87,12 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      iterations: 1
+      iterations: 3
+      color: [255, 255, 255]
       start_restoring: True
-      noise_kernel: [7, 7]
-      retorer_kernel: [4, 3]
-      isolation_range: [9.01, 244.601]
+      noise_kernel: [11, 11]
+      restorer_kernel: [3, 5]
+      isolation_range: [6.01, 249.601]
       threshold_black: 160
       threshold_white: 180
 

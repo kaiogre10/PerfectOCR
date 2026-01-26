@@ -64,9 +64,10 @@ class ModelsConfig(ConfigWithNumpy):
     
 class InkConfig(ConfigWithNumpy):
     iterations: int
+    color: List[int]
     start_restoring: bool
     noise_kernel: Tuple[int, int]
-    retorer_kernel: Tuple[int, int]
+    restorer_kernel: Tuple[int, int]
     isolation_range: Tuple[float, float]
     threshold_black: int
     threshold_white: int

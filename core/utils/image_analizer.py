@@ -83,6 +83,8 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], binarice: Optio
         # hull_area = cv2.contourArea(convex_hull)
         # convex_hull = np.array(cv2.convexHull(cont_coords))
         cont_bbox = cv2.boundingRect(cont_coords)
+        _, shape, angle =  cv2.minAreaRect(cont_coords)
+
         M = cv2.moments(cont_coords)
         cx = M['m10'] / M['m00']
         cy = M['m01'] / M['m00']
@@ -94,6 +96,8 @@ def extract_cc_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], binarice: Optio
             "cont_bbox": cont_bbox,
             "cont_area": cont_area,
             "blob_centroid": blob_centroid,
+            "dims": shape,
+            "angle": angle
             # "hull_area": hull_area,
             # "convex_hull": convex_hull,
         }
