@@ -116,13 +116,13 @@ def extract_contours_histogram(img: np.ndarray[Any, np.dtype[np.uint8]]):
                 mask = metrics[:, 1] < max_area
                 metrics = np.compress(mask, metrics, 0)
                 hist, bin_edges = calculate_hist(metrics[:, 1])
-                logger.info(f"Eliminando por ventana fija: {hist}")
+                logger.debug(f"Eliminando por ventana fija: {hist}")
                 continue  # Continuar iteración
                 
             elif hist[elemnts_range - 1] == 1:
                 # Condición 2: Último dígito es 1
                 hist, bin_edges = calculate_hist(metrics[:, 1])
-                logger.info(f"Eliminando por ultimo dígito: {hist}")
+                logger.debug(f"Eliminando por ultimo dígito: {hist}")
                 max_area = np.max(metrics[:, 1])
                 mask = metrics[:, 1] < max_area
                 metrics = np.compress(mask, metrics, 0)
@@ -134,7 +134,7 @@ def extract_contours_histogram(img: np.ndarray[Any, np.dtype[np.uint8]]):
                 for bin_idx in range(elemnts_range - 1, -1, -1):  # Del más grande al más pequeño
                     if hist[bin_idx] >= 2:
                         # Si encuentra >= 2, hacer break inmediatamente
-                        logger.warning("Encontrado valor >= 2, finalizando correcciones")
+                        logger.debug("Encontrado valor >= 2, finalizando correcciones")
                         break  # Break del while True
                         
                     elif hist[bin_idx] == 1:
@@ -143,7 +143,7 @@ def extract_contours_histogram(img: np.ndarray[Any, np.dtype[np.uint8]]):
                         mask = np.take_along_axis(hist, np.arange(bin_idx - wind_lng, bin_idx + wind_lng), 0)
                         if np.array_equal(securutyy_window, mask):
                             found_nonzero_one = True
-                            logger.info(f"Eliminando bin {bin_idx} con valor 1: {hist}")
+                            logger.debug(f"Eliminando bin {bin_idx} con valor 1: {hist}")
                             # Eliminar contornos de este bin
                             bin_start = bin_edges[bin_idx]
                             bin_end = bin_edges[bin_idx + 1]
@@ -158,7 +158,7 @@ def extract_contours_histogram(img: np.ndarray[Any, np.dtype[np.uint8]]):
                 if not found_nonzero_one or hist[bin_idx] >= 2:
                     # No encontró más bins para eliminar o encontró >= 2
                     break  # Salir del while True
-
+        return cont_coords, metrics, bin_edges
     except Exception as e:
         logger.warning(f"Error calculando histograma: {e}", exc_info=True)
         return cont_coords, metrics, bin_edges

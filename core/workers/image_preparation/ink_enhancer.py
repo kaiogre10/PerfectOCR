@@ -47,7 +47,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 
             grey_img = self._decolorate(full_img)
             cont_coords, metrics, bin_edges = extract_contours_histogram(grey_img)
-            return False
+
             lines_cont, angle_cont, gray_img = self.compare_areas(cont_coords, metrics, grey_img)
             
             correct, contours_list, blacked_contours = self.alternate_restore(gray_img, bin_edges)

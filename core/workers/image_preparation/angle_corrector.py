@@ -29,13 +29,13 @@ class AngleCorrector(ImagePrepAbstractWorker):
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             img_obj = manager.get_full_img()
-            full_img = img_obj.full_img if img_obj is not None else None
-            if full_img is None:
+            full_image = img_obj.full_img if img_obj is not None else None
+            if full_image is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
             logger.debug("Full_img obtenida con éxito")
 
-            full_img, corrected = self.correct_angle(full_img, manager)
+            full_img, corrected = self.correct_angle(full_image, manager)
 
             if self.output and corrected:
                 from services.output_service import save_croped_image
@@ -52,7 +52,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
         except Exception as e:
             logger.error(f"Error angular; {e}", exc_info=True)
-            return False
+        return False
 
     def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter) -> Tuple[np.ndarray[Any, np.dtype[np.uint8]], bool]:
         """
@@ -111,7 +111,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             if abs(angle) > self.min_angle_for_correction:
                 rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
                 deskew_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE).astype(np.uint8)
-                logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
+                logger.info(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
                 return deskew_img, True
             
             else:             
