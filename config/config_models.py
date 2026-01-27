@@ -93,11 +93,11 @@ class GaussianConfig(ConfigWithNumpy):
 
 class DeskewConfig(ConfigWithNumpy):
     min_angle_for_correction: float
-    canny_thresholds: List[int]
+    canny_thresholds: Tuple[int, int]
     hough_threshold: int
     hough_min_line_length_cap_px: int
     hough_max_line_gap_px: int
-    hough_angle_filter_range_degrees: List[int]
+    hough_angle_filter_range_degrees: Tuple[float, float]
 
 class GeoDetector(ConfigWithNumpy):
     min_area: int

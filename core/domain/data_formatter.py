@@ -266,7 +266,7 @@ class DataFormatter:
                 # Wrap en la dataclass FullImage y actualizar workflow
                 full_image_obj = FullImage(full_img)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
-                logger.info("Imagen actualizada con éxito.")
+                logger.debug("Imagen actualizada con éxito.")
                 return True
             
             else:

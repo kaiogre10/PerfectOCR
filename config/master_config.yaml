@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "angle_corrector"
+    - "angle_scorrector"
     - "ink_enhancement"
     # - "geometry_detector"
     # - "polygon_extractor"
@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: true
+    bin_full_img: False
     angle_corrected: false
     cropped_img: false
     final_polys: false
@@ -76,7 +76,7 @@ models_config:
   det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
   rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
   wf_model_path: C:/PerfectOCR/data/models/wf/wf_model.pkl
-  set_wf_params: False  
+  set_wf_params: False
   
 # Configuración de procesamiento
 processing:
@@ -87,22 +87,22 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      iterations: 3
+      iterations: 1
       color: [255, 255, 255]
       start_restoring: True
-      noise_kernel: [11, 11]
+      noise_kernel: [9, 9]
       restorer_kernel: [3, 5]
-      isolation_range: [6.01, 249.601]
+      isolation_range: [5.01, 247.601]
       threshold_black: 160
       threshold_white: 180
 
     angle_corrector:
-      min_angle_for_correction: 0.5
-      canny_thresholds: [50, 150]
-      hough_threshold: 150
-      hough_min_line_length_cap_px: 300
-      hough_max_line_gap_px: 20
-      hough_angle_filter_range_degrees: [-20.0, 20.0]
+      min_angle_for_correction: 0.9
+      canny_thresholds: [75, 125]
+      hough_threshold: 155
+      hough_min_line_length_cap_px: 250
+      hough_max_line_gap_px: 22
+      hough_angle_filter_range_degrees: [-22.5, 22.5]
         
     geometry_detector:
       min_area: 1
@@ -146,7 +146,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 2
+      num_passes: 1
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]

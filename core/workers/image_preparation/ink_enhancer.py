@@ -3,10 +3,10 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_analizer import extract_cc_metrics
+from core.utils.image_analizer import extract_contours_metrics, extract_contours_histogram
 from services.output_service import save_croped_image, save_shapes
 from core.utils.image_utils import normalice_image
 
@@ -24,7 +24,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         self.restorer_kernel = np.array(worker_config["restorer_kernel"]).astype(np.uint8)
         self.isolation_range = worker_config["isolation_range"]
         self.start_restoring = worker_config.get("start_restoring")
-        self.iterations: int = worker_config.get("iterations")
+        self.iterations: int = worker_config.get("iterations") or 1
         self.threshold_black: int = worker_config.get("threshold_black")
         self.threshold_white: int = worker_config.get("threshold_white")
         self.output = config.get("bin_full_img")
@@ -46,15 +46,17 @@ class InkCorrector(ImagePrepAbstractWorker):
                 return False
                 
             grey_img = self._decolorate(full_img)
-            metrics = extract_cc_metrics(grey_img, binarice=False)
-            lines_cont, angle_cont, gray_img = self.compare_areas(metrics, grey_img)
+            cont_coords, metrics, bin_edges = extract_contours_histogram(grey_img)
+            return False
+            lines_cont, angle_cont, gray_img = self.compare_areas(cont_coords, metrics, grey_img)
             
-            correct, contours_list, blacked_contours = self.alternate_restore(gray_img)
+            correct, contours_list, blacked_contours = self.alternate_restore(gray_img, bin_edges)
 
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 3))
-            eroded = cv2.morphologyEx(correct.copy(), cv2.MORPH_CLOSE, kernel, iterations=1)
+            # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 3))
+            # eroded = cv2.morphologyEx(correct.copy(), cv2.MORPH_CLOSE, kernel, iterations=1)
             
             if not manager.update_full_img(True, correct):
+
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
                 return False    
             else:
@@ -64,22 +66,21 @@ class InkCorrector(ImagePrepAbstractWorker):
                     imag_id = f"corrected_blobs_{image_name}_{worker_name}"
                     image_id = f"contours_{image_name}_{worker_name}"
                     line_cont_id= f"lines_{image_name}_{worker_name}"
-                    image_idd = f"close__{image_name}_{worker_name}"
-
-                    save_croped_image(image_name, image_idd, eroded, output_paths, worker_name)
+                    # img_id= f"open_{image_name}_{worker_name}"
+            
                     save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
+                    # save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
                     save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
-                    # save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
-                        
-                logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
-                
+                    save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
+                            
+                logger.info(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 return True
             
         except Exception as e:
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
             return False
         
-    def alternate_restore(self, gray_img: np.ndarray[Any, Any]):
+    def alternate_restore(self, gray_img: np.ndarray[Any, Any], bin_edges: np.ndarray[Any, Any]):
         """
         Por cada iteración ejecuta 2 fases (clean/restore) en el orden dictado por start_restoring.
         metrics: se calcula UNA sola vez por iteración.
@@ -87,93 +88,68 @@ class InkCorrector(ImagePrepAbstractWorker):
         img_dims = gray_img.shape
         contours_list: List[np.ndarray[Any, Any]] = []
         blacked_contours: List[np.ndarray[Any, Any]] = []
-        cleaned_blobs: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]]] = {}
+        noise_bin: float = bin_edges[1]
 
         restorer_kernel = self.restorer_kernel
         restorer_kernel[restorer_kernel % 2 == 0] += 1
 
         noise_kernel = self.noise_kernel
         noise_kernel[noise_kernel % 2 == 0] += 1
-        
+
         for i in range(self.iterations):
-            metrics = extract_cc_metrics(gray_img, binarice=False)
+            valid_coords, metrics = extract_contours_metrics(gray_img)
+
+            noise_coords = metrics[metrics[:, 1] < noise_bin].astype(np.int32)
+            noise_ids = noise_coords[:, 0]
+            noise_candidates: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [valid_coords[idx] for idx in noise_ids]
+            
             condition = (i == 0)
             phases = ("restore", "clean") if self.start_restoring else ("clean", "restore")
 
             for phase in phases:
                 if phase == "clean":
-                    # logger.info("Limpiando imagen")
                     kernel = np.where(condition, noise_kernel, noise_kernel + (i*2))
-                    # logger.info(f"Tamaño del kernel para limpieza: {kernel} en pasada: {i+1}")
-                    gray_img, c_list, c_blobs = self._restore_faded_ink(gray_img, self.isolation_range[1], kernel, cv2.MORPH_RECT, img_dims, metrics)
+                    gray_img, c_list = self._restore_faded_ink(gray_img, self.isolation_range[1], kernel, img_dims, noise_candidates)
                     contours_list.extend(c_list)
-                    logger.info(f"Cantidad de correcciones: {len(c_blobs)}")
+                    # logger.info(f"Eliminaciones por iteración #{i+1}: {len(corrected)}")
+                    # corrected_blobs.difference_update(corrected)
                 else:
-                    # logger.info("Restaurando tinta")
                     gray_img_inv = 255 - gray_img
                     kernel = np.where(condition, restorer_kernel, restorer_kernel + (i*2))
-                    # logger.info(f"Tamaño del kernel para restauración: {kernel} en pasada: {i+1}")
-                    gray_img_inv, c_list, c_blobs = self._restore_faded_ink(gray_img_inv, self.isolation_range[0], kernel, cv2.MORPH_ELLIPSE, img_dims, metrics)
+                    gray_img_inv, c_list = self._restore_faded_ink(gray_img_inv, self.isolation_range[0], kernel, img_dims, noise_candidates)
                     blacked_contours.extend(c_list)
-                    logger.info(f"Cantidad de mejoras: {len(c_blobs)}")
-
+                    # logger.info(f"Mejoras por iteración #{i+1}: {len(corrected[0])}")
                     gray_img = 255 - gray_img_inv
-
-                cleaned_blobs.update(c_blobs)
 
         return gray_img, contours_list, blacked_contours
 
-    def _restore_faded_ink(self, gray_img: np.ndarray[Any, Any], isolation_range: int, kernel_shape: np.ndarray[Any, Any], k_shape: int, img_dims: Any, metrics: Dict[str, Any]):
+    def _restore_faded_ink(self, gray_img: np.ndarray[Any, Any], isolation_range: int, kernel_shape: np.ndarray[Any, Any], img_dims: Any, noise_candidates: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]]):
         """
-        Restaura la intensidad del texto y elimina el ruido aislado usando Inpainting.
+        Restaura la intensidad del texto y elimina el ruido aislado.
         """
         img_h, img_w = img_dims
-        cont_array_dict: Dict[int, Dict[str, Any]] = metrics.get("cont_array_dict", {})
-        bin_edges = metrics["bin_edges"]
+        contours_list: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         
-        kernel = cv2.getStructuringElement(k_shape, (kernel_shape[0], kernel_shape[1]))
-        
-        # logger.info(f"Umbral dinámico: {bin_edges[1]}")
+        for _, cont_coords in noise_candidates:
+            # cont_coords = contours["cont_coords"]
 
-        corrected_blobs = 0
-        
-        contours_list: List[np.ndarray[Any, Any]] = []
-        cleaned_blobs: Dict[int, Dict[str, np.ndarray[Any, np.dtype[np.int32]]]] = {}
-        
-        # 1. PRE-FILTRADO: Identificamos solo los candidatos a ruido (blobs pequeños)
-        noise_candidates = [
-            pos for pos, data in cont_array_dict.items() 
-            if data["cont_area"] < bin_edges[1]
-        ]
+            x_min = cont_coords[:, 0].min()
+            x_max = cont_coords[:, 0].max()
+            y_min = cont_coords[:, 1].min()
+            y_max = cont_coords[:, 1].max()
 
-        for pos in noise_candidates:
-            contours = cont_array_dict[pos]
-            cont_bbox = contours["cont_bbox"]
-            cont_coords = contours["cont_coords"]
-            cont_area = contours["cont_area"]
-            blob_centroid = contours["blob_centroid"]
-            
-            x, y, w, h = cont_bbox
-
-            # [Lógica de Ventana] 
-            win_x1 = max(0, x - kernel_shape[1])
-            win_y1 = max(0, y - kernel_shape[0])
-            win_x2 = min(img_w, x + w + kernel_shape[1])
-            win_y2 = min(img_h, y + h + kernel_shape[0])
+            win_x1 = max(0, x_min - kernel_shape[1])
+            win_y1 = max(0, y_min - kernel_shape[0])
+            win_x2 = min(img_w, x_max + kernel_shape[1])
+            win_y2 = min(img_h, y_max + kernel_shape[0])
 
             window_gray = gray_img[win_y1:win_y2, win_x1:win_x2]
-
-            # Ajuste de coordenadas al sistema local
             cont_coords_window = cont_coords - np.array([[win_x1, win_y1]])
 
-            # 1. Máscara del blob
             mask_blob = np.zeros(window_gray.shape, dtype=np.uint8)
             cv2.drawContours(mask_blob, [cont_coords_window], -1, self.color, thickness=cv2.FILLED)
 
-            # 2. Máscara de TODOS los píxeles fuera del blob (toda la ventana excepto el blob)
             mask_surroundings = cv2.bitwise_not(mask_blob)
-            
-            # 3. Análisis de píxeles circundantes (todos los de la ventana excepto el blob)
             surrounding_pixels = window_gray[mask_surroundings == 255]
 
             if surrounding_pixels.size == 0:
@@ -181,25 +157,11 @@ class InkCorrector(ImagePrepAbstractWorker):
 
             window_mean = np.mean(surrounding_pixels)
 
-            # logger.info(f"Media PÍXELES: {window_mean} < {isolation_range}")
-
-            # Si el promedio es alto (blanco), es ruido aislado
             if window_mean > isolation_range:
-                # logger.info(f"Promedio: {window_mean}")
-                array_coords = np.array(cont_coords, np.int32)
-                contours_list.append(array_coords)
-                
+                contours_list.append(cont_coords)
                 cv2.drawContours(gray_img, [cont_coords], -1, color=self.color, thickness=cv2.FILLED)
-                corrected_blobs += 1
 
-                cleaned_blobs[pos] = {
-                    "cont_coords": cont_coords,
-                    "cont_bbox": cont_bbox,
-                    "cont_area": cont_area,
-                    "blob_centroid": blob_centroid
-                }
-
-        return gray_img, contours_list, cleaned_blobs
+        return gray_img, contours_list
 
     def _decolorate(self, full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """
@@ -227,29 +189,57 @@ class InkCorrector(ImagePrepAbstractWorker):
             logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
             return cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
         
-    def compare_areas(self, metrics: Dict[str, Any], grey_img: np.ndarray[Any, Any]):
-        cont_array_dict: Dict[int, Dict[str, Any]] = metrics.get("cont_array_dict", {})
-
+    def compare_areas(self, cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], metrics: np.ndarray[Any, np.dtype[np.float32]] , grey_img: np.ndarray[Any, Any]):
+        
         angle_cont: List[np.ndarray[Any, Any]] = []
         lines_cont: List[np.ndarray[Any, Any]] = []
-        for _, contours, in cont_array_dict.items():
-            cont_coords = contours["cont_coords"]
-            angle = contours["angle"]
-            width, height = contours["dims"]
+        lines_correct: int = 0
 
-            if width < height:
-                angle += 90
-            angle = angle % 180.0
+        index = metrics[:, 0].astype(np.int32)
+        width = metrics[:, 2]
+        height = metrics[:, 3]
+        angle = metrics[:, 4]
 
-            aspect_ratio = max(width, height) / min(width, height)
-            if aspect_ratio > 15:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.color, thickness=cv2.FILLED)
-                # logger.info(f"Linea: aspect_ratio: {aspect_ratio}")
-                lines_cont.append(cont_coords)
+        # logger.info(f"Indies: {index}")
+
+        # Normaliza ángulos: si width < height, suma 90
+        angle_norm = np.where(width < height, angle + 90, angle)
+        angle_norm = angle_norm % 180.0
+
+        # Si quieres actualizar la matriz:
+        metrics[:, 4] = angle_norm
+
+        aspect_ratio = (np.maximum(width, height) / np.minimum(width, height)).astype(np.float32)
+        
+        # Corregir: usar & en lugar de and, y paréntesis correctos
+        mask_lines = aspect_ratio > 15.0
+        lines = np.compress(mask_lines, index)
+        
+        # Corregir: comprimir sobre metrics, no sobre lines
+        mask_deskew = (aspect_ratio > 5.0) & (angle_norm < 11)
+        deskew = np.compress(mask_deskew, index)
+
+        # Extraer índices (primera columna) y convertir a set
+        lines_indices: Set[int] = set(lines.astype(np.int16)) if len(lines) > 0 else set()
+        deskew_indices: Set[int] = set(deskew.astype(np.int16)) if len(deskew) > 0 else set()
+
+        for idx, cont_coords in cont_coords_list:
+            # Asegurar formato correcto para drawContours: (N, 1, 2)
+            # cont_reshaped = cont_coords.reshape(-1, 1, 2).astype(np.int32)
             
-            if aspect_ratio > 5 and angle < 11:
+            if idx in lines_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.color, thickness=cv2.FILLED)
-                # logger.info(f"Linea por angulo: {angle}°")
+                lines_cont.append(cont_coords)
+                lines_correct += 1
+            
+            elif idx in deskew_indices:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.color, thickness=cv2.FILLED)
                 angle_cont.append(cont_coords)
+                lines_correct += 1
+
+            else:
+                continue
+
+        logger.info(f"Rayones eliminados: {lines_correct}")
                 
         return lines_cont, angle_cont, grey_img

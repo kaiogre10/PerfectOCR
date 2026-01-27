@@ -70,6 +70,31 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
             edges = cv2.Canny(full_img, self.canny_thresholds[0], self.canny_thresholds[1])
             lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=self.hough_threshold, minLineLength=min_len, maxLineGap=self.hough_max_line_gap_px)
+
+            # if full_img.ndim == 2 or full_img.shape[2] == 1:
+            #     original_with_lines = cv2.cvtColor(full_img, cv2.COLOR_GRAY2BGR)
+            # else:
+            #     original_with_lines = full_img.copy()
+
+            # if lines is not None:
+            #     for line in lines:
+            #         x1, y1, x2, y2 = line[0]
+            #         cv2.line(original_with_lines, (x1, y1), (x2, y2), (255, 0, 0), 1) 
+
+            # # Show full image windows (use WINDOW_NORMAL and resize to image dims so nothing is cropped)
+            # cv2.namedWindow('Detected Lines', cv2.WINDOW_NORMAL)
+            # cv2.resizeWindow('Detected Lines', w, h)
+
+            # # Ensure edges is 3-channel for consistent display
+            # edges_display = edges
+            # if edges.ndim == 2:
+            #     edges_display = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+
+            # # cv2.imshow('Original Image', full_img)
+            # # cv2.imshow('Canny Edges', edges_display)
+            # cv2.imshow('Detected Lines', original_with_lines)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
                 
             if lines is None or len(lines) == 0: # type: ignore
                 logger.warning(f"No se detectaron líneas para la corrección de inclinación")
@@ -86,7 +111,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             if abs(angle) > self.min_angle_for_correction:
                 rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
                 deskew_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE).astype(np.uint8)
-                logger.info(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
+                logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
                 return deskew_img, True
             
             else:             
