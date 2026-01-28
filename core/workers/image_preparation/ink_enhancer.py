@@ -9,6 +9,7 @@ from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_contours_metrics, extract_contours_histogram
 from services.output_service import save_croped_image, save_shapes
 from core.utils.image_utils import normalice_image
+from core.utils.math_utils import density_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     worker_name = context.get("worker_name") or "inker"
                     output_paths = context["output_paths"]
                     imag_id = f"corrected_blobs_{image_name}_{worker_name}"
-                    image_id = f"contours_{image_name}_{worker_name}"
+                    image_id = f"contours_{image_naSme}_{worker_name}"
                     line_cont_id= f"lines_{image_name}_{worker_name}"
                     gaps_id = f"gaps_{image_name}_{worker_name}"
                     # img_id= f"open_{image_name}_{worker_name}"
@@ -79,7 +80,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     
                     save_shapes(image_name, gaps_id, grey_img, output_paths, gaps_list, contours2=[])
                     # save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
-                    # save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
+                    save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
                             
                 logger.info(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 return True

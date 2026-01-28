@@ -3,6 +3,7 @@ from typing import List, Any, Optional, Tuple
 from scipy.sparse import csr_matrix # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import logging
+from sklearn.cluster import DBSCAN
 
 logger = logging.getLogger(__name__)
 
@@ -179,3 +180,8 @@ def define_intervals(bboxes_array: np.ndarray[Any, Any], overlap_threshold: floa
     logger.info(f"Line groups: {np.array(line_groups[0])} lines")
     # logger.info(f"Line groups reshaped:: {np.array(line_groups[0])} lines")
     return line_groups
+   
+def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int) -> np.ndarray[Any, Any]:
+    clustering = DBSCAN(eps, min_samples)
+    labels: np.ndarray[Any, Any] = clustering.fit_predict(features)
+    return labels

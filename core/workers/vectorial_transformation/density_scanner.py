@@ -2,11 +2,11 @@
 import numpy as np
 import time
 import logging
-from sklearn.cluster import DBSCAN # type: ignore
 from typing import Dict, Any, List
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines
+from core.utils.math_utils import density_cluster
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,8 @@ class DensityScanner(VectorizationAbstractWorker):
             features.append(list(line_data.values()))
             
         features_array = np.array(features, dtype=np.float32)
-
-        clustering = DBSCAN(eps=self.eps, min_samples=self.min_cluster_size)
-        labels: np.ndarray[Any, Any] = clustering.fit_predict(features_array)
+       
+        labels: np.ndarray[Any, Any] = density_cluster(features_array, self.eps, self.min_cluster_size)
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:

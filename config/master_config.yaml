@@ -4,8 +4,8 @@ pipeline_secuence:
     - "image_loader"
     - "angle_corrector"
     - "ink_enhancement"
-    - "geometry_detector"
-    # - "polygon_extractor"
+   # - "geometry_detector"
+   # - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -16,14 +16,14 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    # - "paddle_wrapper"
+     #- "paddle_wrapper"
     # - "text_refiner"
     # - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
+ #    - "lineal"
+  #   - "vectorizer"
+   #  - "dbscan"
     # - "cos_sim"
     # - "table_structurer"
     # - "table_validated"
@@ -33,13 +33,13 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: False
+    bin_full_img: false
     angle_corrected: false
     cropped_img: false
     final_polys: false
     discarded_polys: false
     deleted_polys: false
-    opened: true
+    opened: false
   
   preprocessing_outputs:
     contours: false

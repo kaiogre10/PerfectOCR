@@ -51,6 +51,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     shapes = np.array([r[1] for r in rects])
     angles = np.array([r[2] for r in rects])
     valid_areas = areas[valid_indices]
+    arclen = cv2.arclenght()
 
     # Agrega el índice secuencial como primera columna
     metrics_array = np.column_stack([
