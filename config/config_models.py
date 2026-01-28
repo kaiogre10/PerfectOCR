@@ -64,13 +64,16 @@ class ModelsConfig(ConfigWithNumpy):
     
 class InkConfig(ConfigWithNumpy):
     iterations: int
-    color: List[int]
+    white: List[int]
+    black: List[int]
     start_restoring: bool
     noise_kernel: Tuple[int, int]
     restorer_kernel: Tuple[int, int]
     isolation_range: Tuple[float, float]
     threshold_black: int
     threshold_white: int
+    aspect_ratio_range: Tuple[float, float]
+    angle_threshold: float
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
@@ -205,6 +208,7 @@ class UtilsConfig(ConfigWithNumpy):
     dpi_range: List[int]
     bin_interval: Tuple[int, int]
     percentile: Tuple[float, float]
+    morph_kernel: Tuple[float, float]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation

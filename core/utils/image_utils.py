@@ -221,10 +221,10 @@ def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_si
 
 def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
-    thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size)  # type: ignore
-    bin_bool: np.ndarray[np.uint8, Any] = (cropped_img > thresh_sauvola)  # type: ignore
-    bin_img = (bin_bool.astype(np.uint8) * 255)  # type: ignore
-    return bin_img  # type: ignore
+    thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size) 
+    bin_bool: np.ndarray[Any, Any] = (cropped_img > thresh_sauvola)
+    bin_img = (bin_bool * 255)
+    return bin_img 
 
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)).astype(np.uint8)

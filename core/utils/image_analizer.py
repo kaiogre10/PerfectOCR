@@ -1,8 +1,9 @@
 # PerfectOCR/core/utils/image_analizer.py
 import cv2
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import logging
+import time
 from typing import Any, List, Tuple
 from core.utils.image_utils import binarice_img
 from core.utils.math_utils import calculate_hist
@@ -30,7 +31,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     # Filtrar el contorno del fondo (índice 0) desde el inicio
     for i, cont in enumerate(contours):
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
-        if len(cont_coords) < 4:
+        if len(cont_coords) < 3:
             continue
 
         cont_coords_list.append((i, cont_coords))
@@ -40,7 +41,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
 
     areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
 
-    valid_mask = (areas > 1)
+    valid_mask = (areas != 0) & (areas != np.max(areas))
     valid_indices = np.where(valid_mask)[0]
 
     if len(valid_indices) == 0:
@@ -60,11 +61,9 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         angles
     ])
 
-    # logger.info(f"{metrics_array[:, [0, 1]]}")
-
     valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(i, cont_coords_list[valid_indices[i]][1]) for i in range(len(valid_indices))]
 
-    logger.info(f"Numero de contornos válidos: {len(valid_indices)}")
+    logger.debug(f"Numero de contornos válidos: {len(valid_indices)}")
 
     contours = len(valid_coords) 
     matrix_size = metrics_array.shape[0]
@@ -75,90 +74,90 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
 
 def extract_contours_histogram(img: np.ndarray[Any, np.dtype[np.uint8]]):
     """
-    Calcula histograma de áreas de CC.
+    Calcula histograma de áreas de contornos.
     Retorna:
         bin_edges: edges del histograma de áreas
     """
-    try:
-        cont_coords, metrics = extract_contours_metrics(img)
+    time_h = time.perf_counter()
+
+    cont_coords, metrics = extract_contours_metrics(img)
+    logger.debug(f"Cant coordendas: {len(cont_coords)}, metricas: {metrics.shape}")    
+    biggest = np.max(metrics[:, 1])
+    logger.debug(f"1: {biggest}")
+    metrics = np.compress((metrics[:, 1] < biggest), metrics, 0)
+
+    wind_lng = 3
+    centroid = np.ravel((wind_lng - 1) / 2).astype(np.uint8) if wind_lng > 2 else 3
+    win = np.zeros(wind_lng, np.uint8)
+    windw_it = win.copy()
+    np.put(windw_it,wind_lng - 1, 1)
+    np.put(win, centroid, 1)
+    securutyy_window = np.pad(win, 2, mode="edge",)
+
+    # Bucle recursivo/iterativo
+    while True:
         
-        logger.debug(f"Cant coordendas: {len(cont_coords)}, metricas: {metrics.shape}")    
-        biggest = np.max(metrics[:, 1])
-        logger.debug(f"1: {biggest}")
-        metrics = np.compress((metrics[:, 1] < biggest), metrics, 0)
+        hist, bin_edges = calculate_hist(metrics[:, 1])
 
-        wind_lng = 3
-        centroid = np.ravel((wind_lng - 1) / 2).astype(np.uint8) if wind_lng > 2 else 3
-        win = np.zeros(wind_lng, np.uint8)
-        windw_it = win.copy()
-        np.put(windw_it,wind_lng - 1, 1)
-        np.put(win, centroid, 1)
-        securutyy_window = np.pad(win, 2, mode="edge",)
+        # plt.hist(metrics[:, 1], bins='fd')  # arguments are passed to np.histogram
+        # plt.title("Histogram with 'auto' bins")
+        # (0.5, 1.0, "Histogram with 'auto' bins")
+        # plt.show()
 
-        # Bucle recursivo/iterativo
-        while True:
-            # Recalcular histograma y ventana
+        elemnts_range = hist.shape[0]
+        
+        # Extraer ventana de los últimos bins
+        roll_window = np.take_along_axis(hist, np.arange(elemnts_range - wind_lng, elemnts_range), 0)
+        
+        # Verificar condiciones en orden de prioridad
+        if np.array_equal(roll_window, windw_it):
+            # Condición 1: Coincide con ventana Eliminar bin más grande y sus contornos
+            max_area = np.max(metrics[:, 1])
+            mask = metrics[:, 1] < max_area
+            metrics = np.compress(mask, metrics, 0)
             hist, bin_edges = calculate_hist(metrics[:, 1])
-            plt.hist(metrics[:, 1], bins='fd')  # arguments are passed to np.histogram
-            plt.title("Histogram with 'auto' bins")
-            (0.5, 1.0, "Histogram with 'auto' bins")
-            plt.show()
-
-            elemnts_range = hist.shape[0]
+            logger.debug(f"Eliminando por ventana fija: {hist}")
+            continue  # Continuar iteración
             
-            # Extraer ventana de los últimos bins
-            roll_window = np.take_along_axis(hist, np.arange(elemnts_range - wind_lng, elemnts_range), 0)
+        elif hist[elemnts_range - 1] == 1:
+            # Condición 2: Último dígito es 1
+            hist, bin_edges = calculate_hist(metrics[:, 1])
+            logger.debug(f"Eliminando por ultimo dígito: {hist}")
+            max_area = np.max(metrics[:, 1])
+            mask = metrics[:, 1] < max_area
+            metrics = np.compress(mask, metrics, 0)
+            continue
             
-            # Verificar condiciones en orden de prioridad
-            if np.array_equal(roll_window, windw_it):
-                # Condición 1: Coincide con ventana Eliminar bin más grande y sus contornos
-                max_area = np.max(metrics[:, 1])
-                mask = metrics[:, 1] < max_area
-                metrics = np.compress(mask, metrics, 0)
-                hist, bin_edges = calculate_hist(metrics[:, 1])
-                logger.debug(f"Eliminando por ventana fija: {hist}")
-                continue  # Continuar iteración
-                
-            elif hist[elemnts_range - 1] == 1:
-                # Condición 2: Último dígito es 1
-                hist, bin_edges = calculate_hist(metrics[:, 1])
-                logger.debug(f"Eliminando por ultimo dígito: {hist}")
-                max_area = np.max(metrics[:, 1])
-                mask = metrics[:, 1] < max_area
-                metrics = np.compress(mask, metrics, 0)
-                continue
-                
-            else:
-                # Condición 3: Buscar nonzero==1 más cercano (del más grande al más pequeño)
-                found_nonzero_one = False
-                for bin_idx in range(elemnts_range - 1, -1, -1):  # Del más grande al más pequeño
-                    if hist[bin_idx] >= 2:
-                        # Si encuentra >= 2, hacer break inmediatamente
-                        logger.debug("Encontrado valor >= 2, finalizando correcciones")
-                        break  # Break del while True
-                        
-                    elif hist[bin_idx] == 1:
-                        # Encontró nonzero==1 más cercano
-                        # mask = np.zeros(securutyy_window.size)
-                        mask = np.take_along_axis(hist, np.arange(bin_idx - wind_lng, bin_idx + wind_lng), 0)
-                        if np.array_equal(securutyy_window, mask):
-                            found_nonzero_one = True
-                            logger.debug(f"Eliminando bin {bin_idx} con valor 1: {hist}")
-                            # Eliminar contornos de este bin
-                            bin_start = bin_edges[bin_idx]
-                            bin_end = bin_edges[bin_idx + 1]
-                            mask = ~((metrics[:, 1] >= bin_start) & (metrics[:, 1] < bin_end))
-                            metrics = np.compress(mask, metrics, 0)
-                            hist, bin_edges = calculate_hist(metrics[:, 1])
-                            break  # Break del for, continuar while
-                        
-                        elif not found_nonzero_one:
-                            continue
-                        
+        else:
+            # Condición 3: Buscar nonzero==1 más cercano (del más grande al más pequeño)
+            found_nonzero_one = False
+            for bin_idx in range(elemnts_range - 1, -1, -1):  # Del más grande al más pequeño
+                if hist[bin_idx] >= 2:
+                    # Si encuentra >= 2, hacer break inmediatamente
+                    logger.debug("Encontrado valor >= 2, finalizando correcciones")
+                    break  # Break del while True
+                    
+                elif hist[bin_idx] == 1:
+                    # Encontró nonzero==1 más cercano
+                    # mask = np.zeros(securutyy_window.size)
+                    mask = np.take_along_axis(hist, np.arange(bin_idx - wind_lng, bin_idx + wind_lng), 0)
+                    if np.array_equal(securutyy_window, mask):
+                        found_nonzero_one = True
+                        logger.info(f"Eliminando bin {bin_idx} con valor 1: {hist}")
+                        # Eliminar contornos de este bin
+                        bin_start = bin_edges[bin_idx]
+                        bin_end = bin_edges[bin_idx + 1]
+                        mask = ~((metrics[:, 1] >= bin_start) & (metrics[:, 1] < bin_end))
+                        metrics = np.compress(mask, metrics, 0)
+                        hist, bin_edges = calculate_hist(metrics[:, 1])
+                        break  # Break del for, continuar while
+                    
+                    elif not found_nonzero_one:
+                        continue
+                    
                 if not found_nonzero_one or hist[bin_idx] >= 2:
                     # No encontró más bins para eliminar o encontró >= 2
                     break  # Salir del while True
-        return cont_coords, metrics, bin_edges
-    except Exception as e:
-        logger.warning(f"Error calculando histograma: {e}", exc_info=True)
+            
+        logger.info(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
         return cont_coords, metrics, bin_edges
