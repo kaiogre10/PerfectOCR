@@ -181,7 +181,54 @@ def define_intervals(bboxes_array: np.ndarray[Any, Any], overlap_threshold: floa
     # logger.info(f"Line groups reshaped:: {np.array(line_groups[0])} lines")
     return line_groups
    
-def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int) -> np.ndarray[Any, Any]:
-    clustering = DBSCAN(eps, min_samples)
-    labels: np.ndarray[Any, Any] = clustering.fit_predict(features)
-    return labels
+def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int) ->  np.ndarray[Any, np.dtype[np.int32]]:
+    clustering = DBSCAN(eps=eps, min_samples=min_samples)
+    return clustering.fit_predict(features).astype(np.int32)
+    
+def dilate_contour(contour: np.ndarray[Any, np.dtype[np.int32]], kernel: np.ndarray[Any, Any])-> np.ndarray[Any, np.dtype[np.int32]]:
+    """
+    Expande un contorno cerrado según kernel anisótropo.
+    
+    Args:
+        contour: np.ndarray shape (N, 2) dtype int32, puntos del contorno
+        x_expand: expansión horizontal en píxeles (kernel cols)
+        y_expand: expansión vertical en píxeles (kernel rows)
+    
+    Returns:
+        np.ndarray shape (N, 2) dtype int32, contorno expandido
+    """
+    pts = contour.astype(np.float32)
+    n = len(pts)
+    
+    if n < 3:
+        return contour
+    
+    next_idx = np.arange(1, n + 1) % n
+    prev_idx = np.arange(-1, n - 1) % n
+    
+    e1 = pts - pts[prev_idx]
+    e2 = pts[next_idx] - pts
+    
+    signed_area = 0.5 * np.sum(pts[:, 0] * pts[next_idx, 1] - pts[next_idx, 0] * pts[:, 1])
+    sign = 1.0 if signed_area < 0 else -1.0
+    
+    def normal_ext(e: np.ndarray) -> np.ndarray:
+        length = np.linalg.norm(e, axis=1, keepdims=True) + 1e-9
+        unit = e / length
+        return sign * np.column_stack([unit[:, 1], -unit[:, 0]])
+    
+    n1 = normal_ext(e1)
+    n2 = normal_ext(e2)
+    
+    bisect = n1 + n2
+    bisect_len = np.linalg.norm(bisect, axis=1, keepdims=True) + 1e-9
+    bisect_unit = bisect / bisect_len
+    
+    cos_half = np.clip(bisect_len.flatten() / 2.0, 0.15, 1.0)
+    factor = 1.0 / cos_half
+    
+    # Anisotropía: escala X e Y por separado
+    offset = bisect_unit * factor[:, None] * np.array([[kernel[0], kernel[1]]])
+    
+    expanded = pts + offset
+    return np.round(expanded).astype(np.int32)

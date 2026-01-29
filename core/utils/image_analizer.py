@@ -41,7 +41,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
 
     areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
 
-    valid_mask = (areas != 0) & (areas != np.max(areas))
+    valid_mask = (areas > 0) & (areas != np.max(areas))
     valid_indices = np.where(valid_mask)[0]
 
     if len(valid_indices) == 0:
@@ -51,15 +51,19 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     shapes = np.array([r[1] for r in rects])
     angles = np.array([r[2] for r in rects])
     valid_areas = areas[valid_indices]
-    arclen = cv2.arclenght()
-
+    
+    centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0 else 0, m["m01"] / m["m00"] if m["m00"] != 0 else 0)
+        for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.intp)
+    
     # Agrega el índice secuencial como primera columna
     metrics_array = np.column_stack([
         np.arange(len(valid_indices), dtype=np.int16),
         valid_areas,
         shapes[:, 0], # w
         shapes[:, 1], # h
-        angles
+        angles,
+        centroids[:, 0],
+        centroids[:, 1]
     ])
 
     valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(i, cont_coords_list[valid_indices[i]][1]) for i in range(len(valid_indices))]

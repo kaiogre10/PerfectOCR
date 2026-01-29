@@ -9,13 +9,12 @@ from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_contours_metrics, extract_contours_histogram
 from services.output_service import save_croped_image, save_shapes
 from core.utils.image_utils import normalice_image
-from core.utils.math_utils import density_scanner
+from core.utils.math_utils import density_cluster, dilate_contour
 
 logger = logging.getLogger(__name__)
 
 class InkCorrector(ImagePrepAbstractWorker):
     """Worker especializado en restaurar texto con tinta gastada o de baja intensidad."""
-
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -54,7 +53,7 @@ class InkCorrector(ImagePrepAbstractWorker):
 
             grey_image, gaps_list = self.fill_gaps(grey_img, metrics, cont_coords_list)
 
-            lines_cont, angle_cont, gray_img = self.compare_areas(cont_coords_list, metrics, grey_img)
+            lines_cont, angle_cont, gray_img = self.compare_areas(cont_coords_list, metrics, grey_image)
             
             correct, contours_list, blacked_contours = self.alternate_restore(gray_img, bin_edges)
 
@@ -70,17 +69,17 @@ class InkCorrector(ImagePrepAbstractWorker):
                     worker_name = context.get("worker_name") or "inker"
                     output_paths = context["output_paths"]
                     imag_id = f"corrected_blobs_{image_name}_{worker_name}"
-                    image_id = f"contours_{image_naSme}_{worker_name}"
+                    image_id = f"contours_{image_name}_{worker_name}"
                     line_cont_id= f"lines_{image_name}_{worker_name}"
-                    gaps_id = f"gaps_{image_name}_{worker_name}"
+                    # gaps_id = f"gaps_{image_name}_{worker_name}"
                     # img_id= f"open_{image_name}_{worker_name}"
             
-                    # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
+                    save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
                     # save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
                     
-                    save_shapes(image_name, gaps_id, grey_img, output_paths, gaps_list, contours2=[])
-                    # save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
-                    save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
+                    # save_shapes(image_name, gaps_id, grey_img, output_paths, gaps_list, contours2=[])
+                    save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
+                    # save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
                             
                 logger.info(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 return True
@@ -108,8 +107,9 @@ class InkCorrector(ImagePrepAbstractWorker):
         for i in range(self.iterations):
             valid_coords, metrics = extract_contours_metrics(gray_img)
 
-            noise_coords = metrics[metrics[:, 1] < noise_bin].astype(np.int32)
-            noise_ids = noise_coords[:, 0]
+            noise_coords = metrics[metrics[:, 1] < noise_bin]
+            noise_ids = noise_coords
+            logger.info(f"Bin edges: {[np.sort(noise_ids[:, 1]), np.sort(bin_edges)]}")
             noise_candidates: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [valid_coords[idx] for idx in noise_ids]
             
             condition = (i == 0)
@@ -140,64 +140,47 @@ class InkCorrector(ImagePrepAbstractWorker):
         contours_list: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         
         for _, cont_coords in noise_candidates:
-            # cont_coords = contours["cont_coords"]
-
-            x_min = cont_coords[:, 0].min()
-            x_max = cont_coords[:, 0].max()
-            y_min = cont_coords[:, 1].min()
-            y_max = cont_coords[:, 1].max()
-
-            win_x1 = max(0, x_min - kernel_shape[1])
-            win_y1 = max(0, y_min - kernel_shape[0])
-            win_x2 = min(img_w, x_max + kernel_shape[1])
-            win_y2 = min(img_h, y_max + kernel_shape[0])
-
+            # 1. Expandir
+            cont_expanded = dilate_contour(cont_coords, kernel_shape)
+            
+            # 2. ROI basada en el expandido (por eficiencia, no crear máscara de toda la imagen)
+            x_min, x_max = cont_expanded[:, 0].min(), cont_expanded[:, 0].max()
+            y_min, y_max = cont_expanded[:, 1].min(), cont_expanded[:, 1].max()
+            
+            win_x1, win_y1 = max(0, x_min), max(0, y_min)
+            win_x2, win_y2 = min(img_w, x_max + 1), min(img_h, y_max + 1)
+            
             window_gray = gray_img[win_y1:win_y2, win_x1:win_x2]
-            cont_coords_window = cont_coords - np.array([[win_x1, win_y1]])
-
-            mask_blob = np.zeros(window_gray.shape, dtype=np.uint8)
-            cv2.drawContours(mask_blob, [cont_coords_window], -1, self.white, thickness=cv2.FILLED)
-
-            mask_surroundings = cv2.bitwise_not(mask_blob)
-            surrounding_pixels = window_gray[mask_surroundings == 255]
-
-            if surrounding_pixels.size == 0:
+            offset = np.array([[win_x1, win_y1]])
+            
+            # 3. Máscaras en coords de ROI
+            cont_orig_roi = cont_coords - offset
+            cont_exp_roi = cont_expanded - offset
+            
+            mask_orig = np.zeros(window_gray.shape, dtype=np.uint8)
+            mask_exp = np.zeros(window_gray.shape, dtype=np.uint8)
+            
+            cv2.drawContours(mask_orig, [cont_orig_roi], -1, self.white, cv2.FILLED)
+            cv2.drawContours(mask_exp, [cont_exp_roi], -1, self.white, cv2.FILLED)
+            
+            # 4. Anillo
+            mask_ring = mask_exp & ~mask_orig
+            ring_pixels = window_gray[mask_ring > 0]
+            
+            if ring_pixels.size == 0:
                 continue
-
-            window_mean = np.mean(surrounding_pixels)
-
+            
+            window_mean = np.median(ring_pixels)
+            
+            # 5. Si cumple → pintar el EXPANDIDO
             if window_mean > isolation_range:
+                contours_list.append(cont_expanded)
+                cv2.drawContours(gray_img, [cont_expanded], -1, self.white, cv2.FILLED)
                 contours_list.append(cont_coords)
-                cv2.drawContours(gray_img, [cont_coords], -1, color=self.white, thickness=cv2.FILLED)
+                cv2.drawContours(gray_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
 
         return gray_img, contours_list
-
-    def _decolorate(self, full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        """
-        Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro.
-        """
-        # Máscara para píxeles negros (todos los canales <= threshold_black)
-        mask_black = np.all(full_img < self.threshold_black, axis=2)
-        
-        # Máscara para píxeles blancos (todos los canales >= threshold_white)
-        mask_white = np.all(full_img > self.threshold_white, axis=2)
-        
-        # Máscara de píxeles válidos (negro o blanco)
-        mask_valid = mask_black | mask_white
-        
-        # Reemplaza los píxeles de color (no válidos) por blanco
-        full_img[~mask_valid] = self.white
-
-        # Convierte a escala de grises para continuar el flujo normal
-        gray = normalice_image(full_img.copy())
-        
-        if gray is not None:
-            return gray
-            
-        else:
-            logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
-            return cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
-        
+    
     def compare_areas(self, cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], metrics: np.ndarray[Any, np.dtype[np.float32]] , grey_img: np.ndarray[Any, Any]):
 
         angle_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
@@ -246,9 +229,8 @@ class InkCorrector(ImagePrepAbstractWorker):
         logger.debug(f"Rayas eliminados: {lines_correct}")
                 
         return lines_cont, angle_cont, grey_img
-    
+        
     def fill_gaps(self, gray_img: np.ndarray[Any, Any], metrics: np.ndarray[Any, Any], cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]]):
-
         min_areas = np.compress(5.0 > metrics[:, 1], metrics, 0)
         all_ind: Set[int] = set(min_areas[:, 0].astype(np.int32))
         idx: Set[int] = set([c[0] for c in cont_coords_list])
@@ -265,3 +247,29 @@ class InkCorrector(ImagePrepAbstractWorker):
                 min_gaps.append(cont)
         logger.info(f"{len(filtered)} gaps llenos")
         return gray_img, min_gaps
+
+    def _decolorate(self, full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        """
+        Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro.
+        """
+        # Máscara para píxeles negros (todos los canales <= threshold_black)
+        mask_black = np.all(full_img < self.threshold_black, axis=2)
+        
+        # Máscara para píxeles blancos (todos los canales >= threshold_white)
+        mask_white = np.all(full_img > self.threshold_white, axis=2)
+        
+        # Máscara de píxeles válidos (negro o blanco)
+        mask_valid = mask_black | mask_white
+        
+        # Reemplaza los píxeles de color (no válidos) por blanco
+        full_img[~mask_valid] = self.white
+
+        # Convierte a escala de grises para continuar el flujo normal
+        gray = normalice_image(full_img.copy())
+        
+        if gray is not None:
+            return gray
+            
+        else:
+            logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
+            return cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)

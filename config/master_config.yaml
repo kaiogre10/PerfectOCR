@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: false
+    bin_full_img: true
     angle_corrected: false
     cropped_img: false
     final_polys: false
@@ -87,13 +87,13 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      iterations: 3
+      iterations: 2
       white: [255, 255, 255]
       black: [0, 0, 0]
       start_restoring: True
       noise_kernel: [9, 9]
-      restorer_kernel: [2, 3]
-      isolation_range: [4.68, 247.601]
+      restorer_kernel: [2, 5]
+      isolation_range: [4.68, 240.601]
       threshold_black: 160
       threshold_white: 180
       aspect_ratio_range: [5.0, 15.0]

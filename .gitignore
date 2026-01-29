@@ -20,9 +20,8 @@ __pycache__/
 documentation/
 test/
 tools/
-data/
+# data/
 C:/PerfectOCR/data/models/
-data/models/wf/
 data/models/paddle/
 input/
 input2/
@@ -39,7 +38,7 @@ input3/
 *.png
 *.jpg
 *.jpeg
-*.pkl
+# *.pkl
 
 # Ignorar perfectocr.txt
 *.cursorignore
