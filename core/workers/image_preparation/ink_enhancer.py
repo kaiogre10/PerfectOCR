@@ -107,9 +107,8 @@ class InkCorrector(ImagePrepAbstractWorker):
         for i in range(self.iterations):
             valid_coords, metrics = extract_contours_metrics(gray_img)
 
-            noise_coords = metrics[metrics[:, 1] < noise_bin]
-            noise_ids = noise_coords
-            logger.info(f"Bin edges: {[np.sort(noise_ids[:, 1]), np.sort(bin_edges)]}")
+            noise_coords = metrics[metrics[:, 1] < noise_bin].astype(np.int32)
+            noise_ids = noise_coords[:, 0]
             noise_candidates: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [valid_coords[idx] for idx in noise_ids]
             
             condition = (i == 0)
