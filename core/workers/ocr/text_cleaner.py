@@ -162,7 +162,7 @@ class TextCleaner(OCRAbstractWorker):
                     
                     if score < self.min_probability:
                         removed += 1
-                        logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{t}' | Probabilidad: {score:.4f}")
+                        logger.debug(f"Eliminado:{polygon.polygon_id} | Texto:'{t}' | Probabilidad: {score:.4f}")
                         continue
                     kept.append(tok)
                 else:
