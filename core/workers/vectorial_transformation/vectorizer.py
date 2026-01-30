@@ -141,16 +141,17 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error vectorizando lineas: {e}", exc_info=True)
             return None
         
-    def _calculate_features(self, all_lines: Dict[str, AllLines] , manager: DataFormatter, context: Dict[str, Any]) -> Optional[Dict[str, Dict[str, float]]]:
+    def _calculate_features(self, all_lines: Dict[str, AllLines] , manager: DataFormatter, context: Dict[str, Any]) -> Optional[np.ndarray[Any, np.dtype[np.float32]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
         """
         try:
             t1 = time.perf_counter()            
-            line_features = self._calculate_textual_line_features(all_lines, manager)
+            textual_features = self._calculate_textual_line_features(all_lines, manager)
             logger.info(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
-            logger.info(f"Features textuales: {line_features}")
+            logger.info(f"Features textuales shape: {textual_features.shape}"
+                        "\n"f"{textual_features.round(0)}")
 
             t2 = time.perf_counter()
             geoline_features: np.ndarray[Any, Any] = self._calculate_geometric_line_features(all_lines, manager)
@@ -170,8 +171,9 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.debug("Features completas:"
             "\n"f"{all_features}"
             "\n"f"SHAPE:{all_features.shape}")
-
            
+            all_lines_features = np.column_stack([all_features, textual_features])
+            logger.info(f"{all_lines_features.shape}")
 
             if self.second_output:
                 from services.output_service import save_raw_json
@@ -185,7 +187,6 @@ class Vectorizer(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"Error calculando tabular features: {e}", exc_info=True)
             return {}
-
 
     def _calculate_textual_line_features(self, all_lines: Dict[str, AllLines], manager: DataFormatter) -> np.ndarray[Any, np.dtype[np.int32]]:
         """
@@ -209,24 +210,28 @@ class Vectorizer(VectorizationAbstractWorker):
                         sc_count += self.count_numeric_tokens(sc)
                 # Cuenta dígitos en el texto de la línea
                 line_text = getattr(line_data, "text", "")
+            #    chars = len([c for c in line_text if not c.isspace()])
                 dcount = sum(1 for ch in line_text if ch in self.char_num)
+       #         dig_mean = dcount / chars
                 features.append([sc_count, dcount])
 
-            features = np.array(features, dtype=np.int32)
+            features = np.array(features)
             
-            num_lines = np.max(features[:, 0])
-            all_numerics = np.sum(features[:, 1])
-            max_numerics = np.max(features[:, 1])
-            max_digit = np.max(features[:, 2])
-            has_numeric = np.any(features[:,1] < 0).astype(np.int32)
+        #    num_lines = np.max(features[:, 0])
+            all_numerics = np.sum(features[:, 0])
+            max_numerics = np.max(features[:, 0])
+            max_digit = np.max(features[:, 1])
+            #has_numeric = np.any(features[:,1] < 0).astype(np.int32)
             
             num_count_norm = features[:, 1] / max_numerics 
             
-            num_mean = all_numerics / num_lines 
-            num_above = features[:, 1] >= num_mean
+            num_mean = (all_numerics/features.shape[0])
+            mask = np.zeros((features.shape[0]))
+            num_above = np.where(features[:, 0] >= num_mean, mask, 1-mask)
             
-            has_digit = np.any(features[:,2] < 0) *1
-            digit_char_frec = features[:,2] / max_digit
+            has_digit = np.where(features[:,1] > 0, mask, 1-mask)
+            digit_char_frec = features[:,1] / max_digit
+            has_numeric = np.where(features[:, 0] > 0, mask, 1 - mask)
 
             # Normaliza la diferencia entre los tokens numéricos de la línea y el promedio global al rango [-1, 1]; cerca de 1 significa mucho más numérica que la media, cerca de -1 significa mucho menos numérica.
             #if max_numerics > 0:
@@ -237,11 +242,12 @@ class Vectorizer(VectorizationAbstractWorker):
                 
             return np.column_stack([
                     features,
-                   # has_numeric * 1, 
-                    num_count_norm.astype(np.int32),
-                    num_above.astype(np.int32),
-                    digit_char_frec.astype(np.int32),
-                  #  has_digit * 1
+                    has_numeric,
+
+                    num_count_norm,
+                    num_above,
+                    digit_char_frec,
+                    has_digit
                  # num_margin
                     ])
                      
@@ -433,8 +439,7 @@ class Vectorizer(VectorizationAbstractWorker):
             next_xmin_align,
             next_xmax_align,
             align_prev,
-            align_next,
-            
+            align_next
         ])
 
         return all_features
