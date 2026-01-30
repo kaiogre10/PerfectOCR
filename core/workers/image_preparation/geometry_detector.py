@@ -88,7 +88,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 area = bbox_height * bbox_width
 
                 if area < self.min_area:
-                    logger.info(f"Polígono {poly_id} descarcatdo por mínima área")
+                    logger.debug(f"Polígono {poly_id} descarcatdo por mínima área")
                     
                     if self.output:
                         from services.output_service import save_croped_image
@@ -115,7 +115,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")
-            logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
+            logger.debug(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")

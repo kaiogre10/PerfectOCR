@@ -81,7 +81,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
                     # save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
                             
-                logger.info(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
+                logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 return True
             
         except Exception as e:
@@ -244,7 +244,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 # Rellena el contorno en la imagen
                 cv2.drawContours(gray_img, [cont], -1, self.black, thickness=cv2.FILLED)
                 min_gaps.append(cont)
-        logger.info(f"{len(filtered)} gaps llenos")
+        logger.debug(f"{len(filtered)} gaps llenos")
         return gray_img, min_gaps
 
     def _decolorate(self, full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:

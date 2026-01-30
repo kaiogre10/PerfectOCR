@@ -2,7 +2,6 @@
 import numpy as np
 import time
 import logging
-import math
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -29,7 +28,7 @@ class Vectorizer(VectorizationAbstractWorker):
         start_time = time.perf_counter()
         try:
             logger.debug("Comienza Vectorizer")
-            logger.warning(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
+            logger.debug(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
 
             table_line_ids = self._get_keywords_interval(manager) if self.keywords_interval_enabled else None
             if table_line_ids is not None:
@@ -48,7 +47,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Si no hay intervalo, se prosigue con la vectorización normal
                 all_features = self._vectorize_text(manager, context)
                 if all_features:
-                    total_time = time.perf_counter() - start_time
 
                     if self.features_output:
                         from services.output_service import save_table_values
@@ -58,9 +56,9 @@ class Vectorizer(VectorizationAbstractWorker):
                         image_features = self.image_features
                         save_table_values(file_name, all_features, output_paths, worker_name, image_features)
                         
-                    logger.info(f"Vectorización completada en {total_time:.6f}s. Líneas válidas: {len(all_features)}")
+                    logger.info(f"Vectorización completada en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(all_features)}")
                     context["all_features"] = all_features
-                    logger.info(f"Features guardadas en el contexto")
+                    logger.debug(f"Features guardadas en el contexto")
                         
                     return True
                 else:
@@ -77,14 +75,9 @@ class Vectorizer(VectorizationAbstractWorker):
             all_lines: Dict[str, AllLines] = {}
             if manager.workflow and hasattr(manager.workflow, "all_lines"):
                 all_lines = getattr(manager.workflow, "all_lines", {})
-
-            sorted_lines: List[Tuple[str, AllLines]] = sorted(
-                all_lines.items(),
-                key=lambda kv: kv[0]
-            )
             
             t3 = time.perf_counter()
-            features_by_line = self._calculate_features(sorted_lines, manager, context)
+            features_by_line = self._calculate_features(manager, context)
             logger.info(f"All_Feautures calculadas en {time.perf_counter() - t3:.7f}s")
 
             if not features_by_line:
@@ -96,7 +89,7 @@ class Vectorizer(VectorizationAbstractWorker):
             table_rows: List[List[str]] = []
             id_col_width = 10
 
-            for line_id, _ in sorted_lines:
+            for line_id, _ in all_lines:
                 features = features_by_line.get(line_id)
                 if not features:
                     continue
@@ -265,7 +258,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 diagonal = float(np.hypot(bbox_width, bbox_height))  # diagonal del bbox (distancia máxima)
                 diag_inv = diagonal / diagonal_median if diagonal_median != 0 else 0.0
                 diag_dif = 1 - abs(diagonal - diagonal_median)/diagonal_median if diagonal_median != 0 else 0.0
-                angle = math.degrees(math.atan2(bbox_height, bbox_width))
+                angle = np.degrees(np.arctan2(bbox_height, bbox_width))
                 angle_inv = angle/ angle_median if angle_median != 0 else 0.0
                 diag_norm = float(diagonal / max_diagonal)  # diagonal normalizada al máximo
                 compact = ((perimeter**2) / line_area) / 100.0  # medida de compactación (perímetro al cuadrado sobre área), valores más bajos = formas más cuadradas/compactas
@@ -431,7 +424,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     perimeter: float = 2 * (bbox_width + bbox_height)
                     aspect_ratio = ((bbox_height / bbox_width) * 100)
                     diagonal = float(np.sqrt((bbox_width**2.0) + (bbox_height**2.0)))
-                    angle = math.degrees(math.atan2(bbox_height, bbox_width))
+                    angle = np.degrees(np.arctan2(bbox_height, bbox_width))
                     slope = bbox_width / bbox_height  if bbox_width != 0 else 0.0
                     width_count_by_line[line_id] = bbox_width
                     height_count_by_line[line_id] = bbox_height
@@ -484,26 +477,26 @@ class Vectorizer(VectorizationAbstractWorker):
             
             return {}
                 
-    def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[str]]:
+    def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[int]]:
         
         all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
 
         # Verificar existencia de header_line
-        header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None) is not None]
-        header_line_id = header_line_ids[0] if header_line_ids else None
+        header_line_id = [lid.line_index for lid in all_lines.values() if getattr(lid, "header_line", None) is not None]
+        header_line_id = header_line_id[0] if header_line_id else None
         if not header_line_id:
-            logger.warning("No se encontró encabezado de tabla")
+            logger.debug("No se encontró encabezado de tabla")
             return None
             
-        footer_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "footer_line", None) is not None]
-        footer_line_id = footer_line_ids[0] if footer_line_ids else None
+        footer_line_id = [lid.line_index for lid in all_lines.values() if getattr(lid, "footer_line", None) is not None]
+        footer_line_id = footer_line_id[0] if footer_line_id else None
 
         if not footer_line_id:
             logger.warning("No se encontró pie de tabla")
             return None
 
         # Obtener el intervalo de líneas tabulares (excluyendo header y footer)
-        all_line_ids = list(all_lines.keys())
+        all_line_ids = list(lid.line_index for lid in all_lines.values())
         header_pos = all_line_ids.index(header_line_id)
         footer_pos = all_line_ids.index(footer_line_id)
         

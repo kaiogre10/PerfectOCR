@@ -181,9 +181,9 @@ def define_intervals(bboxes_array: np.ndarray[Any, Any], overlap_threshold: floa
     # logger.info(f"Line groups reshaped:: {np.array(line_groups[0])} lines")
     return line_groups
    
-def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int) ->  np.ndarray[Any, np.dtype[np.int32]]:
+def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int) ->  np.ndarray[Any, Any]:
     clustering = DBSCAN(eps=eps, min_samples=min_samples)
-    return clustering.fit_predict(features).astype(np.int32)
+    return clustering.fit_predict(features)
     
 def dilate_contour(contour: np.ndarray[Any, np.dtype[np.int32]], kernel: np.ndarray[Any, Any])-> np.ndarray[Any, np.dtype[np.int32]]:
     """

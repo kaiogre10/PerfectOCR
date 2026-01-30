@@ -1,7 +1,7 @@
 # core/domain/workflow_models.py
 import numpy as np
 import pandas as pd # type: ignore
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -60,6 +60,7 @@ class LineGeometry:
 @dataclass
 class AllLines:
     lineal_id: str
+    line_index: int
     text: str
     polygon_ids: List[str]
     line_geometry: LineGeometry

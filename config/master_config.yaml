@@ -4,8 +4,8 @@ pipeline_secuence:
     - "image_loader"
     - "angle_corrector"
     - "ink_enhancement"
-   # - "geometry_detector"
-   # - "polygon_extractor"
+    - "geometry_detector"
+    - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -16,13 +16,13 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-     #- "paddle_wrapper"
-    # - "text_refiner"
+     - "paddle_wrapper"
+     - "text_refiner"
     # - "data_finder"
     
   vector_stage:
- #    - "lineal"
-  #   - "vectorizer"
+    - "lineal"
+    - "vectorizer"
    #  - "dbscan"
     # - "cos_sim"
     # - "table_structurer"
@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: true
+    bin_full_img: false
     angle_corrected: false
     cropped_img: false
     final_polys: false
@@ -87,7 +87,7 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      iterations: 2
+      iterations: 1
       white: [255, 255, 255]
       black: [0, 0, 0]
       start_restoring: True
@@ -97,7 +97,7 @@ modules:
       threshold_black: 160
       threshold_white: 180
       aspect_ratio_range: [5.0, 15.0]
-      angle_threshold: 11
+      angle_threshold: 10
 
     angle_corrector:
       min_angle_for_correction: 0.9
@@ -111,7 +111,7 @@ modules:
       min_area: 1
       
     polygon_extractor:
-      angle_thr: [44.5, 45.5]
+      angle_thr: [44.9, 45.1]
       cropping_padding: 1
 
   preprocessing:
@@ -178,10 +178,10 @@ modules:
     
   vectorization:
     lineal:
-      overlap_threshold: 0.60
+      overlap_threshold: 0.596
       
     vectorizer:
-      keywords_interval_enabled: True
+      keywords_interval_enabled: False
       exclude_types: [
         "descriptive",
         "code", 

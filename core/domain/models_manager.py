@@ -73,7 +73,7 @@ class ModelsManager:
 
             else:
                 self._word_finder = None
-                logger.warning(f"Word Finder no se cargó porque no se usará en el pipeline")
+                logger.debug(f"Word Finder no se cargó porque no se usará en el pipeline")
                 return True
 
         except Exception as e:

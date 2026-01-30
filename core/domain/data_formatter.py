@@ -270,7 +270,7 @@ class DataFormatter:
                 return True
             
             else:
-                logger.warning("Imagen completa sin modificaciones")
+                logger.debug("Imagen completa sin modificaciones")
                 return True
             
         except Exception as e:
@@ -535,7 +535,7 @@ class DataFormatter:
             candidates = self._get_lines_with_keyfield_count([6])
             
             if not candidates:
-                logger.info("No se encontró ninguna línea con HeaderWords (6).")
+                logger.debug("No se encontró ninguna línea con HeaderWords (6).")
                 return None
             
             header_line_id = max(candidates, key=candidates.get) # type: ignore
@@ -654,14 +654,15 @@ class DataFormatter:
             all_lines_dataclasses: Dict[str, AllLines] = {}
             for line_id, line_data in valid_lines.items():
                 line_geometry = LineGeometry(
-                    line_centroid=line_data.get("line_centroid", [0, 0]),
-                    line_bbox=line_data.get("line_bbox", [0, 0, 0, 0])
+                    line_centroid=line_data["line_centroid"] or [0, 0],
+                    line_bbox=line_data["line_bbox"] or [0, 0, 0, 0]
                 )
                 
                 all_lines_dataclasses[line_id] = AllLines(
                     lineal_id=line_id,
+                    line_index=line_data.get("line_index", 0),
                     text=line_data.get("text", ""),
-                    polygon_ids=line_data.get("polygon_ids", []),
+                    polygon_ids=line_data["polygon_ids"],
                     line_geometry=line_geometry,
                     tabular_line=False,
                     header_line=None,
@@ -685,7 +686,7 @@ class DataFormatter:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
             return False
 
-    def save_tabular_lines(self, line_ids: List[str]) -> bool:
+    def save_tabular_lines(self, line_ids: List[int]) -> bool:
         """
         Identifica las líneas tabulares y las guarda como dataclasses TabularLines
         en el workflow. También actualiza el flag en AllLines.

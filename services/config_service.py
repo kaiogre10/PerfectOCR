@@ -59,12 +59,12 @@ class ConfigService:
         ocr_active = not ocr_workers.isdisjoint(all_workers)
 
         if not all_workers:
-            logger.info("Sin all workers")
+            logger.debug("Sin all workers")
             return {}
 
     # WF solo activo con OCR completo + data_finder
         elif ocr_workers.issubset(all_workers) and "data_finder" in all_workers:
-            logger.info("OCR completo + data_finder")
+            logger.debug("OCR completo + data_finder")
             return {
  "models_config": self.config.get("models_config", {}),
             "activate_wf": True
@@ -72,7 +72,7 @@ class ConfigService:
 
     # OCR parcial (uno o ambos, pero sin data_finder suficiente)
         elif ocr_active:
-            logger.info("OCR activo sin condiciones completas para WF")
+            logger.debug("OCR activo sin condiciones completas para WF")
             return {
             "models_config": self.config.get("models_config", {}),
             "activate_wf": False
@@ -80,14 +80,14 @@ class ConfigService:
 
     # Sin OCR (incluye solo data_finder)
         elif "data_finder" in all_workers:
-            logger.info("Solo data_finder")
+            logger.debug("Solo data_finder")
             return {
             "models_config": {},
             "activate_wf": False
         }
 
         else:
-            logger.info("Configuración de modelos no cargada")
+            logger.debug("Configuración de modelos no cargada")
             return {}
         
     @property

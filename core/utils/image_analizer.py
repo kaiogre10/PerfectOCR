@@ -164,5 +164,5 @@ def extract_contours_histogram(img: np.ndarray[Any, np.dtype[np.uint8]]):
                     # No encontró más bins para eliminar o encontró >= 2
                     break  # Salir del while True
             
-        logger.info(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
+        # logger.info(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
         return cont_coords, metrics, bin_edges

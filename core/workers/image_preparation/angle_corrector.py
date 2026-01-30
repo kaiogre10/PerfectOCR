@@ -115,7 +115,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 return deskew_img, True
             
             else:             
-                logger.info(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
+                logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
                 return full_img, False
                 
         except Exception as e:

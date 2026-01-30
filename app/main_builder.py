@@ -51,8 +51,8 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         # 7. Main ejecuta procesamiento
         t4 = time.perf_counter()
         results = execute_processing(builders, workflow_report)
-        logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
-        logger.info(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
+        logger.debug(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
+        logger.debug(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
 
         cleanup_project_cache(project_root)
         return results #type: ignore
@@ -103,7 +103,7 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
     total_processing_time = 0.0
     builders_amount = len(builders)
     total_img = 0
-    logger.info(f"Cantidad de Builder creados: {builders_amount}")
+    logger.debug(f"Cantidad de Builder creados: {builders_amount}")
 
     try:
         for i, builder in enumerate(builders):

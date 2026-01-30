@@ -2,7 +2,7 @@
 import logging
 import time
 import numpy as np
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, NamedTuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -68,7 +68,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             polygons.values(),
             key=lambda p: p.geometry.centroid[1]
         )
-                
+        
         lines_info: Dict[str, Any] = {}
         current_line_polys: List[Polygons] = []
         current_line_bbox: Optional[List[float]] = None
@@ -129,6 +129,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     
                     line_id = f"line_{line_counter:04d}"
                     lines_info[line_id] = {
+                        "line_index": line_counter,
                         "line_bbox": current_line_bbox,
                         "line_centroid": line_centroid,
                         "polygon_ids": polygon_ids,
@@ -140,7 +141,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                    logger.info(f"{line_id}: '{joined_text}'")
+                    # logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -160,6 +161,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 
                 line_id = f"line_{line_counter:04d}"
                 lines_info[line_id] = {
+                    "line_index": line_counter,
                     "line_bbox": current_line_bbox,
                     "line_centroid": line_centroid,
                     "polygon_ids": polygon_ids,
@@ -167,7 +169,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 }
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                logger.info(f"{line_id}: '{joined_text}'")
+                # logger.info(f"{line_id}: '{joined_text}'")
 
         # lines_array = np.array(lines_bbox)
         # logger.info(f"ARRAY: {lines_array}, SHPAE: {lines_array.shape}")
