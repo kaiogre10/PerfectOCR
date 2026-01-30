@@ -167,7 +167,7 @@ class Vectorizer(VectorizationAbstractWorker):
             t3 = time.perf_counter()
             all_features = self.calculate_all_features(all_lines, geoline_features, global_stats, manager)
             logger.debug(f"Features completas calculadas en {time.perf_counter() - t3:.7f}s")
-            logger.info("Features completas:"
+            logger.debug("Features completas:"
             "\n"f"{all_features}"
             "\n"f"SHAPE:{all_features.shape}")
 
@@ -396,7 +396,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 # Cuenta dígitos en el texto de la línea
                 line_text = getattr(line_data, "text", "")
                 dcount = sum(1 for ch in line_text if ch in self.char_num)
-                features.append([line_index, sc_count, dcount])
+                features.append([sc_count, dcount])
 
             features = np.array(features, dtype=np.int32)
             
@@ -411,24 +411,25 @@ class Vectorizer(VectorizationAbstractWorker):
             num_mean = all_numerics / num_lines 
             num_above = features[:, 1] >= num_mean
             
-            has_digit = np.any(features[:,2] < 0)
+            has_digit = np.any(features[:,2] < 0) *1
             digit_char_frec = features[:,2] / max_digit
 
             # Normaliza la diferencia entre los tokens numéricos de la línea y el promedio global al rango [-1, 1]; cerca de 1 significa mucho más numérica que la media, cerca de -1 significa mucho menos numérica.
-            # if max_numerics > 0:
-            #     num_margin = (features[:, 1] - num_mean) / (max_numerics / np.array(2))  # Normaliza la diferencia a [-1, 1]; valores extremos significan líneas atípicas respecto a lo numérico.
-            #     num_margin = np.max(np.array(-1.0), np.min(np.array(1.0), num_margin))
-            # else:
-            #     num_margin = 0.0
+            #if max_numerics > 0:
+            #    num_margin = (features[:, 1] - num_mean) / (max_numerics / np.array(2))*1  # Normaliza la diferencia a [-1, 1]; valores extremos significan líneas atípicas respecto a lo numérico.
+              #  num_margin = np.max(np.array(-1.0), np.min(np.array(1.0), num_margin))*1
+            #else:
+              ## num_margin = 0.0
                 
             
             return np.column_stack([
                     features,
-                    # has_numeric.astype(np.int32), 
+                   # has_numeric * 1, 
                     num_count_norm.astype(np.int32),
                     num_above.astype(np.int32),
                     digit_char_frec.astype(np.int32),
-                    # has_digit.astype(np.int32)
+                  #  has_digit * 1
+                 # num_margin
                     ])
                      
             
