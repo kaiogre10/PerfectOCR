@@ -104,6 +104,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                     continue
 
                 final_polygons_list.append({
+                    "poly_index": idx,
                     "polygon_coords": coords,
                     "bounding_box": bbox,
                     "centroid": centroid,

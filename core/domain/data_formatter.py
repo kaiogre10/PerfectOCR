@@ -66,6 +66,7 @@ class DataFormatter:
             
             for pid, poly_data in results.items():
                 poly_id = pid
+                poly_index = poly_data.get("poly_index", 0)
                 coords = poly_data["polygon_coords"]
                 bbox = poly_data["bounding_box"]
                 centroid = poly_data["centroid"]
@@ -80,6 +81,7 @@ class DataFormatter:
                 # Crear objeto Polygons y agregar al diccionario
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
+                    poly_index=poly_index,
                     geometry=geometry,
                     cropedd_geometry=None, #type:ignore
                     cropped_img=None,

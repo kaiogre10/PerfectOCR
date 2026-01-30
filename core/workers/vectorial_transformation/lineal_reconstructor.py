@@ -2,14 +2,12 @@
 import logging
 import time
 import numpy as np
-from typing import Dict, Any, List, Optional, NamedTuple
+from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from services.output_service import save_raw_json, save_croped_image
-from core.utils.math_utils import define_intervals
+from services.output_service import save_raw_json
 from core.utils.text_validator import validate_text
-from core.utils.image_utils import cropp_img
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +106,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
                 else:
                     # Finaliza la línea actual y guarda la debug
-                    polygon_ids = [p.polygon_id for p in current_line_polys]
+                    polygon_ids = [p.poly_index for p in current_line_polys]
                     texts = [p.ocr_text or "" for p in current_line_polys]
                     joined_text = " ".join(texts).strip()
                     
@@ -145,7 +143,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
         # Finaliza la última línea
         if current_line_polys:
-            polygon_ids = [p.polygon_id for p in current_line_polys]
+            polygon_ids = [p.poly_index for p in current_line_polys]
             texts = [p.ocr_text or "" for p in current_line_polys]
             joined_text = " ".join(texts).strip()
             
@@ -170,26 +168,4 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
                 # logger.info(f"{line_id}: '{joined_text}'")
-
-        # lines_array = np.array(lines_bbox)
-        # logger.info(f"ARRAY: {lines_array}, SHPAE: {lines_array.shape}")
-        # logger.info(f"BBOXES: {lines_bbox}")
-        # bboxes_array = np.array(bboxes)
-        # logger.info(f"SHAE:{bboxes_array.shape}")
-        # intervals = define_intervals(bboxes_array, overlap_threshold=0.50)
-        # logger.info(f"Lineas vectorizadas: {intervals.reshape}")
-
-        # image_name = "2"
-        # worker_name = context.get("worker_name") or "lineal"
-        # output_paths = context["output_paths"]
-        # # for i in range(len(intervals)):
-        #     image_id = f"vector_{image_name}_{worker_name}_{i+1}"
-        #     full_array = cropp_img(full_img.copy(), intervals)
-        #     save_croped_image(image_name, image_id, full_array, output_paths, worker_name)
-
-        # for i in range(len(lines_array)):
-        #     lines_full = cropp_img(full_img, lines_array)
-            
-        #     imge_id = f"clasic_{image_name}_{worker_name}_{i+1}"
-        #     save_croped_image(image_name, imge_id, lines_full, output_paths, worker_name)
         return lines_info

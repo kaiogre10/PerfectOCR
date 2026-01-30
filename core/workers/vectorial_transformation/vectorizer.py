@@ -72,12 +72,10 @@ class Vectorizer(VectorizationAbstractWorker):
     def _vectorize_text(self, manager: DataFormatter, context: Dict[str, Any]) -> Optional[Dict[str, Dict[str, float]]]:
         try:
             t0 = time.perf_counter()
-            all_lines: Dict[str, AllLines] = {}
-            if manager.workflow and hasattr(manager.workflow, "all_lines"):
-                all_lines = getattr(manager.workflow, "all_lines", {})
+            all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             
             t3 = time.perf_counter()
-            features_by_line = self._calculate_features(manager, context)
+            features_by_line = self._calculate_features(all_lines, manager, context)
             logger.info(f"All_Feautures calculadas en {time.perf_counter() - t3:.7f}s")
 
             if not features_by_line:
@@ -143,19 +141,20 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error vectorizando lineas: {e}", exc_info=True)
             return None
         
-    def _calculate_features(self, sorted_lines: List[Tuple[str, AllLines]] , manager: DataFormatter, context: Dict[str, Any]) -> Optional[Dict[str, Dict[str, float]]]:
+    def _calculate_features(self, all_lines: Dict[str, AllLines] , manager: DataFormatter, context: Dict[str, Any]) -> Optional[Dict[str, Dict[str, float]]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
         """
         try:
             t1 = time.perf_counter()            
-            line_features: Dict[str, float] = self._calculate_textual_line_featrues(sorted_lines, manager)
+            line_features: Dict[str, float] = self._calculate_textual_line_featrues(all_lines, manager)
             logger.debug(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
 
             t2 = time.perf_counter()
-            geoline_features: Dict[str, float] = self._calculate_geometric_line_featrues(sorted_lines, manager)
+            geoline_features: np.ndarray[Any, Any] = self._calculate_geometric_line_featrues(all_lines, manager)
             logger.debug(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
+            logger.info(f"Features geometricas: {geoline_features.shape}")
 
             img_dims: Dict[str, int] = {}
             if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
@@ -165,10 +164,10 @@ class Vectorizer(VectorizationAbstractWorker):
                 return {}
 
             all_lines_features: Dict[str, Dict[str, float]] = {}
-            num_lines: float = len(sorted_lines)
+            num_lines: float = len(all_lines)
             # encoded_values = self._calculate_encoding_values(manager, sorted_lines)
 
-            for i, (line_id, line_data) in enumerate(sorted_lines):
+            for line_id, line_data in all_lines.items():
 
                 if not line_data:
                     logger.warning(f"No se encontraron datos para la línea {line_id}; será ignorada.")
@@ -205,8 +204,8 @@ class Vectorizer(VectorizationAbstractWorker):
                 else:
                     num_margin = 0.0
                 
-                bbox: List[float] = line_data.line_geometry.line_bbox
-                centroid: List[float] = line_data.line_geometry.line_centroid
+                bbox = line_data.line_geometry.line_bbox
+                centroid = line_data.line_geometry.line_centroid
 
                 if len(bbox) < 4.0 or len(centroid) < 2.0:
                     continue
@@ -356,32 +355,42 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error calculando tabular features: {e}", exc_info=True)
             return {}
 
-    def _calculate_textual_line_featrues(self, sorted_lines: List[Tuple[str, AllLines]], manager: DataFormatter) -> Dict[str, float]:
+    def _calculate_textual_line_featrues(self, all_lines: Dict[str, AllLines], manager: DataFormatter) -> Dict[str, float]:
         try:
+            
             line_features: Dict[str, float] = {}
             digit_count_by_line: Dict[str, float] = {}
             numeric_counts_by_line: Dict[str, float] = {}
-            for line_id, line_data in sorted_lines:
+            polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            
+            # CORRECCIÓN: Crear mapa de índice (int) a ID (str) para búsqueda rápida
+            index_to_id_map = {p.poly_index: p.polygon_id for p in polygons_dict.values()}
+
+            for line_id, line_data in all_lines.items():
                 ncount = 0.0
-                poly_ids_line = getattr(line_data, "polygon_ids", []) or []
+                poly_ids_line = line_data.polygon_ids # Ahora es una lista de enteros (indices)
+                
                 if manager.workflow and manager.workflow.polygons and poly_ids_line:
-                    polygons_dict: Dict[str, Polygons] = manager.workflow.polygons
-                    for pid in poly_ids_line:
-                        if pid in polygons_dict:
-                            sc = polygons_dict[pid].semantic_clasification
+                    
+                    for pid_idx in poly_ids_line:
+                        # Buscar el ID (string) usando el índice (int)
+                        pid_str = index_to_id_map.get(pid_idx)
+                        
+                        if pid_str and pid_str in polygons_dict:
+                            sc = polygons_dict[pid_str].semantic_clasification
                             ncount += self.count_numeric_tokens(sc, manager)
+                            
                 numeric_counts_by_line[line_id] = ncount
                 
-                line_text = getattr(line_data, "text", "") or ""
+                line_text = line_data.text
                 dcount = sum(1 for ch in line_text if ch in self.char_num)
                 dcount += 1.0
                 digit_count_by_line[line_id] = dcount
 
-            if sorted_lines:
+            if all_lines:
                 numeric_counts_list = list(numeric_counts_by_line.values())
                 total_numerics_global: float = float(sum(numeric_counts_list)) if numeric_counts_list else 0.0
                 max_numeric_count_global = max(numeric_counts_list) if numeric_counts_list else 0.0
-                # median_numeric_global = float(np.median(numeric_counts_list)) if numeric_counts_list else -1.0
                 digit_counts_list = list(digit_count_by_line.values())
                 max_digit_count_global = max(digit_counts_list) if digit_counts_list else -1.0
                 
@@ -389,7 +398,6 @@ class Vectorizer(VectorizationAbstractWorker):
                     "total_numerics_global": total_numerics_global,
                     "max_numeric_count_global": max_numeric_count_global,
                     "max_digit_count_global": max_digit_count_global,
-                    # "median_numeric_global": median_numeric_global
                 }
 
             return line_features
@@ -398,84 +406,99 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.warning(f"Error en features de lineas: {e}", exc_info=True)
             return {}
 
-    def _calculate_geometric_line_featrues(self, sorted_lines: List[Tuple[str, AllLines]],  manager: DataFormatter) -> Dict[str, float]:
+    def _calculate_geometric_line_featrues(self, all_lines: Dict[str, AllLines], manager: DataFormatter) -> np.ndarray[Any, Any]:
         try:
             if not manager.workflow.all_lines if manager.workflow else {}:
-                return {}
+                return []
 
-            geoline_features: Dict[str, float] = {}
-
-            width_count_by_line: Dict[str, float] = {}
-            height_count_by_line: Dict[str, float] = {}
-            area_count_by_line: Dict[str, float] = {}
-            perimeter_count_by_line: Dict[str, float] = {}
-            asprat_count_by_line: Dict[str, float] = {}
-            diagonal_count_by_line: Dict[str, float] = {}
-            angle_count_by_line: Dict[str, float] = {}
-            slope_count_by_line: Dict[str, float] = {}
             
-            for line_id, line_data in sorted_lines:
-                line_geometry = getattr(line_data, "line_geometry", None)
-                if line_geometry and hasattr(line_geometry, "line_bbox") and len(line_geometry.line_bbox) == 4:
-                    bbox = line_geometry.line_bbox
-                    bbox_width = bbox[2] - bbox[0]
-                    bbox_height: float = bbox[3] - bbox[1]
-                    area = bbox_width * bbox_height
-                    perimeter: float = 2 * (bbox_width + bbox_height)
-                    aspect_ratio = ((bbox_height / bbox_width) * 100)
-                    diagonal = float(np.sqrt((bbox_width**2.0) + (bbox_height**2.0)))
-                    angle = np.degrees(np.arctan2(bbox_height, bbox_width))
-                    slope = bbox_width / bbox_height  if bbox_width != 0 else 0.0
-                    width_count_by_line[line_id] = bbox_width
-                    height_count_by_line[line_id] = bbox_height
-                    area_count_by_line[line_id] = area
-                    perimeter_count_by_line[line_id] = perimeter
-                    asprat_count_by_line[line_id] = aspect_ratio
-                    diagonal_count_by_line[line_id] = diagonal
-                    angle_count_by_line[line_id] = angle
-                    slope_count_by_line[line_id] = slope
+            line_index = np.array([lid.line_index for lid in all_lines.values()], np.int32)
+            geometry = [lid.line_geometry for lid in all_lines.values()]
+            bbox = np.array([geo.line_bbox for geo in geometry], np.float32)
+            # bbox = np.array(bbox)  # asegurarse que bbox es un array numpy de shape (N, 4)
+            width = bbox[:, 2] - bbox[:, 0]
+            height = bbox[:, 3] - bbox[:, 1]
+            area = width * height
+            perimeter = 2 * (width + height)
+            aspect_ratio = (height / width) * 100
+            diagonal = np.sqrt(width**2.0 + height**2.0)
+            angle = np.degrees(np.arctan2(height, width))
+            slope = width / height
+
+            return np.column_stack([line_index, width, height, area, perimeter, aspect_ratio, diagonal, angle, slope])
+
+            # geoline_features: Dict[str, float] = {}
+            # width_count_by_line: Dict[str, float] = {}
+            # height_count_by_line: Dict[str, float] = {}
+            # area_count_by_line: Dict[str, float] = {}
+            # perimeter_count_by_line: Dict[str, float] = {}
+            # asprat_count_by_line: Dict[str, float] = {}
+            # diagonal_count_by_line: Dict[str, float] = {}
+            # angle_count_by_line: Dict[str, float] = {}
+            # slope_count_by_line: Dict[str, float] = {}
+            
+            # for line_id, line_data in all_lines.items():
+            #     line_geometry = getattr(line_data, "line_geometry", None)
+            #     if line_geometry and hasattr(line_geometry, "line_bbox") and len(line_geometry.line_bbox) == 4:
+            #         bbox = line_geometry.line_bbox
+            #         bbox_width = bbox[2] - bbox[0]
+            #         bbox_height: float = bbox[3] - bbox[1]
+            #         area = bbox_width * bbox_height
+            #         perimeter: float = 2 * (bbox_width + bbox_height)
+            #         aspect_ratio = ((bbox_height / bbox_width) * 100)
+            #         diagonal = float(np.sqrt((bbox_width**2.0) + (bbox_height**2.0)))
+            #         angle = np.degrees(np.arctan2(bbox_height, bbox_width))
+            #         slope = bbox_width / bbox_height  if bbox_width != 0 else 0.0
+            #         width_count_by_line[line_id] = bbox_width
+            #         height_count_by_line[line_id] = bbox_height
+            #         area_count_by_line[line_id] = area
+            #         perimeter_count_by_line[line_id] = perimeter
+            #         asprat_count_by_line[line_id] = aspect_ratio
+            #         diagonal_count_by_line[line_id] = diagonal
+            #         angle_count_by_line[line_id] = angle
+            #         slope_count_by_line[line_id] = slope
                     
-            if sorted_lines:
-                max_count_width = max(width_count_by_line.values()) if width_count_by_line else 0.0      # Ancho máximo de los bounding boxes de las líneas
-                max_count_area = max(area_count_by_line.values()) if area_count_by_line else 0.0         # Área máxima cubierta por los bounding boxes de las líneas
-                max_count_perimeter = max(perimeter_count_by_line.values()) if perimeter_count_by_line else 0.0 # Perímetro máximo entre los bounding boxes de las líneas
-                max_count_aspcrat = max(asprat_count_by_line.values()) if asprat_count_by_line else 0.0  # Máxima razón de aspecto (alto/ancho * 100) de las líneas
-                max_count_diagonal = max(diagonal_count_by_line.values()) if diagonal_count_by_line else 0.0    # Longitud diagonal máxima entre los bounding boxes de las líneas
-                diagonal_values = list(diagonal_count_by_line.values()) if diagonal_count_by_line else []
-                diagonal_median = float(np.median(diagonal_values)) if diagonal_values else 0.0
-                bbox_width_values= list(width_count_by_line.values())
-                bbox_width_median = float(np.median(bbox_width_values)) if bbox_width_values else 0.0
-                bbox_height_values= list(height_count_by_line.values())
-                bbox_height_median = float(np.median(bbox_height_values)) if height_count_by_line else 0.0
-                area_values= list(area_count_by_line.values())
-                area_median = float(np.median(area_values)) if area_values else 0.0
-                perimeter_values = list(perimeter_count_by_line.values())
-                perimeter_median = float(np.median(perimeter_values)) if perimeter_values else 0.0
-                angle_values = list(angle_count_by_line.values())
-                angle_median = float(np.median(angle_values)) if angle_values else 0.0
-                slope_values = list(slope_count_by_line.values())
-                slope_median = float(np.median(slope_values)) if slope_values else 0.0
+            # if sorted_lines:
+            #     max_count_width = max(width_count_by_line.values()) if width_count_by_line else 0.0      # Ancho máximo de los bounding boxes de las líneas
+            #     max_count_area = max(area_count_by_line.values()) if area_count_by_line else 0.0         # Área máxima cubierta por los bounding boxes de las líneas
+            #     max_count_perimeter = max(perimeter_count_by_line.values()) if perimeter_count_by_line else 0.0 # Perímetro máximo entre los bounding boxes de las líneas
+            #     max_count_aspcrat = max(asprat_count_by_line.values()) if asprat_count_by_line else 0.0  # Máxima razón de aspecto (alto/ancho * 100) de las líneas
+            #     max_count_diagonal = max(diagonal_count_by_line.values()) if diagonal_count_by_line else 0.0    # Longitud diagonal máxima entre los bounding boxes de las líneas
+            #     diagonal_values = list(diagonal_count_by_line.values()) if diagonal_count_by_line else []
+            #     diagonal_median = float(np.median(diagonal_values)) if diagonal_values else 0.0
+            #     bbox_width_values= list(width_count_by_line.values())
+            #     bbox_width_median = float(np.median(bbox_width_values)) if bbox_width_values else 0.0
+            #     bbox_height_values= list(height_count_by_line.values())
+            #     bbox_height_median = float(np.median(bbox_height_values)) if height_count_by_line else 0.0
+            #     area_values= list(area_count_by_line.values())
+            #     area_median = float(np.median(area_values)) if area_values else 0.0
+            #     perimeter_values = list(perimeter_count_by_line.values())
+            #     perimeter_median = float(np.median(perimeter_values)) if perimeter_values else 0.0
+            #     angle_values = list(angle_count_by_line.values())
+            #     angle_median = float(np.median(angle_values)) if angle_values else 0.0
+            #     slope_values = list(slope_count_by_line.values())
+            #     slope_median = float(np.median(slope_values)) if slope_values else 0.0
 
-                geoline_features = {
-                    "max_count_width": max_count_width,
-                    "max_count_area": max_count_area,
-                    "max_count_perimeter": max_count_perimeter,
-                    "max_count_aspcrat": max_count_aspcrat,
-                    "max_count_diagonal": max_count_diagonal,
-                    "diagonal_median": diagonal_median,
-                    'bbox_width_median': bbox_width_median,
-                    "bbox_height_median": bbox_height_median,
-                    'area_median': area_median,
-                    'perimeter_median': perimeter_median,
-                    "angle_median": angle_median,
-                    "slope_median": slope_median
-                }
+            #     geoline_features = {
+            #         "max_count_width": max_count_width,
+            #         "max_count_area": max_count_area,
+            #         "max_count_perimeter": max_count_perimeter,
+            #         "max_count_aspcrat": max_count_aspcrat,
+            #         "max_count_diagonal": max_count_diagonal,
+            #         "diagonal_median": diagonal_median,
+            #         'bbox_width_median': bbox_width_median,
+            #         "bbox_height_median": bbox_height_median,
+            #         'area_median': area_median,
+            #         'perimeter_median': perimeter_median,
+            #         "angle_median": angle_median,
+            #         "slope_median": slope_median
+            #     }
 
-            return geoline_features
+            # return geoline_features
         except Exception as e:
             logger.warning(f"Error en feaures de lineas: {e}", exc_info=True)
             
-            return {}
+            return []
                 
     def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[int]]:
         

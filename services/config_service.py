@@ -1,6 +1,6 @@
 # services/config_service.py
 import yaml
-from typing import Dict, Any, cast, List, Set, Optional
+from typing import Dict, Any, cast, List, Set, Tuple
 from config.config_models import MasterConfig
 import logging
 
@@ -13,6 +13,9 @@ class ConfigService:
         self.validated_config = self._load_and_validate_yaml(config_path)
         self.config = self.validated_config.model_dump()
         self.test_mode = TEST_MODE
+        self.ocr_workers: Set[str] = {"geometry_detector", "paddle_wrapper", "polygon_extractor"}
+        self.elemental_worker = "image_loader"
+        self.min_workers: Set[str] = self.ocr_workers.union(self.elemental_worker)
         if not self.test_mode and self._validate_min_workers():
             logger.warning("Modo de producción activado, se cargan configuraciones robustas")
             self.config = self.config
@@ -49,36 +52,36 @@ class ConfigService:
         return self.config.get("enabled_outputs", {})
     
     @property
-    def workers_order(self) -> Dict[str, Optional[List[str]]]:
+    def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
 
     @property
     def models_config(self) -> Dict[str, Any]:
-        ocr_workers = {"geometry_detector", "paddle_wrapper"}
+        
         all_workers = self.get_all_workers
-        ocr_active = not ocr_workers.isdisjoint(all_workers)
+        ocr_active = not self.ocr_workers.isdisjoint(all_workers)
 
         if not all_workers:
             logger.debug("Sin all workers")
             return {}
 
-    # WF solo activo con OCR completo + data_finder
-        elif ocr_workers.issubset(all_workers) and "data_finder" in all_workers:
+        # WF solo activo con OCR completo + data_finder
+        elif self.ocr_workers.issubset(all_workers) and "data_finder" in all_workers:
             logger.debug("OCR completo + data_finder")
             return {
- "models_config": self.config.get("models_config", {}),
-            "activate_wf": True
+                "models_config": self.config.get("models_config", {}),
+                "activate_wf": True
             }
 
-    # OCR parcial (uno o ambos, pero sin data_finder suficiente)
+        # OCR parcial (uno o ambos, pero sin data_finder suficiente)
         elif ocr_active:
             logger.debug("OCR activo sin condiciones completas para WF")
             return {
             "models_config": self.config.get("models_config", {}),
             "activate_wf": False
-        }
+            }
 
-    # Sin OCR (incluye solo data_finder)
+        # Sin OCR (incluye solo data_finder)
         elif "data_finder" in all_workers:
             logger.debug("Solo data_finder")
             return {
@@ -109,7 +112,7 @@ class ConfigService:
        
     @property
     def preprocessing_config(self)-> Dict[str, Any]:
-        if not self.create_stager[1][1]:
+        if not self.create_stager[1][1] or not any(self.ocr_workers):
             return {}
         else:
             return {
@@ -121,7 +124,7 @@ class ConfigService:
 
     @property
     def ocr_config(self) -> Dict[str, Any]:
-        if not self.create_stager[2][1]:
+        if not self.create_stager[2][1] or not len(self.ocr_workers) == 3:
             return {}
         else:
             return {
@@ -133,7 +136,7 @@ class ConfigService:
        
     @property
     def vectorization_config(self) -> Dict[str, Any]:
-        if not self.create_stager[3][1]:
+        if not self.create_stager[3][1] or not any(self.ocr_workers):
             return {}
         else:
             return {
@@ -154,14 +157,13 @@ class ConfigService:
         }
 
     def _validate_min_workers(self) -> bool:
-        min_workers: Set[str] = {"image_loader", "geometry_detector", "polygon_extractor", "paddle_wrapper"}
         try:
             if not self.workers_order:
                 logger.error("No hay configuración de workers disponible")
                 return False
             
             set_worker_config = self.get_all_workers
-            if min_workers.issubset(set_worker_config):
+            if self.min_workers.issubset(set_worker_config):
                 # Loguear conteo por stage de forma segura
                 for stage, stage_workers in self.workers_order.items():
                     if isinstance(stage_workers, (list, tuple, set)): #type: ignore
@@ -176,8 +178,8 @@ class ConfigService:
                     logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
                 return True
             else:
-                workers_missing = min_workers - set_worker_config
-                logger.warning(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
+                workers_missing = self.min_workers - set_worker_config
+                logger.warning(f"Faltan: {workers_missing} de los '{len(self.min_workers)}' workers mínimos para el pipeline")
                 return False
 
         except Exception as e:
@@ -185,10 +187,10 @@ class ConfigService:
         return False
     
     @property
-    def create_stager(self) -> List[str]:
-        full_stage: List[str] = []
+    def create_stager(self) -> List[Tuple[str, List[str]]]:
+        full_stage: List[Tuple[str, List[str]]] = []
         for stage_workers in self.workers_order.items():
-            full_stage.append(stage_workers) # type: ignore
+            full_stage.append(stage_workers)
         return full_stage
     
     @property
