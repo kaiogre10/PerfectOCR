@@ -104,7 +104,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                     worker_name = context.get("worker_name") or "sp"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     output_paths = context["output_paths"]
-                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name, method=worker_name)
+                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
 
             total_time = time.time() - start_time
             logger.info(f"Corregidos: {corrected_poly}/{len(poly_ids_order)} polígonos en: {total_time:.6f}s")

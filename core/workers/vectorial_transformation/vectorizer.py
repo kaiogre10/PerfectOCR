@@ -89,62 +89,7 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.info(f"Features shape: {features_array.shape}")
             
             return features_array
-                    
-            all_features: Dict[str, Dict[str, float]] = {}
-            table_headers: List[str] = []
-            table_rows: List[List[str]] = []
-            id_col_width = 10
-
-            for line_id, _ in all_lines:
-                features = features_by_line.get(line_id)
-                if not features:
-                    continue
-
-                all_features[line_id] = features
-                    
-                # Inicializar headers solo la primera vez
-                if not table_headers:
-                    table_headers = list(features.keys())
-                
-                # Agregar cada fila (convirtiendo todo a string para la tabla)
-                row_values = [line_id] + [f"{features.get(k, 0.0):.6f}" if isinstance(features.get(k), float) else str(features.get(k, '')) for k in table_headers]
-                table_rows.append(row_values)
-                
-                # Actualizar ancho de columna ID
-                if len(line_id) > id_col_width:
-                    id_col_width = len(line_id)
-        
-            # Construir tabla FUERA del bucle
-            if all_features and table_rows:
-                col_widths = [int(id_col_width)] + [
-                    max(len(str(h)), max(len(f"{row[i+1]:.4f}") if isinstance(row[i+1], float) else len(str(row[i+1])) for row in table_rows))
-                    + 2 for i, h in enumerate(table_headers)
-                ]
-                table: List[str] = []
-                table.append("+" + "+".join("-" * w for w in col_widths) + "+")
-                header_row: str = "|" + "line_id".center(col_widths[0]) + "|" + "|".join(
-                    str(h).center(w) for h, w in zip(table_headers, col_widths[1:])
-                ) + "|"
-                table.append(header_row)
-                # Línea separadora
-                table.append("+" + "+".join("-" * w for w in col_widths) + "+")
-                # Filas de datos
-                for row in table_rows:
-                    value_row = "|" + str(row[0]).center(col_widths[0]) + "|" + "|".join(
-                        (f"{v:.4f}" if isinstance(v, float) else str(v)).center(w)
-                        for v, w in zip(row[1:], col_widths[1:])
-                    ) + "|"
-                    table.append(value_row)
-                # Línea inferior
-                table.append("+" + "+".join("-" * w for w in col_widths) + "+")
-                table_str = "\n".join(table)
-                logger.debug(f"\nTabla unificada características:\n{table_str}")
-                logger.warning(f"Vectorización completada en: {time.perf_counter() - t0:.7f}s")
-                return all_features
-            else:
-                logger.warning("No se pudieron calcular features para ninguna línea")
-                return None
-                    
+                            
         except Exception as e:
             logger.error(f"Error vectorizando lineas: {e}", exc_info=True)
             return None
@@ -155,7 +100,7 @@ class Vectorizer(VectorizationAbstractWorker):
         """
         try:
             t1 = time.perf_counter()
-            line_indices = np.array([line.line_index for line in sorted_lines], dtype=np.int32)
+            # line_indices = np.array([line.line_index for line in sorted_lines], dtype=np.int32)
             textual_features = self._calculate_textual_line_features(sorted_lines, manager)
             logger.debug(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
             # logger.debug(f"Features textuales shape: {textual_features.shape}"
@@ -345,7 +290,7 @@ class Vectorizer(VectorizationAbstractWorker):
         max_ratio = safe_div(global_stats[:, 1], total_size)
         ratio_area_norm = safe_div(ratio_area, max_ratio)
         
-        aspect_ratio = geoline_features[:, 5]
+        # aspect_ratio = geoline_features[:, 5]
         aspcrat_inv_norm = 1 - safe_div(np.abs(geoline_features[:, 5]), global_stats[:, 3]) # Nota: vectorize usa abs(ar/max)
         
         perimeter_norm = safe_div(geoline_features[:, 4], global_stats[:, 2])
@@ -453,7 +398,7 @@ class Vectorizer(VectorizationAbstractWorker):
             norm_wid,            # [5] ancho normalizado respecto a máximo
             width_rel,           # [6] ancho relativo al total de imagen
             area_norm,           # [7] area normalizada al máximo
-                                 # [8] 
+
             area_inv,            # [9] area normalizada/inversa de la mediana
             area_dif,            # [10] diferencia de area vs mediana
             center_align,        # [11] alineación con el centroide del documento
@@ -511,20 +456,6 @@ class Vectorizer(VectorizationAbstractWorker):
         logger.debug(f"Tabular lines desde vectorizer: {tabular_line_ids}")
         return tabular_line_ids
 
-    # En vectorizer.py (CORREGIDO)
-
     def count_numeric_tokens(self, semantic_clasification: int | List[int]) -> int:
-        """
-        Lógica idéntica a vectorize.py: soporte de exclusiones y tipo 2.
-        """             
-        # semantic_map = manager.get_semmantic_types()
-        # exclude_ints = {semantic_map.get(et) for et in self.exclude_types if semantic_map.get(et) is not None}
-
         classifications = semantic_clasification if isinstance(semantic_clasification, list) else [semantic_clasification]
-
-        # Si hay algún tipo excluido, retorna 0 (igual que vectorize.py)
-        # if any(sc in exclude_ints for sc in classifications):
-        #     return 0
-        
-        # Cuenta 1 (Numérico) Y 2 (Cuantitativo)
         return sum(1 for sc in classifications if sc in [1, 2])

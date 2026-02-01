@@ -118,6 +118,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
 
                 if self.output:
+                    var = np.mean(cropped)
+                    logger.info(f"Estadísticas de {poly_id}: VAR: {var}")
                     self.save_debug(cropped, context, "all", poly_id)
                 
                 poly_mean, dims = calculate_img_values(cropped)
@@ -219,7 +221,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 for poly_id, polygon in polygons.items():
                     cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                    self.save_debug(cropped_img, context, "filtered")            
+                    self.save_debug(cropped_img, context, "filtered")
             return True
 
         except Exception as e:
@@ -230,5 +232,5 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         worker_name = context.get("worker_name") or "poly_gone"
         output_paths = context["output_paths"]
         image_name = context["image_name"]
-        img_id = f"{image_name}_{worker_name}_{id}"
-        save_croped_image(img_id, status, polygon, output_paths, worker_name)
+        img_id = f"{status}_{id}"
+        save_croped_image(image_name, img_id, polygon, output_paths, worker_name)

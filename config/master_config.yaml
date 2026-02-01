@@ -5,8 +5,8 @@ pipeline_secuence:
     - "angle_corrector"
     - "ink_enhancement"
     # - "moire"
-    - "geometry_detector"
-    - "polygon_extractor"
+    # - "geometry_detector"
+    # - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: false
+    bin_full_img: true
     angle_corrected: false
     moire_poly: false
     cropped_img: true
@@ -86,17 +86,18 @@ modules:
   image_preparation:
 
     ink_enhancement:
-      iterations: 1
+      iterations: 2
       white: [255, 255, 255]
       black: [0, 0, 0]
       start_restoring: True
-      noise_kernel: [9, 9]
+      noise_kernel: [7, 7]
       restorer_kernel: [2, 5]
-      isolation_range: [4.68, 240.601]
+      isolation_range: [5.28, 240.601]
       threshold_black: 160
       threshold_white: 180
       aspect_ratio_range: [5.0, 15.0]
       angle_threshold: 10
+      min_area: 5
 
     angle_corrector:
       min_angle_for_correction: 0.9

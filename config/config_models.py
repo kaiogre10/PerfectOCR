@@ -73,6 +73,7 @@ class InkConfig(ConfigWithNumpy):
     threshold_white: int
     aspect_ratio_range: Tuple[float, float]
     angle_threshold: float
+    min_area: int
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
