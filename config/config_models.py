@@ -34,7 +34,6 @@ class OCROutputs(ConfigWithNumpy):
 
 class VectorizingOutputs(ConfigWithNumpy):
     table_lines: bool
-    encoded_lines: bool
     features: bool
     image_features: bool
     table_structured: bool

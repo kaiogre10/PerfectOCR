@@ -1,6 +1,6 @@
 # core/domain/workflow_models.py
 import numpy as np
-import pandas as pd # type: ignore
+import pandas as pd 
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
@@ -57,7 +57,7 @@ class Polygons:
 class LineGeometry:
     line_centroid: List[float]
     line_bbox: List[float]
-    
+
 @dataclass
 class AllLines:
     lineal_id: str
@@ -67,7 +67,7 @@ class AllLines:
     line_geometry: LineGeometry
     tabular_line: bool
     header_line: Optional[int]
-    footer_line: Optional[str]
+    footer_line: Optional[int]
     
 @dataclass
 class Metadata:

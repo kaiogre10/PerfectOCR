@@ -44,7 +44,7 @@ class DataFinder(OCRAbstractWorker):
 
             # Actualiza los key_fields
             if manager.update_key_field(polygon_updates):
-                logger.info(f"Key Fields detectados en {time.perf_counter() - start_time:.6f}s")
+                logger.debug(f"Key Fields detectados en {time.perf_counter() - start_time:.6f}s")
                 return True
                 
         except Exception as e:
@@ -75,33 +75,33 @@ class DataFinder(OCRAbstractWorker):
                 ocr_text = poly.ocr_text or ""
                 word_lenght = len(ocr_text)
                 if not validate_text(ocr_text) or word_lenght < 2:
-                    logger.info(f"{pid} sin texto o excede longitud: '{ocr_text}', letras: '{word_lenght}'")
+                    logger.debug(f"{pid} sin texto o excede longitud: '{ocr_text}', letras: '{word_lenght}'")
                     skipped_len += 1
                     continue
 
                 if find_umd(ocr_text):
                     skipped_semantic += 1
-                    logger.info(f"'{pid}' UMD: {ocr_text}")
+                    logger.debug(f"'{pid}' UMD: {ocr_text}")
                     continue
 
                 date_key = find_date(ocr_text)
                 if date_key:
                     skipped_semantic +=1
-                    logger.info(f"FECHA encontrado en {pid}, '{ocr_text}'")
+                    logger.debug(f"FECHA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 9
                     continue
 
                 rfc_key = find_rfc(ocr_text)
                 if rfc_key:
                     skipped_semantic +=1
-                    logger.info(f"RFC encontrado en {pid}, '{ocr_text}'")
+                    logger.debug(f"RFC encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 7
                     continue
 
                 iva_key = find_iva(ocr_text)
                 if iva_key:
                     skipped_semantic +=1
-                    logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
+                    logger.debug(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
                     continue
                 
@@ -128,7 +128,7 @@ class DataFinder(OCRAbstractWorker):
 
                     continue
 
-                # logger.info(f"{pid}: exto superviviente {ocr_text}")
+                # logger.debug(f"{pid}: exto superviviente {ocr_text}")
 
             if polygon_updates:
                 logger.debug(f"KEY_FIELDS: {polygon_updates}")

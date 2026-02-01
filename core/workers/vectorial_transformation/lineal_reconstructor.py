@@ -33,7 +33,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
-            
+            idx = [pid.poly_index for pid in polygons.values()]
+            logger.info(f"Cantidad de polígonos: {len(polygons)}, índice máximo: {max(idx)}")
             lines_info= self._reconstruct_lines(polygons, context, full_img)
             if not lines_info:
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")

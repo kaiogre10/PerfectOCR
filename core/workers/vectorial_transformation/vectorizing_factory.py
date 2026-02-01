@@ -25,7 +25,7 @@ class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
 
     def _create_lineal(self, context: Dict[str, Any]) -> LinealReconstructor:
         return LinealReconstructor(config=self.module_config, project_root=self.project_root)
-        
+    
     def _create_vectorizer(self, context: Dict[str, Any]) -> Vectorizer:
         return Vectorizer(config=self.module_config, project_root=self.project_root)
     

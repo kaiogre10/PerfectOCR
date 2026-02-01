@@ -1,6 +1,5 @@
 import numpy as np
 from typing import List, Any, Optional, Tuple
-from scipy.sparse import csr_matrix # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import logging
 from sklearn.cluster import DBSCAN
@@ -53,10 +52,10 @@ def bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int
     else:
         return 1.0
 
-def calculate_similarity_ref(X: csr_matrix, ref_vec: np.ndarray[Any, Any], dense_output: bool = False):
+def calculate_similarity_ref(X: np.ndarray[Any, np.dtype[np.float32]], ref_vec: np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
     return cosine_similarity(ref_vec, X, dense_output)[0]
 
-def cosine_similarity_global(X: csr_matrix, Y: None=None, dense_output: bool = False):
+def cosine_similarity_global(X: np.ndarray[Any, np.dtype[np.float32]], Y: None=None, dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
     return cosine_similarity(X, Y, dense_output).astype(np.float32)
 
 def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:

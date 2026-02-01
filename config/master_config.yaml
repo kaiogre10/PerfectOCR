@@ -3,7 +3,7 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     #- "angle_corrector"
-    - "ink_enhancement"
+    # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
@@ -11,7 +11,7 @@ pipeline_secuence:
     # - restorer
     # - "moire"
     # - "sp"
-    # # - "gauss"
+    # - "gauss"
     # - "clahe"
     # - "sharp"
 
@@ -23,8 +23,8 @@ pipeline_secuence:
   vector_stage:
     - "lineal"
     - "vectorizer"
-   # - "dbscan"
-    # - "cos_sim"
+    - "dbscan"
+    - "cos_sim"
     # - "table_structurer"
     # - "table_validated"
     # - "math_max"
@@ -60,7 +60,6 @@ enabled_outputs:
   
   vectorization_outputs:
     table_lines: false
-    encoded_lines: false
     features: false
     image_features: false
     table_structured: false
@@ -193,9 +192,9 @@ modules:
       ]
       
     dbscan:
-      eps: 1.5
+      eps: 1.0
       min_cluster_size: 2
-      metric: "cosine"
+      metric: "euclidean"
 
     cos_sim:
       min_cluster: 1

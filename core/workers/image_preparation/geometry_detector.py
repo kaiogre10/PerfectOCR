@@ -6,7 +6,7 @@ import numpy as np
 from typing import Dict, Any, Optional, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import binarice_img
+from core.utils.image_utils import binarice_img, normalice_image
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             logger.debug("Full_img obtenida con éxito")
+            full_img = normalice_image(full_img)
+            if full_img is None:
+                return False
+                
             bin_img = binarice_img(full_img, {})            
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 3))
             img=cv2.morphologyEx(bin_img.copy(), cv2.MORPH_CLOSE, kernel, iterations=2)

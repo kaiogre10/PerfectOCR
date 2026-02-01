@@ -5,7 +5,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.semantic_clasificator import SemanticClasificator
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.text_corrector import TextCorrector
-# from core.workers.ocr.fragmenter import Fragmenter
+from core.workers.ocr.fragmenter import Fragmenter
 # from core.utils.image_analizer import analize_bin_img
 # from core.utils.image_utils import binarice_img
 # from core.utils.text_validator import validate_text
@@ -18,7 +18,7 @@ class Refiner(OCRAbstractWorker):
     """
     Orquesta un ciclo de refinamiento de texto post-OCR con clasificación selectiva optimizada.
     """
-    def __init__(self, config: Dict[str, Any], project_root: str, clasificator: SemanticClasificator, cleaner: TextCleaner, corrector: TextCorrector):
+    def __init__(self, config: Dict[str, Any], project_root: str, clasificator: SemanticClasificator, cleaner: TextCleaner, corrector: TextCorrector, fragmenter: Fragmenter):
         super().__init__(config, project_root)
         worker_config = config.get("text_refiner", {})
         self.percentile = config["percentile"]
@@ -29,7 +29,7 @@ class Refiner(OCRAbstractWorker):
         self.output = config.get("binarized_polygons")
         self.clasificator = clasificator
         self.cleaner = cleaner
-        # self.fragmenter = fragmenter
+        self.fragmenter = fragmenter
         self.corrector = corrector
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

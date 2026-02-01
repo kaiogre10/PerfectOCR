@@ -133,18 +133,24 @@ def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: L
     except Exception as e:
         logger.error(f"Error guardadndo tabla JSON de {worker_name},: {e}", exc_info=True)
 
-def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]], output_paths: List[str] | str, worker_name: str, image_features: bool):
+def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, image_features: bool):
     try:
-        df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index') #type: ignore
-        df.index.name = 'line_id'
-        
-        # Resetear índice para que line_id sea una columna
-        df = df.reset_index()
+
+        if isinstance(all_features, dict):
+            df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index') # type: ignore
+            df.index.name = 'line_id'
+            df = df.reset_index()
+            header = list(df.columns)
+        else:
+            from core.utils.data_utils import FEATURES_NAME
+            df: pd.DataFrame = pd.DataFrame(all_features[1:, :])
+            header = list(FEATURES_NAME)
+            
 
         for path in output_paths:
             output_dir = os.path.join(path, worker_name)
             table_file_name = f"{file_name}_{worker_name}.csv"
-            save_table(df, output_dir, table_file_name, list(df.columns))
+            save_table(df, output_dir, table_file_name, header)
 
         if image_features:
             import matplotlib.pyplot as plt
