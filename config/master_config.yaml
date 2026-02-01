@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "angle_corrector"
+    #- "angle_corrector"
     - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
@@ -23,7 +23,7 @@ pipeline_secuence:
   vector_stage:
     - "lineal"
     - "vectorizer"
-   #  - "dbscan"
+   # - "dbscan"
     # - "cos_sim"
     # - "table_structurer"
     # - "table_validated"
@@ -193,8 +193,9 @@ modules:
       ]
       
     dbscan:
-      eps: 1.0
+      eps: 1.5
       min_cluster_size: 2
+      metric: "cosine"
 
     cos_sim:
       min_cluster: 1

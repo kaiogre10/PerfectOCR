@@ -16,22 +16,23 @@ class DensityScanner(VectorizationAbstractWorker):
         self.project_root = project_root
         worker_config = config.get('dbscan', {})
         self.min_cluster_size = int(worker_config.get("min_cluster_size")) 
-        self.eps = float(worker_config.get("eps")) 
+        self.eps = float(worker_config.get("eps"))
+        self.metric = worker_config.get("metric", "")
         self.output = config.get("table_lines", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.time()
         try:
             logger.debug("DBSCScanner iniciado")
-            analysis: Dict[str, Dict[str, float]] = context.get("all_features", {})
+            analysis: np.ndarray[Any, np.dtype[np.float32]]= context["all_features"]
             
-            if not analysis:
-                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
-                return True
+           # if not analysis:
+             #   logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
+             #   return True
 
-            valid_analyses = self._cut_lines(analysis, manager)
+          #  valid_analyses = self._cut_lines(analysis, manager)
             
-            table_line_ids: List[str] = self._apply_dbscan_clustering(valid_analyses)
+            table_line_ids: List[str] = self._apply_dbscan_clustering(analysis)
             logger.info(f"RESULTADOS DBSCAN: {len(table_line_ids)} table_line_ids: {table_line_ids}")
             if table_line_ids:
                 success: bool = manager.save_tabular_lines(table_line_ids)
@@ -59,21 +60,21 @@ class DensityScanner(VectorizationAbstractWorker):
             logger.error(f"DBSCAN no detectó tablas en el documento: {e}", exc_info=True)
         return False
 
-    def _apply_dbscan_clustering(self, valid_analyses: Dict[str, Dict[str, float]]) -> List[str]:
+    def _apply_dbscan_clustering(self, features_array: np.ndarray[Any, np.dtype[np.float32]]) -> List[str]:
         """Aplica DBSCAN para agrupar líneas similares - versión que acepta diccionario."""
-        if len(valid_analyses) < self.min_cluster_size:
-            logger.warning("No hay suficientes líneas válidas para clustering.")
-            return []
-                
-        line_ids = list(valid_analyses.keys())
-        features: List[List[float]] = []
+     #   if len(valid_analyses) < self.min_cluster_size:
+           # logger.warning("No hay suficientes líneas válidas para clustering.")
+        #    return []
+        #logger.info(f"Reultados: {features_array.round(1)}")
+        line_ids = features_array[:, 0]
+       # features: List[List[float]] = []
         
-        for line_data in valid_analyses.values():
-            features.append(list(line_data.values()))
+        #for line_data in valid_analyses.values():
+        ##   features.append(list(line_data.values()))
             
-        features_array = np.array(features, dtype=np.float32)
+       # np.delete(features_array, 0, axis=1)
        
-        labels: np.ndarray[Any, Any] = density_cluster(features_array, self.eps, self.min_cluster_size)
+        labels: np.ndarray[Any, Any] = density_cluster(features_array, self.eps, self.min_cluster_size, self.metric)
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:
@@ -84,11 +85,11 @@ class DensityScanner(VectorizationAbstractWorker):
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
         
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
-        logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
+        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
     
         return table_line_ids
 
-    def _cut_lines(self, analysis: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
+    def _cut_lines(self, analysis: Dict[str, Dict[str, float]], manager: DataFormatter):
         """
         Filtra solo las líneas después del encabezado y antes del footer para evitar ruido.
         """

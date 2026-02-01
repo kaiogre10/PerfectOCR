@@ -178,6 +178,7 @@ class OCRConfig(ConfigWithNumpy):
 class DBSCAN(ConfigWithNumpy):
     eps: float
     min_cluster_size: int
+    metric: str
 
 class Lineal(ConfigWithNumpy):
     overlap_threshold: float

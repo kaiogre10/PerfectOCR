@@ -7,7 +7,7 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
 from core.utils.text_validator import get_char_num
-from core.utils.math_utils import alignment, bbox_alignment
+from core.utils.math_utils import alignment, bbox_alignment, density_cluster
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class Vectorizer(VectorizationAbstractWorker):
             else:
                 # Si no hay intervalo, se prosigue con la vectorización normal
                 all_features = self._vectorize_text(manager, context)
-                if all_features:
+                if all_features.size != 0:
 
                     if self.features_output:
                         from services.output_service import save_table_values
@@ -69,7 +69,7 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error en vectorización: {e}", exc_info=True)
             return False
             
-    def _vectorize_text(self, manager: DataFormatter, context: Dict[str, Any]) -> Optional[Dict[str, Dict[str, float]]]:
+    def _vectorize_text(self, manager: DataFormatter, context: Dict[str, Any]) -> Optional[np.ndarray[Any, np.dtype[np.float32]]]:
         try:
             t0 = time.perf_counter()
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
@@ -77,10 +77,8 @@ class Vectorizer(VectorizationAbstractWorker):
             t3 = time.perf_counter()
             features_by_line = self._calculate_features(all_lines, manager, context)
             logger.info(f"All_Feautures calculadas en {time.perf_counter() - t3:.7f}s")
-
-            if not features_by_line:
-                logger.warning("No se pudieron calcular las características de ninguna línea.")
-                return None
+            return features_by_line
+            
                 
             all_features: Dict[str, Dict[str, float]] = {}
             table_headers: List[str] = []
@@ -141,7 +139,7 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error vectorizando lineas: {e}", exc_info=True)
             return None
         
-    def _calculate_features(self, all_lines: Dict[str, AllLines] , manager: DataFormatter, context: Dict[str, Any]) -> Optional[np.ndarray[Any, np.dtype[np.float32]]]:
+    def _calculate_features(self, all_lines: Dict[str, AllLines] , manager: DataFormatter, context: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
         """
         Calcula features geométricos + alineación tabular por cada línea.
         Retorna un diccionario con features por cada línea.
@@ -149,44 +147,44 @@ class Vectorizer(VectorizationAbstractWorker):
         try:
             t1 = time.perf_counter()            
             textual_features = self._calculate_textual_line_features(all_lines, manager)
-            logger.info(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
+            logger.debug(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
             logger.info(f"Features textuales shape: {textual_features.shape}"
                         "\n"f"{textual_features.round(0)}")
 
             t2 = time.perf_counter()
             geoline_features: np.ndarray[Any, Any] = self._calculate_geometric_line_features(all_lines, manager)
             logger.debug(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
-            logger.debug(f"Features geometricas: {geoline_features.shape}")
+            logger.info(f"Features geometricas: {geoline_features}")
             
             t3 = time.perf_counter()
             global_stats = self.calculate_global_stats(geoline_features.copy())
             logger.debug(f"Features globales calculadas en {time.perf_counter() - t3:.7f}s")
-            logger.debug("Features globales:"
+            logger.info("Features globales:"
             "\n"f"{global_stats}"
             "\n"f"SHAPE:{global_stats.shape}")
             
             t3 = time.perf_counter()
             all_features = self.calculate_all_features(all_lines, geoline_features, global_stats, manager)
             logger.debug(f"Features completas calculadas en {time.perf_counter() - t3:.7f}s")
-            logger.debug("Features completas:"
+            logger.info("Features completas:"
             "\n"f"{all_features}"
             "\n"f"SHAPE:{all_features.shape}")
            
             all_lines_features = np.column_stack([all_features, textual_features])
-            logger.info(f"{all_lines_features.shape}")
+            logger.debug(f"{all_lines_features.round(0)}")
 
             if self.second_output:
                 from services.output_service import save_raw_json
                 file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "vectorizer"
-                output_paths = context.get("output_paths", [])
+                output_paths = context["output_paths"]
                 save_raw_json(output_paths, worker_name, all_lines_features, file_name)
 
             return all_lines_features
 
         except Exception as e:
             logger.error(f"Error calculando tabular features: {e}", exc_info=True)
-            return {}
+            return []
 
     def _calculate_textual_line_features(self, all_lines: Dict[str, AllLines], manager: DataFormatter) -> np.ndarray[Any, np.dtype[np.int32]]:
         """
@@ -221,9 +219,8 @@ class Vectorizer(VectorizationAbstractWorker):
             all_numerics = np.sum(features[:, 0])
             max_numerics = np.max(features[:, 0])
             max_digit = np.max(features[:, 1])
-            #has_numeric = np.any(features[:,1] < 0).astype(np.int32)
             
-            num_count_norm = features[:, 1] / max_numerics 
+            num_count_norm = features[:, 0] / max_numerics 
             
             num_mean = (all_numerics/features.shape[0])
             mask = np.zeros((features.shape[0]))
@@ -241,7 +238,6 @@ class Vectorizer(VectorizationAbstractWorker):
               ## num_margin = 0.0
                 
             return np.column_stack([
-                    features,
                     has_numeric,
 
                     num_count_norm,
@@ -319,29 +315,29 @@ class Vectorizer(VectorizationAbstractWorker):
         total_height = img_dims.get("height") or 0.0
         
         bbox_height_inv = geoline_features[:, 2] / global_stats[:, 6]
-        bbox_h_dif = 1 - (np.abs(geoline_features[:, 2] - global_stats[:, 6]) / global_stats[:, 6])
+        bbox_h_dif = 1 - abs(geoline_features[:, 2] - global_stats[:, 6]) / global_stats[:, 6]
         bbox_width_inv = geoline_features[:, 1] / global_stats[:, 5]
-        bbox_w_dif = 1 - (np.abs(geoline_features[:, 1] - global_stats[:, 5]) / global_stats[:, 5])
+        bbox_w_dif = 1 - abs(geoline_features[:, 1] - global_stats[:, 5]) / global_stats[:, 5]
         norm_wid = geoline_features[:, 1] / global_stats[:, 0]  # ancho normalizado respecto al máximo ancho observado
         width_rel = geoline_features[:, 1] / total_width  # ancho relativo al ancho total de la imagen
         area_norm = geoline_features[:, 3] / global_stats[:, 1]  # área de la línea normalizada al máximo área
         ratio_area = geoline_features[:, 3] / total_size   # área de línea respecto al área total de la imagen
         area_inv = geoline_features[:, 3] / global_stats[:, 7]
-        area_dif = 1 - (np.abs(geoline_features[:, 3] - global_stats[:, 7]) / global_stats[:, 7])
+        area_dif = 1 - abs(geoline_features[:, 3] - global_stats[:, 7]) / global_stats[:, 7]
         max_ratio = global_stats[:, 1] / total_size   # máxima proporción de área de línea respecto al área total
         ratio_area_norm = ratio_area / max_ratio  # relación entre ratio de área de la línea y el máximo ratio posible
         aspect_ratio = geoline_features[:, 5]  # ya viene como (alto/ancho * 100.0) de la línea
-        aspcrat_inv_norm = 1 - (np.abs(geoline_features[:, 5] / global_stats[:, 3]))  # cuán diferente es el aspect_ratio respecto al máximo observado (más cerca de 1, más "promedio")
+        aspcrat_inv_norm = 1 - abs(geoline_features[:, 5] / global_stats[:, 3]) # cuán diferente es el aspect_ratio respecto al máximo observado (más cerca de 1, más "promedio")
         perimeter_norm = geoline_features[:, 4] / global_stats[:, 2]  # perímetro normalizado al máximo
         perimeter_inv = geoline_features[:, 4] / global_stats[:, 8]
-        perimeter_dif = 1 - (np.abs(geoline_features[:, 4] - global_stats[:, 8]) / global_stats[:, 8])  # Normalización respecto a la mediana, igual que diag_inv
+        perimeter_dif = 1 - abs(geoline_features[:, 4] - global_stats[:, 8]) / global_stats[:, 8]  # Normalización respecto a la mediana, igual que diag_inv
         diag_inv = geoline_features[:, 6] / global_stats[:, 10]
-        diag_dif = 1 - (np.abs(geoline_features[:, 6] - global_stats[:, 10]) / global_stats[:, 10])
+        diag_dif = 1 - abs(geoline_features[:, 6] - global_stats[:, 10]) / global_stats[:, 10]
         angle_inv = geoline_features[:, 7] / global_stats[:, 11]
         diag_norm = geoline_features[:, 6] / global_stats[:, 4]
         compact = ((geoline_features[:, 4] ** 2) / geoline_features[:, 3]) / 100.0  # medida de compactación
         slope_inv = geoline_features[:, 8] / global_stats[:, 12]
-        slope_dif = 1 - (np.abs(geoline_features[:, 8] - global_stats[:, 12]) / global_stats[:, 12])
+        slope_dif = 1 - abs(geoline_features[:, 8] - global_stats[:, 12]) / global_stats[:, 12]
         cw: float = (total_width / 2.0)  # centro horizontal de la imagen
         ch: float = (total_height / 2.0)  # centro vertical de la imagen
         main_centroid: List[float] = cw, ch # type: ignore  # coordenadas (x, y) del centro de la imagen
@@ -398,17 +394,17 @@ class Vectorizer(VectorizationAbstractWorker):
         line_ind = geoline_features[:, 0]
 
         all_features = np.column_stack([
-            line_ind,                   # [0] Índice de línea
-            geoline_features[:, 1],    # [1] width
-            geoline_features[:, 2],    # [2] height
-            geoline_features[:, 3],    # [3] area
-            geoline_features[:, 4],    # [4] perimeter
-            geoline_features[:, 5],    # [5] aspect_ratio
-            geoline_features[:, 6],    # [6] diagonal
-            geoline_features[:, 7],    # [7] angle
-            geoline_features[:, 8],    # [8] slope
-            geoline_features[:, 9],    # [9] centroid x
-            geoline_features[:, 10],   # [10] centroid y
+         #   line_ind,                   # [0] Índice de línea
+          #  geoline_features[:, 1],    # [1] width
+         #   geoline_features[:, 2],    # [2] height
+         ##  geoline_features[:, 3],    # [3] area
+          #  geoline_features[:, 4],    # [4] perimeter
+        #    geoline_features[:, 5],    # [5] aspect_ratio
+         #   geoline_features[:, 6],    # [6] diagonal
+          #  geoline_features[:, 7],    # [7] angle
+        #    geoline_features[:, 8],    # [8] slope
+        #    geoline_features[:, 9],    # [9] centroid x
+        ##   geoline_features[:, 10],   # [10] centroid y
 
             bbox_height_inv,     # [11] height normalized/inverse median
             bbox_h_dif,          # [12] diferencia de height vs mediana
