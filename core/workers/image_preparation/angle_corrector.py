@@ -46,8 +46,9 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 save_croped_image(image_name, img_id, full_img, output_paths, worker_name)
 
             if not manager.update_full_img(corrected, full_img):
-               logger.error(f"Error al actualizar la imagen corregida en el manager")
-                
+                logger.error(f"Error al actualizar la imagen corregida en el manager")
+                return False
+            
             return True
             
         except Exception as e:
@@ -111,7 +112,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             if abs(angle) > self.min_angle_for_correction:
                 rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
                 deskew_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE).astype(np.uint8)
-                logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
+                logger.info(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
                 return deskew_img, True
             
             else:             

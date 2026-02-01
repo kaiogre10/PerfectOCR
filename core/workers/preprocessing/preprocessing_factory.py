@@ -3,7 +3,6 @@ from typing import Dict, Callable, Any
 from core.factory.abstract_worker import  PreprocessingAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.preprocessing.restorer import ImageRestorer
-from core.workers.preprocessing.moire import MoireDenoiser
 from core.workers.preprocessing.sp import DoctorSaltPepper
 from core.workers.preprocessing.gauss import GaussianDenoiser
 from core.workers.preprocessing.clahe import ClaherEnhancer
@@ -14,7 +13,6 @@ class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):
 
         return {
             "restorer": self._create_restorer,
-            "moire": self._create_moire,
             "sp": self._create_sp,
             "gauss": self._create_gauss,
             "clahe": self._create_clahe,
@@ -23,9 +21,6 @@ class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):
          
     def _create_restorer(self, context: Dict[str, Any]) -> ImageRestorer:
         return ImageRestorer(config=self.module_config, project_root=self.project_root)
-    
-    def _create_moire(self, context: Dict[str, Any]) -> MoireDenoiser:
-        return MoireDenoiser(config=self.module_config, project_root=self.project_root)
 
     def _create_sp(self, context: Dict[str, Any]) -> DoctorSaltPepper:
         return DoctorSaltPepper(config=self.module_config, project_root=self.project_root)

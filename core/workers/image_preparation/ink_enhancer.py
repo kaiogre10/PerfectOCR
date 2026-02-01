@@ -9,7 +9,7 @@ from core.domain.data_formatter import DataFormatter
 from core.utils.image_analizer import extract_contours_metrics, extract_contours_histogram
 from services.output_service import save_croped_image, save_shapes
 from core.utils.image_utils import normalice_image
-from core.utils.math_utils import density_cluster, dilate_contour
+from core.utils.math_utils import dilate_contour
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +57,10 @@ class InkCorrector(ImagePrepAbstractWorker):
             
             correct, contours_list, blacked_contours = self.alternate_restore(gray_img, bin_edges)
 
-            # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 3))
-            # eroded = cv2.morphologyEx(correct.copy(), cv2.MORPH_CLOSE, kernel, iterations=1)
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 3))
+            eroded = cv2.morphologyEx(correct, cv2.MORPH_CLOSE, kernel, iterations=1)
             
-            if not manager.update_full_img(True, correct):
+            if not manager.update_full_img(True, eroded):
 
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
                 return False    
@@ -68,17 +68,17 @@ class InkCorrector(ImagePrepAbstractWorker):
                 if self.output:
                     worker_name = context.get("worker_name") or "inker"
                     output_paths = context["output_paths"]
-                    imag_id = f"corrected_blobs_{image_name}_{worker_name}"
-                    image_id = f"contours_{image_name}_{worker_name}"
-                    line_cont_id= f"lines_{image_name}_{worker_name}"
+                    # imag_id = f"corrected_blobs_{image_name}_{worker_name}"
+                    # image_id = f"contours_{image_name}_{worker_name}"
+                    # line_cont_id= f"lines_{image_name}_{worker_name}"
                     # gaps_id = f"gaps_{image_name}_{worker_name}"
-                    # img_id= f"open_{image_name}_{worker_name}"
+                    img_id= f"open_{image_name}_{worker_name}"
             
-                    save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
-                    # save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
+                    # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
+                    save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
                     
                     # save_shapes(image_name, gaps_id, grey_img, output_paths, gaps_list, contours2=[])
-                    save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
+                    # save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
                     # save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
                             
                 logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")

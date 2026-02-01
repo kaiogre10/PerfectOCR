@@ -118,8 +118,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
 
                 if self.output:
-                    self.save_debug(cropped, context, "all")
-                    output_paths = context["output_paths"]
+                    self.save_debug(cropped, context, "all", poly_id)
                 
                 poly_mean, dims = calculate_img_values(cropped)
                 bbox_width = dims[1]
@@ -227,8 +226,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
             return False
         
-    def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], status: str):
+    def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], status: str, id: str):
         worker_name = context.get("worker_name") or "poly_gone"
         output_paths = context["output_paths"]
         image_name = context["image_name"]
-        save_croped_image(image_name, status, polygon, output_paths, worker_name)
+        img_id = f"{image_name}_{worker_name}_{id}"
+        save_croped_image(img_id, status, polygon, output_paths, worker_name)

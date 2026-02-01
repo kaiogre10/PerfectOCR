@@ -10,6 +10,7 @@ class ImgLoadOutputs(ConfigWithNumpy):
     deleted_polys: bool
     bin_full_img: bool
     angle_corrected: bool
+    moire_poly: bool
     cropped_img: bool
     final_polys: bool
     discarded_polys: bool
@@ -18,7 +19,6 @@ class ImgLoadOutputs(ConfigWithNumpy):
 class PreprocessingOutputs(ConfigWithNumpy):
     contours: bool
     components: bool
-    moire_poly: bool
     sp_poly: bool
     gauss_poly: bool
     clahe_poly: bool
@@ -82,6 +82,8 @@ class MoireConfig(ConfigWithNumpy):
     min_distance_from_center: int
     notch_radius: int
     percentile_threshold: int
+    mean_factor: int
+    abs_threshold: int
     
 class SaltPepper(ConfigWithNumpy):
     kernel_size: int
@@ -111,6 +113,7 @@ class CuttingConfig(ConfigWithNumpy):
 class ImagePreparation(ConfigWithNumpy):
     ink_enhancement: InkConfig
     angle_corrector: DeskewConfig
+    moire: MoireConfig
     geometry_detector: GeoDetector
     polygon_extractor: CuttingConfig
 
@@ -130,7 +133,6 @@ class RestoreConfig(ConfigWithNumpy):
 
 class PreprocessingConfig(ConfigWithNumpy):
     restorer: RestoreConfig
-    moire: MoireConfig
     sp_config: SaltPepper 
     gauss_params: GaussianConfig
     contrast: ContrastConfig

@@ -2,29 +2,29 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    #- "angle_corrector"
-    # - "ink_enhancement"
+    - "angle_corrector"
+    - "ink_enhancement"
+    # - "moire"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
-    # - "moire"
     # - "sp"
     # - "gauss"
     # - "clahe"
     # - "sharp"
 
   ocr_stage:
-     - "paddle_wrapper"
-     - "text_refiner"
-     - "data_finder"
+    #  - "paddle_wrapper"
+    #  - "text_refiner"
+    #  - "data_finder"
     
   vector_stage:
-    - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
+    # - "lineal"
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
     # - "table_structurer"
     # - "table_validated"
     # - "math_max"
@@ -35,7 +35,8 @@ enabled_outputs:
     full_img: false
     bin_full_img: false
     angle_corrected: false
-    cropped_img: false
+    moire_poly: false
+    cropped_img: true
     final_polys: false
     discarded_polys: false
     deleted_polys: false
@@ -44,7 +45,6 @@ enabled_outputs:
   preprocessing_outputs:
     contours: false
     components: false
-    moire_poly: false
     sp_poly: false 
     gauss_poly: false
     clahe_poly: false
@@ -105,6 +105,13 @@ modules:
       hough_min_line_length_cap_px: 250
       hough_max_line_gap_px: 20
       hough_angle_filter_range_degrees: [-22.5, 22.5]
+
+    moire:
+      min_distance_from_center: 150
+      notch_radius: 3
+      percentile_threshold: 96
+      mean_factor: 4
+      abs_threshold: 20000000
         
     geometry_detector:
       min_area: 1
@@ -117,11 +124,6 @@ modules:
     restorer:
       area_threshold: 12
       kernel_threshold: 3
-      
-    moire:
-      min_distance_from_center: 200
-      notch_radius: 2
-      percentile_threshold: 90
 
     sp_config:
       kernel_size: 3
