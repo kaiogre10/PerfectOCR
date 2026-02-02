@@ -67,9 +67,6 @@ def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float])
     
     return float(np.linalg.norm(np.subtract(point1, point2)))
 
-def calculate_hist(areas_array: np.ndarray[Any, Any]) -> Tuple[np.ndarray[Any, np.dtype[np.float32]], np.ndarray[Any, np.dtype[np.float32]]]:
-    return np.histogram(areas_array, bins=(np.histogram_bin_edges(areas_array, 'fd')).astype(np.float32))
-
 def vectorice_values(data_list: List[float], value: Optional[str]) -> float | List[float]:
     """
     Calcula estadísticas vectorizadas (media, desviación estándar, varianza) de una lista de valores.

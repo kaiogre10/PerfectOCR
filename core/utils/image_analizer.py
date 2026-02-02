@@ -1,16 +1,15 @@
 # PerfectOCR/core/utils/image_analizer.py
 import cv2
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 import logging
 import time
 from typing import Any, List, Tuple
 from core.utils.image_utils import binarice_img
-from core.utils.math_utils import calculate_hist
 
 logger = logging.getLogger(__name__)
 
-def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
+def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram: bool = False) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
     """
     Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
     usando Área y Solidez.
@@ -21,18 +20,19 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         metrics: np.ndarray con columnas [idx_original, area, width, height, angle]
     """
     bin_img = binarice_img(img, {})
+
     contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if not contours:
         return [], np.empty((0, 5))
-
+    
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
 
     for i, cont in enumerate(contours):
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
         if len(cont_coords) < 3:
             continue
-
+        
         cont_coords_list.append((i, cont_coords))
 
     if not cont_coords_list:
@@ -50,7 +50,10 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     shapes = np.array([r[1] for r in rects])
     angles = np.array([r[2] for r in rects])
     valid_areas = areas[valid_indices]
-    
+    # circles = [cv2.minEnclosingCircle(cont_coords_list[i][1]) for i in valid_indices]
+    # centers = np.array([c[0] for c in circles])  # (x, y)
+    # radii = np.array([c[1] for c in circles])    # radius
+    # cir_areas = np.pi * radii**2
     centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0 else 0, m["m01"] / m["m00"] if m["m00"] != 0 else 0)
         for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.intp)
     
@@ -62,45 +65,90 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         shapes[:, 1], # h
         angles,
         centroids[:, 0],
-        centroids[:, 1]
+        centroids[:, 1],
+        # cir_areas,
     ])
 
-    valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(i, cont_coords_list[valid_indices[i]][1]) for i in range(len(valid_indices))]
+    if histogram:
+        metrics_array = extract_contours_histogram(metrics_array)
 
-    logger.debug(f"Numero de contornos válidos: {len(valid_indices)}")
+    filtered_original_indices = metrics_array[:, 0].astype(np.int32)
+    valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(int(idx), cont_coords_list[valid_indices[int(idx)]][1]) for idx in filtered_original_indices]
 
     contours = len(valid_coords) 
     matrix_size = metrics_array.shape[0]
     if contours != matrix_size:
-        logger.info(f"Contornos dispares: {contours} != {matrix_size}")
+        logger.warning(f"Contornos dispares: {contours} != {matrix_size}")
 
     return valid_coords, metrics_array
 
-def extract_contours_histogram(img: np.ndarray[Any, np.dtype[np.uint8]]):
+def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """
     Calcula histograma de áreas de contornos.
     Retorna:
         bin_edges: edges del histograma de áreas
     """
     time_h = time.perf_counter()
-
-    cont_coords, metrics = extract_contours_metrics(img)
-    biggest = np.max(metrics[:, 1])
-    logger.debug(f"1: {biggest}")
-    metrics = np.compress((metrics[:, 1] < biggest), metrics, 0)    
-    hist, bin_edges = calculate_hist(metrics[:, 1])
-    
+    hist, bin_edges = np.histogram(metrics[:, 1], bins=(np.histogram_bin_edges(metrics[:, 1], 'fd')).astype(np.float32))
+    logger.info(f"HIST 1: {hist}")
     ouliers_indx = np.nonzero(hist==1)[0]
     mask = np.min(ouliers_indx)
     ind_big = bin_edges[mask]
     cond = metrics[:, 1] < ind_big
     metrics = np.compress(cond, metrics, 0)
-    hist, bin_edges = calculate_hist(metrics[:, 1])    
+    hist, bin_edges = np.histogram(metrics[:, 1], bins=(np.histogram_bin_edges(metrics[:, 1], 'fd')).astype(np.float32))
     # plt.hist(metrics[:, 1], bins='fd')  # arguments are passed to np.histogram
     # plt.title("Histogram with 'auto' bins")
     # (0.5, 1.0, "Histogram with 'auto' bins")
     # plt.show()
-                
+    logger.info(f"HIST 2: {hist}")
     logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
-    return cont_coords, metrics, bin_edges
+    return metrics
         
+def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]]):
+    
+    n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask_contours, connectivity=8)
+
+    mask_cc = np.zeros((bin_img.shape[0], bin_img.shape[1]), np.uint8)
+    
+    for label in range(1, n_labels):  # Salta background (0)
+        area = stats[label, cv2.CC_STAT_AREA]
+        
+        # ===== PASO 3: Filtrar CC por área (elimina picos aislados) =====
+        if area > min_area_cc:
+            # Obtén píxeles de esta componente
+            component_mask = (labels == label).astype(np.uint8) * 255
+            mask_cc |= component_mask
+    
+    # ===== PASO 4: Rellena agujeros internos pequeños en caracteres =====
+    # Dilate + erode para cerrar pequeños agujeros
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    mask_filled = cv2.morphologyEx(mask_cc, cv2.MORPH_CLOSE, kernel, iterations=1)
+    
+    logger.info(f"CC válidas: {n_labels - 1} → {len(np.unique(labels[mask_filled > 0])) - 1}")
+    
+    return mask_filled
+
+    label_labeled = np.arange(1, n_labels).astype(np.uint32)
+    cx, cy = np.hsplit(centroids[1:], 2)
+    mapped_stats = np.column_stack([label_labeled, stats[1:, cv2.CC_STAT_AREA], stats[1:, cv2.CC_STAT_LEFT], stats[1:, cv2.CC_STAT_TOP], stats[1:, cv2.CC_STAT_WIDTH], stats[1:, cv2.CC_STAT_HEIGHT], cx, cy]).astype(np.uint32)
+    logger.info(f"MAPPED_STATS: {mapped_stats}") 
+    # logger.info(f"LABELS: {labels[1:].shape}, CENTROIDS: {centroids[:-1].shape}, N LABLES: {n_labels-1}")
+    # logger.info(f"Tmaño imagne: '{bin_img.shape}'")
+    # unique_labs = np.unique(labels, return_index=True, axis=0)[0]
+
+    # logger.info(f"LABELS: {unique_labs}")
+    # extract_labs = np.extract(unique_labs, labels)
+    # logger.info(f"{extract_labs}")
+
+def get_all_morph(img: np.ndarray[Any, np.dtype[np.uint8]]):
+    bin_img = binarice_img(img, {})
+    valid_coords, _ = extract_contours_metrics(bin_img)
+
+    mask_contours = np.zeros((bin_img.shape[0], bin_img.shape[1]), np.uint8)
+
+    for _, cont in valid_coords:
+        cv2.drawContours(mask_contours, [cont], -1, [255], cv2.FILLED)
+    
+    mask_filled = extract_cc_metrics(bin_img, mask_contours)
+    return mask_filled
