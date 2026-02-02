@@ -104,12 +104,15 @@ class Refiner(OCRAbstractWorker):
 
                 logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
                 self.clasificator.transcribe(context, manager)
-                
+
+                logger.info(f"Bucle #{pass_num}: Fragmentación Textual")
+                self.fragmenter.transcribe(context, manager)
+
+                logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo fragmentados)")
+                self.clasificator.transcribe(context, manager)
+
                 logger.debug(f"Bucle #{pass_num}: Limpieza de Texto")
                 self.cleaner.transcribe(context, manager)
-
-                logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo corregidos)")
-                self.clasificator.transcribe(context, manager)
                 
                 logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
                 self.clasificator.transcribe(context, manager)

@@ -29,7 +29,7 @@ class Fragmenter(OCRAbstractWorker):
             
             polygons_in: Dict[str, Polygons] = manager.workflow.polygons
             sorted_poly_ids = sorted(polygons_in.keys())
-            logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+            logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
             blob_metrics = context.get("blob_metrics", {})
             if not blob_metrics:
                 poly_blob_metrics = {}
@@ -42,19 +42,19 @@ class Fragmenter(OCRAbstractWorker):
             
             for poly_id in sorted_poly_ids:
                 polygon = polygons_in[poly_id]
-                poly_blob_metrics = blob_metrics.get(poly_id, {})
+                # poly_blob_metrics = blob_metrics.get(poly_id, {})
 
-                if not poly_blob_metrics:
-                    logger.debug(f"Sin Metricas para: {poly_id}")
-                    visual_needs_frag = False
-                    final_polygons.append(polygon)
-                    continue
+                # if not poly_blob_metrics:
+                #     logger.info(f"Sin Metricas para: {poly_id}")
+                #     visual_needs_frag = False
+                #     final_polygons.append(polygon)
+                #     continue
                 
                 sc: List[int] | int = polygon.semantic_clasification or 0
                 ocr_text: str = polygon.ocr_text or ""
                 
-                if not validate_text(ocr_text): 
-                    logger.debug(f"Polygono sin texto: {poly_id}")
+                if not validate_text(ocr_text):
+                    logger.info(f"Polygono sin texto: {poly_id}")
                     continue
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
@@ -84,12 +84,16 @@ class Fragmenter(OCRAbstractWorker):
                 visual_needs_frag: bool = poly_blob_metrics.get('needs_fragmentation', False)
                 # logger.info(f"{poly_id}: {visual_needs_frag}")
 
-                if visual_needs_frag or text_needs_frag or punctuation_needs_frag or quant_needs_frag:
+                semantic_frag = isinstance(sc, list) and any(c != 0 for c in sc)
 
-                    if visual_needs_frag:
-                        reason = "visual"
-                    elif quant_needs_frag:
+                if semantic_frag or visual_needs_frag or text_needs_frag or punctuation_needs_frag or quant_needs_frag:
+
+                    # elif visual_needs_frag:
+                    #     reason = "visual"
+                    if quant_needs_frag:
                         reason = "quantitativo"
+                    if semantic_frag:
+                        reason = "semantic"
                     elif text_needs_frag:
                         reason = "texto"
                     else:
@@ -98,10 +102,12 @@ class Fragmenter(OCRAbstractWorker):
                     semantic_type_name = self.get_semantic_type_name(sc, manager)
                     logger.debug(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
 
-                    if visual_needs_frag:
-                        fragments = self.fragment_by_blobs(polygon, poly_blob_metrics)
+                    if semantic_frag:
+                        fragments = self.fragment_by_semantic_classification(polygon)
+                    # elif visual_needs_frag:
+                    #     fragments = self.fragment_by_blobs(polygon, poly_blob_metrics)
                     elif quant_needs_frag:
-                        fragments = self.fragment_by_quantitative(polygon, quant_runs, poly_blob_metrics)
+                        fragments = self.fragment_by_quantitative(polygon, quant_runs)
                     elif text_needs_frag:
                         fragments = self.fragment_by_text(polygon)
                     elif punctuation_needs_frag:
@@ -140,7 +146,7 @@ class Fragmenter(OCRAbstractWorker):
                     logger.info("Imanges liberadaas en fragmenter")
 
             if fragmented_count > 0:
-                logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
+                logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
                 return True
                 
         except Exception as e:
@@ -420,7 +426,7 @@ class Fragmenter(OCRAbstractWorker):
 
         return new_polys
         
-    def fragment_by_quantitative(self, polygon: Polygons, quant_runs: List[Tuple[int, int, str]], blob_metrics: Dict[str, Any] | None = None) -> List[Polygons]:
+    def fragment_by_quantitative(self, polygon: Polygons, quant_runs: List[Tuple[int, int, str]]) -> List[Polygons]:
         """
         Fragmenta un polígono que contiene múltiples tokens cuantitativos Y/O descriptivos,
         preservando TODOS los fragmentos de texto.
@@ -462,15 +468,15 @@ class Fragmenter(OCRAbstractWorker):
              return [polygon]
 
         # Intentar usar blobs si coinciden en número (Lógica visual preferida)
-        if blob_metrics:
-            boxes = blob_metrics.get("blobs_norm_boxes")
-            if boxes and len(boxes) >= len(parts):
-                boxes_sorted = sorted(boxes, key=lambda b: b[0])
-                selected = boxes_sorted[: len(parts)]
-                logger.debug(f"Fragmentando '{text}' en {parts} usando {len(selected)} blobs visuales.")
-                return self._fragment_using_boxes(polygon, parts, selected)
+        # if blob_metrics:
+        #     boxes = blob_metrics.get("blobs_norm_boxes")
+        #     if boxes and len(boxes) >= len(parts):
+        #         boxes_sorted = sorted(boxes, key=lambda b: b[0])
+        #         selected = boxes_sorted[: len(parts)]
+        #         logger.debug(f"Fragmentando '{text}' en {parts} usando {len(selected)} blobs visuales.")
+        #         return self._fragment_using_boxes(polygon, parts, selected)
         
-        logger.debug(f"Fragmentando '{text}' en {parts} usando geometría proporcional.")
+        # logger.debug(f"Fragmentando '{text}' en {parts} usando geometría proporcional.")
         
         char_lengths = [len(p) for p in parts]
         total_chars = sum(char_lengths)
@@ -564,3 +570,107 @@ class Fragmenter(OCRAbstractWorker):
             if value == semantic_clasification:
                 return name
         return "descriptive"
+
+    def fragment_by_semantic_classification(self, polygon: Polygons) -> List[Polygons]:
+        """
+        Fragmenta un polígono según su clasificación semántica.
+        Regla: solo se permite más de una clasificación por polígono si todas son 0.
+        Cualquier valor distinto de 0 (1, 2, -1, -2) debe estar solo en su polígono.
+        """
+        text: str = (polygon.ocr_text or "").strip()
+        if not validate_text(text):
+            return [polygon]
+
+        sc: List[int] = polygon.semantic_clasification if isinstance(polygon.semantic_clasification, list) else [polygon.semantic_clasification]
+        
+        parts = [p for p in text.split(' ') if p]
+        
+        # Verificar alineación
+        if len(parts) != len(sc):
+            logger.warning(f"Desalineación en {polygon.polygon_id}: {len(parts)} tokens vs {len(sc)} clasificaciones")
+            return [polygon]
+        
+        # Construir fragmentos según la regla:
+        # - 0s consecutivos → un solo fragmento
+        # - Cada valor no-0 → un fragmento individual
+        fragments: List[Tuple[List[str], List[int]]] = []
+        current_tokens: List[str] = []
+        current_scs: List[int] = []
+        
+        for _, (token, cls) in enumerate(zip(parts, sc)):
+            if cls == 0:
+                # Acumular 0s consecutivos
+                current_tokens.append(token)
+                current_scs.append(cls)
+            else:
+                # Primero, cerrar cualquier fragmento de 0s pendiente
+                if current_tokens:
+                    fragments.append((current_tokens, current_scs))
+                    current_tokens = []
+                    current_scs = []
+                # Cada no-0 va en su propio fragmento
+                fragments.append(([token], [cls]))
+        
+        # Cerrar último fragmento de 0s si quedó pendiente
+        if current_tokens:
+            fragments.append((current_tokens, current_scs))
+        
+        # Si solo hay un fragmento, no hace falta dividir
+        if len(fragments) <= 1:
+            return [polygon]
+        
+        # Calcular geometría proporcional
+        xmin, ymin, xmax, ymax = polygon.geometry.bounding_box
+        width = xmax - xmin
+        
+        # Longitud en caracteres de cada fragmento (para proporción)
+        frag_char_lengths = [sum(len(t) for t in frag_tokens) for frag_tokens, _ in fragments]
+        total_chars = sum(frag_char_lengths)
+        
+        if total_chars == 0:
+            return [polygon]
+        
+        new_polys: List[Polygons] = []
+        current_x = xmin
+        
+        for (frag_tokens, frag_scs), frag_len in zip(fragments, frag_char_lengths):
+            frag_ratio = frag_len / total_chars
+            frag_width = frag_ratio * width
+            new_xmax = current_x + frag_width
+            
+            new_bbox = np.array([current_x, ymin, new_xmax, ymax], dtype=np.float32)
+            new_centroid = np.array([(current_x + new_xmax) / 2, (ymin + ymax) / 2], dtype=np.float32)
+            
+            new_geom = dataclasses.replace(
+                polygon.geometry,
+                bounding_box=new_bbox,
+                centroid=new_centroid,
+                polygon_coords=np.array([
+                    [new_bbox[0], new_bbox[1]],
+                    [new_bbox[2], new_bbox[1]],
+                    [new_bbox[2], new_bbox[3]],
+                    [new_bbox[0], new_bbox[3]],
+                ], dtype=np.float32)
+            )
+            
+            # Texto: unir tokens con espacio
+            frag_text = ' '.join(frag_tokens)
+            
+            # Clasificación: si un solo elemento → int; si varios → lista
+            # frag_sc: List[int] | int = frag_scs[0] if len(frag_scs) == 1 else frag_scs
+            
+            # logger.info(f"Fragmento semántico: texto: '{frag_text}', sc: {frag_sc}")
+            
+            new_poly = dataclasses.replace(
+                polygon,
+                geometry=new_geom,
+                ocr_text=frag_text,
+                # semantic_clasification=frag_sc,
+                was_refined=True,
+                was_fragmented=True
+            )
+            new_polys.append(new_poly)
+            current_x = new_xmax
+        
+        # logger.info(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
+        return new_polys

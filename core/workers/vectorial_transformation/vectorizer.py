@@ -31,7 +31,7 @@ class Vectorizer(VectorizationAbstractWorker):
             if table_line_ids is not None:
                 
                 logger.warning(f"Intervalo tabular detectado, se omite vectorización")
-                context["all_features"] = None
+                context["all_features"] = np.empty(1)
                 logger.debug(f"Intervalo detectado en:{time.perf_counter()-start_time:.7f}")
 
                 if manager.save_tabular_lines(table_line_ids):

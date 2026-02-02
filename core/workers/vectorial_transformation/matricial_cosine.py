@@ -25,9 +25,10 @@ class MatricialCusine(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             analysis: np.ndarray[Any, Any] = context["all_features"]
-            if analysis.size == 0:
+            if analysis.size ==0:
                 logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
-                return True            
+                return True
+                
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
                 succes = manager.save_tabular_lines(table_line_ids)
