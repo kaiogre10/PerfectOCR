@@ -43,6 +43,8 @@ class InkCorrector(ImagePrepAbstractWorker):
             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
             context["image_name"]= image_name
 
+            kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (2, 2))
+
             img_obj = manager.get_full_img()
             full_img = img_obj.full_img if img_obj is not None else None
             
@@ -50,21 +52,20 @@ class InkCorrector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
                 
-            grey_img = self._decolorate(full_img)            
+            grey_img = self._decolorate(full_img)
+            # cv2.morphologyEx(grey_img, cv2.MORPH_CLOSE, kernel, iterations=2)
+            
             cont_coords_list, metrics = extract_contours_metrics(grey_img, True)
 
-            grey_image, white_gaps, black_gaps = self.fill_gaps(grey_img, metrics, cont_coords_list)
-
-            lines_cont, angle_cont, grey_image = self.compare_areas(cont_coords_list, metrics, grey_image)
+            lines_cont, angle_cont, grey_image = self.compare_areas(cont_coords_list, metrics, grey_img)
+            eroded = cv2.dilate(grey_image, kernel, iterations=1)
+            # grey_image, white_gaps, black_gaps = self.fill_gaps(eroded, metrics, cont_coords_list)
             
             correct, contours_list, blacked_contours = self.alternate_restore(grey_image)
 
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 3))
-            eroded = cv2.morphologyEx(correct, cv2.MORPH_CLOSE, kernel, iterations=1)
-
-            self.refine_text_quality(eroded, context, image_name)
+            self.refine_text_quality(correct.copy(), context, image_name)
             
-            if not manager.update_full_img(True, eroded):
+            if not manager.update_full_img(True, correct):
 
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
                 return False    
@@ -72,17 +73,18 @@ class InkCorrector(ImagePrepAbstractWorker):
                 if self.output:
                     worker_name = context.get("worker_name") or "inker"
                     output_paths = context["output_paths"]
-                    # imag_id = f"corrected_blobs_{image_name}_{worker_name}"
-                    # image_id = f"contours_{image_name}_{worker_name}"
+                    
+                    imag_id = f"corrected_blobs_{image_name}_{worker_name}"
+                    image_id = f"contours_{image_name}_{worker_name}"
                     line_cont_id= f"lines_{image_name}_{worker_name}"
                     # gaps_id = f"gaps_{image_name}_{worker_name}"
-                    # img_id= f"open_{image_name}_{worker_name}"
+                    img_id= f"open_{image_name}_{worker_name}"
             
-                    # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
-                    # save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
+                    save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
+                    save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
                     
                     # save_shapes(image_name, gaps_id, grey_img, output_paths, white_gaps, black_gaps)
-                    # save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
+                    save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
                     save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
                             
                 logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
@@ -111,14 +113,9 @@ class InkCorrector(ImagePrepAbstractWorker):
         for i in range(self.iterations):
             valid_coords, metrics = extract_contours_metrics(grey_img, False)
 
-            noise_bin = np.quantile(metrics[:, 1], 0.20)
-            logger.info(f"Percentil: {noise_bin}")
-
+            noise_bin = np.percentile(metrics[:, 1], 20)
             # Filtrar por noise_bin
             noise_coords = metrics[metrics[:, 1] < noise_bin]
-            
-            # Los índices en noise_coords[:, 0] son los índices ORIGINALES en metrics
-            # Necesitamos mapear a posiciones en valid_coords
             noise_ids = noise_coords[:, 0].astype(np.int32)
             
             # Crear candidates usando los índices correctos
@@ -157,27 +154,14 @@ class InkCorrector(ImagePrepAbstractWorker):
                 else:
                     grey_img_inv = 255 - grey_img
                     kernel = np.where(condition, restorer_kernel, (restorer_kernel + (i * 2)))
-                    grey_img_inv, c_list, modified_ids = self._restore_faded_ink(
-                        grey_img_inv,
-                        self.isolation_range[0],
-                        kernel,
-                        img_dims,
-                        remaining_candidates,
-                    )
+                    grey_img_inv, c_list, modified_ids = self._restore_faded_ink(grey_img_inv, self.isolation_range[0], kernel, img_dims, remaining_candidates)
                     blacked_contours.extend(c_list)
                     processed_ids.update(modified_ids)
                     grey_img = 255 - grey_img_inv
 
         return grey_img, contours_list, blacked_contours
 
-    def _restore_faded_ink(
-        self,
-        gray_img: np.ndarray[Any, Any],
-        isolation_range: int,
-        kernel_shape: np.ndarray[Any, Any],
-        img_dims: Any,
-        noise_candidates: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]],
-    ) -> Tuple[np.ndarray[Any, Any], List[np.ndarray[Any, np.dtype[np.int32]]], Set[int]]:
+    def _restore_faded_ink(self, gray_img: np.ndarray[Any, Any], isolation_range: int, kernel_shape: np.ndarray[Any, Any], img_dims: Any, noise_candidates: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]],) -> Tuple[np.ndarray[Any, Any], List[np.ndarray[Any, np.dtype[np.int32]]], Set[int]]:
         """
         Restaura la intensidad del texto y elimina el ruido aislado.
 
@@ -277,11 +261,6 @@ class InkCorrector(ImagePrepAbstractWorker):
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 angle_cont.append(cont_coords)
                 lines_correct += 1
-
-            # elif idx in solidity_indices:
-            #     cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-            #     angle_cont.append(cont_coords)
-            #     lines_correct += 1
 
             elif idx in vertical_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
@@ -391,14 +370,26 @@ class InkCorrector(ImagePrepAbstractWorker):
     
     # Opcional: encontrar vecinos dentro de un radio específico
 
-        radio_search = nearest.radius_neighbors(X, radius=200, return_distance=False)
+        radio_search, distances = nearest.radius_neighbors(X, radius=250, return_distance=True, sort_results=True)
 
         # Encontrar contornos con pocos vecinos (posible ruido)
+        neighbors_per_blob = [len(d) for d in distances]
+
+        for idx, count in zip(cont_array[:, 0].astype(int), neighbors_per_blob):
+            logger.debug(f"Blob {idx} tiene {count} vecinos dentro del radio.")
+
+
+        for i, (idx, dist) in enumerate(zip(radio_search, distances)):
+            if len(dist) > 0:
+                max_dist = dist[-1]
+                max_neighbor_idx = idx[-1]
+                # logger.info(f"Blob {i}: vecino más lejano dentro del radio es {max_neighbor_idx} a distancia {max_dist}")
+
         neighbor_counts = np.array([len(neighbors) for neighbors in radio_search])
         isolated_mask = neighbor_counts < 2
         isolated_indices = cont_array[isolated_mask, 0].astype(np.int32)
 
-        logger.info(f"Contornos aislados detectados: {len(isolated_indices)}")
+        # logger.info(f"Contornos aislados detectados: {neighbor_counts}")
     
         isolated_set = set(isolated_indices)
     

@@ -21,7 +21,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
     """
     bin_img = binarice_img(img, {})
 
-    contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     if not contours:
         return [], np.empty((0, 5))
@@ -30,7 +30,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
 
     for i, cont in enumerate(contours):
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
-        if len(cont_coords) < 3:
+        if len(cont_coords) < 4:
             continue
         
         cont_coords_list.append((i, cont_coords))
@@ -40,7 +40,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
 
     areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
 
-    valid_mask = (areas > 0) & (areas != np.max(areas))
+    valid_mask = (areas > 2) & (areas != np.max(areas))
     valid_indices = np.where(valid_mask)[0]
 
     if len(valid_indices) == 0:
@@ -90,16 +90,21 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
     """
     time_h = time.perf_counter()
     hist, bin_edges = np.histogram(metrics[:, 1], bins=(np.histogram_bin_edges(metrics[:, 1], 'fd')).astype(np.float32))
+    hist_rever = hist[::-1].astype(np.int32)
+    cutting = np.where(hist_rever > 1)[0]
+    idx_orig = len(hist) - 1 - cutting[0] if cutting.size > 0 else -1
+    outliers_indx = np.nonzero(hist==1)[0]
+    filtered_outliers = outliers_indx[outliers_indx > idx_orig]
     logger.info(f"HIST 1: {hist}")
-    ouliers_indx = np.nonzero(hist==1)[0]
-    mask = np.min(ouliers_indx)
+    mask = np.min(filtered_outliers)
     ind_big = bin_edges[mask]
     cond = metrics[:, 1] < ind_big
     metrics = np.compress(cond, metrics, 0)
+    # logger.info(f"HIST LIMPIO: {hist}")
     hist, bin_edges = np.histogram(metrics[:, 1], bins=(np.histogram_bin_edges(metrics[:, 1], 'fd')).astype(np.float32))
     # plt.hist(metrics[:, 1], bins='fd')  # arguments are passed to np.histogram
-    # plt.title("Histogram with 'auto' bins")
-    # (0.5, 1.0, "Histogram with 'auto' bins")
+    # plt.title("Histogram with 'fd' bins")
+    # (0.5, 1.0, "Histogram with 'fd' bins")
     # plt.show()
     logger.info(f"HIST 2: {hist}")
     logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
