@@ -58,12 +58,12 @@ class InkCorrector(ImagePrepAbstractWorker):
             cont_coords_list, metrics = extract_contours_metrics(grey_img, True)
 
             lines_cont, angle_cont, grey_image = self.compare_areas(cont_coords_list, metrics, grey_img)
-            eroded = cv2.dilate(grey_image, kernel, iterations=1)
+            #eroded = cv2.dilate(grey_image, kernel, iterations=1)
             # grey_image, white_gaps, black_gaps = self.fill_gaps(eroded, metrics, cont_coords_list)
             
             correct, contours_list, blacked_contours = self.alternate_restore(grey_image)
 
-            self.refine_text_quality(correct.copy(), context, image_name)
+            #self.refine_text_quality(correct.copy(), context, image_name)
             
             if not manager.update_full_img(True, correct):
 

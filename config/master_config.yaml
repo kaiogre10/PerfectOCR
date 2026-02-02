@@ -5,8 +5,8 @@ pipeline_secuence:
     - "angle_corrector"
     - "ink_enhancement"
     # - "moire"
-    # - "geometry_detector"
-    # - "polygon_extractor"
+    - "geometry_detector"
+    - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
@@ -16,12 +16,12 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    #  - "paddle_wrapper"
+     - "paddle_wrapper"
     #  - "text_refiner"
     #  - "data_finder"
     
   vector_stage:
-    # - "lineal"
+    - "lineal"
     # - "vectorizer"
     # - "dbscan"
     # - "cos_sim"
@@ -91,7 +91,7 @@ modules:
       black: [0, 0, 0]
       start_restoring: True
       noise_kernel: [11, 11]
-      restorer_kernel: [5, 5]
+      restorer_kernel: [3, 2]
       isolation_range: [8.28, 245.601]
       threshold_black: 160
       threshold_white: 180

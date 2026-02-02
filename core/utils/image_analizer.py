@@ -30,7 +30,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
 
     for i, cont in enumerate(contours):
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
-        if len(cont_coords) < 4:
+        if len(cont_coords) < 3:
             continue
         
         cont_coords_list.append((i, cont_coords))
@@ -40,7 +40,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
 
     areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
 
-    valid_mask = (areas > 2) & (areas != np.max(areas))
+    valid_mask = (areas > 0)  & (areas != np.max(areas))
     valid_indices = np.where(valid_mask)[0]
 
     if len(valid_indices) == 0:
@@ -95,7 +95,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
     idx_orig = len(hist) - 1 - cutting[0] if cutting.size > 0 else -1
     outliers_indx = np.nonzero(hist==1)[0]
     filtered_outliers = outliers_indx[outliers_indx > idx_orig]
-    logger.info(f"HIST 1: {hist}")
+    logger.debug(f"HIST 1: {hist}")
     mask = np.min(filtered_outliers)
     ind_big = bin_edges[mask]
     cond = metrics[:, 1] < ind_big
@@ -106,7 +106,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
     # plt.title("Histogram with 'fd' bins")
     # (0.5, 1.0, "Histogram with 'fd' bins")
     # plt.show()
-    logger.info(f"HIST 2: {hist}")
+    logger.debug(f"HIST 2: {hist}")
     logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
     return metrics
         
