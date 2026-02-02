@@ -265,7 +265,7 @@ class TextCorrector(OCRAbstractWorker):
 
         # Si hay '$' antes en el token o está en contexto numérico → usar '5'
         has_currency_before = '$' in token[:index - l]
-        return (has_currency_before or left_numish or right_numish)
+        return has_currency_before or left_numish or right_numish
 
     def termination_correct(self, text: str, semantic_clasification: int) -> bool:
         if semantic_clasification != 0:

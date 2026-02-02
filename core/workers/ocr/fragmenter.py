@@ -134,7 +134,7 @@ class Fragmenter(OCRAbstractWorker):
                     cropped_img = polygon.cropped_img.cropped_img if polygon.was_fragmented else None
                     # if polygon.was_fragmented:
                     logger.info(f"{poly_id}: {polygon.was_fragmented}")
-                    save_croped_image(image_name, poly_id, cropped_img, output_paths, "fragmenter", method="fragmented")
+                    save_croped_image(image_name, poly_id, cropped_img, output_paths, "fragmenter")
 
                 if manager.delete_cropped_images():
                     logger.info("Imanges liberadaas en fragmenter")

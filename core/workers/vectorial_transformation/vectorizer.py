@@ -164,7 +164,7 @@ class Vectorizer(VectorizationAbstractWorker):
             features = np.array(features_list, dtype=np.float32)
             
             if len(features) == 0:
-                return np.zeros(0)
+                return np.zeros(0, dtype=np.float32)
 
             all_numerics = np.sum(features[:, 0])
             max_numerics = np.max(features[:, 0])

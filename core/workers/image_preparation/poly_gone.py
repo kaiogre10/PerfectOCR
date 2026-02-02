@@ -93,8 +93,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             # in_y = (blob_centroids[:, 1] >= y1) & (blob_centroids[:, 1] <= y2)
             # valid = in_x & in_y
             # valid_poly = np.any(valid, axis=1)
-            valid_dims: np.ndarray[Any, Any] = (px2 > px1) & (py2 > py1)
-            valid_indices = np.where(valid_dims )[0]
+            valid_dims = (px2 > px1) & (py2 > py1)
+            valid_indices = np.where(valid_dims)[0]
             
             if len(valid_indices) == 0:
                 logger.warning("PolygonExtractor: No hay recortes válidos después del padding.")
@@ -150,7 +150,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                     if self.disoutput:
                         status = "small"
-                        self.save_debug(p_data['cropped'], context, status)
+                        self.save_debug(p_data['cropped'], context, status, p_data['poly_id'])
 
                 elif p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
@@ -159,7 +159,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                     if self.disoutput:
                         status = "bn"
-                        self.save_debug(p_data['cropped'], context, status)
+                        self.save_debug(p_data['cropped'], context, status, p_data['poly_id'])
 
                 else:
                     valid_polygons_data.append(p_data)
@@ -221,7 +221,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 for poly_id, polygon in polygons.items():
                     cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                    self.save_debug(cropped_img, context, "filtered")
+                    self.save_debug(cropped_img, context, "filtered", p_data['poly_id'])
             return True
 
         except Exception as e:

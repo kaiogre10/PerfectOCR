@@ -19,7 +19,7 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
     ref_vec = np.array([1, 0]).astype(np.float32)  # eje X positivo
     if np.linalg.norm(vec_to_other) == 0.0:
         return 1.0
-    cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
+    cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec)).astype(np.float32)
     return 1.0 - abs(float(cosine))
     
 def bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int) -> Optional[float]:
@@ -46,7 +46,7 @@ def bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int
         if np.linalg.norm(vec_to_other) == 0:
             return 1.0
         
-        cosine_sim = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
+        cosine_sim = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec)).astype(np.float32)
         return 1.0 - abs(float(cosine_sim))   
 
     else:
@@ -188,9 +188,7 @@ def dilate_contour(contour: np.ndarray[Any, np.dtype[np.int32]], kernel: np.ndar
     
     Args:
         contour: np.ndarray shape (N, 2) dtype int32, puntos del contorno
-        x_expand: expansión horizontal en píxeles (kernel cols)
-        y_expand: expansión vertical en píxeles (kernel rows)
-    
+        kernal: expansión horizontal y vertical en píxeles (kernel cols)
     Returns:
         np.ndarray shape (N, 2) dtype int32, contorno expandido
     """

@@ -145,55 +145,54 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] 
             from core.utils.data_utils import FEATURES_NAME
             df: pd.DataFrame = pd.DataFrame(all_features[1:, :])
             header = list(FEATURES_NAME)
-            
 
         for path in output_paths:
             output_dir = os.path.join(path, worker_name)
             table_file_name = f"{file_name}_{worker_name}.csv"
             save_table(df, output_dir, table_file_name, header)
 
-        if image_features:
-            import matplotlib.pyplot as plt
-            features_data = df.drop('line_id', axis=1)
-            feature_names: List[str] = list(features_data.columns.tolist()) # type: ignore
-            
-            # Crear la figura
-            plt.figure(figsize=(12, 8)) #type: ignore
-            
-            # Plotear cada línea del documento con valores originales
-            for idx, row in features_data.iterrows():
-                line_id: str = df.iloc[idx]['line_id'] #type: ignore
-                plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1) #type: ignore
-            
-            # Configurar la gráfica
-            plt.xlabel('Features') #type: ignore
-            plt.ylabel('Valores de Features') #type: ignore
-            plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')#type: ignore
-            plt.xticks(rotation=45, ha='right') #type: ignore
-            plt.grid(True, alpha=0.3) #type: ignore
-            
-            # Calcular los límites del eje Y y poner los ticks de 1 en 1
-            if not features_data.empty:
-                ymin = features_data.min().min()# type: ignore
-                ymax = features_data.max().max()# type: ignore
-                ymin_tick = int(np.floor(ymin))# type: ignore
-                ymax_tick = int(np.ceil(ymax))# type: ignore
-                plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1)) #type: ignore
-            
-            # Limitar leyenda si hay muchas líneas
-            if len(df) > 20:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8) #type: ignore
-            else:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left') #type: ignore
-            
-            plt.tight_layout()
-            
-            # Guardar la gráfica
-            plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
-            plot_path = os.path.join(output_dir, plot_filename) #type: ignore
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight') #type: ignore
-            plt.close()
-            
+            if image_features:
+                import matplotlib.pyplot as plt
+                features_data = df.drop('line_id', axis=1)
+                feature_names: List[str] = list(features_data.columns.tolist()) # type: ignore
+
+                # Crear la figura
+                plt.figure(figsize=(12, 8)) #type: ignore
+
+                # Plotear cada línea del documento con valores originales
+                for idx, row in features_data.iterrows():
+                    line_id: str = df.iloc[idx]['line_id'] #type: ignore
+                    plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1) #type: ignore
+
+                # Configurar la gráfica
+                plt.xlabel('Features') #type: ignore
+                plt.ylabel('Valores de Features') #type: ignore
+                plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')#type: ignore
+                plt.xticks(rotation=45, ha='right') #type: ignore
+                plt.grid(True, alpha=0.3) #type: ignore
+
+                # Calcular los límites del eje Y y poner los ticks de 1 en 1
+                if not features_data.empty:
+                    ymin = features_data.min().min()# type: ignore
+                    ymax = features_data.max().max()# type: ignore
+                    ymin_tick = int(np.floor(ymin))# type: ignore
+                    ymax_tick = int(np.ceil(ymax))# type: ignore
+                    plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1)) #type: ignore
+
+                # Limitar leyenda si hay muchas líneas
+                if len(df) > 20:
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8) #type: ignore
+                else:
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left') #type: ignore
+
+                plt.tight_layout()
+
+                # Guardar la gráfica
+                plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
+                plot_path = os.path.join(output_dir, plot_filename)
+                plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+                plt.close()
+
             logger.info(f"Gráfica de features guardada en: {plot_path}")
     except Exception as e:
         logger.error(f"Error calculando Features output: {e}", exc_info=True)

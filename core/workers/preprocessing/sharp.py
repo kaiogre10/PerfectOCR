@@ -29,7 +29,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
             if not manager.validate_cropped_img():
                 logger.info(f"Sin cropped_img en el formatter")
                 return False
-                            
+
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
@@ -84,7 +84,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
                     worker_name = context.get("worker_name") or "sharp"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     output_paths = context["output_paths"]
-                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name, method=worker_name)
+                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
 
             return True
         except Exception as e:

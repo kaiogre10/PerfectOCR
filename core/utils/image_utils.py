@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 from typing import Any, Optional, List, Dict
 import logging
+
+from numpy import ndarray, dtype, unsignedinteger
+from numpy._typing import _8Bit
 from skimage.filters import threshold_sauvola #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -219,11 +222,11 @@ def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarra
 def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value).astype(np.uint8)
 
-def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
+def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> ndarray[Any, np.dtype[np.uint8]]:
     """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
     thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size) 
-    bin_bool: np.ndarray[Any, Any] = (cropped_img > thresh_sauvola)
-    bin_img = (bin_bool * 255)
+    bin_bool: np.ndarray[Any, np.dtype[np.uint8]] = (cropped_img > thresh_sauvola)
+    bin_img: np.ndarray[Any, np.dtype[np.uint8]] = (bin_bool * 255).astype(np.uint8)
     return bin_img 
 
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:

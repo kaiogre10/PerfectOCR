@@ -4,7 +4,7 @@ from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.image_preparation.image_loader import ImageLoader
 from core.workers.image_preparation.ink_enhancer import InkCorrector
-from core.workers.moire import MoireDenoiser
+from core.workers.image_preparation.moire import MoireDenoiser
 from core.workers.image_preparation.angle_corrector import AngleCorrector
 from core.workers.image_preparation.geometry_detector import GeometryDetector
 from core.workers.image_preparation.poly_gone import PolygonExtractor

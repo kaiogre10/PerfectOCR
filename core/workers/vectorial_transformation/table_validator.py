@@ -13,7 +13,8 @@ class TableCorrector(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('semantic_corrector', {})
-        self.enabled_outputs = self.config.get("image_load_outputs", {})
+        self.enabled_outputs = self.config.get("vectorize", {})
+        self.semantic_values = worker_config.get("semantic_values", {})
         self.output = self.enabled_outputs.get("math_max_corrected", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:

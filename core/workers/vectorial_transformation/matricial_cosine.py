@@ -39,8 +39,8 @@ class MatricialCusine(VectorizationAbstractWorker):
                         return_objects: bool = True
                         tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
                         file_name: str = manager.workflow.metadata.image_name # type: ignore
-                        worker_name = context.get("worker_name", {})
-                        output_paths = context.get("output_paths", [])
+                        worker_name = context.get("worker_name") or "matrix_cosine"
+                        output_paths = context["output_paths"]
                         save_debug_json(output_paths, worker_name, tab_info, file_name)
     
                     return True

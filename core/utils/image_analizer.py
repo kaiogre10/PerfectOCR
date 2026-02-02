@@ -110,7 +110,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
     logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
     return metrics
         
-def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]]):
+def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], mask_contours):
     
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask_contours, connectivity=8)
 

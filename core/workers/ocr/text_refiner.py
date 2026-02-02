@@ -23,7 +23,7 @@ class Refiner(OCRAbstractWorker):
         worker_config = config.get("text_refiner", {})
         self.percentile = config["percentile"]
         worker_config["percentile"] = self.percentile 
-        self.num_passes = worker_config.get("num_passes", {})
+        self.num_passes = worker_config.get("num_passes") or 1
         self.delete_cropp = config.get("fragmented_polys")
         self.output_blobs = config.get("cropp_blobs")
         self.output = config.get("binarized_polygons")
