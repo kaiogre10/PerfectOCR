@@ -60,7 +60,7 @@ enabled_outputs:
   vectorization_outputs:
     reconstructed_lines: false
     table_lines: false
-    features: false
+    features: true
     image_features: false
     table_structured: false
     math_max_corrected: false

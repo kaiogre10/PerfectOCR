@@ -47,7 +47,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 else:
                     # Hay tabla detectada → vectorizar solo si get_vectors está activo
                     table_lines = list(range(head, foot))
-                    logger.info(f"{table_range}")
+                   # logger.info(f"{table_range}")
                     context["vectorice"] = self.get_vectors
                     context["table_range"] = table_lines
 

@@ -140,9 +140,9 @@ class Vectorizer(VectorizationAbstractWorker):
 
             features_list: List[int] = []
             for line_data in sorted_lines:
-                # Cuenta tokens numéricos por línea
                 sc_count = 0
-                poly_ids_line = getattr(line_data, "polygon_ids", [])
+                # Cuenta tokens numéricos por línea
+                poly_ids_line = line_data.polygons_index
                 for pid_idx in poly_ids_line:
                     pid_str = index_to_id_map.get(pid_idx)
                     if pid_str and pid_str in polygons_dict:
@@ -151,22 +151,23 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 # Cuenta dígitos en el texto de la línea (+1.0 para coincidir con vectorize.py)
                 line_text = getattr(line_data, "text", "")
-                dcount = sum(1 for ch in line_text if ch in self.char_num)
+                dcount = sum(1 for ch in line_text if ch.isdecimal())
                 features_list.append([sc_count, dcount])
 
-            features = np.array(features_list, dtype=np.float32)
+            features = np.array(features_list).astype(np.float32)
             
             if len(features) == 0:
                 return np.zeros(0, dtype=np.float32)
 
-            all_numerics = np.sum(features[:, 0])
+            numerics = np.nonzero(features[:, 0])[0]
+            all_numerics = len(numerics)
             max_numerics = np.max(features[:, 0])
             max_digit = np.max(features[:, 1])
             
             # Evitar división por cero
             num_count_norm = np.divide(features[:, 0], max_numerics, out=np.zeros_like(features[:, 0]), where=max_numerics!=0)
             
-            num_mean = (all_numerics / features.shape[0])
+            num_mean = (all_numerics / len(sorted_lines))
             
             # Lógica matching vectorize.py: 1.0 si >= mean, else -1.0
             num_above = np.where(features[:, 0] >= num_mean, 1.0, -1.0)
@@ -206,13 +207,14 @@ class Vectorizer(VectorizationAbstractWorker):
         geometry = [lid.line_geometry for lid in sorted_lines]
         
         bbox = np.array([geo.line_bbox for geo in geometry], np.float32)
+        logger.info(f"boxes shape: {bbox.shape}")
         centroid = np.array([geo.line_centroid for geo in geometry], np.float32)
         width = (bbox[:, 2] - bbox[:, 0])
         height = (bbox[:, 3] - bbox[:, 1])
         area = (width * height)
         perimeter = 2 * (width + height)
         aspect_ratio = (height / width) * 100
-        diagonal = np.sqrt(width**2.0 + height**2.0)
+        diagonal = np.sqrt((width**2.0) + (height**2.0))
         angle = np.degrees(np.arctan2(height, width))
         slope = (width / height)
 
@@ -298,8 +300,8 @@ class Vectorizer(VectorizationAbstractWorker):
         
         compact = safe_div((geoline_features[:, 4] ** 2), geoline_features[:, 3]) / 100.0
         
-        slope_inv = safe_div(geoline_features[:, 8], global_stats[:, 12])
-        slope_dif = safe_dif(geoline_features[:, 8], global_stats[:, 12])
+      #  slope_inv = safe_div(geoline_features[:, 8], global_stats[:, 12])
+      #  slope_dif = safe_dif(geoline_features[:, 8], global_stats[:, 12])
         
         cw: float = (total_width / 2.0)  # centro horizontal de la imagen
         ch: float = (total_height / 2.0)  # centro vertical de la imagen
@@ -406,8 +408,8 @@ class Vectorizer(VectorizationAbstractWorker):
             angle_inv,           # [20] ángulo inversa/mediana
             diag_norm,           # [21] diagonal normalizada al máximo
             compact,             # [22] medida de compactación 
-            slope_inv,           # [23] slope inverso/mediana
-            slope_dif,           # [24] diferencia de slope vs mediana
+                      # [23] slope inverso/mediana
+                                 # [24] diferencia de slope vs mediana
             prev_xmin_align,     # [25] 
             prev_xmax_align,     # [26] 
             next_xmin_align,     # [27] 
@@ -418,5 +420,8 @@ class Vectorizer(VectorizationAbstractWorker):
         return all_features
                 
     def count_numeric_tokens(self, semantic_clasification: int | List[int]) -> int:
-        classifications = semantic_clasification if isinstance(semantic_clasification, list) else [semantic_clasification]
-        return sum(1 for sc in classifications if sc in [1, 2])
+        sc = np.array(semantic_clasification, np.int8)
+        mask = (sc  < 3) & (sc > 0)
+        ncounts = np.nonzero(sc==mask)[0]
+     #   logger.info(f"{len(ncounts)}")
+        return len(ncounts)
