@@ -54,7 +54,7 @@ class Fragmenter(OCRAbstractWorker):
                 ocr_text: str = polygon.ocr_text or ""
                 
                 if not validate_text(ocr_text):
-                    logger.info(f"Polygono sin texto: {poly_id}")
+                    logger.debug(f"Polygono sin texto: {poly_id}")
                     continue
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto

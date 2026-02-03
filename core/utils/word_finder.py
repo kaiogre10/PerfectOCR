@@ -57,6 +57,9 @@ class WordFinder:
             if not text:
                 return []
 
+            if text in set(self.noise_words):
+                return []
+
             single = False
             if isinstance(text, str):
                 queue = [text]
@@ -77,6 +80,10 @@ class WordFinder:
                     continue
 
                 # FILTRO GLOBAL: No usa assigned_fields
+                if q in set(self.noise_words):
+                    logger.info(f"Ruido temprano: '{set(self.noise_words).intersection(q)}'")
+                    continue
+
                 if not self._is_potential_keyword(q):
                     continue
 
@@ -113,7 +120,7 @@ class WordFinder:
                     if not hit_positions:
                         continue
 
-                    best_score_for_cand: float = -1.0
+                    best_score_for_cand: float = 0.1
                     best_sub_details: Dict[str, int] = {}
 
                     # Agrupamos posiciones cercanas para no probar la misma zona mil veces
@@ -141,12 +148,12 @@ class WordFinder:
                                     continue
 
                                 if sub == cand:
-                                    final_score = 1.0
+                                    penalty = self._length_penalty(q, cand)
+                                    final_score = 1.0 * penalty
                                 else:
                                     grams_sub = self._build_query_grams(sub)
                                     final_score = self._score_hybrid_greedy(grams_cand, grams_sub)
-
-                                    penalty = self._length_penalty(sub, cand)
+                                    penalty = self._length_penalty(q, cand)
                                     final_score *= penalty
 
                                 if final_score > best_score_for_cand:
@@ -207,7 +214,7 @@ class WordFinder:
                             logger.debug(f"Extracted '{best_match['key_word']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
             if single:
                 if results:
-                    logger.info(f"RESULTS: {results}")
+                    logger.debug(f"RESULTS: {results}")
                 return results if results else []
             return results
         except Exception as e:
@@ -480,4 +487,6 @@ class WordFinder:
         la, lb = len(a), len(b)
         if la == 0 or lb == 0:
             return 0.0
+        if la == lb:
+            return 1.0
         return min(la, lb) / max(la, lb)

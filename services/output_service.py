@@ -85,14 +85,15 @@ def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Di
         logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
     
 def save_raw_json(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
+    from core.utils.data_utils import to_serializable
     try:
         if isinstance(output_paths, str):
             output_paths = [output_paths]
-
+        results_ser = to_serializable(results)
         for path in output_paths:
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.json"
-            if save_json(results, output_dir, file_name):
+            if save_json(results_ser, output_dir, file_name):
                 logger.warning(f"JSON de {worker_name} generado para '{file_name}'.")
                 return True
         

@@ -29,10 +29,10 @@ class OCROutputs(ConfigWithNumpy):
     binarized_polygons: bool
     cropp_blobs: bool
     fragmented_polys: bool
-    reconstructed_lines: bool
     semantic_field: bool
 
 class VectorizingOutputs(ConfigWithNumpy):
+    reconstructed_lines: bool
     table_lines: bool
     features: bool
     image_features: bool
@@ -183,6 +183,7 @@ class DBSCAN(ConfigWithNumpy):
     metric: str
 
 class Lineal(ConfigWithNumpy):
+    get_vectors: bool
     overlap_threshold: float
 
 class TableStructurer(ConfigWithNumpy):
@@ -196,7 +197,6 @@ class CosineSimilarity(ConfigWithNumpy):
     dummie_weights: Tuple[float, float]
 
 class Vectorizer(ConfigWithNumpy):
-    keywords_interval_enabled: bool
     exclude_types: List[str]
 
 class VectorConfig(ConfigWithNumpy):

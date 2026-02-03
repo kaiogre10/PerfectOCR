@@ -52,8 +52,8 @@ def bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int
     else:
         return 1.0
 
-def calculate_similarity_ref(X: np.ndarray[Any, np.dtype[np.float32]], ref_vec: np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
-    return cosine_similarity(ref_vec, X, dense_output)[0]
+def calculate_similarity_ref(ref_vec: np.ndarray[Any, np.dtype[np.float32]], X: np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
+    return cosine_similarity(X, ref_vec, dense_output).astype(np.float32)
 
 def cosine_similarity_global(X: np.ndarray[Any, np.dtype[np.float32]], Y: None=None, dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
     return cosine_similarity(X, Y, dense_output).astype(np.float32)

@@ -15,7 +15,6 @@ class Vectorizer(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('vectorizer', {})
-        self.keywords_interval_enabled = worker_config.get('keywords_interval_enabled')
         self.exclude_types =  worker_config['exclude_types']
         self.output = config.get("features", False)
         self.image_features = config.get("image_features", False)
@@ -25,51 +24,45 @@ class Vectorizer(VectorizationAbstractWorker):
         start_time = time.perf_counter()
         try:
             logger.debug("Comienza Vectorizer")
-            logger.debug(f"Estado de Keywords_interval: {self.keywords_interval_enabled}")
 
-            table_line_ids = self._get_keywords_interval(manager) if self.keywords_interval_enabled else None
-            if table_line_ids is not None:
-                
-                logger.warning(f"Intervalo tabular detectado, se omite vectorización")
+            vectorice = context["vectorice"]
+            if not vectorice:
+                logger.info(f"Vectorización omitida, por tabla detectada anteriormente: {vectorice}")
                 context["all_features"] = np.empty(1)
-                logger.debug(f"Intervalo detectado en:{time.perf_counter()-start_time:.7f}")
-
-                if manager.save_tabular_lines(table_line_ids):
-                    logger.debug("Líneas guardadas en el manager desde Vectorizer")
-                    return True
-                else:
-                    logger.warning("No se pudieron guardar las líneas tabulares en el manager")
-                    return True
-            else:
+                return True
                 # Si no hay intervalo, se prosigue con la vectorización normal
-                all_features = self._vectorize_text(manager, context)
-                if all_features is not None:
-                    context["all_features"] = all_features
+            all_features = self._vectorize_text(manager, context)
+            if all_features is None:
+                logger.error(f"No se pudo realizar vectorización")
+                return False
+            
+            if not vectorice:
+                context["all_features"] = np.empty(1)
+                return False
+                
+            context["all_features"] = all_features
 
-                    if self.output:
-                        from services.output_service import save_table_values
-                        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-                        line_id = np.array([id.lineal_id for id in all_lines.values()]).astype(np.str_)
-                        features_to_ind = all_features[:, 1:].astype(np.str_)
-                        features_id = np.column_stack([line_id, features_to_ind]).astype(np.str_)
+            if self.output:
+                from services.output_service import save_table_values
+                all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+                line_id = np.array([id.lineal_id for id in all_lines.values()]).astype(np.str_)
+                features_to_ind = all_features[:, 1:].astype(np.str_)
+                features_id = np.column_stack([line_id, features_to_ind]).astype(np.str_)
 
-                        file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                        worker_name = context.get("worker_name") or "vectorizer_features"
-                        output_paths = context["output_paths"]
-                        image_features = self.image_features
-                        save_table_values(file_name, features_id, output_paths, worker_name, image_features)
-                        
-                    logger.info(f"Vectorización completada en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(all_features)}")
-                    logger.debug(f"Features guardadas en el contexto")
-                        
-                    return True
-                else:
-                    logger.error(f"No se pudo realizar vectorización")
-                    return False
+                file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                worker_name = context.get("worker_name") or "vectorizer_features"
+                output_paths = context["output_paths"]
+                image_features = self.image_features
+                save_table_values(file_name, features_id, output_paths, worker_name, image_features)
+                
+            logger.info(f"Vectorización completada en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(all_features)}")
+            logger.debug(f"Features guardadas en el contexto")
+                
+            return True
 
         except Exception as e:
             logger.error(f"Error en vectorización: {e}", exc_info=True)
-            return False
+        return False
             
     def _vectorize_text(self, manager: DataFormatter, context: Dict[str, Any]) -> Optional[np.ndarray[Any, Any]]:
         try:
@@ -424,38 +417,6 @@ class Vectorizer(VectorizationAbstractWorker):
         ]))
         return all_features
                 
-    def _get_keywords_interval(self, manager: DataFormatter) -> Optional[List[int]]:
-        
-        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-
-        # Verificar existencia de header_line
-        header_line_id = [lid.line_index for lid in all_lines.values() if getattr(lid, "header_line", None) is not None]
-        header_line_id = header_line_id[0] if header_line_id else None
-        if not header_line_id:
-            logger.debug("No se encontró encabezado de tabla")
-            return None
-            
-        footer_line_id = [lid.line_index for lid in all_lines.values() if getattr(lid, "footer_line", None) is not None]
-        footer_line_id = footer_line_id[0] if footer_line_id else None
-
-        if not footer_line_id:
-            logger.warning("No se encontró pie de tabla")
-            return None
-
-        # Obtener el intervalo de líneas tabulares (excluyendo header y footer)
-        all_line_ids = list(lid.line_index for lid in all_lines.values())
-        header_pos = all_line_ids.index(header_line_id)
-        footer_pos = all_line_ids.index(footer_line_id)
-        
-        if header_pos > footer_pos - 1:
-            return None
-
-        logger.debug(f"Encabezado: {all_line_ids[header_pos]}, footer: {all_line_ids[footer_pos]}")
-
-        tabular_line_ids = all_line_ids[header_pos + 1:footer_pos]
-        logger.debug(f"Tabular lines desde vectorizer: {tabular_line_ids}")
-        return tabular_line_ids
-
     def count_numeric_tokens(self, semantic_clasification: int | List[int]) -> int:
         classifications = semantic_clasification if isinstance(semantic_clasification, list) else [semantic_clasification]
         return sum(1 for sc in classifications if sc in [1, 2])

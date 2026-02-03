@@ -44,7 +44,7 @@ class DataFinder(OCRAbstractWorker):
 
             # Actualiza los key_fields
             if manager.update_key_field(polygon_updates):
-                logger.debug(f"Key Fields detectados en {time.perf_counter() - start_time:.6f}s")
+                logger.debug(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
                 return True
                 
         except Exception as e:
@@ -79,27 +79,24 @@ class DataFinder(OCRAbstractWorker):
                     skipped_len += 1
                     continue
 
-                if find_umd(ocr_text):
+                elif find_umd(ocr_text):
                     skipped_semantic += 1
                     logger.debug(f"'{pid}' UMD: {ocr_text}")
                     continue
 
-                date_key = find_date(ocr_text)
-                if date_key:
+                elif find_date(ocr_text):
                     skipped_semantic +=1
                     logger.debug(f"FECHA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 9
                     continue
 
-                rfc_key = find_rfc(ocr_text)
-                if rfc_key:
+                elif find_rfc(ocr_text):
                     skipped_semantic +=1
                     logger.debug(f"RFC encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 7
                     continue
 
-                iva_key = find_iva(ocr_text)
-                if iva_key:
+                elif find_iva(ocr_text):
                     skipped_semantic +=1
                     logger.debug(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
@@ -119,7 +116,7 @@ class DataFinder(OCRAbstractWorker):
                         pot_headers = " ".join(result["key_word"] for result in valid_results)
                         head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
                         poly.ocr_text = head_standar
-                        logger.info(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
+                        logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
 
                     else:
                         key_field = valid_results[0]['key_field']

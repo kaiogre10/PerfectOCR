@@ -456,7 +456,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
+                    logger.debug(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
@@ -479,147 +479,6 @@ class DataFormatter:
         updated = dataclasses.replace(current, **{attr_name: value})
         self.workflow.all_lines[line_id] = updated
         return True
-
-    def _find_and_mark_header(self) -> Optional[str]:
-        """Localiza la línea de encabezado y la marca."""
-        try:
-            if not self.workflow or not self.workflow.polygons or not self.workflow.all_lines:
-                logger.info("No hay polígonos o líneas en el workflow para buscar el encabezado.")
-                return None
-
-            # 1. Encontrar todos los polígonos que son candidatos a ser parte del encabezado (key_field == 6)
-            # polygons = self.workflow.polygons
-            header_poly_indices = {poly.poly_index for poly in self.workflow.polygons.values() if getattr(poly, "key_field", None) == 6}
-            
-            if not header_poly_indices:
-                logger.info("No se encontró ningún polígono con key_field=6 en todo el documento.")
-                return None
-            
-            logger.debug(f"Polígonos con key_field=6 encontrados: {header_poly_indices}")
-
-            # 2. Contar cuántos de esos polígonos de encabezado contiene cada línea
-            line_candidates: Dict[str, int] = {}
-            for line_id, line_data in self.workflow.all_lines.items():
-                # line_data.polygon_ids ya es una lista de enteros (poly_index)
-                line_poly_indices = set(line_data.polygon_ids)
-                
-                # Contar la intersección entre los índices de la línea y los índices de encabezado
-                match_count = len(line_poly_indices.intersection(header_poly_indices))
-                if match_count > 0:
-                    line_candidates[line_id] = match_count
-            
-            if not line_candidates:
-                logger.warning("Ninguna línea contiene polígonos con key_field=6.")
-                return None
-            
-            # 3. La línea con más coincidencias es la ganadora
-            header_line_id = max(line_candidates, key=line_candidates.get)
-            max_count = line_candidates[header_line_id]
-            
-            logger.debug(f"Candidatos a header: {line_candidates}. Ganador: {header_line_id} ({max_count} polígonos)")
-            
-            # Obtener el line_index de la línea ganadora para guardarlo
-            header_line_index = self.workflow.all_lines[header_line_id].line_index
-
-            if self._update_line_attr(header_line_id, "header_line", header_line_index):
-                self.update_headers(header_line_id)
-                logger.debug(f"Línea de encabezado '{header_line_id}' (índice: {header_line_index}) marcada correctamente.")
-                return header_line_id
-                
-            return None
-        
-        except Exception as e:
-            logger.error(f"Error buscando header: {e}", exc_info=True)
-            return None
-
-    def update_headers(self, header_line_id: str) -> bool:
-        """
-        Actualiza los key_field de polígonos:
-        1. En línea header -> key_field=6
-        2. Fuera de línea header -> si tenía 6, limpiar a None
-        """
-        try:
-            if not self.workflow: return False
-            
-            header_line = self.workflow.all_lines.get(header_line_id)
-            if not header_line: return False
-            
-            header_polygon_ids = set(getattr(header_line, "polygon_ids", []))
-            
-            marked, cleared = 0, 0
-
-            for poly_id, polygon in self.workflow.polygons.items():
-                kf = getattr(polygon, "key_field", None)
-                
-                if poly_id in header_polygon_ids:
-                    if kf != 6:
-                        updated = dataclasses.replace(polygon, key_field=6)
-                        self.workflow.polygons[poly_id] = updated
-                        marked += 1
-                else:
-                    if kf == 6:
-                        updated = dataclasses.replace(polygon, key_field=None)
-                        self.workflow.polygons[poly_id] = updated
-                        cleared += 1
-            
-            logger.debug(f"Actualización header polys: {marked} marcados, {cleared} limpiados")
-            return True
-        except Exception as e:
-            logger.error(f"Error actualizando headers: {e}", exc_info=True)
-            return False
-        
-    def _get_footer(self) -> Optional[str]:
-        """Busca la línea de footer (key_field 1 o 2) más cercana al final del documento."""
-        try:
-            if not self.workflow or not self.workflow.polygons or not self.workflow.all_lines:
-                logger.info("No hay polígonos o líneas en el workflow para buscar el footer.")
-                return None
-
-            # 1. Encontrar los poly_index de los polígonos que son candidatos a ser parte del footer (key_field 1 o 2)
-            footer_poly_indices = {
-                poly.poly_index
-                for poly in self.workflow.polygons.values()
-                if getattr(poly, "key_field", None) in [1, 2]
-            }
-            
-            if not footer_poly_indices:
-                logger.info("No se encontró ningún polígono con key_field=1 o 2 en todo el documento.")
-                return None
-            
-            logger.debug(f"Índices de polígonos con key_field=1 o 2 encontrados: {footer_poly_indices}")
-
-            # 2. Contar cuántos de esos polígonos de footer contiene cada línea
-            line_candidates: Dict[str, int] = {}
-            for line_id, line_data in self.workflow.all_lines.items():
-                line_poly_indices = set(line_data.polygon_ids)
-                
-                # Contar la intersección entre los índices de la línea y los índices de footer
-                match_count = len(line_poly_indices.intersection(footer_poly_indices))
-                if match_count > 0:
-                    line_candidates[line_id] = match_count
-            
-            if not line_candidates:
-                logger.warning("Ninguna línea contiene polígonos con key_field=1 o 2.")
-                return None
-            
-            # 3. La línea con más coincidencias es la ganadora
-            footer_line_id = max(line_candidates, key=line_candidates.get)
-            max_count = line_candidates[footer_line_id]
-            
-            logger.debug(f"Candidatos a footer: {line_candidates}. Ganador: {footer_line_id} ({max_count} polígonos)")
-            
-            # Obtener el line_index de la línea ganadora para guardarlo
-            footer_line_index = self.workflow.all_lines[footer_line_id].line_index
-
-            if self._update_line_attr(footer_line_id, "footer_line", footer_line_index):
-                logger.debug(f"Línea de footer '{footer_line_id}' (índice: {footer_line_index}) marcada correctamente.")
-                return footer_line_id
-                
-            return None
-                
-        except Exception as e:
-            logger.warning(f"Error buscando footer: {e}", exc_info=True)
-            return None
 
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
@@ -654,24 +513,12 @@ class DataFormatter:
                     polygon_ids=line_data["polygon_ids"],
                     polygons_index=line_data["polygons_index"],
                     line_geometry=line_geometry,
-                    tabular_line=False,
-                    header_line=None,
-                    footer_line=None
+                    tabular_line=line_data["tabular_line"],
+                    header_line=line_data["header_line"],
+                    footer_line=line_data["footer_line"]
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
-            header_line = self._find_and_mark_header()
-            footer_line = self._get_footer()
-            
-            if header_line is None:
-            
-                logger.debug(F"No se encontró encabezado")
-                return True
-            if footer_line is None:
-                logger.info("Sin pie de tabla")
-                
-            logger.info(f"Header marcado automáticamente: {header_line}")
-            logger.info(f"Footer marcado automáticamente: {footer_line}")
             return True
                         
         except Exception as e:
@@ -686,9 +533,11 @@ class DataFormatter:
         try:
             if not self.workflow:
                 return False
+            
+            all_lines = self.workflow.all_lines if self.workflow else {}
 
             cleared_count = 0
-            for lid, line_obj in self.workflow.all_lines.items():
+            for lid, line_obj in all_lines.items():
                 try:
                     if getattr(line_obj, "tabular_line", False):
                         updated = dataclasses.replace(line_obj, tabular_line=False)
@@ -708,7 +557,7 @@ class DataFormatter:
             tabular_lines_debug: List[Dict[str, Any]] = []
             marked_ids: List[str] = []
             for line_id in line_ids:
-                if line_id in self.workflow.all_lines:
+                for line_id in all_lines.values():
                     line_obj = self.workflow.all_lines[line_id]
 
                     updated_line = dataclasses.replace(line_obj, tabular_line=True)
@@ -722,10 +571,10 @@ class DataFormatter:
                     })
 
             if marked_ids:
-                logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
+                logger.info(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_debug in tabular_lines_debug:
                     # logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}' | polygons: {log_debug['polygon_ids']}")
-                    logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
+                    logger.info(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
             else:
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 

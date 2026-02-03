@@ -2,8 +2,8 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "angle_corrector"
-    - "ink_enhancement"
+    # - "angle_corrector"
+    # - "ink_enhancement"
     # - "moire"
     - "geometry_detector"
     - "polygon_extractor"
@@ -22,9 +22,9 @@ pipeline_secuence:
     
   vector_stage:
     - "lineal"
-#    - "vectorizer"
- #   - "dbscan"
-  #  - "cos_sim"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
@@ -55,10 +55,10 @@ enabled_outputs:
     binarized_polygons: false
     cropp_blobs: false
     fragmented_polys: false
-    reconstructed_lines: false
     semantic_field: false
   
   vectorization_outputs:
+    reconstructed_lines: false
     table_lines: false
     features: false
     image_features: false
@@ -180,10 +180,10 @@ modules:
     
   vectorization:
     lineal:
+      get_vectors: True
       overlap_threshold: 0.596
       
     vectorizer:
-      keywords_interval_enabled: False
       exclude_types: [
         "descriptive",
         "code", 
@@ -201,8 +201,8 @@ modules:
 
     cos_sim:
       min_cluster: 1
-      similarity_threshold: 0.90
-      emergency_threshold: 0.75
+      similarity_threshold: 0.91
+      emergency_threshold: 0.83
       interval: 2
       dummie_weights: [0.35, 0.65]
     

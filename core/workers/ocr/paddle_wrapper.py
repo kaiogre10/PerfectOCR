@@ -135,7 +135,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                                     "text": clean_text,
                                     "confidence": confidence_pct
                                 }
-                                logger.info(f"Resultados: {poly_id}: Texto: '{clean_text}', Confianza: '{confidence_pct}%'")
+                                logger.debug(f"Resultados: {poly_id}: Texto: '{clean_text}', Confianza: '{confidence_pct}%'")
 
                             else:
                                 logger.info(f"Espacio filtrado en '{poly_id}', Texto: '{text}', Confianza: '{confidence_pct}%'")

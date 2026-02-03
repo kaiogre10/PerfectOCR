@@ -385,7 +385,6 @@ VECTOR_MEDIAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
 ])
 
 FEATURES_NAME: List[str] = [
-    "line_id",
     "bbox_height_inv",
     "bbox_h_dif",
     "bbox_width_inv",
@@ -429,3 +428,16 @@ SEMATIC_TYPES_MAP: Dict[str, int] = {
     "code": -1, # Códigos generales tipo SKU, de identificación, contienen letras y números.
     "umd": -2 # Sub clasificación de code, son str cortos que suelen informar el contenido de los productos
 }
+
+def to_serializable(obj: Any) -> Any:
+    """Convierte numpy arrays y tipos numpy a tipos nativos Python."""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
+    elif isinstance(obj, dict):
+        return {k: to_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [to_serializable(item) for item in obj]
+    else:
+        return obj

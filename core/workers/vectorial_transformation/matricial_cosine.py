@@ -25,26 +25,31 @@ class MatricialCusine(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             analysis: np.ndarray[Any, Any] = context["all_features"]
-            if analysis.size ==0:
-                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
-                return True
-                
+            analysis: np.ndarray[Any, Any] = context["all_features"]
+            table_range = context["table_range"]
+            if analysis.size == 0:
+               logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
+               return True
+    
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                succes = manager.save_tabular_lines(table_line_ids)
-                if succes:
+                logger.info(f"RESULTADOS COSENO: {len(table_line_ids)} líneas:"
+                    "\n"f"{table_line_ids}"
+                    "\n"f"{table_range}")
+                # succes = manager.save_tabular_lines(table_line_ids)
+                # if succes:
                     
-                    logger.info("Tablas guaradas en el manager desde coseno")
-                    if self.output:
-                        from services.output_service import save_debug_json
-                        return_objects: bool = True
-                        tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
-                        file_name: str = manager.workflow.metadata.image_name # type: ignore
-                        worker_name = context.get("worker_name") or "matrix_cosine"
-                        output_paths = context["output_paths"]
-                        save_debug_json(output_paths, worker_name, tab_info, file_name)
+                    # logger.info("Tablas guaradas en el manager desde coseno")
+                    # if self.output:
+                    #     from services.output_service import save_debug_json
+                    #     return_objects: bool = True
+                    #     tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
+                    #     file_name: str = manager.workflow.metadata.image_name # type: ignore
+                    #     worker_name = context.get("worker_name") or "matrix_cosine"
+                    #     output_paths = context["output_paths"]
+                    #     save_debug_json(output_paths, worker_name, tab_info, file_name)
     
-                    return True
+                    # return True
         except Exception as e:
             logger.error(f"Error en matriz coseno: {e}", exc_info=True)
         return True
@@ -56,20 +61,18 @@ class MatricialCusine(VectorizationAbstractWorker):
             
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             line_ids: List[str] = [lid.lineal_id for lid in all_lines.values()]
+            tabular_lines: List[str] = manager.get_tabular_lines(False) # type: ignore
             _, header_line_id = self.get_headers(all_lines)
 
-            if not header_line_id:
+            if not tabular_lines:
                 table_line_ids = self._emergency_fallback(analysis, line_ids)
                 total_time = time.time() - start_time
                 logger.debug(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                 return table_line_ids
                 
             else:
-                return_objects: bool = False
-                tabular_lines: List[str] = manager.get_tabular_lines(return_objects) # type: ignore
-                logger.info(f"TABULAR LINES: {tabular_lines}")
-                header_idx = line_ids.index(header_line_id)
-                                
+                
+                header_idx = line_ids.index(header_line_id) if header_line_id else 0
                 if tabular_lines:
                     logger.debug(f"Validando resultado del scanner con validación coseno all-vs-all ({len(tabular_lines)} líneas reportadas)")
                     table_line_ids = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, manager, header_line_id, line_ids, header_idx, all_lines)
@@ -264,28 +267,34 @@ class MatricialCusine(VectorizationAbstractWorker):
         from core.utils.data_utils import VECTOR_MEAN_DUMMIE, VECTOR_MEDIAN_DUMMIE
         logger.warning(f"INICIANDO MÉTODO DE EMERGENCA")
         mean_w, median_w = self.dummie_weights
-
+        
         median_ref_vec = VECTOR_MEDIAN_DUMMIE.reshape(1, -1)
-        logger.info(f"{analysis.shape}")
-        
-        sims_median = calculate_similarity_ref(analysis[:, 1:], median_ref_vec, dense_output=False)
-        logger.debug(f"Similitudes con Dummie MEDIAN: {sims_median}")
-
         mean_ref_vec = VECTOR_MEAN_DUMMIE.reshape(1, -1)
-        sims_mean = calculate_similarity_ref(analysis[:, 1:], mean_ref_vec, dense_output=False)
-        logger.debug(f"Similitudes con Dummie MEAN: {sims_mean}")
 
-        # 3. Ponderación de resultados
-        sims_final = (sims_median * median_w) + (sims_mean * mean_w)
+        t0 = time.perf_counter()
+        dummie_vect = np.row_stack([median_ref_vec, mean_ref_vec])
+        sims_comb = calculate_similarity_ref(dummie_vect, analysis[:, 1:] , dense_output=False)
+        # sims_median = calculate_similarity_ref(median_ref_vec, analysis[:, 1:] , dense_output=False)
+        # logger.debug(f"Similitudes con Dummie MEDIAN: {sims_median}")
+
+        # sims_mean = calculate_similarity_ref(mean_ref_vec, analysis[:, 1:] , dense_output=False)
+        # logger.debug(f"Similitudes con Dummie MEAN: {sims_mean}")
+
+        # # 3. Ponderación de resultados
+        # sims_final = (sims_median * median_w) + (sims_mean * mean_w)
         
-        logger.debug(f"Promedio de similitud final ponderada: {np.mean(sims_final):.6f}")
-        logger.debug("Todas las líneas ordenadas: %s", ", ".join(str(lid) for lid in line_ids))
-        sims_str = "[" + "  ".join(f"{val:7.6f}" for val in sims_final) + "]"
-        logger.debug("Similitudes de emergencia finales:\n%s", sims_str)
+        sims_final = (sims_comb[:, 0] * median_w) + (sims_comb[:, 1] * mean_w)
+
+        logger.info(f"Tiempo: {time.perf_counter() - t0}")
+        
+        logger.info(f"Promedio de similitud final: {sims_final}")
+        logger.info("Todas las líneas ordenadas: %s", ", ".join(str(lid) for lid in line_ids))
+        sims_str = "[" + "  ".join(f"{val}" for val in sims_final) + "]"
+        logger.info("Similitudes de emergencia finales:\n%s", sims_str)
 
         # Log detallado por línea
         for _, (line_id, sim) in enumerate(zip(line_ids, sims_final)):
-            logger.debug(f"{line_id}: Sim: {sim:7.4f}")
+            logger.info(f"{line_id}: Sim: {sim}")
         try:
             matched_indices = [idx for idx, sim in enumerate(sims_final) if sim > self.similarity_threshold]
 
