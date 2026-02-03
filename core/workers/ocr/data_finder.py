@@ -119,7 +119,7 @@ class DataFinder(OCRAbstractWorker):
                         pot_headers = " ".join(result["key_word"] for result in valid_results)
                         head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
                         poly.ocr_text = head_standar
-                        logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
+                        logger.info(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
 
                     else:
                         key_field = valid_results[0]['key_field']

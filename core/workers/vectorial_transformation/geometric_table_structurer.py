@@ -84,7 +84,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 total_time = time.time() - start_time
                 if not df.empty:
                     logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
-                    logger.info(f"Estructuración de tabla completada en {total_time:.10f}s")
+                    logger.debug(f"Estructuración de tabla completada en {total_time:.10f}s")
 
                    # context["table_copy"] = df.copy()
 

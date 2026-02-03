@@ -50,7 +50,6 @@ class Polygons:
         # descriptive: 0
         # code: -1
         # umd: -2
-    was_refined: bool
     was_fragmented: bool
     
 @dataclass
@@ -63,7 +62,8 @@ class AllLines:
     lineal_id: str
     line_index: int
     text: str
-    polygon_ids: List[int]
+    polygon_ids: List[str]
+    polygons_index: List[int]
     line_geometry: LineGeometry
     tabular_line: bool
     header_line: Optional[int]

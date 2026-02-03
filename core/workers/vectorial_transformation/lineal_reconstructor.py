@@ -33,6 +33,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
+            self.find_tabular_lines(polygons)
             idx = [pid.poly_index for pid in polygons.values()]
             logger.info(f"Cantidad de polígonos: {len(polygons)}, índice máximo: {max(idx)}")
             lines_info= self._reconstruct_lines(polygons, context, full_img)
@@ -107,7 +108,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
                 else:
                     # Finaliza la línea actual y guarda la debug
-                    polygon_ids = [p.poly_index for p in current_line_polys]
+                    polygon_ids = [p.polygon_id for p in current_line_polys]
+                    polygons_index = [p.poly_index for p in current_line_polys]
                     texts = [p.ocr_text or "" for p in current_line_polys]
                     joined_text = " ".join(texts).strip()
                     
@@ -132,6 +134,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         "line_bbox": current_line_bbox,
                         "line_centroid": line_centroid,
                         "polygon_ids": polygon_ids,
+                        "polygons_index": polygons_index,
                         "text": joined_text
                     }
                             
@@ -140,11 +143,12 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                    logger.info(f"{line_id}: '{joined_text}'")
+ #                   logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
-            polygon_ids = [p.poly_index for p in current_line_polys]
+            polygon_ids = [p.polygon_id for p in current_line_polys]
+            polygons_index = [p.poly_index for p in current_line_polys]
             texts = [p.ocr_text or "" for p in current_line_polys]
             joined_text = " ".join(texts).strip()
             
@@ -164,9 +168,44 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     "line_bbox": current_line_bbox,
                     "line_centroid": line_centroid,
                     "polygon_ids": polygon_ids,
+                    "polygons_index": polygons_index,
                     "text": joined_text
                 }
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                logger.info(f"{line_id}: '{joined_text}'")
+#                logger.info(f"{line_id}: '{joined_text}'")
         return lines_info
+
+    def find_tabular_lines(self, polygons: Dict[str, Polygons]) -> Optional[Dict[str, List[int]]]:
+        """
+        Método placeholder para encontrar líneas tabulares.
+        Actualmente no implementado.
+        """
+        headers: List[int] = []
+        footer: List[int] = []
+        for poly_id, poly in polygons.items():
+            key_field = poly.key_field
+            if key_field is None:
+                continue
+
+            polygon_index = poly.poly_index
+            if key_field == 6:
+
+                logger.debug(f"Encabezado encontrado en: {poly_id}, idx: {polygon_index}")
+                headers.append(polygon_index)
+
+            if key_field == 1:
+
+                footer.append(polygon_index)
+                logger.debug(f"Pie de tabla encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
+
+            if key_field == 2:
+
+                footer.append(polygon_index)
+                logger.debug(f"Pie de tabla encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
+
+            continue
+
+        table_boundaries = {"headers": headers, "footer": footer}
+        logger.info(f"Límites de la tabla: {table_boundaries}")
+        return table_boundaries

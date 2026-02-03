@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.pattern_finder import clean_spaces
+from core.utils.text_validator import space_removal
 
 logger = logging.getLogger(__name__)
 
@@ -128,16 +128,20 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         
                         # Aplicar filtro de confianza mínima
                         if confidence_pct > self.min_confidence:
-                            clean_text = clean_spaces(text)
+                            clean_text = space_removal(text)
+                            if clean_text:
 
-                            final_results[poly_id] = {
-                                "text": clean_text,
-                                "confidence": confidence_pct
-                            }
-                            logger.debug(f"Resultados: {poly_id}: Texto='{text}', Confianza='{confidence_pct}%'")
+                                final_results[poly_id] = {
+                                    "text": clean_text,
+                                    "confidence": confidence_pct
+                                }
+                                logger.info(f"Resultados: {poly_id}: Texto: '{clean_text}', Confianza: '{confidence_pct}%'")
+
+                            else:
+                                logger.info(f"Espacio filtrado en '{poly_id}', Texto: '{text}', Confianza: '{confidence_pct}%'")
 
                         else:
-                            logger.debug(f"Texto basuta filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{self.min_confidence}%'")
+                            logger.debug(f"Texto basura filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{self.min_confidence}%'")
                         
                     total_results = len(final_results)
                     logger.info(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")

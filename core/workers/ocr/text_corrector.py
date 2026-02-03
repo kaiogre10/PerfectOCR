@@ -6,7 +6,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_encoder import get_char_num, validate_text
-from core.utils.text_validator import numeric_corrections, descritive_corrections
+from core.utils.text_validator import numeric_corrections, descritive_corrections, estandarice_uppers_lowers
 from core.utils.pattern_finder import termination_detect
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class TextCorrector(OCRAbstractWorker):
                 logger.info(f"Sin texto: {poly_id}: '{original_text}'")
                 continue
 
-            # token_corr = correct_termination(token)
+            #token_corr = correct_termination(token)
             
             # Filtro de confianza
             if confidence > self.conf_threshold:
@@ -71,7 +71,8 @@ class TextCorrector(OCRAbstractWorker):
             corrected_text = self._apply_corrections(text=original_text, semantic_clasification=polygon.semantic_clasification, polygon_id=poly_id)
             # Si hubo cambios, actualizar el polígono
             if corrected_text != original_text:
-                updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text, was_refined=True)
+                corrected_text = estandarice_uppers_lowers(original_text, corrected_text)
+                updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
                 corrected_polygons[poly_id] = updated_polygon
                 sc = polygon.semantic_clasification
                 semantic_type = "numeric" if sc == 1 else "quantitative" if sc == 2 else "descriptive" if sc == 0 else "umd" if sc == -2 else "code"
@@ -171,11 +172,12 @@ class TextCorrector(OCRAbstractWorker):
         Verifica si un carácter está AISLADO (sin vecinos del mismo tipo).
         Ignora espacios al buscar vecinos.
         """
-        if index < 0 or index >= len(text):
+        char_num: Set[str] = self.char_num
+        if index < 0 or index > len(text):
             return False
-            
+
         current_char = text[index]
-        current_is_digit = current_char in self.char_num
+        current_is_digit = current_char in char_num
         current_is_alpha = current_char.isalpha()
         
         # Si no es letra ni número, no aplicar corrección
@@ -201,13 +203,13 @@ class TextCorrector(OCRAbstractWorker):
         has_right_match = False
         
         if left_neighbor:
-            if current_is_digit and left_neighbor in self.char_num:
+            if current_is_digit and left_neighbor in char_num:
                 has_left_match = True
             elif current_is_alpha and left_neighbor.isalpha():
                 has_left_match = True
         
         if right_neighbor:
-            if current_is_digit and right_neighbor in self.char_num:
+            if current_is_digit and right_neighbor in char_num:
                 has_right_match = True
             elif current_is_alpha and right_neighbor.isalpha():
                 has_right_match = True

@@ -87,7 +87,6 @@ class DataFormatter:
                     cropped_img=None,
                     ocr_text=None,
                     ocr_confidence=None,
-                    was_refined=False,
                     was_fragmented=False,
                     key_field=None,
                     semantic_clasification=0,
@@ -357,11 +356,14 @@ class DataFormatter:
                 
             logger.debug(f"Recibe: {len(final_results)} resultados IDs")
 
+            new_index = 0
             for poly_id, res in final_results.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
+                    new_index += 1
                     updated_polygon = dataclasses.replace(
                         polygon,
+                        poly_index = new_index,
                         ocr_text=res.get("text", ""),
                         ocr_confidence=res.get("confidence")
                     )
@@ -395,7 +397,6 @@ class DataFormatter:
                     updated_polygon = dataclasses.replace(
                         polygon, 
                         semantic_clasification=semantic_type,
-                        was_refined=False
                     )                    
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
@@ -455,7 +456,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.debug(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
+                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
@@ -488,11 +489,7 @@ class DataFormatter:
 
             # 1. Encontrar todos los polígonos que son candidatos a ser parte del encabezado (key_field == 6)
             # polygons = self.workflow.polygons
-            header_poly_indices = {
-                poly.poly_index
-                for poly in self.workflow.polygons.values()
-                if getattr(poly, "key_field", None) == 6
-            }
+            header_poly_indices = {poly.poly_index for poly in self.workflow.polygons.values() if getattr(poly, "key_field", None) == 6}
             
             if not header_poly_indices:
                 logger.info("No se encontró ningún polígono con key_field=6 en todo el documento.")
@@ -655,6 +652,7 @@ class DataFormatter:
                     line_index=line_data.get("line_index", 0),
                     text=line_data.get("text", ""),
                     polygon_ids=line_data["polygon_ids"],
+                    polygons_index=line_data["polygons_index"],
                     line_geometry=line_geometry,
                     tabular_line=False,
                     header_line=None,

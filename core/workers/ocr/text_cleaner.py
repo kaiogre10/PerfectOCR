@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Set
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_validator import validate_text, validate_alone_chars, get_special_chars, get_char_num
+from core.utils.text_validator import validate_text, validate_alone_chars, get_special_chars, get_char_num, space_removal
 from core.utils.pattern_finder import detect_punt, remove_special_chars
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,7 @@ class TextCleaner(OCRAbstractWorker):
             confidence = polygon.ocr_confidence or 0.0
             sc: List[int] | int = polygon.semantic_clasification or 0
             text = polygon.ocr_text or ""
+            text = space_removal(text)
 
             if not validate_text(text):
                 logger.debug(f"Eliminado {poly_id} sin texto inicial")
@@ -81,7 +82,7 @@ class TextCleaner(OCRAbstractWorker):
             # 3. Ruta Normal: Limpiar texto del polígono vacío
             cleaned_text = self.process_single_text(text, polygon)
             if validate_text(cleaned_text):
-                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text, was_refined=True)
+                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
                 list_of_final_polygons.append(updated_polygon)
                 
             else:
@@ -94,7 +95,8 @@ class TextCleaner(OCRAbstractWorker):
         final_polygons_dict: Dict[str, Polygons] = {}
         for idx, poly_obj in enumerate(list_of_final_polygons):
             new_id = f"poly_{idx:04d}"
-            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, was_refined=True)
+            poly_index = idx
+            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=poly_index)
             final_polygons_dict[new_id] = final_poly_obj
             
             # 5. Reemplazo directo en el manager
@@ -130,15 +132,18 @@ class TextCleaner(OCRAbstractWorker):
         return ' '.join(processed_words)
 
     def filter_low_prob_tokens(self, text: str, polygon: Polygons, manager: DataFormatter) -> str:
-        if polygon.ocr_confidence and polygon.ocr_confidence >= self.min_confidence:
+        if polygon.ocr_confidence and polygon.ocr_confidence > self.min_confidence:
+            return text
+
+        if text.isdigit() or text.isalpha():
             return text
             
         try:
             sc = polygon.semantic_clasification
-            is_numeric_like = (isinstance(sc, list) and any(c in [1, 2, -2] for c in sc)) or \
-                            (isinstance(sc, int) and sc in [1, 2, -2])
-            if is_numeric_like:
-                return text
+            #is_numeric_like = (isinstance(sc, list) and any(c in [1, 2, -2] for c in sc)) or \
+                     #       (isinstance(sc, int) and sc in [1, 2, -2])
+            #if is_numeric_like:
+             #   return text
 
             tokens = text.split(' ')
             kept: List[str] = []
@@ -152,9 +157,9 @@ class TextCleaner(OCRAbstractWorker):
 
                 total += 1
 
-                if any(ch in self.char_num for ch in t):
-                    kept.append(tok)
-                    continue
+                #if any(ch in self.char_num for ch in t):
+                 #   kept.append(tok)
+                  #  continue
 
                 eff_len = len(''.join(ch for ch in t if not ch.isspace()))
                 if eff_len < self.min_char:
@@ -162,7 +167,7 @@ class TextCleaner(OCRAbstractWorker):
                     
                     if score < self.min_probability:
                         removed += 1
-                        logger.debug(f"Eliminado:{polygon.polygon_id} | Texto:'{t}' | Probabilidad: {score:.4f}")
+                        logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{t}' | Probabilidad: {score:.4f}")
                         continue
                     kept.append(tok)
                 else:

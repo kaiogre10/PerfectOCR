@@ -22,10 +22,10 @@ pipeline_secuence:
     
   vector_stage:
     - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
-    - "table_structurer"
+#    - "vectorizer"
+ #   - "dbscan"
+  #  - "cos_sim"
+   # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -49,7 +49,7 @@ enabled_outputs:
     gauss_poly: false
     clahe_poly: false
     sharp_poly: false
-  
+
   ocr_outputs:
     ocr_raw: false
     binarized_polygons: false
@@ -95,8 +95,8 @@ modules:
       isolation_range: [8.28, 245.601]
       threshold_black: 160
       threshold_white: 180
-      aspect_ratio_range: [5.5, 10.0]
-      angle_threshold: 15
+      aspect_ratio_range: [10.0, 15.0]
+      angle_threshold: 10
       min_area: 6
 
     angle_corrector:
@@ -166,9 +166,9 @@ modules:
   
     text_cleaner:
       min_probability: 75.0
-      min_char: 2.0
+      min_char: 2
       min_confidence: 70.0
-      min_conf_to_clean: 90.0
+      min_conf_to_clean: 90.2
     
     semantic_clasificator:
       semantic_range: [45.0, 66.5] # Cantidad de digitos
@@ -176,7 +176,7 @@ modules:
       morph_mean: [-0.3, 0.35] # Promedio morfológico
 
     text_corrector:
-      confidence_threshold: 0.90
+      confidence_threshold: 0.902
     
   vectorization:
     lineal:

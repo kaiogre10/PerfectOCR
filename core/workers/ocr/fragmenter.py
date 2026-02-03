@@ -125,7 +125,8 @@ class Fragmenter(OCRAbstractWorker):
             final_polygons_dict: Dict[str, Polygons] = {}
             for idx, poly_obj in enumerate(final_polygons):
                 new_id = f"poly_{idx:04d}"
-                final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
+                new_index = idx
+                final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=new_index)
                 final_polygons_dict[new_id] = final_poly_obj
                 manager.workflow.polygons = final_polygons_dict
 
@@ -215,7 +216,6 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=frag_text,
-                was_refined=True,
                 was_fragmented=True
             )
             new_polys.append(new_poly)
@@ -267,10 +267,9 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=part,
-                was_refined=True
             )
             new_polys.append(new_poly)
-            current_x = new_xmax
+            current_x = new_xmax - 1
 
         logger.debug(f"'{len(parts)}' Fragmentos totales para {polygon.polygon_id}")
         return new_polys
@@ -342,10 +341,9 @@ class Fragmenter(OCRAbstractWorker):
                         polygon,
                         geometry=new_geom,
                         ocr_text=part,
-                        was_refined=True
                     )
                     new_polys.append(new_poly)
-                    current_x = new_xmax
+                    current_x = new_xmax - 1
 
                 return new_polys
 
@@ -419,10 +417,10 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=part,
-                was_refined=True
+                was_fragmented=True
             )
             new_polys.append(new_poly)
-            current_x = new_xmax
+            current_x = new_xmax - 1
 
         return new_polys
         
@@ -518,9 +516,9 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=part,
-                was_refined=True
+                was_fragmented=True
             ))
-            current_x = new_xmax
+            current_x = new_xmax - 1
 
         return new_polys
     
@@ -559,7 +557,7 @@ class Fragmenter(OCRAbstractWorker):
             )
 
             frag_text = parts[i] if i < len(parts) else ""
-            new_polys.append(dataclasses.replace(polygon, geometry=new_geom, ocr_text=frag_text, was_refined=True))
+            new_polys.append(dataclasses.replace(polygon, geometry=new_geom, ocr_text=frag_text, was_fragmented=True))
 
         return new_polys
 
@@ -656,21 +654,14 @@ class Fragmenter(OCRAbstractWorker):
             # Texto: unir tokens con espacio
             frag_text = ' '.join(frag_tokens)
             
-            # Clasificación: si un solo elemento → int; si varios → lista
-            # frag_sc: List[int] | int = frag_scs[0] if len(frag_scs) == 1 else frag_scs
-            
-            # logger.info(f"Fragmento semántico: texto: '{frag_text}', sc: {frag_sc}")
-            
             new_poly = dataclasses.replace(
                 polygon,
                 geometry=new_geom,
                 ocr_text=frag_text,
-                # semantic_clasification=frag_sc,
-                was_refined=True,
                 was_fragmented=True
             )
             new_polys.append(new_poly)
-            current_x = new_xmax
+            current_x = new_xmax - 1
         
         # logger.info(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
         return new_polys

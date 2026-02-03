@@ -95,7 +95,7 @@ class SemanticClasificator(OCRAbstractWorker):
             semantic_type = 0  # descriptive
             if contains_quantitative(s):
                 semantic_type = 2  # quantitative
-            elif find_umd(s):
+            elif not s.isalpha() and find_umd(s) or s.isdigit():
                 semantic_type = -2  # umd
             elif self.morph_mean[1] < poly_morph_mean and poly_mean < self.encode_mean[0] and self.encode_mean[1] < inv_poly_mean and self.semantic_range[1] < pct :
                 has_quantitative = find_quantitative(s)

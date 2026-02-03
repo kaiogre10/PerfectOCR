@@ -112,7 +112,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             poly_data_to_filter: List[Dict[str, Any]] = []
             for i, idx in enumerate(valid_indices):
-                poly_id: str = poly_ids_order[idx] # type: ignore
+                poly_id = poly_ids_order[idx] # type: ignore
+                poly_index = i
                 crop_x1, crop_y1 = int(px1[idx]), int(py1[idx])
                 crop_x2, crop_y2 = int(px2[idx]), int(py2[idx])
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
@@ -129,6 +130,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 
                 poly_data_to_filter.append({
                     "poly_id": poly_id,
+                    "poly_index": poly_index,
                     "cropped": cropped,
                     "angle": angle,
                     "i": i,
@@ -167,6 +169,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             for i, p_data in enumerate(valid_polygons_data):
                 new_id = f"poly_{i:04d}"
+                new_index = i
                 cropped_images[new_id] = p_data["cropped"]
 
                 poly_height, poly_width = p_data["cropped"].shape[:2]
@@ -201,8 +204,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     continue
 
                 new_id = f"poly_{idx:04d}"
+                poly_index = idx
                 poly_obj = manager.workflow.polygons[old_id] # type: ignore
-                poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
+                poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=poly_index)
                 new_polygons[new_id] = poly_obj
                     
             manager.workflow.polygons = new_polygons
@@ -216,7 +220,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             extracted_count = len(cropped_images)
             logger.debug(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
 
-            if self.filtered_ouputs:                
+            if self.filtered_ouputs:
                 polygons = manager.workflow.polygons if manager.workflow else {}
 
                 for poly_id, polygon in polygons.items():

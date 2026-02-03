@@ -82,6 +82,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             
             for idx, poly_pts in enumerate(polygons[0]):
                 poly_id = f"poly_{idx:04d}"
+                poly_index = idx
                 coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts]) # type: ignore
                 bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()])
                 centroid = coords.mean(axis=0)
@@ -108,7 +109,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                     continue
 
                 final_polygons_list.append({
-                    "poly_index": idx,
+                    "poly_index": poly_index,
                     "polygon_coords": coords,
                     "bounding_box": bbox,
                     "centroid": centroid,
@@ -117,6 +118,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             final_polygons: Dict[str, Dict[str, Any]] = {}
             for new_idx, poly_data in enumerate(final_polygons_list):
                 poly_id = f"poly_{new_idx:04d}"
+                poly_index = new_idx
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")

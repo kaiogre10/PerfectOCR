@@ -78,10 +78,10 @@ class InkCorrector(ImagePrepAbstractWorker):
                     image_id = f"contours_{image_name}_{worker_name}"
                     line_cont_id= f"lines_{image_name}_{worker_name}"
                     # gaps_id = f"gaps_{image_name}_{worker_name}"
-                    img_id= f"open_{image_name}_{worker_name}"
+                    #img_id= f"open_{image_name}_{worker_name}"
             
                     save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
-                    save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
+                    #save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
                     
                     # save_shapes(image_name, gaps_id, grey_img, output_paths, white_gaps, black_gaps)
                     save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
@@ -113,7 +113,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         for i in range(self.iterations):
             valid_coords, metrics = extract_contours_metrics(grey_img, False)
 
-            noise_bin = np.percentile(metrics[:, 1], 20)
+            noise_bin = np.percentile(metrics[:, 1], 5)
             # Filtrar por noise_bin
             noise_coords = metrics[metrics[:, 1] < noise_bin]
             noise_ids = noise_coords[:, 0].astype(np.int32)
@@ -236,10 +236,10 @@ class InkCorrector(ImagePrepAbstractWorker):
         lines = np.compress(mask_lines, metrics[:, 0])
         
         # Corregir: comprimir sobre metrics, no sobre lines
-        mask_deskew = (aspect_ratio > self.aspect_ratio_range[0]) & (angle_norm < self.angle_threshold)
+        mask_deskew = (aspect_ratio > self.aspect_ratio_range[0]) & (metrics[:, 4] < self.angle_threshold)
         deskew = np.compress(mask_deskew, metrics[:, 0])
 
-        mask_vertical = (aspect_ratio > self.aspect_ratio_range[1]) & (np.abs(angle_norm - 90) < self.angle_threshold)
+        mask_vertical = (aspect_ratio > self.aspect_ratio_range[1]) & (np.abs(metrics[:, 4] - 90) < self.angle_threshold)
         vertical = np.compress(mask_vertical, metrics[:, 0])
 
         # mask_solidity = metrics[:, 1] / metrics[:, 7]

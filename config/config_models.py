@@ -141,7 +141,7 @@ class PreprocessingConfig(ConfigWithNumpy):
 
 class TextualCleanConfig(ConfigWithNumpy):
     min_probability: float
-    min_char: float
+    min_char: int
     min_confidence: float
     min_conf_to_clean: float
 

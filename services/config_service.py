@@ -20,7 +20,7 @@ class ConfigService:
             logger.warning("Modo de producción activado, se cargan configuraciones robustas")
             self.config = self.config
 
-        elif self.test_mode and "image_loader" in self.create_stager[0][1]:
+        elif self.test_mode and self.elemental_worker in self.create_stager[0][1]:
             logger.warning(f"Modo de debug, restricciones robustas desactivadas")
             self.config = self.config
 
@@ -112,7 +112,7 @@ class ConfigService:
        
     @property
     def preprocessing_config(self)-> Dict[str, Any]:
-        if not self.create_stager[1][1] or not any(self.ocr_workers):
+        if not self.create_stager[1][1]:
             return {}
         else:
             return {
@@ -124,7 +124,7 @@ class ConfigService:
 
     @property
     def ocr_config(self) -> Dict[str, Any]:
-        if not self.create_stager[2][1] or not len(self.ocr_workers) == 3:
+        if not self.create_stager[2][1] or not self.ocr_workers.issubset(self.get_all_workers):
             return {}
         else:
             return {
@@ -136,7 +136,8 @@ class ConfigService:
        
     @property
     def vectorization_config(self) -> Dict[str, Any]:
-        if not self.create_stager[3][1] or not any(self.ocr_workers):
+        vect_stage = self.create_stager[3][1]
+        if not vect_stage or not "lineal" in vect_stage or not self.ocr_workers.issubset(self.get_all_workers):
             return {}
         else:
             return {
