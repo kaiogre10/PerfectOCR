@@ -24,15 +24,14 @@ class DensityScanner(VectorizationAbstractWorker):
         try:
             logger.debug("DBSCScanner iniciado")
             analysis: np.ndarray[Any, Any] = context["all_features"]
-            table_range = context["table_range"]
+            # table_range = context["table_range"]
             if analysis.size == 0:
                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                return True
             
             table_line_ids: List[str] = self._apply_dbscan_clustering(analysis, manager)
-            logger.info(f"RESULTADOS DBSCAN: {len(table_line_ids)} líneas:"
-                        "\n"f"{table_line_ids}"
-                        "\n"f"{table_range}")
+            logger.debug(f"RESULTADOS DBSCAN: {len(table_line_ids)} líneas:"
+                        "\n"f"{table_line_ids}")
             if table_line_ids:
                 # success: bool = manager.save_tabular_lines(table_line_ids)
             
@@ -62,7 +61,7 @@ class DensityScanner(VectorizationAbstractWorker):
         """Aplica DBSCAN para agrupar líneas similares"""
         all_lines = manager.workflow.all_lines if manager.workflow else {}
         int_line_ids = features_array[:, 0].astype(int)
-        features_for_clustering = features_array[:, 1:]
+        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
 
         # Crear un diccionario que mapea line_index (int) a line_id (str)
         index_to_id: Dict[int, str] = {}
@@ -72,8 +71,10 @@ class DensityScanner(VectorizationAbstractWorker):
             index_to_id[idx] = line_id
         
         # Obtener line_ids correspondientes
+        timedbscan = time.perf_counter()
         line_ids = [index_to_id.get(int(idx), f"line_{int(idx)}") for idx in int_line_ids]
         labels: np.ndarray[Any, Any] = density_cluster(features_for_clustering, self.eps, self.min_cluster_size, self.metric)
+        logger.info(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:

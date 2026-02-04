@@ -33,7 +33,7 @@ class MatricialCusine(VectorizationAbstractWorker):
     
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.info(f"RESULTADOS COSENO: {len(table_line_ids)} líneas:"
+                logger.debug(f"RESULTADOS COSENO: {len(table_line_ids)} líneas:"
                     "\n"f"{table_line_ids}"
                     "\n"f"{table_range}")
                 # succes = manager.save_tabular_lines(table_line_ids)
@@ -56,138 +56,81 @@ class MatricialCusine(VectorizationAbstractWorker):
 
     def _compare_vectors(self, manager: DataFormatter, analysis: np.ndarray[Any, Any]) -> List[str]:
         try:
-            start_time: float = time.time()
+            start_time = time.perf_counter()
             logger.debug("Calculando matriz de similitud")
-            
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             line_ids: List[str] = [lid.lineal_id for lid in all_lines.values()]
             tabular_lines: List[str] = manager.get_tabular_lines(False) # type: ignore
-            _, header_line_id = self.get_headers(all_lines)
 
-            if not tabular_lines:
-                table_line_ids = self._emergency_fallback(analysis, line_ids)
-                total_time = time.time() - start_time
-                logger.debug(f"Validación coseno completada en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
+            if tabular_lines:
+                table_line_ids = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
+                if table_line_ids:
+                    logger.debug(f"Validación coseno completada en {time.perf_counter() - start_time:.6f}s. Líneas: {table_line_ids}")
+                    return table_line_ids
+            
+            header_line_id, footer_line_id = self.get_headers(all_lines)
+            if header_line_id > 0:
+                table_line_ids = self._fallback_cosine(analysis, line_ids, header_line_id)
+                logger.info(f"Validación coseno con encabezado en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
+                return table_line_ids
+            
+            elif footer_line_id > 0:
+                table_line_ids = self._fallback_cosine(analysis, line_ids, footer_line_id)
+                logger.info(f"Validación coseno con footer en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                 return table_line_ids
                 
             else:
-                
-                header_idx = line_ids.index(header_line_id) if header_line_id else 0
-                if tabular_lines:
-                    logger.debug(f"Validando resultado del scanner con validación coseno all-vs-all ({len(tabular_lines)} líneas reportadas)")
-                    table_line_ids = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, manager, header_line_id, line_ids, header_idx, all_lines)
-                    if table_line_ids:
-                        total_time = time.time() - start_time
-                        logger.info(f"Validación coseno completada en {total_time:.6f}s. Líneas: {table_line_ids}")
-                        return table_line_ids
-                else:
-                    logger.warning("Ejecutando fallback: buscando líneas tabulares por similitud coseno con el encabezado")
-                    table_line_ids = self._fallback_cosine(analysis, line_ids, header_idx)
-                    if table_line_ids:
-                        total_time = time.time() - start_time
-                        logger.info(f"Fallback coseno completado en {total_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
-                        return table_line_ids
-                    else:
-                        table_line_ids = self._emergency_fallback(analysis, line_ids)
-                        logger.warning("Método fallback falló, pasando al método de emergencia")
-                        return table_line_ids
+                table_line_ids = self._emergency_fallback(analysis, line_ids)
+                logger.warning("Método fallback falló, pasando al método de emergencia")
+                return table_line_ids
+                        
         except Exception as e:
             logger.error(f"Error en matriz de similitud coseno: {e}", exc_info=True)
         return []
 
-    def _validate_scanner_interval_all_vs_all(self, analysis: np.ndarray[Any, Any], tabular_lines: List[str], manager: DataFormatter, header_line_id: str, line_ids: List[str], header_idx: int, all_lines: Dict[str, AllLines]) -> List[str]:
+    def _validate_scanner_interval_all_vs_all(self, analysis: np.ndarray[Any, Any], tabular_lines: List[str], line_ids: List[str]) -> List[str]:
         """
         Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado por el scanner.
         No usa el header como referencia para el intervalo; el header sólo se añade si el intervalo es válido.
-        """
-        if line_ids.index(tabular_lines[0]) < line_ids.index(header_line_id):
-            return []
-            
+        """            
         # Convertir tabular_lines (IDs de línea) a índices numéricos
         tabular_indices: List[int] = []
         for line_id in tabular_lines:
             if line_id in line_ids:
                 tabular_indices.append(line_ids.index(line_id))
+                
+        tabular_idx = np.array(tabular_indices).astype(np.int32)
         
-        if not tabular_indices:
-            logger.error("Ninguna línea tabular encontrada en line_ids")
-            return self._emergency_fallback(analysis, line_ids)
-            
-        last_scanner_idx = max(tabular_indices)
-
-        start_idx = header_idx + 1
-        end_idx = last_scanner_idx + 1
-
-        if start_idx > end_idx:
-            logger.error("Intervalo para validar vacío (header al final o scanner produjo líneas anteriores al header).")
-            return self._emergency_fallback(analysis, line_ids)
+        mask = np.isin(analysis[:, 0], tabular_idx, assume_unique=True)
+        features = np.ascontiguousarray(np.compress(mask, analysis, 0)).astype(np.float32)
         
-        blocked_line_ids: Set[str] = set()
-        if manager.workflow and manager.workflow.polygons:
-            logger.debug(f"Total de polígonos disponibles: {len(manager.workflow.polygons)}")
-            
-            # Obtener IDs de polígonos con key_field (incluyendo HeaderWords)
-            blocked_polygon_ids: Set[str] = set()
-            for poly_id, polygon in manager.workflow.polygons.items():
-                if polygon.key_field:
-                    blocked_polygon_ids.add(poly_id)
-                    logger.debug(f"Polígono {poly_id}: key_field='{polygon.key_field}'")
-            
-            # Buscar líneas que contengan estos polígonos
-            for line_id, line_obj in all_lines.items():
-                if line_obj.polygon_ids:
-                    line_polygon_ids = set(line_obj.polygon_ids)
-                    if line_polygon_ids.intersection(blocked_polygon_ids):
-                        blocked_line_ids.add(line_id)
-                        logger.debug(f"Línea {line_id} bloqueada por contener polígonos con key_field")
-            
-        logger.debug(f"Líneas bloqueadas por key_field: {blocked_line_ids}")
-        
-        # Filtrar el intervalo excluyendo líneas bloqueadas
-        blocked_in_interval = [idx for idx in range(start_idx, end_idx + 1) if line_ids[idx] in blocked_line_ids]
-        if blocked_in_interval:
-            first_blocked = min(blocked_in_interval)
-            new_end = first_blocked - 1
-            logger.debug(f"Cortando intervalo en la primera línea bloqueada: bloqueada_idx={first_blocked}, nuevo end_idx={new_end}")
-            end_idx = new_end
-
-        # reconstruir intervalo y comprobar si quedó vacío tras el corte
-        if start_idx > end_idx:
-            logger.debug("Intervalo quedó vacío tras cortar por líneas bloqueadas.")
-            return self._emergency_fallback(analysis, line_ids)
-
-        mask = (analysis[:, 0] > start_idx) & (analysis[:, 0] < end_idx)
-        feature = np.compress(mask, analysis, 0).astype(np.float32)
-        candidate_indices = feature[:, 0].copy().astype(np.int32)
-        features = feature[: ,1:]
-            
-        n = features.shape[0]
-        
+        features = features[: ,1:]        
         timecos0 = time.perf_counter()
         sims_mat_dense = cosine_similarity_global(features, dense_output=False)
-        logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}s")
-            
-        # Convertir la matriz dispersa a densa para mostrarla
-        mean_log = np.mean(sims_mat_dense) 
-        logger.debug(f"Promedio matriz: {mean_log}")
-        logger.debug("Filas/Columnas (en orden): %s", ", ".join(str(lid) for lid in  line_ids))
+        logger.info(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}'s")
+
+        # logger.debug(f"Promedio matriz: {np.mean(sims_mat_dense)}")
+        logger.debug("Filas/Columnas (en orden):"
+        "\n%s", ", ".join(str(lid) for lid in  tabular_lines))
         matriz_str = "\n".join(
-            ["[" + "  ".join(f"{val:7.6f}" for val in row) + "]" for row in sims_mat_dense]
+            ["[" + "  ".join(f"{float(val):8.7f}" for val in row) + "]" for row in sims_mat_dense]
         )
-        logger.debug("Matriz:\n%s", matriz_str)
+        logger.debug(
+        "\n%s", matriz_str)
 
         # para cada fila, calcular similitud media con las demás (excluir self)
         mean_sims: List[float] = []
+        n = features.shape[0]
         for i in range(n):
             if n == 1:
                 mean_sims.append(1.0)
             else:
-                mean_val = float((np.sum(sims_mat_dense[i]) - 1.0) / (n - 1)) # type: ignore
+                mean_val = float((np.sum(sims_mat_dense[i]) - 1.0) / (n - 1)) 
                 mean_sims.append(mean_val)
 
         matched_original_indices: List[int] = []
         consecutive_failures = 0
-        for mean_sim, orig_idx, lid in zip(mean_sims, candidate_indices,  line_ids):
+        for mean_sim, orig_idx, lid in zip(mean_sims, tabular_indices,  line_ids):
             if mean_sim > self.similarity_threshold:
                 matched_original_indices.append(orig_idx)
                 consecutive_failures += 1
@@ -195,17 +138,14 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         # Si hay validaciones por coseno, devolver todo el intervalo hasta la última validada
         if matched_original_indices:
-            last_valid_idx = max(matched_original_indices)
-            final_end_idx = min(last_valid_idx, end_idx)  # respeta corte por key_field
-            table_line_ids = [line_ids[i] for i in range(start_idx, final_end_idx + 1)]
-            logger.debug(f"Intervalo asignado por coseno hasta último validado (idx={final_end_idx}): {len(table_line_ids)} líneas")
+            table_line_ids = [line_ids[idx] for idx in matched_original_indices]
             return table_line_ids
 
         # Si ninguna línea superó el umbral, activar emergencia desde aquí
         logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
         return self._emergency_fallback(analysis, line_ids)
 
-    def _fallback_cosine(self, analysis: np.ndarray[Any, Any], line_ids: List[str], header_idx: int) -> List[str]:
+    def _fallback_cosine(self, analysis: np.ndarray[Any, Any], line_ids: List[str], cut_idx: int) -> List[str]:
         """
         Fallback: Busca un bloque continuo de líneas tabulares después del encabezado.
         Compara cada línea con la línea de referencia (la primera después del encabezado).
@@ -213,16 +153,16 @@ class MatricialCusine(VectorizationAbstractWorker):
         """
         logger.warning("INICIANDO MÉTODO FALLBACK")
         # La línea de referencia es la que está justo después del encabezado
-        ref_line_idx = header_idx + 1
+        ref_line_idx = cut_idx + 1
         if ref_line_idx > (len(line_ids) - self.min_cluster):
             logger.warning("No hay líneas después del encabezado para usar como referencia.")
             return []
         
-        mask = (analysis[:, 0] > header_idx)
+        mask = (analysis[:, 0] > cut_idx)
 
         line_cand = np.compress(mask, analysis, 0)
-        cand_indx = line_cand[:, 0].copy().astype(np.int32)
-        line_cands = line_cand[:, 1:]
+        cand_indx = line_cand[:, 0].astype(np.int32)
+        line_cands = np.ascontiguousarray(line_cand[:, 1:], dtype=np.float32)
 
         ref_vec = line_cands[0].reshape(1, -1)
 
@@ -273,7 +213,8 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         t0 = time.perf_counter()
         dummie_vect = np.row_stack([median_ref_vec, mean_ref_vec])
-        sims_comb = calculate_similarity_ref(dummie_vect, analysis[:, 1:] , dense_output=False)
+        analysis = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
+        sims_comb = calculate_similarity_ref(dummie_vect, analysis, dense_output=False)
         # sims_median = calculate_similarity_ref(median_ref_vec, analysis[:, 1:] , dense_output=False)
         # logger.debug(f"Similitudes con Dummie MEDIAN: {sims_median}")
 
@@ -357,14 +298,59 @@ class MatricialCusine(VectorizationAbstractWorker):
         else:
             return []
 
-    def get_headers(self, all_lines: Dict[str, AllLines]) -> Tuple[int, str]:
+    def get_headers(self, all_lines: Dict[str, AllLines]) -> Tuple[int, int]:
         try:
-            for line_id, line_data in all_lines.items():
+            header_line_id = 0
+            footer_line_id = 0
+            for line_data in all_lines.values():
                 h: int | None = line_data.header_line if line_data.header_line else None
                 if h is not None:
-                    header_line_id = line_id
-                    # logger.info(f"H: {h}, id: {line_id}")
-                    return h, header_line_id
+                    header_line_id += h
+                    
+                f: int | None = line_data.footer_line if line_data.footer_line else None
+                if f is not None:
+                    footer_line_id += f
+                    
+                if footer_line_id > 0 and footer_line_id > 0:
+                    break 
+                else:
+                    continue
+            
+            logger.info(f"Header_idx: {header_line_id}, Footer_idx: {footer_line_id}")
+            return header_line_id, footer_line_id
         except Exception as e:
             logger.error(f"Error buscando encabezados: {e}")
-        return 0, ""
+        return 0, 0
+        
+    def _cut_lines(self, analysis: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
+        """
+        Filtra solo las líneas después del encabezado y antes del footer para evitar ruido.
+        """
+        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+        
+        header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
+        header_line_id = header_line_ids[0] if header_line_ids else None
+        footer_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "footer_line", None) is not None]
+        footer_line_id = footer_line_ids[0] if footer_line_ids else None
+
+        if not header_line_id and not footer_line_id:
+            logger.info("No hay header ni footer: se devuelve el análisis completo")
+            return analysis
+
+        line_ids = list(analysis.keys())
+        if header_line_id:
+            if header_line_id in line_ids:
+                header_idx = line_ids.index(header_line_id) + 1  # después del header
+                return {lid: analysis[lid] for lid in line_ids[header_idx:]}
+            logger.warning(f"header_line_id {header_line_id} no encontrada en analysis keys")
+            return analysis
+
+        # Si llegamos aquí, existe footer_line_id y header_line_id es None
+        if footer_line_id:
+            if footer_line_id in line_ids:
+                footer_idx = line_ids.index(footer_line_id)  # antes del footer
+                return {lid: analysis[lid] for lid in line_ids[:footer_idx]}
+            logger.warning(f"footer_line_id {footer_line_id} no encontrada en analysis keys")
+            
+            return analysis
+        return analysis

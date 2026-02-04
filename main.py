@@ -73,8 +73,7 @@ def main():
         clear_output_folders(output_paths)
         return activate_main(input_paths, output_paths, config_path, project_root, TEST_MODE)
 
-    clear_output_folders(output_paths)
-    return activate_main([], [], "", "", FALSE)
+    return activate_main([], [], "", "", False)
 
 if __name__ == "__main__":
     main()

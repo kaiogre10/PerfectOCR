@@ -29,7 +29,7 @@ class Fragmenter(OCRAbstractWorker):
             
             polygons_in: Dict[str, Polygons] = manager.workflow.polygons
             sorted_poly_ids = sorted(polygons_in.keys())
-            logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+            logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
             blob_metrics = context.get("blob_metrics", {})
             if not blob_metrics:
                 poly_blob_metrics = {}
@@ -59,7 +59,7 @@ class Fragmenter(OCRAbstractWorker):
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
                 if is_acronym(ocr_text):
-                    logger.warning(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
+                    logger.debug(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
                     final_polygons.append(polygon)
                     continue
 
@@ -140,14 +140,14 @@ class Fragmenter(OCRAbstractWorker):
                 for poly_id, polygon in polygons.items():
                     cropped_img = polygon.cropped_img.cropped_img if polygon.was_fragmented else None
                     # if polygon.was_fragmented:
-                    logger.info(f"{poly_id}: {polygon.was_fragmented}")
+                    logger.debug(f"{poly_id}: {polygon.was_fragmented}")
                     save_croped_image(image_name, poly_id, cropped_img, output_paths, "fragmenter")
 
                 if manager.delete_cropped_images():
                     logger.info("Imanges liberadaas en fragmenter")
 
             if fragmented_count > 0:
-                logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
+                logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
                 return True
                 
         except Exception as e:

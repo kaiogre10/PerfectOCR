@@ -2,8 +2,8 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "angle_corrector"
-    # - "ink_enhancement"
+    - "angle_corrector"
+    - "ink_enhancement"
     # - "moire"
     - "geometry_detector"
     - "polygon_extractor"
@@ -60,7 +60,7 @@ enabled_outputs:
   vectorization_outputs:
     reconstructed_lines: false
     table_lines: false
-    features: true
+    features: false
     image_features: false
     table_structured: false
     math_max_corrected: false
@@ -195,7 +195,7 @@ modules:
       ]
       
     dbscan:
-      eps: 1.0
+      eps: 1.5
       min_cluster_size: 2
       metric: "euclidean"
 

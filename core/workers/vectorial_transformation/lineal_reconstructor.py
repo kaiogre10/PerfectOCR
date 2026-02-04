@@ -34,7 +34,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
                 return False
             lines_info, table_range = reconsturctued_lines
-            logger.info(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
+            logger.debug(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
 
             if manager.create_text_lines(lines_info):
                 logger.debug(f"Lineas guardads correctamente en el manager")
@@ -46,8 +46,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     context["table_range"] = []
                 else:
                     # Hay tabla detectada → vectorizar solo si get_vectors está activo
-                    table_lines = list(range(head, foot))
-                   # logger.info(f"{table_range}")
+                    table_lines = list(range(head + 1, foot))
+                    logger.debug(f"Table range: {table_range}")
                     context["vectorice"] = self.get_vectors
                     context["table_range"] = table_lines
 
@@ -183,7 +183,12 @@ class LinealReconstructor(VectorizationAbstractWorker):
             polygons_index = [p.poly_index for p in current_line_polys]
             texts = [p.ocr_text or "" for p in current_line_polys]
             joined_text = " ".join(texts).strip()
+            
             footer_line = line_counter if footers.issubset(set(polygons_index)) else None
+            if footer_line is not None:
+                footer_idx += footer_line
+                tabular_line =False
+                
             tabular_line = False if footer_idx > 0 or header_idx == 0 else True
             
             # Validar también el texto de la última línea
@@ -211,6 +216,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
 #                logger.info(f"{line_id}: '{joined_text}'")
+
         return lines_info, (header_idx if header_idx > 0 else 0, footer_idx if footer_idx > 0 else 0)
 
     def find_tabular_lines(self, polygons: Dict[str, Polygons]) -> Tuple[List[int], List[int]]:
@@ -246,7 +252,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     continue
 
             table_boundaries: Tuple[List[int], List[int]] = headers, footer
-            logger.info(f"Límites de la tabla: {table_boundaries}")
+            logger.debug(f"Límites de la tabla: {table_boundaries}")
 
             return table_boundaries
         except Exception as e:

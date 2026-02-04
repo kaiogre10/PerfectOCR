@@ -19,19 +19,20 @@ class WordFinder:
             pero me da flojera escribirla así que solo dejaré un log y no cambiaré el parametro "set_params"""
             logger.info(f"Parametros establecidos y cargados manualmente")
 
-        self.params = model.get("params", {})
-        self.all_ngrams: Dict[str, Tuple[int, Dict[int, List[str]]]] = model.get("all_ngrams", {})
-        self.global_words: List[str] = model["global_words"]
-        self.noise_words = model["noise_words"]
+        params: Dict[str, Any] = model.get("params", {})
         noise_filter = model.get("noise_filter", {})
         global_filter = model.get("global_filter", {})
-        self.global_filter_threshold = float(self.params.get("global_filter_threshold"))
+        
+        self.all_ngrams: Dict[str, Tuple[int, Dict[int, List[str]]]] = model.get("all_ngrams", {})
+        self.global_words: List[str] = model["global_words"]
+        self.noise_words: Set[str] = set(model["noise_words"])
+        self.global_filter_threshold: float = params.get("global_filter_threshold", {})
         self.noise_grams: List[Dict[int, List[str]]] = noise_filter["noise_grams"]
-        self.threshold: float = self.params.get("threshold_similarity")
-        self.ngrams: Tuple[int, int] = self.params["char_ngrams"]
-        self.window_flex = self.params.get("window_flexibility")
-        self.forb_match: float = self.params.get("forb_match")
-        self.min_diff: float = self.params.get("min_diff")
+        self.threshold: float = params.get("threshold_similarity", {})
+        self.ngrams: Tuple[int, int] = params["char_ngrams"]
+        self.window_flex: int = params.get("window_flexibility", {})
+        self.forb_match: float = params.get("forb_match", {})
+        self.min_diff: float = params.get("min_diff", {})
         self.global_matrices: Dict[int, np.ndarray[Any, np.dtype[np.uint8]]] = global_filter.get("global_matrices", {})
         # timestamp_model = os.path.getmtime(self.wf_path)
         # fecha_wf = datetime.fromtimestamp(timestamp_model).isoformat()
@@ -57,7 +58,8 @@ class WordFinder:
             if not text:
                 return []
 
-            if text in set(self.noise_words):
+            if text.lower() in self.noise_words:
+                logger.debug(f"Ruido temprano: '{text}'")
                 return []
 
             single = False
@@ -80,8 +82,8 @@ class WordFinder:
                     continue
 
                 # FILTRO GLOBAL: No usa assigned_fields
-                if q in set(self.noise_words):
-                    logger.info(f"Ruido temprano: '{set(self.noise_words).intersection(q)}'")
+                if q in self.noise_words:
+                    logger.debug(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
                     continue
 
                 if not self._is_potential_keyword(q):

@@ -311,6 +311,7 @@ CHAR_FRECUENCY: Dict[str, float] ={
 }
 
 VECTOR_MEAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
+    
     1.1919195,
     0.9051989,
     1.04885909,
@@ -348,6 +349,7 @@ VECTOR_MEAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
 ])
 
 VECTOR_MEDIAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
+    
     1.2091054,
     0.9216525,
     1.0211281,

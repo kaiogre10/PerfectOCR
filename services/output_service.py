@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import pandas as pd # type: ignore
 from typing import Dict, Any, List
+import csv
 
 logger = logging.getLogger(__name__)
 
@@ -152,47 +153,47 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] 
             table_file_name = f"{file_name}_{worker_name}.csv"
             save_table(df, output_dir, table_file_name, header)
 
-            if image_features:
-                import matplotlib.pyplot as plt
-                features_data = df.drop('line_id', axis=1)
-                feature_names: List[str] = list(features_data.columns.tolist()) # type: ignore
+        if image_features:
+            import matplotlib.pyplot as plt
+            features_data = df.drop('line_id', axis=1)
+            feature_names: List[str] = list(features_data.columns.tolist()) # type: ignore
 
-                # Crear la figura
-                plt.figure(figsize=(12, 8)) #type: ignore
+            # Crear la figura
+            plt.figure(figsize=(12, 8)) #type: ignore
 
-                # Plotear cada línea del documento con valores originales
-                for idx, row in features_data.iterrows():
-                    line_id: str = df.iloc[idx]['line_id'] #type: ignore
-                    plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1) #type: ignore
+            # Plotear cada línea del documento con valores originales
+            for idx, row in features_data.iterrows():
+                line_id: str = df.iloc[idx]['line_id'] #type: ignore
+                plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1) #type: ignore
 
-                # Configurar la gráfica
-                plt.xlabel('Features') #type: ignore
-                plt.ylabel('Valores de Features') #type: ignore
-                plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')#type: ignore
-                plt.xticks(rotation=45, ha='right') #type: ignore
-                plt.grid(True, alpha=0.3) #type: ignore
+            # Configurar la gráfica
+            plt.xlabel('Features') #type: ignore
+            plt.ylabel('Valores de Features') #type: ignore
+            plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')#type: ignore
+            plt.xticks(rotation=45, ha='right') #type: ignore
+            plt.grid(True, alpha=0.3) #type: ignore
 
-                # Calcular los límites del eje Y y poner los ticks de 1 en 1
-                if not features_data.empty:
-                    ymin = features_data.min().min()# type: ignore
-                    ymax = features_data.max().max()# type: ignore
-                    ymin_tick = int(np.floor(ymin))# type: ignore
-                    ymax_tick = int(np.ceil(ymax))# type: ignore
-                    plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1)) #type: ignore
+            # Calcular los límites del eje Y y poner los ticks de 1 en 1
+            if not features_data.empty:
+                ymin = features_data.min().min()# type: ignore
+                ymax = features_data.max().max()# type: ignore
+                ymin_tick = int(np.floor(ymin))# type: ignore
+                ymax_tick = int(np.ceil(ymax))# type: ignore
+                plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1)) #type: ignore
 
-                # Limitar leyenda si hay muchas líneas
-                if len(df) > 20:
-                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8) #type: ignore
-                else:
-                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left') #type: ignore
+            # Limitar leyenda si hay muchas líneas
+            if len(df) > 20:
+                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8) #type: ignore
+            else:
+                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left') #type: ignore
 
-                plt.tight_layout()
+            plt.tight_layout()
 
-                # Guardar la gráfica
-                plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
-                plot_path = os.path.join(output_dir, plot_filename)
-                plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-                plt.close()
+            # Guardar la gráfica
+            plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
+            plot_path = os.path.join(output_dir, plot_filename)
+            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+            plt.close()
 
             logger.info(f"Gráfica de features guardada en: {plot_path}")
     except Exception as e:
@@ -203,7 +204,6 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
     Guarda una tabla estructurada en formato CSV (compatible con Excel).
     Ruta del archivo guardado o None si hay error.
     """
-    import csv
     try:      
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, file_name)
@@ -235,7 +235,6 @@ def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section
     Appendea una tabla a un único CSV maestro con secciones, manteniendo headers por tabla.
     Formato:
     """
-    import csv
     os.makedirs(output_dir, exist_ok=True)
     master_path = os.path.join(output_dir, master_filename)
     with open(master_path, 'a', newline='', encoding='utf-8') as f:

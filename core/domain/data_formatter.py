@@ -184,7 +184,7 @@ class DataFormatter:
         Retorna las líneas marcadas como tabulares en workflow.all_lines.
         Args:
             return_objects: Si True, devuelve Dict[str, Any] con objetos completos.
-                        Si False, devuelve List[str] con solo los line_ids.
+            Si False, devuelve List[str] con solo los line_ids.
         Returns:
             Dict[str, Any] o List[str] según el parámetro return_objects.
             Devuelve estructura vacía si no hay workflow o no hay líneas marcadas.

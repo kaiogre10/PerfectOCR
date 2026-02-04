@@ -77,10 +77,7 @@ class Vectorizer(VectorizationAbstractWorker):
             
             if features_array.size == 0:
                 return None
-                
-            # Verificar que la primera columna sea int (line_index)
-            logger.info(f"Features shape: {features_array.shape}")
-            
+                            
             return features_array
                             
         except Exception as e:
@@ -195,7 +192,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     has_digit
                     ])
                     
-            return textual_features
+            return np.ascontiguousarray(textual_features, dtype=np.float32)
         
         except Exception as e:
             logger.warning(f"Error en features de lineas: {e}", exc_info=True)
@@ -207,7 +204,6 @@ class Vectorizer(VectorizationAbstractWorker):
         geometry = [lid.line_geometry for lid in sorted_lines]
         
         bbox = np.array([geo.line_bbox for geo in geometry], np.float32)
-        logger.info(f"boxes shape: {bbox.shape}")
         centroid = np.array([geo.line_centroid for geo in geometry], np.float32)
         width = (bbox[:, 2] - bbox[:, 0])
         height = (bbox[:, 3] - bbox[:, 1])
