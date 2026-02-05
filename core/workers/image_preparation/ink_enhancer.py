@@ -58,8 +58,9 @@ class InkCorrector(ImagePrepAbstractWorker):
             lines_cont, angle_cont, grey_img = self.compare_areas(grey_img)
             grey_img, black_gaps, white_gaps = self.fill_gaps(grey_img)
 
-            self.refine_text_quality(grey_img.copy(), context, image_name)
-            
+            #self.refine_text_quality(grey_img.copy(), context, image_name)
+            all_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+            all_gaps: List[np.ndarray[Any, np.dtype[np.int32]]] = []
             if not manager.update_full_img(True, grey_img):
 
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
@@ -78,9 +79,13 @@ class InkCorrector(ImagePrepAbstractWorker):
             
                     # save_croped_image(image_name, imag_id, grey_img, output_paths, worker_name)
                     #save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
+                    lines_cont.extend(angle_cont)
+                    black_gaps.extend(white_gaps)
+                    all_cont.extend(lines_cont)
+                    all_gaps.extend(black_gaps)
                     
-                    # save_shapes(image_name, gaps_id, grey_img, output_paths, black_gaps, white_gaps)
-                    # save_shapes(image_name, image_id, grey_img, output_paths, contours_list, contours2=blacked_contours)
+                    save_shapes(image_name, gaps_id, grey_img, output_paths, black_gaps, white_gaps)
+                    save_shapes(image_name, image_id, grey_img, output_paths, all_cont, contours2=all_gaps)
                     # save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
                             
                 return True
@@ -107,7 +112,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         # Corregir: usar & en lugar de and, y paréntesis correctos
         mask_lines = aspect_ratio > self.aspect_ratio_range[1]
         lines = np.compress(mask_lines, metrics[:, 0])
-        
+       
         # Corregir: comprimir sobre metrics, no sobre lines
         mask_deskew = (aspect_ratio > self.aspect_ratio_range[0]) & (metrics[:, 4] < self.angle_threshold)
         deskew = np.compress(mask_deskew, metrics[:, 0])
@@ -115,7 +120,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         mask_vertical = (aspect_ratio > self.aspect_ratio_range[1]) & (np.abs(metrics[:, 4] - 90) < self.angle_threshold)
         vertical = np.compress(mask_vertical, metrics[:, 0])
         
-        max_area = np.percentile(metrics[:, 1], 30)
+        max_area = np.percentile(metrics[:, 1], 20)
         metrics = np.compress(max_area > metrics[:, 1], metrics, 0)
 
         mask_solidity = metrics[:, 1] / metrics[:, 7]
@@ -163,7 +168,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         metrics = np.compress(max_area > metrics[:, 1], metrics, 0)
 
         lonely = metrics[:, 9]
-        mask_lon = (lonely == 1)
+        mask_lon = (lonely == 0)
         cont_array = np.compress(mask_lon, metrics.copy(), 0)
         lone_ind: Set[int] = set(cont_array[:, 0].astype(np.int32)) if len(cont_array[:, 0]) > 0 else set()
 

@@ -31,7 +31,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
     sh, sw = bin_img.shape[:2]
     for i, cont in enumerate(contours):
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
-        if len(cont_coords) < 4:
+        if len(cont_coords) < 3:
             continue
 
         x, y = cont_coords[:, 0], cont_coords[:, 1]
@@ -150,27 +150,31 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
         bin_edges: edges del histograma de áreas
     """
     time_h = time.perf_counter()
-    hist, bin_edges = np.histogram(metrics[:, 1], bins=(np.histogram_bin_edges(metrics[:, 1], 'fd')).astype(np.float32))
+    areas = metrics[:, 1]
+    top_area = np.max(areas) + 1
+    hist, bin_edges = np.histogram(areas, bins=(np.histogram_bin_edges(areas, 'fd', (0.0, top_area))).astype(np.float32))
     hist_rever = hist[::-1].astype(np.int32)
-    cutting = np.where(hist_rever > 1)[0]
+    cutting = np.where(hist_rever > 2)[0]
     idx_orig = len(hist) - 1 - cutting[0] if cutting.size > 0 else -1
     outliers_indx = np.nonzero(hist==1)[0]
     filtered_outliers = outliers_indx[outliers_indx > idx_orig]
     if filtered_outliers.size == 0:
-        # logger.warning(f"Imagen sin outliers: {hist}")
+        logger.warning(f"Imagen sin outliers: {hist}")
         return metrics
     
-    # logger.info(f"HIST 1: {hist}")
+    logger.info(f"HIST 1: {hist.shape}")
     mask = np.min(filtered_outliers)
-    ind_big = bin_edges[mask-1]
-    cond = metrics[:, 1] < ind_big
+    ind_big = bin_edges[mask] 
+    cond = areas < ind_big
     metrics = np.compress(cond, metrics, 0)
-    hist, bin_edges = np.histogram(metrics[:, 1], bins=(np.histogram_bin_edges(metrics[:, 1], 'fd')).astype(np.float32))
+    areas = metrics[:, 1]
+    top_area = np.max(areas) + 1
+    hist, bin_edges = np.histogram(areas, bins=(np.histogram_bin_edges(areas, 'fd', (0.0, top_area))).astype(np.float32))
     # plt.hist(metrics[:, 1], bins='fd')  # arguments are passed to np.histogram
     # plt.title("Histogram with 'fd' bins")
     # (0.5, 1.0, "Histogram with 'fd' bins")
     # plt.show()
-    # logger.info(f"HIST 2: {hist}")
+    logger.info(f"HIST 2: {hist.shape}")
     logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
     return metrics
     
