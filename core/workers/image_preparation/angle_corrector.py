@@ -4,7 +4,7 @@ import time
 import numpy as np
 import logging
 import math
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 
@@ -18,12 +18,14 @@ class AngleCorrector(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get("angle_corrector", {})
+        self.color: List[int] = list(worker_config["border_color"]) or [255, 255, 255]
         self.min_angle_for_correction = worker_config.get('min_angle_for_correction')
         self.canny_thresholds = worker_config['canny_thresholds']
         self.hough_threshold = worker_config.get('hough_threshold')
         self.hough_max_line_gap_px = worker_config.get('hough_max_line_gap_px')
         self.hough_angle_filter_range_degrees = worker_config['hough_angle_filter_range_degrees']
         self.hough_min_line_length_cap_px = worker_config.get('hough_min_line_length_cap_px')
+        self.border_cutt: np.intp = worker_config.get('border_cutt', 0)
         self.output = config.get("angle_corrected", False)
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -45,6 +47,10 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 img_id = f"full_img_{image_name}_{worker_name}"
                 save_croped_image(image_name, img_id, full_img, output_paths, worker_name)
 
+            elif corrected:
+                if manager.update_full_img(corrected, full_img):
+                    logger.info(f"Imagen rotada actuallizada con éxito.")
+            
             if not manager.update_full_img(corrected, full_img):
                 logger.error(f"Error al actualizar la imagen corregida en el manager")
                 return False
@@ -71,31 +77,6 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
             edges = cv2.Canny(full_img, self.canny_thresholds[0], self.canny_thresholds[1])
             lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=self.hough_threshold, minLineLength=min_len, maxLineGap=self.hough_max_line_gap_px)
-
-            # if full_img.ndim == 2 or full_img.shape[2] == 1:
-            #     original_with_lines = cv2.cvtColor(full_img, cv2.COLOR_GRAY2BGR)
-            # else:
-            #     original_with_lines = full_img.copy()
-
-            # if lines is not None:
-            #     for line in lines:
-            #         x1, y1, x2, y2 = line[0]
-            #         cv2.line(original_with_lines, (x1, y1), (x2, y2), (255, 0, 0), 1) 
-
-            # # Show full image windows (use WINDOW_NORMAL and resize to image dims so nothing is cropped)
-            # cv2.namedWindow('Detected Lines', cv2.WINDOW_NORMAL)
-            # cv2.resizeWindow('Detected Lines', w, h)
-
-            # # Ensure edges is 3-channel for consistent display
-            # edges_display = edges
-            # if edges.ndim == 2:
-            #     edges_display = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-
-            # # cv2.imshow('Original Image', full_img)
-            # # cv2.imshow('Canny Edges', edges_display)
-            # cv2.imshow('Detected Lines', original_with_lines)
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
                 
             if lines is None or len(lines) == 0: # type: ignore
                 logger.warning(f"No se detectaron líneas para la corrección de inclinación")
@@ -111,8 +92,10 @@ class AngleCorrector(ImagePrepAbstractWorker):
             angle = np.median(filtered_angles)
             if abs(angle) > self.min_angle_for_correction:
                 rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
-                deskew_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE).astype(np.uint8)
+                deskew_img = cv2.warpAffine(full_img, rotation_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.color).astype(np.uint8)
                 logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
+
+                # deskew_img = self.rotate_and_crop(deskew_img)
                 return deskew_img, True
             
             else:             
@@ -122,3 +105,26 @@ class AngleCorrector(ImagePrepAbstractWorker):
         except Exception as e:
             logger.error(f"ERRROR; {e}", exc_info=True)
         return full_img, False
+
+    def rotate_and_crop(self, img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        try:
+            # Si la imagen es RGB, conviértela a escala de grises para el recorte
+            if img.ndim == 3:
+                mask = img < self.border_cutt
+                #  = np.where(cond, img)
+            else:
+                mask = img < self.border_cutt
+
+            coords = np.column_stack(np.where(~mask))
+            if coords.size == 0:
+                return img  # No hay contenido, retorna original
+
+            y_min = coords[:, 0].min()
+            y_max = coords[:, 0].max()
+            x_min = coords[:, 1].min()
+            x_max = coords[:, 1].max()
+
+            return img[y_min:y_max+1, x_min:x_max+1].astype(np.uint8)
+        except Exception as e:
+            logger.info(f"Error recortando: {e}", exc_info=True)
+        return img

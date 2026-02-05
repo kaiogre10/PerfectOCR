@@ -103,6 +103,8 @@ class DeskewConfig(ConfigWithNumpy):
     hough_min_line_length_cap_px: int
     hough_max_line_gap_px: int
     hough_angle_filter_range_degrees: Tuple[float, float]
+    border_cutt: int
+    border_color: List[int]
 
 class GeoDetector(ConfigWithNumpy):
     min_area: int

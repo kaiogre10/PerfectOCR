@@ -23,14 +23,19 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], outp
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) #type: ignore
             
             if not contours2:
-                logger.info("Solo contornos principales")
-                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (255, 0, 0), thickness=cv2.FILLED) # blobs Azul
+                logger.debug("Solo contornos principales")
+                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
+                save_image(image, output_dir, file_name)
+
+            elif not contours1:
+                logger.debug("Solo contornos principales")
+                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
                 save_image(image, output_dir, file_name)
 
             else:
-                logger.debug("Todos los contornos")
+                logger.info("Todos los contornos")
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # ruido Rojo
-                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 184, 71), thickness=cv2.FILLED) # corrección VERDE
+                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (255 ,0, 0), thickness=cv2.FILLED) # AZUL
                 save_image(image, output_dir, file_name)
 
     except Exception as e:

@@ -14,7 +14,7 @@ class StagersFactory:
     def __init__(self, manager_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.modules_config = manager_config
-        self.image_workers = self.modules_config.get("image_preparation", {}).get("imagepre_stage", [])
+        self.image_workers: List[str] = self.modules_config.get("image_preparation", {}).get("imagepre_stage", [])
         self.preprocessing_workers = self.modules_config.get("preprocessing", {}).get("preprocessing_stage", [])
         self.ocr_workers = self.modules_config.get("ocr", {}).get("ocr_stage", [])
         self.vectorizing_workers = self.modules_config.get("vectorization", {}).get("vector_stage", [])
@@ -23,6 +23,10 @@ class StagersFactory:
     def create_image_prep_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> ImagePreparationStager:
         """Crea stager de preparación de imagen con configuraciones específicas del master config."""
         factory = self.main_factory.get_image_preparation_factory()
+        if "polygon_extractor" in self.image_workers:
+            if not "geometry_detector" in self.image_workers:
+                self.image_workers.remove("polygon_extractor")
+
         image_workers = factory.create_workers(self.image_workers, context)
         
         return ImagePreparationStager(

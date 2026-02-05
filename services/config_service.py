@@ -10,18 +10,23 @@ class ConfigService:
     """Gestor de los parametros de configuración"""
     def __init__(self, config_path: str, TEST_MODE: bool):
         self.config_path = config_path
-        self.validated_config = self._load_and_validate_yaml(config_path)
-        self.config = self.validated_config.model_dump()
-        self.test_mode = TEST_MODE
         self.ocr_workers: Set[str] = {"geometry_detector", "paddle_wrapper", "polygon_extractor"}
-        self.elemental_worker = "image_loader"
-        self.min_workers: Set[str] = self.ocr_workers.union(self.elemental_worker)
-        if not self.test_mode and self._validate_min_workers():
-            logger.warning("Modo de producción activado, se cargan configuraciones robustas")
+        elemental_worker = "image_loader"
+        self.min_workers: Set[str] = self.ocr_workers.union(elemental_worker)
+        validated_config = self._load_and_validate_yaml(config_path)
+        self.config = validated_config.model_dump()
+        elemental_params = elemental_worker in self.create_stager[0][1]
+        
+        if not elemental_params:
+            logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER")
+            self.config = {}
+
+        elif TEST_MODE and elemental_params:
+            logger.warning(f"Modo de debug, restricciones robustas desactivadas. Stages activas: '{self.log_active_areas()}'")
             self.config = self.config
 
-        elif self.test_mode and self.elemental_worker in self.create_stager[0][1]:
-            logger.warning(f"Modo de debug, restricciones robustas desactivadas")
+        elif not TEST_MODE and self._validate_min_workers():
+            logger.warning(f"Modo de producción activado, se cargan configuraciones robustas. Stages activas: '{self.log_active_areas()}'")
             self.config = self.config
 
         else:
@@ -57,16 +62,14 @@ class ConfigService:
 
     @property
     def models_config(self) -> Dict[str, Any]:
-        
-        all_workers = self.get_all_workers
-        ocr_active = not self.ocr_workers.isdisjoint(all_workers)
+        ocr_active = not self.ocr_workers.isdisjoint(self.all_workers)
 
-        if not all_workers:
+        if not self.all_workers:
             logger.debug("Sin all workers")
             return {}
 
         # WF solo activo con OCR completo + data_finder
-        elif self.ocr_workers.issubset(all_workers) and "data_finder" in all_workers:
+        elif self.ocr_workers.issubset(self.all_workers) and "data_finder" in self.all_workers:
             logger.debug("OCR completo + data_finder")
             return {
                 "models_config": self.config.get("models_config", {}),
@@ -82,13 +85,13 @@ class ConfigService:
             }
 
         # Sin OCR (incluye solo data_finder)
-        elif "data_finder" in all_workers:
+        elif "data_finder" in self.all_workers:
             logger.debug("Solo data_finder")
             return {
             "models_config": {},
             "activate_wf": False
         }
-
+        
         else:
             logger.debug("Configuración de modelos no cargada")
             return {}
@@ -124,7 +127,7 @@ class ConfigService:
 
     @property
     def ocr_config(self) -> Dict[str, Any]:
-        if not self.create_stager[2][1] or not self.ocr_workers.issubset(self.get_all_workers):
+        if not self.create_stager[2][1] or not self.ocr_workers.issubset(self.all_workers):
             return {}
         else:
             return {
@@ -137,7 +140,7 @@ class ConfigService:
     @property
     def vectorization_config(self) -> Dict[str, Any]:
         vect_stage = self.create_stager[3][1]
-        if not vect_stage or not "lineal" in vect_stage or not self.ocr_workers.issubset(self.get_all_workers):
+        if not vect_stage or not "lineal" in vect_stage or not self.ocr_workers.issubset(self.all_workers):
             return {}
         else:
             return {
@@ -148,7 +151,7 @@ class ConfigService:
             }
         
     @property
-    def manager_config(self) -> Dict[str, Any]:
+    def manager_config(self) -> Dict[str, Dict[str, Any]]:
         """Devuelve el paquete estándar de configuraciones de los managers"""
         return {
             "image_preparation": self.img_prep_config,
@@ -163,9 +166,11 @@ class ConfigService:
                 logger.error("No hay configuración de workers disponible")
                 return False
             
-            set_worker_config = self.get_all_workers
-            if self.min_workers.issubset(set_worker_config):
-                # Loguear conteo por stage de forma segura
+            if not self.min_workers.issubset(self.all_workers):
+                workers_missing: Set[str] = self.min_workers - self.all_workers
+                logger.warning(f"Faltan: {workers_missing} de los '{len(self.min_workers)}' workers mínimos para el pipeline")
+                return False
+            else:
                 for stage, stage_workers in self.workers_order.items():
                     if isinstance(stage_workers, (list, tuple, set)): #type: ignore
                         count = len(stage_workers)
@@ -178,10 +183,6 @@ class ConfigService:
                         workers_set: Set[str] = set()
                     logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
                 return True
-            else:
-                workers_missing = self.min_workers - set_worker_config
-                logger.warning(f"Faltan: {workers_missing} de los '{len(self.min_workers)}' workers mínimos para el pipeline")
-                return False
 
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
@@ -195,7 +196,7 @@ class ConfigService:
         return full_stage
     
     @property
-    def get_all_workers(self) -> Set[str]:
+    def all_workers(self) -> Set[str]:
         all_workers = set(self.create_stager[0][1])
 
         if self.create_stager[1][1]:
@@ -212,3 +213,12 @@ class ConfigService:
 
         return all_workers
         
+    def log_active_areas(self):
+        stages_list: List[str] = []
+        for stage, stager in self.manager_config.items():
+            if not stager:
+                continue
+            stage = stage.replace("_", " ", 1).title()
+            stages_list.append(stage)
+            
+        return ", ".join(stages_list)

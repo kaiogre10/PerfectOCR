@@ -57,8 +57,8 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         cleanup_project_cache(project_root)
         return results #type: ignore
         
-    except Exception as e:
-        logger.error(f"Error fatal en MAIN BUILDER: {e}", exc_info=True)
+    except NameError as e:
+        logger.error(f"ERROR FATAL EN BUILDERS, FINALIZANDO PROCESO: {e}", exc_info=True)
     return []
     
 

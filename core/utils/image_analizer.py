@@ -1,6 +1,6 @@
 # PerfectOCR/core/utils/image_analizer.py
 import cv2
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import logging
 import time
@@ -21,52 +21,113 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
     """
     bin_img = binarice_img(img, {})
 
-    contours, _ = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours, _ = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
     if not contours:
         return [], np.empty((0, 5))
     
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
-
+    
+    sh, sw = bin_img.shape[:2]
     for i, cont in enumerate(contours):
         cont_coords = cont.reshape(-1, 2).astype(np.int32)
-        if len(cont_coords) < 3:
+        if len(cont_coords) < 4:
             continue
-        
+
+        x, y = cont_coords[:, 0], cont_coords[:, 1]
+        if np.any(x < 2) or np.any(x > sw-2) or np.any(y < 2) or np.any(y > sh-2):
+            continue
+
         cont_coords_list.append((i, cont_coords))
 
-    if not cont_coords_list:
-        return [], np.empty((0, 5))
-
+        if not cont_coords_list:
+            return [], np.empty((0, 5))
+        
     areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
 
-    valid_mask = (areas > 0)  & (areas != np.max(areas))
+    valid_mask = (areas > 1) & (areas < np.max(areas))
     valid_indices = np.where(valid_mask)[0]
 
     if len(valid_indices) == 0:
-        return [], np.empty((0, 5))
+        return [], np.empty((0, 9))  # Ahora son 9 columnas
+    
+    pixels_val: List[int] = []
+    lonely: List[int] = []
+    # Máscara reutilizable
+    single_mask = np.zeros((sh, sw), dtype=np.uint8)
+    
+    # Variables para limpiar la región anterior
+    prev_x, prev_y, prev_w, prev_h = 0, 0, 0, 0
+    
+    # Solo procesa los contornos válidos
+    hull: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+    for idx in valid_indices:
+        conts = cont_coords_list[idx]
+        
+        # Limpia solo la región usada del contorno anterior
+        if prev_w > 0 and prev_h > 0:
+            single_mask[prev_y:prev_y+prev_h, prev_x:prev_x+prev_w] = 0
+        
+        convex_hull = cv2.convexHull(conts[1])
+        # Calcula bounding box del contorno actual
+        x, y, w, h = cv2.boundingRect(convex_hull)
+        hull.append(convex_hull)
+        
+        # Dibuja el contorno actual
+        cv2.drawContours(single_mask, [conts[1]], -1, [255], cv2.FILLED)
+        
+        # Extrae solo la región de interés
+        roi_mask = single_mask[y:y+h, x:x+w]
+        roi_img = bin_img[y:y+h, x:x+w]
+        pixels = roi_img[roi_mask == 255]
+        pixels_outside = roi_img[roi_mask == 0]
+        
+        # Verifica si HAY TINTA fuera del contorno (otro blob cerca)
+        if np.count_nonzero(pixels_outside) > 0:
+            lonely.append(0)  # Hay otro blob cerca (NO está solo)
+        else:
+            lonely.append(1)  # Está solo (sin otros blobs en el bbox)
+
+        # 1 = nwgro (tinta), 0 = blamco (fondo)
+        if np.all(pixels==255):
+            pixels_val.append(1)
+
+        else:
+            pixels_val.append(0)
+
+        prev_x, prev_y, prev_w, prev_h = x, y, w, h
+        
+    convex_area = np.array([cv2.contourArea(convex_hull[1]) for convex_hull in hull])
+    lonely_array = np.array(lonely, dtype=np.int32)
+    pixels_val_array = np.array(pixels_val, dtype=np.int32)
+    black = np.count_nonzero(pixels_val_array)
+    logger.info(f"BLOBS negros: {black}, BLANCOS: {pixels_val_array.size - black}")
+    # mask_log = lonely_array == 0
+    # logger.info(f"Blobs solitarios: {lonely_array[mask_log].astype(np.int32)}")
 
     rects = [cv2.minAreaRect(cont_coords_list[i][1]) for i in valid_indices]
     shapes = np.array([r[1] for r in rects])
     angles = np.array([r[2] for r in rects])
     valid_areas = areas[valid_indices]
-    # circles = [cv2.minEnclosingCircle(cont_coords_list[i][1]) for i in valid_indices]
-    # centers = np.array([c[0] for c in circles])  # (x, y)
-    # radii = np.array([c[1] for c in circles])    # radius
-    # cir_areas = np.pi * radii**2
+
+    # convex_hull: List[np.ndarray[Any, np.dtype[np.int32]]] = [cv2.convexHull(cont_coords_list[i][1]) for i in valid_indices]
+    
+
     centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0 else 0, m["m01"] / m["m00"] if m["m00"] != 0 else 0)
         for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.intp)
     
-    # Agrega el índice secuencial como primera columna
+    # Agrega el índice secuencial como primera columna y pixels_val al final
     metrics_array = np.column_stack([
-        np.arange(len(valid_indices), dtype=np.int32),
-        valid_areas,
-        shapes[:, 0], # w
-        shapes[:, 1], # h
-        angles,
-        centroids[:, 0],
-        centroids[:, 1],
-        # cir_areas,
+        np.arange(len(valid_indices), dtype=np.int32),  # 0
+        valid_areas,                                    # 1
+        shapes[:, 0],                                   # 2
+        shapes[:, 1],                                   # 3
+        angles,                                         # 4
+        centroids[:, 0],                                # 5
+        centroids[:, 1],                                # 6
+        convex_area,                                    # 7
+        pixels_val_array,                               # 8
+        lonely_array                                    # 9
     ])
 
     if histogram:
@@ -95,21 +156,24 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
     idx_orig = len(hist) - 1 - cutting[0] if cutting.size > 0 else -1
     outliers_indx = np.nonzero(hist==1)[0]
     filtered_outliers = outliers_indx[outliers_indx > idx_orig]
-    logger.debug(f"HIST 1: {hist}")
+    if filtered_outliers.size == 0:
+        # logger.warning(f"Imagen sin outliers: {hist}")
+        return metrics
+    
+    # logger.info(f"HIST 1: {hist}")
     mask = np.min(filtered_outliers)
-    ind_big = bin_edges[mask]
+    ind_big = bin_edges[mask-1]
     cond = metrics[:, 1] < ind_big
     metrics = np.compress(cond, metrics, 0)
-    # logger.info(f"HIST LIMPIO: {hist}")
     hist, bin_edges = np.histogram(metrics[:, 1], bins=(np.histogram_bin_edges(metrics[:, 1], 'fd')).astype(np.float32))
     # plt.hist(metrics[:, 1], bins='fd')  # arguments are passed to np.histogram
     # plt.title("Histogram with 'fd' bins")
     # (0.5, 1.0, "Histogram with 'fd' bins")
     # plt.show()
-    logger.debug(f"HIST 2: {hist}")
+    # logger.info(f"HIST 2: {hist}")
     logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
     return metrics
-        
+    
 def extract_cc_metrics(bin_img: np.ndarray[Any, np.dtype[np.uint8]], mask_contours):
     
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask_contours, connectivity=8)

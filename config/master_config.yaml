@@ -5,7 +5,7 @@ pipeline_secuence:
     - "angle_corrector"
     - "ink_enhancement"
     # - "moire"
-    - "geometry_detector"
+    # - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: false
+    bin_full_img: true
     angle_corrected: false
     moire_poly: false
     cropped_img: false
@@ -95,8 +95,8 @@ modules:
       isolation_range: [8.28, 245.601]
       threshold_black: 160
       threshold_white: 180
-      aspect_ratio_range: [10.0, 15.0]
-      angle_threshold: 10
+      aspect_ratio_range: [5.0, 12.2]
+      angle_threshold: 11.901
       min_area: 6
 
     angle_corrector:
@@ -106,6 +106,8 @@ modules:
       hough_min_line_length_cap_px: 250
       hough_max_line_gap_px: 20
       hough_angle_filter_range_degrees: [-22.5, 22.5]
+      border_cutt: 100
+      border_color: [255, 255, 255]
 
     moire:
       min_distance_from_center: 150
