@@ -262,7 +262,7 @@ class InkCorrector(ImagePrepAbstractWorker):
             logger.info(f"Imagen KNN guardada: {knn_image_id}")
             
             # ========== IMAGEN 2: BÚSQUEDA POR RADIO ==========
-            search_radius = 20
+            search_radius = 50
             # if search_radius > 1:
             radio_distances, radio_search = nearest.radius_neighbors(X, radius=search_radius, return_distance=True, sort_results=True)
             
@@ -272,15 +272,15 @@ class InkCorrector(ImagePrepAbstractWorker):
                 center = centroids[i]
                 color = tuple(int(c) for c in colors[i])
                 
-                cv2.circle(radius_img, center, search_radius, (200, 200, 200), 1)
-                cv2.circle(radius_img, center, 5, (0, 255, 0), -1)
+                cv2.circle(radius_img, center, search_radius, color, 1)
+                # cv2.circle(radius_img, center, 5, (0, 255, 0), -1)
                 
                 for neighbor_idx in radio_search[i]:
                     neighbor_idx = int(neighbor_idx)  # Convertir a entero nativo
                     if neighbor_idx != i:
                         neighbor_center = centroids[neighbor_idx]
-                        cv2.circle(radius_img, neighbor_center, 3, color, 2)
-                        cv2.line(radius_img, center, neighbor_center, color, 3)
+                        # cv2.circle(radius_img, neighbor_center, 3, color, 2)
+                        cv2.line(radius_img, center, neighbor_center, color, 2)
             
             radius_image_id = f"radius_{image_name}_{worker_name}"
             save_croped_image(image_name, radius_image_id, radius_img, output_paths, worker_name)
