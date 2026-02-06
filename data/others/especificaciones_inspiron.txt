@@ -1,9 +1,0 @@
-Nombre del dispositivo	DESKTOP-6LQPVNT
-Procesador	11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz   2.80 GHz
-RAM instalada	8.00 GB (7.74 GB usable)
-Identificador de dispositivo	FF64CFC7-F54F-476D-9BCB-15258BAC8D45
-Id. del producto	00342-42311-32821-AAOEM
-Tipo de sistema	Sistema operativo de 64 bits, procesador basado en x64
-Lápiz y entrada táctil	La entrada táctil o manuscrita no está disponible para esta pantalla
-Inspiron 15 3511
-Intel iRISx graphics

@@ -1,51 +1,40 @@
+# Ignorar tipos de archivo 
+*.md
+*.pyc
+*.idea
+*.ini
+*.txt
+*.png
+*.jpg
+*.jpeg
+*.xml
+*.iml
+*.cursorignore
+# *.pkl
+
+
 # Ignorar carpetas
 __pycache__/
 .pytest_cache/
 .cache/
 .pyc/
-.png/
-.txt/
-.log/
-.ini/
 .vscode/
 .idea/
-.cursor/
-.github/
+# .cursor/
+# .github/
 .github/chatmodes/
 .typings/
-.idea/
 
 # Ignorar carpeta
-.github/
-documentation/
-test/
+# documentation/
+# test/
 tools/
-# data/
 C:/PerfectOCR/data/models/
 data/models/paddle/
 input/
 input2/
 output/
 input3/
-
-# Excepción
-!especificaciones_inspiron.txt
-!especificaciones_latitude.txt
-
-# Ignorar cualquier archivo .ini
-*.ini
-*.txt
-*.png
-*.jpg
-*.jpeg
-# *.pkl
-
-# Ignorar perfectocr.txt
-*.cursorignore
-*cursorignore/
-cursorignore
-*perfectocr.txt
-perfectocr.txt/
 
 # secrets
 .env
