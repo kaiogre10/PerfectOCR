@@ -20,14 +20,14 @@ __pycache__/
 .pyc/
 .vscode/
 .idea/
-# .cursor/
-# .github/
+.cursor/
+.github/
 .github/chatmodes/
 .typings/
 
 # Ignorar carpeta
-# documentation/
-# test/
+documentation/
+test/
 tools/
 C:/PerfectOCR/data/models/
 data/models/paddle/

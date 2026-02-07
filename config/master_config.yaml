@@ -5,7 +5,7 @@ pipeline_secuence:
     - "angle_corrector"
     - "ink_enhancement"
     # - "moire"
-    # - "geometry_detector"
+    - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
@@ -18,10 +18,10 @@ pipeline_secuence:
   ocr_stage:
      - "paddle_wrapper"
      - "text_refiner"
-     - "data_finder"
+    #  - "data_finder"
     
   vector_stage:
-    - "lineal"
+    # - "lineal"
     - "vectorizer"
     - "dbscan"
     - "cos_sim"
@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: false
-    bin_full_img: True
+    bin_full_img: False
     angle_corrected: false
     moire_poly: false
     cropped_img: false
@@ -43,9 +43,7 @@ enabled_outputs:
     opened: false
   
   preprocessing_outputs:
-    contours: false
-    components: false
-    sp_poly: false 
+    sp_poly: false
     gauss_poly: false
     clahe_poly: false
     sharp_poly: false
@@ -55,7 +53,7 @@ enabled_outputs:
     binarized_polygons: false
     cropp_blobs: false
     fragmented_polys: false
-    semantic_field: false
+    semantic_field: True
   
   vectorization_outputs:
     reconstructed_lines: false
@@ -153,7 +151,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 1
+      num_passes: 2
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]

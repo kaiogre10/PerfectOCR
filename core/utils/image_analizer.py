@@ -159,7 +159,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
     outliers_indx = np.nonzero(hist==1)[0]
     filtered_outliers = outliers_indx[outliers_indx > idx_orig]
     if filtered_outliers.size == 0:
-        logger.warning(f"Imagen sin outliers: {hist}")
+        logger.warning("Imagen sin outliers")
         return metrics
     
     logger.info(f"HIST 1: {hist.shape}")
@@ -174,7 +174,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
     # plt.title("Histogram with 'fd' bins")
     # (0.5, 1.0, "Histogram with 'fd' bins")
     # plt.show()
-    logger.info(f"HIST 2: {hist.shape}")
+    # logger.info(f"HIST 2: {hist.shape}")
     logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
     return metrics
     

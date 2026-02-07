@@ -17,8 +17,6 @@ class ImgLoadOutputs(ConfigWithNumpy):
     opened: bool
 
 class PreprocessingOutputs(ConfigWithNumpy):
-    contours: bool
-    components: bool
     sp_poly: bool
     gauss_poly: bool
     clahe_poly: bool

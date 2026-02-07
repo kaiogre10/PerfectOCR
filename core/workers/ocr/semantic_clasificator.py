@@ -53,8 +53,8 @@ class SemanticClasificator(OCRAbstractWorker):
             if self.output and validate_text(final_pass):
                 from services.output_service import save_raw_json
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore
-                name = "semantic_clasificator"
-                worker_name = f"{name}_{final_pass}"
+                name = "semantic_clasification"
+                worker_name = f"{name}"
                 output_paths = context["output_paths"]
                 polygons = manager.workflow.polygons if manager.workflow else {}
                 results: Dict[str, Any] = {}
@@ -95,7 +95,7 @@ class SemanticClasificator(OCRAbstractWorker):
             semantic_type = 0  # descriptive
             if contains_quantitative(s):
                 semantic_type = 2  # quantitative
-            elif not s.isalpha() and find_umd(s) or s.isdigit():
+            elif find_umd(s):
                 semantic_type = -2  # umd
             elif self.morph_mean[1] < poly_morph_mean and poly_mean < self.encode_mean[0] and self.encode_mean[1] < inv_poly_mean and self.semantic_range[1] < pct :
                 has_quantitative = find_quantitative(s)
