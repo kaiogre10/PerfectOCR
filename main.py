@@ -29,11 +29,14 @@ DEFAULT_INPUT_PATH = [
 ]
 
 DEFAULT_OUTPUT_PATH =[
-    "output"
+    "D:/outputs/perfectocr",
 ]
 
+LOG_FILE_PATH = "D:/outputs/logs/perfectocr.txt"
 CONSOLE_LEVEL = "INFO"
+FILE_LEVEL = "INFO"
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
+FILE_FORMAT = "%(asctime)s - %(module)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%D - %H:%M" #"%Y-%m-%d %H:%M:%S"
 
 logger_root = logging.getLogger()
@@ -41,9 +44,18 @@ logger_root.setLevel(logging.DEBUG)
 if logger_root.hasHandlers():
     logger_root.handlers.clear()
 
+file_formatter = logging.Formatter(
+    fmt=FILE_FORMAT,
+    datefmt=DATE_FORMAT
+)
 console_formatter = logging.Formatter(
     fmt=CONSOLE_FORMAT
 )
+
+file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
+file_handler.setFormatter(file_formatter)
+file_handler.setLevel(FILE_LEVEL.upper())
+logger_root.addHandler(file_handler)
 
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(console_formatter)

@@ -32,8 +32,8 @@ class InkCorrector(ImagePrepAbstractWorker):
         self.angle_threshold: float = worker_config.get("angle_threshold")
         self.min_area = worker_config.get("min_area")
         self.output = config.get("bin_full_img")
-        self.kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (2, 2))
-        self.kernelr = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 2))
+        self.kernel1 = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 1))
+        self.kernel2 = cv2.getStructuringElement(cv2.MORPH_CROSS, (1, 3))
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y restaura texto con tinta gastada."""
@@ -50,18 +50,16 @@ class InkCorrector(ImagePrepAbstractWorker):
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-                
-            grey_img = self._decolorate(full_img)
-            # cv2.morphologyEx(grey_img, cv2.MORPH_CLOSE, kernel, iterations=2, borderType=cv2.BORDER_REPLICATE)
-            # cv2.erode(grey_img, kernel, iterations=1)
 
-            lines_cont, angle_cont, grey_img = self.compare_areas(grey_img)
-            grey_img, black_gaps, white_gaps = self.fill_gaps(grey_img)
+            
+            lines_cont, angle_cont, corrected = self.compare_areas(full_img)
+            # corrected, black_gaps, white_gaps = self.fill_gaps(gray_img)
+            # corrected = cv2.morphologyEx(correct, cv2.MORPH_CLOSE, self.kernelr, iterations=2, borderType=cv2.BORDER_REFLECT)
 
             #self.refine_text_quality(grey_img.copy(), context, image_name)
-            all_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-            all_gaps: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-            if not manager.update_full_img(True, grey_img):
+            # all_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+            # all_gaps: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+            if not manager.update_full_img(True, corrected):
 
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
                 return False    
@@ -74,19 +72,19 @@ class InkCorrector(ImagePrepAbstractWorker):
                     imag_id = f"corrected_blobs_{image_name}_{worker_name}"
                     image_id = f"contours_{image_name}_{worker_name}"
                     line_cont_id= f"lines_{image_name}_{worker_name}"
-                    gaps_id = f"gaps_{image_name}_{worker_name}"
+                    # gaps_id = f"gaps_{image_name}_{worker_name}"
                     #img_id= f"open_{image_name}_{worker_name}"
             
-                    # save_croped_image(image_name, imag_id, grey_img, output_paths, worker_name)
+                    save_croped_image(image_name, imag_id, corrected, output_paths, worker_name)
                     #save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
-                    lines_cont.extend(angle_cont)
-                    black_gaps.extend(white_gaps)
-                    all_cont.extend(lines_cont)
-                    all_gaps.extend(black_gaps)
+                    # lines_cont.extend(angle_cont)
+                    # black_gaps.extend(white_gaps)
+                    # all_cont.extend(lines_cont)
+                    # all_gaps.extend(black_gaps)
                     
-                    save_shapes(image_name, gaps_id, grey_img, output_paths, black_gaps, white_gaps)
-                    save_shapes(image_name, image_id, grey_img, output_paths, all_cont, contours2=all_gaps)
-                    # save_shapes(image_name, line_cont_id, grey_img, output_paths, lines_cont, contours2=angle_cont)
+                    # save_shapes(image_name, gaps_id, grey_img, output_paths, black_gaps, white_gaps)
+                    # save_shapes(image_name, image_id, full_img, output_paths, corrected, contours2=[])
+                    save_shapes(image_name, line_cont_id, full_img, output_paths, lines_cont, contours2=angle_cont)
                             
                 return True
             
@@ -96,7 +94,7 @@ class InkCorrector(ImagePrepAbstractWorker):
 
     def compare_areas(self, grey_img: np.ndarray[Any, Any]):
 
-        cont_coords_list, metrics = extract_contours_metrics(grey_img, True)
+        cont_coords_list, metrics = extract_contours_metrics(grey_img, False)
         angle_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         lines_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         lines_correct: int = 0
@@ -114,14 +112,21 @@ class InkCorrector(ImagePrepAbstractWorker):
         lines = np.compress(mask_lines, metrics[:, 0])
        
         # Corregir: comprimir sobre metrics, no sobre lines
-        mask_deskew = (aspect_ratio > self.aspect_ratio_range[0]) & (metrics[:, 4] < self.angle_threshold)
+        angle_to_horizontal = np.minimum(metrics[:, 4], 180.0 - metrics[:, 4])
+        mask_deskew = (aspect_ratio > self.aspect_ratio_range[1]) & (angle_to_horizontal > self.angle_threshold)
         deskew = np.compress(mask_deskew, metrics[:, 0])
 
-        mask_vertical = (aspect_ratio > self.aspect_ratio_range[1]) & (np.abs(metrics[:, 4] - 90) < self.angle_threshold)
+        angle_to_vertical = np.abs(metrics[:, 4] - 90.0)
+        mask_vertical = (aspect_ratio > self.aspect_ratio_range[1]) & (angle_to_vertical > self.angle_threshold)
         vertical = np.compress(mask_vertical, metrics[:, 0])
+
+        top_areas_list = np.sort(metrics[:, 1])[::-1][:10]
+        # logger.info(f"{top_areas_list}")
+        mask =  metrics[:,1]  >= np.min(top_areas_list) - 1
+        top_area = np.compress(mask, metrics[:,0], 0)
         
-        max_area = np.percentile(metrics[:, 1], 20)
-        metrics = np.compress(max_area > metrics[:, 1], metrics, 0)
+        min_area = np.percentile(metrics[:, 1], 20)
+        metrics = np.compress(min_area > metrics[:, 1], metrics, 0)
 
         mask_solidity = metrics[:, 1] / metrics[:, 7]
         solidity = np.compress(mask_solidity < 0.85, metrics[:, 0])
@@ -131,33 +136,39 @@ class InkCorrector(ImagePrepAbstractWorker):
         deskew_indices: Set[int] = set(deskew.astype(np.int32)) if len(deskew) > 0 else set()
         vertical_indices: Set[int] = set(vertical.astype(np.int32)) if len(vertical) > 0 else set()
         solidity_indices: Set[int] = set(solidity.astype(np.int32)) if len(solidity) > 0 else set()
+        top_ind: Set[int] = set(top_area.astype(np.int32)) if len(top_area) > 0 else set()
 
         for idx, cont_coords in cont_coords_list:
 
+            if idx in top_ind and idx in solidity_indices:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                lines_cont.append(cont_coords)
+                lines_correct += 1
+                
             if idx in lines_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 angle_cont.append(cont_coords)
                 lines_correct += 1
+
+            if idx in solidity_indices:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                lines_cont.append(cont_coords)
+                lines_correct += 1
             
-            elif idx in deskew_indices:
+            if idx in deskew_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 angle_cont.append(cont_coords)
                 lines_correct += 1
 
-            elif idx in solidity_indices:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                lines_cont.append(cont_coords)
-                lines_correct += 1
-
-            elif idx in vertical_indices:
+            if idx in vertical_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 angle_cont.append(cont_coords)
                 lines_correct += 1
             else:
                 continue
 
-        logger.info(f"Rayas eliminados: {lines_correct}")
-        grey_img = cv2.morphologyEx(grey_img, cv2.MORPH_CLOSE, self.kernel, iterations=1, borderType=cv2.BORDER_REPLICATE)
+        # logger.info(f"Rayas eliminados: {lines_correct}")
+        # grey_img =cv2.morphologyEx(grey_img, cv2.MORPH_CLOSE, self.kernel, iterations=2, borderType=cv2.BORDER_REPLICATE)
         return lines_cont, angle_cont, grey_img
         
     def fill_gaps(self, grey_img: np.ndarray[Any, Any]):
@@ -193,7 +204,7 @@ class InkCorrector(ImagePrepAbstractWorker):
             else:
                 continue
                     
-        logger.info(f"Contornos pintado de Ngero: {black}, solitarios: {white}")
+        # logger.info(f"Contornos pintado de Ngero: {black}, solitarios: {white}")
         return grey_img, black_gaps, white_gaps
     
     def refine_text_quality(self,grey_img: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], image_name: str):
@@ -293,28 +304,3 @@ class InkCorrector(ImagePrepAbstractWorker):
         except Exception as e:
             logger.info(f"Error: {e}", exc_info=True)
     
-    def _decolorate(self, full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        """
-        Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro.
-        """
-        # Máscara para píxeles negros (todos los canales <= threshold_black)
-        mask_black = np.all(full_img < self.threshold_black, axis=2)
-        
-        # Máscara para píxeles blancos (todos los canales >= threshold_white)
-        mask_white = np.all(full_img > self.threshold_white, axis=2)
-        
-        # Máscara de píxeles válidos (negro o blanco)
-        mask_valid = mask_black | mask_white
-        
-        # Reemplaza los píxeles de color (no válidos) por blanco
-        full_img[~mask_valid] = self.white
-
-        # Convierte a escala de grises para continuar el flujo normal
-        gray = normalice_image(full_img.copy())
-        
-        if gray is not None:
-            return gray
-            
-        else:
-            logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
-            return cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)

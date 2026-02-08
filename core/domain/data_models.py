@@ -72,7 +72,6 @@ class AllLines:
 @dataclass
 class Metadata:
     image_name: str
-    img_dims: Dict[str, int]
     date_creation: str
     dpi: Optional[int]
 

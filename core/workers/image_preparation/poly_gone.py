@@ -112,7 +112,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             poly_data_to_filter: List[Dict[str, Any]] = []
             for i, idx in enumerate(valid_indices):
-                poly_id = poly_ids_order[idx] # type: ignore
+                poly_id: str = poly_ids_order[idx] # type: ignore
                 poly_index = i
                 crop_x1, crop_y1 = int(px1[idx]), int(py1[idx])
                 crop_x2, crop_y2 = int(px2[idx]), int(py2[idx])
@@ -120,7 +120,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 if self.output:
                     var = np.mean(cropped)
-                    logger.info(f"Estadísticas de {poly_id}: VAR: {var}")
+                    # logger.info(f"Estadísticas de {poly_id}: VAR: {var}")
                     self.save_debug(cropped, context, "all", poly_id)
                 
                 poly_mean, dims = calculate_img_values(cropped)
@@ -137,6 +137,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     "coords": (crop_x1, crop_y1, crop_x2, crop_y2),
                     "poly_mean": poly_mean
                 })
+
+            if not manager.update_full_img(False):
+                logger.info(f"No se pudo liberar Full_img")
 
             if not poly_data_to_filter:
                 logger.warning("PolygonExtractor: No hay polígonos válidos para procesar.")
@@ -218,7 +221,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             total_time = time.time() - start_time
                 
             extracted_count = len(cropped_images)
-            logger.debug(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
+            logger.info(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
 
             if self.filtered_ouputs:
                 polygons = manager.workflow.polygons if manager.workflow else {}
@@ -236,5 +239,5 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         worker_name = context.get("worker_name") or "poly_gone"
         output_paths = context["output_paths"]
         image_name = context["image_name"]
-        img_id = f"{status}_{id}"
+        img_id = f"{status}_{id}_close"
         save_croped_image(image_name, img_id, polygon, output_paths, worker_name)

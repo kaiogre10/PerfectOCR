@@ -4,27 +4,27 @@ pipeline_secuence:
     - "image_loader"
     - "angle_corrector"
     - "ink_enhancement"
-    # - "moire"
-    - "geometry_detector"
+    # - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
+    # - "moire"
     # - "sp"
     # - "gauss"
     # - "clahe"
     # - "sharp"
 
   ocr_stage:
-     - "paddle_wrapper"
+    #  - "paddle_wrapper"
      - "text_refiner"
     #  - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    - "vectorizer"
-    - "dbscan"
-    - "cos_sim"
+    - "lineal"
+    # - "vectorizer"
+    # - "dbscan"
+    # - "cos_sim"
    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
@@ -32,43 +32,43 @@ pipeline_secuence:
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
-    full_img: false
-    bin_full_img: False
-    angle_corrected: false
-    moire_poly: false
-    cropped_img: false
-    final_polys: false
-    discarded_polys: false
-    deleted_polys: false
-    opened: false
+    full_img: False
+    bin_full_img: True
+    angle_corrected: False
+    moire_poly: False
+    cropped_img: False
+    final_polys: False
+    discarded_polys: False
+    deleted_polys: False
+    opened: True
   
   preprocessing_outputs:
-    sp_poly: false
-    gauss_poly: false
-    clahe_poly: false
-    sharp_poly: false
+    sp_poly: False
+    gauss_poly: False
+    clahe_poly: False
+    sharp_poly: False
 
   ocr_outputs:
-    ocr_raw: false
-    binarized_polygons: false
-    cropp_blobs: false
-    fragmented_polys: false
-    semantic_field: True
+    ocr_raw: False
+    binarized_polygons: False
+    cropp_blobs: False
+    fragmented_polys: False
+    semantic_field: False
   
   vectorization_outputs:
-    reconstructed_lines: false
-    table_lines: false
-    features: false
-    image_features: false
-    table_structured: false
-    math_max_corrected: false
+    reconstructed_lines: False
+    table_lines: False
+    features: False
+    image_features: False
+    table_structured: False
+    math_max_corrected: False
 
 models_config:
-  use_angle_cls: false
+  use_angle_cls: False
   lang: "es"
-  show_log: false
-  use_gpu: false
-  enable_mkldnn: true
+  show_log: False
+  use_gpu: False
+  enable_mkldnn: True
   rec_batch_num: 64
   det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
   rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
@@ -91,10 +91,8 @@ modules:
       noise_kernel: [11, 11]
       restorer_kernel: [3, 2]
       isolation_range: [8.28, 245.601]
-      threshold_black: 160
-      threshold_white: 180
       aspect_ratio_range: [5.6, 14.2]
-      angle_threshold: 13.56
+      angle_threshold: 7.56
       min_area: 6
 
     angle_corrector:

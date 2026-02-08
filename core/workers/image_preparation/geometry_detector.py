@@ -58,7 +58,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
                 
             bin_img = binarice_img(full_img, {})            
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 3))
+            kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (2, 2))
             img=cv2.morphologyEx(bin_img.copy(), cv2.MORPH_CLOSE, kernel, iterations=2)
 
             if self.output2:
@@ -66,10 +66,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 worker_name = context.get("worker_name") or "geometry_detector"
                 output_paths = context["output_paths"]
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                imag_id = f"opened_{image_name}_{worker_name}"
-                img_id = f"bin_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, img_id, bin_img, output_paths, worker_name)
-                save_croped_image(image_name, imag_id, img, output_paths, worker_name)
+                # imag_id = f"opened_{image_name}_{worker_name}"
+                img_id = f"bin_img_{image_name}_{worker_name}_+1"
+                save_croped_image(image_name, img_id, img, output_paths, worker_name)
+                # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
             polygons: List[List[float]] = engine.ocr(img=img, det=True, cls=False, rec=False)
 
@@ -122,7 +122,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")
-            logger.debug(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
+            logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")

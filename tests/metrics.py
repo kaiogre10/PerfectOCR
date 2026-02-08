@@ -1,12 +1,12 @@
 # PerfectOCR/test/metrics.py
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any
 
-def count_lines_in_file(filepath: Path) -> Dict:
+def count_lines_in_file(filepath: Path) -> Dict[str, int]:
     """
     Cuenta las líneas de código, comentarios y líneas en blanco de un archivo.
     """
-    stats = {'code': 0, 'comment': 0, 'blank': 0, 'total': 0}
+    stats: Dict[str, int] = {'code': 0, 'comment': 0, 'blank': 0, 'total': 0}
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
@@ -33,7 +33,7 @@ def analyze_project(root_dir: Path):
     # Extensiones de archivo a incluir
     include_exts = {'.py', '.yaml', '.yml'}
 
-    all_stats = {}
+    all_stats: Dict[str, Any] = {}
     total_summary = {'code': 0, 'comment': 0, 'blank': 0, 'total': 0, 'files': 0}
 
     for path in root_dir.rglob('*'):
@@ -57,7 +57,7 @@ def analyze_project(root_dir: Path):
     print(header)
     print("="*100)
 
-    sorted_stats = sorted(all_stats.items(), key=lambda item: item[1]['code'], reverse=True)
+    sorted_stats: List[Dict[str, Any]] = sorted(all_stats.items(), key=lambda item: item[1]['code'], reverse=True)
     for filepath, stats in sorted_stats:
         display_path = filepath if len(filepath) <= 60 else f"...{filepath[-57:]}"
         print(f"{display_path:<60} {stats['code']:>8} {stats['comment']:>12} {stats['blank']:>8} {stats['total']:>8}")

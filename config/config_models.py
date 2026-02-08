@@ -67,8 +67,6 @@ class InkConfig(ConfigWithNumpy):
     noise_kernel: Tuple[int, int]
     restorer_kernel: Tuple[int, int]
     isolation_range: Tuple[float, float]
-    threshold_black: int
-    threshold_white: int
     aspect_ratio_range: Tuple[float, float]
     angle_threshold: float
     min_area: int

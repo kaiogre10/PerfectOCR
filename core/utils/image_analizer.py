@@ -34,18 +34,25 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
         if len(cont_coords) < 3:
             continue
 
-        x, y = cont_coords[:, 0], cont_coords[:, 1]
-        if np.any(x < 2) or np.any(x > sw-2) or np.any(y < 2) or np.any(y > sh-2):
-            continue
+        # x, y = cont_coords[:, 0], cont_coords[:, 1]
+        # if np.any(x < 5) or np.any(x > sw-5) or np.any(y < 5) or np.any(y > sh-5):
+        #     continue
 
         cont_coords_list.append((i, cont_coords))
 
         if not cont_coords_list:
             return [], np.empty((0, 5))
-        
+    
     areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
+    
+    # top_areas_list = np.sort(areas)[::-1]
+    # logger.info(f"{top_areas_list[:10]}")
+    
+    valid_mask = (areas > 1) #& (areas < np.max(areas))
 
-    valid_mask = (areas > 1) & (areas < np.max(areas))
+    # top_areas = np.sort(areas[valid_mask])[::-1]
+    # logger.info(f"Top áreas: {top_areas[:10]}")
+    
     valid_indices = np.where(valid_mask)[0]
 
     if len(valid_indices) == 0:
@@ -101,7 +108,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
     lonely_array = np.array(lonely, dtype=np.int32)
     pixels_val_array = np.array(pixels_val, dtype=np.int32)
     black = np.count_nonzero(pixels_val_array)
-    logger.info(f"BLOBS negros: {black}, BLANCOS: {pixels_val_array.size - black}")
+    # logger.info(f"BLOBS negros: {black}, BLANCOS: {pixels_val_array.size - black}")
     # mask_log = lonely_array == 0
     # logger.info(f"Blobs solitarios: {lonely_array[mask_log].astype(np.int32)}")
 
@@ -109,9 +116,6 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
     shapes = np.array([r[1] for r in rects])
     angles = np.array([r[2] for r in rects])
     valid_areas = areas[valid_indices]
-
-    # convex_hull: List[np.ndarray[Any, np.dtype[np.int32]]] = [cv2.convexHull(cont_coords_list[i][1]) for i in valid_indices]
-    
 
     centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0 else 0, m["m01"] / m["m00"] if m["m00"] != 0 else 0)
         for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.intp)
@@ -136,10 +140,13 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]], histogram
     filtered_original_indices = metrics_array[:, 0].astype(np.int32)
     valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(int(idx), cont_coords_list[valid_indices[int(idx)]][1]) for idx in filtered_original_indices]
 
-    contours = len(valid_coords) 
+    valid_contours = len(valid_coords) 
     matrix_size = metrics_array.shape[0]
-    if contours != matrix_size:
-        logger.warning(f"Contornos dispares: {contours} != {matrix_size}")
+    if valid_contours != matrix_size:
+        logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
+        return []
+
+    logger.info(f"Contornos validos: {valid_contours}")
 
     return valid_coords, metrics_array
 
@@ -153,6 +160,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
     areas = metrics[:, 1]
     top_area = np.max(areas) + 1
     hist, bin_edges = np.histogram(areas, bins=(np.histogram_bin_edges(areas, 'fd', (0.0, top_area))).astype(np.float32))
+
     hist_rever = hist[::-1].astype(np.int32)
     cutting = np.where(hist_rever > 2)[0]
     idx_orig = len(hist) - 1 - cutting[0] if cutting.size > 0 else -1
@@ -162,8 +170,8 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> np.ndarray[Any,
         logger.warning("Imagen sin outliers")
         return metrics
     
-    logger.info(f"HIST 1: {hist.shape}")
-    mask = np.min(filtered_outliers)
+    # logger.info(f"HIST 1: {hist.shape}")
+    mask = np.min(filtered_outliers) - 1
     ind_big = bin_edges[mask] 
     cond = areas < ind_big
     metrics = np.compress(cond, metrics, 0)

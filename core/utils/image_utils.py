@@ -2,9 +2,6 @@ import cv2
 import numpy as np
 from typing import Any, Optional, List, Dict
 import logging
-
-from numpy import ndarray, dtype, unsignedinteger
-from numpy._typing import _8Bit
 from skimage.filters import threshold_sauvola #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -107,16 +104,6 @@ def validate_image(img: Optional[np.ndarray[Any, Any]]) -> bool:
     
     else:
         return True
-
-def validate_full_image(img: np.ndarray[Any, Any]):
-    _, img_dims = calculate_img_values(img)
-    img_size = img_dims[0] * img_dims[1]
-    
-    if np.all(img)==255 or np.all(img)==0 or img_size==0:
-        return img_dims
-    
-    else:
-        return [0, 0]
 
 def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np.ndarray[Any, Any]] | np.ndarray[Any, Any], padding: Optional[int] = None) -> np.ndarray[Any, np.dtype[np.uint8]]:
     img_h = full_img.shape[0]
@@ -222,12 +209,46 @@ def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarra
 def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value).astype(np.uint8)
 
-def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> ndarray[Any, np.dtype[np.uint8]]:
+def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
-    thresh_sauvola = threshold_sauvola(cropped_img, window_size=adaptive_block_size) 
-    bin_bool: np.ndarray[Any, np.dtype[np.uint8]] = (cropped_img > thresh_sauvola)
-    bin_img: np.ndarray[Any, np.dtype[np.uint8]] = (bin_bool * 255).astype(np.uint8)
+    thresh_sauvola = threshold_sauvola(image=cropped_img, window_size=adaptive_block_size) 
+    bin_bool: np.ndarray[Any, np.dtype[np.bool_]] = (cropped_img > thresh_sauvola)
+    bin_img: np.ndarray[Any, np.dtype[np.uint8]] = (bin_bool * 255)
     return bin_img 
 
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)).astype(np.uint8)
+
+def decolorate(full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    """
+    Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro.
+    """
+    # Máscara para píxeles negros (todos los canales <= threshold_black)
+    mask_black = np.all(full_img < 160, axis=2)
+    
+    # Máscara para píxeles blancos (todos los canales >= threshold_white)
+    mask_white = np.all(full_img > 180, axis=2)
+    
+    # Máscara de píxeles válidos (negro o blanco)
+    mask_valid = mask_black | mask_white
+    
+    # Reemplaza los píxeles de color (no válidos) por blanco
+    full_img[~mask_valid] = [255, 255, 255]
+
+    # Convierte a escala de grises para continuar el flujo normal
+    gray = normalice_image(full_img)
+
+    kernel1 = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 1))
+    kernel2 = cv2.getStructuringElement(cv2.MORPH_CROSS, (1, 3))
+    
+    if gray is not None:
+        # return gray
+        opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel1, iterations=2)
+        return cv2.morphologyEx(opened, cv2.MORPH_OPEN, kernel2, iterations=2)
+        # return cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel2, iterations=1).astype(np.uint8)
+        
+    else:
+        logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
+        gray = cv2.cvtColor(full_img.copy(), cv2.COLOR_BGR2GRAY)
+        return cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel1, iterations=2, borderType=cv2.BORDER_REPLICATE).astype(np.uint8)
+    

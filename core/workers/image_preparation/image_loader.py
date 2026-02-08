@@ -1,11 +1,12 @@
 # PerfectOCR/core/image_preparation/image_loader.py
 import cv2
+import numpy as np
 import logging
 from datetime import datetime
 from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import validate_full_image, validate_image
+from core.utils.image_utils import validate_image, decolorate
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +26,6 @@ class ImageLoader(ImagePrepAbstractWorker):
         
         metadata: Dict[str, Any] = {
             "image_name": image_name,
-            "img_dims":{
-                    "width": None,
-                    "height": None,
-                    "size": None
-                },
             "date_creation": None,
             "dpi": dpi
         }
@@ -37,44 +33,40 @@ class ImageLoader(ImagePrepAbstractWorker):
             now = datetime.now()
             date_creation = now.isoformat()
 
-            full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
+            full_image = cv2.imread(input_path, cv2.IMREAD_COLOR).astype(np.uint8)
 
             if not validate_image(full_image):
                 logger.error(f"No se cargó:'{image_name}'")
                 return False
                 
+            full_img = decolorate(full_image)
+            
             if self.output:
                 from services.output_service import save_croped_image
                 output_paths = context["output_paths"]
                 worker_name = context.get("worker_name") or "loader"
                 img_id = f"full_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, img_id, full_image, output_paths, worker_name)
+                save_croped_image(image_name, img_id, full_img, output_paths, worker_name)
 
             logger.critical(f"Imagen: '{image_name}' cargada el {now}")
-            img_dims = validate_full_image(full_image)
+            img_dims = full_img.shape
             
             if not img_dims:
                 logger.error(f"Imagen {image_name} totalmente en blanco")
                 return False
             
-            cv2_height, cv2_width = img_dims
-            cv2_size = float(cv2_height * cv2_width)
+            height, width = img_dims
+            size = float(height * width)
             
-            logger.debug(f"Dimensiones de la imagen '{image_name}': '{cv2_height, cv2_width}', size='{cv2_size}'")
-
-            metadata["img_dims"] = {
-                "width": float(cv2_width), 
-                "height": float(cv2_height),
-                "size": float(cv2_size)
-            }
+            logger.debug(f"Dimensiones de la imagen '{image_name}': '{height, width}', size='{size}'")
             
             metadata["date_creation"] = date_creation
                             
             fecha = now.strftime("%Y%m%d")
-            decimales = f"{now.microsecond:04d}"
+            decimales = f"{now.microsecond:03d}"
             IDRegistro: str= f"{metadata.get('image_name')}_{fecha}{decimales}"
 
-            if manager.create_workflow(IDRegistro, full_image, metadata): # type: ignore
+            if manager.create_workflow(IDRegistro, full_img, metadata):
                 logger.debug(f"Imagen '{image_name}' cargada en el manager")
                 return True
             else:

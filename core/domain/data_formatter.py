@@ -34,11 +34,6 @@ class DataFormatter:
             
             metadata_obj = Metadata(
                 image_name=str(metadata.get("image_name", "")),
-                img_dims={
-                    "width": int(metadata.get("img_dims", {}).get("width") or 0),
-                    "height": int(metadata.get("img_dims", {}).get("height") or 0),
-                    "size": int(metadata.get("img_dims", {}).get("size") or 0),
-                },
                 date_creation=str(metadata.get("date_creation" or "")),
                 dpi=int(metadata.get("dpi", {}))
             )
@@ -229,23 +224,15 @@ class DataFormatter:
                 return True
             if corrected:
             #     # Normalizar si se recibe la dataclass FullImage corregida
-            #     if isinstance(full_img, FullImage):
-            #         img_arr = getattr(full_image, "full_img", None)
-            #     else:
-            #         img_arr = full_img
+                if isinstance(full_img, FullImage):
+                    img_arr = getattr(full_img, "full_img", None)
+                else:
+                    img_arr = full_img
                                     
-            #     img_arr = normalice_image(full_img)
-            
-                # Actualizar dimensiones en metadata de forma consistente            
-                h = int(full_img.shape[0]) if full_img is not None else 0
-                w = int(full_img.shape[1]) if full_img is not None else 0
-                size = int(full_img.size) if full_img is not None and hasattr(full_img, "size") else 0
-                md = self.workflow.metadata
-                new_md = dataclasses.replace(md, img_dims={"width": w, "height": h, "size": size})
-                self.workflow = dataclasses.replace(self.workflow, metadata=new_md)
-
+                img_arr = normalice_image(full_img)
+        
                 # Wrap en la dataclass FullImage y actualizar workflow
-                full_image_obj = FullImage(full_img)
+                full_image_obj = FullImage(img_arr)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
                 logger.debug("Imagen actualizada con éxito.")
                 return True
