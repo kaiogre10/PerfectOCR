@@ -83,7 +83,7 @@ class DataFinder(OCRAbstractWorker):
                 #         skipped_semantic += 1
                 #         continue
                 
-                sc_real = np.mean(sc_array)                
+                sc_real = np.mean(sc_array).astype(np.int32)
                 # sc_real = all(x == sc[0] for x in sc)
 
                 if sc_real ==2:
