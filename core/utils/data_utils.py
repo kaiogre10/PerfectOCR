@@ -26,12 +26,12 @@ DENSITY_ENCODER: Dict[str, float] = {
     "8": 8.0,
     "9": 9.0,
     "$": 10.0,
-    ".": 11.0,
-    ",": 12.0,
+    ",": 11.0,
+    ".": 12.0,
     "¢": 13.0,
-    "%": 14.0,
+    "/": 14.0,
     "#": 15.0,
-    "/": 16.0,
+    "%": 16.0,
     "(": 17.0,
     ")": 18.0,
     "°": 19.0,
@@ -129,6 +129,7 @@ DENSITY_ENCODER: Dict[str, float] = {
     "r": 111.0,
     "e": 112.0,
     "a": 113.0,
+    " ": 114.0
 }
 
 INV_FRECUENCY_ENCODER: Dict[str, float] = {
@@ -245,7 +246,8 @@ INV_FRECUENCY_ENCODER: Dict[str, float] = {
     "s": -54.0,
     "r": -55.0,
     "e": -56.0,
-    "a": -57.0
+    "a": -57.0,
+    " ": -58.0
 }
 
 CHAR_FRECUENCY: Dict[str, float] ={

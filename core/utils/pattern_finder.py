@@ -1,9 +1,65 @@
 import re
 import logging
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any
 from core.utils.text_validator import validate_text, get_special_chars
 
 logger = logging.getLogger(__name__)
+
+DIGIT = re.compile(r"[0-9oO]")
+CURRENCY = re.compile(r"[$¢]")
+AMOUNT = re.compile(rf"(?:{DIGIT}{{1,3}}(?:[.,]{DIGIT}{{3}})*|{DIGIT}+)(?:[.,]{DIGIT}+)?")
+DECIMAL_PATTERN = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
+
+DATE_PATTERNS_RAW = [
+    # Meses en español (abreviados o completos)
+    r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b',
+    
+    # Fecha numérica completa: dd/mm/yyyy o dd/mm/yy
+    r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b',
+    
+    # Fecha parcial con día válido (01-31) y mes válido (01-12)
+    r'\b(0?[1-9]|[12]\d|3[01])[\/\-\.](0?[1-9]|1[0-2])\b',
+    
+    # Año solo (4 dígitos entre 1990-2099)
+    r'\b(199\d|20\d{2})\b',
+    
+    # Hora con separador: 12:30, 9:45:30
+    r'\b([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?\b',
+    
+    # Hora 4 dígitos + AM/PM: 1131AM, 0149 PM (solo si empieza con 0-2)
+    r'\b([01]\d|2[0-3])[0-5]\d\s*[AaPp]\.?[Mm]\.?\b',
+]
+
+DATE_PATTERNS = [re.compile(p, re.IGNORECASE) for p in DATE_PATTERNS_RAW]
+
+ACRONYM_PATTERN = re.compile(r'^([A-Za-z]\.){2,}[A-Za-z]\.?(?:[:;,])?$')
+
+UMD_PATTERNS_RAW = [
+    # Peso: kg, kgr, kilo, kilos, g, gr, gramo, gramos, mg, lb, lbs, libra, libras, oz, onza, onzas, ton, tonelada
+    r'\b\d+([.,]\d+)?\s*(kg(r)?|kilo(s)?|g(r|ramo(s)?)?|mg|lb(s)?|libra(s)?|oz|onza(s)?|ton(elada(s)?)?)\b',
+    
+    r'\b[Cc]\s*/\s*\d+\b',
+    
+    # Volumen: l, lt, ltr, litro, litros, ml, cc, gal, galon, galones
+    r'\b\d+([.,]\d+)?\s*(l(t(r)?)?|litro(s)?|ml|cc|gal(on(es)?)?)\b',
+    
+    # Longitud: m, mt, mtr, metro, metros, cm, mm, km, in
+    r'\b\d+([.,]\d+)?\s*(m(t(r)?)?|metro(s)?|cm|mm|km|in|pulg(ada(s)?)?|ft)\b',
+    
+    # Área: m2, m^2, mt2, cm2, km2
+    r'\b\d+([.,]\d+)?\s*(m(t)?(2|\^2|²)|cm(2|\^2|²)|km(2|\^2|²))\b',
+
+    # Unidades solitarias
+    r'\b(m(t)?(2|\^2|²)|cm(2|\^2|²)|km(2|\^2|²))\b',
+    
+    # Fracciones con unidades: 1/2 kg, 1/4 lt, 1/8 pza
+    r'\b\d+\s*/\s*\d+\s*(kg(r)?|kilo(s)?|g(r)?|l(t(r)?)?|litro(s)?|ml|pz(a)?(s)?|ud(s)?)\b',
+    
+    # Fracciones simples: solo 1 cifra / múltiplos de 2 (2,4,8,16,32,64)
+    r'\b[1-9]\s*/\s*(2|4|8|16|32|64)\b',
+]
+
+UMD_PATTERNS = [re.compile(p, re.IGNORECASE) for p in UMD_PATTERNS_RAW]
 
 def termination_detect(text: str) -> bool:
     if not validate_text(text):
@@ -22,28 +78,8 @@ def find_date(s: str) -> bool:
         if not validate_text(s):
             return False
         
-        subpatterns = [
-            # Meses en español (abreviados o completos)
-            r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b',
-            
-            # Fecha numérica completa: dd/mm/yyyy o dd/mm/yy
-            r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b',
-            
-            # Fecha parcial con día válido (01-31) y mes válido (01-12)
-            r'\b(0?[1-9]|[12]\d|3[01])[\/\-\.](0?[1-9]|1[0-2])\b',
-            
-            # Año solo (4 dígitos entre 1990-2099)
-            r'\b(199\d|20\d{2})\b',
-            
-            # Hora con separador: 12:30, 9:45:30
-            r'\b([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?\b',
-            
-            # Hora 4 dígitos + AM/PM: 1131AM, 0149 PM (solo si empieza con 0-2)
-            r'\b([01]\d|2[0-3])[0-5]\d\s*[AaPp]\.?[Mm]\.?\b',
-        ]
-        
-        for pattern in subpatterns:
-            if re.search(pattern, s, re.IGNORECASE):
+        for pattern in DATE_PATTERNS:
+            if re.search(pattern, s):
                 return True
         
         return False
@@ -58,8 +94,7 @@ def is_acronym(text: str) -> bool:
         if not validate_text(text):
             return False
             
-        pattern = r'^([A-Za-z]\.){2,}[A-Za-z]\.?(?:[:;,])?$'
-        return re.search(pattern, text.strip(), flags=re.IGNORECASE) is not None
+        return re.search(ACRONYM_PATTERN, text.strip()) is not None
         
     except Exception as e:
         logger.error(f"Error buscando siglas: {e}", exc_info=True)
@@ -74,32 +109,8 @@ def find_umd(s: str) -> bool:
         if not validate_text(s):
             return False
         
-        # Subpatrones de unidades de medida
-        umd_patterns = [
-            # Peso: kg, kgr, kilo, kilos, g, gr, gramo, gramos, mg, lb, lbs, libra, libras, oz, onza, onzas, ton, tonelada
-            r'\b\d+([.,]\d+)?\s*(kg(r)?|kilo(s)?|g(r|ramo(s)?)?|mg|lb(s)?|libra(s)?|oz|onza(s)?|ton(elada(s)?)?)\b',
-            
-            # Volumen: l, lt, ltr, litro, litros, ml, cc, gal, galon, galones
-            r'\b\d+([.,]\d+)?\s*(l(t(r)?)?|litro(s)?|ml|cc|gal(on(es)?)?)\b',
-            
-            # Longitud: m, mt, mtr, metro, metros, cm, mm, km, in
-            r'\b\d+([.,]\d+)?\s*(m(t(r)?)?|metro(s)?|cm|mm|km|in|pulg(ada(s)?)?|ft)\b',
-            
-            # Área: m2, m^2, mt2, cm2, km2
-            r'\b\d+([.,]\d+)?\s*(m(t)?(2|\^2|²)|cm(2|\^2|²)|km(2|\^2|²))\b',
-
-            # Unidades solitarias
-            r'\b(m(t)?(2|\^2|²)|cm(2|\^2|²)|km(2|\^2|²))\b',
-            
-            # Fracciones con unidades: 1/2 kg, 1/4 lt, 1/8 pza
-            r'\b\d+\s*/\s*\d+\s*(kg(r)?|kilo(s)?|g(r)?|l(t(r)?)?|litro(s)?|ml|pz(a)?(s)?|ud(s)?)\b',
-            
-            # Fracciones simples: solo 1 cifra / múltiplos de 2 (2,4,8,16,32,64)
-            r'\b[1-9]\s*/\s*(2|4|8|16|32|64)\b',
-        ]
-        
-        for pattern in umd_patterns:
-            if re.search(pattern, s, re.IGNORECASE):
+        for pattern in UMD_PATTERNS:
+            if re.search(pattern, s):
                 return True
         
         return False
@@ -149,23 +160,20 @@ def contains_quantitative(s: str) -> bool:
     runs = find_quantitative_runs(s)
     return len(runs) > 0
 
-def get_quantitative_patterns() -> Dict[str, str]:
+def get_quantitative_patterns() -> Dict[str, Any]:
     """
     Función interna que centraliza todos los patrones regex para reutilización.
     Ahora acepta la letra o/O como posible dígito para robustecer contra errores de OCR.
     """
-    digit = r"[0-9oO]"
-    currency = r"[$¢]"
-    amount_body = rf"(?:{digit}{{1,3}}(?:[.,]{digit}{{3}})*|{digit}+)(?:[.,]{digit}+)?"
-
+    
     return {
-        "currency": currency,
-        "amount_body": amount_body,
-        "token": rf"{currency}\s*{amount_body}|{amount_body}\s*{currency}|{amount_body}",
-        "start": rf"^{currency}\s*{amount_body}$",
-        "middle": rf"^{amount_body}\s*{currency}\s*{amount_body}$",
-        "end": rf"^{amount_body}\s*{currency}$",
-        "multi": rf"^(?:\s*{currency}\s*{amount_body}\s*){{2,}}$"
+        "CURRENCY": CURRENCY,
+        "AMOUNT": AMOUNT,
+        "token": rf"{CURRENCY}\s*{AMOUNT}|{AMOUNT}\s*{CURRENCY}|{AMOUNT}",
+        "start": rf"^{CURRENCY}\s*{AMOUNT}$",
+        "middle": rf"^{AMOUNT}\s*{CURRENCY}\s*{AMOUNT}$",
+        "end": rf"^{AMOUNT}\s*{CURRENCY}$",
+        "multi": rf"^(?:\s*{CURRENCY}\s*{AMOUNT}\s*){{2,}}$"
     }
 
 def find_quantitative(s: str) -> bool:
@@ -181,8 +189,8 @@ def find_quantitative(s: str) -> bool:
     s_norm = s.replace("o", "0").replace("O", "0")
 
     patterns = get_quantitative_patterns()
-    currency_symbols = "$¢"
-    for sym in currency_symbols:
+    CURRENCY_symbols = "$¢"
+    for sym in CURRENCY_symbols:
         idx = s_norm.find(sym)
         if idx != -1:
             after = s_norm[idx+1:]
@@ -196,7 +204,7 @@ def find_quantitative(s: str) -> bool:
                 if idx == 0 or not s_norm[:idx].strip().isdigit():
                     break # Es un candidato válido, proceder a regex
 
-    if re.match(patterns["end"], s_norm, flags=re.IGNORECASE):
+    if re.match(patterns["end"], s_norm):
         return False
 
     amounts = re.findall(r"\d+", s_norm)
@@ -205,10 +213,10 @@ def find_quantitative(s: str) -> bool:
             return False
 
     return bool(
-        re.match(patterns["start"], s_norm, flags=re.IGNORECASE) or
-        re.match(patterns["middle"], s_norm, flags=re.IGNORECASE) or
-        re.match(patterns["multi"], s_norm, flags=re.IGNORECASE) or
-        re.match(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$", s_norm, flags=re.IGNORECASE) # Decimal explícito
+        re.match(patterns["start"], s_norm) or
+        re.match(patterns["middle"], s_norm) or
+        re.match(patterns["multi"], s_norm) or
+        re.match(DECIMAL_PATTERN, s_norm)
     )
 
 def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
@@ -231,10 +239,10 @@ def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
             runs.append((m.start(), m.end(), s[m.start():m.end()]))  # Devuelve el texto original
 
     # Lógica original para múltiples símbolos de divisa
-    currency_count = sum(1 for _, _, tok in runs if re.search(patterns["currency"], tok))
-    if currency_count > 1:
+    CURRENCY_count = sum(1 for _, _, tok in runs if re.search(patterns["CURRENCY"], tok))
+    if CURRENCY_count > 1:
         split_runs: List[Tuple[int, int, str]] = []
-        split_pattern = rf"{patterns['currency']}\s*{patterns['amount_body']}"
+        split_pattern = rf"{patterns['CURRENCY']}\s*{patterns['AMOUNT']}"
         for match in re.finditer(split_pattern, s_norm):
             split_runs.append((match.start(), match.end(), s[match.start():match.end()]))
         return split_runs

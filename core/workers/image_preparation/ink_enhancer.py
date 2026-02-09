@@ -51,9 +51,8 @@ class InkCorrector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
 
-            
             lines_cont, angle_cont, corrected = self.compare_areas(full_img)
-            # corrected, black_gaps, white_gaps = self.fill_gaps(gray_img)
+            corrected, black_gaps, white_gaps = self.fill_gaps(gray_img)
             # corrected = cv2.morphologyEx(correct, cv2.MORPH_CLOSE, self.kernelr, iterations=2, borderType=cv2.BORDER_REFLECT)
 
             #self.refine_text_quality(grey_img.copy(), context, image_name)

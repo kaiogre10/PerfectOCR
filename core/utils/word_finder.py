@@ -24,7 +24,7 @@ class WordFinder:
         global_filter = model.get("global_filter", {})
         
         self.all_ngrams: Dict[str, Tuple[int, Dict[int, List[str]]]] = model.get("all_ngrams", {})
-        self.global_words: List[str] = model["global_words"]
+        self.global_words: Set[str] = set(model["global_words"])
         self.noise_words: Set[str] = set(model["noise_words"])
         self.global_filter_threshold: float = params.get("global_filter_threshold", {})
         self.noise_grams: List[Dict[int, List[str]]] = noise_filter["noise_grams"]
@@ -56,10 +56,6 @@ class WordFinder:
     def find_keywords(self, text: List[str] | str) -> List[Dict[str, Any]]:
         try:
             if not text:
-                return []
-
-            if text.lower() in self.noise_words:
-                logger.debug(f"Ruido temprano: '{text}'")
                 return []
 
             single = False
@@ -94,9 +90,9 @@ class WordFinder:
                 if removed_noise:
                     q = q_cleaned
 
-                if self.check_full_word(text=q, place="noise"):
-                    if not q:
-                        continue
+                if q in self.noise_words:
+                    logger.debug(f"Ruido temprano 2: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
+                    continue
 
                 found_matches_for_s: List[Dict[str, Any]] = []
 
@@ -350,7 +346,7 @@ class WordFinder:
             if not q:
                 return False
 
-            if self.check_full_word(text=q, place="global"):
+            if q in self.global_words:
                 return True
 
             # OPTIMIZACIÓN: Convertir string completo a integers UNA VEZ
@@ -428,7 +424,7 @@ class WordFinder:
                             sub = cleaned[j:j + w]
 
                             if sub == noise_word:
-                                similarity = 1.0
+                                similarity = 1.0 * self._length_penalty(sub, noise_word)
                             else:
                                 grams_sub = self._build_query_grams(sub)
                                 similarity = self._score_hybrid_greedy(grams_forbidden, grams_sub)
@@ -439,7 +435,7 @@ class WordFinder:
                                 cleaned = (cleaned[:j] + " " + cleaned[j + w:]).strip()
                                 cleaned = re.sub(r"\s+", " ", cleaned).strip()
                                 removed_noise.append(sub)
-                                logger.debug(
+                                logger.info(
                                     f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
                                 found_any = True
                                 break

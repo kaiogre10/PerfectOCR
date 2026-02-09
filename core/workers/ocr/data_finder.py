@@ -2,6 +2,7 @@
 import time
 from typing import Dict, Any, Optional, List
 import logging
+import numpy as np
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -66,13 +67,30 @@ class DataFinder(OCRAbstractWorker):
             for pid, poly in polygons.items():
                 processed_count += 1
 
+                ocr_text = poly.ocr_text or ""
                 sc = poly.semantic_clasification
-                if sc == 1 or sc == 2 or sc == -1 or sc == -2:
-                    logger.debug(f"{pid} omitido semanticamente sc= '{sc}': ")
+                if not isinstance(sc, list):
+                    sc = [sc]
+
+                sc_array = np.array(sc, np.int32)
+                
+                # sc_size = sc_array.size
+
+                # if all(x == sc[0] for x in sc):
+                #     new_sc = sc[0] if all(x == sc[0] for x in sc) else 0
+                #     if new_sc !=0:
+                #         logger.debug(f"{pid} omitido semanticamente sc= '{sc}': ")
+                #         skipped_semantic += 1
+                #         continue
+                
+                sc_real = np.mean(sc_array)                
+                # sc_real = all(x == sc[0] for x in sc)
+
+                if sc_real ==2:
+                    logger.debug(f"{pid} omitido cuantitativo sc= '{ocr_text}': ")
                     skipped_semantic += 1
                     continue
 
-                ocr_text = poly.ocr_text or ""
                 word_lenght = len(ocr_text)
                 if not validate_text(ocr_text) or word_lenght < 2:
                     logger.debug(f"{pid} sin texto o excede longitud: '{ocr_text}', letras: '{word_lenght}'")
@@ -100,6 +118,11 @@ class DataFinder(OCRAbstractWorker):
                     skipped_semantic +=1
                     logger.debug(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
+                    continue
+
+                if sc_real != 0:
+                    logger.debug(f"{pid} omitido semanticamente sc= '{ocr_text}': {sc}")
+                    skipped_semantic += 1
                     continue
                 
                 valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
@@ -129,7 +152,7 @@ class DataFinder(OCRAbstractWorker):
 
             if polygon_updates:
                 logger.debug(f"KEY_FIELDS: {polygon_updates}")
-                logger.debug(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
+                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
                 return polygon_updates
             
             else:

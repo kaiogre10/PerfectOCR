@@ -1,9 +1,15 @@
 # core/utils/text_encoder.py
 from core.utils.text_validator import validate_text, get_char_num
-from typing import List, Dict
+from core.utils.data_utils import DENSITY_ENCODER, CHAR_FRECUENCY, INV_FRECUENCY_ENCODER
+from typing import List, Dict, Any
+import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
+
+density = DENSITY_ENCODER
+frecuency = CHAR_FRECUENCY
+inverse = INV_FRECUENCY_ENCODER
 
 def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
     try:
@@ -49,3 +55,9 @@ def text_compacter(text: str) -> str:
     else:
         minus_text = text.lower()
         return ''.join(minus_text.split())
+    
+# def text_encode(text: str, encoding_type: str) -> np.ndarray[Any, np.dtype[np.int32]]:
+#     if encoding_type == "density":
+#         if encoding_type == "inverse":
+#             if encoding_type == "frecuency":
+#                 if encoding_type == "morphological":

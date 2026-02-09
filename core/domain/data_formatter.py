@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.utils.data_utils import  DENSITY_ENCODER, CHAR_FRECUENCY, INV_FRECUENCY_ENCODER, SEMATIC_TYPES_MAP
+from core.utils.data_utils import DENSITY_ENCODER, CHAR_FRECUENCY, INV_FRECUENCY_ENCODER, SEMATIC_TYPES_MAP
 from core.domain.data_models import WorkflowDict, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage
 import numpy as np
 import dataclasses

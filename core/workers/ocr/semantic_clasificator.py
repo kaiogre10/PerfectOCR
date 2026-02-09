@@ -1,5 +1,6 @@
 # core/workers/ocr/semantic_clasificator.py
 import logging
+import time
 from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -19,6 +20,7 @@ class SemanticClasificator(OCRAbstractWorker):
         self.semantic_range= worker_config["semantic_range"]
         self.encode_mean= worker_config["encode_mean"]
         self.morph_mean = worker_config["morph_mean"]
+        self.char_num = get_char_num()
         self.output = config.get("semantic_field", False)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter, final_pass: str = "") -> bool:
@@ -48,7 +50,7 @@ class SemanticClasificator(OCRAbstractWorker):
             for poly_id, polygon in polygons_to_classify.items():
                 text = polygon.ocr_text
                 sc = polygon.semantic_clasification
-                logger.debug(f"Clasificación {poly_id}: '{text}', '{sc}'")
+                logger.debug(f"Clasificación {poly_id}: | '{text}', | '{sc}' |")
 
             if self.output and validate_text(final_pass):
                 from services.output_service import save_raw_json
@@ -75,15 +77,15 @@ class SemanticClasificator(OCRAbstractWorker):
             return False
             
     def _clasify_words(self, polygons: Dict[str, Polygons], encoder: Dict[str, float], inv_encoder: Dict[str, float]) -> Dict[str, int | List[int]]:
+        t0 = time.perf_counter()
         texts: Dict[str, str] = {poly_id: (polygon.ocr_text or "") for poly_id, polygon in polygons.items()}
         final_results: Dict[str, int | list[int]] = {}
 
         def classify_token(tok: str) -> int:
             s = tok.strip(' ')
-            chars = [ch for ch in s if not ch.isspace()]
-            total = len(chars)
-            char_num = get_char_num()
-            pct = (sum(1 for ch in chars if ch in char_num) / total) * 100.0 if total else 0.0
+            
+            total = len(s)
+            pct = (sum(1 for ch in s if ch.isdigit() or ch=="$") / total) * 100.0 if total else 0.0
 
             encoded_poly = encode_text(s, encoder)
             poly_mean: float = vectorice_values(encoded_poly, value="mean") # type: ignore
@@ -120,5 +122,5 @@ class SemanticClasificator(OCRAbstractWorker):
             else:
                 sc_list = [classify_token(t) for t in tokens]
                 final_results[pid] = sc_list
-                
+        # logger.info(f"Clasificación semantica completa en: {time.perf_counter() - t0:.6f}'s")
         return final_results
