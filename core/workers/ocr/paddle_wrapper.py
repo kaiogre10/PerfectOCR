@@ -144,7 +144,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             logger.debug(f"Texto basura filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{self.min_confidence}%'")
                         
                     total_results = len(final_results)
-                    logger.info(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")
+                    # logger.info(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")
                     return final_results
                 else:
                     logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes.")

@@ -221,7 +221,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             total_time = time.time() - start_time
                 
             extracted_count = len(cropped_images)
-            logger.info(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
+            # logger.info(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
 
             if self.filtered_ouputs:
                 polygons = manager.workflow.polygons if manager.workflow else {}
