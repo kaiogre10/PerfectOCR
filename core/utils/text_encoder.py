@@ -56,8 +56,27 @@ def text_compacter(text: str) -> str:
         minus_text = text.lower()
         return ''.join(minus_text.split())
     
-# def text_encode(text: str, encoding_type: str) -> np.ndarray[Any, np.dtype[np.int32]]:
-#     if encoding_type == "density":
-#         if encoding_type == "inverse":
-#             if encoding_type == "frecuency":
-#                 if encoding_type == "morphological":
+def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype[np.float32]]:
+    if "all" in encoding_type and len(encoding_type) == 1:
+        encoding_type = ["density", "inverse", "frequency", "morphological"]
+
+    encoders: List[List[float]]= []
+    for enc_type in encoding_type:
+
+        if enc_type == "density":
+            dense = encode_text(text,density)
+            encoders.append(dense)
+        if enc_type == "inverse":
+            inv = encode_text(text, inverse)
+            encoders.append(inv)
+        if enc_type == "frequency":
+            frec = encode_text(text, frecuency)
+            encoders.append(frec)
+        if enc_type == "morphological":
+           morph = get_morphological_encode(text)
+           encoders.append(morph)
+    
+    return np.array(encoders, np.float32)
+        
+
+        

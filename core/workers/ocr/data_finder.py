@@ -63,7 +63,6 @@ class DataFinder(OCRAbstractWorker):
             polygon_updates: Dict[str, List[int] | int] = {}
             skipped_semantic = 0
             skipped_len = 0
-            poly_word: List[Polygons] = []
 
             for pid, poly in polygons.items():
                 processed_count += 1
@@ -74,10 +73,9 @@ class DataFinder(OCRAbstractWorker):
                     sc = [sc]
 
                 sc_array = np.array(sc, np.int32)
-                
                 sc_real = np.mean(sc_array).astype(np.int32)
 
-                if sc_real ==2:
+                if sc_real == 2:
                     logger.debug(f"{pid} omitido cuantitativo sc= '{ocr_text}': ")
                     skipped_semantic += 1
                     continue
@@ -116,53 +114,34 @@ class DataFinder(OCRAbstractWorker):
                     skipped_semantic += 1
                     continue
                 
-                # Si llegó aquí, NO fue filtrado
-                poly_word.append(poly)
+                valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
+                if valid_results:
+                    # continue
 
-            # Crear listas de textos OCR y PIDs de los polígonos no filtrados
-            ocr_texts = [poly.ocr_text for poly in poly_word]
-            pids = [poly.polygon_id for poly in poly_word]
-            
-            # Procesar con el modelo
-            results = self.model.find_keywords(ocr_texts)
-            
-            # Verificar si results es un diccionario o lista
-            if isinstance(results, dict):
-                valid_results = [results.get(pid, []) for pid in pids]
-            else:
-                valid_results = results
-            
-            # Asignar resultados a cada polígono
-            for idx, result_list in enumerate(valid_results):
-                if not result_list:
-                    continue
-                
-                # Asegurarse de que result_list es una lista
-                if not isinstance(result_list, list):
-                    result_list = [result_list]
+                    num_keywords = len(valid_results)
+                    all_key_fields = [result['key_field'] for result in valid_results]
                     
-                pid = pids[idx]
-                poly = poly_word[idx]
-                ocr_text = ocr_texts[idx]
-                
-                num_keywords = len(result_list)
-                all_key_fields = [result['key_field'] for result in result_list]
-                
-                # Verificar si todos son headers (key_field == 6)
-                if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
-                    # Múltiples headers: asignar como lista
-                    polygon_updates[pid] = all_key_fields
-                    pot_headers = " ".join(result["key_word"] for result in result_list)
-                    head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
-                    poly.ocr_text = head_standar
-                    logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
-                else:
-                    key_field = result_list[0]['key_field']
-                    polygon_updates[pid] = key_field
+                    # Verificar si todos son headers (key_field == 6)
+                    if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
+                        # Múltiples headers: asignar como lista
+                        polygon_updates[pid] = all_key_fields
+                        pot_headers = " ".join(result["key_word"] for result in valid_results)
+                        head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
+                        poly.ocr_text = head_standar
+                        logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
+
+                    else:
+                        key_field = valid_results[0]['key_field']
+                        polygon_updates[pid] = key_field
+                        logger.debug(f"'{pid}': Key_Field {key_field}")
+
+                    continue
+
+                # logger.debug(f"{pid}: exto superviviente {ocr_text}")
 
             if polygon_updates:
                 logger.debug(f"KEY_FIELDS: {polygon_updates}")
-                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6f}s")
+                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
                 return polygon_updates
             
             else:
@@ -172,3 +151,4 @@ class DataFinder(OCRAbstractWorker):
         except Exception as e:
             logger.warning(f"Error encontrando keyfields: {e}")
         return {}
+                    

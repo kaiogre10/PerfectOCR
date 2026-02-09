@@ -2,10 +2,11 @@
 import logging
 import time
 from typing import Dict, Any, List
+import numpy as np
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_encoder import encode_text, get_morphological_encode, get_char_num
+from core.utils.text_encoder import encode_text, get_morphological_encode, get_char_num, text_encode
 from core.utils.pattern_finder import find_umd, find_quantitative, contains_quantitative
 from core.utils.math_utils import vectorice_values
 from core.utils.text_validator import validate_text
@@ -86,6 +87,9 @@ class SemanticClasificator(OCRAbstractWorker):
             
             total = len(s)
             pct = (sum(1 for ch in s if ch.isdigit() or ch=="$") / total) * 100.0 if total else 0.0
+            encoded_text = text_encode(s, ["all"])
+            means = np.mean(encoded_text)
+            logger.info(f"Means: {np.array2string(encoded_text, precision=5, suppress_small=True)}")
 
             encoded_poly = encode_text(s, encoder)
             poly_mean: float = vectorice_values(encoded_poly, value="mean") # type: ignore
@@ -122,5 +126,5 @@ class SemanticClasificator(OCRAbstractWorker):
             else:
                 sc_list = [classify_token(t) for t in tokens]
                 final_results[pid] = sc_list
-        # logger.info(f"Clasificación semantica completa en: {time.perf_counter() - t0:.6f}'s")
+        #logger.info(f"Clasificación semantica completa en: {time.perf_counter() - t0:.6f}'s")
         return final_results
