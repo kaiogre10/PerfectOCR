@@ -3,7 +3,7 @@ import logging
 import threading
 import time
 from typing import Dict, Any, Optional
-from paddleocr import PaddleOCR # type: ignore
+from paddleocr import PaddleOCR
 from core.utils.word_finder import WordFinder
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class ModelsManager:
                 if cls._instance is None:
                     cls._instance = cls()
         return cls._instance
-    
+
     def initialize_models(self, config: Dict[str, Any]) -> bool:
         init_time = time.perf_counter()
         try:

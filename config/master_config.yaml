@@ -67,10 +67,11 @@ enabled_outputs:
 models_config:
   use_angle_cls: False
   lang: "es"
-  show_log: False
+  show_log: True
   use_gpu: False
   enable_mkldnn: True
   rec_batch_num: 64
+  
   det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
   rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
   wf_model_path: C:/PerfectOCR/data/models/wf/wf_model.pkl

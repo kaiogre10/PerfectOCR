@@ -56,7 +56,7 @@ class TextCleaner(OCRAbstractWorker):
                 continue
 
             elif not validate_alone_chars(text):
-                logger.debug(f"Eliminado {poly_id} por soledad: '{text}'")
+                logger.info(f"Eliminado {poly_id} por soledad: '{text}'")
                 eliminated_count += 1
                 continue
 
@@ -67,7 +67,7 @@ class TextCleaner(OCRAbstractWorker):
             
             fil_text = self.filter_low_prob_tokens(text, polygon, manager)
             if not validate_text(fil_text):
-                logger.debug(f"Eliminado {poly_id} sin texto después de filtrado de probabilidad")
+                logger.info(f"Eliminado {poly_id} sin texto después de filtrado de probabilidad")
                 eliminated_count += 1
                 continue
 
@@ -78,7 +78,7 @@ class TextCleaner(OCRAbstractWorker):
             if (not validate_text(text) or
                 (confidence < self.min_confidence and not is_numeric_like) or detect_punt(text)):
                 reason = "sin texto" if not validate_text(text) else f"baja confianza ({confidence:.2f})" if confidence < self.min_confidence and not is_numeric_like else "solo caracteres de puntuación"
-                logger.debug(f"Eliminado {poly_id}: '{text}' (Razón: {reason})")
+                logger.info(f"Eliminado {poly_id}: '{text}' (Razón: {reason})")
                 eliminated_count += 1
                 continue
 
