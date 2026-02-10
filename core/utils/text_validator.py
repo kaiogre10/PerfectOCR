@@ -14,7 +14,7 @@ def validate_text(text: str) -> bool:
         return False
     
 def get_char_num() -> Set[str]:
-     return {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", ",", "$"}
+    return {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "$"}
     
 def get_special_chars() -> Set[str]:
     return {
@@ -34,8 +34,8 @@ def numeric_corrections() -> Dict[str, str]:
         "!": "1",
         "¡": "1",
         "l": "1",
-        #"S": "$",
-        "s": "5",
+        "S": "$",
+        "s": "$",
         "G": "6",
         "g": "9",
         "B": "8",

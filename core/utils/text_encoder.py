@@ -58,7 +58,7 @@ def text_compacter(text: str) -> str:
     
 def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype[np.float32]]:
     if "all" in encoding_type and len(encoding_type) == 1:
-        encoding_type = ["density", "inverse", "frequency", "morphological"]
+        encoding_type = ["density", "inverse", "morphological"]
 
     encoders: List[List[float]]= []
     for enc_type in encoding_type:

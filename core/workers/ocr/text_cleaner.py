@@ -1,12 +1,12 @@
 # PerfectOCR/core/workers/ocr/text_cleaner.py
 import logging
 import dataclasses
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_validator import validate_text, validate_alone_chars, get_special_chars, get_char_num, space_removal
-from core.utils.pattern_finder import detect_punt, remove_special_chars
+from core.utils.text_validator import validate_text, validate_alone_chars, space_removal
+from core.utils.pattern_finder import detect_punt, remove_special_chars, remove_special_sequences
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,6 @@ class TextCleaner(OCRAbstractWorker):
         self.min_confidence: float  = worker_config.get("min_confidence")
         self.min_char = int(worker_config.get("min_char"))
         self.min_probability = float(worker_config.get("min_probability"))
-        self.char_num: Set[str] = get_char_num()
-        self.special_chars: Set[str] = get_special_chars()
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         logger.debug(f"Inicia cleanner")
@@ -60,6 +58,11 @@ class TextCleaner(OCRAbstractWorker):
             elif not validate_alone_chars(text):
                 logger.debug(f"Eliminado {poly_id} por soledad: '{text}'")
                 eliminated_count += 1
+                continue
+
+            text_sec = remove_special_sequences(text)
+            if text_sec != text:
+                logger.info(f"Secuencia eliminada: '{text}' -> '{text_sec}' in {polygon.polygon_id if polygon else ''}")
                 continue
             
             fil_text = self.filter_low_prob_tokens(text, polygon, manager)
@@ -125,7 +128,6 @@ class TextCleaner(OCRAbstractWorker):
             if self.is_stray_single_special(token):
                 logger.info(f"Eliminado unico: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
-        
             else:
                 processed_words.append(token)
         
@@ -139,7 +141,7 @@ class TextCleaner(OCRAbstractWorker):
             return text
             
         try:
-            sc = polygon.semantic_clasification
+            # sc = polygon.semantic_clasification
             #is_numeric_like = (isinstance(sc, list) and any(c in [1, 2, -2] for c in sc)) or \
                      #       (isinstance(sc, int) and sc in [1, 2, -2])
             #if is_numeric_like:
@@ -202,18 +204,6 @@ class TextCleaner(OCRAbstractWorker):
         """
         t = token.strip()
         return len(t) == 1 and t.isalnum()
-    
-    def is_polygon_single_special(self, text: str) -> bool:
-        """
-        True si el texto del polígono (tras strip) es exactamente un carácter
-        y ese carácter está en la lista drop_single_chars.
-        (Esta verificación ignora la confianza del OCR.)
-        """
-        if not validate_text(text):
-            return False
-            
-        t = text.strip()
-        return len(t) == 1 and t in self.special_chars
 
     def get_frecuency_norm(self, manager: DataFormatter) -> Dict[str, float]:
 

@@ -28,6 +28,7 @@ class OCROutputs(ConfigWithNumpy):
     cropp_blobs: bool
     fragmented_polys: bool
     semantic_field: bool
+    cleanned_text: bool
 
 class VectorizingOutputs(ConfigWithNumpy):
     reconstructed_lines: bool

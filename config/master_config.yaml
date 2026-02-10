@@ -54,6 +54,7 @@ enabled_outputs:
     cropp_blobs: False
     fragmented_polys: False
     semantic_field: False
+    cleanned_text: False
   
   vectorization_outputs:
     reconstructed_lines: False

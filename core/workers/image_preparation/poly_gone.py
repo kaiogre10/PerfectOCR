@@ -40,6 +40,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             img_h = full_img.shape[0]
             img_w = full_img.shape[1]
 
+            manager.workflow.metadata.img_dims = (img_h, img_w)
+
             logger.debug("Full_img obtenida con éxito")
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
                             

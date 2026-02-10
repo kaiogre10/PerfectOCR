@@ -1,6 +1,7 @@
 # core/workers/ocr/text_refiner.py
 from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.semantic_clasificator import SemanticClasificator
 from core.workers.ocr.text_cleaner import TextCleaner
@@ -20,9 +21,7 @@ class Refiner(OCRAbstractWorker):
         self.percentile = config["percentile"]
         worker_config["percentile"] = self.percentile 
         self.num_passes = worker_config.get("num_passes") or 1
-        self.delete_cropp = config.get("fragmented_polys")
-        self.output_blobs = config.get("cropp_blobs")
-        self.output = config.get("binarized_polygons")
+        self.output = config.get("cleanned_text")
         self.clasificator = clasificator
         self.cleaner = cleaner
         self.fragmenter = fragmenter
@@ -59,9 +58,24 @@ class Refiner(OCRAbstractWorker):
 
             logger.debug(f"Pasada final: Clasificación Semántica completa")
             self.clasificator.transcribe(context, manager, final_pass='final_class')
-        
-            return True
-        
+
+            if self.output:
+                from services.output_service import save_raw_json
+                file_name: str = manager.workflow.metadata.image_name  # type: ignore
+                name = "cleanned_text"
+                worker_name = f"{name}" or "refiner"
+                output_paths = context["output_paths"]
+                polygons = manager.workflow.polygons if manager.workflow else {}
+                results: Dict[str, Any] = {}
+                for poly_id, polygon in polygons.items():
+                    text = getattr(polygon, "ocr_text", None)
+                    results[poly_id] = {
+                        "text": text,
+                    }
+                save_raw_json( output_paths, worker_name, results, file_name)
+
+            return True 
+
         except Exception as e:
             logger.error(f"Error durante el refinamiento de texto: {e}", exc_info=True)
             return False

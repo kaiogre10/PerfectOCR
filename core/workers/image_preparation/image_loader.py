@@ -27,7 +27,8 @@ class ImageLoader(ImagePrepAbstractWorker):
         metadata: Dict[str, Any] = {
             "image_name": image_name,
             "date_creation": None,
-            "dpi": dpi
+            "dpi": dpi,
+            "img_dims": []
         }
         try:
             now = datetime.now()
@@ -67,7 +68,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             IDRegistro: str= f"{metadata.get('image_name')}_{fecha}{decimales}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
-                logger.debug(f"Imagen '{image_name}' cargada en el manager")
+                logger.info(f"Imagen '{image_name}' cargada en el manager")
                 return True
             else:
                 logger.error(f"Error cargando '{image_name}'")

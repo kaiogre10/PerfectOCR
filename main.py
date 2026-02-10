@@ -23,17 +23,17 @@ DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
 DEFAULT_INPUT_PATH = [
     #"input",
-        "input2",
-        #"input3"
+        # "input2",
+        "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 
 DEFAULT_OUTPUT_PATH =[
-  #  "D:/outputs/perfectocr",
+#    "D:/outputs/perfectocr",
   "output"
 ]
 
-#LOG_FILE_PATH = "D:/outputs/logs/perfectocr.txt"
+# LOG_FILE_PATH = "D:/outputs/logs/perfectocr.txt"
 LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 CONSOLE_LEVEL = "INFO"
 FILE_LEVEL = "INFO"

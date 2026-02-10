@@ -35,7 +35,8 @@ class DataFormatter:
             metadata_obj = Metadata(
                 image_name=str(metadata.get("image_name", "")),
                 date_creation=str(metadata.get("date_creation" or "")),
-                dpi=int(metadata.get("dpi", {}))
+                dpi=int(metadata.get("dpi", {})),
+                img_dims=tuple(metadata["img_dims"])
             )
 
             self.workflow = WorkflowDict(
