@@ -126,5 +126,5 @@ class SemanticClasificator(OCRAbstractWorker):
             else:
                 sc_list = [classify_token(t) for t in tokens]
                 final_results[pid] = sc_list
-        logger.info(f"Clasificación semantica completa en: {time.perf_counter() - t0:.6f}'s")
+        # logger.info(f"Clasificación semantica completa en: {time.perf_counter() - t0:.6f}'s")
         return final_results

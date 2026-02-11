@@ -37,16 +37,25 @@ class ModelsManager:
         init_time = time.perf_counter()
         try:
             models_config=config.get("models_config", {})
+            activate_rec = config.get("activate_rec")
 
             self._shared_engine = PaddleOCR(
-                det=True, rec=True, cls=False,
+                det=True, rec=activate_rec, cls=False,
                 det_model_dir=models_config.get('det_model_dir'),
                 rec_model_dir=models_config.get('rec_model_dir'),
                 show_log=models_config.get('show_log'),
                 use_gpu=models_config.get('use_gpu'),
                 enable_mkldnn=models_config.get('enable_mkldnn'),
                 lang=models_config.get("lang"),
-                rec_batch_num = models_config.get('rec_batch_num')
+                table= models_config.get('table'),
+                rec_batch_num = models_config.get('rec_batch_num'),
+                cpu_threads = models_config.get('cpu_threads'),
+                max_batch_size= models_config.get('max_batch_size'),
+                det_limit_side_len= models_config.get('det_limit_side_len'),
+                det_db_score_mode= models_config.get('det_db_score_mode'),
+                use_mp= models_config.get('use_mp'),
+                max_text_length = models_config.get('max_text_length'),
+                rec_image_inverse = models_config.get('rec_image_inverse'),
                 )
             # Compartir la MISMA instancia
             self._detection_engine = self._shared_engine

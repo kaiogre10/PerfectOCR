@@ -57,7 +57,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             if full_img is None:
                 return False
                 
-            bin_img = binarice_img(full_img, {})            
+            bin_img = binarice_img(full_img, {})
             kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (2, 2))
             img=cv2.morphologyEx(bin_img.copy(), cv2.MORPH_CLOSE, kernel, iterations=2)
 
@@ -71,7 +71,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 save_croped_image(image_name, img_id, img, output_paths, worker_name)
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
+            paddle_time = time.perf_counter()
             polygons: List[List[float]] = engine.ocr(img=img, det=True, cls=False, rec=False)
+            logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
 
             if not (polygons and len(polygons) > 0 and polygons[0] is not None): # type: ignore
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")

@@ -73,7 +73,8 @@ class ConfigService:
             logger.debug("OCR completo + data_finder")
             return {
                 "models_config": self.config.get("models_config", {}),
-                "activate_wf": True
+                "activate_wf": True,
+                "activate_rec": True
             }
 
         # OCR parcial (uno o ambos, pero sin data_finder suficiente)
@@ -81,7 +82,8 @@ class ConfigService:
             logger.debug("OCR activo sin condiciones completas para WF")
             return {
             "models_config": self.config.get("models_config", {}),
-            "activate_wf": False
+            "activate_wf": False,
+            "activate_rec": True
             }
 
         # Sin OCR (incluye solo data_finder)
@@ -89,7 +91,8 @@ class ConfigService:
             logger.debug("Solo data_finder")
             return {
             "models_config": {},
-            "activate_wf": False
+            "activate_wf": False,
+            "activate_rec": False
         }
         
         else:

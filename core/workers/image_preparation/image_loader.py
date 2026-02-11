@@ -68,7 +68,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             IDRegistro: str= f"{metadata.get('image_name')}_{fecha}{decimales}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
-                logger.info(f"Imagen '{image_name}' cargada en el manager")
+                logger.debug(f"Imagen '{image_name}' cargada en el manager")
                 return True
             else:
                 logger.error(f"Error cargando '{image_name}'")

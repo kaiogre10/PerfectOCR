@@ -8,6 +8,7 @@ from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
 from core.utils.text_validator import space_removal
+from core.utils.image_utils import elevate_dims
 
 logger = logging.getLogger(__name__)
 
@@ -51,14 +52,8 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
                 
                 if cropped_img is not None:
-                    if len(cropped_img.shape) == 2:
-                        import cv2
-                        cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
-                    elif cropped_img.shape[2] == 1:
-                        import cv2
-                        cropped_img = cv2.cvtColor(cropped_img, cv2.COLOR_GRAY2BGR)
-                    
-                    image_list.append(cropped_img) #type: ignore
+                    cropped_img = elevate_dims(cropped_img)
+                    image_list.append(cropped_img)
                     polygon_ids.append(poly_id)
             
             if not image_list:
@@ -114,7 +109,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 logger.error("No hay imágenes válidas para el reconocimiento por lotes.")
                 return {}
             
+            paddle_time = time.perf_counter()
             batch_result: List[List[str]] = self.engine.ocr(valid_images, cls=False, det=False, rec=True)
+            logger.info(f"Tiempo de transcripción de paddle: {time.perf_counter() - paddle_time:.6f}'s")
                                     
             if len(batch_result) == 1 and isinstance(batch_result[0], list): #type: ignore
                 consolidated_results = batch_result[0]
@@ -135,7 +132,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                                     "text": clean_text,
                                     "confidence": confidence_pct
                                 }
-                                logger.debug(f"Resultados: {poly_id}: Texto: '{clean_text}', Confianza: '{confidence_pct}%'")
+                                # logger.info(f"Resultados: {poly_id}: Texto: '{clean_text}', Confianza: '{confidence_pct}%'")
 
                             else:
                                 logger.info(f"Espacio filtrado en '{poly_id}', Texto: '{text}', Confianza: '{confidence_pct}%'")
@@ -153,3 +150,4 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         except Exception as e:
             logger.error(f"Error crítico durante el reconocimiento de texto en lote: {e}", exc_info=True)
         return {}
+    

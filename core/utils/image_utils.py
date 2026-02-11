@@ -85,6 +85,12 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)
     return None
 
+def elevate_dims(img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
+    if not img.flags['C_CONTIGUOUS']:
+        img = np.ascontiguousarray(img)
+        logger.info("normalice_image: imagen hecha contigua en memoria")
+    return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
 def calculate_img_values(img: np.ndarray[Any, Any]):
     img_mean = np.mean(img).astype(np.uint8)
     img_dims = img.shape[:2]
@@ -251,4 +257,3 @@ def decolorate(full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any,
         logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
         gray = cv2.cvtColor(full_img.copy(), cv2.COLOR_BGR2GRAY)
         return cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel1, iterations=2, borderType=cv2.BORDER_REPLICATE).astype(np.uint8)
-    

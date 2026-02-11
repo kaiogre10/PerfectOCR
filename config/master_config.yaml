@@ -2,9 +2,9 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "angle_corrector"
-    # - "ink_enhancement"
-    - "geometry_detector"
+    - "angle_corrector"
+    - "ink_enhancement"
+    # - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
@@ -16,7 +16,7 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-     - "paddle_wrapper"
+    #  - "paddle_wrapper"
      - "text_refiner"
     # - "data_finder"
     
@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: False
-    bin_full_img: False
+    bin_full_img: True
     angle_corrected: False
     moire_poly: False
     cropped_img: False
@@ -67,10 +67,18 @@ enabled_outputs:
 models_config:
   use_angle_cls: False
   lang: "es"
-  show_log: True
+  show_log: False
   use_gpu: False
   enable_mkldnn: True
-  rec_batch_num: 64
+  rec_batch_num: 32
+  cpu_threads: 4
+  max_batch_size: 20
+  det_limit_side_len: 1280
+  det_db_score_mode: 'slow'
+  table: False
+  use_mp: True
+  max_text_length: 20
+  rec_image_inverse: False
   
   det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
   rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
@@ -93,8 +101,8 @@ modules:
       noise_kernel: [11, 11]
       restorer_kernel: [3, 2]
       isolation_range: [8.28, 245.601]
-      aspect_ratio_range: [5.6, 14.2]
-      angle_threshold: 7.56
+      aspect_ratio_range: [2.6, 14.2]
+      angle_threshold: 41.25
       min_area: 6
 
     angle_corrector:
@@ -151,7 +159,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 1
+      num_passes: 2
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]
@@ -167,7 +175,7 @@ modules:
     text_cleaner:
       min_probability: 75.0
       min_char: 2
-      min_confidence: 70.0
+      min_confidence: 60.0
       min_conf_to_clean: 90.2
     
     semantic_clasificator:

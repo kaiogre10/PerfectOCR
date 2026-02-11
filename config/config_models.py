@@ -54,11 +54,19 @@ class ModelsConfig(ConfigWithNumpy):
     show_log: bool
     use_gpu: bool
     enable_mkldnn: bool
+    cpu_threads: int
+    max_batch_size: int
+    det_limit_side_len: int
+    table: bool
     rec_batch_num: int
     det_model_dir: str
     rec_model_dir: str
     wf_model_path: str
     set_wf_params: bool
+    det_db_score_mode: str
+    use_mp: bool
+    max_text_length: int
+    rec_image_inverse: bool
     
 class InkConfig(ConfigWithNumpy):
     iterations: int

@@ -59,6 +59,10 @@ class Refiner(OCRAbstractWorker):
             logger.debug(f"Pasada final: Clasificación Semántica completa")
             self.clasificator.transcribe(context, manager, final_pass='final_class')
 
+            polygons = manager.workflow.polygons if manager.workflow else {}
+            for poly, poly_data in polygons.items():
+                logger.debug(f"{poly}: '{poly_data.ocr_text}'")
+
             if self.output:
                 from services.output_service import save_raw_json
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore

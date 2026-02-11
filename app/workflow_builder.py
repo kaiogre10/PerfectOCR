@@ -2,7 +2,7 @@
 import os
 import logging
 from PIL import Image
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Set
 
 logger = logging.getLogger(__name__)
 
@@ -67,21 +67,27 @@ class WorkFlowBuilder:
         PLANIFICA el procesamiento: cuenta imágenes y decide estrategia.
         REPORTA a Main: cuántos builders crear y qué modo usar.
         """
-        # Si recibimos input_paths, expandimos; si no, usamos la carpeta del YAML
         image_info: List[Dict[str, Any]] = []
+        seen_names: Set[str] = set()
         try:
             if self.input_paths:
                 for path in self.input_paths:
                     if os.path.isdir(path):
-                        image_info.extend(self._extract_valid_image_paths(path, self.valid_extensions))
-                        
+                        imgs = self._extract_valid_image_paths(path, self.valid_extensions)
+                        for img in imgs:
+                            if img["name"] not in seen_names:
+                                image_info.append(img)
+                                seen_names.add(img["name"])
                     elif os.path.isfile(path) and path.lower().endswith(self.valid_extensions):
                         base = os.path.basename(path)
-                        image_info.append({
-                            "path": path,
-                            "name": os.path.splitext(base)[0],
-                            "extension": os.path.splitext(base)[1],
-                        })
+                        name = os.path.splitext(base)[0]
+                        if name not in seen_names:
+                            image_info.append({
+                                "path": path,
+                                "name": name,
+                                "extension": os.path.splitext(base)[1],
+                            })
+                            seen_names.add(name)
 
             num_images = len(image_info)
             use_batch = num_images > self.small_batch_limit
@@ -93,7 +99,7 @@ class WorkFlowBuilder:
                 "mode": mode,
                 "image_info": image_info,
             }
-            
+        
         except Exception as e:
             logger.error(f"Error contando: {e}", exc_info=True)
         return {}

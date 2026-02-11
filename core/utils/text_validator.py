@@ -83,8 +83,8 @@ def get_alone_chars() -> Set[str]:
 def validate_alone_chars(text: str) -> bool:
     text = text.strip().lower()
     valid_chars = get_alone_chars()
-    #if len(text) > 1:
-      #  return True
+    if len(text) > 1:
+       return True
 
     if text.isdecimal():
         return True

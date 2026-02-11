@@ -3,6 +3,7 @@ import os
 import json
 import logging
 import numpy as np
+import cv2
 import pandas as pd # type: ignore
 from typing import Dict, Any, List
 import csv
@@ -12,7 +13,6 @@ logger = logging.getLogger(__name__)
 def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, contours1: List[np.ndarray[Any, Any]], contours2: List[np.ndarray[Any, Any]]):
     """Guarda una imagen con los contornos marcados sobre ella"""
     try:
-        import cv2
         if isinstance(output_paths, str):
             output_paths = [output_paths]
 
@@ -21,22 +21,23 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], outp
             file_name = f"{poly_id}.png"
             # Dibuja todos los contornos sobre la imagen
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) #type: ignore
-            
-            if not contours2:
-                logger.debug("Solo contornos principales")
-                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
-                save_image(image, output_dir, file_name)
-
-            elif not contours1:
-                logger.debug("Solo contornos principales")
-                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
-                save_image(image, output_dir, file_name)
-
-            else:
-                logger.info("Todos los contornos")
+            if contours1 and contours2:
+                # logger.info("Todos los contornos")
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # ruido Rojo
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (255 ,0, 0), thickness=cv2.FILLED) # AZUL
                 save_image(image, output_dir, file_name)
+
+            elif not contours1:
+                # logger.info("Solo contornos principales 2")
+                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
+                save_image(image, output_dir, file_name)
+            
+            elif not contours2:
+                # logger.info("Solo contornos principales 1")
+                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
+                save_image(image, output_dir, file_name)
+            else:
+                logger.error("Se entregaron contornos vacíos")
 
     except Exception as e:
         logger.error(f"Error guardando contornos: {e}", exc_info=True)
@@ -57,7 +58,7 @@ def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any],
 def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name: str):
     """Guarda una única imagen en disco."""
     try:
-        import cv2
+        
         os.makedirs(output_dir, exist_ok=True)
         img_path = os.path.join(output_dir, file_name)
         cv2.imwrite(img_path, image)
