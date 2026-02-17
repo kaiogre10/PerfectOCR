@@ -71,7 +71,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     gaps_id = f"gaps_{image_name}_{worker_name}"
                     #img_id= f"open_{image_name}_{worker_name}"
             
-                    save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
+                   # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
                     #save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
                     # lines_cont.extend(angle_cont)
                     # black_gaps.extend(white_gaps)
@@ -90,17 +90,21 @@ class InkCorrector(ImagePrepAbstractWorker):
     
     def delete_outliers(self, grey_img: np.ndarray[Any, Any]):
         logger.info("Eliiminando outliers")
-        thr = 0.3
-        black_thr = 0.65
+        thr = 0.23
+        black_thr = 0.70
         solid_thr = 0.80
+        shape_thr = 0.50
         cont_coords_list, metrics = extract_contours_metrics(grey_img)
-        hist_values =  extract_contours_histogram(metrics)
+        hist_values = extract_contours_histogram(metrics)
         area_outliers = hist_values[0]
 
         top_areas = np.sort(metrics[:, 1])[::-1][:area_outliers]
         outlier_mask = (metrics[:, 1] > np.min(top_areas))
         child_metric = np.compress(outlier_mask, metrics, 0)
         child_metrics = np.compress(child_metric[:, 11] == 1, child_metric[:, 0], 0)
+       
+        shape_mask = metrics[:, 16] < shape_thr
+        irreg = np.compress(shape_mask, metrics[:, 0])
 
         aspc_ratio_mask_high = (metrics[: ,10] > self.aspect_ratio_range[1])
         lines = np.compress(aspc_ratio_mask_high, metrics[:, 0])
@@ -113,21 +117,18 @@ class InkCorrector(ImagePrepAbstractWorker):
         mask_deskew = angle_mask2 | angle_mask1
 
         vert_metrics = np.compress(~mask_deskew, metrics, 0)
-        
         mask_vertical = (vert_metrics[:, 10] > self.aspect_ratio_range[1])
         vertical = np.compress(mask_vertical, vert_metrics[:, 0])
 
         metrics = np.compress(mask_deskew, metrics, 0)
 
         black_ratio = metrics[:, 15] / metrics[:, 14]
-        
         black_ratio_mask = (black_ratio > black_thr)
 
         solidez = (metrics[:, 1] / metrics[:, 7])
         solid = (solidez > solid_thr)
 
         aspc_ratio_mask_low = (metrics[: ,10] > self.aspect_ratio_range[0])
-
         mask_solidity = solid & aspc_ratio_mask_low
 
         solidity = np.compress(mask_solidity, metrics[:, 0], 0)
@@ -147,6 +148,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         solidity_indices: Set[int] = set(solidity.astype(np.int32)) if len(solidity) > 0 else set()
         vertical_indices: Set[int] = set(vertical.astype(np.int32)) if len(vertical) > 0 else set()
         lines_indices: Set[int] = set(lines.astype(np.int32)) if len(lines) > 0 else set()
+        irreg_indices: Set[int] = set(irreg.astype(np.int32)) if len(irreg) > 0 else set()
 
         outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         outlier_cont2: List[np.ndarray[Any, np.dtype[np.int32]]] = []
@@ -156,6 +158,11 @@ class InkCorrector(ImagePrepAbstractWorker):
 
             if idx in out_index:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                outlier_cont2.append(cont_coords)
+                lines_correct += 1
+             
+            elif idx in irreg_indices:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont.append(cont_coords)
                 lines_correct += 1
             
@@ -164,22 +171,22 @@ class InkCorrector(ImagePrepAbstractWorker):
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
 
-            if idx in rect1ind:
+            elif idx in rect1ind:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
 
-            if idx in rect2ind:
+            elif idx in rect2ind:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
 
-            if idx in vertical_indices:
+            elif idx in vertical_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont.append(cont_coords)
+                outlier_cont2.append(cont_coords)
                 lines_correct += 1
 
-            if idx in lines_indices:
+            elif idx in lines_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
@@ -188,7 +195,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 continue
 
         logger.info(f"Outliers: {lines_correct}")
-        return grey_img, outlier_cont2, outlier_cont
+        return grey_img, outlier_cont, outlier_cont2
 
     def compare_areas(self, grey_img: np.ndarray[Any, Any]):
         logger.info("Eliiminando rayas")

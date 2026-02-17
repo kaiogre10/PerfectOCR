@@ -19,27 +19,28 @@ os.environ.update({
 
 TEST_MODE = True
 
+MASTER_CONFIG_FILE = os.path.join(PROJECT_ROOT, "main_config", "config.yaml")
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
 DEFAULT_INPUT_PATH = [
-    # "input",
-        "input2",
+    "input",
+        #"input2",
         # "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 
 DEFAULT_OUTPUT_PATH =[
-   "D:/outputs/perfectocr",
-#   "output"
+#    "D:/outputs/perfectocr",
+     "output"
 ]
 
-LOG_FILE_PATH = "D:/outputs/logs/perfectocr.txt"
-# LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
+# LOG_FILE_PATH = "D:/outputs/logs/perfectocr.txt"
+LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 CONSOLE_LEVEL = "INFO"
 FILE_LEVEL = "INFO"
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 FILE_FORMAT = "%(asctime)s - %(module)s:%(lineno)d - %(message)s"
-DATE_FORMAT = "%D - %H:%M" #"%Y-%m-%d %H:%M:%S"
+DATE_FORMAT = "%H:%M" #"%Y-%m-%d %H:%M:%S"
 
 logger_root = logging.getLogger()
 logger_root.setLevel(logging.DEBUG)

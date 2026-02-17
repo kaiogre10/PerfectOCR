@@ -119,8 +119,12 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     conex_bbox_area_array = np.array(conex_bbox_area, dtype=np.int32)
 
     convex_area = np.array([cv2.contourArea(convex_hull) for convex_hull in hull])
+    convex_peri = np.array([cv2.arcLength(convex_hull, True) for convex_hull in hull])
     lonely_array = np.array(lonely, dtype=np.int32)
     pixels_val_array = np.array(pixels_val, dtype=np.int32)
+   
+    perimeter = np.array([cv2.arcLength(cont_coords_list[i][1], True) for i in valid_indices])
+    irregular_ratio = perimeter / convex_peri
 
     rects = [cv2.minAreaRect(cont_coords_list[i][1]) for i in valid_indices]
     shapes = np.array([r[1] for r in rects])
@@ -161,6 +165,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         ratio_2,                                        # 13
         total_pixels_array,                             # 14
         black_pixels_array,                             # 15
+        irregular_ratio,
         
     ])
 

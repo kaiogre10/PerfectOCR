@@ -6,10 +6,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class MainConfig:
+    def __init__(self, main_config_path: str):
+        validated_config = self._load_and_validate_yaml(main_config_path)
+        main_config = validated_config.model_dump()
+
+        
+
 class ConfigService:
     """Gestor de los parametros de configuración"""
     def __init__(self, config_path: str, TEST_MODE: bool):
-        self.config_path = config_path
         self.ocr_workers: Set[str] = {"geometry_detector", "paddle_wrapper", "polygon_extractor"}
         elemental_worker = "image_loader"
         self.min_workers: Set[str] = self.ocr_workers.union(elemental_worker)
