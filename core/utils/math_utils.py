@@ -2,7 +2,8 @@ import numpy as np
 from typing import List, Any, Optional, Tuple
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import logging
-from sklearn.cluster import DBSCAN
+import time
+from sklearn.cluster import DBSCAN # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +53,8 @@ def bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int
     else:
         return 1.0
 
-def calculate_similarity_ref(ref_vec: np.ndarray[Any, np.dtype[np.float32]], X: np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
+def get_cosine_similarity(ref_vec: Optional[np.ndarray[Any, np.dtype[np.float32]]] = None, X: np.ndarray[Any, np.dtype[np.float32]] = np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
     return cosine_similarity(X, ref_vec, dense_output).astype(np.float32)
-
-def cosine_similarity_global(X: np.ndarray[Any, np.dtype[np.float32]], Y: None=None, dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
-    return cosine_similarity(X, Y, dense_output).astype(np.float32)
 
 def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
     """
@@ -66,116 +64,60 @@ def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float])
         return 0.0
     
     return float(np.linalg.norm(np.subtract(point1, point2)))
-
-def vectorice_values(data_list: List[float], value: Optional[str]) -> float | List[float]:
+        
+def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     """
-    Calcula estadísticas vectorizadas (media, desviación estándar, varianza) de una lista de valores.
+    Calcula histograma de áreas de contornos de forma recursiva.
+    Elimina outliers hasta que no queden más gaps en el histograma.
+    Retorna:
+        deleted: Número total de outliers eliminados
     """
-    if not data_list:
-        if value in ["mean", "std", "var"]:
-            return 0.0  # Retorna float para casos específicos
-        else:
-            return [0.0, 0.0, 0.0]  # Retorna lista [mean, std, var] para caso general
-
-    value_array = np.array(data_list, dtype=np.float32)
-
-    if value == "mean":
-        return float(np.mean(value_array))
+    time_h = time.perf_counter()
     
-    elif value == "std":
-        return float(np.std(value_array))
+    def recursive_cleanup(current_metrics: np.ndarray[Any, Any], total_deleted: int, iteration: int) -> Tuple[int, int]:
+        """
+        Función recursiva que elimina outliers iterativamente.
+        """
+        top_feats = current_metrics
+        current_count = top_feats.shape[0]
+        max_feat = (np.max(top_feats) + 1.0)
+        hist, bin_edges = np.histogram(top_feats, bins=(np.histogram_bin_edges(top_feats, 'fd', (0.0, max_feat))).astype(np.float32))
+        relat = np.sum(hist)/np.max(hist)
+        # logger.info(f"Relación {relat}")
         
-    elif value == "var":
-        return float(np.var(value_array))
+        # logger.info(f"HIST iteración {iteration}: {hist}, elementos: {current_count}")
+
+        hist_rever = hist[::-1].astype(np.int32)
+        cutting = np.where(hist_rever > 2)[0]
+        idx_orig = len(hist) - 1 - cutting[0] if cutting.size > 0 else -1
+        outliers_indx = np.nonzero((hist == 1) | (hist == 2))[0]
+        filtered_outliers = outliers_indx[outliers_indx > idx_orig]
+        
+        # Condición de parada: no hay más outliers
+        if filtered_outliers.size == 0:
+            logger.debug(f"No hay más outliers después de {iteration} iteración(es)")
+            logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
+            logger.debug(f"Total eliminados: {total_deleted}")
+            # logger.info(f"Iteraciones totales de histograma: {iteration}")  # <-- solo log, no return
+            return total_deleted, relat
+        
+        # Filtrar outliers
+        mask = np.min(filtered_outliers) - 1
+        ind_big = bin_edges[mask] 
+        cond = top_feats < ind_big
+        filtered_metrics = np.compress(cond, current_metrics, 0)
+        
+        new_count = filtered_metrics.shape[0]
+        deleted_this_iter = current_count - new_count
+        total_deleted += deleted_this_iter
+        
+        logger.debug(f"Eliminados en iteración {iteration}: {deleted_this_iter}, Total acumulado: {total_deleted}")
+
+        # Llamada recursiva con las métricas filtradas
+        return recursive_cleanup(filtered_metrics, total_deleted, iteration + 1)
     
-    else:
-        line_mean = np.mean(value_array)
-        line_std = np.std(value_array)
-        line_var = np.var(value_array)
-        return [float(line_mean), float(line_std), float(line_var)]
-        
-def define_intervals(bboxes_array: np.ndarray[Any, Any], overlap_threshold: float) -> List[np.ndarray[Any, Any]]:
-    """
-    Agrupa bounding boxes en líneas de texto replicando exactamente LinealReconstructor.
-    Asume que bboxes_array ya está ordenado por centroide Y (como en lineal_reconstructor.py).
-    Usa promedios para Y y min/max para X en el bbox de la línea.
-    Ordena cada línea por centroide X.
-    Retorna una lista de arrays 2D, cada uno con forma (n, 4) para las bounding boxes de la línea.
-    """
-    if bboxes_array.shape[0] == 0:
-        return []
-
-    line_groups: List[np.ndarray[Any, Any]] = []
-    
-    # Asumir que bboxes_array ya está ordenado por centroide Y (no reordenar)
-    # Usar índices directos (0, 1, 2, ...)
-    
-    # 3. Inicializar la primera línea
-    current_line_indices = [0]  # Índices directos
-    current_sum_y1 = float(bboxes_array[0, 1])
-    current_sum_y2 = float(bboxes_array[0, 3])
-    current_count = 1
-    current_min_x = float(bboxes_array[0, 0])
-    current_max_x = float(bboxes_array[0, 2])
-
-    # 4. Iterar sobre el resto
-    for i in range(1, len(bboxes_array)):
-        bbox = bboxes_array[i]
-        bbox_y1 = float(bbox[1])
-        bbox_y2 = float(bbox[3])
-        bbox_x1 = float(bbox[0])
-        bbox_x2 = float(bbox[2])
-        
-        # Calcular límites de la línea usando promedios en Y y min/max en X
-        line_y1 = current_sum_y1 / current_count
-        line_y2 = current_sum_y2 / current_count
-        
-        # Calcular solapamiento vertical
-        overlap_abs = max(0.0, min(line_y2, bbox_y2) - max(line_y1, bbox_y1))
-        min_h = min(line_y2 - line_y1, bbox_y2 - bbox_y1)
-        overlap = overlap_abs / min_h if min_h > 1e-5 else 0.0
-        
-        if overlap > overlap_threshold:
-            # Agregar a la línea
-            current_line_indices.append(i)
-            current_sum_y1 += bbox_y1
-            current_sum_y2 += bbox_y2
-            current_count += 1
-            current_min_x = min(current_min_x, bbox_x1)
-            current_max_x = max(current_max_x, bbox_x2)
-        else:
-            # Finalizar línea anterior
-            group_indices = np.array(current_line_indices)
-            
-            # Obtener las bounding boxes del grupo
-            group_bboxes = bboxes_array[group_indices]
-            
-            # Ordenar por centroide X dentro de la línea
-            group_cx = (group_bboxes[:, 0] + group_bboxes[:, 2]) / 2.0
-            x_sort_order = np.argsort(group_cx)
-            
-            # Agregar las bounding boxes ordenadas
-            line_groups.append(group_bboxes[x_sort_order])
-            
-            # Iniciar nueva línea
-            current_line_indices = [i]
-            current_sum_y1 = bbox_y1
-            current_sum_y2 = bbox_y2
-            current_count = 1
-            current_min_x = bbox_x1
-            current_max_x = bbox_x2
-
-    # 5. Guardar la última línea
-    if current_line_indices:
-        group_indices = np.array(current_line_indices)
-        group_bboxes = bboxes_array[group_indices]
-        group_cx = (group_bboxes[:, 0] + group_bboxes[:, 2]) / 2.0
-        x_sort_order = np.argsort(group_cx)
-        line_groups.append(group_bboxes[x_sort_order])
-
-    logger.info(f"Line groups: {np.array(line_groups[0])} lines")
-    # logger.info(f"Line groups reshaped:: {np.array(line_groups[0])} lines")
-    return line_groups
+    # Inicia la recursión
+    return recursive_cleanup(metrics, 0, 1)
    
 def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int, metric: str) ->  np.ndarray[Any, Any]:
     clustering = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)

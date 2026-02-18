@@ -6,19 +6,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class MainConfig:
-    def __init__(self, main_config_path: str):
-        validated_config = self._load_and_validate_yaml(main_config_path)
-        main_config = validated_config.model_dump()
-
-        
-
 class ConfigService:
     """Gestor de los parametros de configuración"""
     def __init__(self, config_path: str, TEST_MODE: bool):
-        self.ocr_workers: Set[str] = {"geometry_detector", "paddle_wrapper", "polygon_extractor"}
         elemental_worker = "image_loader"
+        self.ocr_workers: Set[str] = {"geometry_detector", "paddle_wrapper", "polygon_extractor"}
         self.min_workers: Set[str] = self.ocr_workers.union(elemental_worker)
+
         validated_config = self._load_and_validate_yaml(config_path)
         self.config = validated_config.model_dump()
         elemental_params = elemental_worker in self.create_stager[0][1]
@@ -50,7 +44,7 @@ class ConfigService:
             return MasterConfig.model_validate(typed_raw)
             
         except Exception as e:
-            logger.error(f"Error validando configuración desde {self.config_path}: {e}")
+            logger.error(f"Error validando configuración desde {config_path}: {e}")
             raise
     
     @property

@@ -49,7 +49,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
 
             elif corrected:
                 if manager.update_full_img(corrected, full_img):
-                    logger.info(f"Imagen rotada actuallizada con éxito.")
+                    logger.debug(f"Imagen rotada actuallizada con éxito.")
             
             if not manager.update_full_img(corrected, full_img):
                 logger.error(f"Error al actualizar la imagen corregida en el manager")

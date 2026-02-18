@@ -2,11 +2,11 @@
 import numpy as np
 import time
 import logging
-from typing import Dict, Any, List, Set, Tuple
+from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines
-from core.utils.math_utils import cosine_similarity_global, calculate_similarity_ref
+from core.utils.math_utils import get_cosine_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,6 @@ class MatricialCusine(VectorizationAbstractWorker):
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            analysis: np.ndarray[Any, Any] = context["all_features"]
             analysis: np.ndarray[Any, Any] = context["all_features"]
             table_range = context["table_range"]
             if analysis.size == 0:
@@ -104,9 +103,9 @@ class MatricialCusine(VectorizationAbstractWorker):
         mask = np.isin(analysis[:, 0], tabular_idx, assume_unique=True)
         features = np.ascontiguousarray(np.compress(mask, analysis, 0)).astype(np.float32)
         
-        features = features[: ,1:]        
+        features = features[: ,1:]
         timecos0 = time.perf_counter()
-        sims_mat_dense = cosine_similarity_global(features, dense_output=False)
+        sims_mat_dense = get_cosine_similarity(X=features, dense_output=False)
         logger.info(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}'s")
 
         # logger.debug(f"Promedio matriz: {np.mean(sims_mat_dense)}")
@@ -166,7 +165,7 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         ref_vec = line_cands[0].reshape(1, -1)
 
-        sims = calculate_similarity_ref(line_cands, ref_vec, dense_output=False)
+        sims = get_cosine_similarity(line_cands, ref_vec, dense_output=False)
 
         logger.debug(f"Promedio de similitud con línea de referencia '{ref_vec}': {np.mean(sims):.6f}")
         logger.debug("Candidatas (en orden): %s", ", ".join(str(lid) for lid in cand_indx))
@@ -214,7 +213,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         t0 = time.perf_counter()
         dummie_vect = np.row_stack([median_ref_vec, mean_ref_vec])
         analysis = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
-        sims_comb = calculate_similarity_ref(dummie_vect, analysis, dense_output=False)
+        sims_comb = get_cosine_similarity(dummie_vect, analysis, dense_output=False)
         # sims_median = calculate_similarity_ref(median_ref_vec, analysis[:, 1:] , dense_output=False)
         # logger.debug(f"Similitudes con Dummie MEDIAN: {sims_median}")
 

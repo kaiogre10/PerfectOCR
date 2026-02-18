@@ -6,9 +6,10 @@ import time
 from typing import Dict, Any, List, Tuple, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_analizer import extract_contours_metrics, extract_contours_histogram
+from core.utils.image_analizer import extract_contours_metrics
+from core.utils.math_utils import extract_contours_histogram
 from services.output_service import save_croped_image, save_shapes
-from sklearn.neighbors import NearestNeighbors
+# from sklearn.neighbors import NearestNeighbors
 
 logger = logging.getLogger(__name__)
 
@@ -47,15 +48,16 @@ class InkCorrector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
 
-            correct, out_conts, out_conts2 = self.delete_outliers(full_img)
-            # lines_cont, angle_cont, corrected = self.compare_areas(outed_img)
-            # correct, black_gaps, white_gaps = self.fill_gaps(corrected)
+            enhanced, enhanced_cont = self.enhance_ink(full_img)
+            
+            # gap_img, black_gaps, white_gaps = self.fill_gaps(full_img)
+            # correct, out_conts, out_conts2 = self.delete_outliers(gap_img)
             # corrected = cv2.morphologyEx(correct, cv2.MORPH_CLOSE, self.kernelr, iterations=2, borderType=cv2.BORDER_REFLECT)
 
             #self.refine_text_quality(grey_img.copy(), context, image_name)
             # all_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
             # all_gaps: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-            if not manager.update_full_img(True, correct):
+            if not manager.update_full_img(True, enhanced):
 
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
                 return False    
@@ -67,39 +69,54 @@ class InkCorrector(ImagePrepAbstractWorker):
                     
                     imag_id = f"corrected_blobs_{image_name}_{worker_name}"
                     image_id = f"outliers_{image_name}_{worker_name}"
-                    line_cont_id= f"lines_{image_name}_{worker_name}"
+                    line_cont_id= f"enhanced_{image_name}_{worker_name}"
                     gaps_id = f"gaps_{image_name}_{worker_name}"
                     #img_id= f"open_{image_name}_{worker_name}"
             
                    # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
-                    #save_croped_image(image_name, img_id, eroded, output_paths, worker_name)
+                    save_croped_image(image_name, imag_id, enhanced, output_paths, worker_name)
                     # lines_cont.extend(angle_cont)
                     # black_gaps.extend(white_gaps)
                     # all_cont.extend(lines_cont)
                     # all_gaps.extend(black_gaps)
                     
                     # save_shapes(image_name, gaps_id, full_img, output_paths, black_gaps, white_gaps)
-                    save_shapes(image_name, image_id, full_img, output_paths, out_conts, out_conts2)
-                    # save_shapes(image_name, line_cont_id, full_img, output_paths, lines_cont, contours2=angle_cont)
+                    # save_shapes(image_name, image_id, gap_img, output_paths, out_conts, out_conts2)
+                    save_shapes(image_name, line_cont_id, full_img, output_paths, enhanced_cont, contours2=[])
                             
                 return True
             
         except Exception as e:
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
         return True
+
+    def enhance_ink(self, grey_img: np.ndarray[Any, Any]):
+        cont_coords_list, metrics = extract_contours_metrics(grey_img)
+        child_metrics = np.compress(metrics[:, 11] == 1, metrics[:, 0], 0)
+        out_index: Set[int] = set(child_metrics.astype(np.int32)) if len(child_metrics) > 0 else set()
+        lines_correct = 0
+        outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+        for idx, cont_coords in cont_coords_list:
+            if idx in out_index:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.black, thickness=1)
+                outlier_cont.append(cont_coords)
+                lines_correct += 1
+
+        logger.info(f"Mejoras: {lines_correct}")
+        return grey_img, outlier_cont
     
     def delete_outliers(self, grey_img: np.ndarray[Any, Any]):
-        logger.info("Eliiminando outliers")
         thr = 0.23
         black_thr = 0.70
-        solid_thr = 0.80
-        shape_thr = 0.50
+        solid_thr = 0.90
+        shape_thr = 0.31
         cont_coords_list, metrics = extract_contours_metrics(grey_img)
-        hist_values = extract_contours_histogram(metrics)
+        logger.info(f"Total de contornos outliers: {metrics.shape[0]}")
+        hist_values = extract_contours_histogram(metrics[: ,1])
         area_outliers = hist_values[0]
 
         top_areas = np.sort(metrics[:, 1])[::-1][:area_outliers]
-        outlier_mask = (metrics[:, 1] > np.min(top_areas))
+        outlier_mask = (metrics[:, 1] >= (np.min(top_areas)-1.0))
         child_metric = np.compress(outlier_mask, metrics, 0)
         child_metrics = np.compress(child_metric[:, 11] == 1, child_metric[:, 0], 0)
        
@@ -109,10 +126,8 @@ class InkCorrector(ImagePrepAbstractWorker):
         aspc_ratio_mask_high = (metrics[: ,10] > self.aspect_ratio_range[1])
         lines = np.compress(aspc_ratio_mask_high, metrics[:, 0])
 
-        angle_to_horizontal = np.minimum(metrics[:, 4], 180.0 - metrics[:, 4])
-
-        angle_mask1 = (angle_to_horizontal < self.angle_threshold) 
-        angle_mask2 = (angle_to_horizontal > (180 - self.angle_threshold))
+        angle_mask1 = (metrics[:, 4] < self.angle_threshold) 
+        angle_mask2 = (metrics[:, 4] > (180 - self.angle_threshold))
         
         mask_deskew = angle_mask2 | angle_mask1
 
@@ -158,17 +173,12 @@ class InkCorrector(ImagePrepAbstractWorker):
 
             if idx in out_index:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont2.append(cont_coords)
+                outlier_cont.append(cont_coords)
                 lines_correct += 1
              
             elif idx in irreg_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont.append(cont_coords)
-                lines_correct += 1
-            
-            elif idx in solidity_indices:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont2.append(cont_coords)
                 lines_correct += 1
 
             elif idx in rect1ind:
@@ -191,97 +201,27 @@ class InkCorrector(ImagePrepAbstractWorker):
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
 
+            # elif idx in solidity_indices:
+            #     cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+            #     outlier_cont2.append(cont_coords)
+            #     lines_correct += 1
+
             else:
                 continue
 
         logger.info(f"Outliers: {lines_correct}")
         return grey_img, outlier_cont, outlier_cont2
-
-    def compare_areas(self, grey_img: np.ndarray[Any, Any]):
-        logger.info("Eliiminando rayas")
-        cont_coords_list, metrics = extract_contours_metrics(grey_img)
-        hist_values =  extract_contours_histogram(metrics)
-        perc_val = hist_values[1]
-        
-        # Corregir: usar & en lugar de and, y paréntesis correctos
-        mask_lines = metrics[:, 10] > self.aspect_ratio_range[1]
-        lines = np.compress(mask_lines, metrics[:, 0])
-       
-        # Corregir: comprimir sobre metrics, no sobre lines
-        angle_to_horizontal = np.minimum(metrics[:, 4], 180.0 - metrics[:, 4])
-        mask_deskew = (metrics[:, 10] > self.aspect_ratio_range[1]) & (angle_to_horizontal > self.angle_threshold)
-        deskew = np.compress(mask_deskew, metrics[:, 0])
-
-        angle_to_vertical = np.abs(metrics[:, 4] - 90.0)
-        mask_vertical = (metrics[:, 10] > self.aspect_ratio_range[1]) & (angle_to_vertical > self.angle_threshold)
-        vertical = np.compress(mask_vertical, metrics[:, 0])
-
-        mask_solidity = metrics[:, 1] / metrics[:, 7]
-        solidity = np.compress(mask_solidity < 0.85, metrics[:, 0])
-
-        top_areas_list = np.sort(metrics[:, 1])[::-1]
-
-        top_areas_no_out = 5
-        mask = metrics[:,1] >= np.min(top_areas_list[:top_areas_no_out]) - 1
-        top_area = np.compress(mask, metrics[:,0], 0)
-        
-        min_area = np.percentile(metrics[:, 1], perc_val)
-        metrics = np.compress(min_area > metrics[:, 1], metrics, 0)
-
-        # Extraer índices (primera columna) y convertir a set
-        lines_indices: Set[int] = set(lines.astype(np.int32)) if len(lines) > 0 else set()
-        deskew_indices: Set[int] = set(deskew.astype(np.int32)) if len(deskew) > 0 else set()
-        vertical_indices: Set[int] = set(vertical.astype(np.int32)) if len(vertical) > 0 else set()
-        solidity_indices: Set[int] = set(solidity.astype(np.int32)) if len(solidity) > 0 else set()
-        
-        top_ind: Set[int] = set(top_area.astype(np.int32)) if len(top_area) > 0 else set()
-        
-        angle_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-        lines_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-        lines_correct: int = 0
-        for idx, cont_coords in cont_coords_list:
-            # if idx in top_ind and idx not in solidity_indices:
-            #     cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-            #     lines_cont.append(cont_coords)
-            #     lines_correct += 1
-                
-            if idx in lines_indices:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                angle_cont.append(cont_coords)
-                lines_correct += 1
-
-            # elif idx in solidity_indices:
-            #     cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-            #     angle_cont.append(cont_coords)
-            #     lines_correct += 1
-            
-            elif idx in deskew_indices:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                angle_cont.append(cont_coords)
-                lines_correct += 1
-
-            elif idx in vertical_indices:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                angle_cont.append(cont_coords)
-                lines_correct += 1
-            else:
-                continue
-
-        logger.info(f"Rayas eliminados: {lines_correct}")
-        # grey_img =cv2.morphologyEx(grey_img, cv2.MORPH_CLOSE, self.kernel1, iterations=1, borderType=cv2.BORDER_REPLICATE)
-        return lines_cont, angle_cont, grey_img
         
     def fill_gaps(self, grey_img: np.ndarray[Any, Any]):
         # grey_img = cv2.morphologyEx(grey_img, cv2.MORPH_OPEN, self.kernelr, iterations=1, borderType=cv2.BORDER_REPLICATE)
-        logger.info("Eliiminando gaps")
-
         cont_coords_list, metrics = extract_contours_metrics(grey_img)
-        hist_values =  extract_contours_histogram(metrics)
+        logger.info(f"Total de contornos gaps: {metrics.shape[0]}")
+        hist_values = extract_contours_histogram(metrics[: ,1])
         perc_val = hist_values[1]
 
         max_area = np.percentile(metrics[:, 1], perc_val)
-        logger.info(f"HIS{hist_values}, PERCENTIL: {max_area}")
-        metrics = np.compress(max_area > metrics[:, 1], metrics, 0)
+        # logger.info(f"HIS{hist_values}, PERCENTIL: {max_area}")
+        metrics = np.compress(max_area >= metrics[:, 1], metrics, 0)
         
         mask_lon = (metrics[:, 9] == 0)
         cont_array = np.compress(mask_lon, metrics.copy(), 0)
@@ -309,7 +249,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 continue
                     
         logger.info(f"Contornos pintado de Ngero: {black}, solitarios: {white}")
-        return grey_img, black_gaps, white_gaps
+        return cv2.morphologyEx(grey_img, cv2.MORPH_CLOSE, self.kernel1, iterations=1, borderType=cv2.BORDER_REPLICATE), black_gaps, white_gaps
     
     def refine_text_quality(self,grey_img: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], image_name: str):
         """
