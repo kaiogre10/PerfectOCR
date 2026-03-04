@@ -69,16 +69,10 @@ class ModelsConfig(ConfigWithNumpy):
     rec_image_inverse: bool
     
 class InkConfig(ConfigWithNumpy):
-    iterations: int
     white: List[int]
     black: List[int]
-    start_restoring: bool
-    noise_kernel: Tuple[int, int]
-    restorer_kernel: Tuple[int, int]
-    isolation_range: Tuple[float, float]
     aspect_ratio_range: Tuple[float, float]
     angle_threshold: float
-    min_area: int
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float

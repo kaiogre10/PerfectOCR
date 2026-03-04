@@ -4,9 +4,8 @@ import logging
 from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
-from core.utils.image_analizer import extract_contours_metrics
-from core.utils.image_utils import cropp_img
+from core.domain.data_models import Polygons 
+from core.utils.image_utils import cropp_img, extract_contours_metrics
 from services.output_service import save_shapes
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import Any, Optional, List, Dict
+from typing import Any, Optional, List, Dict, Tuple
 import logging
 from skimage.filters import threshold_sauvola #type: ignore
 
@@ -248,12 +248,191 @@ def decolorate(full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any,
     kernel2 = cv2.getStructuringElement(cv2.MORPH_CROSS, (1, 3))
     
     if gray is not None:
-        # return gray
-        opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel1, iterations=2)
-        return cv2.morphologyEx(opened, cv2.MORPH_OPEN, kernel2, iterations=2)
-        # return cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel2, iterations=1).astype(np.uint8)
+        # opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel1, iterations=2)
+        # return cv2.morphologyEx(opened, cv2.MORPH_OPEN, kernel2, iterations=2).astype(np.uint8)
+        return gray
         
     else:
         logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
-        gray = cv2.cvtColor(full_img.copy(), cv2.COLOR_BGR2GRAY)
-        return cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel1, iterations=2, borderType=cv2.BORDER_REPLICATE).astype(np.uint8)
+        return cv2.cvtColor(full_img.copy(), cv2.COLOR_BGR2GRAY).astype(np.uint8)
+        # return cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel1, iterations=2, borderType=cv2.BORDER_REPLICATE).astype(np.uint8)
+
+def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
+    """
+    Calcula métricas de CC robustas, filtrando ruido (rayones, manchas)
+    usando Área y Solidez.
+    bin_img: np.uint8, foreground=255, background=0
+
+    Retorna:
+        cont_coords: Lista de [idx_original, coords_array] para cada contorno válido
+        metrics: np.ndarray con columnas [idx_original, area, width, height, angle]
+    """
+    bin_img = binarice_img(img, {})
+    sh, sw = bin_img.shape[:2]
+
+    contours, hierarchy = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+
+    if not contours:
+        return [], np.empty((0, 5))
+    
+    cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
+    cont_size_list: List[int] = []
+    
+    for i, cont in enumerate(contours):
+        cont_coords = cont.reshape(-1, 2).astype(np.int32)
+        cont_size = len(cont_coords)
+        if cont_size < 3:
+            continue
+        
+        cont_size_list.append(cont_size)
+        cont_coords_list.append((i, cont_coords))
+
+        if not cont_coords_list:
+            return [], np.empty((0, 5))
+    
+    areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
+    
+    # top_areas_list = np.sort(areas)[::-1]
+    # logger.info(f"{top_areas_list[:10]}")
+    
+    valid_mask = (areas > 0)
+
+    # top_areas = np.sort(areas[valid_mask])[::-1]
+    # logger.info(f"Top áreas: {top_areas[:10]}")
+    
+    valid_indices = np.where(valid_mask)[0]
+
+    if len(valid_indices) == 0:
+        return [], np.empty((0, 9))
+    
+    has_child = np.array([int(hierarchy[0][i][2] != -1) for i in valid_indices], dtype=np.int8)
+    
+    pixels_val: List[int] = []
+    lonely: List[int] = []
+    # Máscara reutilizable
+    single_mask = np.zeros((sh, sw), dtype=np.uint8)
+    
+    # Variables para limpiar la región anterior
+    prev_x, prev_y, prev_w, prev_h = 0, 0, 0, 0
+    
+    # Solo procesa los contornos válidos
+    hull: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+    black_pixels: List[int] = []
+    total_pixels: List[int] = []
+    # bbox_area: List[int] = []
+
+    for idx in valid_indices:
+        conts = cont_coords_list[idx]
+        
+        # Limpia solo la región usada del contorno anterior
+        if prev_w > 0 and prev_h > 0:
+            single_mask[prev_y:prev_y+prev_h, prev_x:prev_x+prev_w] = 0
+        
+        convex_hull = cv2.convexHull(conts[1])
+        hull.append(convex_hull)
+        # Calcula bounding box del contorno actual
+        x, y, w, h = cv2.boundingRect(conts[1])
+        # bbox_area.append(h * w)
+        
+        # Dibuja el contorno actual
+        cv2.drawContours(single_mask, [conts[1]], -1, [255], cv2.FILLED)
+        
+        # Extrae solo la región de interés
+        roi_mask = single_mask[y:y+h, x:x+w]
+        roi_img = bin_img[y:y+h, x:x+w]
+        pixels = roi_img[roi_mask == 255]
+        pixels_outside = roi_img[roi_mask == 0]
+
+        # Guarda el número de píxeles negros y totales
+        black_pixels.append(np.count_nonzero(pixels == 255))
+        total_pixels.append(roi_img.size)
+        
+        # Verifica si HAY TINTA fuera del contorno (otro blob cerca)
+        if np.count_nonzero(pixels_outside) > 0:
+            lonely.append(0)
+        else:
+            lonely.append(1)
+
+        if np.all(pixels==255):
+            pixels_val.append(1)
+        else:
+            pixels_val.append(0)
+
+        prev_x, prev_y, prev_w, prev_h = x, y, w, h
+        
+    black_pixels_array = np.array(black_pixels, dtype=np.int32)
+    total_pixels_array = np.array(total_pixels, dtype=np.int32)
+    # bbox_area_array = np.array(bbox_area, dtype=np.int32)
+
+    convex_area = np.array([cv2.contourArea(convex_hull) for convex_hull in hull])
+    convex_peri = np.array([cv2.arcLength(convex_hull, True) for convex_hull in hull])
+    
+    lonely_array = np.array(lonely, dtype=np.int32)
+    pixels_val_array = np.array(pixels_val, dtype=np.int32)
+   
+    perimeter = np.array([cv2.arcLength(cont_coords_list[i][1], True) for i in valid_indices])
+    irregular_ratio = perimeter / convex_peri
+
+    rects = [cv2.minAreaRect(cont_coords_list[i][1]) for i in valid_indices]
+    shapes = np.array([r[1] for r in rects])
+    angles = np.array([r[2] for r in rects])
+
+    rec_widith = shapes[:, 0]
+    rec_height = shapes[:, 1]
+
+    # Para cada rectángulo, tomamos como min_side el lado (ancho/alto) más perpendicular/vertical al eje Y, es decir, el que corresponde al ángulo más cercano a 90°
+    min_side = np.where(angles > 45, rec_widith, rec_height)
+
+    angle_norm = np.where(rec_widith < rec_height, angles + 90, angles)
+    angle_norm = angle_norm % 180.0
+    angles = angle_norm
+
+    ratio_1 = convex_area / (rec_height * rec_widith)
+    ratio_2 = (rec_height * rec_widith) / convex_area
+    aspect_ratio = (np.maximum(rec_widith, rec_height) / np.minimum(rec_widith, rec_height)).astype(np.float32)
+    
+    centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0.0 else 0.0, m["m01"] / m["m00"] if m["m00"] != 0.0 else 0.0)
+        for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.float32)
+
+    valid_areas = areas[valid_indices]
+    
+    # Agrega el índice secuencial como primera columna y pixels_val al final
+    metrics_array = np.column_stack([
+        np.arange(len(valid_indices), dtype=np.int32),  # 0
+        valid_areas,                                    # 1
+        rec_widith,                                     # 2
+        rec_height,                                     # 3
+        angles,                                         # 4
+        centroids[:, 0],                                # 5
+        centroids[:, 1],                                # 6
+        convex_area,                                    # 7
+        pixels_val_array,                               # 8
+        lonely_array,                                   # 9
+        aspect_ratio,                                   # 10
+        has_child,                                      # 11
+        ratio_1,                                        # 12
+        ratio_2,                                        # 13
+        total_pixels_array,                             # 14
+        black_pixels_array,                             # 15
+        irregular_ratio,                                # 16
+        min_side,                                       # 17
+    ])
+
+    filtered_original_indices = metrics_array[:, 0].astype(np.int32)
+    valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(int(idx), cont_coords_list[valid_indices[int(idx)]][1]) for idx in filtered_original_indices]
+
+    valid_contours = len(valid_coords) 
+    matrix_size = metrics_array.shape[0]
+    if valid_contours != matrix_size:
+        logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
+        return [], np.empty((0, 5))
+
+    variances = np.array([
+        np.var(np.linalg.norm(coords.reshape(-1, 2) - c, axis=1))
+        for (_, coords), c in zip(valid_coords, metrics_array[:, 5:7])
+    ], dtype=np.float32)
+    metrics_array = np.column_stack([metrics_array, variances])
+
+    # logger.info(f"Contornos validos: {valid_contours}")
+
+    return valid_coords, metrics_array

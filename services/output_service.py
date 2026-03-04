@@ -23,7 +23,7 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], outp
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) #type: ignore
             if contours1 and contours2:
                 logger.debug("Todos los contornos, contornos 1: Rojo, Contornos 2: Azul")
-                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # ruido Rojo
+                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # Rojo
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (255 ,0, 0), thickness=cv2.FILLED) # AZUL
                 save_image(image, output_dir, file_name)
 

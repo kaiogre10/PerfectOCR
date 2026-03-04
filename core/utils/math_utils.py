@@ -73,15 +73,16 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, floa
         deleted: Número total de outliers eliminados
     """
     time_h = time.perf_counter()
+    min_feat = np.min(metrics) if np.min(metrics) == 0 else (np.min(metrics) - 0.1)
     
     def recursive_cleanup(current_metrics: np.ndarray[Any, Any], total_deleted: int, iteration: int) -> Tuple[int, int]:
         """
         Función recursiva que elimina outliers iterativamente.
         """
-        top_feats = current_metrics
-        current_count = top_feats.shape[0]
-        max_feat = (np.max(top_feats) + 1.0)
-        hist, bin_edges = np.histogram(top_feats, bins=(np.histogram_bin_edges(top_feats, 'fd', (0.0, max_feat))).astype(np.float32))
+        current_count = current_metrics.shape[0]
+        max_feat = (np.max(current_metrics) + 0.1)
+        
+        hist, bin_edges = np.histogram(current_metrics, bins=(np.histogram_bin_edges(current_metrics, 'fd', (min_feat, max_feat))).astype(np.float32))
         relat = np.sum(hist)/np.max(hist)
         # logger.info(f"Relación {relat}")
         
@@ -95,23 +96,22 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, floa
         
         # Condición de parada: no hay más outliers
         if filtered_outliers.size == 0:
-            logger.debug(f"No hay más outliers después de {iteration} iteración(es)")
-            logger.debug(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
-            logger.debug(f"Total eliminados: {total_deleted}")
-            # logger.info(f"Iteraciones totales de histograma: {iteration}")  # <-- solo log, no return
+            # logger.info(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
+            # logger.info(f"Total eliminados: {total_deleted}")
+            # logger.info(f"Iteraciones totales de histograma: {iteration}")
             return total_deleted, relat
         
         # Filtrar outliers
         mask = np.min(filtered_outliers) - 1
         ind_big = bin_edges[mask] 
-        cond = top_feats < ind_big
+        cond = current_metrics < ind_big
         filtered_metrics = np.compress(cond, current_metrics, 0)
         
         new_count = filtered_metrics.shape[0]
         deleted_this_iter = current_count - new_count
         total_deleted += deleted_this_iter
         
-        logger.debug(f"Eliminados en iteración {iteration}: {deleted_this_iter}, Total acumulado: {total_deleted}")
+        # logger.info(f"Eliminados en iteración {iteration}: {deleted_this_iter}, Total acumulado: {total_deleted}")
 
         # Llamada recursiva con las métricas filtradas
         return recursive_cleanup(filtered_metrics, total_deleted, iteration + 1)
