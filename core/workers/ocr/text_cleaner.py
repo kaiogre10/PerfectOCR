@@ -5,8 +5,8 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_validator import validate_text, validate_alone_chars, space_removal
-from core.utils.pattern_finder import detect_punt, remove_special_chars, remove_special_sequences
+from core.utils.text_utils import validate_text, validate_alone_chars, space_removal, detect_punt, remove_special_sequences
+from core.utils.data_utils import ACCENT_NORMALIZATION
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +56,13 @@ class TextCleaner(OCRAbstractWorker):
                 continue
 
             elif not validate_alone_chars(text):
-                logger.info(f"Eliminado {poly_id} por soledad: '{text}'")
+                # logger.info(f"Eliminado {poly_id} por soledad: '{text}'")
                 eliminated_count += 1
                 continue
 
             text_sec = remove_special_sequences(text)
             if text_sec != text:
-                logger.info(f"Secuencia eliminada: '{text}' -> '{text_sec}' in {polygon.polygon_id if polygon else ''}")
+                logger.info(f"Secuencia eliminada: '{text.removeprefix(text_sec)}' en '{text}' in {polygon.polygon_id if polygon else ''}")
                 continue
             
             fil_text = self.filter_low_prob_tokens(text, polygon, manager)
@@ -71,7 +71,7 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
 
-            text = remove_special_chars(text)
+            # text = remove_special_chars(text)
 
             is_numeric_like = (isinstance(sc, list) and any(c in [1, 2, -2] for c in sc)) or (isinstance(sc, int) and sc in [1, 2, -2])
 
@@ -125,8 +125,8 @@ class TextCleaner(OCRAbstractWorker):
                 continue
             
             # Eliminar tokens que sean un carácter especial especificado (ej. ")")
-            if self.is_stray_single_special(token):
-                logger.info(f"Eliminado unico: '{token}' in {polygon.polygon_id if polygon else ''}")
+            if not validate_alone_chars(token):
+                logger.info(f"Eliminado único: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             else:
                 processed_words.append(token)
@@ -185,26 +185,6 @@ class TextCleaner(OCRAbstractWorker):
 
             return text
 
-    def normalize_char_for_freq(self, ch: str, manager: DataFormatter) -> str:
-        # Mantén tildes/ñ si existen en la tabla; si no, haz fallback a su base
-        if ch in self.get_frecuency_norm(manager): #type: ignore
-            return ch
-        
-        base_map = {
-            "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
-            "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
-            "ü": "u", "Ü": "U", "ñ": "n", "Ñ": "N",
-        }
-        return base_map.get(ch, ch)
-
-    def is_stray_single_special(self, token: str) -> bool:
-        """
-        True si el token (tras strip) es exactamente un carácter y está en la lista
-        configurada de caracteres a eliminar cuando aparecen aislados.
-        """
-        t = token.strip()
-        return len(t) == 1 and t.isalnum()
-
     def get_frecuency_norm(self, manager: DataFormatter) -> Dict[str, float]:
 
         try:
@@ -221,19 +201,18 @@ class TextCleaner(OCRAbstractWorker):
     def token_freq_score(self, token: str, manager: DataFormatter) -> float:
         freq_norm = self.get_frecuency_norm(manager)
         if not freq_norm:
-            return 100.0  # si no hay tabla, no castigues
+            return 100.0
         
         letters: List[float] = []
         for ch in token:
             if ch.isalpha():
-                norm = self.normalize_char_for_freq(ch.lower(), manager)
+                norm = ACCENT_NORMALIZATION.get(ch, ch).lower()
                 if norm in freq_norm:
                     letters.append(freq_norm[norm])
                 elif norm.isalpha():
                     letters.append(0.0)
+
         if not letters:
-        
-            return 100.0  # tokens sin letras no se filtran por frecuencia
+            return 100.0
         return sum(letters) / float(len(letters))
 
-    

@@ -7,7 +7,7 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from services.output_service import save_raw_json
-from core.utils.text_validator import validate_text
+from core.utils.text_utils import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +175,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                    logger.info(f"{line_id}: '{joined_text}'")
+                    # logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -215,7 +215,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 }
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                logger.info(f"{line_id}: '{joined_text}'")
+                # logger.info(f"{line_id}: '{joined_text}'")
 
         return lines_info, (header_idx if header_idx > 0 else 0, footer_idx if footer_idx > 0 else 0)
 

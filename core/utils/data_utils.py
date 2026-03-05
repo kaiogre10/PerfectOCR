@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Set
 import numpy as np
 
 field_conversion_map: Dict[str, int] = {
@@ -312,8 +312,7 @@ CHAR_FRECUENCY: Dict[str, float] ={
     "Ó": 1.0,
 }
 
-VECTOR_MEAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
-    
+VECTOR_MEAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([    
     1.1919195,
     0.9051989,
     1.04885909,
@@ -434,15 +433,61 @@ SEMATIC_TYPES_MAP: Dict[str, int] = {
     "umd": -2 # Sub clasificación de code, son str cortos que suelen informar el contenido de los productos
 }
 
-def to_serializable(obj: Any) -> Any:
-    """Convierte numpy arrays y tipos numpy a tipos nativos Python."""
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, (np.integer, np.floating)):
-        return obj.item()
-    elif isinstance(obj, dict):
-        return {k: to_serializable(v) for k, v in obj.items()}
-    elif isinstance(obj, (list, tuple)):
-        return [to_serializable(item) for item in obj]
-    else:
-        return obj
+CHAR_NUM: Set[str] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "$"}
+
+SPECIAL_CHARS: Set[str] = {
+    ")", "(", "]", "[", "{", "}", "|", "*", "^",
+    "-", "_", "+", "=", "<", ">", ";", ":", "@",
+    "'", "!", "¡", "?", "¿", "'", "\\", "''",
+}
+
+NUMERIC_CORRECTIONS: Dict[str, str] = {
+    "Q": "0",
+    "C": "0",
+    "q": "9",
+    "O": "0",
+    "o": "0",
+    "I": "1",
+    "i": "1",
+    "|": "1",
+    "!": "1",
+    "¡": "1",
+    "l": "1",
+    "S": "$",
+    "s": "$",
+    "G": "6",
+    "g": "9",
+    "B": "8",
+    "Z": "2",
+    "z": "2",
+    "j": "9"
+}
+
+DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
+    "$": "S",
+    "è": "é",
+    "ý": "y",
+    "\\": "/",
+}
+
+NOT_VALID_CHARS: Set[str] = {
+    "~", "©", "®", "™", "`",
+    "¬", "¨", "÷", "°", "=",
+}
+
+NOT_VALID_PUNT_CHARS: Set[str] = {
+    ".", "*", "^", "°", ",",
+    "-", "_", ";", ":",
+    "'", "´", "''", "¨"
+}
+
+PUNC_CHARS: Set[str] = {".", ";", ":", "!", "?"}
+
+ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "u", "&"}
+
+ACCENT_NORMALIZATION: Dict[str, str] = {
+    "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
+    "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
+    "ü": "u", "Ü": "U", "ñ": "n", "Ñ": "N",
+}
+    

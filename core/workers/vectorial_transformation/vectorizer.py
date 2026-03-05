@@ -6,7 +6,6 @@ from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
-from core.utils.text_validator import get_char_num
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,6 @@ class Vectorizer(VectorizationAbstractWorker):
         self.exclude_types =  worker_config['exclude_types']
         self.output = config.get("features", False)
         self.image_features = config.get("image_features", False)
-        self.char_num = get_char_num()
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.perf_counter()

@@ -16,7 +16,7 @@ class StagersFactory:
         self.modules_config = manager_config
         self.image_workers: List[str] = self.modules_config.get("image_preparation", {}).get("imagepre_stage", [])
         self.preprocessing_workers = self.modules_config.get("preprocessing", {}).get("preprocessing_stage", [])
-        self.ocr_workers = self.modules_config.get("ocr", {}).get("ocr_stage", [])
+        self.ocr_workers: List[str] = self.modules_config.get("ocr", {}).get("ocr_stage", [])
         self.vectorizing_workers = self.modules_config.get("vectorization", {}).get("vector_stage", [])
         self.main_factory = MainFactory(self.modules_config, project_root)
 
@@ -40,7 +40,7 @@ class StagersFactory:
         """Crea stager de preprocessing con configuraciones específicas del master config."""
         if not self.preprocessing_workers:
             return None
-
+        
         factory = self.main_factory.get_preprocessing_factory()
         if factory is None:
             return None
@@ -71,7 +71,7 @@ class StagersFactory:
             output_paths=output_paths,
             project_root=self.project_root
         )
-
+    
     def create_vectorization_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> Optional[VectorizationStager]:
         """Crea stager de vectorización con configuraciones específicas del master config."""
         if not self.vectorizing_workers:

@@ -1,13 +1,12 @@
 # PerfectOCR/core/workers/ocr/text_corrector.py
 import logging
 import dataclasses
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_encoder import get_char_num, validate_text
-from core.utils.text_validator import numeric_corrections, descritive_corrections, estandarice_uppers_lowers
-from core.utils.pattern_finder import termination_detect
+from core.utils.text_utils import validate_text, estandarice_uppers_lowers, termination_detect
+from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +22,6 @@ class TextCorrector(OCRAbstractWorker):
         self.project_root = project_root
         worker_config = config.get("text_corrector", {})
         self.conf_threshold = (worker_config.get("confidence_threshold") * 100.0)
-        self.numeric_corrections: Dict[str, str] = numeric_corrections()
-        self.descriptive_corrections: Dict[str, str] = descritive_corrections()
-        self.char_num: Set[str] = get_char_num()
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
 
@@ -172,12 +168,11 @@ class TextCorrector(OCRAbstractWorker):
         Verifica si un carácter está AISLADO (sin vecinos del mismo tipo).
         Ignora espacios al buscar vecinos.
         """
-        char_num: Set[str] = self.char_num
         if index < 0 or index > len(text):
             return False
 
         current_char = text[index]
-        current_is_digit = current_char in char_num
+        current_is_digit = current_char in CHAR_NUM
         current_is_alpha = current_char.isalpha()
         
         # Si no es letra ni número, no aplicar corrección
@@ -203,13 +198,13 @@ class TextCorrector(OCRAbstractWorker):
         has_right_match = False
         
         if left_neighbor:
-            if current_is_digit and left_neighbor in char_num:
+            if current_is_digit and left_neighbor in CHAR_NUM:
                 has_left_match = True
             elif current_is_alpha and left_neighbor.isalpha():
                 has_left_match = True
         
         if right_neighbor:
-            if current_is_digit and right_neighbor in char_num:
+            if current_is_digit and right_neighbor in CHAR_NUM:
                 has_right_match = True
             elif current_is_alpha and right_neighbor.isalpha():
                 has_right_match = True
@@ -219,16 +214,16 @@ class TextCorrector(OCRAbstractWorker):
         
     def _get_corrections_map(self, semantic_clasification:  int) -> Dict[str, str]:
         """Devuelve el mapa de correcciones para un tipo semántico dado."""
-        if not self.numeric_corrections:
+        if not NUMERIC_CORRECTIONS:
             logger.error("Sin mapa de correcciones")
             return {}
 
         if semantic_clasification == 1:
-            return self.numeric_corrections
+            return NUMERIC_CORRECTIONS
         elif semantic_clasification == 2:
-            return self.numeric_corrections
+            return NUMERIC_CORRECTIONS
         elif semantic_clasification == 0:
-            return self.descriptive_corrections
+            return DESCRIPTIVE_CORRECTIONS
         else:
             return {}
         

@@ -1,12 +1,10 @@
 import os
-import numpy as np
-#ort datetime
 import logging
+import numpy as np
 import pickle
 import re
 import unicodedata
 import time
-#om datetime import datetime
 from typing import List, Any, Dict, Tuple, Set
 
 logger = logging.getLogger(__name__)
@@ -34,9 +32,6 @@ class WordFinder:
         self.forb_match: float = params.get("forb_match", {})
         self.min_diff: float = params.get("min_diff", {})
         self.global_matrices: Dict[int, np.ndarray[Any, np.dtype[np.uint8]]] = global_filter.get("global_matrices", {})
-        # timestamp_model = os.path.getmtime(self.wf_path)
-        # fecha_wf = datetime.fromtimestamp(timestamp_model).isoformat()
-        # logger.critical(f"FECHA DE GENERACIÓN DEL MODELO: {self.model_time}, FECHA DEL SCRIPT WORD_FINDER.PY: {fecha_wf}")
 
     def _load_model(self, model_path: str) -> Dict[str, Any]:
         t0 = time.perf_counter()
@@ -446,14 +441,6 @@ class WordFinder:
         except Exception as e:
             logger.error(f"Error eliminando substrings de ruido: {e}", exc_info=True)
             return text, []
-
-    def check_full_word(self, text: str, place: str) -> bool:
-        if place == "global":
-            return text in set(self.global_words)
-        elif place == "noise":
-            return text in set(self.noise_words)
-        else:
-            return False
 
     def _normalize(self, s: str) -> str:
         try:

@@ -2,12 +2,12 @@
 import dataclasses
 import logging
 import numpy as np
-from typing import Dict, Any, List, Tuple, Set
+from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.pattern_finder import is_acronym, find_quantitative_runs, separate_punt
-from core.utils.text_validator import validate_text, punc_chars
+from core.utils.text_utils import validate_text, is_acronym, find_quantitative_runs, separate_punt
+from core.utils.data_utils import PUNC_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,6 @@ class Fragmenter(OCRAbstractWorker):
         worker_config = config.get("text_refiner", {})
         self.min_contours_for_frag = worker_config.get("min_cc_for_frag")
         self.output = config.get("fragmented_polys", False)
-        self.punc_chars: Set[str] = punc_chars()
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool: 
         try:
@@ -81,7 +80,7 @@ class Fragmenter(OCRAbstractWorker):
 
                 quant_needs_frag = len(quant_runs) > 1
                     
-                visual_needs_frag: bool = poly_blob_metrics.get('needs_fragmentation', False)
+                visual_needs_frag: bool = poly_blob_metrics.get('needs_fragmentation', False) #type: ignore
                 # logger.info(f"{poly_id}: {visual_needs_frag}")
 
                 semantic_frag = isinstance(sc, list) and any(c != 0 for c in sc)
@@ -99,9 +98,8 @@ class Fragmenter(OCRAbstractWorker):
                     else:
                         reason = "puntuación"
 
-                    semantic_type_name = self.get_semantic_type_name(sc, manager)
-                    logger.debug(f"{poly_id}: MOTIVO: {reason}= {ocr_text} | Tipo: {semantic_type_name}")
-
+                    logger.debug(f"{poly_id}: FRAG por {reason}: '{ocr_text}' | SC: {sc}")
+                    
                     if semantic_frag:
                         fragments = self.fragment_by_semantic_classification(polygon)
                     # elif visual_needs_frag:
@@ -152,7 +150,7 @@ class Fragmenter(OCRAbstractWorker):
                 
         except Exception as e:
             logger.warning(f"Error fragmentando: {e}", exc_info=True)
-            return False
+        return False
 
     def fragment_by_blobs(self, polygon: Polygons, blob_metrics: Dict[str, Any]) -> List[Polygons]:
         """
@@ -359,7 +357,7 @@ class Fragmenter(OCRAbstractWorker):
             if i + 1 < len(parts) and parts[i + 1] in [";", ":", "!", "?"]:
                 filtered_parts.append(part + parts[i + 1])
             # Si la parte actual NO es un signo de puntuación, añadirla sola
-            elif part not in self.punc_chars:
+            elif part not in PUNC_CHARS:
                 filtered_parts.append(part)
         
         if len(filtered_parts) < self.min_contours_for_frag:
@@ -388,7 +386,7 @@ class Fragmenter(OCRAbstractWorker):
                 part_text += parts[i+1]
             
             # Si la parte actual es un signo de puntuación, saltarla
-            if part_text in self.punc_chars:
+            if part_text in PUNC_CHARS:
                 continue
 
             part_ratio = len(part_text) / total_chars
@@ -560,14 +558,6 @@ class Fragmenter(OCRAbstractWorker):
             new_polys.append(dataclasses.replace(polygon, geometry=new_geom, ocr_text=frag_text, was_fragmented=True))
 
         return new_polys
-
-    def get_semantic_type_name(self, semantic_clasification: List[int] | int, manager: DataFormatter) -> str:
-        """Convierte el tipo semántico numérico a nombre legible usando el mapeo del formatter"""
-        semantic_map = manager.get_semmantic_types()
-        for name, value in semantic_map.items():
-            if value == semantic_clasification:
-                return name
-        return "descriptive"
 
     def fragment_by_semantic_classification(self, polygon: Polygons) -> List[Polygons]:
         """

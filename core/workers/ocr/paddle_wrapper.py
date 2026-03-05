@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_validator import space_removal
+from core.utils.text_utils import space_removal, validate_alone_chars, detect_special_strings
 from core.utils.image_utils import elevate_dims
 
 logger = logging.getLogger(__name__)
@@ -60,9 +60,15 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 logger.warning(" No se encontraron imágenes válidas para OCR.")
                 return False
                 
-            final_results: Dict[str, Dict[str, Any]] = self.recognize_text_from_batch(image_list, polygon_ids)
+            raw_results = self.recognize_text_from_batch(image_list, polygon_ids)
+            if not manager.delete_cropped_images():
+                logger.warning("Cropped images no se liberaron")
+
+            logger.info("Cropped images liberadas con éxito")
+
+            final_results = self._is_valid_polygon(raw_results)
+
             processed_count = 0
-            
             if final_results:
                 success = manager.update_ocr_results(final_results)
                 processed_count = len(final_results) if success else 0
@@ -84,70 +90,46 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         
     def recognize_text_from_batch(self, image_list: List[np.ndarray[Any, np.dtype[np.uint8]]], polygon_ids: List[str]) -> Dict[str, Dict[str, Any]]:
         """
-        Ejecuta OCR en un lote (batch) de imágenes pre-recortadas.
-        Está adaptado para manejar el caso en que PaddleOCR devuelve una única
-        lista consolidada de resultados.
+        Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead.
         """
-        if self.engine is None:
-            logger.error("PaddleOCR recognition engine not initialized. Cannot recognize text.")
-            return {}
-        
-        if not image_list:
-            logger.warning("Se recibió una lista vacía de imágenes para el reconocimiento por lotes.")
+        if self.engine is None or not image_list:
             return {}
 
         try:
-            valid_images: List[np.ndarray[Any, np.dtype[np.uint8]]] = []
-            for idx, img in enumerate(image_list):
-                if img is None or not hasattr(img, "shape") or len(img.shape) < 2 or img.size == 0: #type: ignore
-                    logger.warning(f"Imagen inválida en el batch (índice {idx}): {type(img)} - shape: {getattr(img, 'shape', None)}")
-                    return {}
-                    
-                valid_images.append(img)
-                
-            if not valid_images:
-                logger.error("No hay imágenes válidas para el reconocimiento por lotes.")
-                return {}
-            
-            paddle_time = time.perf_counter()
-            batch_result: List[List[str]] = self.engine.ocr(valid_images, cls=False, det=False, rec=True)
-            logger.info(f"Tiempo de transcripción de paddle: {time.perf_counter() - paddle_time:.6f}'s")
+            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
                                     
-            if len(batch_result) == 1 and isinstance(batch_result[0], list): #type: ignore
-                consolidated_results = batch_result[0]
+            if len(batch_result) == 1 and isinstance(batch_result[0], list):
+                consolidated = batch_result[0]
                 
-                if len(consolidated_results) == len(valid_images):
-                    final_results: Dict[str, Dict[str, Any]] = {}
-                    
-                    for idx, (text, confidence) in enumerate(consolidated_results):
-                        poly_id = polygon_ids[idx]
-                        confidence_pct = round(float(confidence) * 100.0, 2) if isinstance(confidence, (float, int)) else 0.0
+                if len(consolidated) == len(image_list):
+                    raw_map: Dict[str, Dict[str, Any]] = {}
+                    for idx, (text, confidence) in enumerate(consolidated):
+                        conf_pct = round(float(confidence) * 100.0, 2)
                         
-                        # Aplicar filtro de confianza mínima
-                        if confidence_pct > self.min_confidence:
-                            clean_text = space_removal(text)
-                            if clean_text:
-
-                                final_results[poly_id] = {
-                                    "text": clean_text,
-                                    "confidence": confidence_pct
-                                }
-                                # logger.info(f"Resultados: {poly_id}: Texto: '{clean_text}', Confianza: '{confidence_pct}%'")
-
-                            else:
-                                logger.info(f"Espacio filtrado en '{poly_id}', Texto: '{text}', Confianza: '{confidence_pct}%'")
-
+                        # Filtro de confianza inmediato
+                        if conf_pct >= self.min_confidence:
+                            raw_map[polygon_ids[idx]] = {
+                                "text": text,
+                                "confidence": conf_pct
+                            }
                         else:
-                            logger.debug(f"Texto basura filtrado en {poly_id}: '{text}' -> '{confidence_pct}%' < '{self.min_confidence}%'")
-                        
-                    total_results = len(final_results)
-                    # logger.info(f"Se mapearon: '{total_results}' y se descartaron: '{len(consolidated_results) - total_results}' polígonos")
-                    return final_results
-                else:
-                    logger.error(f"Error de mapeo: El lote devolvió {len(consolidated_results)} textos para {len(image_list)} imágenes.")
-                    return {}
+                            logger.debug(f"Baja confianza en {polygon_ids[idx]}: '{text}' ({conf_pct}%)")
+                    return raw_map
             
         except Exception as e:
-            logger.error(f"Error crítico durante el reconocimiento de texto en lote: {e}", exc_info=True)
+            logger.error(f"Error en recognize_text_from_batch: {e}")
         return {}
-    
+
+    def _is_valid_polygon(self, results: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """Lógica de limpieza textual post-filtro de confianza."""
+        final_results: Dict[str, Dict[str, Any]] = {}
+        for poly_id, data in results.items():
+            text = data["text"]
+            
+            clean_text = space_removal(text)
+
+            # Filtro por contenido (Ya no repetimos el de confianza)
+            if clean_text and not detect_special_strings(clean_text) and validate_alone_chars(clean_text):
+                final_results[poly_id] = {"text": clean_text, "confidence": data["confidence"]}
+        
+        return final_results

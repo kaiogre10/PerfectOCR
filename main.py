@@ -19,7 +19,6 @@ os.environ.update({
 
 TEST_MODE = True
 
-MASTER_CONFIG_FILE = os.path.join(PROJECT_ROOT, "main_config", "config.yaml")
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
 env_local = "remote" if os.environ.get("CODESPACES") == "true" else "local"
@@ -37,18 +36,11 @@ DEFAULT_OUTPUT_PATH = output_paths
 
 DEFAULT_INPUT_PATH = [
     # "input",
-        #"input2",
-        "input3"
+        "input2",
+        # "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 
-# DEFAULT_OUTPUT_PATH =[
-#    "D:/outputs/perfectocr",
-#     #  "output"
-# ]
-
-# LOG_FILE_PATH = "D:/outputs/logs/perfectocr.txt"
-# LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
 CONSOLE_LEVEL = "INFO"
 FILE_LEVEL = "INFO"
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"

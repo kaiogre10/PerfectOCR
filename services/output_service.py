@@ -92,7 +92,6 @@ def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Di
         logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
     
 def save_raw_json(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
-    from core.utils.data_utils import to_serializable
     try:
         if isinstance(output_paths, str):
             output_paths = [output_paths]
@@ -250,3 +249,16 @@ def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section
         for row in corrected_df.itertuples(index=False, name=None):
             writer.writerow(row)
         writer.writerow([])
+
+def to_serializable(obj: Any) -> Any:
+    """Convierte numpy arrays y tipos numpy a tipos nativos Python."""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.integer, np.floating)):
+        return obj.item()
+    elif isinstance(obj, dict):
+        return {k: to_serializable(v) for k, v in obj.items()} #type: ignore
+    elif isinstance(obj, (list, tuple)):
+        return [to_serializable(item) for item in obj]#type: ignore
+    else:
+        return obj

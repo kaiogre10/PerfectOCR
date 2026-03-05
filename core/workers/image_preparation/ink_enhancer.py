@@ -43,13 +43,14 @@ class InkCorrector(ImagePrepAbstractWorker):
 
             # enhanced, enhanced_cont = self.enhance_ink(full_img)
 
-            gap_img, white_gaps, black_gaps = self.fill_gaps(full_img)
-            all_gaps = white_gaps.copy()
-            all_gaps.extend(black_gaps.copy())
+            # gap_img, white_gaps, black_gaps = self.fill_gaps(full_img)
+            # all_gaps = white_gaps.copy()
+            # all_gaps.extend(black_gaps.copy())
             # bin_gap = binarice_img(gap_img.copy(), {})
-            correct, out_conts, out_conts2 = self.delete_outliers(gap_img)
-            all_outliers = out_conts.copy()
-            all_outliers.extend(out_conts2.copy())
+            # correct, out_conts, out_conts2 = self.delete_outliers(full_img)
+            correct, out_conts, out_conts2 = self.delete_outliers(full_img)
+            # all_outliers = out_conts.copy()
+            # all_outliers.extend(out_conts2.copy())
             # bin_correct = binarice_img(correct.copy(), {})
             # corrected = cv2.morphologyEx(correct, cv2.MORPH_CLOSE, self.kernelr, iterations=2, borderType=cv2.BORDER_REFLECT)
 
@@ -78,7 +79,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     # save_shapes(image_name, gaps_id, full_img, output_paths, white_gaps, black_gaps)
                     # save_shapes(image_name, image_id, full_img, output_paths, out_conts, out_conts2)
 
-                    save_shapes(image_name, all_cont_id, full_img, output_paths, all_gaps, all_outliers)
+                    # save_shapes(image_name, all_cont_id, full_img, output_paths, all_gaps, all_outliers)
                             
                 return True
             
@@ -109,25 +110,27 @@ class InkCorrector(ImagePrepAbstractWorker):
         # dist_thr = 8.0
 
         cont_coords_list, metrics = extract_contours_metrics(grey_img)
-        logger.info(f"Total de contornos outliers: {metrics.shape[0]}")
+        # logger.info(f"Total de contornos outliers: {metrics.shape[0]}")
         area_hist = extract_contours_histogram(metrics[:, 1])
         dist_values = extract_contours_histogram(metrics[:, -1])
         # min_side_values = extract_contours_histogram(metrics[:, 17])
 
         area_outliers = area_hist[0]
         dist_var_outliers = dist_values[0]
-        # dist_var_ratio = min_side_values[1] 
-        # logger.info(f"Relat de min side: {dist_var_ratio}")
+        # dist_var_ratio = min_side_values[1]
+        if area_outliers < 1:
+            out_index = {-1}
 
-        top_areas = np.sort(metrics[:, 1])[::-1][:area_outliers]
-        outlier_mask = (metrics[:, 1] >= (np.min(top_areas) - 0.1))
-        child_metric = np.compress(outlier_mask, metrics, 0)
-        child_metrics = np.compress(child_metric[:, 11] == 1, child_metric[:, 0], 0)
+        else:
+            top_areas = np.sort(metrics[:, 1])[::-1][:area_outliers]
+            outlier_mask = (metrics[:, 1] >= (np.min(top_areas) - 0.1))
+            child_metric = np.compress(outlier_mask, metrics, 0)
+            child_metrics = np.compress(child_metric[:, 11] == 1, child_metric[:, 0], 0)
+            out_index: Set[int] = set(child_metrics.astype(np.int32)) if len(child_metrics) > 0 else set()
 
         med_short_side = np.median(metrics[:, 17])
-        mean_short_side = np.mean(metrics[:, 17])
+        # mean_short_side = np.mean(metrics[:, 17])
         mad = np.median(np.abs(metrics[:, 17] - med_short_side))
-        logger.info(f"Median: {med_short_side}, mean: {mean_short_side}, mad: {mad}")
         
         top_dist_var = np.sort(metrics[:, -1])[::-1][:dist_var_outliers]
         dist_outlier_mask = (metrics[:, -1] > (np.min(top_dist_var) - 0.1))
@@ -138,7 +141,7 @@ class InkCorrector(ImagePrepAbstractWorker):
 
         # logger.info(f"dist_metrics min_side values: {np.array2string(dist_metrics[:, 17], precision=7, suppress_small=True)}")
         # logger.info(f"var_mask hits: {np.sum(var_mask)}, range: [{med_short_side - mad}, {med_short_side + mad}]")
-       
+    
         shape_mask = shape_thr >= metrics[:, 16]
         irreg = np.compress(shape_mask, metrics[:, 0])
 
@@ -176,7 +179,6 @@ class InkCorrector(ImagePrepAbstractWorker):
         rect2 = np.compress(ratio_2, metrics, 0)
         rect2 = np.compress(rect2[:, 11]==1, rect2[:,0], 0)
 
-        out_index: Set[int] = set(child_metrics.astype(np.int32)) if len(child_metrics) > 0 else set()
         rect1ind: Set[int] = set(rect1.astype(np.int32)) if len(rect1) > 0 else set()
         rect2ind: Set[int] = set(rect2.astype(np.int32)) if len(rect2) > 0 else set()
         solidity_indices: Set[int] = set(solidity.astype(np.int32)) if len(solidity) > 0 else set()
@@ -195,7 +197,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
-                 
+                
             elif idx in irreg_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont2.append(cont_coords)
@@ -234,12 +236,12 @@ class InkCorrector(ImagePrepAbstractWorker):
             else:
                 continue
 
-        logger.info(f"Outliers: {lines_correct}")
+        # logger.info(f"Outliers: {lines_correct}")
         return grey_img, outlier_cont, outlier_cont2
-        
+    
     def fill_gaps(self, grey_img: np.ndarray[Any, Any]):
         cont_coords_list, metrics = extract_contours_metrics(grey_img)
-        logger.info(f"Total de contornos gaps: {metrics.shape[0]}")
+        # logger.info(f"Total de contornos gaps: {metrics.shape[0]}")
         hist_values = extract_contours_histogram(metrics[: ,1])
         perc_val = hist_values[1]
 

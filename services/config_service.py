@@ -22,11 +22,11 @@ class ConfigService:
             self.config = {}
 
         elif TEST_MODE and elemental_params:
-            logger.warning(f"Modo de debug, restricciones robustas desactivadas. Stages activas: '{self.log_active_areas()}'")
+            logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. Stages activas: '{self.log_active_areas()}'")
             self.config = self.config
 
         elif not TEST_MODE and self._validate_min_workers():
-            logger.warning(f"Modo de producción activado, se cargan configuraciones robustas. Stages activas: '{self.log_active_areas()}'")
+            logger.warning(f"MODO PRODUCCIÓN ACTIVADO, se realizarán validaciones robustas. Stages activas: '{self.log_active_areas()}'")
             self.config = self.config
 
         else:
@@ -133,11 +133,13 @@ class ConfigService:
         if not self.create_stager[2][1] or not self.ocr_workers.issubset(self.all_workers):
             return {}
         else:
+            create_refiners = self.modules_config.get("ocr", {}).get("text_refiner", {}).get("num_passes", 0)
             return {
                 **self.modules_config.get("ocr", {}),
                 **self.enabled_outputs.get("ocr_outputs", {}),
                 **self.utils_config,
-                "ocr_stage": self.workers_order["ocr_stage"]
+                "ocr_stage": self.workers_order["ocr_stage"],
+                "create_refiners": create_refiners > 0
             }
        
     @property

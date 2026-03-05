@@ -71,9 +71,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 save_croped_image(image_name, img_id, img, output_paths, worker_name)
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
-            paddle_time = time.perf_counter()
+            # paddle_time = time.perf_counter()
             polygons: List[List[float]] = engine.ocr(img=img, det=True, cls=False, rec=False)
-            logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
+            # logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
 
             if not (polygons and len(polygons) > 0 and polygons[0] is not None): # type: ignore
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")

@@ -14,17 +14,23 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
     def __init__(self, module_config: Dict[str, Any], project_root: str):
         super().__init__(module_config, project_root)
         self._shared_refiner_workers: Optional[Dict[str, OCRAbstractWorker]] = None
+        self._create_refiners: bool = module_config.get("create_refiners", False)
     
     @property
     def shared_refiner_workers(self) -> Dict[str, OCRAbstractWorker]:
-        """Crea workers compartidos del refinador UNA SOLA VEZ."""
+        """Crea workers compartidos del refinador. Si no hay refinamiento, solo crea el clasificador."""
         if self._shared_refiner_workers is None:
-            self._shared_refiner_workers = {
-                "clasificator": SemanticClasificator(config=self.module_config, project_root=self.project_root),
-                "cleaner": TextCleaner(config=self.module_config, project_root=self.project_root),
-                "fragmenter": Fragmenter(config=self.module_config, project_root=self.project_root),
-                "corrector": TextCorrector(config=self.module_config, project_root=self.project_root)
-            }
+            if self._create_refiners:
+                self._shared_refiner_workers = {
+                    "clasificator": SemanticClasificator(config=self.module_config, project_root=self.project_root),
+                    "cleaner": TextCleaner(config=self.module_config, project_root=self.project_root),
+                    "fragmenter": Fragmenter(config=self.module_config, project_root=self.project_root),
+                    "corrector": TextCorrector(config=self.module_config, project_root=self.project_root)
+                }
+            else:
+                self._shared_refiner_workers = {
+                    "clasificator": SemanticClasificator(config=self.module_config, project_root=self.project_root),
+                }
         return self._shared_refiner_workers
     
     def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], OCRAbstractWorker]]:
@@ -42,11 +48,11 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         return Refiner(
             config=self.module_config, 
             project_root=self.project_root,
-            clasificator=workers["clasificator"], #type: ignore
-            cleaner=workers["cleaner"], #type: ignore
-            corrector=workers["corrector"], #type: ignore
-             fragmenter=workers["fragmenter"],  #type: ignore
-        ) 
+            clasificator=workers["clasificator"],  #type: ignore
+            cleaner=workers.get("cleaner"),  #type: ignore
+            corrector=workers.get("corrector"),  #type: ignore
+            fragmenter=workers.get("fragmenter"),  #type: ignore
+        )
     
     def _create_finder(self, context: Dict[str, Any]) -> DataFinder:
         return DataFinder(config=self.module_config, project_root=self.project_root)

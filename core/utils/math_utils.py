@@ -1,11 +1,16 @@
 import numpy as np
-from typing import List, Any, Optional, Tuple
+from typing import List, Any, Optional, Tuple, Dict
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import logging
-import time
 from sklearn.cluster import DBSCAN # type: ignore
+from core.utils.data_utils import DENSITY_ENCODER, CHAR_FRECUENCY, INV_FRECUENCY_ENCODER, CHAR_NUM
 
 logger = logging.getLogger(__name__)
+
+char_num = CHAR_NUM
+density = DENSITY_ENCODER
+frecuency = CHAR_FRECUENCY
+inverse = INV_FRECUENCY_ENCODER
 
 def alignment(ref_c: List[float], other_c: List[float]) -> float:
     """
@@ -22,38 +27,62 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
         return 1.0
     cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec)).astype(np.float32)
     return 1.0 - abs(float(cosine))
+
+def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
+    try:
+        if not text:
+            return []
+
+        compact_text = ''.join(text.split())
+
+        encoded_poly = [encoder.get(char, 0) for char in compact_text]
+
+        return encoded_poly
+
+    except Exception as e:
+        logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
+    return []
+                
+def get_morphological_encode(text: str) -> List[float]:
+    try:
+        result: List[float] = []
+        # text = text_compacter(text)
+        for ch in text:
+            if ch in char_num:
+                result.append(1.0)
+            elif ch.isalpha():
+                result.append(-1.0)
+            else:
+                result.append(0.0)
+        return result
+
+    except Exception as e:
+        logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
+    return []
     
-def bbox_alignment(current_coord: float, other_bbox: List[float], coord_idx: int) -> Optional[float]:
-    """
-    Mide alineación usando similitud coseno.
-    Punto de referencia: [current_coord, 0] en el eje X
-    Vector hacia otra línea: [other_coord - current_coord, other_y - 0]
-    """
-    if other_bbox:
-        # Punto de referencia en el eje X
-        ref_point = np.array([current_coord, 0.0])
+def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype[np.float32]]:
+    if "all" in encoding_type and len(encoding_type) == 1:
+        encoding_type = ["density", "inverse", "morphological"]
 
-        # Coordenada de la otra línea
-        other_coord = other_bbox[coord_idx]  # Acceso correcto por índice
-        other_y = other_bbox[1]  # Coordenada Y de la otra línea
+    encoders: List[List[float]]= []
+    for enc_type in encoding_type:
 
-        # Vector desde el punto de referencia hacia la otra línea
-        vec_to_other = np.array([other_coord - current_coord, other_y - ref_point[1]])
-        
-        # Vector de referencia (eje X positivo)
-        ref_vec = np.array([1, 0])
-        
-        # Similitud coseno
-        if np.linalg.norm(vec_to_other) == 0:
-            return 1.0
-        
-        cosine_sim = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec)).astype(np.float32)
-        return 1.0 - abs(float(cosine_sim))   
+        if enc_type == "density":
+            dense = encode_text(text.lower(), density)
+            encoders.append(dense)
+        if enc_type == "inverse":
+            inv = encode_text(text.lower(), inverse)
+            encoders.append(inv)
+        if enc_type == "frequency":
+            frec = encode_text(text, frecuency)
+            encoders.append(frec)
+        if enc_type == "morphological":
+           morph = get_morphological_encode(text)
+           encoders.append(morph)
+    
+    return np.array(encoders, np.float32)
 
-    else:
-        return 1.0
-
-def get_cosine_similarity(ref_vec: Optional[np.ndarray[Any, np.dtype[np.float32]]] = None, X: np.ndarray[Any, np.dtype[np.float32]] = np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
+def get_cosine_similarity(ref_vec: Optional[np.ndarray[Any, np.dtype[np.float32]]] = None, X: np.ndarray[Any, np.dtype[np.float32]] = np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]: #type: ignore
     return cosine_similarity(X, ref_vec, dense_output).astype(np.float32)
 
 def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
@@ -72,7 +101,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, floa
     Retorna:
         deleted: Número total de outliers eliminados
     """
-    time_h = time.perf_counter()
+    # time_h = time.perf_counter()
     min_feat = np.min(metrics) if np.min(metrics) == 0 else (np.min(metrics) - 0.1)
     
     def recursive_cleanup(current_metrics: np.ndarray[Any, Any], total_deleted: int, iteration: int) -> Tuple[int, int]:
@@ -89,9 +118,9 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, floa
         # logger.info(f"HIST iteración {iteration}: {hist}, elementos: {current_count}")
 
         hist_rever = hist[::-1].astype(np.int32)
-        cutting = np.where(hist_rever > 2)[0]
+        cutting = np.where(hist_rever > 1)[0]
         idx_orig = len(hist) - 1 - cutting[0] if cutting.size > 0 else -1
-        outliers_indx = np.nonzero((hist == 1) | (hist == 2))[0]
+        outliers_indx = np.nonzero(hist == 1)[0]
         filtered_outliers = outliers_indx[outliers_indx > idx_orig]
         
         # Condición de parada: no hay más outliers
@@ -104,7 +133,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, floa
         # Filtrar outliers
         mask = np.min(filtered_outliers) - 1
         ind_big = bin_edges[mask] 
-        cond = current_metrics < ind_big
+        cond = ind_big >= current_metrics
         filtered_metrics = np.compress(cond, current_metrics, 0)
         
         new_count = filtered_metrics.shape[0]
@@ -121,51 +150,6 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, floa
    
 def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int, metric: str) ->  np.ndarray[Any, Any]:
     clustering = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
-    labels: np.ndarray[Any, Any] = clustering.fit_predict(features)
+    labels: np.ndarray[Any, Any] = clustering.fit_predict(features) #type: ignore
     return labels
     
-def dilate_contour(contour: np.ndarray[Any, np.dtype[np.int32]], kernel: np.ndarray[Any, Any])-> np.ndarray[Any, np.dtype[np.int32]]:
-    """
-    Expande un contorno cerrado según kernel anisótropo.
-    
-    Args:
-        contour: np.ndarray shape (N, 2) dtype int32, puntos del contorno
-        kernal: expansión horizontal y vertical en píxeles (kernel cols)
-    Returns:
-        np.ndarray shape (N, 2) dtype int32, contorno expandido
-    """
-    pts = contour.astype(np.float32)
-    n = len(pts)
-    
-    if n < 3:
-        return contour
-    
-    next_idx = np.arange(1, n + 1) % n
-    prev_idx = np.arange(-1, n - 1) % n
-    
-    e1 = pts - pts[prev_idx]
-    e2 = pts[next_idx] - pts
-    
-    signed_area = 0.5 * np.sum(pts[:, 0] * pts[next_idx, 1] - pts[next_idx, 0] * pts[:, 1])
-    sign = 1.0 if signed_area < 0 else -1.0
-    
-    def normal_ext(e: np.ndarray) -> np.ndarray:
-        length = np.linalg.norm(e, axis=1, keepdims=True) + 1e-9
-        unit = e / length
-        return sign * np.column_stack([unit[:, 1], -unit[:, 0]])
-    
-    n1 = normal_ext(e1)
-    n2 = normal_ext(e2)
-    
-    bisect = n1 + n2
-    bisect_len = np.linalg.norm(bisect, axis=1, keepdims=True) + 1e-9
-    bisect_unit = bisect / bisect_len
-    
-    cos_half = np.clip(bisect_len.flatten() / 2.0, 0.15, 1.0)
-    factor = 1.0 / cos_half
-    
-    # Anisotropía: escala X e Y por separado
-    offset = bisect_unit * factor[:, None] * np.array([[kernel[0], kernel[1]]])
-    
-    expanded = pts + offset
-    return np.round(expanded).astype(np.int32)

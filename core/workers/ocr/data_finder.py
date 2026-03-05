@@ -7,8 +7,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_validator import validate_text, estandarice_uppers_lowers
-from core.utils.pattern_finder import find_rfc, find_iva, find_date, find_umd
+from core.utils.text_utils import validate_text, estandarice_uppers_lowers, find_rfc, find_iva, find_date, find_umd
 
 logger = logging.getLogger(__name__)
 

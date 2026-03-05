@@ -291,15 +291,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
             return [], np.empty((0, 5))
     
     areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
-    
-    # top_areas_list = np.sort(areas)[::-1]
-    # logger.info(f"{top_areas_list[:10]}")
-    
     valid_mask = (areas > 0)
-
-    # top_areas = np.sort(areas[valid_mask])[::-1]
-    # logger.info(f"Top áreas: {top_areas[:10]}")
-    
     valid_indices = np.where(valid_mask)[0]
 
     if len(valid_indices) == 0:

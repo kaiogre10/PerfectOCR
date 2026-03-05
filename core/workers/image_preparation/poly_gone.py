@@ -140,7 +140,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     "poly_mean": poly_mean
                 })
 
-            if not manager.update_full_img(False):
+            if not manager.update_full_img(False, None):
                 logger.info(f"No se pudo liberar Full_img")
 
             if not poly_data_to_filter:

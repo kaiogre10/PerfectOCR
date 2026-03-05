@@ -49,17 +49,17 @@ class ImageLoader(ImagePrepAbstractWorker):
                 img_id = f"full_img_{image_name}_{worker_name}"
                 save_croped_image(image_name, img_id, full_img, output_paths, worker_name)
 
-            logger.debug(f"Imagen: '{image_name}' cargada el {now}")
+            # logger.info(f"Imagen: '{image_name}' cargada éxitosamente")
             img_dims = full_img.shape
             
             if not img_dims:
                 logger.error(f"Imagen {image_name} totalmente en blanco")
                 return False
             
-            height, width = img_dims
-            size = float(height * width)
+            # height, width = img_dims
+            # size = float(height * width)
             
-            logger.debug(f"Dimensiones de la imagen '{image_name}': '{height, width}', size='{size}'")
+            # logger.debug(f"Dimensiones de la imagen '{image_name}': '{height, width}', size='{size}'")
             
             metadata["date_creation"] = date_creation
                             

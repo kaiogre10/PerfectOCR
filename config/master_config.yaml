@@ -3,8 +3,8 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "angle_corrector"
-    - "ink_enhancement"
-    # - "geometry_detector"
+    # - "ink_enhancement"
+    - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
@@ -16,7 +16,7 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    #  - "paddle_wrapper"
+     - "paddle_wrapper"
      - "text_refiner"
     # - "data_finder"
     
@@ -33,7 +33,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: False
-    bin_full_img: True
+    bin_full_img: False
     angle_corrected: False
     moire_poly: False
     cropped_img: False
@@ -80,9 +80,9 @@ models_config:
   max_text_length: 20
   rec_image_inverse: False
   
-  det_model_dir: C:/PerfectOCR/data/models/paddle/det/es
-  rec_model_dir: C:/PerfectOCR/data/models/paddle/rec/es
-  wf_model_path: C:/PerfectOCR/data/models/wf/wf_model.pkl
+  det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
+  rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
+  wf_model_path: "C:/PerfectOCR/data/models/wf/wf_model.pkl"
   set_wf_params: False
   
 # Configuración de procesamiento
@@ -153,7 +153,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 2
+      num_passes: 0
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]
