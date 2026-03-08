@@ -61,7 +61,6 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         logger.error(f"ERROR FATAL EN BUILDERS, FINALIZANDO PROCESO: {e}", exc_info=True)
     return []
     
-
 def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str]) -> List[ProcessingBuilder]:
     """Crea builders usando StagersFactory centralizada."""
     builders: List[ProcessingBuilder] = []
@@ -99,7 +98,7 @@ def create_builders_with_factory(stagers_factory: StagersFactory, workflow_repor
 def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dict[str, Any]) -> Optional[List[str]]:
     """Ejecuta el procesamiento para cada builder."""
     db_paths: Dict[str, Any] = {}
-    image_info_list = workflow_report.get('image_info', [])
+    image_info_list = workflow_report['image_info']
     total_processing_time = 0.0
     builders_amount = len(builders)
     total_img = 0

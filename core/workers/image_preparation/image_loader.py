@@ -62,7 +62,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:03d}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
-                logger.info(f"'{image_name}' cargada en {time.perf_counter() - time0:.4f}s")
+                logger.debug(f"'{image_name}' cargada en {time.perf_counter() - time0:.4f}s")
             
                 if self.output:
                     from services.output_service import save_croped_image

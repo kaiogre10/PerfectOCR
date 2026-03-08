@@ -77,7 +77,7 @@ class StagersFactory:
         if not self.vectorizing_workers:
             return None
 
-        factory = self.main_factory.get_vectorizing_factory()    
+        factory = self.main_factory.get_vectorizing_factory()
         if factory is None:
             return None
             

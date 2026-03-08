@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines
-from core.utils.math_utils import get_cosine_similarity
+from core.utils.math_utils import get_cosine_similarity, density_cluster
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +20,12 @@ class MatricialCusine(VectorizationAbstractWorker):
         self.interval_margin: int = int(worker_config.get("interval"))
         self.dummie_weights = worker_config["dummie_weights"]
         self.emergency_threshold = worker_config.get("emergency_threshold")
+        self.eps = float(worker_config.get("eps"))
+        self.metric = worker_config.get("metric", "")
         self.output = config.get("table_lines", False)
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        timw9 = time.perf_counter()
         try:
             analysis: np.ndarray[Any, Any] = context["all_features"]
             table_range = context["table_range"]
@@ -32,7 +35,7 @@ class MatricialCusine(VectorizationAbstractWorker):
     
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.debug(f"RESULTADOS COSENO: {len(table_line_ids)} líneas:"
+                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas"
                     "\n"f"{table_line_ids}"
                     "\n"f"{table_range}")
                 # succes = manager.save_tabular_lines(table_line_ids)
@@ -59,7 +62,9 @@ class MatricialCusine(VectorizationAbstractWorker):
             logger.debug("Calculando matriz de similitud")
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             line_ids: List[str] = [lid.lineal_id for lid in all_lines.values()]
-            tabular_lines: List[str] = manager.get_tabular_lines(False) # type: ignore
+            # tabular_lines: List[str] = manager.get_tabular_lines(False) # type: ignore
+
+            tabular_lines: List[str] = self._apply_dbscan_clustering(analysis, manager)
 
             if tabular_lines:
                 table_line_ids = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
@@ -353,3 +358,51 @@ class MatricialCusine(VectorizationAbstractWorker):
             
             return analysis
         return analysis
+    
+    def _apply_dbscan_clustering(self, features_array: np.ndarray[Any, Any], manager: DataFormatter) -> List[str]:
+        """Aplica DBSCAN para agrupar líneas similares"""
+        all_lines = manager.workflow.all_lines if manager.workflow else {}
+        int_line_ids = features_array[:, 0].astype(int)
+        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
+
+        # Crear un diccionario que mapea line_index (int) a line_id (str)
+        index_to_id: Dict[int, str] = {}
+        for line_id, line_obj in all_lines.items():
+            # Extraer número de "line_X"
+            idx = line_obj.line_index  # Esto ya es un int
+            index_to_id[idx] = line_id
+        
+        # Obtener line_ids correspondientes
+        # timedbscan = time.perf_counter()
+        line_ids = [index_to_id.get(int(idx), f"line_{int(idx)}") for idx in int_line_ids]
+        labels: np.ndarray[Any, Any] = density_cluster(features_for_clustering, self.eps, self.min_cluster, self.metric)
+        # logger.info(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
+        
+        unique_labels: List[int] = [l for l in set(labels) if l != -1]
+        if not unique_labels:
+            logger.warning("DBSCAN: No se encontraron clusters válidos.")
+            return []
+                
+        cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
+        main_cluster = max(cluster_sizes, key=cluster_sizes.get)
+
+        table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
+        logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
+        selected_indices = [all_lines[line_id].line_index for line_id in table_line_ids if line_id in all_lines]
+
+        if not selected_indices:
+            logger.warning("No se encontraron índices para table_line_ids.")
+            return table_line_ids
+
+        # Paso 2: Calcular el rango
+        min_idx, max_idx = min(selected_indices), max(selected_indices)
+
+        # Paso 3: Generar todos los índices en ese rango
+        full_range_indices = range(min_idx, max_idx + 1)
+
+        # Paso 4: Mapear de vuelta a line_id (str)
+        full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
+
+        logger.debug(f"Rango completo de líneas tabulares: {full_range_line_ids}")
+
+        return full_range_line_ids

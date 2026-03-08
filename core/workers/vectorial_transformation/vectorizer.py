@@ -245,13 +245,11 @@ class Vectorizer(VectorizationAbstractWorker):
         ]))
 
     def calculate_all_features(self, sorted_lines: List[AllLines], geoline_features: np.ndarray[Any, Any], global_stats: np.ndarray[Any, np.dtype[np.float32]], manager: DataFormatter)-> np.ndarray[Any, Any]:
-        img_dims: Dict[str, int] = {}
-        if manager.workflow and hasattr(manager.workflow, "metadata") and hasattr(manager.workflow.metadata, "img_dims"):
-            img_dims = dict(getattr(manager.workflow.metadata, "img_dims", {}))
+        img_dims: List[int] = manager.workflow.metadata.img_dims if manager.workflow else []
             
-        total_size = img_dims.get("size") or 0.0
-        total_width = img_dims.get("width") or 0.0
-        total_height = img_dims.get("height") or 0.0
+        total_width = img_dims[1] or 0.0
+        total_height = img_dims[0] or 0.0
+        total_size = total_width * total_height
         
         # Funciones helpers para división segura igualando la lógica de "if x != 0 else 0.0"
         def safe_div(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]):

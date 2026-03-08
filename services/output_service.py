@@ -16,10 +16,12 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], outp
         if isinstance(output_paths, str):
             output_paths = [output_paths]
 
+        # for path in output_paths:
+        #     output_dir = os.path.join(path, image_name)
+
         for path in output_paths:
-            output_dir = os.path.join(path, image_name)
-            file_name = f"{poly_id}.png"
-            # Dibuja todos los contornos sobre la imagen
+            output_dir = path
+            file_name = f"{image_name}_{poly_id}.png"            # Dibuja todos los contornos sobre la imagen
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) #type: ignore
             if contours1 and contours2:
                 logger.debug("Todos los contornos, contornos 1: Rojo, Contornos 2: Azul")
@@ -57,8 +59,7 @@ def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any],
 
 def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name: str):
     """Guarda una única imagen en disco."""
-    try:
-        
+    try:    
         os.makedirs(output_dir, exist_ok=True)
         img_path = os.path.join(output_dir, file_name)
         cv2.imwrite(img_path, image)

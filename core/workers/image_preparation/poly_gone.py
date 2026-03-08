@@ -40,7 +40,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             img_h = full_img.shape[0]
             img_w = full_img.shape[1]
 
-            manager.workflow.metadata.img_dims = (img_h, img_w)
+            manager.workflow.metadata.img_dims = [img_h, img_w]
 
             logger.debug("Full_img obtenida con éxito")
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
@@ -68,10 +68,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # 2. Fase de Decisión Vectorizada: Calcular todos los recortes con self.padding
             bboxes_array = np.array(all_bboxes).astype(np.int16)  # shape: (n_polygons, 4)
-
-            # logger.info(f"SHAE:{ bboxes_array.shape}")
-            # intervals = define_intervals(bboxes_array, overlap_threshold=0.50)
-            # logger.info(f"Lineas vectorizadas: {len(intervals)}")
             
             # Calcular coordenadas con self.padding usando operaciones vectorizadas
             x1, y1, x2, y2 = bboxes_array[:, 0], bboxes_array[:, 1], bboxes_array[:, 2], bboxes_array[:, 3]
@@ -83,18 +79,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             py2 = np.minimum(img_h, y2 + self.padding)
             
             # Liberar la imagen completa lo antes posible
-            # if manager.update_full_img(corrected=False, full_img=None):
-            #     logger.info(f"full_img: '{image_name}' liberada")
+            if manager.update_full_img(corrected=False, full_img=None):
+                logger.info(f"full_img: '{image_name}' liberada")
 
-            # blob_centroids = context["blob_centroids"]
-            # areas = (x2 - x1) * (y2 - y1)
-            # sorted_indices = np.argsort(-areas)
-
-            # # Validar dimensiones usando operaciones vectorizadas
-            # in_x = (blob_centroids[:, 0] >= x1) & (blob_centroids[:, 0] <= x2)
-            # in_y = (blob_centroids[:, 1] >= y1) & (blob_centroids[:, 1] <= y2)
-            # valid = in_x & in_y
-            # valid_poly = np.any(valid, axis=1)
             valid_dims = (px2 > px1) & (py2 > py1)
             valid_indices = np.where(valid_dims)[0]
             
@@ -139,9 +126,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     "coords": (crop_x1, crop_y1, crop_x2, crop_y2),
                     "poly_mean": poly_mean
                 })
-
-            if not manager.update_full_img(False, None):
-                logger.info(f"No se pudo liberar Full_img")
 
             if not poly_data_to_filter:
                 logger.warning("PolygonExtractor: No hay polígonos válidos para procesar.")

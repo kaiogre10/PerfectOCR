@@ -16,14 +16,13 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
+    # - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
-    - "lineal"
+    # - "lineal"
     - "vectorizer"
-    - "dbscan"
     - "cos_sim"
     - "table_structurer"
     # - "table_validated"
@@ -97,6 +96,10 @@ modules:
       black: [0, 0, 0]
       aspect_ratio_range: [2.6, 14.2]
       angle_threshold: 41.25
+      thr: 0.23
+      black_thr: 0.70
+      solid_thr: 0.90
+      shape_thr: 0.31
       
     angle_corrector:
       min_angle_for_correction: 0.9
@@ -193,14 +196,11 @@ modules:
       include_types: [
         "numeric",
         "quantitative"
-      ]
-      
-    dbscan:
-      eps: 1.5
-      min_cluster_size: 2
-      metric: "euclidean"
+      ]      
 
     cos_sim:
+      metric: "euclidean"
+      eps: 1.5
       min_cluster: 1
       similarity_threshold: 0.91
       emergency_threshold: 0.83

@@ -64,7 +64,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             if not manager.delete_cropped_images():
                 logger.warning("Cropped images no se liberaron")
 
-            logger.info("Cropped images liberadas con éxito")
+            # logger.info("Cropped images liberadas con éxito")
 
             final_results = self._is_valid_polygon(raw_results)
 
@@ -80,8 +80,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     output_paths = context["output_paths"]
                     save_raw_json( output_paths, worker_name, final_results, file_name)
             
-            total_time = time.perf_counter() - start_time
-            logger.debug(f"Batch OCR completado. {processed_count}/{len(image_list)} polígonos procesados en {total_time:.6f}s.")
+            logger.debug(f"Batch OCR completado. {processed_count} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
             
             return True
         except Exception as e:

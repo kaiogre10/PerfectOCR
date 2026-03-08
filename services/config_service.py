@@ -76,37 +76,50 @@ class ConfigService:
             logger.debug("Sin all workers")
             return {}
 
-        # WF solo activo con OCR completo + data_finder
-        elif self.ocr_workers.issubset(self.all_workers) and "data_finder" in self.all_workers:
-            logger.debug("OCR completo + data_finder")
+        # 1. Definir banderas lógicas corregidas:
+        # Detección: Lo necesita GeometryDetector para encontrar las cajas.
+        activate_det = "geometry_detector" in self.all_workers
+        
+        # Reconocimiento: Solo si está la trinidad que procesará texto (o si está paddle_wrapper)
+        required_for_rec = {"geometry_detector", "polygon_extractor", "paddle_wrapper"}
+        activate_rec = required_for_rec.issubset(self.all_workers)
+
+        # 2. Evaluar estados combinados con Word Finder (data_finder)
+        
+        # Caso A: Word Finder activo (Requiere OCR completo + data_finder)
+        if self.ocr_workers.issubset(self.all_workers) and "data_finder" in self.all_workers:
+            logger.debug("Configuración: OCR completo + Word Finder")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": True,
-                "activate_rec": True
+                "activate_rec": activate_rec,
+                "activate_det": activate_det
             }
 
-        # OCR parcial (uno o ambos, pero sin data_finder suficiente)
+        # Caso B: Algún componente de OCR activo pero sin condiciones para Word Finder
         elif ocr_active:
-            logger.debug("OCR activo sin condiciones completas para WF")
+            logger.debug(f"Configuración: OCR Parcial (Rec:{activate_rec}, Det:{activate_det})")
             return {
-            "models_config": self.config.get("models_config", {}),
-            "activate_wf": False,
-            "activate_rec": True
+                "models_config": self.config.get("models_config", {}),
+                "activate_wf": False,
+                "activate_rec": activate_rec,
+                "activate_det": activate_det
             }
 
-        # Sin OCR (incluye solo data_finder)
+        # Caso C: Solo data_finder (sin lógica de Paddle)
         elif "data_finder" in self.all_workers:
-            logger.debug("Solo data_finder")
+            logger.debug("Configuración: Solo data_finder")
             return {
-            "models_config": {},
-            "activate_wf": False,
-            "activate_rec": False
-        }
+                "models_config": {},
+                "activate_wf": False,
+                "activate_rec": False,
+                "activate_det": False
+            }
         
         else:
-            logger.debug("Configuración de modelos no cargada")
+            logger.debug("Configuración: No se requiere carga de modelos")
             return {}
-        
+                
     @property
     def modules_config(self) -> Dict[str, Any]:
         return self.config.get("modules", {})
@@ -226,12 +239,22 @@ class ConfigService:
 
         return all_workers
         
-    def log_active_areas(self):
+    def log_active_areas(self) -> str:
         stages_list: List[str] = []
+        
         for stage, stager in self.manager_config.items():
             if not stager:
                 continue
-            stage = stage.replace("_", " ", 1).title()
-            stages_list.append(stage)
             
-        return ", ".join(stages_list)
+            workers: List[str] = []
+            for order_key in self.workers_order.keys():
+                if order_key in stager:
+                    workers = stager[order_key]
+                    break
+            
+            stage_title = stage.replace("_", " ", 1).title()
+            workers_str = ", ".join(workers)
+            
+            stages_list.append(f"{stage_title}: [{workers_str}]")
+            
+        return " | ".join(stages_list)

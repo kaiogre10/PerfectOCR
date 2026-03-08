@@ -72,6 +72,10 @@ class InkConfig(ConfigWithNumpy):
     black: List[int]
     aspect_ratio_range: Tuple[float, float]
     angle_threshold: float
+    thr: float
+    black_thr: float
+    solid_thr: float
+    shape_thr: float
 
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
@@ -177,11 +181,6 @@ class OCRConfig(ConfigWithNumpy):
     semantic_clasificator: SemanticClasificator
     text_corrector: TextCorrector
 
-class DBSCAN(ConfigWithNumpy):
-    eps: float
-    min_cluster_size: int
-    metric: str
-
 class Lineal(ConfigWithNumpy):
     get_vectors: bool
     overlap_threshold: float
@@ -190,6 +189,8 @@ class TableStructurer(ConfigWithNumpy):
     min_h: int
 
 class CosineSimilarity(ConfigWithNumpy):
+    eps: float
+    metric: str
     min_cluster: int
     similarity_threshold: float
     emergency_threshold: float
@@ -201,7 +202,6 @@ class Vectorizer(ConfigWithNumpy):
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
-    dbscan: DBSCAN
     vectorizer: Vectorizer
     cos_sim: CosineSimilarity
     math_max: MathMaxConfig

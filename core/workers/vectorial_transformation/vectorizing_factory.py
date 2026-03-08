@@ -5,7 +5,6 @@ from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.vectorial_transformation.lineal_reconstructor import LinealReconstructor
 from core.workers.vectorial_transformation.vectorizer import Vectorizer
 from core.workers.vectorial_transformation.matricial_cosine import MatricialCusine
-from core.workers.vectorial_transformation.density_scanner import DensityScanner
 from core.workers.vectorial_transformation.geometric_table_structurer import GeometricTableStructurer
 from core.workers.vectorial_transformation.table_validator import TableCorrector
 from core.workers.vectorial_transformation.math_max import MatrixSolver
@@ -16,7 +15,6 @@ class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
         return {
             "lineal": self._create_lineal,
             "vectorizer": self._create_vectorizer,
-            "dbscan": self._create_scanner,
             "cos_sim": self._create_cosmatrix,
             "table_structurer": self._create_structurer,
             "table_validated": self._create_validator,
@@ -31,9 +29,6 @@ class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
     
     def _create_cosmatrix(self, context: Dict[str, Any]) -> MatricialCusine:
         return MatricialCusine(config=self.module_config, project_root=self.project_root)
-
-    def _create_scanner(self, context: Dict[str, Any]) -> DensityScanner:
-        return DensityScanner(config=self.module_config, project_root=self.project_root)
 
     def _create_structurer(self, context: Dict[str, Any]) -> GeometricTableStructurer:
         return GeometricTableStructurer(config=self.module_config, project_root=self.project_root)

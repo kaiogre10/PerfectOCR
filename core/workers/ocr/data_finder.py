@@ -28,7 +28,7 @@ class DataFinder(OCRAbstractWorker):
 
         except Exception as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
-            return None
+        return None
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         logger.debug("Data Finder iniciado")
@@ -44,7 +44,7 @@ class DataFinder(OCRAbstractWorker):
 
             # Actualiza los key_fields
             if manager.update_key_field(polygon_updates):
-                logger.debug(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
+                logger.info(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
                 return True
                 
         except Exception as e:
@@ -136,11 +136,9 @@ class DataFinder(OCRAbstractWorker):
 
                     continue
 
-                # logger.debug(f"{pid}: exto superviviente {ocr_text}")
-
             if polygon_updates:
                 logger.debug(f"KEY_FIELDS: {polygon_updates}")
-                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
+                # logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
                 return polygon_updates
             
             else:
@@ -150,4 +148,3 @@ class DataFinder(OCRAbstractWorker):
         except Exception as e:
             logger.warning(f"Error encontrando keyfields: {e}")
         return {}
-                    

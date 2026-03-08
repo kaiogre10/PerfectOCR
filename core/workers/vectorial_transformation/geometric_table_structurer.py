@@ -469,7 +469,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 h: int | None = line_data.header_line if line_data.header_line else None
                 if h is not None:
                     header_line_id = line_id
-                    logger.info(f"H: {h}, id: {line_id}")
+                    # logger.info(f"H: {h}, id: {line_id}")
                     return h, header_line_id
         except Exception as e:
             logger.error(f"Error buscando encabezados: {e}")

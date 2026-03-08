@@ -3,7 +3,7 @@ import logging
 import threading
 import time
 from typing import Dict, Any, Optional
-from paddleocr import PaddleOCR
+from paddleocr import PaddleOCR #type: ignore
 from core.utils.word_finder import WordFinder
 
 logger = logging.getLogger(__name__)
@@ -36,58 +36,63 @@ class ModelsManager:
     def initialize_models(self, config: Dict[str, Any]) -> bool:
         init_time = time.perf_counter()
         try:
-            models_config=config.get("models_config", {})
-            activate_rec = config.get("activate_rec")
+            models_config = config.get("models_config", {})
+            activate_rec = config.get("activate_rec", False)
+            activate_det = config.get("activate_det", False)
+            activate_wf = config.get("activate_wf", False)
 
-            self._shared_engine = PaddleOCR(
-                det=True, rec=activate_rec, cls=False,
-                det_model_dir=models_config.get('det_model_dir'),
-                rec_model_dir=models_config.get('rec_model_dir'),
-                show_log=models_config.get('show_log'),
-                use_gpu=models_config.get('use_gpu'),
-                enable_mkldnn=models_config.get('enable_mkldnn'),
-                lang=models_config.get("lang"),
-                table= models_config.get('table'),
-                rec_batch_num = models_config.get('rec_batch_num'),
-                cpu_threads = models_config.get('cpu_threads'),
-                max_batch_size= models_config.get('max_batch_size'),
-                det_limit_side_len= models_config.get('det_limit_side_len'),
-                det_db_score_mode= models_config.get('det_db_score_mode'),
-                use_mp= models_config.get('use_mp'),
-                max_text_length = models_config.get('max_text_length'),
-                rec_image_inverse = models_config.get('rec_image_inverse'),
+            # 1. Inicialización SELECTIVA de motores de Paddle
+            if activate_det or activate_rec:
+                # PaddleOCR solo cargará en RAM/VRAM los modelos marcados como True
+                self._shared_engine = PaddleOCR(
+                    det=activate_det, 
+                    rec=activate_rec, 
+                    cls=False,
+                    det_model_dir=models_config.get('det_model_dir') if activate_det else None,
+                    rec_model_dir=models_config.get('rec_model_dir') if activate_rec else None,
+                    show_log=models_config.get('show_log', False),
+                    use_gpu=models_config.get('use_gpu', False),
+                    enable_mkldnn=models_config.get('enable_mkldnn', True),
+                    lang=models_config.get("lang", "es"),
+                    table=models_config.get('table', False),
+                    rec_batch_num=models_config.get('rec_batch_num', 6),
+                    cpu_threads=models_config.get('cpu_threads', 4),
+                    max_batch_size=models_config.get('max_batch_size', 10),
+                    det_limit_side_len=models_config.get('det_limit_side_len', 1280),
+                    det_db_score_mode=models_config.get('det_db_score_mode', 'slow'),
+                    use_mp=models_config.get('use_mp', False),
+                    max_text_length=models_config.get('max_text_length', 25),
+                    rec_image_inverse=models_config.get('rec_image_inverse', False),
                 )
-            # Compartir la MISMA instancia
-            self._detection_engine = self._shared_engine
-            self._recognition_engine = self._shared_engine
-            self._initialized = True
-            logger.debug(f"Paddle iniciado en {time.perf_counter() - init_time:.6f}s")
-            logger.debug(f"PADDLE Engines inicializados - det: {self.detection_engine is not None}, rec: {self.recognition_engine is not None}")
+                # Asignamos al puntero solo si el modelo está realmente activo
+                self._detection_engine = self._shared_engine if activate_det else None
+                self._recognition_engine = self._shared_engine if activate_rec else None
+                self._initialized = True
+                logger.debug(f"Motores Paddle listos (det={activate_det}, rec={activate_rec})")
+            else:
+                logger.debug("Ningún modelo de Paddle requerido. Saltando inicialización.")
+                self._shared_engine = None
+                self._detection_engine = None
+                self._recognition_engine = None
 
-            if not self._shared_engine or not self._detection_engine or not self._recognition_engine:
-                logger.critical(f"No se pudo iniciar Paddle, no se cargará WordFinder")
-                self._word_finder = None
-                return False
-            
-            elif config.get("activate_wf"):
-                model_path=models_config.get("wf_model_path")
-                set_params=models_config.get("set_wf_params")
-                self._word_finder: WordFinder = WordFinder(
-                    model_path=model_path,
-                    set_params=set_params
+            # 2. Inicialización de WordFinder
+            if activate_wf:
+                self._word_finder = WordFinder(
+                    model_path=models_config.get("wf_model_path"),
+                    set_params=models_config.get("set_wf_params", False)
                 )
                 self._active = True
-                logger.debug(f"Finder iniciado en: {time.perf_counter() - init_time:.6f}s, MODEL_PATH: {model_path}")
-                return True
-
+                logger.debug(f"WordFinder cargado en {time.perf_counter() - init_time:.4f}s")
             else:
                 self._word_finder = None
-                logger.debug(f"Word Finder no se cargó porque no se usará en el pipeline")
-                return True
+                self._active = False
+
+            return True
 
         except Exception as e:
-            logger.warning(f"No se pudo iniciar WordFinder: {e}", exc_info=True)
-        return True
+            logger.error(f"Error crítico inicializando modelos: {e}", exc_info=True)
+            self._initialized = False
+            return False
             
     @property
     def detection_engine(self) -> Optional[PaddleOCR]:
