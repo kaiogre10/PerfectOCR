@@ -50,7 +50,15 @@ class ConfigService:
     @property
     def processing_config(self) -> Dict[str, Any]:
         """Obtiene configuración de procesamiento."""
-        return self.config.get('processing', {})
+        processing = dict(self.config.get("processing", {}))
+        valid_ext = self.utils_config.get("valid_image_extensions", ())
+        if isinstance(valid_ext, str):
+            valid_ext = (valid_ext,)
+        else:
+            valid_ext = tuple(valid_ext)
+
+        processing["valid_image_extensions"] = valid_ext
+        return processing
 
     @property
     def enabled_outputs(self) -> Dict[str, Any]:
@@ -105,7 +113,7 @@ class ConfigService:
     
     @property
     def utils_config(self) -> Dict[str, Any]:
-        return self.modules_config.get("utils", {})
+        return self.config.get("utils", {})
       
     @property
     def img_prep_config(self) -> Dict[str, Any]:

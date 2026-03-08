@@ -1,12 +1,14 @@
 # PerfectOCR/core/workers/ocr/text_cleaner.py
 import logging
 import dataclasses
+import numpy as np
 from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import validate_text, validate_alone_chars, space_removal, detect_punt, remove_special_sequences
-from core.utils.data_utils import ACCENT_NORMALIZATION
+from core.utils.math_utils import text_encode
+from core.utils.data_utils import CHAR_FRECUENCY
 
 logger = logging.getLogger(__name__)
 
@@ -186,33 +188,31 @@ class TextCleaner(OCRAbstractWorker):
             return text
 
     def get_frecuency_norm(self, manager: DataFormatter) -> Dict[str, float]:
-
         try:
-            frecuency_char = manager.get_frecuency_char()
-            max_val = max(frecuency_char.values())
-
-            freq_norm: Dict[str, float] = {char: (val / max_val) * 100 for char, val in frecuency_char.items()}
+            max_val = max(CHAR_FRECUENCY.values())
+            freq_norm: Dict[str, float] = {char: (val / max_val) * 100 for char, val in CHAR_FRECUENCY.items()}
             return freq_norm
         
         except Exception as e:
             logger.error(f"Error al obtener frecuencias normalizadas: {e}", exc_info=True)
             return {}
 
-    def token_freq_score(self, token: str, manager: DataFormatter) -> float:
-        freq_norm = self.get_frecuency_norm(manager)
-        if not freq_norm:
+    def token_freq_score(self, token: str) -> float:
+        """
+        Calcula la probabilidad del token usando text_encode para obtener 
+        la media de frecuencia (frecuencia normalizada).
+        """
+        if not token:
             return 100.0
+            
+        # Usamos text_encode con el tipo 'frequency' (que usa CHAR_FRECUENCY)
+        # Esto devuelve un array de promedios por cada caracter
+        encoded = text_encode(token, ["frequency"])
         
-        letters: List[float] = []
-        for ch in token:
-            if ch.isalpha():
-                norm = ACCENT_NORMALIZATION.get(ch, ch).lower()
-                if norm in freq_norm:
-                    letters.append(freq_norm[norm])
-                elif norm.isalpha():
-                    letters.append(0.0)
-
-        if not letters:
+        # Obtenemos el promedio del token (axis 1) y luego el promedio general
+        if encoded.size == 0:
             return 100.0
-        return sum(letters) / float(len(letters))
-
+            
+        freq_mean = np.mean(encoded).astype(np.float32)
+        
+        return float(freq_mean)

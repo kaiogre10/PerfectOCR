@@ -17,6 +17,11 @@ class DataFormatter:
     def __init__(self):
         self.workflow: Optional[WorkflowDict] = None
         self.structured_table: Optional[StructuredTable] = None
+        
+    def reset(self):
+        """Reinicia el estado del DataFormatter para una nueva tarea."""
+        self.workflow = None
+        self.structured_table = None
     
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
@@ -27,9 +32,9 @@ class DataFormatter:
             
             metadata_obj = Metadata(
                 image_name=str(metadata.get("image_name", "")),
-                date_creation=str(metadata.get("date_creation" or "")),
-                dpi=int(metadata.get("dpi", {})),
-                img_dims=tuple(metadata["img_dims"])
+                date_creation=str(metadata.get("date_creation", "")),
+                dpi=int(metadata.get("dpi", 0)),
+                img_dims=[]
             )
 
             self.workflow = WorkflowDict(
@@ -161,9 +166,18 @@ class DataFormatter:
                 return False
                 
             if full_img is None:
-                # Si se pasa None, vaciamos la imagen para liberar memoria
-                self.workflow = dataclasses.replace(self.workflow, full_img=None)
+                # Medir dims de la imagen real almacenada antes de liberar memoria
+                current_img = self.workflow.full_img.full_img if self.workflow.full_img else None
+                measured_dims = list(current_img.shape) if current_img is not None else self.workflow.metadata.img_dims
+
+                updated_metadata = dataclasses.replace(self.workflow.metadata, img_dims=measured_dims)
+                self.workflow = dataclasses.replace(
+                    self.workflow,
+                    full_img=None,
+                    metadata=updated_metadata
+                )
                 return True
+            
             if corrected:
             #     # Normalizar si se recibe la dataclass FullImage corregida
                 if isinstance(full_img, FullImage):
@@ -556,7 +570,6 @@ class DataFormatter:
     #     { registro: {...}, detalles: [...], provenance: {...}, raw_table: [...] }
     #     """
     #     try:
-    #         t0 = time.perf_counter()
     #         logger.debug("Estructuración de datos iniciada")
     #         try:
     #             if not self.workflow:
@@ -641,7 +654,6 @@ class DataFormatter:
 
     #         success: bool = self.export_payload_json(payload, data_base_path)
     #         if success is not False:
-    #             logger.debug(f"Estructuración de datos completada en {time.perf_counter()-t0:.6f}s")
     #             logger.debug(f"Resultados: {payload}")
     #             db_path = data_base_path
     #             return db_path

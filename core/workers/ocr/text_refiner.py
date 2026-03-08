@@ -14,11 +14,7 @@ class Refiner(OCRAbstractWorker):
     """
     Orquesta un ciclo de refinamiento de texto post-OCR con clasificación selectiva optimizada.
     """
-    def __init__(self, config: Dict[str, Any], project_root: str,
-                 clasificator: SemanticClasificator,
-                 cleaner: Optional[TextCleaner] = None,
-                 corrector: Optional[TextCorrector] = None,
-                 fragmenter: Optional[Fragmenter] = None):
+    def __init__(self, config: Dict[str, Any], project_root: str, clasificator: SemanticClasificator, cleaner: Optional[TextCleaner] = None, corrector: Optional[TextCorrector] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
         worker_config = config.get("text_refiner", {})
         self.percentile = config["percentile"]

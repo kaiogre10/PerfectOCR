@@ -3,7 +3,7 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "angle_corrector"
-    # - "ink_enhancement"
+    - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
@@ -16,16 +16,16 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-     - "paddle_wrapper"
-     - "text_refiner"
-    # - "data_finder"
+    - "paddle_wrapper"
+    - "text_refiner"
+    - "data_finder"
     
   vector_stage:
-    # - "lineal"
-    # - "vectorizer"
-    # - "dbscan"
-    # - "cos_sim"
-   # - "table_structurer"
+    - "lineal"
+    - "vectorizer"
+    - "dbscan"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -87,7 +87,6 @@ models_config:
   
 # Configuración de procesamiento
 processing:
-  valid_image_extensions: [.png, .jpg, .jpeg, .bmp, .tif, .tiff, .webp, .gif, .pbm, .pgm, .ppm, .jp2, .ico]
   small_batch_limit: 5
 
 modules:
@@ -153,7 +152,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 0
+      num_passes: 1
       c_value: 7
       height_thresholds_px: [100, 800, 1500, 2500]
       block_sizes_map: [15, 21, 25, 35, 41]
@@ -215,8 +214,9 @@ modules:
       total_mtl_abs_tolerance: 0.05
       row_relative_tolerance: 0.05
 
-  utils:
-    dpi_range: [100, 200, 300, 400, 600, 1200]
-    bin_interval: [10, 245]
-    percentile: [0.10, 0.99]
-    morph_kernel: [2, 3]
+utils:
+  valid_image_extensions: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
+  dpi_range: [100, 200, 300, 400, 600, 1200]
+  bin_interval: [10, 245]
+  percentile: [0.10, 0.99]
+  morph_kernel: [2, 3]

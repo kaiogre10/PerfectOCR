@@ -21,7 +21,7 @@ def clear_output_folders(output_paths: List[str]) -> None:
             try:
                 if os.path.isdir(item_path):
                     # Contar archivos y carpetas dentro antes de eliminar
-                    for root, dirs, files in os.walk(item_path): # type: ignore
+                    for _, dirs, files in os.walk(item_path):
                         deleted_folder += len(dirs)
                         deleted_files += len(files)
                         

@@ -74,7 +74,7 @@ class Metadata:
     image_name: str
     date_creation: str
     dpi: Optional[int]
-    img_dims: Tuple[int, int]
+    img_dims: List[int]
 
 @dataclass
 class FullImage:

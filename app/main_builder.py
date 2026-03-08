@@ -27,7 +27,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         config_services = ConfigService(config_path, TEST_MODE)
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
-        workflow_manager = WorkFlowBuilder(config=config_services.processing_config, project_root=project_root, input_paths=input_paths)
+        workflow_manager = WorkFlowBuilder(builder_config=config_services.processing_config, project_root=project_root, input_paths=input_paths)
         
         # 3. WorkflowManager analiza y reporta
         workflow_report = workflow_manager.count_and_plan()

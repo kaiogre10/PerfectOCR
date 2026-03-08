@@ -1,6 +1,5 @@
 # core/workers/ocr/semantic_clasificator.py
 import logging
-import time
 import numpy as np
 from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
@@ -12,7 +11,7 @@ from core.utils.data_utils import CHAR_NUM
 
 logger = logging.getLogger(__name__)
 
-class SemanticClasificator(OCRAbstractWorker):    
+class SemanticClasificator(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -66,7 +65,6 @@ class SemanticClasificator(OCRAbstractWorker):
                     }
 
                 save_raw_json( output_paths, worker_name, results, file_name)
-            
             return True
 
         except Exception as e:
@@ -74,7 +72,7 @@ class SemanticClasificator(OCRAbstractWorker):
             return False
             
     def _clasify_words(self, polygons: Dict[str, Polygons]) -> Dict[str, int | List[int]]:
-        t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         final_results: Dict[str, int | list[int]] = {}
 
         def classify_token(s: str) -> int:
@@ -134,5 +132,5 @@ class SemanticClasificator(OCRAbstractWorker):
             else:
                 final_results[pid] = classify_token(s)
                 
-        logger.info(f"Clasificación semantica completa en: {time.perf_counter() - t0:.6f}'s")
+        # logger.info(f"Clasificación semantica completa en: {time.perf_counter() - t0:.6f}'s")
         return final_results

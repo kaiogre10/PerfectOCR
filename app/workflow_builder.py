@@ -1,7 +1,6 @@
 # PerfectOCR/management/workflow_manager.py
 import os
 import logging
-from PIL import Image
 from typing import List, Dict, Any, Tuple, Set
 
 logger = logging.getLogger(__name__)
@@ -11,27 +10,21 @@ class WorkFlowBuilder:
     Director de Logística: Planifica, cuenta y reporta a Main.
     HIPER-ESPECIALIZADO en: contar imágenes, decidir modo, generar reporte. N procesa imágenes - solo planifica.
     """
-    def __init__(self, config: Dict[str, Any], project_root: str, input_paths: List[str] | str):
+    def __init__(self, builder_config: Dict[str, Any], project_root: str, input_paths: List[str] | str):
         self.project_root = project_root
-        self.builder_config = config
-        self.small_batch_limit: int = self.builder_config.get('small_batch_limit', 0)
-        self.valid_extensions = self.builder_config['valid_image_extensions']
+        self.small_batch_limit: int = builder_config.get('small_batch_limit', 0)
+        self.valid_extensions = builder_config['valid_image_extensions']
         self.input_paths = input_paths
         
     def _extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, Any]]:
         """Extrae lista de rutas y nombres de imágenes válidas de forma recursiva."""
         image_info: List[Dict[str, str]] = []
         try:
-            for root, dirs, files in os.walk(input_folder): # type: ignore
+            for root, _, files in os.walk(input_folder):
                 for filename in files:
                     if filename.lower().endswith(valid_extensions):
                         full_path = os.path.join(root, filename)
-                        image_name = os.path.splitext(filename)[0]
-                        image_extension = os.path.splitext(filename)[1]
-
-                        with Image.open(full_path) as img:
-                            dpi_aprox = img.info["dpi"][1]
-                            dpi_cal = round(dpi_aprox)
+                        image_name, image_extension = os.path.splitext(filename)
 
                         # Obtener ruta relativa desde input_folder para mejor organización
                         relative_path = os.path.relpath(root, input_folder)
@@ -43,7 +36,6 @@ class WorkFlowBuilder:
                             "name": image_name,
                             "extension": image_extension,
                             "relative_folder": relative_path,
-                            "dpi": dpi_cal
                         })
 
             if image_info:

@@ -19,50 +19,49 @@ class ProcessingBuilder:
         self.ocr_stager = ocr_stager
         self.vectorization_stager = vectorization_stager
         
-    def process_single_image(self) -> Optional[DataFormatter]:
+    def process_single_image(self) -> Optional[str]:
         """
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
         """
         try:
-            workflow_start = time.perf_counter()
-            manager = DataFormatter()
+            # 1. El main_builder ya mutó el context compartido con la info de la nueva imagen
             
-            # FASE 1: Preparación de imagen (usa execute() del AbstractStager)
-            manager, time_poly = self.input_stager.execute(manager)
-            if manager is None:
-                logger.error("Fallo en fase de preparación")
+            # 2. Formatear/Reiniciar el DataFormatter para la nueva tarea
+            if hasattr(self.manager, 'reset'):
+                self.manager.reset()
+            
+            # 3. Flujo normal (los stagers ya tienen la referencia al shared_context)
+            # Solo se ejecutan los stagers que fueron configurados y devueltos por la factory
+            
+            # Input siempre es obligatorio
+            current_result, _ = self.input_stager.execute(self.manager)
+            if not current_result: 
                 return None
-            logger.debug(f"Fase de preparación completada en: {time_poly:.6f}s")
-
-            # FASE 2: Preprocesamiento (usa execute() del AbstractStager)
-            if self.preprocessing_stager is not None:
-                manager, elapsed = self.preprocessing_stager.execute(manager)
-                if manager is None:
-                    logger.error("Fallo en preprocesamiento")
-                    return None
-                logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
-
-            # FASE 3: OCR (usa execute() del AbstractStager)
-            if self.ocr_stager is not None:
-                manager, ocr_time = self.ocr_stager.execute(manager)
-                if manager is None:
-                    logger.error("Fallo en OCR")
-                    return None
-                logger.debug(f"OCR completado en: {ocr_time:.6f}s")
-                    
-            # FASE 4: Vectorización (usa execute() del AbstractStager)
-            if self.vectorization_stager is not None:
-                manager, vect_time = self.vectorization_stager.execute(manager)
-                if manager is None:
-                    logger.error("Fallo en vectorización")
-                    return None
-                logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
             
-            total_workflow_time = time.perf_counter() - workflow_start
-            logger.debug(f"Procesamiento completado en {total_workflow_time:.6f}s")
-
-            return manager
+            if self.preprocessing_stager:
+                current_result, _ = self.preprocessing_stager.execute(current_result)
+                if not current_result: 
+                    return None
+            
+            if self.ocr_stager:
+                current_result, _ = self.ocr_stager.execute(current_result)
+                if not current_result: 
+                    return None
+            
+            if self.vectorization_stager:
+                current_result, _ = self.vectorization_stager.execute(current_result)
+                if not current_result: 
+                    return None
+            
+            # 4. Dependiendo de si se corrió vectorización u ocr, el output final se procesa aquí
+            if hasattr(self.manager, 'format'):
+                db_path = self.manager.format(current_result)
+            else:
+                # Si format no está implementado aún o devuelve None, omitimos
+                db_path = None
+            
+            return db_path
             
         except Exception as e:
-            logger.error(f"Error fatal procesando la imagen: {e}", exc_info=True)
+            logger.error(f"Error procesando imagen: {e}", exc_info=True)
             return None

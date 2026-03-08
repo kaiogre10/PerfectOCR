@@ -1,12 +1,12 @@
-# PerfectOCR/core/image_preparation/image_loader.py
 import cv2
 import numpy as np
 import logging
+import time
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import validate_image, decolorate
+from core.utils.image_utils import decolorate
 
 logger = logging.getLogger(__name__)
 
@@ -14,65 +14,68 @@ class ImageLoader(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], image_data: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
+        self.valid_extensions: Set[str] = set(config["valid_image_extensions"])
         self.output = config.get("full_img")
         self.image_data = image_data
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Carga la imagen y extrae metadatos."""
-
-        image_name = self.image_data.get('name', "")
-        input_path = self.image_data.get('full_path', "")
-        dpi = self.image_data.get('dpi', {})
+        time0 = time.perf_counter()
         
-        metadata: Dict[str, Any] = {
-            "image_name": image_name,
-            "date_creation": None,
-            "dpi": dpi,
-            "img_dims": []
-        }
+        # En el nevo esquema, la data viene en 'context' alimentada por el Process Builder.
+        # Conservamos compatibilidad por si se inicializó en el init
+        image_info = context.get("image_data", self.image_data)
+        
+        # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
+        image_name = image_info.get('name', "")
+        input_path = image_info.get('full_path', image_info.get('path', ""))
+        extension = image_info.get('extension', "").lower()
+        
         try:
-            now = datetime.now()
-            date_creation = now.isoformat()
+            if not input_path:
+                logger.error(f"No se proporcionó una ruta de entrada válida para la imagen '{image_name}'")
+                return False
+            # Carga condicional según formato (extension ya viene del builder)
+            if extension in self.valid_extensions:
+                # cv2.imread ya retorna uint8, no necesita .astype()
+                full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
+            else:
+                # Fallback para formatos exóticos
+                from PIL import Image
+                pil_img = Image.open(input_path).convert('RGB')
+                full_image = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
-            full_image = cv2.imread(input_path, cv2.IMREAD_COLOR).astype(np.uint8)
-
-            if not validate_image(full_image):
-                logger.error(f"No se cargó:'{image_name}'")
+            if full_image is None:
+                logger.error(f"No se cargó: '{image_name}{extension}'")
                 return False
                 
             full_img = decolorate(full_image)
             
-            if self.output:
-                from services.output_service import save_croped_image
-                output_paths = context["output_paths"]
-                worker_name = context.get("worker_name") or "loader"
-                img_id = f"full_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, img_id, full_img, output_paths, worker_name)
-
-            # logger.info(f"Imagen: '{image_name}' cargada éxitosamente")
-            img_dims = full_img.shape
+            # Metadata: una sola llamada a datetime
+            now = datetime.now()
+            metadata: Dict[str, Any] = {
+                "image_name": image_name,
+                "extension": extension,
+                "date_creation": now.isoformat()
+            }
             
-            if not img_dims:
-                logger.error(f"Imagen {image_name} totalmente en blanco")
-                return False
-            
-            # height, width = img_dims
-            # size = float(height * width)
-            
-            # logger.debug(f"Dimensiones de la imagen '{image_name}': '{height, width}', size='{size}'")
-            
-            metadata["date_creation"] = date_creation
-                            
-            fecha = now.strftime("%Y%m%d")
-            decimales = f"{now.microsecond:03d}"
-            IDRegistro: str= f"{metadata.get('image_name')}_{fecha}{decimales}"
+            IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:03d}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
-                logger.debug(f"Imagen '{image_name}' cargada en el manager")
+                logger.info(f"'{image_name}' cargada en {time.perf_counter() - time0:.4f}s")
+            
+                if self.output:
+                    from services.output_service import save_croped_image
+                    output_paths = context["output_paths"]
+                    worker_name = context.get("worker_name") or "loader"
+                    save_croped_image(image_name, f"full_img_{image_name}_{worker_name}", full_img, output_paths, worker_name)
+
                 return True
-            else:
-                logger.error(f"Error cargando '{image_name}'")
-                return False
-        except cv2.error as e:
-            logger.error(f"Error al cargar la imagen: {image_name}; {e}", exc_info=True)
+            
+            logger.error(f"Error creando workflow para '{image_name}'")
             return False
+
+        except cv2.error as e:
+            logger.error(f"Error OpenCV al cargar '{image_name}': {e}", exc_info=True)
+        return False
+        

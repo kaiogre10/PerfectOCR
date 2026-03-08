@@ -46,7 +46,6 @@ class OutputFlags(ConfigWithNumpy):
     
 class Processing(ConfigWithNumpy):
     small_batch_limit: int
-    valid_image_extensions: Tuple[str, ...]
 
 class ModelsConfig(ConfigWithNumpy):
     use_angle_cls: bool
@@ -213,13 +212,13 @@ class UtilsConfig(ConfigWithNumpy):
     bin_interval: Tuple[int, int]
     percentile: Tuple[float, float]
     morph_kernel: Tuple[float, float]
+    valid_image_extensions: Tuple[str, ...]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation
     preprocessing: PreprocessingConfig
     ocr: OCRConfig
     vectorization: VectorConfig
-    utils: UtilsConfig
 
 class PipelineConfig(ConfigWithNumpy):
     imagepre_stage: Optional[List[str]] = None
@@ -233,3 +232,4 @@ class MasterConfig(ConfigWithNumpy):
     processing: Processing
     models_config: ModelsConfig
     modules: ModulesConfig
+    utils: UtilsConfig
