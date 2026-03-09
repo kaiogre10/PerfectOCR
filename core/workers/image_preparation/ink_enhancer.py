@@ -98,7 +98,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         dist_values = extract_contours_histogram(metrics[:, -1])
 
         area_outliers = area_hist[0]
-        dist_var_outliers = dist_values[0]
+        dist_var_outliers = dist_values[0] if dist_values[0] > 0 else 1
 
         # 1. Outliers de Área
         if area_outliers < 1:
