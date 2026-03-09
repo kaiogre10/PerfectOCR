@@ -1,11 +1,11 @@
 # PerfectOCR/core/workers/ocr/text_corrector.py
 import logging
 import dataclasses
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import estandarice_uppers_lowers, termination_detect, numeric_separator, validate_alone_chars, space_removal
+from core.utils.text_utils import estandarice_uppers_lowers, termination_detect, numeric_separator, validate_alone_chars, space_removal, valid_punt_chars, find_quantitative_runs
 from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ class TextCorrector(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get("text_corrector", {})
+        self.not_valid_chars = ''.join(valid_punt_chars())
         self.conf_threshold = (worker_config.get("confidence_threshold") * 100.0)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -53,14 +54,14 @@ class TextCorrector(OCRAbstractWorker):
             #     continue
             
             # Aplicar corrección según tipo semántico
-            corrected_text = self._apply_corrections(text=original_text, semantic_clasification=polygon.semantic_clasification, polygon_id=poly_id)
+            corrected_text = self._apply_corrections(text=original_text, semantic_clasification=polygon.semantic_clasification)
             # Si hubo cambios, actualizar el polígono
             if corrected_text != original_text:
                 corrected_text = estandarice_uppers_lowers(original_text, corrected_text)
                 updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
                 corrected_polygons[poly_id] = updated_polygon
                 
-                logger.info(
+                logger.debug(
                     f"Corrección para '{poly_id}':"
                     f"Original: '{original_text}' → Corregido: '{corrected_text}'"
                 )
@@ -70,72 +71,65 @@ class TextCorrector(OCRAbstractWorker):
         manager.workflow.polygons = corrected_polygons
         return True
 
-    def _apply_corrections(self, text: str, semantic_clasification:  List[int] | int, polygon_id: str) -> str:
+    def _apply_corrections(self, text: str, semantic_clasification: List[int] | int) -> str:
         tokens = text.split(' ')
-        
-        # Si la clasificación es una lista, debe corresponder con los tokens
+
         is_list_classification = isinstance(semantic_clasification, list)
         if is_list_classification and len(semantic_clasification) != len(tokens):
-            logger.debug(f"Discrepancia en {polygon_id}: {len(tokens)} tokens vs {len(semantic_clasification)} clasificaciones. No se corrige.")
             return text
 
         corrected_tokens: List[str] = []
+
         for i, token in enumerate(tokens):
-            # Obtener la clasificación para el token actual
             token_sc = semantic_clasification[i] if is_list_classification else semantic_clasification
 
-            # Lógica de corrección principal (movida a un método auxiliar)
-            if semantic_clasification == 2:
-                token = numeric_separator(token)
+            if token_sc == 2:
+                # 1. Primero corregir chars del token completo
+                corrected_token = self._correct_token(token, token_sc)
 
-            corrected_token = self._correct_token(token, token_sc, polygon_id)
-            if corrected_token and validate_alone_chars(corrected_token):
-                corrected_tokens.append(corrected_token)
-            
+                # 2. Luego separar por runs cuantitativos
+                parts = self.split_by_quantitative_runs(corrected_token)
+
+                for part, is_quant in parts:
+                    # 3. Aplicar numeric_separator solo a partes cuantitativas
+                    final_part = numeric_separator(part) if is_quant else part
+                    if final_part and validate_alone_chars(final_part):
+                        corrected_tokens.append(final_part)
+            else:
+                corrected_token = self._correct_token(token, token_sc)
+                if corrected_token and validate_alone_chars(corrected_token):
+                    corrected_tokens.append(corrected_token)
+
         return space_removal(' '.join(corrected_tokens))
     
-    def _correct_token(self, token: str, semantic_clasification: int, polygon_id: str) -> str:
+    def _correct_token(self, token: str, semantic_clasification: int) -> str:
         """Aplica correcciones a un único token basado en su clasificación semántica."""
         if semantic_clasification in [-1, -2]:
-            semantic_type = "umd" if semantic_clasification == -2 else "code"
-            logger.debug(f"Omitiendo corrección de token en {polygon_id}: '{semantic_type}', '{token}'")
             return token
 
         corrections_map = self._get_corrections_map(semantic_clasification)
         if not corrections_map:
             return token
         
-        token = token.rstrip(".")
+        token = token.strip(self.not_valid_chars)
         
         corrected_chars = list(token)
 
         for i, char in enumerate(token):
             if char not in corrections_map:
                 continue
-
             if char.isalnum() and not self._is_isolated(token, i):
-                logger.debug(f"{polygon_id}: Carácter '{char}' en '{token}' no está aislado, se omite corrección.")
                 continue
-
             if char == "0" and self.termination_correct(token, semantic_clasification):
                 replacement = "o"
-                logger.debug(f"{polygon_id}: Corrección de terminación")
             elif char == "S" and self._should_use_five_instead_of_dollar(token, i, semantic_clasification):
                 replacement = "5"
-                logger.debug(f"{polygon_id}: Regla especial S->5 en '{token}'")
             else:
                 replacement = corrections_map[char]
-
-            logger.debug(f"{polygon_id}: Corrigiendo: '{char}' => '{replacement}' en texto original: '{token}'")
             corrected_chars[i] = replacement
 
-        corrected_token = ''.join(corrected_chars)
-
-        # Normalizar formato numérico final: miles con coma y decimales con punto
-        if semantic_clasification == 2:
-            corrected_token = numeric_separator(corrected_token)
-
-        return corrected_token
+        # numeric_separator ya NO se aplica aquí para sc==2
+        return ''.join(corrected_chars)
 
     def _is_isolated(self, text: str, index: int) -> bool:
         """
@@ -246,3 +240,38 @@ class TextCorrector(OCRAbstractWorker):
             return True
         else:
             return False
+        
+    def split_by_quantitative_runs(self, text: str) -> List[Tuple[str, bool]]:
+        """
+        Separa únicamente los substrings cuantitativos del resto.
+        No fragmenta por espacios partes no cuantitativas.
+        """
+        if ' ' not in text:
+            # Si todos los caracteres son numéricos/monetarios → token completo cuantitativo
+            _QUANT_CHARS = CHAR_NUM | {'.'}
+            if set(text) <= _QUANT_CHARS:
+                return [(text, True)]
+
+            runs = find_quantitative_runs(text)
+            if not runs:
+                return [(text, False)]
+
+            out: List[Tuple[str, bool]] = []
+            cursor = 0
+
+            for start, end, _ in runs:
+                if cursor < start:
+                    prefix = text[cursor:start].strip()
+                    if prefix:
+                        out.append((prefix, False))
+                out.append((text[start:end], True))
+                cursor = end
+
+            if cursor < len(text):
+                tail = text[cursor:].strip()
+                if tail:
+                    out.append((tail, False))
+
+            return out
+
+        return [(text, False)]

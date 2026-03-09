@@ -57,7 +57,7 @@ _umd_patterns: List[Pattern[str]] = [
 def _build_quantitative_patterns() -> Dict[str, Pattern[str]]:
     digit = r"[0-9oO]"
     currency = r"[$¢]"
-    amount_body = rf"(?:{digit}{{1,3}}(?:[.,]{digit}{{3}})*|{digit}+)(?:[.,]{digit}+)?"
+    amount_body = rf"(?:{digit}+(?:[.,]{digit}+)?|{digit}{{1,3}}(?:[.,]{digit}{{3}})*)(?:[.,]{digit}+)?"
     token = rf"{currency}\s*{amount_body}|{amount_body}\s*{currency}|{amount_body}"
     return {
         "currency":     re.compile(currency),
@@ -257,7 +257,6 @@ def validate_alone_chars(text: str) -> bool:
 def norm_text(text: str) -> str:
     if not validate_text(text):
         return ""
-
     return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8').lower()
 
 def is_upper(text: str) -> bool:
