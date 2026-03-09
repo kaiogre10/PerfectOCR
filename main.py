@@ -30,14 +30,14 @@ else:
     print("main.py: 31 - Ejecución local")
     output_paths =["D:/outputs/perfectocr"]
     log_file_paths = "D:/outputs/logs/perfectocr.txt"
-
+    
 LOG_FILE_PATH = log_file_paths
 DEFAULT_OUTPUT_PATH = output_paths
 
 DEFAULT_INPUT_PATH = [
-    # "input",
+    "input",
         "input2",
-        # "input3"
+         "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 
@@ -60,10 +60,11 @@ console_formatter = logging.Formatter(
     fmt=CONSOLE_FORMAT
 )
 
-file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
-file_handler.setFormatter(file_formatter)
-file_handler.setLevel(FILE_LEVEL.upper())
-logger_root.addHandler(file_handler)
+if os.path.exists(LOG_FILE_PATH):
+    file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
+    file_handler.setFormatter(file_formatter)
+    file_handler.setLevel(FILE_LEVEL.upper())
+    logger_root.addHandler(file_handler)
 
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(console_formatter)

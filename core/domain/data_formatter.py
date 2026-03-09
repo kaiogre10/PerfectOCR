@@ -468,7 +468,7 @@ class DataFormatter:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
             return False
 
-    def save_tabular_lines(self, line_ids: List[int]) -> bool:
+    def save_tabular_lines(self, line_ids: List[str]) -> bool:
         """
         Identifica las líneas tabulares y las guarda como dataclasses TabularLines
         en el workflow. También actualiza el flag en AllLines.
@@ -500,7 +500,7 @@ class DataFormatter:
             tabular_lines_debug: List[Dict[str, Any]] = []
             marked_ids: List[str] = []
             for line_id in line_ids:
-                for line_id in all_lines.values():
+                if line_id in all_lines: 
                     line_obj = self.workflow.all_lines[line_id]
 
                     updated_line = dataclasses.replace(line_obj, tabular_line=True)
@@ -512,11 +512,12 @@ class DataFormatter:
                         "text": getattr(self.workflow.all_lines[line_id], "text", ""),
                         "polygon_ids": getattr(self.workflow.all_lines[line_id], "polygon_ids", [])
                     })
+                else:
+                    logger.warning(f"line_id '{line_id}' no encontrado en all_lines")
 
             if marked_ids:
                 logger.info(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_debug in tabular_lines_debug:
-                    # logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}' | polygons: {log_debug['polygon_ids']}")
                     logger.info(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
             else:
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")

@@ -16,15 +16,15 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    # - "paddle_wrapper"
+    - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    #- "data_finder"
     
   vector_stage:
     - "lineal"
-    - "vectorizer"
-    - "cos_sim"
-    - "table_structurer"
+    #- "vectorizer"
+    #- "cos_sim"
+    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -32,7 +32,7 @@ pipeline_secuence:
 enabled_outputs:
   image_load_outputs:
     full_img: False
-    bin_full_img: True
+    bin_full_img: False
     angle_corrected: False
     moire_poly: False
     cropped_img: False

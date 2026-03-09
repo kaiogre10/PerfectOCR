@@ -35,23 +35,23 @@ class MatricialCusine(VectorizationAbstractWorker):
     
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas"
+                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas"
                     "\n"f"{table_line_ids}"
                     "\n"f"{table_range}")
-                # succes = manager.save_tabular_lines(table_line_ids)
-                # if succes:
+                succes = manager.save_tabular_lines(table_line_ids)
+                if succes:
                     
-                    # logger.info("Tablas guaradas en el manager desde coseno")
-                    # if self.output:
-                    #     from services.output_service import save_debug_json
-                    #     return_objects: bool = True
-                    #     tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
-                    #     file_name: str = manager.workflow.metadata.image_name # type: ignore
-                    #     worker_name = context.get("worker_name") or "matrix_cosine"
-                    #     output_paths = context["output_paths"]
-                    #     save_debug_json(output_paths, worker_name, tab_info, file_name)
+                    logger.info("Tablas guaradas en el manager desde coseno")
+                    if self.output:
+                        from services.output_service import save_debug_json
+                        return_objects: bool = True
+                        tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
+                        file_name: str = manager.workflow.metadata.image_name # type: ignore
+                        worker_name = context.get("worker_name") or "matrix_cosine"
+                        output_paths = context["output_paths"]
+                        save_debug_json(output_paths, worker_name, tab_info, file_name)
     
-                    # return True
+                    return True
         except Exception as e:
             logger.error(f"Error en matriz coseno: {e}", exc_info=True)
         return True
@@ -403,6 +403,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Paso 4: Mapear de vuelta a line_id (str)
         full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        logger.debug(f"Rango completo de líneas tabulares: {full_range_line_ids}")
+        logger.info(f"Rango completo de líneas tabulares: {full_range_line_ids}")
 
         return full_range_line_ids
