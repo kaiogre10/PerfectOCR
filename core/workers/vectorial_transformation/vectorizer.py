@@ -13,8 +13,6 @@ class Vectorizer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config.get('vectorizer', {})
-        self.exclude_types =  worker_config['exclude_types']
         self.output = config.get("features", False)
         self.image_features = config.get("image_features", False)
 
@@ -29,7 +27,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 context["all_features"] = np.empty(1)
                 return True
                 # Si no hay intervalo, se prosigue con la vectorización normal
-            all_features = self._vectorize_text(manager, context)
+            all_features = self._vectorize_text(manager)
             if all_features is None:
                 logger.error(f"No se pudo realizar vectorización")
                 return False
@@ -43,9 +41,9 @@ class Vectorizer(VectorizationAbstractWorker):
             if self.output:
                 from services.output_service import save_table_values
                 all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-                line_id = np.array([id.lineal_id for id in all_lines.values()]).astype(np.str_)
+                line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
                 features_to_ind = all_features[:, 1:].astype(np.str_)
-                features_id = np.column_stack([line_id, features_to_ind]).astype(np.str_)
+                features_id = np.column_stack([line_id, features_to_ind])
 
                 file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "vectorizer_features"
@@ -62,7 +60,7 @@ class Vectorizer(VectorizationAbstractWorker):
             logger.error(f"Error en vectorización: {e}", exc_info=True)
         return False
             
-    def _vectorize_text(self, manager: DataFormatter, context: Dict[str, Any]) -> Optional[np.ndarray[Any, Any]]:
+    def _vectorize_text(self, manager: DataFormatter) -> Optional[np.ndarray[Any, Any]]:
         try:
             all_lines_dict = manager.workflow.all_lines if manager.workflow else {}
             
@@ -144,14 +142,14 @@ class Vectorizer(VectorizationAbstractWorker):
                         sc = polygons_dict[pid_str].semantic_clasification
                         sc_count += self.count_numeric_tokens(sc)
                 
-                # Cuenta dígitos en el texto de la línea (+1.0 para coincidir con vectorize.py)
                 line_text = getattr(line_data, "text", "")
-                dcount = sum(1 for ch in line_text if ch.isdecimal())
+                dcount = sum(1 for ch in line_text if ch.isdecimal() or ch in "$,")
+                logger.info(f"CONTEO DE NUMERICOS: {line_text}")
                 features_list.append([sc_count, dcount])
 
-            features = np.array(features_list).astype(np.float32)
+            features = np.array(features_list, np.float32)
             
-            if len(features) == 0:
+            if features.shape[0] == 0:
                 return np.zeros(0, dtype=np.float32)
 
             numerics = np.nonzero(features[:, 0])[0]
@@ -190,7 +188,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     has_digit
                     ])
                     
-            return np.ascontiguousarray(textual_features, dtype=np.float32)
+            return np.array(textual_features, dtype=np.float32)
         
         except Exception as e:
             logger.warning(f"Error en features de lineas: {e}", exc_info=True)
@@ -212,7 +210,7 @@ class Vectorizer(VectorizationAbstractWorker):
         angle = np.degrees(np.arctan2(height, width))
         slope = (width / height)
 
-        return np.ascontiguousarray(np.column_stack([
+        return np.column_stack([
             line_index.astype(np.int32),     # [0] line_index
             width,          # [1] width
             height,         # [2] height
@@ -224,10 +222,10 @@ class Vectorizer(VectorizationAbstractWorker):
             slope,          # [8] slope
             centroid[:, 0],             # [9] centroide x
             centroid[:, 1]  # [10] centroide y
-        ]))
+        ])
             
     def calculate_global_stats(self, geoline_features: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
-        return np.ascontiguousarray(np.column_stack([
+        return np.column_stack([
             np.max(geoline_features[:, 1]),      # [0] Ancho máximo de los bounding boxes de las líneas 
             np.max(geoline_features[:, 3]),      # [1] Área máxima cubierta por los bounding boxes de las líneas
             np.max(geoline_features[:, 4]),      # [2] Perímetro máximo entre los bounding boxes de las líneas
@@ -242,7 +240,7 @@ class Vectorizer(VectorizationAbstractWorker):
             np.median(geoline_features[:, 6]),   # [10] Mediana de la longitud diagonal de los bounding boxes de las líneas
             np.median(geoline_features[:, 7]),   # [11] Mediana del ángulo de inclinación de las líneas
             np.median(geoline_features[:, 8])    # [12] Mediana del valor de pendiente de las líneas
-        ]))
+        ])
 
     def calculate_all_features(self, sorted_lines: List[AllLines], geoline_features: np.ndarray[Any, Any], global_stats: np.ndarray[Any, np.dtype[np.float32]], manager: DataFormatter)-> np.ndarray[Any, Any]:
         img_dims: List[int] = manager.workflow.metadata.img_dims if manager.workflow else []
@@ -376,7 +374,7 @@ class Vectorizer(VectorizationAbstractWorker):
     
         line_ind = geoline_features[:, 0]
 
-        all_features = np.ascontiguousarray(np.column_stack([
+        all_features = np.column_stack([
             line_ind.astype(np.int32), # [0] Índice de línea
             bbox_height_inv,     # [1] height normalized/inverse median
             bbox_h_dif,          # [2] diferencia de height vs mediana
@@ -408,12 +406,10 @@ class Vectorizer(VectorizationAbstractWorker):
             next_xmax_align,     # [28] 
             align_prev,          # [29] 
             align_next           # [30]
-        ]))
+        ])
         return all_features
                 
     def count_numeric_tokens(self, semantic_clasification: int | List[int]) -> int:
-        sc = np.array(semantic_clasification, np.int8)
-        mask = (sc  < 3) & (sc > 0)
-        ncounts = np.nonzero(sc==mask)[0]
-     #   logger.info(f"{len(ncounts)}")
-        return len(ncounts)
+        sc = np.asarray(semantic_clasification, dtype=np.int8)
+        mask = (sc > 0) & (sc < 3)  # cuenta 1 y 2
+        return int(np.count_nonzero(mask))

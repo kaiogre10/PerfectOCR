@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 import logging
 import time
 from datetime import datetime
@@ -22,8 +21,6 @@ class ImageLoader(ImagePrepAbstractWorker):
         """Carga la imagen y extrae metadatos."""
         time0 = time.perf_counter()
         
-        # En el nevo esquema, la data viene en 'context' alimentada por el Process Builder.
-        # Conservamos compatibilidad por si se inicializó en el init
         image_info = context.get("image_data", self.image_data)
         
         # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
@@ -40,13 +37,11 @@ class ImageLoader(ImagePrepAbstractWorker):
                 # cv2.imread ya retorna uint8, no necesita .astype()
                 full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
             else:
-                # Fallback para formatos exóticos
-                from PIL import Image
-                pil_img = Image.open(input_path).convert('RGB')
-                full_image = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+                logger.error(f"Formato de imagen no válida: {image_name}")
+                return False
 
             if full_image is None:
-                logger.error(f"No se cargó: '{image_name}{extension}'")
+                logger.error(f"No se pudo cargar: '{image_name}{extension}'")
                 return False
                 
             full_img = decolorate(full_image)
@@ -59,7 +54,7 @@ class ImageLoader(ImagePrepAbstractWorker):
                 "date_creation": now.isoformat()
             }
             
-            IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:03d}"
+            IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:04d}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
                 logger.debug(f"'{image_name}' cargada en {time.perf_counter() - time0:.4f}s")

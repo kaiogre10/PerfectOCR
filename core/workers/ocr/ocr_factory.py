@@ -5,7 +5,6 @@ from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from core.workers.ocr.text_refiner import Refiner
 from core.workers.ocr.text_cleaner import TextCleaner
-from core.workers.ocr.semantic_clasificator import SemanticClasificator
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.data_finder import DataFinder
@@ -22,15 +21,12 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         if self._shared_refiner_workers is None:
             if self._create_refiners:
                 self._shared_refiner_workers = {
-                    "clasificator": SemanticClasificator(config=self.module_config, project_root=self.project_root),
                     "cleaner": TextCleaner(config=self.module_config, project_root=self.project_root),
                     "fragmenter": Fragmenter(config=self.module_config, project_root=self.project_root),
                     "corrector": TextCorrector(config=self.module_config, project_root=self.project_root)
                 }
             else:
-                self._shared_refiner_workers = {
-                    "clasificator": SemanticClasificator(config=self.module_config, project_root=self.project_root),
-                }
+                self._shared_refiner_workers = {}
         return self._shared_refiner_workers
     
     def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], OCRAbstractWorker]]:
@@ -48,7 +44,6 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         return Refiner(
             config=self.module_config, 
             project_root=self.project_root,
-            clasificator=workers["clasificator"],  #type: ignore
             cleaner=workers.get("cleaner"),  #type: ignore
             corrector=workers.get("corrector"),  #type: ignore
             fragmenter=workers.get("fragmenter"),  #type: ignore

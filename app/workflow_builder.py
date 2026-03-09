@@ -12,7 +12,6 @@ class WorkFlowBuilder:
     """
     def __init__(self, builder_config: Dict[str, Any], project_root: str, input_paths: List[str] | str):
         self.project_root = project_root
-        self.small_batch_limit: int = builder_config.get('small_batch_limit', 0)
         self.valid_extensions = builder_config['valid_image_extensions']
         self.input_paths = input_paths
         
@@ -82,13 +81,10 @@ class WorkFlowBuilder:
                             seen_names.add(name)
 
             num_images = len(image_info)
-            use_batch = num_images > self.small_batch_limit
-            mode = 'batch' if use_batch else 'interactive'
-            logger.debug(f"Número de imágenes: {num_images}, modo: {mode}")
+            logger.info(f"Número de imágenes: {num_images}")
 
             return {
                 "total_images": num_images,
-                "mode": mode,
                 "image_info": image_info,
             }
         

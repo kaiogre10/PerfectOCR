@@ -443,7 +443,8 @@ SPECIAL_CHARS: Set[str] = {
 
 NUMERIC_CORRECTIONS: Dict[str, str] = {
     "Q": "0",
-    "C": "0",
+    "C": "6",
+    "(": "6",
     "q": "9",
     "O": "0",
     "o": "0",

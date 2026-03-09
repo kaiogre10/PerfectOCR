@@ -44,9 +44,6 @@ class OutputFlags(ConfigWithNumpy):
     ocr_outputs: OCROutputs
     vectorization_outputs: VectorizingOutputs
     
-class Processing(ConfigWithNumpy):
-    small_batch_limit: int
-
 class ModelsConfig(ConfigWithNumpy):
     use_angle_cls: bool
     lang: str
@@ -148,25 +145,13 @@ class TextualCleanConfig(ConfigWithNumpy):
     min_char: int
     min_confidence: float
     min_conf_to_clean: float
-
-class SemanticClasificator(ConfigWithNumpy):
-    semantic_range: Tuple[float, float]
-    encode_mean: Tuple[float, float]
-    morph_mean: Tuple[float, float]
             
 class TextRefiner(ConfigWithNumpy):
     num_passes: int
-    c_value: int
-    height_thresholds_px: List[int]
-    block_sizes_map: List[int]
-    min_area_factor: float
-    k_sigma: float
     min_cc_for_frag: int
-    min_gap_outlier: float
-    density_threshold: float
-    width_var_threshold: float
-    solidity_threshold: float
-    connectivity: int
+    semantic_range: Tuple[float, float]
+    encode_mean: Tuple[float, float]
+    morph_mean: Tuple[float, float]
 
 class TextCorrector(ConfigWithNumpy):
     confidence_threshold: float
@@ -178,7 +163,6 @@ class OCRConfig(ConfigWithNumpy):
     paddle_wrapper: PaddleTranscription
     text_refiner: TextRefiner
     text_cleaner: TextualCleanConfig
-    semantic_clasificator: SemanticClasificator
     text_corrector: TextCorrector
 
 class Lineal(ConfigWithNumpy):
@@ -197,12 +181,8 @@ class CosineSimilarity(ConfigWithNumpy):
     interval: int
     dummie_weights: Tuple[float, float]
 
-class Vectorizer(ConfigWithNumpy):
-    exclude_types: List[str]
-
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
-    vectorizer: Vectorizer
     cos_sim: CosineSimilarity
     math_max: MathMaxConfig
     table_structurer: TableStructurer
@@ -229,7 +209,6 @@ class PipelineConfig(ConfigWithNumpy):
 class MasterConfig(ConfigWithNumpy):
     pipeline_secuence: PipelineConfig
     enabled_outputs: OutputFlags
-    processing: Processing
     models_config: ModelsConfig
     modules: ModulesConfig
     utils: UtilsConfig

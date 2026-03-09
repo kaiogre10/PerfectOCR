@@ -10,8 +10,10 @@ logger = logging.getLogger(__name__)
 secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s$]{2,}')
 _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0-9\s$]{2,}(?=[a-zA-Z0-9$])')
 
+_numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
+
 _punt_split_pattern: Pattern[str] = re.compile(r'([.,;:!?])')
-_punt_detect_pattern: Pattern[str] = re.compile(r'[\s\.\-_,;:]+')
+_punt_detect_pattern: Pattern[str] = re.compile(r'[\s\.\-_,;:=]+')
 
 # Espacios múltiples
 _spaces_pattern: Pattern[str] = re.compile(r'\s+')
@@ -85,33 +87,40 @@ def termination_detect(text: str) -> bool:
     
 def find_date(s: str) -> bool:
     try:
-        if not validate_text(s):
+        if not s:
             return False
-        return any(p.search(s) for p in _date_patterns)
-    except Exception as e:
+        if any(p.search(s) for p in _date_patterns):
+            return True
+    except TypeError as e:
         logger.error(f"Error buscando fecha: {e}", exc_info=True)
-        return False
+    return False
     
 def is_acronym(text: str) -> bool:
     try:
-        if not validate_text(text):
+        if not text:
             return False
-        return bool(_acronym_pattern.search(text.strip()))
+        if _acronym_pattern.search(text):
+            return True
     except Exception as e:
         logger.error(f"Error buscando siglas: {e}", exc_info=True)
     return False
 
 def find_umd(s: str) -> bool:
     try:
-        if not validate_text(s):
+        if not s:
             return False
-        return any(p.search(s) for p in _umd_patterns)
+        
+        if any(p.search(s) for p in _umd_patterns):
+            return True        
     except Exception as e:
         logger.warning(f"Error buscando unidades de medida: {e}", exc_info=True)
-        return False
+    return False
     
 def find_rfc(s: str) -> bool:
     try:
+        if not s:
+            return False
+        
         if _rfc_word_pattern.search(s):
             return True
         return bool(_rfc_code_pattern.search(s))
@@ -121,12 +130,15 @@ def find_rfc(s: str) -> bool:
 
 def find_iva(s: str) -> bool:
     try:
-        if is_acronym(s):
-            return bool(_iva_pattern.search(s))
+        if not s:
+            return False
+        
+        if _iva_pattern.search(s):
+            return True
         return False
     except Exception as e:
         logger.warning(f"Error buscando IVA: {e}", exc_info=True)
-        return False
+    return False
         
 def contains_quantitative(s: str) -> bool:
     """
@@ -178,9 +190,7 @@ def find_quantitative(s: str) -> bool:
 
 def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
     s = (s or "").strip()
-    if not validate_text(s):
-        return []
-
+    
     runs: List[Tuple[int, int, str]] = []
     s_norm = s.replace("o", "0").replace("O", "0")
 
@@ -204,10 +214,7 @@ def separate_punt(text: str) -> List[str]:
 def detect_punt(text: str) -> bool:
     return _punt_detect_pattern.fullmatch(text) is not None
 
-def remove_special_sequences(text: str) -> str:
-    if not validate_text(text):
-        return ""
-    
+def remove_special_sequences(text: str) -> str:    
     cleaned = _sequence_middle_pattern.sub(' ', text)
     cleaned = secuence_pattern.sub('', cleaned)
     return cleaned.strip()
@@ -217,9 +224,6 @@ def is_special_sequence(text: str) -> bool:
     Devuelve True si el texto completo consiste ÚNICAMENTE en una secuencia 
     de 2 o más caracteres especiales consecutivos (ruido de OCR).
     """
-    if not validate_text(text):
-        return False
-
     # Usamos fullmatch para asegurar que TODO el string sea la secuencia de ruido
     # Reutilizamos tu lógica: no alfanuméricos excluyendo espacio y $
     # {2,} asegura que sean 2 o más.
@@ -236,6 +240,7 @@ def valid_punt_chars() -> Set[str]:
     return not_valid_punt_chars.union(not_valid_chars)
 
 def validate_alone_chars(text: str) -> bool:
+    """Valida si un caracter solitario es válido o es ruido"""
     text = text.strip().lower()
     if len(text) > 1:
        return True
@@ -313,3 +318,54 @@ def detect_special_strings(text: str) -> bool:
     # Buscamos al menos un caracter que sea letra o número
     # Cualquier cosa que no tenga letras (incluidas con acento) ni números es ruido
     return not any(char.isalnum() for char in text)
+
+def numeric_separator(token: str) -> str:
+    """
+    Normaliza separadores numéricos en montos cuantitativos.
+
+    Ejemplo:
+        3.226.66 -> 3,226.66
+    """
+    try:
+        if not validate_text(token):
+            return token
+
+        t = token.strip()
+        if not find_quantitative(t):
+            return token
+
+        match = _numeric_separator.match(t)
+        if not match:
+            return token
+
+        prefix, number, suffix = match.groups()
+        separators = [i for i, ch in enumerate(number) if ch in ".,"]
+        if not separators:
+            return token
+
+        last_sep = separators[-1]
+        frac = number[last_sep + 1 :]
+        if not (frac.isdigit() and len(frac) == 2):
+            return token
+
+        int_digits = re.sub(r"[.,]", "", number[:last_sep])
+        sign = ""
+        if int_digits.startswith("-"):
+            sign = "-"
+            int_digits = int_digits[1:]
+
+        if not int_digits:
+            return token
+
+        groups: List[str] = []
+        while len(int_digits) > 3:
+            groups.append(int_digits[-3:])
+            int_digits = int_digits[:-3]
+        groups.append(int_digits)
+
+        int_grouped = ",".join(reversed(groups))
+        return f"{prefix}{sign}{int_grouped}.{frac}{suffix}"
+
+    except Exception as e:
+        logger.warning(f"Error normalizando separadores numéricos: {e}", exc_info=True)
+        return token

@@ -16,15 +16,15 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    # - "paddle_wrapper"
+    - "paddle_wrapper"
     - "text_refiner"
     # - "data_finder"
     
   vector_stage:
-    # - "lineal"
+    - "lineal"
     - "vectorizer"
-    - "cos_sim"
-    - "table_structurer"
+    # - "cos_sim"
+    # - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -84,10 +84,6 @@ models_config:
   wf_model_path: "C:/PerfectOCR/data/models/wf/wf_model.pkl"
   set_wf_params: False
   
-# Configuración de procesamiento
-processing:
-  small_batch_limit: 5
-
 modules:
   image_preparation:
 
@@ -156,28 +152,16 @@ modules:
       
     text_refiner:
       num_passes: 1
-      c_value: 7
-      height_thresholds_px: [100, 800, 1500, 2500]
-      block_sizes_map: [15, 21, 25, 35, 41]
-      min_area_factor: 0.015
-      k_sigma: 1.25
+      semantic_range: [45.0, 66.5] # Cantidad de digitos
+      encode_mean: [25.1, 39.1] # Promedio de densidad
+      morph_mean: [-0.3, 0.35] # Promedio morfológico
       min_cc_for_frag: 2
-      min_gap_outlier: 0.5
-      density_threshold: 0.75
-      width_var_threshold: 0.15
-      solidity_threshold: 0.30
-      connectivity: 8
   
     text_cleaner:
       min_probability: 75.0
       min_char: 2
       min_confidence: 60.0
       min_conf_to_clean: 90.2
-    
-    semantic_clasificator:
-      semantic_range: [45.0, 66.5] # Cantidad de digitos
-      encode_mean: [25.1, 39.1] # Promedio de densidad
-      morph_mean: [-0.3, 0.35] # Promedio morfológico
 
     text_corrector:
       confidence_threshold: 0.902
@@ -187,17 +171,6 @@ modules:
       get_vectors: True
       overlap_threshold: 0.596
       
-    vectorizer:
-      exclude_types: [
-        "descriptive",
-        "code", 
-        "umd"
-      ]
-      include_types: [
-        "numeric",
-        "quantitative"
-      ]      
-
     cos_sim:
       metric: "euclidean"
       eps: 1.5

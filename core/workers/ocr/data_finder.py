@@ -71,8 +71,8 @@ class DataFinder(OCRAbstractWorker):
                 if not isinstance(sc, list):
                     sc = [sc]
 
-                sc_array = np.array(sc, np.int32)
-                sc_real = np.mean(sc_array).astype(np.int32)
+                sc_array = np.array(sc, np.int8)
+                sc_real = np.mean(sc_array).astype(np.int8)
 
                 if sc_real == 2:
                     logger.debug(f"{pid} omitido cuantitativo sc= '{ocr_text}': ")

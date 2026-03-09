@@ -7,7 +7,7 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from services.output_service import save_raw_json
-from core.utils.text_utils import validate_text
+from core.utils.text_utils import space_removal
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             if reconsturctued_lines is None:
                 logger.error("LinealReconstructor: Error al guardar lineas de texto en el workflowdict")
                 return False
+            
             lines_info, table_range = reconsturctued_lines
             logger.debug(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
 
@@ -119,8 +120,9 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     line_index = line_counter
                     polygons_index = [p.poly_index for p in current_line_polys]
                     texts = [p.ocr_text or "" for p in current_line_polys]
-                    header_line = line_counter if headers.issubset(set(polygons_index)) else None
-                    footer_line = line_counter if footers.issubset(set(polygons_index)) else None
+
+                    header_line = line_counter if (headers and headers.issubset(set(polygons_index))) else None
+                    footer_line = line_counter if (footers and footers.issubset(set(polygons_index))) else None
                      
                     tabular_line: bool = False
 
@@ -142,8 +144,10 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
                     joined_text = " ".join(texts).strip()
 
+                    joined_text = space_removal(joined_text)
+
                     # Validar el texto antes de crear la entrada
-                    if not validate_text(joined_text):
+                    if not joined_text:
                         # Si no es válido, iniciar una nueva línea sin incrementar el contador
                         current_line_polys = [poly]
                         current_line_bbox = list(bbox)
@@ -183,8 +187,9 @@ class LinealReconstructor(VectorizationAbstractWorker):
             polygons_index = [p.poly_index for p in current_line_polys]
             texts = [p.ocr_text or "" for p in current_line_polys]
             joined_text = " ".join(texts).strip()
+            joined_text = space_removal(joined_text)
             
-            footer_line = line_counter if footers.issubset(set(polygons_index)) else None
+            footer_line = line_counter if (footers and footers.issubset(set(polygons_index))) else None
             if footer_line is not None:
                 footer_idx += footer_line
                 tabular_line =False
@@ -192,7 +197,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             tabular_line = False if footer_idx > 0 or header_idx == 0 else True
             
             # Validar también el texto de la última línea
-            if validate_text(joined_text): #type: ignore
+            if joined_text:
                 current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
                 lines_bbox.append(current_line_bbox)
                 

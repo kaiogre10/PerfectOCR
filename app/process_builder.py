@@ -1,7 +1,6 @@
 # PerfectOCR/app/process_builder.py
-import time
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
@@ -11,24 +10,31 @@ from core.domain.data_formatter import DataFormatter
 logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
-    """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados ycoordina el procesamiento técnico de una sola imagen."""    
-    def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: Optional[PreprocessingStager], ocr_stager: Optional[OCRStager], vectorization_stager: Optional[VectorizationStager] ,manager: DataFormatter):
-        self.manager = manager
+    """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y coordina el procesamiento técnico de una sola imagen."""    
+    def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: Optional[PreprocessingStager], ocr_stager: Optional[OCRStager], vectorization_stager: Optional[VectorizationStager]):
+        # Se elimina self.manager del init. Ahora se crea por imagen.
         self.input_stager = input_stager
         self.preprocessing_stager = preprocessing_stager
         self.ocr_stager = ocr_stager
         self.vectorization_stager = vectorization_stager
         
-    def process_single_image(self) -> Optional[DataFormatter]:
+    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[DataFormatter]:
         """
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
+        Recibe image_data para configurar el contexto de esta ejecución específica.
         """
         try:
-            workflow_start = time.perf_counter()
+            # Crear instancia fresca de DataFormatter para esta imagen
             manager = DataFormatter()
             
+            # Crear contexto para esta ejecución
+            context: Dict[str, Any] = {
+                "image_data": image_data
+            }
+            
             # FASE 1: Preparación de imagen (usa execute() del AbstractStager)
-            manager, time_poly = self.input_stager.execute(manager)
+            # Pasamos contexto que incluye image_data para que el ImageLoader sepa qué cargar
+            manager, time_poly = self.input_stager.execute(manager, context)
             if manager is None:
                 logger.error("Fallo en fase de preparación")
                 return None
@@ -36,7 +42,7 @@ class ProcessingBuilder:
 
             # FASE 2: Preprocesamiento (usa execute() del AbstractStager)
             if self.preprocessing_stager is not None:
-                manager, elapsed = self.preprocessing_stager.execute(manager)
+                manager, elapsed = self.preprocessing_stager.execute(manager, context)
                 if manager is None:
                     logger.error("Fallo en preprocesamiento")
                     return None
@@ -44,7 +50,7 @@ class ProcessingBuilder:
 
             # FASE 3: OCR (usa execute() del AbstractStager)
             if self.ocr_stager is not None:
-                manager, ocr_time = self.ocr_stager.execute(manager)
+                manager, ocr_time = self.ocr_stager.execute(manager, context)
                 if manager is None:
                     logger.error("Fallo en OCR")
                     return None
@@ -52,14 +58,11 @@ class ProcessingBuilder:
                     
             # FASE 4: Vectorización (usa execute() del AbstractStager)
             if self.vectorization_stager is not None:
-                manager, vect_time = self.vectorization_stager.execute(manager)
+                manager, vect_time = self.vectorization_stager.execute(manager, context)
                 if manager is None:
                     logger.error("Fallo en vectorización")
                     return None
                 logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
-            
-            total_workflow_time = time.perf_counter() - workflow_start
-            logger.debug(f"Procesamiento completado en {total_workflow_time:.6f}s")
 
             return manager
             

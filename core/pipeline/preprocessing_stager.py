@@ -10,26 +10,30 @@ logger = logging.getLogger(__name__)
 class PreprocessingStager(AbstractStager):
     """Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente."""
 
-    def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+    def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         """Ejecuta la fase de preprocesamiento completa."""
-        return self.apply_preprocessing_pipelines(manager)
+        return self.apply_preprocessing_pipelines(manager, context)
 
-    def apply_preprocessing_pipelines(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+    def apply_preprocessing_pipelines(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.time()
+        
+        # Base context setup
+        exec_context: Dict[str, Any] = context.copy() if context else {}
+        if "output_paths" not in exec_context:
+            exec_context["output_paths"] = self.output_paths
+        if "project_root" not in exec_context:
+            exec_context["project_root"] = self.project_root
+
             # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.time()
             worker_name = worker.__class__.__name__
             logger.debug(f"Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
                     
-            context: Dict[str, Any] = {
-                "worker_name": worker_name,
-                "output_paths": self.output_paths,
-                "project_root": self.project_root
-            }
+            exec_context["worker_name"] = worker_name
                 
             # Worker procesa esta imagen específica
-            if not worker.preprocess(context, manager):
+            if not worker.preprocess(exec_context, manager):
                 logger.error(f"Worker {worker_name} falló", exc_info=True)
                 return None, 0.0
 

@@ -35,25 +35,25 @@ class AngleCorrector(ImagePrepAbstractWorker):
             if full_image is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
+            
             logger.debug("Full_img obtenida con éxito")
 
             full_img, corrected = self.correct_angle(full_image, manager)
 
-            if self.output and corrected:
-                from services.output_service import save_croped_image
-                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                worker_name = context.get("worker_name") or "angle_corrector"
-                output_paths = context["output_paths"]
-                img_id = f"full_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, img_id, full_img, output_paths, worker_name)
+            if corrected:
+                if self.output:
+                    from services.output_service import save_croped_image
+                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                    worker_name = context.get("worker_name") or "angle_corrector"
+                    output_paths = context["output_paths"]
+                    img_id = f"full_img_{image_name}_{worker_name}"
+                    save_croped_image(image_name, img_id, full_img, output_paths, worker_name)
 
-            elif corrected:
                 if manager.update_full_img(corrected, full_img):
                     logger.debug(f"Imagen rotada actuallizada con éxito.")
-            
-            if not manager.update_full_img(corrected, full_img):
-                logger.error(f"Error al actualizar la imagen corregida en el manager")
-                return False
+                else:
+                    logger.error(f"Error al actualizar la imagen corregida en el manager")
+                    return False
             
             return True
             

@@ -10,24 +10,28 @@ logger = logging.getLogger(__name__)
 class ImagePreparationStager(AbstractStager):
     """Stager de preparación de imágenes."""
     
-    def execute(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+    def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         """Ejecuta la fase de preparación completa."""
-        return self.prepare_image(manager)
+        return self.prepare_image(manager, context)
 
-    def prepare_image(self, manager: DataFormatter) -> Tuple[Optional[DataFormatter], float]:
+    def prepare_image(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
-        context: Dict[str, Any] = {
-                "output_paths": self.output_paths
-        }
+        
+        # Usar contexto base si existe, sino crear uno nuevo
+        exec_context: Dict[str, Any] = context.copy() if context else {}
+        
+        # Asegurar output_paths en el contexto
+        if "output_paths" not in exec_context:
+            exec_context["output_paths"] = self.output_paths
 
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.perf_counter()
             worker_name = worker.__class__.__name__
             logger.debug(f"Ejecutando worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
 
-            context["worker_name"] = worker_name  # Actualiza el nombre en cada iteración
+            exec_context["worker_name"] = worker_name  # Actualiza el nombre en cada iteración
 
-            if not worker.process(context, manager):
+            if not worker.process(exec_context, manager):
                 logger.error(f"Fallo en {worker.__class__.__name__}", exc_info=True)
                 return None, 0.0
             

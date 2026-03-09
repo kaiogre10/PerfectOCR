@@ -21,7 +21,7 @@ class AbstractStager(ABC):
         self.project_root = project_root
     
     @abstractmethod
-    def execute(self, manager: 'DataFormatter') -> Tuple[Optional['DataFormatter'], float]:
+    def execute(self, manager: 'DataFormatter', context: Optional[Dict[str, Any]] = None) -> Tuple[Optional['DataFormatter'], float]:
         """
         Ejecuta el stage completo.
         Retorna: (manager actualizado o None, tiempo de ejecución)

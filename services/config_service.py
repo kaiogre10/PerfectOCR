@@ -1,6 +1,7 @@
 # services/config_service.py
 import yaml
 from typing import Dict, Any, cast, List, Set, Tuple
+from functools import cached_property
 from config.config_models import MasterConfig
 import logging
 
@@ -47,28 +48,15 @@ class ConfigService:
             logger.error(f"Error validando configuración desde {config_path}: {e}")
             raise
     
-    @property
-    def processing_config(self) -> Dict[str, Any]:
-        """Obtiene configuración de procesamiento."""
-        processing = dict(self.config.get("processing", {}))
-        valid_ext = self.utils_config.get("valid_image_extensions", ())
-        if isinstance(valid_ext, str):
-            valid_ext = (valid_ext,)
-        else:
-            valid_ext = tuple(valid_ext)
-
-        processing["valid_image_extensions"] = valid_ext
-        return processing
-
-    @property
+    @cached_property
     def enabled_outputs(self) -> Dict[str, Any]:
         return self.config.get("enabled_outputs", {})
     
-    @property
+    @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
 
-    @property
+    @cached_property
     def models_config(self) -> Dict[str, Any]:
         ocr_active = not self.ocr_workers.isdisjoint(self.all_workers)
 
@@ -76,7 +64,7 @@ class ConfigService:
             logger.debug("Sin all workers")
             return {}
 
-        # 1. Definir banderas lógicas corregidas:
+        # 1. Definir banderas lógicas:
         # Detección: Lo necesita GeometryDetector para encontrar las cajas.
         activate_det = "geometry_detector" in self.all_workers
         
@@ -239,22 +227,12 @@ class ConfigService:
 
         return all_workers
         
-    def log_active_areas(self) -> str:
+    def log_active_areas(self):
         stages_list: List[str] = []
-        
         for stage, stager in self.manager_config.items():
             if not stager:
                 continue
+            stage = stage.replace("_", " ", 1).title()
+            stages_list.append(stage)
             
-            workers: List[str] = []
-            for order_key in self.workers_order.keys():
-                if order_key in stager:
-                    workers = stager[order_key]
-                    break
-            
-            stage_title = stage.replace("_", " ", 1).title()
-            workers_str = ", ".join(workers)
-            
-            stages_list.append(f"{stage_title}: [{workers_str}]")
-            
-        return " | ".join(stages_list)
+        return ", ".join(stages_list)

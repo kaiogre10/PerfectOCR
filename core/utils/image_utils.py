@@ -1,3 +1,4 @@
+
 import cv2
 import numpy as np
 from typing import Any, Optional, List, Dict, Tuple
@@ -5,6 +6,13 @@ import logging
 from skimage.filters import threshold_sauvola #type: ignore
 
 logger = logging.getLogger(__name__)
+
+def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    # Asegurar contigüidad para OpenCV
+    if not img_arr.flags['C_CONTIGUOUS']:
+        return np.ascontiguousarray(img_arr)
+    else:
+        return img_arr
 
 def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     """
@@ -62,22 +70,18 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
                 except Exception:
                     return None
 
-        # Asegurar contigüidad para OpenCV
-        if not img_arr.flags['C_CONTIGUOUS']:
-            img_arr = np.ascontiguousarray(img_arr)
-            logger.info("normalice_image: imagen hecha contigua en memoria")
-
+        img_arr = make_contiguous(img_arr)
         # Logueo detallado para trazabilidad
         try:
             vmin = int(img_arr.min()); vmax = int(img_arr.max()); vmean = float(img_arr.mean())
         except Exception:
             vmin = vmax = None; vmean = None
 
-        logger.debug(
-            "normalice_image: id=%d shape=%s dtype=%s min=%s max=%s mean=%s",
-            id(img_arr), getattr(img_arr, "shape", None), getattr(img_arr, "dtype", None),
-            vmin, vmax, f"{vmean:.2f}" if vmean is not None else None
-        )
+        # logger.debug(
+        #     "normalice_image: id=%d shape=%s dtype=%s min=%s max=%s mean=%s",
+        #     id(img_arr), getattr(img_arr, "shape", None), getattr(img_arr, "dtype", None),
+        #     vmin, vmax, f"{vmean:.2f}" if vmean is not None else None
+        # )
     
         return img_arr # type: ignore
         
@@ -86,13 +90,10 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
     return None
 
 def elevate_dims(img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-    if not img.flags['C_CONTIGUOUS']:
-        img = np.ascontiguousarray(img)
-        logger.info("normalice_image: imagen hecha contigua en memoria")
     return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
 def calculate_img_values(img: np.ndarray[Any, Any]):
-    img_mean = np.mean(img).astype(np.uint8)
+    img_mean = np.mean(img)
     img_dims = img.shape[:2]
     return int(img_mean), img_dims
 
@@ -242,19 +243,13 @@ def decolorate(full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any,
     full_img[~mask_valid] = [255, 255, 255]
 
     # Convierte a escala de grises para continuar el flujo normal
-    gray = normalice_image(full_img)
-
-    kernel1 = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 1))
-    kernel2 = cv2.getStructuringElement(cv2.MORPH_CROSS, (1, 3))
-    
+    gray = normalice_image(full_img)    
     if gray is not None:
-        # opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel1, iterations=2)
-        # return cv2.morphologyEx(opened, cv2.MORPH_OPEN, kernel2, iterations=2).astype(np.uint8)
         return gray
         
     else:
         logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
-        return cv2.cvtColor(full_img.copy(), cv2.COLOR_BGR2GRAY).astype(np.uint8)
+        return cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
         # return cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel1, iterations=2, borderType=cv2.BORDER_REPLICATE).astype(np.uint8)
 
 def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:

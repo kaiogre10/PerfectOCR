@@ -8,7 +8,7 @@ from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import extract_contours_metrics
 from core.utils.math_utils import extract_contours_histogram
-from services.output_service import save_croped_image, save_shapes
+from services.output_service import save_shapes, save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -68,12 +68,12 @@ class InkCorrector(ImagePrepAbstractWorker):
                     worker_name = context.get("worker_name") or "inker"
                     output_paths = context["output_paths"]
                     
-                    imag_id = f"corrected_blobs_{image_name}_{worker_name}"
+                    # imag_id = f"corrected_blobs_{image_name}_{worker_name}"
                     image_id = f"outliers_{image_name}_{worker_name}"
-                    id = f"bin_gap_{image_name}_{worker_name}"
-                    gaps_id = f"gaps_{image_name}_{worker_name}"
-                    img_id = f"bin_correct_{image_name}_{worker_name}"
-                    all_cont_id = f"all_contours_{image_name}_{worker_name}"
+                    # id = f"bin_gap_{image_name}_{worker_name}"
+                    # gaps_id = f"gaps_{image_name}_{worker_name}"
+                    # img_id = f"bin_correct_{image_name}_{worker_name}"
+                    # all_cont_id = f"all_contours_{image_name}_{worker_name}"
             
                     # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
                     # save_croped_image(image_name, id, bin_gap, output_paths, worker_name)
@@ -91,56 +91,59 @@ class InkCorrector(ImagePrepAbstractWorker):
         return True
 
     def delete_outliers(self, grey_img: np.ndarray[Any, Any]):
-        
-        # dist_thr = 8.0
-
         cont_coords_list, metrics = extract_contours_metrics(grey_img)
         # logger.info(f"Total de contornos outliers: {metrics.shape[0]}")
         area_hist = extract_contours_histogram(metrics[:, 1])
         dist_values = extract_contours_histogram(metrics[:, -1])
-        # min_side_values = extract_contours_histogram(metrics[:, 17])
 
         area_outliers = area_hist[0]
         dist_var_outliers = dist_values[0]
-        # dist_var_ratio = min_side_values[1]
+
+        # 1. Outliers de Área
         if area_outliers < 1:
             out_index = {-1}
-
         else:
             top_areas = np.sort(metrics[:, 1])[::-1][:area_outliers]
             outlier_mask = (metrics[:, 1] >= (np.min(top_areas) - 0.1))
-            child_metric = np.compress(outlier_mask, metrics, 0)
-            child_metrics = np.compress(child_metric[:, 11] == 1, child_metric[:, 0], 0)
-            out_index: Set[int] = set(child_metrics.astype(np.int32)) if len(child_metrics) > 0 else set()
+            child_metric = metrics[outlier_mask]
+            # Indexación booleana directa a la columna 0
+            child_metrics = child_metric[child_metric[:, 11] == 1, 0] 
+            out_index: Set[int] = set(child_metrics.astype(np.int32).tolist())
 
+        # 2. Varianza de Distancia
         med_short_side = np.median(metrics[:, 17])
-        # mean_short_side = np.mean(metrics[:, 17])
         mad = np.median(np.abs(metrics[:, 17] - med_short_side))
         
         top_dist_var = np.sort(metrics[:, -1])[::-1][:dist_var_outliers]
         dist_outlier_mask = (metrics[:, -1] > (np.min(top_dist_var) - 0.1))
 
-        dist_metrics = np.compress(dist_outlier_mask, metrics, 0)
-        var_mask = ((dist_metrics[:, 10] > self.aspect_ratio_range[0]) & ((dist_metrics[:, 17] < (med_short_side - mad)) | (dist_metrics[:, 17] > (med_short_side + mad))))
-        dist_var = np.compress(var_mask, dist_metrics[:, 0])
+        dist_metrics = metrics[dist_outlier_mask]
+        var_mask = ((dist_metrics[:, 10] > self.aspect_ratio_range[0]) & 
+                    ((dist_metrics[:, 17] < (med_short_side - mad)) | 
+                     (dist_metrics[:, 17] > (med_short_side + mad))))
+        dist_var = dist_metrics[var_mask, 0]
 
+        # 3. Shape y Líneas
         shape_mask = self.shape_thr >= metrics[:, 16]
-        irreg = np.compress(shape_mask, metrics[:, 0])
+        irreg = metrics[shape_mask, 0]
 
-        aspc_ratio_mask_high = (metrics[: ,10] > self.aspect_ratio_range[1])
-        lines = np.compress(aspc_ratio_mask_high, metrics[:, 0])
+        aspc_ratio_mask_high = (metrics[:, 10] > self.aspect_ratio_range[1])
+        lines = metrics[aspc_ratio_mask_high, 0]
 
+        # 4. Angulo y Deskew
         angle_mask1 = (metrics[:, 4] < self.angle_threshold) 
         angle_mask2 = (metrics[:, 4] > (180 - self.angle_threshold))
         
         mask_deskew = angle_mask2 | angle_mask1
 
-        vert_metrics = np.compress(~mask_deskew, metrics, 0)
+        vert_metrics = metrics[~mask_deskew]
         mask_vertical = (vert_metrics[:, 10] > self.aspect_ratio_range[1])
-        vertical = np.compress(mask_vertical, vert_metrics[:, 0])
+        vertical = vert_metrics[mask_vertical, 0]
 
-        metrics = np.compress(mask_deskew, metrics, 0)
+        # Aplicamos la máscara de deskew a metrics alterando su estado secuencialmente (como tu código original)
+        metrics = metrics[mask_deskew]
 
+        # 5. Black Ratio, Solidez y Ratio Shapes
         black_ratio = metrics[:, 15] / metrics[:, 14]
         black_ratio_mask = (black_ratio > self.black_thr)
 
@@ -150,73 +153,42 @@ class InkCorrector(ImagePrepAbstractWorker):
         aspc_ratio_mask_low = (metrics[: ,10] > self.aspect_ratio_range[0])
         mask_solidity = solid & aspc_ratio_mask_low
 
-        solidity = np.compress(mask_solidity, metrics[:, 0], 0)
+        solidity = metrics[mask_solidity, 0]
 
         ratio_1 = (metrics[:, 12] < (1.0 + self.thr)) & (metrics[:, 12] > (1.0 - self.thr)) & solid & black_ratio_mask
-        ratio_2 =  (metrics[:, 13] < (1.0 + self.thr)) & (metrics[:, 13] > (1.0 - self.thr)) & solid & black_ratio_mask
+        ratio_2 = (metrics[:, 13] < (1.0 + self.thr)) & (metrics[:, 13] > (1.0 - self.thr)) & solid & black_ratio_mask
         
-        rect1 = np.compress(ratio_1, metrics, 0)
-        rect1 = np.compress(rect1[:, 11]==1, rect1[:,0], 0)
+        rect1 = metrics[ratio_1]
+        rect1 = rect1[rect1[:, 11] == 1, 0]
 
-        rect2 = np.compress(ratio_2, metrics, 0)
-        rect2 = np.compress(rect2[:, 11]==1, rect2[:,0], 0)
+        rect2 = metrics[ratio_2]
+        rect2 = rect2[rect2[:, 11] == 1, 0]
 
-        rect1ind: Set[int] = set(rect1.astype(np.int32)) if len(rect1) > 0 else set()
-        rect2ind: Set[int] = set(rect2.astype(np.int32)) if len(rect2) > 0 else set()
-        solidity_indices: Set[int] = set(solidity.astype(np.int32)) if len(solidity) > 0 else set()
-        vertical_indices: Set[int] = set(vertical.astype(np.int32)) if len(vertical) > 0 else set()
-        lines_indices: Set[int] = set(lines.astype(np.int32)) if len(lines) > 0 else set()
-        irreg_indices: Set[int] = set(irreg.astype(np.int32)) if len(irreg) > 0 else set()
-        dist_indices: Set[int] = set(dist_var.astype(np.int32)) if len(dist_var) > 0 else set()
+        # Transformación a Sets
+        rect1ind: Set[int] = set(rect1.astype(np.int32).tolist())
+        rect2ind: Set[int] = set(rect2.astype(np.int32).tolist())
+        # solidity_indices: Set[int] = set(solidity.astype(np.int32).tolist())
+        vertical_indices: Set[int] = set(vertical.astype(np.int32).tolist())
+        lines_indices: Set[int] = set(lines.astype(np.int32).tolist())
+        irreg_indices: Set[int] = set(irreg.astype(np.int32).tolist())
+        dist_indices: Set[int] = set(dist_var.astype(np.int32).tolist())
 
         outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         outlier_cont2: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         lines_correct = 0
 
+        # Unimos las condiciones en un único set O(1) de chequeo rápido
+        group_outliers2 = out_index | irreg_indices | rect1ind | rect2ind | vertical_indices | lines_indices # | solidity_indices (la tenías comentada)
+
         for idx, cont_coords in cont_coords_list:
-
-            if idx in out_index:
+            if idx in group_outliers2:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
-                
-            elif idx in irreg_indices:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont2.append(cont_coords)
-                lines_correct += 1
-
-            elif idx in rect1ind:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont2.append(cont_coords)
-                lines_correct += 1
-
-            elif idx in rect2ind:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont2.append(cont_coords)
-                lines_correct += 1
-
-            elif idx in vertical_indices:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont2.append(cont_coords)
-                lines_correct += 1
-
-            elif idx in lines_indices:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont2.append(cont_coords)
-                lines_correct += 1
-
             elif idx in dist_indices:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont.append(cont_coords)
                 lines_correct += 1
-
-            # elif idx in solidity_indices:
-            #     cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-            #     outlier_cont2.append(cont_coords)
-            #     lines_correct += 1
-
-            else:
-                continue
 
         # logger.info(f"Outliers: {lines_correct}")
         return grey_img, outlier_cont, outlier_cont2

@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import validate_text, estandarice_uppers_lowers, termination_detect
+from core.utils.text_utils import estandarice_uppers_lowers, termination_detect, numeric_separator, validate_alone_chars, space_removal
 from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,6 @@ class TextCorrector(OCRAbstractWorker):
         self.conf_threshold = (worker_config.get("confidence_threshold") * 100.0)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-
         logger.debug(f"Inicia text_corrector")
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCorrector: No hay polígonos para procesar.")
@@ -32,15 +31,6 @@ class TextCorrector(OCRAbstractWorker):
             
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
         corrected_polygons: Dict[str, Polygons] = polygons_in
-        correction_stats: Dict[str, int] = {
-            "numeric": 0,
-            "quantitative": 0,
-            "code": 0,
-            "umd": 0,
-            "descriptive": 0,
-            "total_corrections": 0,
-            "skipped_high_confidence": 0
-        }
         
         sorted_poly_ids = sorted(polygons_in.keys())
         logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
@@ -48,20 +38,19 @@ class TextCorrector(OCRAbstractWorker):
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
             original_text = polygon.ocr_text or ""
-            confidence = polygon.ocr_confidence or 0.0
+            # confidence = polygon.ocr_confidence or 0.0
             
             # Si el texto está vacío, no hay nada que corregir
-            if not validate_text(original_text):
-                logger.info(f"Sin texto: {poly_id}: '{original_text}'")
+            if not original_text:
+                logger.debug(f"Sin texto: {poly_id}: '{original_text}'")
                 continue
 
             #token_corr = correct_termination(token)
             
-            # Filtro de confianza
-            if confidence > self.conf_threshold:
-                corrected_polygons[poly_id] = polygon
-                correction_stats["skipped_high_confidence"] += 1
-                continue
+            # # Filtro de confianza
+            # if confidence > self.conf_threshold:
+            #     corrected_polygons[poly_id] = polygon
+            #     continue
             
             # Aplicar corrección según tipo semántico
             corrected_text = self._apply_corrections(text=original_text, semantic_clasification=polygon.semantic_clasification, polygon_id=poly_id)
@@ -70,44 +59,22 @@ class TextCorrector(OCRAbstractWorker):
                 corrected_text = estandarice_uppers_lowers(original_text, corrected_text)
                 updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
                 corrected_polygons[poly_id] = updated_polygon
-                sc = polygon.semantic_clasification
-                semantic_type = "numeric" if sc == 1 else "quantitative" if sc == 2 else "descriptive" if sc == 0 else "umd" if sc == -2 else "code"
-                correction_stats[semantic_type] += 1
-                correction_stats["total_corrections"] += 1
                 
-                logger.debug(
-                    f"Corrección {poly_id}: "
-                    f"Tipo: '{semantic_type}' | "
-                    f"Confianza: '{confidence}' | "
+                logger.info(
+                    f"Corrección para '{poly_id}':"
                     f"Original: '{original_text}' → Corregido: '{corrected_text}'"
                 )
             else:
                 corrected_polygons[poly_id] = polygon
                 
         manager.workflow.polygons = corrected_polygons
-        
-        logger.debug(f"Total correcciones: {correction_stats['total_corrections']}")
-        logger.debug(
-            f"Corrección textual - "
-            f"Alta confianza omitidos: {correction_stats['skipped_high_confidence']} | "
-            f"Numeric: {correction_stats['numeric']} | "
-            f"Quantitative: {correction_stats['quantitative']} | "
-            f"Code: {correction_stats['code']} | "
-            f"UMD: {correction_stats['umd']} | "
-            f"Descriptive: {correction_stats['descriptive']}"
-        )
-
         return True
 
     def _apply_corrections(self, text: str, semantic_clasification:  List[int] | int, polygon_id: str) -> str:
-        if not validate_text(text):
-            return text
-
         tokens = text.split(' ')
         
         # Si la clasificación es una lista, debe corresponder con los tokens
         is_list_classification = isinstance(semantic_clasification, list)
-        logger.debug(f"Procesando {polygon_id}: '{text}' | Clasificación: {semantic_clasification}")
         if is_list_classification and len(semantic_clasification) != len(tokens):
             logger.debug(f"Discrepancia en {polygon_id}: {len(tokens)} tokens vs {len(semantic_clasification)} clasificaciones. No se corrige.")
             return text
@@ -118,10 +85,14 @@ class TextCorrector(OCRAbstractWorker):
             token_sc = semantic_clasification[i] if is_list_classification else semantic_clasification
 
             # Lógica de corrección principal (movida a un método auxiliar)
+            if semantic_clasification == 2:
+                token = numeric_separator(token)
+
             corrected_token = self._correct_token(token, token_sc, polygon_id)
-            corrected_tokens.append(corrected_token)
+            if corrected_token and validate_alone_chars(corrected_token):
+                corrected_tokens.append(corrected_token)
             
-        return ' '.join(corrected_tokens)
+        return space_removal(' '.join(corrected_tokens))
     
     def _correct_token(self, token: str, semantic_clasification: int, polygon_id: str) -> str:
         """Aplica correcciones a un único token basado en su clasificación semántica."""
@@ -129,39 +100,42 @@ class TextCorrector(OCRAbstractWorker):
             semantic_type = "umd" if semantic_clasification == -2 else "code"
             logger.debug(f"Omitiendo corrección de token en {polygon_id}: '{semantic_type}', '{token}'")
             return token
-            
-        # Seleccionar el diccionario de correcciones apropiado
+
         corrections_map = self._get_corrections_map(semantic_clasification)
-        
         if not corrections_map:
             return token
-            
-        # Aplicar reemplazos quirúrgicos solo si el carácter está AISLADO
-        corrected_chars = list(token)
         
+        token = token.rstrip(".")
+        
+        corrected_chars = list(token)
+
         for i, char in enumerate(token):
             if char not in corrections_map:
                 continue
 
-            # Mantener tu chequeo de aislamiento
-            if not self._is_isolated(token, i):
+            if char.isalnum() and not self._is_isolated(token, i):
                 logger.debug(f"{polygon_id}: Carácter '{char}' en '{token}' no está aislado, se omite corrección.")
                 continue
 
             if char == "0" and self.termination_correct(token, semantic_clasification):
-                replacement = 'o'
+                replacement = "o"
                 logger.debug(f"{polygon_id}: Corrección de terminación")
-
-            if char == 'S' and self._should_use_five_instead_of_dollar(token, i, semantic_clasification):
-                replacement = '5'
+            elif char == "S" and self._should_use_five_instead_of_dollar(token, i, semantic_clasification):
+                replacement = "5"
                 logger.debug(f"{polygon_id}: Regla especial S->5 en '{token}'")
             else:
                 replacement = corrections_map[char]
 
-            logger.debug(f"{polygon_id}: Corrigiendo: '{char}' => '{replacement}'en texto original: '{token}'")
+            logger.debug(f"{polygon_id}: Corrigiendo: '{char}' => '{replacement}' en texto original: '{token}'")
             corrected_chars[i] = replacement
-            
-        return ''.join(corrected_chars)
+
+        corrected_token = ''.join(corrected_chars)
+
+        # Normalizar formato numérico final: miles con coma y decimales con punto
+        if semantic_clasification == 2:
+            corrected_token = numeric_separator(corrected_token)
+
+        return corrected_token
 
     def _is_isolated(self, text: str, index: int) -> bool:
         """
@@ -247,7 +221,7 @@ class TextCorrector(OCRAbstractWorker):
         token = text[l:r+1]
 
         # Debe ser cuantitativo real (contener dígitos)
-        if not any(ch.isdigit() for ch in token):
+        if not any(ch in CHAR_NUM for ch in token):
             return False
 
         # Si 'S' está al inicio del token: NO forzar '5' (permitir '$')
@@ -257,8 +231,8 @@ class TextCorrector(OCRAbstractWorker):
         # Contexto numérico local (vecinos)
         left = text[index-1] if index-1 >= l else ' '
         right = text[index+1] if index+1 <= r else ' '
-        left_numish = left.isdigit() or left in '.,'
-        right_numish = right.isdigit() or right in '.,'
+        left_numish = left.isdecimal() or left in '.,'
+        right_numish = right.isdecimal() or right in '.,'
 
         # Si hay '$' antes en el token o está en contexto numérico → usar '5'
         has_currency_before = '$' in token[:index - l]

@@ -4,6 +4,7 @@ import cv2
 import time
 import numpy as np
 from typing import Dict, Any, Optional, List
+from core.domain.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import binarice_img, normalice_image
@@ -27,7 +28,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
     @property
     def engine(self) -> Optional[Any]:
         if self._engine is None:
-            from core.domain.models_manager import ModelsManager
             paddle_manager = ModelsManager.get_instance()
             self._engine = paddle_manager.detection_engine            
             if self._engine is None:
@@ -120,11 +120,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
             final_polygons: Dict[str, Dict[str, Any]] = {}
             for new_idx, poly_data in enumerate(final_polygons_list):
                 poly_id = f"poly_{new_idx:04d}"
-                poly_index = new_idx
                 final_polygons[poly_id] = poly_data
 
             # logger.info(f"FINAL: {final_polygons}")
-            logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
+            # logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.error("GeometryDetector: Fallo al estructurar polígonos.")

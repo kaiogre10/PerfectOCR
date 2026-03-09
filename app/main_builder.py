@@ -3,7 +3,6 @@ from typing import Optional, List, Dict, Any
 from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.stagers_factory import StagersFactory
-from core.domain.data_formatter import DataFormatter
 from services.config_service import ConfigService
 from core.domain.models_manager import ModelsManager
 from services.cache_service import cleanup_project_cache
@@ -27,7 +26,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         config_services = ConfigService(config_path, TEST_MODE)
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
-        workflow_manager = WorkFlowBuilder(builder_config=config_services.processing_config, project_root=project_root, input_paths=input_paths)
+        workflow_manager = WorkFlowBuilder(builder_config=config_services.utils_config, project_root=project_root, input_paths=input_paths)
         
         # 3. WorkflowManager analiza y reporta
         workflow_report = workflow_manager.count_and_plan()
@@ -44,13 +43,17 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
         stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=project_root)
-
-        # 6. CREAR BUILDERS USANDO LA FACTORY
-        builders = create_builders_with_factory(stagers_factory=stagers_factory, workflow_report=workflow_report, output_paths=output_paths)
         
-        # 7. Main ejecuta procesamiento
+        # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
+        # En lugar de crear una lista de builders, creamos uno solo configurado
+        processing_builder = create_single_builder(stagers_factory=stagers_factory, output_paths=output_paths)
+        if not processing_builder:
+            logger.error("No se pudo crear el ProcessingBuilder")
+            return []
+        
+        # 7. Main ejecuta procesamiento secuencial usando el builder único
         t4 = time.perf_counter()
-        results = execute_processing(builders, workflow_report)
+        results = execute_sequential_processing(processing_builder, workflow_report)
         logger.debug(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
         logger.debug(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
 
@@ -61,60 +64,60 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         logger.error(f"ERROR FATAL EN BUILDERS, FINALIZANDO PROCESO: {e}", exc_info=True)
     return []
     
-def create_builders_with_factory(stagers_factory: StagersFactory, workflow_report: Dict[str, Any], output_paths: List[str]) -> List[ProcessingBuilder]:
-    """Crea builders usando StagersFactory centralizada."""
-    builders: List[ProcessingBuilder] = []
-    image_info_list = workflow_report.get('image_info', {}) 
-
+def create_single_builder(stagers_factory: StagersFactory, output_paths: List[str]) -> Optional[ProcessingBuilder]:
+    """Crea un único builder reutilizable usando StagersFactory."""
     try:
-        for image_data in image_info_list:
-            context: Dict[str, Any] = {
-                "image_data": image_data,
-            }
-            
-            input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
-            preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
-            ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
-            vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
-           
-            # Crear DataFormatter y ProcessingBuilder
-            manager = DataFormatter()
-
-            builder = ProcessingBuilder(
-                input_stager=input_stager,
-                preprocessing_stager=preprocessing_stager,
-                ocr_stager=ocr_stager,
-                vectorization_stager=vectorization_stager,
-                manager=manager
-            )
-            builders.append(builder)
-
-        return builders
+        # Contexto inicial genérico (se enriquecerá en cada ejecución)
+        context: Dict[str, Any] = {}
+        
+        input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
+        preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
+        ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
+        vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
+        
+        # El manager se crea dentro del proceso de cada imagen, no aquí
+        builder = ProcessingBuilder(
+            input_stager=input_stager,
+            preprocessing_stager=preprocessing_stager,
+            ocr_stager=ocr_stager,
+            vectorization_stager=vectorization_stager
+        )
+        return builder
 
     except Exception as e:
-        logger.error(f"Error fatal en create_builders: {e}", exc_info=True)
-    return []
+        logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
+        return None
 
-def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dict[str, Any]) -> Optional[List[str]]:
-    """Ejecuta el procesamiento para cada builder."""
+def execute_sequential_processing(builder: ProcessingBuilder, workflow_report: Dict[str, Any]) -> Optional[List[str]]:
+    """Ejecuta el procesamiento secuencial reutilizando el builder."""
     db_paths: Dict[str, Any] = {}
     image_info_list = workflow_report['image_info']
     total_processing_time = 0.0
-    builders_amount = len(builders)
-    total_img = 0
-    logger.debug(f"Cantidad de Builder creados: {builders_amount}")
+    total_images = len(image_info_list)
+    processed_count = 0
+    
+    logger.debug(f"Iniciando procesamiento secuencial para {total_images} imágenes.")
 
     try:
-        for i, builder in enumerate(builders):
-            if i < len(image_info_list):
-                image_data = image_info_list[i]
-                start_time = time.perf_counter()
-                db_path = builder.process_single_image()
-                total_img +=1
-                image_processing_time = time.perf_counter() - start_time
-                total_processing_time += image_processing_time
-                db_paths[image_data.get('name', f'imagen_{i}')] = db_path
-                logger.warning(f"IMAGEN '{image_data.get('name')}', #{total_img} de un total de {builders_amount} imágenes. PROCESADA EN: {image_processing_time:.6f}s")
+        for i, image_data in enumerate(image_info_list):
+            start_time = time.perf_counter()
+            image_name = image_data.get('name', f'imagen_{i}')
+            
+            # Procesar imagen individualmente
+            manager_result = builder.process_single_image(image_data)
+            
+            # Simulación de extracción de resultados
+            db_path = "db_path" 
+            
+            processed_count += 1
+            image_processing_time = time.perf_counter() - start_time
+            total_processing_time += image_processing_time
+            
+            if manager_result:
+                db_paths[image_name] = db_path
+                logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
+            else:
+                logger.error(f"Fallo al procesar imagen: {image_name}")
 
         if db_paths:
             mean_time = total_processing_time / len(db_paths)
@@ -123,4 +126,5 @@ def execute_processing(builders: List['ProcessingBuilder'], workflow_report: Dic
         return ["db_path"]
 
     except Exception as e:
-        logger.error(f"Error en el procesamiento: {e}", exc_info=True)
+        logger.error(f"Error en el procesamiento secuencial: {e}", exc_info=True)
+        return []
