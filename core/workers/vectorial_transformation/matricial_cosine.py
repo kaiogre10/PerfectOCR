@@ -35,7 +35,7 @@ class MatricialCusine(VectorizationAbstractWorker):
     
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas"
+                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas"
                     "\n"f"{table_line_ids}"
                     "\n"f"{table_range}")
                 # succes = manager.save_tabular_lines(table_line_ids)

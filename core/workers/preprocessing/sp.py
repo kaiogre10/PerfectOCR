@@ -11,7 +11,7 @@ from core.utils.image_utils import use_sobel
 
 logger = logging.getLogger(__name__)
     
-class DoctorSaltPepper(PreprocessingAbstractWorker):    
+class DoctorSaltPepper(PreprocessingAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -125,10 +125,10 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         p1, p99 = np.percentile(cropped_img, [1, 99])
         low, high = int(max(0, p1)), int(min(self.salt_pepper_high, p99))
         
-        extreme_mask = (cropped_img < low).astype(np.uint8) | (cropped_img > high).astype(np.uint8)
+        extreme_mask = (cropped_img < low) | (cropped_img > high)
         sp_ratio = np.count_nonzero(extreme_mask) / area
 
-        kernel = np.ones((3, 3), np.uint8)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         neighbor_count = cv2.filter2D(extreme_mask.astype(np.uint8), -1, kernel, borderType=cv2.BORDER_REPLICATE)
         isolated_mask = extreme_mask & (neighbor_count < 2)
         isolated_count = np.count_nonzero(isolated_mask)

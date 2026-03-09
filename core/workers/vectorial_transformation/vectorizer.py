@@ -144,7 +144,6 @@ class Vectorizer(VectorizationAbstractWorker):
                 
                 line_text = getattr(line_data, "text", "")
                 dcount = sum(1 for ch in line_text if ch.isdecimal() or ch in "$,")
-                logger.info(f"CONTEO DE NUMERICOS: {line_text}")
                 features_list.append([sc_count, dcount])
 
             features = np.array(features_list, np.float32)

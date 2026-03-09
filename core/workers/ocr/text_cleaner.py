@@ -2,7 +2,6 @@
 import logging
 import dataclasses
 import numpy as np
-import time
 from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -31,12 +30,12 @@ class TextCleaner(OCRAbstractWorker):
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         logger.debug(f"Inicia cleanner")
-        t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCleaner: No hay polígonos en el workflow para procesar.")
             return True
 
-        polygons_in: Dict[str, Polygons] = manager.workflow.polygons        
+        polygons_in: Dict[str, Polygons] = manager.workflow.polygons
         sorted_poly_ids = sorted(
             polygons_in.keys(), 
             key=lambda p_id: (polygons_in[p_id].geometry.centroid[1], polygons_in[p_id].geometry.centroid[0])
@@ -75,7 +74,7 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
 
-            cleaned_text = self.process_single_text(fil_text, polygon)
+            cleaned_text = self.process_single_text(fil_text)
             if cleaned_text:
                 updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
                 list_of_final_polygons.append(updated_polygon)
@@ -83,8 +82,6 @@ class TextCleaner(OCRAbstractWorker):
             else:
                 # logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
                 eliminated_count += 1
-
-        # eliminated_count += 1
 
         # 4. Reconstrucción y reindexación final
         final_polygons_dict: Dict[str, Polygons] = {}
@@ -101,7 +98,7 @@ class TextCleaner(OCRAbstractWorker):
             
         return True
 
-    def process_single_text(self, text: str, polygon: Polygons) -> str:
+    def process_single_text(self, text: str) -> str:
         """
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
         y seguro a los valores que parecen numéricos.
@@ -139,7 +136,7 @@ class TextCleaner(OCRAbstractWorker):
 
             score = self.token_freq_score(text.lower())
             if score < self.min_probability:
-                logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{text}' | Probabilidad global: {score:.4f}")
+                # logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{text}' | Probabilidad global: {score:.4f}")
                 return ""
 
             return text
@@ -158,4 +155,3 @@ class TextCleaner(OCRAbstractWorker):
 
         encoded = text_encode(token, ["frequency"])
         return float(np.mean(encoded))
-

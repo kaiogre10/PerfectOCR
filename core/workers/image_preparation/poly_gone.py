@@ -158,7 +158,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             for i, p_data in enumerate(valid_polygons_data):
                 new_id = f"poly_{i:04d}"
-                new_index = i
                 cropped_images[new_id] = p_data["cropped"]
 
                 poly_height, poly_width = p_data["cropped"].shape[:2]

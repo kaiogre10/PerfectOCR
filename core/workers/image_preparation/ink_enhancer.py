@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import extract_contours_metrics
-from core.utils.math_utils import extract_contours_histogram
+from core.utils.math_utils import extract_contours_histogram, density_cluster
 from services.output_service import save_shapes, save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,8 @@ class InkCorrector(ImagePrepAbstractWorker):
             # all_gaps.extend(black_gaps.copy())
             # bin_gap = binarice_img(gap_img.copy(), {})
             # correct, out_conts, out_conts2 = self.delete_outliers(full_img)
-            correct, out_conts, out_conts2 = self.delete_outliers(full_img)
+            correct, scan_cont, scan_cont2 = self.blob_scanner(full_img)
+            correct, out_conts, out_conts2 = self.delete_outliers(correct)
             # all_outliers = out_conts.copy()
             # all_outliers.extend(out_conts2.copy())
             # bin_correct = binarice_img(correct.copy(), {})
@@ -71,7 +72,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     # imag_id = f"corrected_blobs_{image_name}_{worker_name}"
                     image_id = f"outliers_{image_name}_{worker_name}"
                     # id = f"bin_gap_{image_name}_{worker_name}"
-                    # gaps_id = f"gaps_{image_name}_{worker_name}"
+                    gaps_id = f"gaps_{image_name}_{worker_name}"
                     # img_id = f"bin_correct_{image_name}_{worker_name}"
                     # all_cont_id = f"all_contours_{image_name}_{worker_name}"
             
@@ -79,7 +80,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     # save_croped_image(image_name, id, bin_gap, output_paths, worker_name)
                     # save_croped_image(image_name, img_id, bin_correct, output_paths, worker_name)
                     
-                    # save_shapes(image_name, gaps_id, full_img, output_paths, white_gaps, black_gaps)
+                    save_shapes(image_name, gaps_id, full_img, output_paths, scan_cont, scan_cont2)
                     save_shapes(image_name, image_id, full_img, output_paths, out_conts, out_conts2)
 
                     # save_shapes(image_name, all_cont_id, full_img, output_paths, all_gaps, all_outliers)
@@ -150,10 +151,10 @@ class InkCorrector(ImagePrepAbstractWorker):
         solidez = (metrics[:, 1] / metrics[:, 7])
         solid = (solidez > self.solid_thr)
 
-        aspc_ratio_mask_low = (metrics[: ,10] > self.aspect_ratio_range[0])
-        mask_solidity = solid & aspc_ratio_mask_low
+        # aspc_ratio_mask_low = (metrics[: ,10] > self.aspect_ratio_range[0])
+        # mask_solidity = solid & aspc_ratio_mask_low
 
-        solidity = metrics[mask_solidity, 0]
+        # solidity = metrics[mask_solidity, 0]
 
         ratio_1 = (metrics[:, 12] < (1.0 + self.thr)) & (metrics[:, 12] > (1.0 - self.thr)) & solid & black_ratio_mask
         ratio_2 = (metrics[:, 13] < (1.0 + self.thr)) & (metrics[:, 13] > (1.0 - self.thr)) & solid & black_ratio_mask
@@ -231,3 +232,33 @@ class InkCorrector(ImagePrepAbstractWorker):
         logger.info(f"Contornos pintado de Ngero: {black}, solitarios: {white}")
         return grey_img, white_gaps, black_gaps
     
+    def blob_scanner(self, grey_img: np.ndarray[Any, Any]):
+        cont_coords_list, features_array = extract_contours_metrics(grey_img)
+
+        int_blobs_ids = features_array[:, 0].astype(np.int32)
+        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
+
+        labels = density_cluster(features_for_clustering, 1.0, 2, "euclidean")
+
+        unique_labels = [label for label in set(labels) if label != -1]
+        if not unique_labels:
+            logger.warning("DBSCAN: No se encontraron clusters válidos.")
+            return grey_img, [], []
+
+        cluster_sizes = {label: int(np.sum(labels == label)) for label in unique_labels}
+        main_cluster = max(cluster_sizes, key=cluster_sizes.get)
+
+        main_cluster_ids = set(int_blobs_ids[labels == main_cluster].tolist())
+        secondary_ids = set(int_blobs_ids[labels != main_cluster].tolist())
+
+        main_cluster_contours: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+        secondary_contours: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+
+        for idx, cont_coords in cont_coords_list:
+            if idx in main_cluster_ids:
+                main_cluster_contours.append(cont_coords)
+            elif idx in secondary_ids:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                secondary_contours.append(cont_coords)
+
+        return grey_img, main_cluster_contours, secondary_contours
