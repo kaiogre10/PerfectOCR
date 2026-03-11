@@ -3,15 +3,22 @@
 # Para ignorar directorios completos, simplemente agrega el nombre del directorio seguido de una barra inclinada (/) en una línea nueva.
 *.vscode
 *input
+*input2
+*input3
+*data
+*tools
+*.idea
+*documentation
+*data_base
 
-*tests
+*test
 # Para ignorar un archivo específico, simplemente escribe su nombre o ruta relativa, por ejemplo:
 # ejemplo.txt
 # Para ignorar todos los archivos de un tipo específico, usa el comodín, por ejemplo:
 # *.csv
 *.ini
+*.env
 desktop.ini
-.gitignore
 
 # Si quieres ignorar varias carpetas, agrégalas una por línea:
 # logs/

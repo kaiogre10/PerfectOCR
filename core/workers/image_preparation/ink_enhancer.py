@@ -80,7 +80,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     # save_croped_image(image_name, id, bin_gap, output_paths, worker_name)
                     # save_croped_image(image_name, img_id, bin_correct, output_paths, worker_name)
                     
-                    save_shapes(image_name, gaps_id, full_img, output_paths, scan_cont, scan_cont2)
+                    # save_shapes(image_name, gaps_id, full_img, output_paths, scan_cont, scan_cont2)
                     save_shapes(image_name, image_id, full_img, output_paths, out_conts, out_conts2)
 
                     # save_shapes(image_name, all_cont_id, full_img, output_paths, all_gaps, all_outliers)

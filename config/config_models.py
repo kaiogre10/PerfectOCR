@@ -105,18 +105,13 @@ class DeskewConfig(ConfigWithNumpy):
     border_cutt: int
     border_color: List[int]
 
-class GeoDetector(ConfigWithNumpy):
-    min_area: int
-
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
-    angle_thr: Tuple[float, float]
     
 class ImagePreparation(ConfigWithNumpy):
     ink_enhancement: InkConfig
     angle_corrector: DeskewConfig
     moire: MoireConfig
-    geometry_detector: GeoDetector
     polygon_extractor: CuttingConfig
 
 class ContrastConfig(ConfigWithNumpy):

@@ -7,7 +7,8 @@ from typing import Dict, Any, Optional, List
 from core.domain.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import binarice_img, normalice_image
+from core.utils.image_utils import binarice_img, normalice_image, cropp_img
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config.get('geometry_detector', {})
-        self.min_area = worker_config.get("min_area")
         self.kernel_threshold = config["morph_kernel"]
         self.output = config.get("deleted_polys")
         self.output2 = config.get("opened")
@@ -62,7 +61,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
             img=cv2.morphologyEx(bin_img.copy(), cv2.MORPH_CLOSE, kernel, iterations=2)
 
             if self.output2:
-                from services.output_service import save_croped_image
                 worker_name = context.get("worker_name") or "geometry_detector"
                 output_paths = context["output_paths"]
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
@@ -79,7 +77,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
                 return False
             
-            discarted_polys: List[str] = []
             final_polygons_list: List[Dict[str, Any]] = []
             
             for idx, poly_pts in enumerate(polygons[0]):
@@ -88,27 +85,14 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts]) # type: ignore
                 bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()])
                 centroid = coords.mean(axis=0)
-
-                # Calcular área para este bbox
-                bbox_width = bbox[2] - bbox[0]
-                bbox_height = bbox[3] - bbox[1]
-                area = bbox_height * bbox_width
-
-                if area < self.min_area:
-                    logger.debug(f"Polígono {poly_id} descarcatdo por mínima área")
                     
-                    if self.output:
-                        from services.output_service import save_croped_image
-                        from core.utils.image_utils import cropp_img
-                        cropped = cropp_img(img, bbox)
-                        worker_name = context.get("worker_name") or "geometry_detector"
-                        output_paths = context["output_paths"]
-                        pid = f"{poly_id}_{worker_name}"
-                        image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                        save_croped_image(image_name, pid, cropped, output_paths, worker_name)
-                        
-                    discarted_polys.append(poly_id)
-                    continue
+                    # if self.output:
+                    #     cropped = cropp_img(img, bbox)
+                    #     worker_name = context.get("worker_name") or "geometry_detector"
+                    #     output_paths = context["output_paths"]
+                    #     pid = f"{poly_id}_{worker_name}"
+                    #     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                    #     save_croped_image(image_name, pid, cropped, output_paths, worker_name)
 
                 final_polygons_list.append({
                     "poly_index": poly_index,
@@ -130,7 +114,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             else:
-                logger.debug(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
+                logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
                 return True
         
         except Exception as e:

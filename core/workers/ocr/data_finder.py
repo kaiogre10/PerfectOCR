@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import validate_text, estandarice_uppers_lowers, find_rfc, find_iva, find_date, find_umd
+from core.utils.text_utils import validate_text, estandarice_uppers_lowers, find_rfc, find_iva, find_date
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,6 @@ class DataFinder(OCRAbstractWorker):
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         logger.debug("Data Finder iniciado")
-        start_time = time.perf_counter()
         try:
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
@@ -43,6 +42,7 @@ class DataFinder(OCRAbstractWorker):
             polygon_updates = self._find_data(polygons)
 
             # Actualiza los key_fields
+            start_time = time.perf_counter()
             if manager.update_key_field(polygon_updates):
                 logger.info(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
                 return True
@@ -72,10 +72,10 @@ class DataFinder(OCRAbstractWorker):
                     sc = [sc]
 
                 sc_array = np.array(sc, np.int8)
-                sc_real = np.mean(sc_array).astype(np.int8)
+                sc_real = np.median(sc_array).astype(np.int8)
 
-                if sc_real == 2:
-                    logger.debug(f"{pid} omitido cuantitativo sc= '{ocr_text}': ")
+                if sc_real == 2 or sc_real == -2:
+                    # logger.info(f"{pid} omitido cuantitativo sc= '{ocr_text}': '{sc_real}' ")
                     skipped_semantic += 1
                     continue
 
@@ -85,10 +85,10 @@ class DataFinder(OCRAbstractWorker):
                     skipped_len += 1
                     continue
 
-                elif find_umd(ocr_text):
-                    skipped_semantic += 1
-                    logger.debug(f"'{pid}' UMD: {ocr_text}")
-                    continue
+                # elif find_umd(ocr_text):
+                #     skipped_semantic += 1
+                #     logger.debug(f"'{pid}' UMD: {ocr_text}")
+                #     continue
 
                 elif find_date(ocr_text):
                     skipped_semantic +=1
@@ -138,7 +138,7 @@ class DataFinder(OCRAbstractWorker):
 
             if polygon_updates:
                 logger.debug(f"KEY_FIELDS: {polygon_updates}")
-                # logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
+                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
                 return polygon_updates
             
             else:

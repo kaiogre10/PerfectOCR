@@ -2,7 +2,7 @@
 import numpy as np
 import logging
 import time
-import math
+# import math
 import dataclasses
 from typing import Dict, Any, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
@@ -18,7 +18,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('polygon_extractor', {})
-        self.angle_thr = worker_config["angle_thr"]
+        # self.angle_thr = worker_config["angle_thr"]
         self.bin_interval = config["bin_interval"]
         self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
@@ -108,20 +108,20 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
 
                 if self.output:
-                    var = np.mean(cropped)
+                    # var = np.mean(cropped)
                     # logger.info(f"Estadísticas de {poly_id}: VAR: {var}")
                     self.save_debug(cropped, context, "all", poly_id)
                 
-                poly_mean, dims = calculate_img_values(cropped)
-                bbox_width = dims[1]
-                bbox_height = dims[0]
-                angle = math.degrees(math.atan2(bbox_height, bbox_width))
+                poly_mean, _ = calculate_img_values(cropped)
+                # bbox_width = dims[1]
+                # bbox_height = dims[0]
+                # angle = math.degrees(math.atan2(bbox_height, bbox_width))
                 
                 poly_data_to_filter.append({
                     "poly_id": poly_id,
                     "poly_index": poly_index,
                     "cropped": cropped,
-                    "angle": angle,
+                    # "angle": angle,
                     "i": i,
                     "coords": (crop_x1, crop_y1, crop_x2, crop_y2),
                     "poly_mean": poly_mean
@@ -134,16 +134,16 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             valid_polygons_data: List[Dict[str, Any]] = []
             for p_data in poly_data_to_filter:
 
-                if p_data['angle'] < self.angle_thr[1] and self.angle_thr[0] < p_data['angle']:
-                    discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['angle']}")
+                # if p_data['angle'] < self.angle_thr[1] and self.angle_thr[0] < p_data['angle']:
+                #     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['angle']}")
                     
-                    # logger.info(f"ELIMINADO: '{p_data['poly_id']}': Angulo = {p_data['angle']}°")
+                #     # logger.info(f"ELIMINADO: '{p_data['poly_id']}': Angulo = {p_data['angle']}°")
 
-                    if self.disoutput:
-                        status = "small"
-                        self.save_debug(p_data['cropped'], context, status, p_data['poly_id'])
+                #     if self.disoutput:
+                #         status = "small"
+                #         self.save_debug(p_data['cropped'], context, status, p_data['poly_id'])
 
-                elif p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
+                if p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
                     status = "bn"
                     # logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO DE COLOR '{p_data['poly_mean']}'")

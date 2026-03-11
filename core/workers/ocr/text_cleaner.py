@@ -60,7 +60,7 @@ class TextCleaner(OCRAbstractWorker):
             text_sec = remove_special_sequences(text)
             if text_sec != text:
                 removed_chars = sorted(set(text) - set(text_sec))
-                logger.info(
+                logger.debug(
                     "Secuencia especial eliminada: [%s] in %s",
                     "".join(removed_chars),
                     polygon.polygon_id if polygon else ""
@@ -68,13 +68,13 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
             
-            fil_text = self.filter_low_prob_tokens(text_sec, polygon)
-            if not validate_text(fil_text):
-                # logger.info(f"Eliminado {poly_id} sin texto después de filtrado de probabilidad")
-                eliminated_count += 1
-                continue
+            # fil_text = self.filter_low_prob_tokens(text_sec, polygon)
+            # if not validate_text(fil_text):
+            #     # logger.info(f"Eliminado {poly_id} sin texto después de filtrado de probabilidad")
+            #     eliminated_count += 1
+            #     continue
 
-            cleaned_text = self.process_single_text(fil_text, polygon)
+            cleaned_text = self.process_single_text(text_sec, polygon)
             if cleaned_text:
                 updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
                 list_of_final_polygons.append(updated_polygon)
@@ -112,7 +112,7 @@ class TextCleaner(OCRAbstractWorker):
             
             # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if not validate_alone_chars(token):
-                logger.info(f"Eliminado único: '{token}' in {polygon.polygon_id if polygon else ''}")
+                # logger.info(f"Eliminado único: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             else:
                 processed_words.append(token)
@@ -136,7 +136,7 @@ class TextCleaner(OCRAbstractWorker):
 
             score = self.token_freq_score(text.lower())
             if score < self.min_probability:
-                logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{text}' | Probabilidad global: {score:.4f}")
+                # logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{text}' | Probabilidad global: {score:.4f}")
                 return ""
 
             return text

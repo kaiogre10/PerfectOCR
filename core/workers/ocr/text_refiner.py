@@ -25,6 +25,11 @@ class Refiner(OCRAbstractWorker):
         self.fragmenter = fragmenter
         self.corrector = corrector
 
+    def _log_worker_time(self, pass_num: int, worker_name: str, start_time: float, stage_name: str = "") -> None:
+        elapsed = time.perf_counter() - start_time
+        stage_label = f" | Etapa: {stage_name}" if stage_name else ""
+        logger.info(f"Bucle #{pass_num} | Worker: {worker_name}{stage_label} | Tiempo: {elapsed:.6f}s")
+
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
         Ejecuta el ciclo de refinamiento con clasificación selectiva.
@@ -32,36 +37,58 @@ class Refiner(OCRAbstractWorker):
         t0 = time.perf_counter()
         try:
             if 0 >= self.num_passes:
+                step_t0 = time.perf_counter()
                 self.classify_strings(manager)
+                self._log_worker_time(0, "SemanticClassifier", step_t0, "Clasificación Semántica")
             
             else:
                 for i in range(self.num_passes):
                     pass_num = i + 1
+                    pass_t0 = time.perf_counter()
                     logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
 
                     logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
+                    step_t0 = time.perf_counter()
                     self.classify_strings(manager)
+                    self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica")
 
                     if self.fragmenter:
+                        fragmenter_name = self.fragmenter.__class__.__name__
                         logger.debug(f"Bucle #{pass_num}: Fragmentación Textual")
+                        step_t0 = time.perf_counter()
                         self.fragmenter.transcribe(context, manager)
+                        self._log_worker_time(pass_num, fragmenter_name, step_t0, "Fragmentación Textual")
 
                     logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo fragmentados)")
+                    step_t0 = time.perf_counter()
                     self.classify_strings(manager)
+                    self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo fragmentados)")
 
                     if self.cleaner:
+                        cleaner_name = self.cleaner.__class__.__name__
                         logger.debug(f"Bucle #{pass_num}: Limpieza de Texto")
+                        step_t0 = time.perf_counter()
                         self.cleaner.transcribe(context, manager)
+                        self._log_worker_time(pass_num, cleaner_name, step_t0, "Limpieza de Texto")
                     
                     logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
+                    step_t0 = time.perf_counter()
                     self.classify_strings(manager)
+                    self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo limpiados)")
                     
                     if self.corrector:
+                        corrector_name = self.corrector.__class__.__name__
                         logger.debug(f"Bucle #{pass_num}: Corrección textual")
+                        step_t0 = time.perf_counter()
                         self.corrector.transcribe(context, manager)
+                        self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
+
+                    logger.info(f"Bucle #{pass_num} | Tiempo total iteración: {time.perf_counter() - pass_t0:.6f}s")
 
                 logger.debug(f"Pasada final: Clasificación Semántica completa")
+                step_t0 = time.perf_counter()
                 self.classify_strings(manager)
+                self._log_worker_time(self.num_passes + 1, "SemanticClassifier", step_t0, "Clasificación Semántica final")
 
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
@@ -82,8 +109,8 @@ class Refiner(OCRAbstractWorker):
                     }
                 save_raw_json( output_paths, worker_name, results, file_name)
 
-            # logger.info(f"Tiempo de refinador: {time.perf_counter() - t0:.6f}'s")
-            return True 
+            logger.info(f"Tiempo de refinador: {time.perf_counter() - t0:.6f}'s")
+            return True
 
         except Exception as e:
             logger.error(f"Error durante el refinamiento de texto: {e}", exc_info=True)
