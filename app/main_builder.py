@@ -43,24 +43,26 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             models_manager = ModelsManager.get_instance()
             models_manager.initialize_models(models_config)
         
+        if not config_services.no_modules:
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
-        stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=project_root)
+            stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=project_root)
+            
+            # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
+            # En lugar de crear una lista de builders, creamos uno solo configurado
+            processing_builder = create_single_builder(stagers_factory=stagers_factory, output_paths=output_paths)
+            if not processing_builder:
+                logger.error("No se pudo crear el ProcessingBuilder")
+                return []
         
-        # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
-        # En lugar de crear una lista de builders, creamos uno solo configurado
-        processing_builder = create_single_builder(stagers_factory=stagers_factory, output_paths=output_paths)
-        if not processing_builder:
-            logger.error("No se pudo crear el ProcessingBuilder")
-            return []
-        
-        # 7. Main ejecuta procesamiento secuencial usando el builder único
-        t4 = time.perf_counter()
-        results = execute_sequential_processing(processing_builder, workflow_report)
-        logger.debug(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
-        logger.debug(f"Proceso términado completo en {time.perf_counter()-t0:.6f}s")
-
+            # 7. Main ejecuta procesamiento secuencial usando el builder único
+            t4 = time.perf_counter()
+            results = execute_sequential_processing(processing_builder, workflow_report)
+            logger.debug(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
+            return results if results is not None else []
+            
+        logger.debug(f"Proceso debugger completo en {time.perf_counter()-t0:.6f}s")
         cleanup_project_cache(project_root)
-        return results #type: ignore
+        return []
         
     except NameError as e:
         logger.error(f"ERROR FATAL EN BUILDERS, FINALIZANDO PROCESO: {e}", exc_info=True)

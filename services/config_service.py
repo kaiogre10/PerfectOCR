@@ -1,4 +1,5 @@
 # services/config_service.py
+from pydantic.fields import PropertyT
 import yaml
 from typing import Dict, Any, cast, List, Set, Tuple
 from functools import cached_property
@@ -19,7 +20,7 @@ class ConfigService:
         self.no_modules = not elemental_params and TEST_MODE
         
         if not elemental_params and not TEST_MODE:
-            logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER")
+            logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN, DETENIENDO")
             self.config = {}
 
         elif TEST_MODE:
@@ -47,18 +48,21 @@ class ConfigService:
         except Exception as e:
             logger.error(f"Error validando configuración desde {config_path}: {e}")
             raise
-    
+
+    @property
+    def activate_modules(self) -> bool:
+        return self.no_modules
+
     @cached_property
     def enabled_outputs(self) -> Dict[str, Any]:
-        return self.config.get("enabled_outputs", {}) if self.no_modules else {}
-    
+        return {} if self.no_modules else self.config.get("enabled_outputs", {})
+
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
 
     @cached_property
     def models_config(self) -> Dict[str, Any]:
-
         if self.no_modules:
             return {
                 "models_config": self.config.get("models_config", {}),
@@ -105,7 +109,7 @@ class ConfigService:
                 
     @cached_property
     def modules_config(self) -> Dict[str, Any]:
-        return self.config.get("modules", {}) if self.no_modules else {}
+        return {} if self.no_modules else self.config.get("modules", {})
     
     @cached_property
     def utils_config(self) -> Dict[str, Any]:
@@ -191,7 +195,6 @@ class ConfigService:
                     workers_set: Set[str] = set()
                 logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
             return True
-
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
         return False
@@ -218,7 +221,6 @@ class ConfigService:
         if self.create_stager[3][1]:
             vect = set(self.create_stager[3][1])
             all_workers.update(vect)
-
         return all_workers
         
     def log_active_areas(self):

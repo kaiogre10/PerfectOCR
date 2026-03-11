@@ -1,7 +1,7 @@
 # config/master_config.yaml
 pipeline_secuence:
   imagepre_stage:
-    - "image_loader"
+    # - "image_loader"
     - "angle_corrector"
     - "ink_enhancement"
     # - "geometry_detector"
@@ -66,7 +66,7 @@ enabled_outputs:
 models_config:
   use_angle_cls: False
   lang: "es"
-  show_log: True
+  show_log: False
   use_gpu: False
   enable_mkldnn: True
   rec_batch_num: 32
@@ -86,7 +86,6 @@ models_config:
   
 modules:
   image_preparation:
-
     ink_enhancement:
       white: [255, 255, 255]
       black: [0, 0, 0]
