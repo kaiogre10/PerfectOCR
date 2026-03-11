@@ -1,10 +1,10 @@
 # config/master_config.yaml
 pipeline_secuence:
   imagepre_stage:
-    # - "image_loader"
-    - "angle_corrector"
-    - "ink_enhancement"
-    # - "geometry_detector"
+    - "image_loader"
+    # - "angle_corrector"
+    # - "ink_enhancement"
+    - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
@@ -16,7 +16,7 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
+    # - "paddle_wrapper"
     # - "text_refiner"
     # - "data_finder"
     

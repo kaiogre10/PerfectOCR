@@ -37,16 +37,17 @@ class ModelsManager:
         init_time = time.perf_counter()
         try:
             models_config = config.get("models_config", {})
-            activate_rec = config.get("activate_rec", False)
-            activate_det = config.get("activate_det", False)
-            activate_wf = config.get("activate_wf", False)
+            activate_rec = config.get("activate_rec")
+            activate_det = config.get("activate_det")
+            activate_wf = config.get("activate_wf")
 
             # 1. Inicialización SELECTIVA de motores de Paddle
             if activate_det or activate_rec:
                 # PaddleOCR solo cargará en RAM/VRAM los modelos marcados como True
                 self._shared_engine = PaddleOCR(
                     det=activate_det, 
-                    rec=activate_rec, 
+                    rec=activate_rec,
+                    cls=models_config.get('use_angle_cls'),
                     det_model_dir=models_config.get('det_model_dir'),
                     rec_model_dir=models_config.get('rec_model_dir'),
                     show_log=models_config.get('show_log'),

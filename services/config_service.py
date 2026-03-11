@@ -1,5 +1,4 @@
 # services/config_service.py
-from pydantic.fields import PropertyT
 import yaml
 from typing import Dict, Any, cast, List, Set, Tuple
 from functools import cached_property
