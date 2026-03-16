@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import validate_text, estandarice_uppers_lowers, find_rfc, find_iva, find_date
+from core.utils.text_utils import estandarice_uppers_lowers, find_rfc, find_iva, find_date
 
 logger = logging.getLogger(__name__)
 
@@ -70,25 +70,20 @@ class DataFinder(OCRAbstractWorker):
                 sc = poly.semantic_clasification
                 if not isinstance(sc, list):
                     sc = [sc]
+                
+                sc_real = sc[0] if len(sc) == 1 else int(np.median(sc).astype(np.int8))
 
-                sc_array = np.array(sc, np.int8)
-                sc_real = np.median(sc_array).astype(np.int8)
-
-                if sc_real == 2 or sc_real == -2:
-                    # logger.info(f"{pid} omitido cuantitativo sc= '{ocr_text}': '{sc_real}' ")
+                # Descartar rápidamente cuantitativos (2) o unidades de medida (-2)
+                if sc_real == 2:
+                    # logger.info(f"{pid} omitido cuantitativo sc: '{ocr_text}': '{sc_real}' ")
                     skipped_semantic += 1
                     continue
 
                 word_lenght = len(ocr_text)
-                if not validate_text(ocr_text) or word_lenght < 2:
-                    logger.debug(f"{pid} sin texto o excede longitud: '{ocr_text}', letras: '{word_lenght}'")
+                if not ocr_text or word_lenght < 2:
+                    logger.info(f"{pid} sin texto o muy corto longitud: '{ocr_text}', letras: '{word_lenght}'")
                     skipped_len += 1
                     continue
-
-                #elif find_umd(ocr_text):
-                 #   skipped_semantic += 1
-                  #  logger.debug(f"'{pid}' UMD: {ocr_text}")
-                   # continue
 
                 elif find_date(ocr_text):
                     skipped_semantic +=1
@@ -109,10 +104,11 @@ class DataFinder(OCRAbstractWorker):
                     continue
 
                 if sc_real != 0:
-                    logger.debug(f"{pid} omitido semanticamente sc= '{ocr_text}': {sc}")
+                    # logger.info(f"{pid} omitido semanticamente sc= '{ocr_text}': {sc_real}")
                     skipped_semantic += 1
                     continue
                 
+                # logger.info(f"Poly: {pid}: TEXTO: '{ocr_text}")
                 valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
                 if valid_results:
                     # continue

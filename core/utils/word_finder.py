@@ -207,7 +207,7 @@ class WordFinder:
                             logger.debug(f"Extracted '{best_match['key_word']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
             if single:
                 if results:
-                    logger.info(f"RESULTS: {results}")
+                    logger.debug(f"RESULTS: {results}")
                 return results if results else []
             return results
         except Exception as e:
@@ -240,7 +240,7 @@ class WordFinder:
             # Score final = similitud base * penalización por longitud
             match['score_final'] = base_similarity * length_penalty
 
-            logger.debug(
+            logger.info(
                 "EMPATE: Match #%d: campo: %s, palabra: '%s' | score de desempate: %.6f | texto: '%s'",
                 i, match.get("key_field"), word_found, match['score_final'], norm_ocr_text
             )
@@ -248,7 +248,7 @@ class WordFinder:
         # Encontrar el mejor match usando max() en lugar de sort()
         best_match = max(matches, key=lambda x: (x['score_final'], len(x['key_word'])))
 
-        logger.debug(
+        logger.info(
             "DESEMPATE: texto '%s': campo: %s, palabra: '%s', score_final: %.6f",
             best_match.get("text"), best_match.get("key_field"), best_match.get("key_word"),
             best_match.get("score_final")

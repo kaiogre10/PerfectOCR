@@ -71,17 +71,15 @@ class TextCorrector(OCRAbstractWorker):
         manager.workflow.polygons = corrected_polygons
         return True
 
-    def _apply_corrections(self, text: str, semantic_clasification: List[int] | int) -> str:
+    def _apply_corrections(self, text: str, semantic_clasification: List[int]) -> str:
         tokens = text.split(' ')
-
-        is_list_classification = isinstance(semantic_clasification, list)
-        if is_list_classification and len(semantic_clasification) != len(tokens):
+        if len(semantic_clasification) != len(tokens):
             return text
 
         corrected_tokens: List[str] = []
 
         for i, token in enumerate(tokens):
-            token_sc = semantic_clasification[i] if is_list_classification else semantic_clasification
+            token_sc = semantic_clasification[i]
 
             if token_sc == 2:
                 # 1. Primero corregir chars del token completo

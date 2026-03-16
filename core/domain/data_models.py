@@ -47,7 +47,7 @@ class Polygons:
 #    "MontoIVAGeneral": 8,
 #    "FechaDocumento": 9
 
-    semantic_clasification: List[int] | int
+    semantic_clasification: List[int]
         # quantitative: 2
         # numeric: 1
         # descriptive: 0

@@ -83,7 +83,7 @@ class DataFormatter:
                     ocr_confidence=None,
                     was_fragmented=False,
                     key_field=None,
-                    semantic_clasification=0,
+                    semantic_clasification=[0],
                     cuant_chars = 0,
                 )
                 polygons_dataclass[poly_id] = polygon_obj
@@ -321,7 +321,7 @@ class DataFormatter:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
                         
-    def update_semantic_clasification(self, final_results: Dict[str, Tuple[int | List[int], int]]) -> bool:
+    def update_semantic_clasification(self, final_results: Dict[str, Tuple[List[int], int]]) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
         """
@@ -330,52 +330,28 @@ class DataFormatter:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
                 return False
 
-            updated_count = 0
-
             for poly_id, semantic_type in final_results.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
                     # Actualizar semantic_clasification
                     updated_polygon = dataclasses.replace(
-                        polygon, 
+                        polygon,
                         semantic_clasification=semantic_type[0],
                         cuant_chars=semantic_type[1]
                     )                    
                     self.workflow.polygons[poly_id] = updated_polygon
-                    updated_count += 1
 
-            if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con semantic_clasifications")
+            # polygons: Dict[str, Polygons] = self.workflow.polygons if self.workflow else {}
+            # for poly_id, poly_data in polygons.items():
+            #     sc = poly_data.semantic_clasification
+            #     text = poly_data.ocr_text 
+            #     logger.info(f"Clasificación semántica actualizada para {poly_id}: '{text}', SC: {sc}")
             return True
             
         except Exception as e:
             logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
-            return False
-            
-    def merge_semantics(self) -> bool:
-        """
-        Unifica los tipos semánticos en las dataclasses, convirtiendo
-        todos los 'quantitative' (2) a 'numeric' (1).
-        """
-        if not self.workflow or not self.workflow.polygons:
-            return False
-
-        updated_count = 0
-        for poly_id, polygon in self.workflow.polygons.items():
-            if polygon.semantic_clasification == 2:  # quantitative
-                updated_polygon = dataclasses.replace(polygon, semantic_clasification=1)  # numeric
-                self.workflow.polygons[poly_id] = updated_polygon
-                updated_count += 1
-
-            if polygon.semantic_clasification == -2:  # umd
-                updated_polygon = dataclasses.replace(polygon, semantic_clasification=-1)  # code
-                self.workflow.polygons[poly_id] = updated_polygon
-                updated_count += 1
-        
-        if updated_count > 0:
-            logger.debug(f"Unificados {updated_count} polígonos de 'quantitative' a 'numeric'.")
-        return True
+        return False
                 
     def update_key_field(self, polygon_updates: Optional[Dict[str, List[int] | int]]) -> bool:
         """
@@ -400,7 +376,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    # logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
+                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")

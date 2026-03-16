@@ -92,7 +92,7 @@ class Refiner(OCRAbstractWorker):
 
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-                logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}, cuant char: {poly_data.cuant_chars}")
+                logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}, cuant char: {poly_data.cuant_chars}")
 
             if self.output:
                 from services.output_service import save_raw_json
@@ -131,7 +131,7 @@ class Refiner(OCRAbstractWorker):
 
             # Clasificar solo los polígonos seleccionados
             # t0 = time.perf_counter()
-            final_results: Dict[str, Tuple[int | List[int], int]] = clasify_words(polygons_to_classify, self.worker_config)
+            final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify, self.worker_config)
             # logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
 
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado

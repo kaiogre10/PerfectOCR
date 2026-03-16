@@ -21,9 +21,9 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-    - "lineal"
-    - "vectorizer"
-    - "cos_sim"
+    # - "lineal"
+    # - "vectorizer"
+    # - "cos_sim"
     - "table_structurer"
     # - "table_validated"
     # - "math_max"

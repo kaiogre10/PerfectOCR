@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import validate_text, validate_alone_chars, space_removal, remove_special_sequences
+from core.utils.text_utils import validate_alone_chars, space_removal, remove_special_sequences
 from core.utils.math_utils import text_encode
 
 logger = logging.getLogger(__name__)
@@ -125,9 +125,7 @@ class TextCleaner(OCRAbstractWorker):
         Retorna "" si el texto completo se considera ruido.
         """
         try:
-            sc: List[int] | int = polygon.semantic_clasification or [0]
-            if not isinstance(sc, list):
-                sc = [sc]
+            sc: List[int] = polygon.semantic_clasification or [0]
 
             sc_array = np.array(sc, np.int8)
             sc_real = np.mean(sc_array).astype(np.int8)

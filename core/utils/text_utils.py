@@ -4,7 +4,7 @@ import unicodedata
 import numpy as np
 from typing import List, Tuple, Dict, Pattern, Set, Any
 from core.utils.math_utils import text_encode
-from core.utils.data_utils import SPECIAL_CHARS, NOT_VALID_CHARS, NOT_VALID_PUNT_CHARS, CHAR_NUM, ALONE_CHARS, PUNC_CHARS
+from core.utils.data_utils import SPECIAL_CHARS, NOT_VALID_CHARS, NOT_VALID_PUNT_CHARS, CHAR_NUM, ALONE_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0
 
 _numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
 
-_punt_split_pattern: Pattern[str] = re.compile(r'([.,;:!?])')
+_punt_split_pattern: Pattern[str] = re.compile(r'([=;:!?])')
 _punt_detect_pattern: Pattern[str] = re.compile(r'[\s\.\-_,;:=]+')
 
 # Espacios múltiples
@@ -24,7 +24,7 @@ _spaces_pattern: Pattern[str] = re.compile(r'\s+')
 _termination_pattern: Pattern[str] = re.compile(r'(?i)(s|c|r)?i0n\b', re.IGNORECASE)
 
 # Siglas/Acrónimos
-_acronym_pattern: Pattern[str] = re.compile(r'^([A-Za-z]\.){2,}[A-Za-z]\.?(?:[:;,])?$', re.IGNORECASE)
+_acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv|no)(?:[:;,.])?$', re.IGNORECASE)
 
 # RFC
 _rfc_code_pattern: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
@@ -35,7 +35,7 @@ _iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
 
 # Fechas
 _date_patterns: List[Pattern[str]] = [
-    re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b', re.IGNORECASE),
+    re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b', re.IGNORECASE),
     re.compile(r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b'),
     re.compile(r'\b(0?[1-9]|[12]\d|3[01])[\/\-\.](0?[1-9]|1[0-2])\b'),
     re.compile(r'\b(199\d|20\d{2})\b'),
@@ -79,7 +79,6 @@ char_num = CHAR_NUM
 valid_chars = ALONE_CHARS
 special_chars = SPECIAL_CHARS
 not_valid_chars = NOT_VALID_CHARS
-punc_chars = PUNC_CHARS
 not_valid_punt_chars = NOT_VALID_PUNT_CHARS
         
 def termination_detect(text: str) -> bool:
@@ -210,10 +209,12 @@ def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
 
     return runs
 
-def separate_punt(text: str) -> List[str]:
-    return _punt_split_pattern.split(text)
+def separate_punt(text: str) -> str:
+    parts = _punt_split_pattern.split(text)
+    return " ".join(p.strip() for p in parts if p.strip() and not _punt_split_pattern.fullmatch(p))
 
 def detect_punt(text: str) -> bool:
+    """Detecta si un texto está compuesto únicamente por caracteres de puntuación/separación."""
     return _punt_detect_pattern.fullmatch(text) is not None
 
 def remove_special_sequences(text: str) -> str:    
@@ -371,12 +372,12 @@ def numeric_separator(token: str) -> str:
         logger.warning(f"Error normalizando separadores numéricos: {e}", exc_info=True)
         return token
         
-def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> Dict[str, Tuple[int | List[int], int]]:
+def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> Dict[str, Tuple[List[int], int]]:
     semantic_range: Tuple[float, float] = worker_config["semantic_range"]
     encode_mean: Tuple[float, float] = worker_config["encode_mean"]
     morph_mean: Tuple[float, float] = worker_config["morph_mean"]
 
-    final_results: Dict[str, Tuple[int | List[int], int]] = {}
+    final_results: Dict[str, Tuple[List[int], int]] = {}
 
     def classify_token(s: str) -> Tuple[int, int]:
         total = len(s)
@@ -391,17 +392,17 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         poly_morph_mean = means[2]
 
         if contains_quantitative(s):
-            return 2, total_cuant
+            return (2, total_cuant)
 
         elif find_umd(s):
-            return -2, total_cuant
+            return (-2, total_cuant)
         
         elif morph_mean[1] < poly_morph_mean and poly_mean < encode_mean[0] and encode_mean[1] < inv_poly_mean and semantic_range[1] < pct:
-            return 1, total_cuant  # numeric
+            return (1, total_cuant)  # numeric
         elif semantic_range[0] < pct < semantic_range[1] and morph_mean[0] < poly_morph_mean < morph_mean[1]:
-            return -1, total_cuant  # code
+            return (-1, total_cuant)  # code
         
-        return 0, total_cuant  # descriptive
+        return (0, total_cuant)  # descriptive
 
     for pid, polygon in polygons.items():
         s = polygon.ocr_text or ""
@@ -417,14 +418,14 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         # Fast Path 1: Alfabético puro
         total_tokens = len(tokens)
         if compact.isalpha():
-            result = [0] * total_tokens if total_tokens > 1 else 0
+            result = [0] * total_tokens if total_tokens > 1 else [0]
             final_results[pid] = (result, 0)
             continue
 
         # Fast Path 2: Numérico puro
         elif compact.isdecimal():
-            result = [1] * total_tokens if total_tokens > 1 else 1
-            c = sum(1 for ch in compact if ch in CHAR_NUM)
+            result = [1] * total_tokens if total_tokens > 1 else [1]
+            c = sum(1 for ch in compact if ch.isdecimal())
             final_results[pid] = (result, c)
             continue
 
@@ -433,15 +434,15 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             c = sum(1 for ch in token if ch in CHAR_NUM)
 
             if find_umd(token):
-                final_results[pid] = (-2, c)
+                final_results[pid] = ([-2], c)
                 continue
             elif contains_quantitative(token):
-                final_results[pid] = (2, c)
+                final_results[pid] = ([2], c)
                 continue
 
             # fallback correcto para token único
             t_class, t_cuant = classify_token(token)
-            final_results[pid] = (t_class, t_cuant)
+            final_results[pid] = ([t_class], t_cuant)
             continue
 
         # Procesamiento normal
@@ -455,5 +456,5 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             final_results[pid] = (token_classes, poly_total_cuant)
         else:
             t_class, t_cuant = classify_token(tokens[0])
-            final_results[pid] = (t_class, t_cuant)
+            final_results[pid] = ([t_class], t_cuant)
     return final_results
