@@ -178,9 +178,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     for sub_idx in range(num_subdivisions):
                         sub_x = x_min + (sub_idx + 0.5) * segment_width
                         header_centroids.append([sub_x, y_centroid])
-                
-                logger.info(f"Subdivididos {num_polys} polígonos en {len(header_centroids)} centroides para {target_columns} columnas")
- 
+                 
             return header_centroids
         
         except Exception as e:
@@ -471,19 +469,24 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             for line_id, line_data in all_lines.items():
                 if line_data.header_line is not None:
                     header_line_id = line_id
-                    h = len(line_data.polygon_ids)
+                    h = 0
                     
                     # Asignar key_field = 6 a todos los polígonos de la línea de encabezado
+                    # y calcular la cantidad de columnas (H) basado en los key_fields
                     for poly_id in line_data.polygon_ids:
                         poly = polygons.get(poly_id)
                         if poly:
                             if poly.key_field is None:
                                 poly.key_field = 6
+                                h += 1
                             elif isinstance(poly.key_field, list):
+                                h += len(poly.key_field)
                                 if 6 not in poly.key_field:
                                     poly.key_field.append(6)
-                            elif poly.key_field != 6:
-                                poly.key_field = [poly.key_field, 6]
+                            else:
+                                h += 1
+                                if poly.key_field != 6:
+                                    poly.key_field = [poly.key_field, 6]
                                 
                     return h, header_line_id
         except Exception as e:

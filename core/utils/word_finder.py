@@ -15,7 +15,7 @@ class WordFinder:
         if set_params:
             """Aquí va una función que obtendría los parametros de configuración del master_config
             pero me da flojera escribirla así que solo dejaré un log y no cambiaré el parametro "set_params"""
-            logger.info(f"Parametros establecidos y cargados manualmente")
+            logger.debug(f"Parametros establecidos y cargados manualmente")
 
         params: Dict[str, Any] = model.get("params", {})
         noise_filter = model.get("noise_filter", {})
@@ -43,7 +43,7 @@ class WordFinder:
                 self.model: Dict[str, Any] = pickle.load(f)
             if not isinstance(self.model, dict):  # type: ignore
                 raise ValueError("El pickle no tiene el formato esperado (dict).")
-            logger.info(f"Modelo cargado en: '{time.perf_counter() - t0:.6f}s'")
+            logger.debug(f"Modelo cargado en: '{time.perf_counter() - t0:.6f}s'")
             return self.model
         except Exception as e:
             logger.error(f"Error al cargar el modelo {e}", exc_info=True)
@@ -78,6 +78,7 @@ class WordFinder:
                     continue
 
                 if not self._is_potential_keyword(q):
+                    # logger.debug(f"Texto no válido: {q}")
                     continue
 
                 # ELIMINACIÓN DE RUIDO: No usa assigned_fields
@@ -113,7 +114,7 @@ class WordFinder:
                     if not hit_positions:
                         continue
 
-                    best_score_for_cand: float = 0.1
+                    best_score_for_cand: float = 0.0
                     best_sub_details: Dict[str, int] = {}
 
                     # Agrupamos posiciones cercanas para no probar la misma zona mil veces
@@ -141,12 +142,12 @@ class WordFinder:
                                     continue
 
                                 if sub == cand:
-                                    penalty = self._length_penalty(q, cand)
+                                    penalty = self._length_penalty(sub, cand)
                                     final_score = 1.0 * penalty
                                 else:
                                     grams_sub = self._build_query_grams(sub)
                                     final_score = self._score_hybrid_greedy(grams_cand, grams_sub)
-                                    penalty = self._length_penalty(q, cand)
+                                    penalty = self._length_penalty(sub, cand)
                                     final_score *= penalty
 
                                 if final_score > best_score_for_cand:
@@ -166,7 +167,6 @@ class WordFinder:
                             "start": best_sub_details["start"],
                             "end": best_sub_details["end"]
                         })
-
                 # Después de comprobar todos los candidatos, agrupar y seleccionar el mejor por campo
                 if found_matches_for_s:
                     best_match_by_field: Dict[int, Dict[str, Any]] = {}
@@ -207,7 +207,7 @@ class WordFinder:
                             logger.debug(f"Extracted '{best_match['key_word']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
             if single:
                 if results:
-                    logger.info(f"RESULTS: {results}")
+                    logger.debug(f"RESULTS: {results}")
                 return results if results else []
             return results
         except Exception as e:
@@ -240,7 +240,7 @@ class WordFinder:
             # Score final = similitud base * penalización por longitud
             match['score_final'] = base_similarity * length_penalty
 
-            logger.info(
+            logger.debug(
                 "EMPATE: Match #%d: campo: %s, palabra: '%s' | score de desempate: %.6f | texto: '%s'",
                 i, match.get("key_field"), word_found, match['score_final'], norm_ocr_text
             )
@@ -248,7 +248,7 @@ class WordFinder:
         # Encontrar el mejor match usando max() en lugar de sort()
         best_match = max(matches, key=lambda x: (x['score_final'], len(x['key_word'])))
 
-        logger.info(
+        logger.debug(
             "DESEMPATE: texto '%s': campo: %s, palabra: '%s', score_final: %.6f",
             best_match.get("text"), best_match.get("key_field"), best_match.get("key_word"),
             best_match.get("score_final")
@@ -430,7 +430,7 @@ class WordFinder:
                                 cleaned = (cleaned[:j] + " " + cleaned[j + w:]).strip()
                                 cleaned = re.sub(r"\s+", " ", cleaned).strip()
                                 removed_noise.append(sub)
-                                logger.info(f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
+                                logger.debug(f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
                                 found_any = True
                                 break
                         if found_any:

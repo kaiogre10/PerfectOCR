@@ -25,13 +25,13 @@ LATITUDE_PATH = "D:/outputs/perfectocr"
 
 env_local = "remote" if os.environ.get("CODESPACES") == "true" else "latitude"
 if env_local == "remote":
-    print("main.py: 26 - Ejecución remota")
+    print("Ejecución remota")
     log_file_paths = os.path.join(PROJECT_ROOT, "perfectocr.txt")
     output_paths = ["output"]
     default_output = output_paths
     
 elif os.path.exists(LATITUDE_PATH):
-    print("Ejecución en latitude")
+    print("Ejecución en LATITUDE")
     output_paths =[LATITUDE_PATH]
     log_file_paths = "D:/outputs/logs/perfectocr.txt"
     default_output = output_paths
@@ -47,9 +47,9 @@ DEFAULT_OUTPUT_PATH = default_output
 OUTPUT_PATH = output_paths
 
 DEFAULT_INPUT_PATH = [
-    # "input",
-        "input2",
-        #  "input3"
+    "input",
+        # "input2",
+         "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 

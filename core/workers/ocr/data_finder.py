@@ -68,10 +68,8 @@ class DataFinder(OCRAbstractWorker):
 
                 ocr_text = poly.ocr_text or ""
                 sc = poly.semantic_clasification
-                if not isinstance(sc, list):
-                    sc = [sc]
                 
-                sc_real = sc[0] if len(sc) == 1 else int(np.median(sc).astype(np.int8))
+                sc_real = int(np.median(sc).astype(np.int8))
 
                 # Descartar rápidamente cuantitativos (2) o unidades de medida (-2)
                 if sc_real == 2:
@@ -81,7 +79,7 @@ class DataFinder(OCRAbstractWorker):
 
                 word_lenght = len(ocr_text)
                 if not ocr_text or word_lenght < 2:
-                    logger.info(f"{pid} sin texto o muy corto longitud: '{ocr_text}', letras: '{word_lenght}'")
+                    logger.debug(f"{pid} sin texto o muy corto longitud: '{ocr_text}', letras: '{word_lenght}'")
                     skipped_len += 1
                     continue
 
@@ -103,7 +101,7 @@ class DataFinder(OCRAbstractWorker):
                     polygon_updates[pid] = 8
                     continue
 
-                if sc_real != 0:
+                elif sc_real != 0:
                     # logger.info(f"{pid} omitido semanticamente sc= '{ocr_text}': {sc_real}")
                     skipped_semantic += 1
                     continue
