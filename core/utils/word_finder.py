@@ -26,6 +26,7 @@ class WordFinder:
         self.noise_words: Set[str] = set(model["noise_words"])
         self.global_filter_threshold: float = params.get("global_filter_threshold", {})
         self.noise_grams: List[Dict[int, List[str]]] = noise_filter["noise_grams"]
+        self.noise_array: List[np.ndarray[Any, np.dtype[np.uint8]]] = noise_filter["noise_array"]
         self.threshold: float = params.get("threshold_similarity", {})
         self.ngrams: Tuple[int, int] = params["char_ngrams"]
         self.window_flex: int = params.get("window_flexibility", {})
@@ -72,7 +73,6 @@ class WordFinder:
                 if not q:
                     continue
 
-                # FILTRO GLOBAL: No usa assigned_fields
                 if q in self.noise_words:
                     logger.debug(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
                     continue
@@ -207,7 +207,7 @@ class WordFinder:
                             logger.debug(f"Extracted '{best_match['key_word']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
             if single:
                 if results:
-                    logger.debug(f"RESULTS: {results}")
+                    logger.info(f"RESULTS: {results}")
                 return results if results else []
             return results
         except Exception as e:

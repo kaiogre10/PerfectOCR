@@ -90,9 +90,9 @@ class Refiner(OCRAbstractWorker):
                 self.classify_strings(manager)
                 self._log_worker_time(self.num_passes + 1, "SemanticClassifier", step_t0, "Clasificación Semántica final")
 
-            polygons = manager.workflow.polygons if manager.workflow else {}
-            for poly, poly_data in polygons.items():
-                logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}, cuant char: {poly_data.cuant_chars}")
+            # polygons = manager.workflow.polygons if manager.workflow else {}
+            # for poly, poly_data in polygons.items():
+            #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}, cuant char: {poly_data.cuant_chars}")
 
             if self.output:
                 from services.output_service import save_raw_json
