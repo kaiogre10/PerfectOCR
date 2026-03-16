@@ -28,20 +28,20 @@ class MatricialCusine(VectorizationAbstractWorker):
         timw9 = time.perf_counter()
         try:
             analysis: np.ndarray[Any, Any] = context["all_features"]
-            table_range = context["table_range"]
+            # table_range = context["table_range"]
             if 2 >= analysis.shape[0]:
                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                return True
     
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
-                    "\n"f"{table_line_ids}"
-                    "\n"f"{table_range}")
+                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
+                    "\n"f"{table_line_ids}")
+                    # "\n"f"{table_range}")
                 succes = manager.save_tabular_lines(table_line_ids)
                 if succes:
                     
-                    logger.info("Tablas guaradas en el manager desde coseno")
+                    logger.debug("Tablas guaradas en el manager desde coseno")
                     if self.output:
                         from services.output_service import save_debug_json
                         return_objects: bool = True
@@ -62,7 +62,8 @@ class MatricialCusine(VectorizationAbstractWorker):
             logger.debug("Calculando matriz de similitud")
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             line_ids: List[str] = [lid.lineal_id for lid in all_lines.values()]
-            # tabular_lines: List[str] = manager.get_tabular_lines(False) # type: ignore
+            # tabular_lines: List[str] = manager.get_tabular_lines(False)
+            # logger.info(f"Tbular lines: {tabular_lines}")
 
             tabular_lines: List[str] = self._apply_dbscan_clustering(analysis, manager)
 
@@ -103,17 +104,17 @@ class MatricialCusine(VectorizationAbstractWorker):
             if line_id in line_ids:
                 tabular_indices.append(line_ids.index(line_id))
                 
-        tabular_idx = np.array(tabular_indices).astype(np.int32)
+        tabular_idx = np.array(tabular_indices, np.int8)
         
         mask = np.isin(analysis[:, 0], tabular_idx, assume_unique=True)
-        features = np.ascontiguousarray(np.compress(mask, analysis, 0)).astype(np.float32)
+        features = np.ascontiguousarray(np.compress(mask, analysis, 0), np.float32)
         
         features = features[: ,1:]
         timecos0 = time.perf_counter()
         sims_mat_dense = get_cosine_similarity(X=features, dense_output=False)
         logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}'s")
 
-        # logger.debug(f"Promedio matriz: {np.mean(sims_mat_dense)}")
+        logger.debug(f"Promedio matriz: {np.mean(sims_mat_dense)}")
         logger.debug("Filas/Columnas (en orden):"
         "\n%s", ", ".join(str(lid) for lid in  tabular_lines))
         matriz_str = "\n".join(
@@ -134,7 +135,8 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         matched_original_indices: List[int] = []
         consecutive_failures = 0
-        for mean_sim, orig_idx, lid in zip(mean_sims, tabular_indices,  line_ids):
+        for mean_sim, orig_idx in zip(mean_sims, tabular_indices):
+            lid = line_ids[orig_idx]
             if mean_sim > self.similarity_threshold:
                 matched_original_indices.append(orig_idx)
                 consecutive_failures += 1
@@ -218,7 +220,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         t0 = time.perf_counter()
         dummie_vect = np.row_stack([median_ref_vec, mean_ref_vec])
         analysis = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
-        sims_comb = get_cosine_similarity(dummie_vect, analysis, dense_output=False)
+        sims_comb = get_cosine_similarity(analysis, dummie_vect, dense_output=False)
         # sims_median = calculate_similarity_ref(median_ref_vec, analysis[:, 1:] , dense_output=False)
         # logger.debug(f"Similitudes con Dummie MEDIAN: {sims_median}")
 
@@ -230,16 +232,16 @@ class MatricialCusine(VectorizationAbstractWorker):
         
         sims_final = (sims_comb[:, 0] * median_w) + (sims_comb[:, 1] * mean_w)
 
-        logger.info(f"Tiempo: {time.perf_counter() - t0}")
+        logger.debug(f"Tiempo: {time.perf_counter() - t0}")
         
-        logger.info(f"Promedio de similitud final: {sims_final}")
-        logger.info("Todas las líneas ordenadas: %s", ", ".join(str(lid) for lid in line_ids))
+        logger.debug(f"Promedio de similitud final: {sims_final}")
+        logger.debug("Todas las líneas ordenadas: %s", ", ".join(str(lid) for lid in line_ids))
         sims_str = "[" + "  ".join(f"{val}" for val in sims_final) + "]"
-        logger.info("Similitudes de emergencia finales:\n%s", sims_str)
+        logger.debug("Similitudes de emergencia finales:\n%s", sims_str)
 
         # Log detallado por línea
         for _, (line_id, sim) in enumerate(zip(line_ids, sims_final)):
-            logger.info(f"{line_id}: Sim: {sim}")
+            logger.debug(f"{line_id}: Sim: {sim}")
         try:
             matched_indices = [idx for idx, sim in enumerate(sims_final) if sim > self.similarity_threshold]
 
@@ -261,7 +263,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             # Encontrar el cluster más grande que respete min_cluster e interval
             table_line_ids = self._find_best_cluster(sorted_candidates, line_ids)
             
-            logger.info(f"Cluster '{len(table_line_ids)}' encontrado por fallback de emergencia: {table_line_ids}")
+            logger.debug(f"Cluster '{len(table_line_ids)}' encontrado por fallback de emergencia: {table_line_ids}")
             return table_line_ids
         except Exception as e:
             logger.error(f"Error en falback de emergencia: {e}", exc_info=True)
@@ -362,8 +364,9 @@ class MatricialCusine(VectorizationAbstractWorker):
     def _apply_dbscan_clustering(self, features_array: np.ndarray[Any, Any], manager: DataFormatter) -> List[str]:
         """Aplica DBSCAN para agrupar líneas similares"""
         all_lines = manager.workflow.all_lines if manager.workflow else {}
-        int_line_ids = features_array[:, 0].astype(int)
+        int_line_ids = features_array[:, 0].astype(np.int8)
         features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
+        # logger.info(f"Features: {features_array}")
 
         # Crear un diccionario que mapea line_index (int) a line_id (str)
         index_to_id: Dict[int, str] = {}
@@ -374,9 +377,9 @@ class MatricialCusine(VectorizationAbstractWorker):
         
         # Obtener line_ids correspondientes
         line_ids = [index_to_id.get(int(idx), f"line_{int(idx)}") for idx in int_line_ids]
-        timedbscan = time.perf_counter()
+        # timedbscan = time.perf_counter()
         labels: np.ndarray[Any, Any] = density_cluster(features_for_clustering, self.eps, self.min_cluster, self.metric)
-        logger.info(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
+        # logger.info(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:
@@ -387,7 +390,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
 
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
-        logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
+        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
         selected_indices = [all_lines[line_id].line_index for line_id in table_line_ids if line_id in all_lines]
 
         if not selected_indices:
@@ -403,6 +406,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Paso 4: Mapear de vuelta a line_id (str)
         full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        # logger.info(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
+        logger.info(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
 
         return full_range_line_ids

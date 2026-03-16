@@ -107,8 +107,8 @@ class Vectorizer(VectorizationAbstractWorker):
             # Pasar sorted_lines explícitamente
             all_features = self.calculate_all_features(sorted_lines, geoline_features, global_stats, manager)
             logger.debug(f"Features completas calculadas en {time.perf_counter() - t4:.7f}s")
-            logger.debug("Features completas:"
-            "\n"f"{all_features}"
+            logger.info("Features completas:"
+            # "\n"f"{all_features}"
             "\n"f"SHAPE:{all_features.shape}")
         
             # 5. Agregar features textuales
@@ -149,18 +149,17 @@ class Vectorizer(VectorizationAbstractWorker):
             if features.shape[0] == 0:
                 return np.zeros(0, dtype=np.float32)
 
-            numerics = np.nonzero(features[:, 0])[0]
-            all_numerics = len(numerics)
+            # all_numerics = np.sum(features[:, 0], 0)
             max_numerics = np.max(features[:, 0])
             max_digit = np.max(features[:, 1])
             
             # Evitar división por cero
             num_count_norm = np.divide(features[:, 0], max_numerics, out=np.zeros_like(features[:, 0]), where=max_numerics!=0)
-            
-            num_mean = (all_numerics / len(sorted_lines))
+            num_mean = np.mean(features[:, 0])
             
             # Lógica matching vectorize.py: 1.0 si >= mean, else -1.0
-            num_above = np.where(features[:, 0] >= num_mean, 1.0, -1.0)
+            num_above = np.where(features[:, 0] > num_mean, 1.0, -1.0)
+            # logger.info(f"Mean: {num_mean}, Num_abov: {num_above}, {features}")
             
             # Lógica matching vectorize.py: 1.0 si > 1.0, else -1.0
             has_digit = np.where(features[:, 1] > 1.0, 1.0, -1.0)
@@ -169,15 +168,14 @@ class Vectorizer(VectorizationAbstractWorker):
             
             has_numeric = np.where(features[:, 0] > 0, 1.0, -1.0)
 
-            # Restaurar num_margin que estaba comentado
             if max_numerics > 0:
-               num_margin = (features[:, 0] - num_mean) / (max_numerics / 2.0)
-               num_margin = np.clip(num_margin, -1.0, 1.0)
+               dig_margin = (features[:, 1] - num_mean) / (max_numerics / 2.0)
+               dig_margin = np.clip(dig_margin, -1.0, 1.0)
             else:
-               num_margin = np.zeros_like(features[:, 0])
+               dig_margin = np.zeros_like(features[:, 1])
                 
             textual_features = np.column_stack([
-                    num_margin,
+                    dig_margin,
                     has_numeric,
                     num_count_norm,
                     num_above,
@@ -287,8 +285,8 @@ class Vectorizer(VectorizationAbstractWorker):
         
         compact = safe_div((geoline_features[:, 4] ** 2), geoline_features[:, 3]) / 100.0
         
-      #  slope_inv = safe_div(geoline_features[:, 8], global_stats[:, 12])
-      #  slope_dif = safe_dif(geoline_features[:, 8], global_stats[:, 12])
+        # slope_inv = safe_div(geoline_features[:, 8], global_stats[:, 12])
+        # slope_dif = safe_dif(geoline_features[:, 8], global_stats[:, 12])
         
         cw: float = (total_width / 2.0)  # centro horizontal de la imagen
         ch: float = (total_height / 2.0)  # centro vertical de la imagen
@@ -310,28 +308,31 @@ class Vectorizer(VectorizationAbstractWorker):
 
         def _compute_bbox_align(curr_coord: np.ndarray[Any, np.dtype[np.float32]], other_bbox: np.ndarray[Any, np.dtype[np.float32]], idx: int) -> np.ndarray[Any, np.dtype[np.float32]]:
             """
-            Versión corregida del cálculo de alineación de bbox.
+            Versión vectorizada que copia matemáticamente bbox_alignment antiguo.
+            Ignora curr_coord[y] y usa 0.0, calculando el coseno con el vector (diferencia_x, other_bbox[y]).
             """
             if other_bbox.shape[0] == 0 or np.all(np.isnan(other_bbox[:, 0])):
                 return np.ones_like(curr_coord)
             
-            # Coordenada Y de la otra línea (absoluta, no relativa)
-            dy = other_bbox[:, 1]
+            # Calculamos diferencias al estilo ref_point = [curr_coord, 0.0]
+            dx = other_bbox[:, idx] - curr_coord
+            dy = other_bbox[:, 1] - 0.0  # El y de la otra caja menos 0.0 (fiel a alineación original)
             
-            # Vector: [diferencia en X, diferencia en Y]
-            vec = np.column_stack([other_bbox[:, idx] - curr_coord, dy])
+            # Vector: [diferencia en X, diferencia en Y desde 0]
+            vec = np.column_stack([dx, dy])
             
-            # Norma del vector
+            # Norma del vector (magnitud para dividir en el coseno)
             norms = np.linalg.norm(vec, axis=1)
             
-            # Evitar división por cero
+            # El ref_vec es siempre [1.0, 0.0], por lo que el dot product de vec y ref_vec 
+            # siempre es igual a vec[:, 0] (el componente X). La norma de [1,0] es 1.
             with np.errstate(divide='ignore', invalid='ignore'):
                 cosine = np.where(norms > 0, vec[:, 0] / norms, 0.0)
             
             result = 1.0 - np.abs(cosine)
             
-            # Donde other_bbox es NaN (no existe línea), devolver 1.0
-            return np.where(np.isnan(other_bbox[:, idx]), 1.0, result)
+            # Donde other_bbox es NaN (no existe línea), devolver 1.0 como indicaba "if not prev_bbox else 1.0"
+            return np.where(np.isnan(other_bbox[:, idx]), 1.0, result.astype(np.float32))
 
         # Pasar current_ymin a las funciones de alineación
         prev_xmin_align: np.ndarray[Any, np.dtype[np.float32]] = _compute_bbox_align(current_xmin, prev_bboxes, 0)
@@ -341,28 +342,29 @@ class Vectorizer(VectorizationAbstractWorker):
 
         def _compute_centroid_align(ref_c: np.ndarray[Any, np.dtype[np.float32]], other_c: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarray[Any, np.dtype[np.float32]]:
             """
-            Versión corregida del cálculo de alineación de centroides.
+            Versión vectorizada que copia matemáticamente el alignment antiguo.
+            Asume el punto de referencia como [ref_x, 0.0].
             """
             if other_c.shape[0] == 0 or np.all(np.isnan(other_c[:, 0])):
                 return np.ones(ref_c.shape[0], np.float32)
             
-            # Vector: [diferencia en X, diferencia en Y]
-            vec = np.column_stack([
-                other_c[:, 0] - ref_c[:, 0],
-                other_c[:, 1] - ref_c[:, 1]
-            ])
+            # Vector al estilo ref_point = [ref_c[0], 0.0]
+            dx = other_c[:, 0] - ref_c[:, 0]
+            dy = other_c[:, 1] - 0.0
+            
+            vec = np.column_stack([dx, dy])
             
             # Norma del vector
             norms = np.linalg.norm(vec, axis=1)
             
-            # Evitar división por cero
+            # Al igual que arriba, el dot product contra [1, 0] es igual al componente X.
             with np.errstate(divide='ignore', invalid='ignore'):
                 cosine = np.where(norms > 0, vec[:, 0] / norms, 0.0)
             
             result = 1.0 - np.abs(cosine)
             
             # Donde other_c es NaN (no existe línea), devolver 1.0
-            return np.where(np.isnan(other_c[:, 0]), 1.0, result)
+            return np.where(np.isnan(other_c[:, 0]), 1.0, result.astype(np.float32))
 
         # Aplicar corrección a centroides
         align_prev = _compute_centroid_align(all_centroids, prev_centroids)
@@ -395,8 +397,8 @@ class Vectorizer(VectorizationAbstractWorker):
             angle_inv,           # [20] ángulo inversa/mediana
             diag_norm,           # [21] diagonal normalizada al máximo
             compact,             # [22] medida de compactación 
-                      # [23] slope inverso/mediana
-                                 # [24] diferencia de slope vs mediana
+            # slope_inv,          # [23] slope inverso/mediana
+            # slope_dif,                     # [24] diferencia de slope vs mediana
             prev_xmin_align,     # [25] 
             prev_xmax_align,     # [26] 
             next_xmin_align,     # [27] 
@@ -406,7 +408,7 @@ class Vectorizer(VectorizationAbstractWorker):
         ])
         return all_features
                 
-    def count_numeric_tokens(self, semantic_clasification: int | List[int]) -> int:
+    def count_numeric_tokens(self, semantic_clasification: List[int]) -> int:
         sc = np.asarray(semantic_clasification, dtype=np.int8)
-        mask = (sc > 0) & (sc < 3)  # cuenta 1 y 2
+        mask = (sc > 1) & (sc < 3) | (sc == -2) # cuenta 1 y 2
         return int(np.count_nonzero(mask))

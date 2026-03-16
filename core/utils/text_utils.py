@@ -44,6 +44,8 @@ _date_patterns: List[Pattern[str]] = [
 ]
 
 # UMD
+_umd_correct = re.compile(r'(?<=/)[0-9Oo]+(?=\b)', re.IGNORECASE)
+
 _umd_patterns: List[Pattern[str]] = [
     re.compile(r'\b\d+([.,]\d+)?\s*(kg(r)?|kilo(s)?|g(r|ramo(s)?)?|mg|lb(s)?|libra(s)?|oz|onza(s)?|ton(elada(s)?)?)\b', re.IGNORECASE),
     re.compile(r'\b[Cc]\s*/\s*\d+\b'),
@@ -458,3 +460,21 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             t_class, t_cuant = classify_token(tokens[0])
             final_results[pid] = ([t_class], t_cuant)
     return final_results
+
+def normalize_umd_ocr(token: str) -> str:
+    """
+    Corrección conservadora O/0 para UMD.
+    Solo toca el segmento después de '/' y valida con find_umd.
+    Ej: C/1O -> C/10, C/O1 -> C/01
+    """
+    t = token.strip()    
+    if not find_umd(t):
+        return token
+
+    candidate = re.sub(
+        _umd_correct,
+        lambda m: m.group(0).replace("O", "0").replace("o", "0"),
+        t
+    )
+
+    return candidate

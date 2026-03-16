@@ -6,7 +6,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import estandarice_uppers_lowers, termination_detect, numeric_separator, validate_alone_chars, space_removal, valid_punt_chars, find_quantitative_runs
-from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS
+from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -102,20 +102,20 @@ class TextCorrector(OCRAbstractWorker):
     
     def _correct_token(self, token: str, semantic_clasification: int) -> str:
         """Aplica correcciones a un único token basado en su clasificación semántica."""
-        if semantic_clasification in [-1, -2]:
+        if semantic_clasification == -1:
             return token
 
         corrections_map = self._get_corrections_map(semantic_clasification)
         if not corrections_map:
             return token
         
-        token = token.strip(self.not_valid_chars)
-        
+        token = token.strip(self.not_valid_chars)        
         corrected_chars = list(token)
 
         for i, char in enumerate(token):
             if char not in corrections_map:
                 continue
+            
             if char.isalnum() and not self._is_isolated(token, i):
                 continue
             if char == "0" and self.termination_correct(token, semantic_clasification):
@@ -190,6 +190,8 @@ class TextCorrector(OCRAbstractWorker):
             return NUMERIC_CORRECTIONS
         elif semantic_clasification == 0:
             return DESCRIPTIVE_CORRECTIONS
+        elif semantic_clasification == -2:
+            return UMD_CORRECTIONS
         else:
             return {}
         
@@ -246,7 +248,7 @@ class TextCorrector(OCRAbstractWorker):
         """
         if ' ' not in text:
             # Si todos los caracteres son numéricos/monetarios → token completo cuantitativo
-            _QUANT_CHARS = CHAR_NUM | {'.'}
+            _QUANT_CHARS = CHAR_NUM
             if set(text) <= _QUANT_CHARS:
                 return [(text, True)]
 
@@ -269,7 +271,5 @@ class TextCorrector(OCRAbstractWorker):
                 tail = text[cursor:].strip()
                 if tail:
                     out.append((tail, False))
-
             return out
-
         return [(text, False)]

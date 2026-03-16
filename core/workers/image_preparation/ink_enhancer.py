@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import extract_contours_metrics
-from core.utils.math_utils import extract_contours_histogram, density_cluster
+from core.utils.math_utils import extract_contours_histogram
 from services.output_service import save_shapes, save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,6 @@ class InkCorrector(ImagePrepAbstractWorker):
             # all_gaps.extend(black_gaps.copy())
             # bin_gap = binarice_img(gap_img.copy(), {})
             # correct, out_conts, out_conts2 = self.delete_outliers(full_img)
-            # correct, scan_cont, scan_cont2 = self.blob_scanner(full_img)
             correct, out_conts, out_conts2 = self.delete_outliers(full_img)
             # all_outliers = out_conts.copy()
             # all_outliers.extend(out_conts2.copy())
@@ -72,7 +71,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     # imag_id = f"corrected_blobs_{image_name}_{worker_name}"
                     image_id = f"outliers_{image_name}_{worker_name}"
                     # id = f"bin_gap_{image_name}_{worker_name}"
-                    gaps_id = f"gaps_{image_name}_{worker_name}"
+                    # gaps_id = f"gaps_{image_name}_{worker_name}"
                     # img_id = f"bin_correct_{image_name}_{worker_name}"
                     # all_cont_id = f"all_contours_{image_name}_{worker_name}"
             
@@ -97,19 +96,19 @@ class InkCorrector(ImagePrepAbstractWorker):
         area_hist = extract_contours_histogram(metrics[:, 1])
         dist_values = extract_contours_histogram(metrics[:, -1])
 
-        area_outliers = area_hist[0]
+        area_outliers = area_hist[0] if area_hist[0] > 0 else 1
         dist_var_outliers = dist_values[0] if dist_values[0] > 0 else 1
 
         # 1. Outliers de Área
-        if area_outliers < 1:
-            out_index = {-1}
-        else:
-            top_areas = np.sort(metrics[:, 1])[::-1][:area_outliers]
-            outlier_mask = (metrics[:, 1] >= (np.min(top_areas) - 0.1))
-            child_metric = metrics[outlier_mask]
-            # Indexación booleana directa a la columna 0
-            child_metrics = child_metric[child_metric[:, 11] == 1, 0] 
-            out_index: Set[int] = set(child_metrics.astype(np.int32).tolist())
+        # if area_outliers < 1:
+        #     out_index = {-1}
+        # else:
+        top_areas = np.sort(metrics[:, 1])[::-1][:area_outliers]
+        outlier_mask = (metrics[:, 1] >= (np.min(top_areas) - 0.1))
+        child_metric = metrics[outlier_mask]
+        # Indexación booleana directa a la columna 0
+        child_metrics = child_metric[child_metric[:, 11] == 1, 0] 
+        out_index: Set[int] = set(child_metrics.astype(np.int32).tolist())
 
         # 2. Varianza de Distancia
         med_short_side = np.median(metrics[:, 17])
@@ -119,20 +118,20 @@ class InkCorrector(ImagePrepAbstractWorker):
         dist_outlier_mask = (metrics[:, -1] > (np.min(top_dist_var) - 0.1))
 
         dist_metrics = metrics[dist_outlier_mask]
-        var_mask = ((dist_metrics[:, 10] > self.aspect_ratio_range[0]) & 
+        var_mask = ((dist_metrics[:, 10] > self.aspect_ratio_range[1]) & 
                     ((dist_metrics[:, 17] < (med_short_side - mad)) | 
                      (dist_metrics[:, 17] > (med_short_side + mad))))
         dist_var = dist_metrics[var_mask, 0]
 
         # 3. Shape y Líneas
-        shape_mask = self.shape_thr >= metrics[:, 16]
+        shape_mask = self.shape_thr > metrics[:, 16]
         irreg = metrics[shape_mask, 0]
 
         aspc_ratio_mask_high = (metrics[:, 10] > self.aspect_ratio_range[1])
         lines = metrics[aspc_ratio_mask_high, 0]
 
         # 4. Angulo y Deskew
-        angle_mask1 = (metrics[:, 4] < self.angle_threshold) 
+        angle_mask1 = (metrics[:, 4] < self.angle_threshold)
         angle_mask2 = (metrics[:, 4] > (180 - self.angle_threshold))
         
         mask_deskew = angle_mask2 | angle_mask1
@@ -141,7 +140,6 @@ class InkCorrector(ImagePrepAbstractWorker):
         mask_vertical = (vert_metrics[:, 10] > self.aspect_ratio_range[1])
         vertical = vert_metrics[mask_vertical, 0]
 
-        # Aplicamos la máscara de deskew a metrics alterando su estado secuencialmente (como tu código original)
         metrics = metrics[mask_deskew]
 
         # 5. Black Ratio, Solidez y Ratio Shapes
@@ -151,10 +149,10 @@ class InkCorrector(ImagePrepAbstractWorker):
         solidez = (metrics[:, 1] / metrics[:, 7])
         solid = (solidez > self.solid_thr)
 
-        # aspc_ratio_mask_low = (metrics[: ,10] > self.aspect_ratio_range[0])
-        # mask_solidity = solid & aspc_ratio_mask_low
+        aspc_ratio_mask_low = (metrics[: ,10] > self.aspect_ratio_range[0])
+        mask_solidity = solid & aspc_ratio_mask_low
 
-        # solidity = metrics[mask_solidity, 0]
+        solidity = metrics[mask_solidity, 0]
 
         ratio_1 = (metrics[:, 12] < (1.0 + self.thr)) & (metrics[:, 12] > (1.0 - self.thr)) & solid & black_ratio_mask
         ratio_2 = (metrics[:, 13] < (1.0 + self.thr)) & (metrics[:, 13] > (1.0 - self.thr)) & solid & black_ratio_mask
@@ -168,7 +166,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         # Transformación a Sets
         rect1ind: Set[int] = set(rect1.astype(np.int32).tolist())
         rect2ind: Set[int] = set(rect2.astype(np.int32).tolist())
-        # solidity_indices: Set[int] = set(solidity.astype(np.int32).tolist())
+        solidity_indices: Set[int] = set(solidity.astype(np.int32).tolist())
         vertical_indices: Set[int] = set(vertical.astype(np.int32).tolist())
         lines_indices: Set[int] = set(lines.astype(np.int32).tolist())
         irreg_indices: Set[int] = set(irreg.astype(np.int32).tolist())
@@ -179,14 +177,14 @@ class InkCorrector(ImagePrepAbstractWorker):
         lines_correct = 0
 
         # Unimos las condiciones en un único set O(1) de chequeo rápido
-        group_outliers2 = out_index | irreg_indices | rect1ind | rect2ind | vertical_indices | lines_indices # | solidity_indices (la tenías comentada)
+        group_outliers2 = dist_indices | irreg_indices | rect1ind | rect2ind | vertical_indices | lines_indices | solidity_indices
 
         for idx, cont_coords in cont_coords_list:
-            if idx in group_outliers2:
+            if idx in out_index:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
-            elif idx in dist_indices:
+            elif idx in group_outliers2:
                 cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
                 outlier_cont.append(cont_coords)
                 lines_correct += 1
@@ -232,33 +230,3 @@ class InkCorrector(ImagePrepAbstractWorker):
         logger.info(f"Contornos pintado de Ngero: {black}, solitarios: {white}")
         return grey_img, white_gaps, black_gaps
     
-    def blob_scanner(self, grey_img: np.ndarray[Any, Any]):
-        cont_coords_list, features_array = extract_contours_metrics(grey_img)
-
-        int_blobs_ids = features_array[:, 0].astype(np.int32)
-        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
-
-        labels = density_cluster(features_for_clustering, 1.0, 2, "euclidean")
-
-        unique_labels = [label for label in set(labels) if label != -1]
-        if not unique_labels:
-            logger.warning("DBSCAN: No se encontraron clusters válidos.")
-            return grey_img, [], []
-
-        cluster_sizes = {label: int(np.sum(labels == label)) for label in unique_labels}
-        main_cluster = max(cluster_sizes, key=cluster_sizes.get)
-
-        main_cluster_ids = set(int_blobs_ids[labels == main_cluster].tolist())
-        secondary_ids = set(int_blobs_ids[labels != main_cluster].tolist())
-
-        main_cluster_contours: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-        secondary_contours: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-
-        for idx, cont_coords in cont_coords_list:
-            if idx in main_cluster_ids:
-                main_cluster_contours.append(cont_coords)
-            elif idx in secondary_ids:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                secondary_contours.append(cont_coords)
-
-        return grey_img, main_cluster_contours, secondary_contours

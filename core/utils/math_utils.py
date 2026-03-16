@@ -82,8 +82,14 @@ def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype
     
     return np.array(encoders, np.float32)
 
-def get_cosine_similarity(ref_vec: Optional[np.ndarray[Any, np.dtype[np.float32]]] = None, X: np.ndarray[Any, np.dtype[np.float32]] = np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]: #type: ignore
-    return cosine_similarity(X, ref_vec, dense_output).astype(np.float32)
+def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]], ref_vec: Optional[np.ndarray[Any, np.dtype[np.float32]]] = None, dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
+    """
+    Calcula la matriz de similitudes coseno entre los vectores de X y ref_vec. 
+    Por convención, X es la matriz de consulta (shape n_samples_X, n_features), 
+    ref_vec es la de referencia (shape n_samples_ref, n_features) o None (usa X contra sí misma).
+    El resultado será (n_samples_X, n_samples_ref).
+    """
+    return cosine_similarity(X, ref_vec, dense_output=dense_output)
 
 def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
     """

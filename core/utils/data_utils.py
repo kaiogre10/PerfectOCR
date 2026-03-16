@@ -417,7 +417,7 @@ FEATURES_NAME: List[str] = [
     "next_xmax_align",
     "align_prev",
     "align_next",
-    "num_margin",
+    "dig_margin",
     "has_numeric",
     "numeric_count_norm",
     "num_above",
@@ -439,6 +439,11 @@ SPECIAL_CHARS: Set[str] = {
     ")", "(", "]", "[", "{", "}", "|", "*", "^",
     "-", "_", "+", "=", "<", ">", ";", ":", "@",
     "'", "!", "¡", "?", "¿", "'", "\\", "''",
+}
+
+UMD_CORRECTIONS: Dict[str, str] = {
+    "o": "0",
+    "O": "0"
 }
 
 NUMERIC_CORRECTIONS: Dict[str, str] = {
@@ -470,7 +475,6 @@ DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
     "è": "é",
     "ý": "y",
     "\\": "/",
-    "4": "A",
 }
 
 NOT_VALID_CHARS: Set[str] = {
