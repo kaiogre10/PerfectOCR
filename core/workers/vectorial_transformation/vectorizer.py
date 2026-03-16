@@ -128,6 +128,7 @@ class Vectorizer(VectorizationAbstractWorker):
         """
         Devuelve features textuales ajustadas a la lógica de vectorize.py (-1.0/1.0 y conteos correctos).
         """
+        time0 = time.perf_counter()
         char_num = CHAR_NUM
         try:
             polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
@@ -144,8 +145,9 @@ class Vectorizer(VectorizationAbstractWorker):
                         sc = polygons_dict[pid_str].semantic_clasification
                         sc_count += self.count_numeric_tokens(sc)
                 
-                line_text = getattr(line_data, "text", "")
-                dcount = sum(1 for ch in line_text if ch in char_num)
+                # line_text = getattr(line_data, "text", "")
+                # dcount = sum(1 for ch in line_text if ch in char_num)
+                dcount = line_data.t_cuant
                 features_list.append([sc_count, dcount])
 
             features = np.array(features_list, np.float32)
@@ -189,6 +191,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     has_digit
                     ])
                     
+            logger.info(f"Features textuales calculadas en: {time.perf_counter()-time0:.6f}'s")
             return np.array(textual_features, dtype=np.float32)
         
         except Exception as e:

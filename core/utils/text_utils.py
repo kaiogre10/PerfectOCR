@@ -1,7 +1,9 @@
 import re
 import logging
 import unicodedata
-from typing import List, Tuple, Dict, Pattern, Set
+import numpy as np
+from typing import List, Tuple, Dict, Pattern, Set, Any
+from core.utils.math_utils import text_encode
 from core.utils.data_utils import SPECIAL_CHARS, NOT_VALID_CHARS, NOT_VALID_PUNT_CHARS, CHAR_NUM, ALONE_CHARS, PUNC_CHARS
 
 logger = logging.getLogger(__name__)
@@ -368,3 +370,84 @@ def numeric_separator(token: str) -> str:
     except Exception as e:
         logger.warning(f"Error normalizando separadores numéricos: {e}", exc_info=True)
         return token
+        
+def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> Dict[str, Tuple[int | List[int], int]]:
+    semantic_range: Tuple[float, float] = worker_config["semantic_range"]
+    encode_mean: Tuple[float, float] = worker_config["encode_mean"]
+    morph_mean: Tuple[float, float] = worker_config["morph_mean"]
+
+    final_results: Dict[str, Tuple[int | List[int], int]] = {}
+
+    def classify_token(s: str) -> Tuple[int, int]:
+        total = len(s)
+        total_cuant = int(sum(1 for ch in s if ch in CHAR_NUM)) if total > 0 else 0
+        pct = (total_cuant / total) * 100.0 if total_cuant > 0 else 0.0
+        
+        encoded_text = text_encode(s, ["all"])
+        means = np.mean(encoded_text, axis=1)
+        
+        poly_mean = means[0]
+        inv_poly_mean = means[1]
+        poly_morph_mean = means[2]
+
+        if contains_quantitative(s):
+            return 2, total_cuant
+
+        elif find_umd(s):
+            return -2, total_cuant
+        
+        elif morph_mean[1] < poly_morph_mean and poly_mean < encode_mean[0] and encode_mean[1] < inv_poly_mean and semantic_range[1] < pct:
+            return 1, total_cuant  # numeric
+        elif semantic_range[0] < pct < semantic_range[1] and morph_mean[0] < poly_morph_mean < morph_mean[1]:
+            return -1, total_cuant  # code
+        
+        return 0, total_cuant  # descriptive
+
+    for pid, polygon in polygons.items():
+        s = polygon.ocr_text or ""
+        if not s:
+            continue
+
+        # Fast Path 1: Alfabético puro (mismo resultado para todos los tokens)
+        if s.replace(' ', '').isalpha():
+            tokens = s.split(' ')
+            result = [0] * len(tokens) if len(tokens) > 1 else 0
+            # Alfabético puro tiene 0.0 total_cuant en cada token (100% de 0.0 es 0.0)
+            final_results[pid] = (result, 0)
+            continue
+
+        # Fast Path 2: Numérico puro (mismo resultado para todos los tokens)
+        elif s.replace(' ', '').isdigit():
+            tokens = s.split(' ')
+            result = [1] * len(tokens) if len(tokens) > 1 else 1
+            c = len(tokens)
+            # Numérico puro tiene 1.0 total_cuant en cada token. Si hay múltiples tokens, la suma es len(tokens)
+            final_results[pid] = (result, c)
+            continue
+
+        # Fast Path 3: UMD (Solo si es palabra única)
+        elif ' ' not in s and find_umd(s):
+            c = (sum(1 for ch in s if ch in CHAR_NUM))
+            final_results[pid] = (-2, c) # Ajusta 0.0 según corresponda a la palabra
+            continue
+
+        elif ' ' not in s and contains_quantitative(s):
+            # Requiere un pequeño cálculo manual de cuántitativos aquí:
+            c = (sum(1 for ch in s if ch in CHAR_NUM))
+            final_results[pid] = (2, c)
+            continue
+
+        # Procesamiento normal si no entró en los Fast Paths
+        elif ' ' in s:
+            tokens = s.split(' ')
+            token_classes: List[int] = []
+            poly_total_cuant = 0
+            for t in tokens:
+                t_class, t_cuant = classify_token(t)
+                token_classes.append(t_class)
+                poly_total_cuant += t_cuant
+            final_results[pid] = (token_classes, poly_total_cuant)
+        else:
+            t_class, t_cuant = classify_token(s)
+            final_results[pid] = (t_class, t_cuant)
+    return final_results

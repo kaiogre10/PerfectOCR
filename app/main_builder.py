@@ -23,9 +23,9 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             return  []
         
         # 1. Main activa al Configurador y valida parametros mínimos
-        t1 = time.perf_counter()
-        config_services = ConfigService(config_path, TEST_MODE)
-        logger.debug(f"Config service completo en {time.perf_counter()-t1:.6f}s")
+        # t1 = time.perf_counter()
+        config_services = ConfigService(config_path, TEST_MODE, output_paths)
+        # logger.info(f"Config service completo en {time.perf_counter()-t1:.6f}s")
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
         workflow_manager = WorkFlowBuilder(builder_config=config_services.utils_config, project_root=project_root, input_paths=input_paths)

@@ -80,10 +80,11 @@ class LinealReconstructor(VectorizationAbstractWorker):
         boundaries = self.find_tabular_lines(polygons)        
         headers = set(boundaries[0])
         footers = set(boundaries[1])
-        bboxes: List[np.ndarray[Any, Any]] = []        
+        bboxes: List[np.ndarray[Any, Any]] = []
         lines_bbox: List[Any] = []
         header_idx: int = 0
         footer_idx: int = 0
+        
         for poly in prepared_sorted:
             bbox = poly.geometry.bounding_box
             if bbox.size == 0:
@@ -153,6 +154,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         current_line_bbox = list(bbox)
                         continue
                     
+                    line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys)
+                    
                     lines_bbox.append(current_line_bbox)  # Agregar aquí: bbox de la línea completada
                     
                     # El centroide de la línea se calcula como el centroide del bounding box de la línea
@@ -171,7 +174,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         "polygons_index": polygons_index,
                         "header_line": header_line,
                         "footer_line": footer_line,
-                        "tabular_line": tabular_line
+                        "tabular_line": tabular_line,
+                        "t_cuant": line_t_cuant
                     }
                             
                     line_counter += 1
@@ -179,7 +183,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                    logger.info(f"{line_id}: '{joined_text}'")
+                    # logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -199,6 +203,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             # Validar también el texto de la última línea
             if joined_text:
                 current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
+                line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys)
                 lines_bbox.append(current_line_bbox)
                 
                 line_centroid = [
@@ -216,11 +221,12 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     "text": joined_text,
                     "header_line": None,
                     "footer_line": footer_line,
-                    "tabular_line": tabular_line
+                    "tabular_line": tabular_line,
+                    "t_cuant": line_t_cuant
                 }
 
                 # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids}")
-                logger.info(f"{line_id}: '{joined_text}'")
+                # logger.info(f"{line_id}: '{joined_text}'")
 
         return lines_info, (header_idx if header_idx > 0 else 0, footer_idx if footer_idx > 0 else 0)
 

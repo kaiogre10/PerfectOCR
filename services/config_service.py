@@ -9,14 +9,15 @@ logger = logging.getLogger(__name__)
 
 class ConfigService:
     """Gestor de los parametros de configuración"""
-    def __init__(self, config_path: str, TEST_MODE: bool):
+    def __init__(self, config_path: str, TEST_MODE: bool, output_paths: List[str]):
         validated_config = self._load_and_validate_yaml(config_path)
         self.config = validated_config.model_dump()
         elemental_params = "image_loader" in self.create_stager[0][1]
         self.det = "geometry_detector"
         self.ocr_workers = {self.det, "polygon_extractor", "paddle_wrapper"}
         # self.min_workers: Set[str] = self.ocr_workers.union(elemental_worker) #"lineal", "vectorizer", "cos_sim", "table_structurer"
-        self.no_modules = not elemental_params and TEST_MODE
+        self.no_modules = (elemental_params is False) and (TEST_MODE is True)
+        self.enable_outputs = True if output_paths else False
         
         if not elemental_params and not TEST_MODE:
             logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN, DETENIENDO")
@@ -54,7 +55,15 @@ class ConfigService:
 
     @cached_property
     def enabled_outputs(self) -> Dict[str, Any]:
-        return {} if self.no_modules else self.config.get("enabled_outputs", {})
+        if self.no_modules:
+            logger.debug("Enabled output desactivados, sin workers")
+            return {}
+            
+        elif not self.enable_outputs:
+            logger.debug("Enabled output desactivados, sin rutas de salida, posible ejecución en Inspiron")
+            return {}
+        else:
+            return self.config.get("enabled_outputs", {})
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
@@ -116,12 +125,15 @@ class ConfigService:
       
     @cached_property
     def img_prep_config(self) -> Dict[str, Any]:
-        return {
-            **self.modules_config.get("image_preparation", {}),
-            **self.enabled_outputs.get("image_load_outputs", {}),
-            **self.utils_config,
-            "imagepre_stage": self.workers_order["imagepre_stage"]
-        }
+        if self.no_modules:
+            return {}
+        else:
+            return {
+                **self.modules_config.get("image_preparation", {}),
+                **self.enabled_outputs.get("image_load_outputs", {}),
+                **self.utils_config,
+                "imagepre_stage": self.workers_order["imagepre_stage"]
+            }
        
     @cached_property
     def preprocessing_config(self)-> Dict[str, Any]:

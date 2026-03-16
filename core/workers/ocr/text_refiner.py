@@ -5,7 +5,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.fragmenter import Fragmenter
-from core.utils.general_utils import clasify_words
+from core.utils.text_utils import clasify_words
 from core.domain.data_models import Polygons
 import logging
 import time
@@ -92,7 +92,7 @@ class Refiner(OCRAbstractWorker):
 
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-                logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}, cuant char: {poly_data.cuant_chars}")
+                logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}, cuant char: {poly_data.cuant_chars}")
 
             if self.output:
                 from services.output_service import save_raw_json
@@ -109,7 +109,7 @@ class Refiner(OCRAbstractWorker):
                     }
                 save_raw_json( output_paths, worker_name, results, file_name)
 
-            logger.info(f"Tiempo de refinador: {time.perf_counter() - t0:.6f}'s")
+            logger.debug(f"Tiempo de refinador: {time.perf_counter() - t0:.6f}'s")
             return True
 
         except Exception as e:
@@ -130,9 +130,9 @@ class Refiner(OCRAbstractWorker):
                 return True
 
             # Clasificar solo los polígonos seleccionados
-            t0 = time.perf_counter()
-            final_results: Dict[str, Tuple[int | List[int], float]] = clasify_words(polygons_to_classify, self.worker_config)
-            logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
+            # t0 = time.perf_counter()
+            final_results: Dict[str, Tuple[int | List[int], int]] = clasify_words(polygons_to_classify, self.worker_config)
+            # logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
 
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results)

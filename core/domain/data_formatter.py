@@ -275,7 +275,7 @@ class DataFormatter:
             remaining_polygons = list(self.workflow.polygons.items())
             new_polygons: Dict[str, Polygons] = {}
             
-            for idx, (old_id, poly_obj) in enumerate(remaining_polygons): # type: ignore
+            for idx, (_, poly_obj) in enumerate(remaining_polygons): # type: ignore
                 new_id = f"poly_{idx:04d}"
                 updated_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
                 new_polygons[new_id] = updated_poly_obj
@@ -316,13 +316,12 @@ class DataFormatter:
                 else:
                     logger.warning(f"Polígono {poly_id} no encontrado en workflow.polygons")
 
-            logger.debug("Texto OCR actualizado")
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
                         
-    def update_semantic_clasification(self, final_results: Dict[str, Tuple[int | List[int], float]]) -> bool:
+    def update_semantic_clasification(self, final_results: Dict[str, Tuple[int | List[int], int]]) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
         """
@@ -460,7 +459,8 @@ class DataFormatter:
                     line_geometry=line_geometry,
                     tabular_line=line_data["tabular_line"],
                     header_line=line_data["header_line"],
-                    footer_line=line_data["footer_line"]
+                    footer_line=line_data["footer_line"],
+                    t_cuant = line_data["t_cuant"]
                 )
             
             self.workflow.all_lines = all_lines_dataclasses

@@ -21,18 +21,30 @@ TEST_MODE = True
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
-env_local = "remote" if os.environ.get("CODESPACES") == "true" else "local"
+LATITUDE_PATH = "D:/outputs/perfectocr"
+
+env_local = "remote" if os.environ.get("CODESPACES") == "true" else "latitude"
 if env_local == "remote":
-    print("main.py: 27 - Ejecución remota")
+    print("main.py: 26 - Ejecución remota")
     log_file_paths = os.path.join(PROJECT_ROOT, "perfectocr.txt")
     output_paths = ["output"]
-else:
-    print("main.py: 31 - Ejecución local")
-    output_paths =["D:/outputs/perfectocr"]
+    default_output = output_paths
+    
+elif os.path.exists(LATITUDE_PATH):
+    print("Ejecución en latitude")
+    output_paths =[LATITUDE_PATH]
     log_file_paths = "D:/outputs/logs/perfectocr.txt"
+    default_output = output_paths
+
+else:
+    print("Ejecución en Inspiron")
+    output_paths = []
+    log_file_paths = ""
+    default_output = ["output"]
     
 LOG_FILE_PATH = log_file_paths
-DEFAULT_OUTPUT_PATH = output_paths
+DEFAULT_OUTPUT_PATH = default_output
+OUTPUT_PATH = output_paths
 
 DEFAULT_INPUT_PATH = [
     # "input",
@@ -75,11 +87,12 @@ def main():
     """Función main para compatibilidad con ejecución directa."""
     if len(sys.argv) == 1:
         input_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_INPUT_PATH]
-        output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
+        output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in OUTPUT_PATH]
         config_path = DEFAULT_CONFIG_FILE
         project_root = PROJECT_ROOT
         
-        clear_output_folders(output_paths)
+        default_output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
+        clear_output_folders(default_output_paths)
         return activate_main(input_paths, output_paths, config_path, project_root, TEST_MODE)
 
     return activate_main([], [], "", "", False)

@@ -32,7 +32,7 @@ def clear_output_folders(output_paths: List[str]) -> None:
                     os.remove(item_path)
                     deleted_files += 1
                     
-                logger.debug(f"Eliminado: {item_path}")
+                logger.info(f"Eliminado: {item_path}")
                 
             except Exception as e:
                 logger.error(f"Error al eliminar {item_path}: {e}", exc_info=True)

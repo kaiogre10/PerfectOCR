@@ -69,6 +69,7 @@ class AllLines:
     tabular_line: bool
     header_line: Optional[int]
     footer_line: Optional[int]
+    t_cuant: int
     
 @dataclass
 class Metadata:
