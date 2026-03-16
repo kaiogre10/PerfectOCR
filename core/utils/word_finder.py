@@ -207,7 +207,7 @@ class WordFinder:
                             logger.debug(f"Extracted '{best_match['key_word']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
             if single:
                 if results:
-                    logger.debug(f"RESULTS: {results}")
+                    logger.info(f"RESULTS: {results}")
                 return results if results else []
             return results
         except Exception as e:
@@ -430,8 +430,7 @@ class WordFinder:
                                 cleaned = (cleaned[:j] + " " + cleaned[j + w:]).strip()
                                 cleaned = re.sub(r"\s+", " ", cleaned).strip()
                                 removed_noise.append(sub)
-                                logger.info(
-                                    f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
+                                logger.info(f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
                                 found_any = True
                                 break
                         if found_any:

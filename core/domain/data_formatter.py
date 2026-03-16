@@ -414,16 +414,6 @@ class DataFormatter:
             logger.warning(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
             return False
 
-    def _update_line_attr(self, line_id: str, attr_name: str, value: Any) -> bool:
-        """Actualiza un atributo de una línea en all_lines de forma segura."""
-        if not self.workflow or line_id not in self.workflow.all_lines:
-            return False
-            
-        current = self.workflow.all_lines[line_id]
-        updated = dataclasses.replace(current, **{attr_name: value})
-        self.workflow.all_lines[line_id] = updated
-        return True
-
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
         Guarda las líneas reconstruidas en el workflow_dict y, más importante,
@@ -518,9 +508,9 @@ class DataFormatter:
                     logger.warning(f"line_id '{line_id}' no encontrado en all_lines")
 
             if marked_ids:
-                logger.info(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
+                logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_debug in tabular_lines_debug:
-                    logger.info(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
+                    logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
             else:
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 

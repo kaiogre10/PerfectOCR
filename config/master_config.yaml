@@ -18,13 +18,13 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
     - "lineal"
     - "vectorizer"
-    # - "cos_sim"
-    # - "table_structurer"
+    - "cos_sim"
+    - "table_structurer"
     # - "table_validated"
     # - "math_max"
 
@@ -48,7 +48,7 @@ enabled_outputs:
     sharp_poly: False
 
   ocr_outputs:
-    ocr_raw: True
+    ocr_raw: False
     binarized_polygons: False
     cropp_blobs: False
     fragmented_polys: False
@@ -146,7 +146,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 0
+      num_passes: 1
       semantic_range: [45.0, 66.5] # Cantidad de digitos
       encode_mean: [25.1, 39.1] # Promedio de densidad
       morph_mean: [-0.3, 0.35] # Promedio morfológico
@@ -163,7 +163,7 @@ modules:
     
   vectorization:
     lineal:
-      get_vectors: True
+      get_vectors: False
       overlap_threshold: 0.596
       
     cos_sim:

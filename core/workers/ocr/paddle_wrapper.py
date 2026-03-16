@@ -113,6 +113,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             }
                         else:
                             logger.debug(f"Baja confianza en {polygon_ids[idx]}: '{text}' ({conf_pct}%)")
+                        
                     return raw_map
             
         except Exception as e:

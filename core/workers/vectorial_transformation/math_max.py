@@ -57,7 +57,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 save_debug_table(corrected_df, file_name, output_paths, worker_name, header_polygons)
 
             # Log simple de cómo queda la tabla ya corregida
-            logger.debug("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
+            logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
 
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 

@@ -85,10 +85,10 @@ class DataFinder(OCRAbstractWorker):
                     skipped_len += 1
                     continue
 
-                # elif find_umd(ocr_text):
-                #     skipped_semantic += 1
-                #     logger.debug(f"'{pid}' UMD: {ocr_text}")
-                #     continue
+                #elif find_umd(ocr_text):
+                 #   skipped_semantic += 1
+                  #  logger.debug(f"'{pid}' UMD: {ocr_text}")
+                   # continue
 
                 elif find_date(ocr_text):
                     skipped_semantic +=1
@@ -137,8 +137,8 @@ class DataFinder(OCRAbstractWorker):
                     continue
 
             if polygon_updates:
-                logger.debug(f"KEY_FIELDS: {polygon_updates}")
-                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
+                # logger.info(f"KEY_FIELDS: {polygon_updates}")
+                logger.debug(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
                 return polygon_updates
             
             else:

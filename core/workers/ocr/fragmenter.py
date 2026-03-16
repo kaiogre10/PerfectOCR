@@ -388,7 +388,7 @@ class Fragmenter(OCRAbstractWorker):
         new_polys: List[Polygons] = []
         current_x = xmin
         
-        for (frag_tokens, frag_scs), frag_len in zip(fragments, frag_char_lengths):
+        for (frag_tokens, _), frag_len in zip(fragments, frag_char_lengths):
             frag_ratio = frag_len / total_chars
             frag_width = frag_ratio * width
             new_xmax = current_x + frag_width

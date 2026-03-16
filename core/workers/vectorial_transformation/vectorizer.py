@@ -6,7 +6,6 @@ from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
-from core.utils.data_utils import CHAR_NUM
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ class Vectorizer(VectorizationAbstractWorker):
             vectorice = context["vectorice"]
             if not vectorice:
                 logger.info(f"Vectorización omitida, por tabla detectada anteriormente: {vectorice}")
-                context["all_features"] = np.empty(1)
+                context["all_features"] = np.empty((1, 1))
                 return True
                 # Si no hay intervalo, se prosigue con la vectorización normal
             all_features = self._vectorize_text(manager)
@@ -52,8 +51,7 @@ class Vectorizer(VectorizationAbstractWorker):
                 image_features = self.image_features
                 save_table_values(file_name, features_id, output_paths, worker_name, image_features)
                 
-            logger.info(f"Vectorización completada en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(all_features)}")
-            logger.debug(f"Features guardadas en el contexto")
+            logger.debug(f"Vectorización completada en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(all_features)}")
                 
             return True
 
@@ -128,13 +126,11 @@ class Vectorizer(VectorizationAbstractWorker):
         """
         Devuelve features textuales ajustadas a la lógica de vectorize.py (-1.0/1.0 y conteos correctos).
         """
-        time0 = time.perf_counter()
-        char_num = CHAR_NUM
         try:
             polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             index_to_id_map = {p.poly_index: p.polygon_id for p in polygons_dict.values()}
 
-            features_list: List[int] = []
+            features_list: List[List[int]] = []
             for line_data in sorted_lines:
                 sc_count = 0
                 # Cuenta tokens numéricos por línea
@@ -145,8 +141,6 @@ class Vectorizer(VectorizationAbstractWorker):
                         sc = polygons_dict[pid_str].semantic_clasification
                         sc_count += self.count_numeric_tokens(sc)
                 
-                # line_text = getattr(line_data, "text", "")
-                # dcount = sum(1 for ch in line_text if ch in char_num)
                 dcount = line_data.t_cuant
                 features_list.append([sc_count, dcount])
 
@@ -191,7 +185,6 @@ class Vectorizer(VectorizationAbstractWorker):
                     has_digit
                     ])
                     
-            logger.info(f"Features textuales calculadas en: {time.perf_counter()-time0:.6f}'s")
             return np.array(textual_features, dtype=np.float32)
         
         except Exception as e:
@@ -215,7 +208,7 @@ class Vectorizer(VectorizationAbstractWorker):
         slope = (width / height)
 
         return np.column_stack([
-            line_index.astype(np.int32),     # [0] line_index
+            line_index.astype(np.int8),     # [0] line_index
             width,          # [1] width
             height,         # [2] height
             area,           # [3] area
@@ -268,15 +261,15 @@ class Vectorizer(VectorizationAbstractWorker):
         bbox_w_dif = safe_dif(geoline_features[:, 1], global_stats[:, 5])
         
         norm_wid = safe_div(geoline_features[:, 1], global_stats[:, 0])
-        width_rel = safe_div(geoline_features[:, 1], total_width)
+        width_rel = safe_div(geoline_features[:, 1], total_width) #type: ignore
         
         area_norm = safe_div(geoline_features[:, 3], global_stats[:, 1])
-        ratio_area = safe_div(geoline_features[:, 3], total_size)
+        ratio_area = safe_div(geoline_features[:, 3], total_size) #type: ignore
         
         area_inv = safe_div(geoline_features[:, 3], global_stats[:, 7])
         area_dif = safe_dif(geoline_features[:, 3], global_stats[:, 7])
         
-        max_ratio = safe_div(global_stats[:, 1], total_size)
+        max_ratio = safe_div(global_stats[:, 1], total_size) #type: ignore
         ratio_area_norm = safe_div(ratio_area, max_ratio)
         
         # aspect_ratio = geoline_features[:, 5]

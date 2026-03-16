@@ -14,7 +14,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config.get('table_structurer', {})
+        # worker_config = config.get('table_structurer', {})
         self.output = config.get("table_structured", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -39,7 +39,10 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 logger.error("Faltan datos necesarios para estructuración tabular")
                 return False
 
-            # 1. Detectar encabezado H* usando data classes
+            # for line_id, line_data in all_lines.items():
+            #     if line_data.header_line is not None:
+            #         logger.info(f"Texto de {line_id}: '{line_data.text}', polygons: {line_data.polygon_ids}")
+                
             try:
                 
             
@@ -59,14 +62,14 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # if H == 0:
                 #     logger.error("No se pudieron extraer centroides del encabezado")
                 #     return False
-                h, header_line_id = self.get_headers(all_lines)
+                h, header_line_id = self.get_headers(all_lines, polygons)
                 if not header_line_id or h==0:
                     logger.error("No hay encabezados disponibles")
                     return False
                 
                 H = int(h)
                 
-                logger.debug(f"Encabezado detectado: {header_line_id}, H={H} columnas")
+                logger.info(f"Encabezado detectado: {header_line_id}, H={H} columnas")
 
                 # Pasar target_columns a la función de extracción
                 header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons, H)
@@ -463,13 +466,25 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error creando datadrame: {e}", exc_info=True)
             return pd.DataFrame()
 
-    def get_headers(self, all_lines: Dict[str, AllLines]) -> Tuple[int, str]:
+    def get_headers(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> Tuple[int, str]:
         try:
             for line_id, line_data in all_lines.items():
-                h: int | None = line_data.header_line if line_data.header_line else None
-                if h is not None:
+                if line_data.header_line is not None:
                     header_line_id = line_id
-                    # logger.info(f"H: {h}, id: {line_id}")
+                    h = len(line_data.polygon_ids)
+                    
+                    # Asignar key_field = 6 a todos los polígonos de la línea de encabezado
+                    for poly_id in line_data.polygon_ids:
+                        poly = polygons.get(poly_id)
+                        if poly:
+                            if poly.key_field is None:
+                                poly.key_field = 6
+                            elif isinstance(poly.key_field, list):
+                                if 6 not in poly.key_field:
+                                    poly.key_field.append(6)
+                            elif poly.key_field != 6:
+                                poly.key_field = [poly.key_field, 6]
+                                
                     return h, header_line_id
         except Exception as e:
             logger.error(f"Error buscando encabezados: {e}")

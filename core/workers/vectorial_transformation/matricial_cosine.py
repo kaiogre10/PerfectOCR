@@ -29,13 +29,13 @@ class MatricialCusine(VectorizationAbstractWorker):
         try:
             analysis: np.ndarray[Any, Any] = context["all_features"]
             table_range = context["table_range"]
-            if analysis.size == 0:
+            if 2 >= analysis.shape[0]:
                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                return True
     
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas"
+                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
                     "\n"f"{table_line_ids}"
                     "\n"f"{table_range}")
                 succes = manager.save_tabular_lines(table_line_ids)
@@ -111,7 +111,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         features = features[: ,1:]
         timecos0 = time.perf_counter()
         sims_mat_dense = get_cosine_similarity(X=features, dense_output=False)
-        logger.info(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}'s")
+        logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}'s")
 
         # logger.debug(f"Promedio matriz: {np.mean(sims_mat_dense)}")
         logger.debug("Filas/Columnas (en orden):"
@@ -373,10 +373,10 @@ class MatricialCusine(VectorizationAbstractWorker):
             index_to_id[idx] = line_id
         
         # Obtener line_ids correspondientes
-        # timedbscan = time.perf_counter()
         line_ids = [index_to_id.get(int(idx), f"line_{int(idx)}") for idx in int_line_ids]
+        timedbscan = time.perf_counter()
         labels: np.ndarray[Any, Any] = density_cluster(features_for_clustering, self.eps, self.min_cluster, self.metric)
-        # logger.info(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
+        logger.info(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:
@@ -403,6 +403,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Paso 4: Mapear de vuelta a line_id (str)
         full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        logger.info(f"Rango completo de líneas tabulares: {full_range_line_ids}")
+        # logger.info(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
 
         return full_range_line_ids

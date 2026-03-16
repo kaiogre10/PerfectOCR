@@ -43,6 +43,9 @@ class Polygons:
 #    'FolioDocumento': 4
 #    "NombreCliente": 5
 #    "HeaderWords": 6
+#    "RFCProveedor": 7,
+#    "MontoIVAGeneral": 8,
+#    "FechaDocumento": 9
 
     semantic_clasification: List[int] | int
         # quantitative: 2

@@ -408,38 +408,44 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         if not s:
             continue
 
-        # Fast Path 1: Alfabético puro (mismo resultado para todos los tokens)
-        if s.replace(' ', '').isalpha():
-            tokens = s.split(' ')
-            result = [0] * len(tokens) if len(tokens) > 1 else 0
-            # Alfabético puro tiene 0.0 total_cuant en cada token (100% de 0.0 es 0.0)
+        tokens = s.split()
+        if not tokens:
+            continue
+
+        compact = "".join(tokens)  # texto sin espacios
+
+        # Fast Path 1: Alfabético puro
+        total_tokens = len(tokens)
+        if compact.isalpha():
+            result = [0] * total_tokens if total_tokens > 1 else 0
             final_results[pid] = (result, 0)
             continue
 
-        # Fast Path 2: Numérico puro (mismo resultado para todos los tokens)
-        elif s.replace(' ', '').isdigit():
-            tokens = s.split(' ')
-            result = [1] * len(tokens) if len(tokens) > 1 else 1
-            c = len(tokens)
-            # Numérico puro tiene 1.0 total_cuant en cada token. Si hay múltiples tokens, la suma es len(tokens)
+        # Fast Path 2: Numérico puro
+        elif compact.isdecimal():
+            result = [1] * total_tokens if total_tokens > 1 else 1
+            c = sum(1 for ch in compact if ch in CHAR_NUM)
             final_results[pid] = (result, c)
             continue
 
-        # Fast Path 3: UMD (Solo si es palabra única)
-        elif ' ' not in s and find_umd(s):
-            c = (sum(1 for ch in s if ch in CHAR_NUM))
-            final_results[pid] = (-2, c) # Ajusta 0.0 según corresponda a la palabra
+        elif total_tokens == 1:
+            token = tokens[0]
+            c = sum(1 for ch in token if ch in CHAR_NUM)
+
+            if find_umd(token):
+                final_results[pid] = (-2, c)
+                continue
+            elif contains_quantitative(token):
+                final_results[pid] = (2, c)
+                continue
+
+            # fallback correcto para token único
+            t_class, t_cuant = classify_token(token)
+            final_results[pid] = (t_class, t_cuant)
             continue
 
-        elif ' ' not in s and contains_quantitative(s):
-            # Requiere un pequeño cálculo manual de cuántitativos aquí:
-            c = (sum(1 for ch in s if ch in CHAR_NUM))
-            final_results[pid] = (2, c)
-            continue
-
-        # Procesamiento normal si no entró en los Fast Paths
-        elif ' ' in s:
-            tokens = s.split(' ')
+        # Procesamiento normal
+        elif total_tokens > 1:
             token_classes: List[int] = []
             poly_total_cuant = 0
             for t in tokens:
@@ -448,6 +454,6 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 poly_total_cuant += t_cuant
             final_results[pid] = (token_classes, poly_total_cuant)
         else:
-            t_class, t_cuant = classify_token(s)
+            t_class, t_cuant = classify_token(tokens[0])
             final_results[pid] = (t_class, t_cuant)
     return final_results
