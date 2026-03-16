@@ -6,7 +6,7 @@ import logging
 # import json
 # from datetime import datetime
 # import time
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Union, Tuple
 from core.utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 
@@ -84,6 +84,7 @@ class DataFormatter:
                     was_fragmented=False,
                     key_field=None,
                     semantic_clasification=0,
+                    cuant_chars = 0,
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -321,7 +322,7 @@ class DataFormatter:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
             return False
                         
-    def update_semantic_clasification(self, final_results: Dict[str, List[int] | int]) -> bool:
+    def update_semantic_clasification(self, final_results: Dict[str, Tuple[int | List[int], float]]) -> bool:
         """
         Actualiza el semantic_clasification de los polígonos.
         """
@@ -336,10 +337,11 @@ class DataFormatter:
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
-                    # Actualizar semantic_clasification y opcionalmente resetear was_refined
+                    # Actualizar semantic_clasification
                     updated_polygon = dataclasses.replace(
                         polygon, 
-                        semantic_clasification=semantic_type,
+                        semantic_clasification=semantic_type[0],
+                        cuant_chars=semantic_type[1]
                     )                    
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1

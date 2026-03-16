@@ -114,7 +114,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             else:
-                logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
+                logger.debug(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
                 return True
         
         except Exception as e:

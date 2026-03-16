@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
+from core.utils.data_utils import CHAR_NUM
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,7 @@ class Vectorizer(VectorizationAbstractWorker):
         """
         Devuelve features textuales ajustadas a la lógica de vectorize.py (-1.0/1.0 y conteos correctos).
         """
+        char_num = CHAR_NUM
         try:
             polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             index_to_id_map = {p.poly_index: p.polygon_id for p in polygons_dict.values()}
@@ -143,7 +145,7 @@ class Vectorizer(VectorizationAbstractWorker):
                         sc_count += self.count_numeric_tokens(sc)
                 
                 line_text = getattr(line_data, "text", "")
-                dcount = sum(1 for ch in line_text if ch.isdecimal() or ch in "$,")
+                dcount = sum(1 for ch in line_text if ch in char_num)
                 features_list.append([sc_count, dcount])
 
             features = np.array(features_list, np.float32)

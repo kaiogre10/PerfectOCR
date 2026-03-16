@@ -51,7 +51,8 @@ class Polygons:
         # code: -1
         # umd: -2
     was_fragmented: bool
-    
+    cuant_chars: int
+
 @dataclass
 class LineGeometry:
     line_centroid: List[float]

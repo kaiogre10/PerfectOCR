@@ -2,8 +2,8 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "angle_corrector"
-    # - "ink_enhancement"
+    - "angle_corrector"
+    - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
@@ -16,8 +16,8 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    # - "paddle_wrapper"
-    # - "text_refiner"
+    - "paddle_wrapper"
+    - "text_refiner"
     # - "data_finder"
     
   vector_stage:
@@ -146,7 +146,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 2
+      num_passes: 0
       semantic_range: [45.0, 66.5] # Cantidad de digitos
       encode_mean: [25.1, 39.1] # Promedio de densidad
       morph_mean: [-0.3, 0.35] # Promedio morfológico

@@ -1,5 +1,5 @@
 # core/workers/ocr/text_refiner.py
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
@@ -28,7 +28,7 @@ class Refiner(OCRAbstractWorker):
     def _log_worker_time(self, pass_num: int, worker_name: str, start_time: float, stage_name: str = "") -> None:
         elapsed = time.perf_counter() - start_time
         stage_label = f" | Etapa: {stage_name}" if stage_name else ""
-        logger.info(f"Bucle #{pass_num} | Worker: {worker_name}{stage_label} | Tiempo: {elapsed:.6f}s")
+        logger.debug(f"Bucle #{pass_num} | Worker: {worker_name}{stage_label} | Tiempo: {elapsed:.6f}s")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -83,7 +83,7 @@ class Refiner(OCRAbstractWorker):
                         self.corrector.transcribe(context, manager)
                         self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
 
-                    logger.info(f"Bucle #{pass_num} | Tiempo total iteración: {time.perf_counter() - pass_t0:.6f}s")
+                    logger.debug(f"Bucle #{pass_num} | Tiempo total iteración: {time.perf_counter() - pass_t0:.6f}s")
 
                 logger.debug(f"Pasada final: Clasificación Semántica completa")
                 step_t0 = time.perf_counter()
@@ -92,7 +92,7 @@ class Refiner(OCRAbstractWorker):
 
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-                logger.debug(f"{poly}: '{poly_data.ocr_text}'")
+                logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}, cuant char: {poly_data.cuant_chars}")
 
             if self.output:
                 from services.output_service import save_raw_json
@@ -130,9 +130,9 @@ class Refiner(OCRAbstractWorker):
                 return True
 
             # Clasificar solo los polígonos seleccionados
-            # t0 = time.perf_counter()
-            final_results: Dict[str, int | List[int]] = clasify_words(polygons_to_classify, self.worker_config)
-            # logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
+            t0 = time.perf_counter()
+            final_results: Dict[str, Tuple[int | List[int], float]] = clasify_words(polygons_to_classify, self.worker_config)
+            logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
 
             # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results)
