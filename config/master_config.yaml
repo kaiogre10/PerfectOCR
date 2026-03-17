@@ -25,7 +25,6 @@ pipeline_secuence:
     - "vectorizer"
     - "cos_sim"
     - "table_structurer"
-    # - "table_validated"
     - "math_max"
 
 # Configuración de salida

@@ -32,16 +32,19 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
             # Obtener datos usando data classes modernas
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+            
+            # for line_id, line_data in all_lines.items():
+            #     if line_data.header_line is not None:
+            #         logger.info(f"Texto de {line_id}: '{line_data.text}', polygons: {line_data.polygon_ids}")
+            #     if line_data.polygon_ids:
+            #         logger.info(f"{line_data.text}")
+                    
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             tabular_line_ids = [lid for lid, line_obj in all_lines.items() if line_obj.tabular_line]
                 
             if not tabular_line_ids or not all_lines or not polygons:
                 logger.error("Faltan datos necesarios para estructuración tabular")
                 return False
-
-            # for line_id, line_data in all_lines.items():
-            #     if line_data.header_line is not None:
-            #         logger.info(f"Texto de {line_id}: '{line_data.text}', polygons: {line_data.polygon_ids}")
                 
             try:
                 
