@@ -173,7 +173,6 @@ class CosineSimilarity(ConfigWithNumpy):
     min_cluster: int
     similarity_threshold: float
     emergency_threshold: float
-    interval: int
     dummie_weights: Tuple[float, float]
 
 class VectorConfig(ConfigWithNumpy):

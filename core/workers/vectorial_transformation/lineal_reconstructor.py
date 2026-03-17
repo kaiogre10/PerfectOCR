@@ -79,7 +79,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         line_counter = 0
         boundaries = self.find_tabular_lines(polygons)        
         headers = set(boundaries[0])
-        footers = set([boundaries[1][0]])
+        footers = set([boundaries[1][0]]) if boundaries[1] else None
         bboxes: List[np.ndarray[Any, Any]] = []
         lines_bbox: List[Any] = []
         header_idx: int = 0
@@ -132,8 +132,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         tabular_line = False
 
                     elif footer_line is not None:
-                        if (header_idx == 0 or line_counter > header_idx) and footer_idx == 0:
-                            footer_idx = line_counter
+                        footer_idx += footer_line
                         tabular_line = False
                     
                     elif header_idx == footer_idx:
@@ -184,7 +183,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # if header_line is not None:
-                        # logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | Encbezado: {header_line}")
+                    #     logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | Encbezado: {header_line}")
 
                     # if tabular_line:
                     #     logger.info(f"{line_id}: '{joined_text}'")
@@ -195,13 +194,12 @@ class LinealReconstructor(VectorizationAbstractWorker):
             polygon_ids = [p.polygon_id for p in current_line_polys]
             polygons_index = [p.poly_index for p in current_line_polys]
             texts = [p.ocr_text or "" for p in current_line_polys]
-            joined_text = " ".join(texts)
+            joined_text = " ".join(texts).strip()
             joined_text = space_removal(joined_text)
             
             footer_line = line_counter if (footers and footers.intersection(set(polygons_index))) else None
             if footer_line is not None:
-                if (header_idx == 0 or line_counter > header_idx) and footer_idx == 0:
-                    footer_idx = line_counter
+                footer_idx += footer_line
                 tabular_line = False
                 
             tabular_line = False if footer_idx > 0 or header_idx == 0 else True
@@ -253,7 +251,6 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 if key_field is None:
                     continue
 
-                # Aceptar tanto int como List[int]
                 keys = key_field if isinstance(key_field, list) else [key_field]
                 polygon_index = poly.poly_index
 

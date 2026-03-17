@@ -423,7 +423,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             # Tipos que tienen restricciones (solo uno por celda)
-            restricted_types = {1, 2}
+            restricted_types = {2}
             current_semantics = set(element_semantic if isinstance(element_semantic, list) else [element_semantic])
 
             # Si el elemento no es restrictivo, siempre puede ir

@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines
+from core.utils.data_utils import VECTOR_MEAN_DUMMIE, VECTOR_MEDIAN_DUMMIE
 from core.utils.math_utils import get_cosine_similarity, density_cluster
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
         self.min_cluster = int(worker_config.get("min_cluster"))
-        self.interval_margin: int = int(worker_config.get("interval"))
         self.dummie_weights = worker_config["dummie_weights"]
         self.emergency_threshold = worker_config.get("emergency_threshold")
         self.eps = float(worker_config.get("eps"))
@@ -27,17 +27,16 @@ class MatricialCusine(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         timw9 = time.perf_counter()
         try:
-            analysis: np.ndarray[Any, Any] = context["all_features"]
-            # table_range = context["table_range"]
-            if 2 >= analysis.shape[0]:
+            vectorice = context["vectorice"]
+            if not vectorice:
                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                return True
     
+            analysis: np.ndarray[Any, Any] = context["all_features"]
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
+                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
                     "\n"f"{table_line_ids}")
-                    # "\n"f"{table_range}")
                 succes = manager.save_tabular_lines(table_line_ids)
                 if succes:     
                     logger.debug("Tablas guaradas en el manager desde coseno")
@@ -94,8 +93,9 @@ class MatricialCusine(VectorizationAbstractWorker):
 
     def _validate_scanner_interval_all_vs_all(self, analysis: np.ndarray[Any, Any], tabular_lines: List[str], line_ids: List[str]) -> List[str]:
         """
-        Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado por el scanner.
-        No usa el header como referencia para el intervalo; el header sólo se añade si el intervalo es válido.
+        Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado.
+        Poda por los extremos (como "cortar césped") basándose en la media de similitudes, 
+        asegurando un intervalo contiguo de salida.
         """            
         # Convertir tabular_lines (IDs de línea) a índices numéricos
         tabular_indices: List[int] = []
@@ -103,19 +103,24 @@ class MatricialCusine(VectorizationAbstractWorker):
             if line_id in line_ids:
                 tabular_indices.append(line_ids.index(line_id))
                 
+        # Asegurarse de que están ordenados secuencialmente para buscar el intervalo
+        tabular_indices.sort()
         tabular_idx = np.array(tabular_indices, np.int8)
         
         mask = np.isin(analysis[:, 0], tabular_idx, assume_unique=True)
-        features = np.ascontiguousarray(np.compress(mask, analysis, 0), np.float32)
+        features_all = np.compress(mask, analysis, 0)
+        # Ordenamos las filas según el índice original para estar alineados con tabular_indices
+        features_all = features_all[features_all[:, 0].argsort()]
         
-        features = features[: ,1:]
+        features = np.ascontiguousarray(features_all[:, 1:], np.float32)
+        
         timecos0 = time.perf_counter()
         sims_mat_dense = get_cosine_similarity(X=features, dense_output=False)
         logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}'s")
 
         logger.debug(f"Promedio matriz: {np.mean(sims_mat_dense)}")
         logger.debug("Filas/Columnas (en orden):"
-        "\n%s", ", ".join(str(lid) for lid in  tabular_lines))
+        "\n%s", ", ".join(line_ids[idx] for idx in tabular_indices))
         matriz_str = "\n".join(
             ["[" + "  ".join(f"{float(val):8.7f}" for val in row) + "]" for row in sims_mat_dense]
         )
@@ -132,18 +137,37 @@ class MatricialCusine(VectorizationAbstractWorker):
                 mean_val = float((np.sum(sims_mat_dense[i]) - 1.0) / (n - 1)) 
                 mean_sims.append(mean_val)
 
-        matched_original_indices: List[int] = []
-        consecutive_failures = 0
         for mean_sim, orig_idx in zip(mean_sims, tabular_indices):
             lid = line_ids[orig_idx]
-            if mean_sim > self.similarity_threshold:
-                matched_original_indices.append(orig_idx)
-                consecutive_failures += 1
             logger.debug(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
 
-        # Si hay validaciones por coseno, devolver todo el intervalo hasta la última validada
-        if matched_original_indices:
-            table_line_ids = [line_ids[idx] for idx in matched_original_indices]
+        # Recorte de intervalo contiguo (Poda por extremos)
+        start_pos: int | None = None
+        last_success_pos: int | None = None
+        consecutive_failures = 0
+
+        for pos, s in enumerate(mean_sims):
+            if s >= self.similarity_threshold:
+                if start_pos is None:
+                    start_pos = pos
+                last_success_pos = pos
+                consecutive_failures = 0
+            else:
+                if start_pos is not None:
+                    consecutive_failures += 1
+                    if consecutive_failures > self.min_cluster:
+                        break
+
+        # Si hay validaciones por coseno y encontramos un intervalo válido, devolvemos el contiguo
+        if start_pos is not None and last_success_pos is not None:
+            # Reconstruir intervalo entre start y last_success usando tabular_indices
+            start_idx = tabular_indices[start_pos]
+            end_idx = tabular_indices[last_success_pos]
+            
+            # Devolver TODAS las líneas comprendidas entre start_idx y end_idx de line_ids
+            # Garantizando la contigüidad absoluta en base al ID general.
+            table_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
+            logger.debug(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
             return table_line_ids
 
         # Si ninguna línea superó el umbral, activar emergencia desde aquí
@@ -195,8 +219,8 @@ class MatricialCusine(VectorizationAbstractWorker):
             else:
                 consecutive_failures += 1
 
-            if consecutive_failures > self.interval_margin:
-                logger.info(f"Se superó el margen de error ({self.interval_margin} fallos). Cortando en índice {last_success_idx}.")
+            if consecutive_failures > self.min_cluster:
+                logger.info(f"Se superó el margen de error ({self.min_cluster} fallos). Cortando en índice {last_success_idx}.")
                 break
         
         # Construir el resultado final como un bloque continuo hasta el último éxito
@@ -210,7 +234,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         Fallback de emergencia optimizado. Compara todas las líneas del documento contra vectores DUMMIE
         usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares.
         """
-        from core.utils.data_utils import VECTOR_MEAN_DUMMIE, VECTOR_MEDIAN_DUMMIE
         logger.warning(f"INICIANDO MÉTODO DE EMERGENCA")
         mean_w, median_w = self.dummie_weights
         
@@ -287,7 +310,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             current_size = 1
 
             for j in range(i + 1, len(candidate_indices)):
-                if candidate_indices[j] - candidate_indices[j-1] <= self.interval_margin:
+                if candidate_indices[j] - candidate_indices[j-1] <= self.min_cluster:
                     end_idx = candidate_indices[j]
                     current_size += 1
                 else:
@@ -327,40 +350,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         except Exception as e:
             logger.error(f"Error buscando encabezados: {e}")
         return 0, 0
-        
-    def _cut_lines(self, analysis: Dict[str, Dict[str, float]], manager: DataFormatter) -> Dict[str, Dict[str, float]]:
-        """
-        Filtra solo las líneas después del encabezado y antes del footer para evitar ruido.
-        """
-        all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-        
-        header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", not None)]
-        header_line_id = header_line_ids[0] if header_line_ids else None
-        footer_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "footer_line", None) is not None]
-        footer_line_id = footer_line_ids[0] if footer_line_ids else None
-
-        if not header_line_id and not footer_line_id:
-            logger.info("No hay header ni footer: se devuelve el análisis completo")
-            return analysis
-
-        line_ids = list(analysis.keys())
-        if header_line_id:
-            if header_line_id in line_ids:
-                header_idx = line_ids.index(header_line_id) + 1  # después del header
-                return {lid: analysis[lid] for lid in line_ids[header_idx:]}
-            logger.warning(f"header_line_id {header_line_id} no encontrada en analysis keys")
-            return analysis
-
-        # Si llegamos aquí, existe footer_line_id y header_line_id es None
-        if footer_line_id:
-            if footer_line_id in line_ids:
-                footer_idx = line_ids.index(footer_line_id)  # antes del footer
-                return {lid: analysis[lid] for lid in line_ids[:footer_idx]}
-            logger.warning(f"footer_line_id {footer_line_id} no encontrada en analysis keys")
-            
-            return analysis
-        return analysis
-    
+         
     def _apply_dbscan_clustering(self, features_array: np.ndarray[Any, Any], manager: DataFormatter) -> List[str]:
         """Aplica DBSCAN para agrupar líneas similares"""
         all_lines = manager.workflow.all_lines if manager.workflow else {}
@@ -390,7 +380,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         main_cluster = max(cluster_sizes, key=cluster_sizes.get)
 
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
-        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
+        # logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
         selected_indices = [all_lines[line_id].line_index for line_id in table_line_ids if line_id in all_lines]
 
         if not selected_indices:
@@ -406,6 +396,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Paso 4: Mapear de vuelta a line_id (str)
         full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        logger.info(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
+        # logger.info(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
 
         return full_range_line_ids

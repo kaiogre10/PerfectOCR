@@ -219,7 +219,7 @@ def detect_punt(text: str) -> bool:
     """Detecta si un texto está compuesto únicamente por caracteres de puntuación/separación."""
     return _punt_detect_pattern.fullmatch(text) is not None
 
-def remove_special_sequences(text: str) -> str:    
+def remove_special_sequences(text: str) -> str:
     cleaned = _sequence_middle_pattern.sub(' ', text)
     cleaned = secuence_pattern.sub('', cleaned)
     return cleaned.strip()

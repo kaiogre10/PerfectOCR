@@ -31,10 +31,6 @@ class Vectorizer(VectorizationAbstractWorker):
             if all_features is None:
                 logger.error(f"No se pudo realizar vectorización")
                 return False
-            
-            if not vectorice:
-                context["all_features"] = np.empty(1)
-                return False
                 
             context["all_features"] = all_features
 

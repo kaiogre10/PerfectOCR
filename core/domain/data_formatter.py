@@ -430,6 +430,13 @@ class DataFormatter:
                 )
             
             self.workflow.all_lines = all_lines_dataclasses
+            
+            all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
+            for line_id, line_data in all_lines.items():
+                tabular_line = line_data.tabular_line
+                text = line_data.text
+                if tabular_line:
+                    logger.info(f"Lineas tabulares para {line_id}: '{text}', {tabular_line}")
             return True
                         
         except Exception as e:
