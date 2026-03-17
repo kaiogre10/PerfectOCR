@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import estandarice_uppers_lowers, find_rfc, find_iva, find_date
+from core.utils.text_utils import find_rfc, find_iva, find_date
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +42,9 @@ class DataFinder(OCRAbstractWorker):
             polygon_updates = self._find_data(polygons)
 
             # Actualiza los key_fields
-            start_time = time.perf_counter()
+            # start_time = time.perf_counter()
             if manager.update_key_field(polygon_updates):
-                logger.info(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
+                # logger.info(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
                 return True
                 
         except Exception as e:
@@ -108,27 +108,26 @@ class DataFinder(OCRAbstractWorker):
                 
                 # logger.info(f"Poly: {pid}: TEXTO: '{ocr_text}")
                 valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
-                if valid_results:
-                    # continue
-
-                    num_keywords = len(valid_results)
-                    all_key_fields = [result['key_field'] for result in valid_results]
-                    
-                    # Verificar si todos son headers (key_field == 6)
-                    if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
-                        # Múltiples headers: asignar como lista
-                        polygon_updates[pid] = all_key_fields
-                        pot_headers = " ".join(result["key_word"] for result in valid_results)
-                        head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
-                        poly.ocr_text = head_standar
-                        logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
-
-                    else:
-                        key_field = valid_results[0]['key_field']
-                        polygon_updates[pid] = key_field
-                        logger.debug(f"'{pid}': Key_Field {key_field}")
-
+                if not valid_results:
                     continue
+
+                # logger.info(f"Results: {valid_results}")
+                num_keywords = len(valid_results)
+                all_key_fields = [result['key_field'] for result in valid_results]
+                
+                # Verificar si todos son headers (key_field == 6)
+                if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
+                    # Múltiples headers: asignar como lista
+                    polygon_updates[pid] = all_key_fields
+                    pot_headers = " ".join(result["key_word"] for result in valid_results)
+                    # head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
+                    # poly.ocr_text = head_standar
+                    logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
+
+                else:
+                    key_field = valid_results[0]['key_field']
+                    polygon_updates[pid] = key_field
+                    logger.debug(f"'{pid}': Key_Field {key_field}")
 
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")

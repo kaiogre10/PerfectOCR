@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Any, Optional, Tuple, Dict
+from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import logging
 from sklearn.cluster import DBSCAN # type: ignore
@@ -34,7 +34,6 @@ def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
             return []
 
         compact_text = ''.join(text.split())
-
         encoded_poly = [encoder.get(char, 0) for char in compact_text]
 
         return encoded_poly
@@ -46,9 +45,8 @@ def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
 def get_morphological_encode(text: str) -> List[float]:
     try:
         result: List[float] = []
-        # text = text_compacter(text)
         for ch in text:
-            if ch in char_num:
+            if ch in char_num or ch.isdecimal():
                 result.append(1.0)
             elif ch.isalpha():
                 result.append(-1.0)
@@ -159,3 +157,65 @@ def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float,
     labels: np.ndarray[Any, Any] = clustering.fit_predict(features) #type: ignore
     return labels
     
+def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions: Optional[Sequence[float]] = None) -> List[Dict[str, np.ndarray[Any, Any]]]:
+    """
+    Fragmenta una geometría en segmentos horizontales (eje X) y devuelve nuevas geometrías
+    ordenadas de izquierda a derecha.
+
+    - **No** modifica dataclasses ni accede a manager/workflow.
+    - Si `proportions` es None, divide uniforme.
+    - Si se provee `proportions`, debe tener longitud `num_fragments` y su suma debe ser > 0.
+    """
+    if num_fragments <= 1:
+        bbox = getattr(geometry, "bounding_box", None)
+        centroid = getattr(geometry, "centroid", None)
+        coords = getattr(geometry, "polygon_coords", None)
+        if bbox is None or centroid is None or coords is None:
+            return []
+        return [{"bounding_box": bbox, "centroid": centroid, "polygon_coords": coords}]
+
+    bbox = geometry.bounding_box
+    if bbox is None or len(bbox) != 4:
+        return []
+
+    xmin, ymin, xmax, ymax = map(float, bbox)
+    width = xmax - xmin
+    height = ymax - ymin
+    if width <= 0 or height <= 0:
+        return []
+
+    if proportions is None:
+        props = np.full((num_fragments,), 1.0 / float(num_fragments), dtype=np.float32)
+    else:
+        if len(proportions) != num_fragments:
+            return []
+        props = np.asarray(list(proportions), dtype=np.float32)
+        total = float(np.sum(props))
+        if total <= 0:
+            return []
+        props = props / total
+
+    geoms: List[Dict[str, np.ndarray[Any, Any]]] = []
+    current_x = xmin
+
+    for i in range(num_fragments):
+        frag_width = float(props[i]) * width
+        new_xmax = xmax if i == (num_fragments - 1) else (current_x + frag_width)
+
+        new_bbox = np.array([current_x, ymin, new_xmax, ymax], dtype=np.float32)
+        new_centroid = np.array([(current_x + new_xmax) / 2.0, (ymin + ymax) / 2.0], dtype=np.float32)
+        new_coords = np.array(
+            [
+                [new_bbox[0], new_bbox[1]],
+                [new_bbox[2], new_bbox[1]],
+                [new_bbox[2], new_bbox[3]],
+                [new_bbox[0], new_bbox[3]],
+            ],
+            dtype=np.float32,
+        )
+
+        geoms.append({"polygon_coords": new_coords, "bounding_box": new_bbox, "centroid": new_centroid})
+
+        current_x = new_xmax
+
+    return geoms

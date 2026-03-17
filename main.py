@@ -48,8 +48,8 @@ OUTPUT_PATH = output_paths
 
 DEFAULT_INPUT_PATH = [
     # "input",
-        "input2",
-        #  "input3"
+        # "input2",
+         "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 
@@ -68,6 +68,7 @@ file_formatter = logging.Formatter(
     fmt=FILE_FORMAT,
     datefmt=DATE_FORMAT
 )
+
 console_formatter = logging.Formatter(
     fmt=CONSOLE_FORMAT
 )

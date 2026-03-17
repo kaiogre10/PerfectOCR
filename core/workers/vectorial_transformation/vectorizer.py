@@ -80,37 +80,38 @@ class Vectorizer(VectorizationAbstractWorker):
         Calcula features geométricos + alineación tabular por cada línea.
         """
         try:
-            t1 = time.perf_counter()
-            # line_indices = np.array([line.line_index for line in sorted_lines], dtype=np.int32)
-            textual_features = self._calculate_textual_line_features(sorted_lines, manager)
-            logger.debug(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
-            # logger.debug(f"Features textuales shape: {textual_features.shape}"
-            #             "\n"f"{textual_features}")
+            t0 = time.perf_counter()
 
-            t2 = time.perf_counter()
+            # t2 = time.perf_counter()
             geoline_features: np.ndarray[Any, Any] = self._calculate_geometric_line_features(sorted_lines)
-            logger.debug(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
+            # logger.debug(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
             # logger.debug(f"Features geometricas: {geoline_features}")
             
-            t3 = time.perf_counter()
+            # t3 = time.perf_counter()
             global_stats = self.calculate_global_stats(geoline_features)
-            logger.debug(f"Features globales calculadas en {time.perf_counter() - t3:.7f}s")
+            # logger.info(f"Features globales calculadas en {time.perf_counter() - t3:.7f}s")
             # logger.debug("Features globales:"
             # "\n"f"{global_stats}"
             # "\n"f"SHAPE:{global_stats.shape}")
             
-            t4 = time.perf_counter()
-            # Pasar sorted_lines explícitamente
+            # t4 = time.perf_counter()
             all_features = self.calculate_all_features(sorted_lines, geoline_features, global_stats, manager)
-            logger.debug(f"Features completas calculadas en {time.perf_counter() - t4:.7f}s")
-            logger.info("Features completas:"
+            # logger.debug(f"Features completas calculadas en {time.perf_counter() - t4:.7f}s")
+            # logger.debug("Features completas:"
             # "\n"f"{all_features}"
-            "\n"f"SHAPE:{all_features.shape}")
+            # "\n"f"SHAPE:{all_features.shape}")
+            
+            # t1 = time.perf_counter()
+            # line_indices = np.array([line.line_index for line in sorted_lines], dtype=np.int32)
+            textual_features = self._calculate_textual_line_features(sorted_lines, manager)
+            # logger.debug(f"Features textuales calculadas en {time.perf_counter() - t1:.7f}s")
+            # logger.debug(f"Features textuales shape: {textual_features.shape}"
+            #             "\n"f"{textual_features}")
         
             # 5. Agregar features textuales
             all_lines_features = np.ascontiguousarray(np.column_stack([all_features, textual_features]))
             # logger.debug(f"{all_lines_features}")
-            logger.debug(f"TODAS LAS FEATURES calculadas en {time.perf_counter() - t1:.7f}s")
+            logger.info(f"TODAS LAS FEATURES calculadas en {time.perf_counter() - t0:.7f}s")
 
             return all_lines_features
 
@@ -129,16 +130,24 @@ class Vectorizer(VectorizationAbstractWorker):
             features_list: List[List[int]] = []
             for line_data in sorted_lines:
                 sc_count = 0
+                kf_total = 0
                 # Cuenta tokens numéricos por línea
                 poly_ids_line = line_data.polygons_index
                 for pid_idx in poly_ids_line:
                     pid_str = index_to_id_map.get(pid_idx)
                     if pid_str and pid_str in polygons_dict:
+                        poly = polygons_dict[pid_str]
                         sc = polygons_dict[pid_str].semantic_clasification
                         sc_count += self.count_numeric_tokens(sc)
+                        kf = poly.key_field
+                        if kf is not None:
+                            if isinstance(kf, list):
+                                kf_total += len(kf)
+                            else:
+                                kf_total += 1
                 
                 dcount = line_data.t_cuant
-                features_list.append([sc_count, dcount])
+                features_list.append([sc_count, dcount, kf_total])
 
             features = np.array(features_list, np.float32)
             
@@ -146,16 +155,16 @@ class Vectorizer(VectorizationAbstractWorker):
                 return np.zeros(0, dtype=np.float32)
 
             # all_numerics = np.sum(features[:, 0], 0)
-            max_numerics = np.max(features[:, 0])
-            max_digit = np.max(features[:, 1])
+            max_numerics, max_digit, max_kf = np.max(features, axis=0)
             
             # Evitar división por cero
             num_count_norm = np.divide(features[:, 0], max_numerics, out=np.zeros_like(features[:, 0]), where=max_numerics!=0)
             num_mean = np.mean(features[:, 0])
             
+            kf_abs = (1.0 - 2.0 * (features[:, 2] / max_kf)) if max_kf > 0 else np.zeros(features.shape[0], dtype=np.float32)
+                        
             # Lógica matching vectorize.py: 1.0 si >= mean, else -1.0
             num_above = np.where(features[:, 0] > num_mean, 1.0, -1.0)
-            # logger.info(f"Mean: {num_mean}, Num_abov: {num_above}, {features}")
             
             # Lógica matching vectorize.py: 1.0 si > 1.0, else -1.0
             has_digit = np.where(features[:, 1] > 1.0, 1.0, -1.0)
@@ -176,7 +185,8 @@ class Vectorizer(VectorizationAbstractWorker):
                     num_count_norm,
                     num_above,
                     digit_char_frec,
-                    has_digit
+                    has_digit,
+                    kf_abs
                     ])
                     
             return np.array(textual_features, dtype=np.float32)
@@ -186,10 +196,8 @@ class Vectorizer(VectorizationAbstractWorker):
             return np.zeros((len(sorted_lines), 6), dtype=np.float32)
 
     def _calculate_geometric_line_features(self, sorted_lines: List[AllLines]) -> np.ndarray[Any, Any]:
-
         line_index = np.array([lid.line_index for lid in sorted_lines], np.int32)
         geometry = [lid.line_geometry for lid in sorted_lines]
-        
         bbox = np.array([geo.line_bbox for geo in geometry], np.float32)
         centroid = np.array([geo.line_centroid for geo in geometry], np.float32)
         width = (bbox[:, 2] - bbox[:, 0])
@@ -216,22 +224,31 @@ class Vectorizer(VectorizationAbstractWorker):
         ])
             
     def calculate_global_stats(self, geoline_features: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
-        return np.column_stack([
-            np.max(geoline_features[:, 1]),      # [0] Ancho máximo de los bounding boxes de las líneas 
-            np.max(geoline_features[:, 3]),      # [1] Área máxima cubierta por los bounding boxes de las líneas
-            np.max(geoline_features[:, 4]),      # [2] Perímetro máximo entre los bounding boxes de las líneas
-            np.max(geoline_features[:, 5]),      # [3] Máxima razón de aspecto (alto/ancho * 100) de las líneas
-            np.max(geoline_features[:, 6]),      # [4] Longitud diagonal máxima entre los bounding boxes de las líneas
+        MAX_COLS = [1, 3, 4, 5, 6]
+        MEDIAN_COLS = [1, 2, 3, 4, 5, 6, 7, 8] 
+
+        max_vals = np.max(geoline_features[:, MAX_COLS], axis=0, keepdims=True)
+        median_vals = np.median(geoline_features[:, MEDIAN_COLS], axis=0, keepdims=True)
+
+        return np.column_stack([max_vals, median_vals])
+        # global_stats = np.column_stack([
+        #     np.max(geoline_features[:, 1]),      # [0] Ancho máximo de los bounding boxes de las líneas 
+        #     np.max(geoline_features[:, 3]),      # [1] Área máxima cubierta por los bounding boxes de las líneas
+        #     np.max(geoline_features[:, 4]),      # [2] Perímetro máximo entre los bounding boxes de las líneas
+        #     np.max(geoline_features[:, 5]),      # [3] Máxima razón de aspecto (alto/ancho * 100) de las líneas
+        #     np.max(geoline_features[:, 6]),      # [4] Longitud diagonal máxima entre los bounding boxes de las líneas
             
-            np.median(geoline_features[:, 1]),   # [5] Mediana del ancho de los bounding boxes de las líneas
-            np.median(geoline_features[:, 2]),   # [6] Mediana del alto de los bounding boxes de las líneas
-            np.median(geoline_features[:, 3]),   # [7] Mediana del área de los bounding boxes de las líneas
-            np.median(geoline_features[:, 4]),   # [8] Mediana del perímetro de los bounding boxes de las líneas
-            np.median(geoline_features[:, 5]),   # [9] Mediana de la razón de aspecto (alto/ancho * 100) de las líneas
-            np.median(geoline_features[:, 6]),   # [10] Mediana de la longitud diagonal de los bounding boxes de las líneas
-            np.median(geoline_features[:, 7]),   # [11] Mediana del ángulo de inclinación de las líneas
-            np.median(geoline_features[:, 8])    # [12] Mediana del valor de pendiente de las líneas
-        ])
+        #     np.median(geoline_features[:, 1]),   # [5] Mediana del ancho de los bounding boxes de las líneas
+        #     np.median(geoline_features[:, 2]),   # [6] Mediana del alto de los bounding boxes de las líneas
+        #     np.median(geoline_features[:, 3]),   # [7] Mediana del área de los bounding boxes de las líneas
+        #     np.median(geoline_features[:, 4]),   # [8] Mediana del perímetro de los bounding boxes de las líneas
+        #     np.median(geoline_features[:, 5]),   # [9] Mediana de la razón de aspecto (alto/ancho * 100) de las líneas
+        #     np.median(geoline_features[:, 6]),   # [10] Mediana de la longitud diagonal de los bounding boxes de las líneas
+        #     np.median(geoline_features[:, 7]),   # [11] Mediana del ángulo de inclinación de las líneas
+        #     np.median(geoline_features[:, 8])    # [12] Mediana del valor de pendiente de las líneas
+        # ])
+        # logger.info(f"SHAPES: {global_stats.shape}")
+        # return global_stats
 
     def calculate_all_features(self, sorted_lines: List[AllLines], geoline_features: np.ndarray[Any, Any], global_stats: np.ndarray[Any, np.dtype[np.float32]], manager: DataFormatter)-> np.ndarray[Any, Any]:
         img_dims: List[int] = manager.workflow.metadata.img_dims if manager.workflow else []

@@ -431,12 +431,12 @@ class DataFormatter:
             
             self.workflow.all_lines = all_lines_dataclasses
             
-            all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
-            for line_id, line_data in all_lines.items():
-                tabular_line = line_data.tabular_line
-                text = line_data.text
-                if tabular_line:
-                    logger.info(f"Lineas tabulares para {line_id}: '{text}', {tabular_line}")
+            # all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
+            # for line_id, line_data in all_lines.items():
+            #     tabular_line = line_data.tabular_line
+            #     text = line_data.text
+            #     if tabular_line:
+            #         logger.info(f"Lineas tabulares para {line_id}: '{text}', {tabular_line}")
             return True
                         
         except Exception as e:
@@ -453,20 +453,10 @@ class DataFormatter:
                 return False
             
             all_lines = self.workflow.all_lines if self.workflow else {}
-
-            cleared_count = 0
             for lid, line_obj in all_lines.items():
-                try:
-                    if getattr(line_obj, "tabular_line", False):
-                        updated = dataclasses.replace(line_obj, tabular_line=False)
-                        self.workflow.all_lines[lid] = updated
-                        cleared_count += 1
-                except Exception as e:
-                    logger.error(f"Error limpiando tabular_line para la línea {lid}: {e}", exc_info=True)
-                    continue
-
-            logger.debug(f"Limpiados {cleared_count} flags tabular_line previos.")
-
+                if line_obj.tabular_line:
+                    updated = dataclasses.replace(line_obj, tabular_line=False)
+                    self.workflow.all_lines[lid] = updated
             # 2) Marcar los nuevos line_ids provistos (si los hay)
             if not line_ids:
                 logger.warning("No se recibieron line_ids en el manager.")

@@ -4,9 +4,10 @@ import logging
 import numpy as np
 from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
+from core.domain.data_models import Polygons, Geometry
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import is_acronym
+from core.utils.math_utils import fragment_geometry_horizontal
 
 logger = logging.getLogger(__name__)
 
@@ -47,13 +48,7 @@ class Fragmenter(OCRAbstractWorker):
                     # logger.info(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
                     final_polygons.append(polygon)
                     continue
-
-                # punctuation_needs_frag = (
-                #     not (all(cls in (1, 2, -2) for cls in sc) if sc in (1, 2, -2)) and
-                #     (any(punct in (ocr_text or "") for punct in [";", ":", "!", "?"]) or
-                #     (ocr_text or "").count('.') == 1)
-                # )
-
+                
                 semantic_frag = len(sc) > 1 and any(c != 0 for c in sc)
                                     
                 if semantic_frag:
@@ -75,7 +70,7 @@ class Fragmenter(OCRAbstractWorker):
                 new_index = idx
                 final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=new_index)
                 final_polygons_dict[new_id] = final_poly_obj
-                manager.workflow.polygons = final_polygons_dict
+            manager.workflow.polygons = final_polygons_dict
 
             # if self.output and blob_metrics:
             #     logger.info(f"Enaled output activdo")
@@ -165,153 +160,6 @@ class Fragmenter(OCRAbstractWorker):
 
     #     return new_polys
 
-    # def fragment_by_punctuation(self, polygon: Polygons) -> List[Polygons]:
-    #     """
-    #     Fragmenta un polígono dividiendo por puntuación (.,;:!?) y creando polígonos separados.
-    #     """
-    #     text = (polygon.ocr_text or "").strip()
-
-    #     sc: List[int] = polygon.semantic_clasification
-    #     if all(cls in (1, 2, -2, -1) for cls in sc):
-    #         return [polygon]
-        
-    #     point_count = text.count('.')
-    #     if point_count == 1:
-    #         dot_index = text.find('.')
-    #         has_digits_before = dot_index > 0 and text[dot_index - 1].isdigit()
-    #         has_digits_after = dot_index < len(text) - 1 and text[dot_index + 1].isdigit()
-
-    #         # Si hay dígitos antes y después del punto, es probablemente un número
-    #         if has_digits_before and has_digits_after:
-    #             logger.debug(f"No fragmentando por punto: detectado potencial número '{text}'")
-    #             return [polygon]
-
-    #         parts = text.split('.')
-    #         if len(parts) == 2 and all(p.strip() for p in parts):
-
-    #             # Reconstruir sin incluir el punto en ninguna parte
-    #             filtered_parts = [parts[0], parts[1]]
-                
-    #             # Crear fragmentos usando la misma lógica que ya existe
-    #             char_lengths = [len(p) for p in filtered_parts]
-    #             total_chars = sum(char_lengths)
-    #             if total_chars == 0:
-    #                 return [polygon]
-
-    #             xmin, ymin, xmax, ymax = polygon.geometry.bounding_box
-    #             width = xmax - xmin
-                
-    #             new_polys = []
-    #             current_x = xmin
-
-    #             for i, part in enumerate(filtered_parts):
-    #                 part_ratio = char_lengths[i] / total_chars
-    #                 part_width = part_ratio * width
-    #                 new_xmax = current_x + part_width            
-    #                 new_bbox = np.array([current_x, ymin, new_xmax, ymax])
-    #                 new_centroid = np.array([(current_x + new_xmax) / 2, (ymin + ymax) / 2])
-
-    #                 new_geom = dataclasses.replace(
-    #                     polygon.geometry,
-    #                     bounding_box=new_bbox,
-    #                     centroid=new_centroid,
-    #                     polygon_coords=np.array([
-    #                         [new_bbox[0], new_bbox[1]],
-    #                         [new_bbox[2], new_bbox[1]],
-    #                         [new_bbox[2], new_bbox[3]],
-    #                         [new_bbox[0], new_bbox[3]],
-    #                     ])
-    #                 )
-                    
-    #                 logger.debug(f"División por puntuación: texto='{part}'")#, bbox={new_bbox.tolist()}")
-
-    #                 new_poly = dataclasses.replace(
-    #                     polygon,
-    #                     geometry=new_geom,
-    #                     ocr_text=part,
-    #                 )
-    #                 new_polys.append(new_poly)
-    #                 current_x = new_xmax - 1
-
-    #             return new_polys
-
-    #     parts = separate_punt(text)
-        
-    #     # Filtrar partes vacías y reconstruir con puntuación (excepto el punto)
-    #     filtered_parts: List[str] = []
-    #     for i, part in enumerate(parts):
-    #         if not part.strip():
-    #             continue
-            
-    #         # Si la siguiente parte es puntuación (NO un punto), incluirla
-    #         if i + 1 < len(parts) and parts[i + 1] in [";", ":", "!", "?"]:
-    #             filtered_parts.append(part + parts[i + 1])
-    #         # Si la parte actual NO es un signo de puntuación, añadirla sola
-    #         elif part not in PUNC_CHARS:
-    #             filtered_parts.append(part)
-        
-    #     if len(filtered_parts) < self.min_contours_for_frag:
-    #         logger.debug(f"No se fragmenta por puntuación '{text}', no hay suficientes partes válidas.")
-    #         return [polygon]
-
-    #     # Longitud de caracteres visibles para el cálculo proporcional
-    #     char_lengths = [len(p) for p in filtered_parts]
-    #     total_chars = sum(char_lengths)
-    #     if total_chars == 0:
-    #         return [polygon]
-
-    #     xmin, ymin, xmax, ymax = polygon.geometry.bounding_box
-    #     width = xmax - xmin
-        
-    #     new_polys: List[Polygons] = []
-    #     current_x = xmin
-
-    #     for i, part in enumerate(parts):
-    #         if not part.strip():
-    #             continue
-            
-    #         part_text = part
-    #         # Si la siguiente parte es puntuación (NO un punto), incluirla para el cálculo de ratio
-    #         if i + 1 < len(parts) and parts[i + 1] in [";", ":", "!", "?"]:
-    #             part_text += parts[i+1]
-            
-    #         # Si la parte actual es un signo de puntuación, saltarla
-    #         if part_text in PUNC_CHARS:
-    #             continue
-
-    #         part_ratio = len(part_text) / total_chars
-    #         part_width = part_ratio * width
-            
-    #         new_xmax = current_x + part_width
-            
-    #         new_bbox = np.array([current_x, ymin, new_xmax, ymax])
-    #         new_centroid = np.array([(current_x + new_xmax) / 2, (ymin + ymax) / 2])
-
-    #         new_geom = dataclasses.replace(
-    #             polygon.geometry,
-    #             bounding_box=new_bbox,
-    #             centroid=new_centroid,
-    #             polygon_coords=np.array([
-    #                 [new_bbox[0], new_bbox[1]],
-    #                 [new_bbox[2], new_bbox[1]],
-    #                 [new_bbox[2], new_bbox[3]],
-    #                 [new_bbox[0], new_bbox[3]],
-    #             ])
-    #         )
-            
-    #         logger.debug(f"Fragmento por puntuación: texto='{part}'")#, bbox={new_bbox.tolist()}")
-
-    #         new_poly = dataclasses.replace(
-    #             polygon,
-    #             geometry=new_geom,
-    #             ocr_text=part,
-    #             was_fragmented=True
-    #         )
-    #         new_polys.append(new_poly)
-    #         current_x = new_xmax - 1
-
-    #     return new_polys
-
     def fragment_by_semantic_classification(self, polygon: Polygons) -> List[Polygons]:
         """
         Fragmenta un polígono según su clasificación semántica.
@@ -362,9 +210,6 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
         
         # Calcular geometría proporcional
-        xmin, ymin, xmax, ymax = polygon.geometry.bounding_box
-        width = xmax - xmin
-        
         # Longitud en caracteres de cada fragmento (para proporción)
         frag_char_lengths = [sum(len(t) for t in frag_tokens) for frag_tokens, _ in fragments]
         total_chars = sum(frag_char_lengths)
@@ -373,38 +218,24 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
         
         new_polys: List[Polygons] = []
-        current_x = xmin
-        
-        for (frag_tokens, _), frag_len in zip(fragments, frag_char_lengths):
-            frag_ratio = frag_len / total_chars
-            frag_width = frag_ratio * width
-            new_xmax = current_x + frag_width
+        proportions = [float(frag_len) / float(total_chars) for frag_len in frag_char_lengths]
+        geom_parts = fragment_geometry_horizontal(polygon.geometry, num_fragments=len(fragments), proportions=proportions)
+        if not geom_parts:
+            return [polygon]
             
-            new_bbox = np.array([current_x, ymin, new_xmax, ymax], dtype=np.float32)
-            new_centroid = np.array([(current_x + new_xmax) / 2, (ymin + ymax) / 2], dtype=np.float32)
-            
-            new_geom = dataclasses.replace(
-                polygon.geometry,
-                bounding_box=new_bbox,
-                centroid=new_centroid,
-                polygon_coords=np.array([
-                    [new_bbox[0], new_bbox[1]],
-                    [new_bbox[2], new_bbox[1]],
-                    [new_bbox[2], new_bbox[3]],
-                    [new_bbox[0], new_bbox[3]],
-                ], dtype=np.float32)
+        for (frag_tokens, _), geom_part in zip(fragments, geom_parts):
+            new_geom = Geometry(
+                polygon_coords=geom_part["polygon_coords"],
+                bounding_box=geom_part["bounding_box"],
+                centroid=geom_part["centroid"],
             )
-            
-            # Texto: unir tokens con espacio
             frag_text = ' '.join(frag_tokens)
-            
             new_poly = dataclasses.replace(
                 polygon,
                 geometry=new_geom,
                 ocr_text=frag_text,
             )
             new_polys.append(new_poly)
-            current_x = new_xmax - 1
         
         # logger.info(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
         return new_polys

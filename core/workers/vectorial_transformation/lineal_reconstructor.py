@@ -143,8 +143,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     else:
                         tabular_line = True
 
-                    joined_text = " ".join(texts).strip()
-
+                    joined_text = " ".join(texts)
                     joined_text = space_removal(joined_text)
 
                     # Validar el texto antes de crear la entrada
@@ -182,8 +181,11 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_polys = [poly]
                     current_line_bbox = list(bbox)
                 
-                    # if header_line is not None:
-                    #     logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | Encbezado: {header_line}")
+                    if header_line is not None:
+                        logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | Encbezado: {header_line}")
+                        
+                    # if footer_line is not None:
+                    #     logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | FOOTER: {footer_line}")
 
                     # if tabular_line:
                     #     logger.info(f"{line_id}: '{joined_text}'")
@@ -194,7 +196,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             polygon_ids = [p.polygon_id for p in current_line_polys]
             polygons_index = [p.poly_index for p in current_line_polys]
             texts = [p.ocr_text or "" for p in current_line_polys]
-            joined_text = " ".join(texts).strip()
+            joined_text = " ".join(texts)
             joined_text = space_removal(joined_text)
             
             footer_line = line_counter if (footers and footers.intersection(set(polygons_index))) else None
