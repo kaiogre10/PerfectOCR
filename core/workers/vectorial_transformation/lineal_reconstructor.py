@@ -185,8 +185,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     if header_line is not None:
                         logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | Encbezado: {header_line}")
 
-                    if tabular_line:
-                        logger.info(f"{line_id}: '{joined_text}'")
+                    # if tabular_line:
+                    #     logger.info(f"{line_id}: '{joined_text}'")
                     # logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
@@ -229,8 +229,11 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     "t_cuant": line_t_cuant
                 }
 
-                if tabular_line:
-                        logger.info(f"{line_id}: '{joined_text}'")
+                if footer_line is not None:
+                    logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | FOOTER: {footer_line}")
+                
+                # if tabular_line:
+                #         logger.info(f"{line_id}: '{joined_text}'")
                 # logger.info(f"{line_id}: '{joined_text}'")
 
         return lines_info, (header_idx if header_idx > 0 else 0, footer_idx if footer_idx > 0 else 0)

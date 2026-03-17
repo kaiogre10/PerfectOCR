@@ -26,7 +26,7 @@ pipeline_secuence:
     - "cos_sim"
     - "table_structurer"
     # - "table_validated"
-    # - "math_max"
+    - "math_max"
 
 # Configuración de salida
 enabled_outputs:
@@ -163,7 +163,7 @@ modules:
     
   vectorization:
     lineal:
-      get_vectors: True
+      get_vectors: False
       overlap_threshold: 0.596
       
     cos_sim:

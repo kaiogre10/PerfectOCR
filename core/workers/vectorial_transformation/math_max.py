@@ -109,7 +109,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         c_name = quant_cols[c_idx]
         pu_name = quant_cols[pu_idx]
         mtl_name = quant_cols[mtl_idx]
-        logger.debug(f"Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
+        logger.info(f"Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
         # --- FASE 2: Reconstrucción ---
         reconstructed: np.ndarray[Any, np.dtype[np.float32]] = numeric_df.to_numpy(dtype=np.float32, copy=True)
                 
@@ -151,22 +151,64 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         # --- FASE 3: Integración al DF original ---
         corrected_df = df.copy()
+
+        # Identificar la columna de descripción (candidata: tipo texto y no es rol numérico)
+        global_c_idx = quant_indices_map[c_idx]
+        global_pu_idx = quant_indices_map[pu_idx]
+        global_mtl_idx = quant_indices_map[mtl_idx]
+        numeric_role_indices = {global_c_idx, global_pu_idx, global_mtl_idx}
+        
+        desc_col_idx = -1
+        # Primero buscar explícitamente una columna de tipo "texto"
+        for idx, t in enumerate(basic_types):
+            if idx not in numeric_role_indices and t == "texto":
+                desc_col_idx = idx
+                break
+        
+        # Si no, cualquier columna que no sea rol numérico
+        if desc_col_idx == -1:
+             for idx in range(len(columns)):
+                if idx not in numeric_role_indices:
+                    desc_col_idx = idx
+                    break
+
+        # Si encontramos una columna de descripción, movemos texto "intruso" de las columnas numéricas
+        if desc_col_idx != -1:
+            desc_col_name = columns[desc_col_idx]
+            for i in range(len(df)):
+                # Verificar cada rol numérico
+                for role_global_idx, role_local_idx in [(global_c_idx, c_idx), (global_pu_idx, pu_idx), (global_mtl_idx, mtl_idx)]:
+                    original_val = df.iloc[i, role_global_idx]
+                    reconstructed_val = reconstructed[i, role_local_idx]
+                    
+                    # Si el original NO es numérico Y tenemos un valor reconstruido válido
+                    if not self._is_numeric_like(original_val) and not np.isnan(reconstructed_val):
+                        # Mover texto a descripción
+                        text_to_move = str(original_val).strip()
+                        if text_to_move and text_to_move.lower() != "nan" and text_to_move.lower() != "none":
+                            current_desc = str(corrected_df.iloc[i, desc_col_idx])
+                            if current_desc.lower() == "nan" or current_desc.lower() == "none":
+                                current_desc = ""
+                            
+                            # Concatenación inteligente: si columna origen está a la izquierda -> prefijo
+                            if role_global_idx < desc_col_idx:
+                                new_desc = (text_to_move + " " + current_desc).strip()
+                            else:
+                                new_desc = (current_desc + " " + text_to_move).strip()
+                                
+                            corrected_df.iloc[i, desc_col_idx] = new_desc
+                            logger.info(f"Fila {i}: Texto '{text_to_move}' movido de {columns[role_global_idx]} a {desc_col_name}")
+
         for j, col_name in enumerate(quant_cols):
             # Formatear como string conservando 2 decimales cuando aplique
-            def fmt(v):
-                if np.isnan(v):
-                    return corrected_df[col_name]
-                try:
-                    return f"{v:.2f}" if not float(v).is_integer() else str(int(round(v)))
-                except Exception:
-                    return corrected_df[col_name]
             # Asignar con cuidado para no romper celdas no numéricas originales
             series_num = pd.Series(reconstructed[:, j], index=corrected_df.index)
+            # Aplicamos el valor reconstruido (incluso si sobrescribe texto original, ya que lo movimos arriba)
             corrected_df[col_name] = series_num.apply(lambda x: (f"{x:.2f}" if not np.isnan(x) and not float(x).is_integer() else (str(int(round(x))) if not np.isnan(x) else None)))
 
-            # Para celdas que originalmente no eran numéricas, dejamos el valor original si no hubo corrección
-            mask_orig_non_num = ~df[col_name].apply(self._is_numeric_like)
-            corrected_df.loc[mask_orig_non_num, col_name] = df.loc[mask_orig_non_num, col_name]
+            # NOTA: Se eliminó la restauración de valores no numéricos originales (líneas 167-169 antiguas)
+            # para permitir que el valor reconstruido ocupe su lugar tras haber movido el texto.
+
 
         final_semantic_types = basic_types[:]
         final_semantic_types[quant_indices_map[c_idx]] = "cuantitativo, c"

@@ -39,8 +39,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                     "\n"f"{table_line_ids}")
                     # "\n"f"{table_range}")
                 succes = manager.save_tabular_lines(table_line_ids)
-                if succes:
-                    
+                if succes:     
                     logger.debug("Tablas guaradas en el manager desde coseno")
                     if self.output:
                         from services.output_service import save_debug_json
@@ -76,12 +75,12 @@ class MatricialCusine(VectorizationAbstractWorker):
             header_line_id, footer_line_id = self.get_headers(all_lines)
             if header_line_id > 0:
                 table_line_ids = self._fallback_cosine(analysis, line_ids, header_line_id)
-                logger.info(f"Validación coseno con encabezado en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
+                logger.debug(f"Validación coseno con encabezado en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                 return table_line_ids
             
             elif footer_line_id > 0:
                 table_line_ids = self._fallback_cosine(analysis, line_ids, footer_line_id)
-                logger.info(f"Validación coseno con footer en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
+                logger.debug(f"Validación coseno con footer en {time.perf_counter() - start_time:.6f}s. Líneas válidas: {len(table_line_ids)}: {table_line_ids}")
                 return table_line_ids
                 
             else:
@@ -173,6 +172,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         ref_vec = line_cands[0].reshape(1, -1)
 
         sims = get_cosine_similarity(line_cands, ref_vec, dense_output=False)
+        sims = np.ravel(sims)  # ← Aplanar a 1D para evitar el TypeError
 
         logger.debug(f"Promedio de similitud con línea de referencia '{ref_vec}': {np.mean(sims):.6f}")
         logger.debug("Candidatas (en orden): %s", ", ".join(str(lid) for lid in cand_indx))
