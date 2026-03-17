@@ -69,10 +69,10 @@ class DataFinder(OCRAbstractWorker):
                 ocr_text = poly.ocr_text or ""
                 sc = poly.semantic_clasification
                 
-                sc_real = int(np.median(sc).astype(np.int8))
+                sc_real = np.median(sc)
 
                 # Descartar rápidamente cuantitativos (2) o unidades de medida (-2)
-                if sc_real == 2:
+                if sc_real == 2.0:
                     # logger.info(f"{pid} omitido cuantitativo sc: '{ocr_text}': '{sc_real}' ")
                     skipped_semantic += 1
                     continue
@@ -101,7 +101,7 @@ class DataFinder(OCRAbstractWorker):
                     polygon_updates[pid] = 8
                     continue
 
-                elif sc_real != 0:
+                elif sc_real != 0.0:
                     # logger.info(f"{pid} omitido semanticamente sc= '{ocr_text}': {sc_real}")
                     skipped_semantic += 1
                     continue
@@ -119,7 +119,7 @@ class DataFinder(OCRAbstractWorker):
                 if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
                     # Múltiples headers: asignar como lista
                     polygon_updates[pid] = all_key_fields
-                    pot_headers = " ".join(result["key_word"] for result in valid_results)
+                 #   pot_headers = " ".join(result["key_word"] for result in valid_results)
                     # head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
                     # poly.ocr_text = head_standar
                     logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
