@@ -62,7 +62,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             line_ids: List[str] = [lid.lineal_id for lid in all_lines.values()]
             check_tabular_lines = [lid.tabular_line for lid in all_lines.values()]
             if not any(check_tabular_lines):
-                logger.info("Sin lineas tabulares, DBSCAN como soporte")
+                logger.debug("Sin lineas tabulares, DBSCAN como soporte")
                 tabular_lines: List[str] = self._apply_dbscan_clustering(analysis, manager)
 
                 if tabular_lines:
@@ -73,7 +73,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                     tabular_lines = self._emergency_fallback(analysis, line_ids)
                     return tabular_lines
             else:
-                tabular_lines = manager.get_tabular_lines(False)
+                tabular_lines = manager.get_tabular_lines(False) #type: ignore
                 return self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
                                     
         except Exception as e:
@@ -162,7 +162,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             return table_line_ids
 
         # Si ninguna línea superó el umbral, activar emergencia desde aquí
-        logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
+        logger.debug("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
         return self._emergency_fallback(analysis, line_ids)
 
     def _emergency_fallback(self, analysis: np.ndarray[Any, Any], line_ids: List[str]) -> List[str]:
@@ -234,7 +234,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         - Expansión bidireccional con margen de fallo self.min_cluster.
         - Si no entra nadie (intervalo no crece), devuelve el intervalo entre min(topK) y max(topK).
         """
-        if analysis is None or len(line_ids) == 0:
+        if len(line_ids) < 3:
             return []
 
         # Features sin columna índice
@@ -355,7 +355,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         line_ids = [index_to_id.get(int(idx), f"line_{int(idx)}") for idx in int_line_ids]
         # timedbscan = time.perf_counter()
         labels: np.ndarray[Any, Any] = density_cluster(features_for_clustering, self.eps, self.min_cluster, self.metric)
-        # logger.info(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
+        # logger.debug(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:
@@ -382,7 +382,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         main_cluster = best_label
 
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
-        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
+        logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
         selected_indices = [all_lines[line_id].line_index for line_id in table_line_ids if line_id in all_lines]
 
         if not selected_indices:
@@ -398,6 +398,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Paso 4: Mapear de vuelta a line_id (str)
         full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        logger.info(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
+        logger.debug(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
 
         return full_range_line_ids

@@ -25,7 +25,7 @@ class MainFactory:
             "image_preparation": ImagePreparationFactory(
                 image_preparation_config,
                 project_root
-            ),
+            ) if image_preparation_config else None,
             "preprocessing": PreprocessingFactory(
                 preprocessing_config,
                 project_root
@@ -41,22 +41,14 @@ class MainFactory:
         }
         logger.debug(f"{self.module_factories}")
 
-    def get_image_preparation_factory(self) -> ImagePreparationFactory:
+    def get_image_preparation_factory(self) -> Optional[ImagePreparationFactory]:
         return self.module_factories["image_preparation"]
-        # assert isinstance(factory, ImagePreparationFactory)
-        # return factory
 
     def get_preprocessing_factory(self) -> Optional[PreprocessingFactory]:
         return self.module_factories["preprocessing"]
-        # assert isinstance(factory, PreprocessingFactory)
-        # return factory
         
     def get_ocr_factory(self) -> Optional[OCRFactory]:
-        return self.module_factories["ocr"] 
-        # assert isinstance(factory, OCRFactory) 
-        # return factory
+        return self.module_factories["ocr"]
         
     def get_vectorizing_factory(self) -> Optional[VectorizingFactory]:
         return self.module_factories["vectorization"]
-        # assert isinstance(factory, VectorizingFactory)
-        # return factory

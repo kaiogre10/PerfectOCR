@@ -20,9 +20,9 @@ class MatrixSolver(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('math_max', {})
-        self.output = config.get("math_max_corrected", False)
         self.total_mtl_tolerance = worker_config.get('total_mtl_abs_tolerance')
         self.arithmetic_tolerance = worker_config.get('row_relative_tolerance')
+        self.output = config.get("math_max_corrected", False)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:
@@ -52,12 +52,12 @@ class MatrixSolver(VectorizationAbstractWorker):
                     header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
 
                 file_name: str = manager.workflow.metadata.image_name # type: ignore
-                worker_name = context.get("worker_name", {})
-                output_paths = context.get("output_paths", [])
+                worker_name = context.get("worker_name") or "math_max"
+                output_paths = context["output_paths"]
                 save_debug_table(corrected_df, file_name, output_paths, worker_name, header_polygons)
 
             # Log simple de cómo queda la tabla ya corregida
-            logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
+            logger.debug("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
 
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
@@ -78,6 +78,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         columns: List[str] = list(df.columns)
         basic_types = self._infer_semantic_types_basic(df)
+        logger.info(f"BASI TIPES: {basic_types}")
         quant_indices_map = [i for i, t in enumerate(basic_types) if t == "cuantitativo"]
         if len(quant_indices_map) < 3:
             logger.debug("Menos de 3 columnas cuantitativas; no se aplica corrección.")
@@ -197,7 +198,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                                 new_desc = (current_desc + " " + text_to_move).strip()
                                 
                             corrected_df.iloc[i, desc_col_idx] = new_desc
-                            logger.info(f"Fila {i}: Texto '{text_to_move}' movido de {columns[role_global_idx]} a {desc_col_name}")
+                            logger.debug(f"Fila {i}: Texto '{text_to_move}' movido de {columns[role_global_idx]} a {desc_col_name}")
 
         for j, col_name in enumerate(quant_cols):
             # Formatear como string conservando 2 decimales cuando aplique

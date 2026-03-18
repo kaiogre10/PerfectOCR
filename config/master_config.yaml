@@ -145,7 +145,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 1
+      num_passes: 2
       semantic_range: [45.0, 66.5] # Cantidad de digitos
       encode_mean: [25.1, 39.1] # Promedio de densidad
       morph_mean: [-0.3, 0.35] # Promedio morfológico

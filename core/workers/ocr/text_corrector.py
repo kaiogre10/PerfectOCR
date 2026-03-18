@@ -60,7 +60,6 @@ class TextCorrector(OCRAbstractWorker):
                 corrected_text = estandarice_uppers_lowers(original_text, corrected_text)
                 updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
                 corrected_polygons[poly_id] = updated_polygon
-                
                 logger.debug(
                     f"Corrección para '{poly_id}':"
                     f"Original: '{original_text}' → Corregido: '{corrected_text}'"

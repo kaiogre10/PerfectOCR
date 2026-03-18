@@ -20,7 +20,7 @@ class ConfigService:
         self.enable_outputs = True if output_paths else False
         
         if not elemental_params and not TEST_MODE:
-            logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN, DETENIENDO")
+            logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
             self.config = {}
 
         elif TEST_MODE:
@@ -49,7 +49,7 @@ class ConfigService:
             logger.error(f"Error validando configuración desde {config_path}: {e}")
             raise
 
-    @property
+    @cached_property
     def activate_modules(self) -> bool:
         return self.no_modules
 

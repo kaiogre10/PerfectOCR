@@ -68,14 +68,14 @@ class InkCorrector(ImagePrepAbstractWorker):
                     worker_name = context.get("worker_name") or "inker"
                     output_paths = context["output_paths"]
                     
-                    # imag_id = f"corrected_blobs_{image_name}_{worker_name}"
+                    imag_id = f"corrected_blobs_{image_name}_{worker_name}"
                     image_id = f"outliers_{image_name}_{worker_name}"
                     # id = f"bin_gap_{image_name}_{worker_name}"
                     # gaps_id = f"gaps_{image_name}_{worker_name}"
                     # img_id = f"bin_correct_{image_name}_{worker_name}"
                     # all_cont_id = f"all_contours_{image_name}_{worker_name}"
             
-                    # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
+                    save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
                     # save_croped_image(image_name, id, bin_gap, output_paths, worker_name)
                     # save_croped_image(image_name, img_id, bin_correct, output_paths, worker_name)
                     

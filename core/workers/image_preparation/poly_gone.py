@@ -2,7 +2,6 @@
 import numpy as np
 import logging
 import time
-# import math
 import dataclasses
 from typing import Dict, Any, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
@@ -18,7 +17,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('polygon_extractor', {})
-        # self.angle_thr = worker_config["angle_thr"]
         self.bin_interval = config["bin_interval"]
         self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
@@ -40,7 +38,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             img_h = full_img.shape[0]
             img_w = full_img.shape[1]
 
-            manager.workflow.metadata.img_dims = [img_h, img_w]
+            manager.workflow.metadata.img_dims = [img_h, img_w] # type: ignore
 
             logger.debug("Full_img obtenida con éxito")
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
@@ -67,7 +65,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 return False
 
             # 2. Fase de Decisión Vectorizada: Calcular todos los recortes con self.padding
-            bboxes_array = np.array(all_bboxes).astype(np.int16)  # shape: (n_polygons, 4)
+            bboxes_array = np.array(all_bboxes, np.int16)
             
             # Calcular coordenadas con self.padding usando operaciones vectorizadas
             x1, y1, x2, y2 = bboxes_array[:, 0], bboxes_array[:, 1], bboxes_array[:, 2], bboxes_array[:, 3]
@@ -88,14 +86,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             if len(valid_indices) == 0:
                 logger.warning("PolygonExtractor: No hay recortes válidos después del padding.")
                 return False
-
-            # Calcular centroides con padding de forma vectorizada
-            padded_centroids_x = (px1[valid_indices] + px2[valid_indices]) / 2
-            padded_centroids_y = (py1[valid_indices] + py2[valid_indices]) / 2
             
             # 3. Fase de Aplicación: Extraer imágenes solo para índices válidos
             cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]] = {}
-            cropped_geometries: Dict[str, Dict[str, Any]] = {}
             discarded_poly_ids: List[str] = []
             valid_poly_ids: List[str] = []
 
@@ -108,22 +101,15 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
 
                 if self.output:
-                    # var = np.mean(cropped)
-                    # logger.info(f"Estadísticas de {poly_id}: VAR: {var}")
-                    self.save_debug(cropped, context, "all", poly_id)
+                    self.save_debug(cropped, context, "all", poly_id) # type: ignore
                 
                 poly_mean, _ = calculate_img_values(cropped)
-                # bbox_width = dims[1]
-                # bbox_height = dims[0]
-                # angle = math.degrees(math.atan2(bbox_height, bbox_width))
                 
                 poly_data_to_filter.append({
                     "poly_id": poly_id,
                     "poly_index": poly_index,
                     "cropped": cropped,
-                    # "angle": angle,
                     "i": i,
-                    "coords": (crop_x1, crop_y1, crop_x2, crop_y2),
                     "poly_mean": poly_mean
                 })
 
@@ -134,19 +120,10 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             valid_polygons_data: List[Dict[str, Any]] = []
             for p_data in poly_data_to_filter:
 
-                # if p_data['angle'] < self.angle_thr[1] and self.angle_thr[0] < p_data['angle']:
-                #     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['angle']}")
-                    
-                #     # logger.info(f"ELIMINADO: '{p_data['poly_id']}': Angulo = {p_data['angle']}°")
-
-                #     if self.disoutput:
-                #         status = "small"
-                #         self.save_debug(p_data['cropped'], context, status, p_data['poly_id'])
-
                 if p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
                     status = "bn"
-                    # logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO DE COLOR '{p_data['poly_mean']}'")
+                    logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO DE COLOR '{p_data['poly_mean']}'")
 
                     if self.disoutput:
                         status = "bn"
@@ -159,19 +136,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             for i, p_data in enumerate(valid_polygons_data):
                 new_id = f"poly_{i:04d}"
                 cropped_images[new_id] = p_data["cropped"]
-
-                poly_height, poly_width = p_data["cropped"].shape[:2]
-                centroid_idx = p_data["i"]
-                crop_x1, crop_y1, crop_x2, crop_y2 = p_data["coords"]
-
-                cropped_geometries[new_id] = {
-                    "padd_centroid": [(padded_centroids_x[centroid_idx]), (padded_centroids_y[centroid_idx])],
-                    "padding_coords": [crop_x1, crop_y1, crop_x2, crop_y2],
-                    "croppy_dims": {
-                        "poly_height": poly_height,
-                        "poly_width": poly_width,
-                    }
-                }
 
             # Eliminar los descartados del manager.workflow.polygons
             for poly_id in discarded_poly_ids:
@@ -199,14 +163,14 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     
             manager.workflow.polygons = new_polygons
             
-            if not manager.save_cropped_images(cropped_images, cropped_geometries):
+            if not manager.save_cropped_images(cropped_images):
                 logger.error("No se pudieron guardar las imagenes en el manager")
                 return False
             
             total_time = time.time() - start_time
                 
             extracted_count = len(cropped_images)
-            # logger.info(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
+            logger.debug(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
 
             if self.filtered_ouputs:
                 polygons = manager.workflow.polygons if manager.workflow else {}

@@ -48,7 +48,6 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=project_root)
             
             # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
-            # En lugar de crear una lista de builders, creamos uno solo configurado
             processing_builder = create_single_builder(stagers_factory=stagers_factory, output_paths=output_paths)
             if not processing_builder:
                 logger.error("No se pudo crear el ProcessingBuilder")
@@ -58,7 +57,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             # 7. Main ejecuta procesamiento secuencial usando el builder único
             t4 = time.perf_counter()
             results = execute_sequential_processing(processing_builder, workflow_report)
-            logger.debug(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
+            logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
             cleanup_project_cache(project_root)
             return results if results is not None else []
             

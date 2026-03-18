@@ -9,12 +9,6 @@ class StructuredTable:
     df: pd.DataFrame
     columns: List[str]
     semantic_types: Optional[List[str]] = None
-
-@dataclass
-class CroppedGeometry:
-    padd_centroid: np.ndarray[Any, Any]  # shape: (2,)
-    padding_coords: np.ndarray[Any, Any]  # shape: (4,)
-    croppy_dims: Dict[str, int]
     
 @dataclass
 class CroppedImage:
@@ -31,7 +25,6 @@ class Polygons:
     polygon_id: str
     poly_index: int
     geometry: Geometry
-    cropedd_geometry: CroppedGeometry
     cropped_img: Optional[CroppedImage]
     ocr_text: Optional[str]
     ocr_confidence: Optional[float]

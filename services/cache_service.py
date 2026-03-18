@@ -91,13 +91,13 @@ def clear_output_folders(output_paths: List[str]) -> None:
 
                     shutil.rmtree(item_path)
                     deleted_folder += 1
-                    logger.info(f"Carpeta eliminada: {item_path}")
+                    logger.debug(f"Carpeta eliminada: {item_path}")
                 else:
                     ext = os.path.splitext(item_name)[1].lower()
                     if ext in exts:
                         os.remove(item_path)
                         deleted_files += 1
-                        logger.info(f"Archivo eliminado: {item_path}")
+                        logger.debug(f"Archivo eliminado: {item_path}")
                     else:
                         logger.debug(f"Saltado por extensión no permitida: {item_path}")
 

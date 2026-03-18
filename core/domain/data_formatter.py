@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowDict, StructuredTable, Geometry, Metadata, Polygons, CroppedGeometry, CroppedImage, AllLines, LineGeometry, FullImage
+from core.domain.data_models import WorkflowDict, StructuredTable, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage
 import numpy as np
 import dataclasses
 import logging
@@ -60,7 +60,7 @@ class DataFormatter:
             
             for pid, poly_data in results.items():
                 poly_id = pid
-                poly_index = poly_data.get("poly_index", 0)
+                poly_index = poly_data["poly_index"]
                 coords = poly_data["polygon_coords"]
                 bbox = poly_data["bounding_box"]
                 centroid = poly_data["centroid"]
@@ -77,7 +77,6 @@ class DataFormatter:
                     polygon_id=poly_id,
                     poly_index=poly_index,
                     geometry=geometry,
-                    cropedd_geometry=None, #type:ignore
                     cropped_img=None,
                     ocr_text=None,
                     ocr_confidence=None,
@@ -202,7 +201,7 @@ class DataFormatter:
             logger.error(f"Error actualizando full_img: {e}", exc_info=True)
             return False
                         
-    def save_cropped_images(self, cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]], cropped_geometries: Dict[str, Dict[str, Any]]) -> bool:
+    def save_cropped_images(self, cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]]) -> bool:
         """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""
         try:
             if not self.workflow:
@@ -210,34 +209,19 @@ class DataFormatter:
                 return False
 
             total_img = len(cropped_images)
-            total_geo = len(cropped_geometries)
-
-            if total_img != total_geo:
-                logger.error(f"El número de imágenes recortadas '{total_img}' no coincide con el número de geometrías recortadas: '{total_geo}'")
-                return False
 
             logger.debug(f"'{total_img}' imágenes recortadas recibidas para guardar.")
 
             for poly_id, img in cropped_images.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
-                    cropped_geo = cropped_geometries.get(poly_id)
 
-                    # Crear nuevo objeto CroppedImage
                     cropped_image_obj = CroppedImage(normalice_image(img))
-
-                    # Crear nuevo objeto CroppedGeometry
-                    cropped_geometry_obj = CroppedGeometry(
-                        padd_centroid=np.array(cropped_geo["padd_centroid"]) if cropped_geo and cropped_geo["padd_centroid"] else np.array([]),
-                        padding_coords=np.array(cropped_geo["padding_coords"]) if cropped_geo and cropped_geo["padding_coords"] else np.array([]),
-                        croppy_dims=cropped_geo.get("croppy_dims", {}) if cropped_geo else {}
-                    )
 
                     # Crear nuevo polígono con la imagen recortada y la geometría
                     updated_polygon = dataclasses.replace(
                         polygon,
-                        cropped_img=cropped_image_obj,
-                        cropedd_geometry=cropped_geometry_obj
+                        cropped_img=cropped_image_obj
                     )
                     self.workflow.polygons[poly_id] = updated_polygon
 
