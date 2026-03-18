@@ -7,6 +7,7 @@ from typing import Dict, Any, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import use_bilateral_filter
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,6 @@ class MoireDenoiser(ImagePrepAbstractWorker):
             logger.info(f"Valor de corrected: {corrected}")
 
             if self.output and corrected:
-                from services.output_service import save_croped_image
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "moire"
                 output_paths = context["output_paths"]

@@ -8,6 +8,7 @@ import numpy as np
 from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,6 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             corrected_df, final_semantic_types = self.solve(df)
             if self.output:
-                from services.output_service import save_debug_table
                 all_lines = manager.workflow.all_lines if manager.workflow else {}
                 polygons = manager.workflow.polygons if manager.workflow else {}
 

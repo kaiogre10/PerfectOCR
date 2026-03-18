@@ -1,12 +1,13 @@
 # core/workers/ocr/text_refiner.py
 from typing import Dict, Any, Optional, List, Tuple
 from core.domain.data_formatter import DataFormatter
+from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.fragmenter import Fragmenter
+from services.output_service import save_raw_json
 from core.utils.text_utils import clasify_words
-from core.domain.data_models import Polygons
 import logging
 import time
 
@@ -95,7 +96,6 @@ class Refiner(OCRAbstractWorker):
             #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}, cuant char: {poly_data.cuant_chars}")
 
             if self.output:
-                from services.output_service import save_raw_json
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore
                 name = "cleanned_text"
                 worker_name = f"{name}" or "refiner"

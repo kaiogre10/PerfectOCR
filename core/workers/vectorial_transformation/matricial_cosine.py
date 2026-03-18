@@ -8,6 +8,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines
 from core.utils.data_utils import VECTOR_MEAN_DUMMIE, VECTOR_MEDIAN_DUMMIE
 from core.utils.math_utils import get_cosine_similarity, density_cluster
+from services.output_service import save_debug_json
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,6 @@ class MatricialCusine(VectorizationAbstractWorker):
                 if succes:     
                     logger.debug("Tablas guaradas en el manager desde coseno")
                     if self.output:
-                        from services.output_service import save_debug_json
                         return_objects: bool = True
                         tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
                         file_name: str = manager.workflow.metadata.image_name # type: ignore

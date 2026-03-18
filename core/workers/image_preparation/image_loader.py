@@ -6,6 +6,7 @@ from typing import Dict, Any, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import decolorate
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,6 @@ class ImageLoader(ImagePrepAbstractWorker):
                 logger.debug(f"'{image_name}' cargada en {time.perf_counter() - time0:.4f}s")
             
                 if self.output:
-                    from services.output_service import save_croped_image
                     output_paths = context["output_paths"]
                     worker_name = context.get("worker_name") or "loader"
                     save_croped_image(image_name, f"full_img_{image_name}_{worker_name}", full_img, output_paths, worker_name)
@@ -73,4 +73,3 @@ class ImageLoader(ImagePrepAbstractWorker):
         except cv2.error as e:
             logger.error(f"Error OpenCV al cargar '{image_name}': {e}", exc_info=True)
         return False
-        

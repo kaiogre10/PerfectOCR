@@ -7,6 +7,7 @@ import math
 from typing import Dict, Any, Tuple, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,6 @@ class AngleCorrector(ImagePrepAbstractWorker):
 
             if corrected:
                 if self.output:
-                    from services.output_service import save_croped_image
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     worker_name = context.get("worker_name") or "angle_corrector"
                     output_paths = context["output_paths"]

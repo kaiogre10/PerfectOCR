@@ -7,6 +7,7 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
 from core.utils.math_utils import alignment, euclidean_distance
+from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                    # context["table_copy"] = df.copy()
 
                     if self.output:
-                        from services.output_service import save_debug_table
                         all_lines = manager.workflow.all_lines if manager.workflow else {}
                         polygons = manager.workflow.polygons if manager.workflow else {}
 

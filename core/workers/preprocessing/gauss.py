@@ -7,6 +7,7 @@ from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.utils.image_utils import use_bilateral_filter
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,6 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
                 polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
-                    from services.output_service import save_croped_image
                     worker_name = context.get("worker_name") or "gauss"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     output_paths = context["output_paths"]

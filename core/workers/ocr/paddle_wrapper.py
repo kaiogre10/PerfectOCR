@@ -9,6 +9,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
 from core.utils.text_utils import space_removal, validate_alone_chars, detect_special_strings, separate_punt
 from core.utils.image_utils import elevate_dims
+from services.output_service import save_raw_json
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 processed_count = len(final_results) if success else 0
                 
                 if self.output:
-                    from services.output_service import save_raw_json
                     file_name: str = manager.workflow.metadata.image_name #type: ignore
                     worker_name = context.get("worker_name") or "paddle_wrapper"
                     output_paths = context["output_paths"]

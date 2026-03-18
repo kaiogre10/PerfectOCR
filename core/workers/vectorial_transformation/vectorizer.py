@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
+from services.output_service import save_table_values
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,6 @@ class Vectorizer(VectorizationAbstractWorker):
             context["all_features"] = all_features
 
             if self.output:
-                from services.output_service import save_table_values
                 all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
                 line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
                 features_to_ind = all_features[:, 1:].astype(np.str_)
