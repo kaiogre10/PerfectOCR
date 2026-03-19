@@ -61,7 +61,6 @@ class DataFinder(OCRAbstractWorker):
             processed_count = 0
             polygon_updates: Dict[str, List[int] | int] = {}
             skipped_semantic = 0
-            skipped_len = 0
 
             for pid, poly in polygons.items():
                 processed_count += 1
@@ -77,10 +76,8 @@ class DataFinder(OCRAbstractWorker):
                     skipped_semantic += 1
                     continue
 
-                word_lenght = len(ocr_text)
-                if not ocr_text or word_lenght < 2:
-                    logger.debug(f"{pid} sin texto o muy corto longitud: '{ocr_text}', letras: '{word_lenght}'")
-                    skipped_len += 1
+                elif not ocr_text or len(ocr_text) < 2:
+                    logger.debug(f"{pid} sin texto o muy corto longitud: '{ocr_text}''")
                     continue
 
                 elif find_date(ocr_text):
@@ -117,11 +114,7 @@ class DataFinder(OCRAbstractWorker):
                 
                 # Verificar si todos son headers (key_field == 6)
                 if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
-                    # Múltiples headers: asignar como lista
                     polygon_updates[pid] = all_key_fields
-                 #   pot_headers = " ".join(result["key_word"] for result in valid_results)
-                    # head_standar = estandarice_uppers_lowers(ocr_text, pot_headers)
-                    # poly.ocr_text = head_standar
                     logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
 
                 else:

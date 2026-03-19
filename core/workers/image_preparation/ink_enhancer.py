@@ -229,4 +229,3 @@ class InkCorrector(ImagePrepAbstractWorker):
                     
         logger.info(f"Contornos pintado de Ngero: {black}, solitarios: {white}")
         return grey_img, white_gaps, black_gaps
-    

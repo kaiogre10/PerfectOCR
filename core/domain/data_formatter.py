@@ -165,21 +165,16 @@ class DataFormatter:
                 logger.error("No hay workflow inicializado para actualizar full_img.")
                 return False
                 
-            if full_img is None:
+            if full_img is None or not corrected:
                 # Medir dims de la imagen real almacenada antes de liberar memoria
-                current_img = self.workflow.full_img.full_img if self.workflow.full_img else None
-                measured_dims = list(current_img.shape) if current_img is not None else self.workflow.metadata.img_dims
-
-                updated_metadata = dataclasses.replace(self.workflow.metadata, img_dims=measured_dims)
                 self.workflow = dataclasses.replace(
                     self.workflow,
-                    full_img=None,
-                    metadata=updated_metadata
+                    full_img=None
                 )
                 return True
             
-            if corrected:
-            #     # Normalizar si se recibe la dataclass FullImage corregida
+            elif corrected:
+                # Normalizar si se recibe la dataclass FullImage corregida
                 if isinstance(full_img, FullImage):
                     img_arr = getattr(full_img, "full_img", None)
                 else:
@@ -191,8 +186,7 @@ class DataFormatter:
                 full_image_obj = FullImage(img_arr)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
                 logger.debug("Imagen actualizada con éxito.")
-                return True
-            
+                return True    
             else:
                 logger.debug("Imagen completa sin modificaciones")
                 return True
@@ -335,7 +329,7 @@ class DataFormatter:
             
         except Exception as e:
             logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
-        return False
+            return False
                 
     def update_key_field(self, polygon_updates: Optional[Dict[str, List[int] | int]]) -> bool:
         """
@@ -360,7 +354,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    # logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
+                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
@@ -425,7 +419,7 @@ class DataFormatter:
                         
         except Exception as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
-            return False
+        return False
 
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
         """
@@ -474,7 +468,7 @@ class DataFormatter:
             return True
         except Exception as e:
             logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)
-            return False
+        return False
                 
     def save_structured_table(self, df: pd.DataFrame, columns: List[str], semantic_types: Optional[List[str]] = None) -> bool:
         try:

@@ -22,10 +22,10 @@ pipeline_secuence:
     
   vector_stage:
     - "lineal"
-    - "vectorizer"
-    - "cos_sim"
-    - "table_structurer"
-    - "math_max"
+    # - "vectorizer"
+    # - "cos_sim"
+    # - "table_structurer"
+    # - "math_max"
 
 # Configuración de salida
 enabled_outputs:
@@ -186,3 +186,4 @@ utils:
   bin_interval: [10, 245]
   percentile: [0.10, 0.99]
   morph_kernel: [2, 3]
+  

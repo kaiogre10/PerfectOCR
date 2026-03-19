@@ -28,7 +28,7 @@ _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|
 
 # RFC
 _rfc_code_pattern: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
-_rfc_word_pattern: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
+# _rfc_word_pattern: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
 
 # IVA
 _iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
@@ -123,9 +123,6 @@ def find_rfc(s: str) -> bool:
     try:
         if not s:
             return False
-        
-        if _rfc_word_pattern.search(s):
-            return True
         return bool(_rfc_code_pattern.search(s))
     except Exception as e:
         logger.warning(f"Error buscando RFC: {e}", exc_info=True)
