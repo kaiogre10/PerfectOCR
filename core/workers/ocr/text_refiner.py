@@ -1,5 +1,4 @@
 # core/workers/ocr/text_refiner.py
-import numpy as np
 from typing import Dict, Any, Optional, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -94,9 +93,7 @@ class Refiner(OCRAbstractWorker):
 
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-                pc = np.median(poly_data.semantic_clasification)
-                if pc < - 0.4 and pc > -1.5:
-                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {pc}, cuant char: {poly_data.cuant_chars}")
+                logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
             if self.output:
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore

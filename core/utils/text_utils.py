@@ -370,7 +370,8 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         elif semantic_range[0] < pct < semantic_range[1] and morph_mean[0] < poly_morph_mean < morph_mean[1]:
             return (-1, total_cuant)  # code
         
-        return (0, total_cuant)  # descriptive
+        else:
+            return (0, total_cuant)  # descriptive
 
     for pid, polygon in polygons.items():
         s = polygon.ocr_text or ""
