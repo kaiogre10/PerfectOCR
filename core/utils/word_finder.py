@@ -445,7 +445,7 @@ class WordFinder:
         try:
             if not s:
                 return ""
-            q = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8').lower()
+            q = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8')
             # Convertir cualquier cosa que NO sea letra o espacio en un ESPACIO
             q = re.sub(r"[^a-z\s]+", " ", q)
             # Limpiar espacios múltiples / extremos

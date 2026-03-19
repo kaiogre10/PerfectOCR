@@ -2,7 +2,7 @@
 import time
 from typing import Dict, Any, Optional, List
 import logging
-import numpy as np
+from statistics import median
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -37,16 +37,17 @@ class DataFinder(OCRAbstractWorker):
             if not polygons:
                 logger.error("No hay polygons para procesar")
                 return False
-            
+
             # Llamar al meetodo original que funciona
             polygon_updates = self._find_data(polygons)
+            if polygon_updates:
+                # polygon_updates = self.find_correct_data(polygon_updates)
 
             # Actualiza los key_fields
             # start_time = time.perf_counter()
-            if manager.update_key_field(polygon_updates):
-                # logger.info(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
-                return True
-                
+                if manager.update_key_field(polygon_updates):
+                    # logger.info(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
+                    return True
         except Exception as e:
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
         return True
@@ -61,76 +62,83 @@ class DataFinder(OCRAbstractWorker):
             processed_count = 0
             polygon_updates: Dict[str, List[int] | int] = {}
             skipped_semantic = 0
+            found_date = False
+            found_rfc = False
+            found_iva = False
 
             for pid, poly in polygons.items():
                 processed_count += 1
 
                 ocr_text = poly.ocr_text or ""
-                sc = poly.semantic_clasification
-                
-                sc_real = np.median(sc)
+                text_len = len(ocr_text)
+                sc_real = median(poly.semantic_clasification)
+                if not ocr_text:
+                    skipped_semantic += 1
+                    continue
 
-                # Descartar rápidamente cuantitativos (2) o unidades de medida (-2)
-                if sc_real == 2.0:
+                elif ocr_text.isdecimal():
+                    skipped_semantic += 1
+                    continue
+
+                elif not found_date and find_date(ocr_text):
+                    skipped_semantic +=1
+                    # logger.debug(f"FECHA encontrado en {pid}, '{ocr_text}'")
+                    found_date = True
+                    polygon_updates[pid] = 9
+                    continue
+                
+                elif sc_real < -1.5 or sc_real > 1.5:
                     # logger.info(f"{pid} omitido cuantitativo sc: '{ocr_text}': '{sc_real}' ")
                     skipped_semantic += 1
                     continue
 
-                elif not ocr_text or len(ocr_text) < 2:
-                    logger.debug(f"{pid} sin texto o muy corto longitud: '{ocr_text}''")
-                    continue
-
-                elif find_date(ocr_text):
+                elif not found_rfc and text_len > 11 and find_rfc(ocr_text):
                     skipped_semantic +=1
-                    logger.debug(f"FECHA encontrado en {pid}, '{ocr_text}'")
-                    polygon_updates[pid] = 9
-                    continue
-
-                elif find_rfc(ocr_text):
-                    skipped_semantic +=1
-                    logger.debug(f"RFC encontrado en {pid}, '{ocr_text}'")
+                    found_rfc = True
+                    # logger.debug(f"RFC encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 7
                     continue
 
-                elif find_iva(ocr_text):
+                elif not found_iva and find_iva(ocr_text):
                     skipped_semantic +=1
-                    logger.debug(f"IVA encontrado en {pid}, '{ocr_text}'")
+                    found_iva = True
+                    logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
                     continue
 
-                elif sc_real != 0.0:
-                    # logger.info(f"{pid} omitido semanticamente sc= '{ocr_text}': {sc_real}")
-                    skipped_semantic += 1
-                    continue
-                
-                # logger.info(f"Poly: {pid}: TEXTO: '{ocr_text}")
-                valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
-                if not valid_results:
-                    continue
-
-                # logger.info(f"Results: {valid_results}")
-                num_keywords = len(valid_results)
-                all_key_fields = [result['key_field'] for result in valid_results]
-                
-                # Verificar si todos son headers (key_field == 6)
-                if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
-                    polygon_updates[pid] = all_key_fields
-                    logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
-
                 else:
-                    key_field = valid_results[0]['key_field']
-                    polygon_updates[pid] = key_field
-                    logger.debug(f"'{pid}': Key_Field {key_field}")
+                    ocr_text = ocr_text.lower()
+                    # logger.info(f"Poly: {pid}: TEXTO: '{ocr_text}")
+                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
+                    if not valid_results:
+                        continue
+
+                    # logger.info(f"Results: {valid_results}")
+                    num_keywords = len(valid_results)
+                    all_key_fields = [result['key_field'] for result in valid_results]
+
+                    # Verificar si todos son headers (key_field == 6)
+                    if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
+                        polygon_updates[pid] = all_key_fields
+                        logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
+
+                    else:
+                        key_field = valid_results[0]['key_field']
+                        polygon_updates[pid] = key_field
+                        logger.debug(f"'{pid}': Key_Field {key_field}")
 
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
-                logger.debug(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}")
+                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
                 return polygon_updates
-            
+
             else:
                 logger.warning("No se hallaron Keywords")
                 return {}
-        
+
         except Exception as e:
             logger.warning(f"Error encontrando keyfields: {e}")
         return {}
+
+    # def find_correct_data(self, polygon_updates: Dict[str, List[int] | int]) -> Dict[str, List[int] | int]:
+

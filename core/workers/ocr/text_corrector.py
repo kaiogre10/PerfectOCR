@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import estandarice_uppers_lowers, termination_detect, numeric_separator, validate_alone_chars, space_removal, valid_punt_chars, find_quantitative_runs
+from core.utils.text_utils import termination_detect, numeric_separator, validate_alone_chars, space_removal, valid_punt_chars, find_quantitative_runs
 from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,6 @@ class TextCorrector(OCRAbstractWorker):
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
             original_text = polygon.ocr_text or ""
-            # confidence = polygon.ocr_confidence or 0.0
             
             # Si el texto está vacío, no hay nada que corregir
             if not original_text:
@@ -48,16 +47,11 @@ class TextCorrector(OCRAbstractWorker):
 
             #token_corr = correct_termination(token)
             
-            # # Filtro de confianza
-            # if confidence > self.conf_threshold:
-            #     corrected_polygons[poly_id] = polygon
-            #     continue
-            
             # Aplicar corrección según tipo semántico
             corrected_text = self._apply_corrections(text=original_text, semantic_clasification=polygon.semantic_clasification)
             # Si hubo cambios, actualizar el polígono
             if corrected_text != original_text:
-                corrected_text = estandarice_uppers_lowers(original_text, corrected_text)
+                # corrected_text = estandarice_uppers_lowers(original_text, corrected_text)
                 updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
                 corrected_polygons[poly_id] = updated_polygon
                 logger.debug(

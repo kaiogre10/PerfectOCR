@@ -128,8 +128,8 @@ class TextCleaner(OCRAbstractWorker):
             sc: List[int] = polygon.semantic_clasification or [0]
 
             sc_array = np.array(sc, np.int8)
-            sc_real = np.mean(sc_array).astype(np.int8)
-            if int(sc_real) in (1, 2, -2):
+            sc_real = np.median(sc_array)
+            if int(sc_real) in (1.0, 2.0, -2.0):
                 return text
 
             score = self.token_freq_score(text.lower())

@@ -1,6 +1,5 @@
 import re
 import logging
-import unicodedata
 import numpy as np
 from typing import List, Tuple, Dict, Pattern, Set, Any
 from core.utils.math_utils import text_encode
@@ -15,7 +14,7 @@ _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0
 _numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
 
 _punt_split_pattern: Pattern[str] = re.compile(r'([=;:!?])')
-_punt_detect_pattern: Pattern[str] = re.compile(r'[\s\.\-_,;:=]+')
+# _punt_detect_pattern: Pattern[str] = re.compile(r'[\s\.\-_,;:=]+')
 
 # Espacios múltiples
 _spaces_pattern: Pattern[str] = re.compile(r'\s+')
@@ -28,10 +27,9 @@ _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|
 
 # RFC
 _rfc_code_pattern: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
-# _rfc_word_pattern: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
 
 # IVA
-_iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
+_iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b')
 
 # Fechas
 _date_patterns: List[Pattern[str]] = [
@@ -70,7 +68,7 @@ def _build_quantitative_patterns() -> Dict[str, Pattern[str]]:
         "middle":       re.compile(rf"^{amount_body}\s*{currency}\s*{amount_body}$", re.IGNORECASE),
         "end":          re.compile(rf"^{amount_body}\s*{currency}$", re.IGNORECASE),
         "multi":        re.compile(rf"^(?:\s*{currency}\s*{amount_body}\s*){{2,}}$", re.IGNORECASE),
-        "decimal":      re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$", re.IGNORECASE),
+        "decimal":      re.compile(r"^(?:\d+|\d{1,3}(?:[.,]\d{3})+)[.,]\d{2,}$", re.IGNORECASE),
         "digits":       re.compile(r"\d+"),
         "split":        re.compile(rf"{currency}\s*{amount_body}"),
     }
@@ -87,17 +85,7 @@ def termination_detect(text: str) -> bool:
     if not validate_text(text):
         return False
     return bool(_termination_pattern.search(text))
-    
-def find_date(s: str) -> bool:
-    try:
-        if not s:
-            return False
-        if any(p.search(s) for p in _date_patterns):
-            return True
-    except TypeError as e:
-        logger.error(f"Error buscando fecha: {e}", exc_info=True)
-    return False
-    
+
 def is_acronym(text: str) -> bool:
     try:
         if not text:
@@ -119,6 +107,15 @@ def find_umd(s: str) -> bool:
         logger.warning(f"Error buscando unidades de medida: {e}", exc_info=True)
     return False
     
+def find_date(s: str) -> bool:
+    try:
+        if not s:
+            return False
+        return any(p.search(s) for p in _date_patterns)
+    except TypeError as e:
+        logger.error(f"Error buscando fecha: {e}", exc_info=True)
+    return False
+    
 def find_rfc(s: str) -> bool:
     try:
         if not s:
@@ -132,10 +129,7 @@ def find_iva(s: str) -> bool:
     try:
         if not s:
             return False
-        
-        if _iva_pattern.search(s):
-            return True
-        return False
+        return bool(_iva_pattern.search(s))
     except Exception as e:
         logger.warning(f"Error buscando IVA: {e}", exc_info=True)
     return False
@@ -157,6 +151,10 @@ def find_quantitative(s: str) -> bool:
         return False
 
     s_norm = s.replace("o", "0").replace("O", "0")
+
+    # OCR típico: S1275.04 -> $1275.04
+    if len(s_norm) > 1 and s_norm[0] in "Ss" and s_norm[1].isdigit():
+        s_norm = "$" + s_norm[1:]
 
     currency_symbols = "$¢"
     for sym in currency_symbols:
@@ -189,8 +187,6 @@ def find_quantitative(s: str) -> bool:
     )
 
 def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
-    s = (s or "").strip()
-    
     runs: List[Tuple[int, int, str]] = []
     s_norm = s.replace("o", "0").replace("O", "0")
 
@@ -205,31 +201,19 @@ def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
         for match in _Q["split"].finditer(s_norm):
             split_runs.append((match.start(), match.end(), s[match.start():match.end()]))
         return split_runs
-
     return runs
 
 def separate_punt(text: str) -> str:
-    parts = _punt_split_pattern.split(text)
-    return " ".join(p.strip() for p in parts if p.strip() and not _punt_split_pattern.fullmatch(p))
-
-def detect_punt(text: str) -> bool:
-    """Detecta si un texto está compuesto únicamente por caracteres de puntuación/separación."""
-    return _punt_detect_pattern.fullmatch(text) is not None
-
+    if is_acronym(text):
+        return text
+    else:
+        parts = _punt_split_pattern.split(text)
+        return " ".join(p.strip() for p in parts if p.strip() and not _punt_split_pattern.fullmatch(p))
+    
 def remove_special_sequences(text: str) -> str:
     cleaned = _sequence_middle_pattern.sub(' ', text)
     cleaned = secuence_pattern.sub('', cleaned)
     return cleaned.strip()
-
-def is_special_sequence(text: str) -> bool:
-    """
-    Devuelve True si el texto completo consiste ÚNICAMENTE en una secuencia 
-    de 2 o más caracteres especiales consecutivos (ruido de OCR).
-    """
-    # Usamos fullmatch para asegurar que TODO el string sea la secuencia de ruido
-    # Reutilizamos tu lógica: no alfanuméricos excluyendo espacio y $
-    # {2,} asegura que sean 2 o más.
-    return secuence_pattern.fullmatch(text.strip()) is not None
 
 def validate_text(text: str) -> bool:
     # Esta es la forma más rápida en Python puro (C-API)
@@ -243,23 +227,18 @@ def valid_punt_chars() -> Set[str]:
 
 def validate_alone_chars(text: str) -> bool:
     """Valida si un caracter solitario es válido o es ruido"""
-    text = text.strip().lower()
+    text = text.strip()
     if len(text) > 1:
        return True
 
-    if text.isnumeric():
+    elif text.isdecimal():
         return True
     
-    elif text in valid_chars:
+    elif text.lower() in valid_chars:
         return True
 
     else:
         return False
-        
-def norm_text(text: str) -> str:
-    if not validate_text(text):
-        return ""
-    return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8').lower()
 
 def is_upper(text: str) -> bool:
     uppers: int = 0
@@ -284,17 +263,6 @@ def estandarice_uppers_lowers(text_base: str, clean_text: str) -> str:
         return clean_text.title()
     else:
         return clean_text
-
-def text_compacter(text: str) -> str:
-    """
-    Elimina TODOS los espacios del texto para vectorización.
-    Mantiene mayúsculas, minúsculas y acentos originales.
-    """
-    if not validate_text(text):
-        return ""
-    
-    # Usamos el patrón compilado para eliminar espacios eficientemente
-    return _spaces_pattern.sub("", text)
 
 def space_removal(text: str) -> str:
     """
@@ -349,7 +317,8 @@ def numeric_separator(token: str) -> str:
         if not (frac.isdigit() and len(frac) == 2):
             return token
 
-        int_digits = re.sub(r"[.,]", "", number[:last_sep])
+        int_digits = number[:last_sep].replace(".", "").replace(",", "")
+
         sign = ""
         if int_digits.startswith("-"):
             sign = "-"

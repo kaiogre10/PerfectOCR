@@ -79,7 +79,6 @@ class DataFormatter:
                     geometry=geometry,
                     cropped_img=None,
                     ocr_text=None,
-                    ocr_confidence=None,
                     was_fragmented=False,
                     key_field=None,
                     semantic_clasification=[0],
@@ -286,8 +285,7 @@ class DataFormatter:
                     updated_polygon = dataclasses.replace(
                         polygon,
                         poly_index = new_index,
-                        ocr_text=res.get("text", ""),
-                        ocr_confidence=res.get("confidence"),
+                        ocr_text=res.get("text", "")
                     )
 
                     self.workflow.polygons[poly_id] = updated_polygon
@@ -354,7 +352,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
+                    # logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
@@ -362,7 +360,7 @@ class DataFormatter:
             
             else:
                 logger.warning("No hubo poligonos con key_field")
-                return False
+                return True
             
         except Exception as e:
             logger.warning(f"Error actualizando múltiples polígonos: {e}", exc_info=True)

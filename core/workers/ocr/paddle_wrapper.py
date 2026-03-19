@@ -108,8 +108,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         # Filtro de confianza inmediato
                         if conf_pct >= self.min_confidence:
                             raw_map[polygon_ids[idx]] = {
-                                "text": text,
-                                "confidence": conf_pct
+                                "text": text
                             }
                         else:
                             logger.debug(f"Baja confianza en {polygon_ids[idx]}: '{text}' ({conf_pct}%)")
@@ -131,6 +130,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             
             # Filtro por contenido (Ya no repetimos el de confianza)
             if clean_text and not detect_special_strings(clean_text) and validate_alone_chars(clean_text):
-                final_results[poly_id] = {"text": clean_text, "confidence": data["confidence"]}
+                final_results[poly_id] = {"text": clean_text}
         
         return final_results

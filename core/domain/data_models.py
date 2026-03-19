@@ -27,7 +27,7 @@ class Polygons:
     geometry: Geometry
     cropped_img: Optional[CroppedImage]
     ocr_text: Optional[str]
-    ocr_confidence: Optional[float]
+    # ocr_confidence: Optional[float]
     key_field: Optional[List[int] | int]
 #    'noise_words': 0
 #    'MontoTotalDocumento': 1

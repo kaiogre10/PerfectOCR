@@ -189,7 +189,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
                     # if tabular_line:
                     #     logger.info(f"{line_id}: '{joined_text}'")
-                    logger.info(f"{line_id}: '{joined_text}'")
+                    # logger.info(f"{line_id}: '{joined_text}'")
 
         # Finaliza la última línea
         if current_line_polys:
@@ -236,7 +236,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 
                 # if tabular_line:
                 #         logger.info(f"{line_id}: '{joined_text}'")
-                logger.info(f"{line_id}: '{joined_text}'")
+                # logger.info(f"{line_id}: '{joined_text}'")
 
         return lines_info, (header_idx if header_idx > 0 else 0, footer_idx if footer_idx > 0 else 0)
 

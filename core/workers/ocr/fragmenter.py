@@ -1,7 +1,6 @@
 # PerfectOCr/core/workers/ocr/fragmenter.py
 import dataclasses
 import logging
-import numpy as np
 from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, Geometry
@@ -87,7 +86,7 @@ class Fragmenter(OCRAbstractWorker):
         Regla: solo se permite más de una clasificación por polígono si todas son 0.
         Cualquier valor distinto de 0 (1, 2, -1, -2) debe estar solo en su polígono.
         """
-        text: str = (polygon.ocr_text or "").strip()
+        text: str = polygon.ocr_text or ""
         if not text:
             return [polygon]
 
