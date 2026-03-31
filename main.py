@@ -47,9 +47,9 @@ DEFAULT_OUTPUT_PATH = default_output
 OUTPUT_PATH = output_paths
 
 DEFAULT_INPUT_PATH = [
-    # "input",
+    "input",
         "input2",
-        "input3"
+        # "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 

@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import space_removal, validate_alone_chars, detect_special_strings, separate_punt
+from core.utils.text_utils import space_removal, separate_punt, validate_text
 from core.utils.image_utils import elevate_dims
 from services.output_service import save_raw_json
 
@@ -102,16 +102,10 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 
                 if len(consolidated) == len(image_list):
                     raw_map: Dict[str, Dict[str, Any]] = {}
-                    for idx, (text, confidence) in enumerate(consolidated):
-                        conf_pct = round(float(confidence) * 100.0, 2)
-                        
-                        # Filtro de confianza inmediato
-                        if conf_pct >= self.min_confidence:
-                            raw_map[polygon_ids[idx]] = {
-                                "text": text
-                            }
-                        else:
-                            logger.debug(f"Baja confianza en {polygon_ids[idx]}: '{text}' ({conf_pct}%)")
+                    for idx, (text, _) in enumerate(consolidated):
+                        raw_map[polygon_ids[idx]] = {
+                            "text": text,
+                        }
                         
                     return raw_map
             
@@ -126,10 +120,10 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             text = data["text"]
             
             text = space_removal(text)
-            clean_text = separate_punt(text)
+            text = separate_punt(text)
             
             # Filtro por contenido (Ya no repetimos el de confianza)
-            if clean_text and not detect_special_strings(clean_text) and validate_alone_chars(clean_text):
-                final_results[poly_id] = {"text": clean_text}
+            if validate_text(text):
+                final_results[poly_id] = {"text": text}
         
         return final_results

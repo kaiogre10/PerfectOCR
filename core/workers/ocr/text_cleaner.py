@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import validate_alone_chars, space_removal, remove_special_sequences
+from core.utils.text_utils import validate_unique_chars, space_removal, remove_special_sequences
 from core.utils.math_utils import text_encode
 
 logger = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ class TextCleaner(OCRAbstractWorker):
         for token in words:
             
             # Eliminar tokens que sean un carácter especial especificado (ej. ")")
-            if not validate_alone_chars(token):
+            if not validate_unique_chars(token):
                 # logger.info(f"Eliminado único: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             else:

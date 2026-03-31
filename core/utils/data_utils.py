@@ -382,4 +382,6 @@ ACCENT_NORMALIZATION: Dict[str, str] = {
     "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
     "ü": "u", "Ü": "U", "ñ": "n", "Ñ": "N",
 }
-    
+
+def valid_punt_chars() -> Set[str]:
+    return NOT_VALID_PUNT_CHARS.union(NOT_VALID_CHARS)

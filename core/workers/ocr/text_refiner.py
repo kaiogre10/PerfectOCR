@@ -95,8 +95,9 @@ class Refiner(OCRAbstractWorker):
             for poly, poly_data in polygons.items():
                 logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
+            file_name: str = manager.workflow.metadata.image_name  # type: ignore
             if self.output:
-                file_name: str = manager.workflow.metadata.image_name  # type: ignore
+                
                 name = "cleanned_text"
                 worker_name = f"{name}" or "refiner"
                 output_paths = context["output_paths"]
@@ -109,7 +110,7 @@ class Refiner(OCRAbstractWorker):
                     }
                 save_raw_json( output_paths, worker_name, results, file_name)
 
-            logger.info(f"Tiempo de refinador: {time.perf_counter() - t0:.6f}'s")
+            logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s para '{file_name}'")
             return True
 
         except Exception as e:

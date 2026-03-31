@@ -5,8 +5,8 @@ from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import termination_detect, numeric_separator, validate_alone_chars, space_removal, valid_punt_chars, find_quantitative_runs
-from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS
+from core.utils.text_utils import termination_detect, numeric_separator, validate_unique_chars, space_removal, find_quantitative_runs
+from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, valid_punt_chars
 
 logger = logging.getLogger(__name__)
 
@@ -84,11 +84,11 @@ class TextCorrector(OCRAbstractWorker):
                 for part, is_quant in parts:
                     # 3. Aplicar numeric_separator solo a partes cuantitativas
                     final_part = numeric_separator(part) if is_quant else part
-                    if final_part and validate_alone_chars(final_part):
+                    if final_part and validate_unique_chars(final_part):
                         corrected_tokens.append(final_part)
             else:
                 corrected_token = self._correct_token(token, token_sc)
-                if corrected_token and validate_alone_chars(corrected_token):
+                if corrected_token and validate_unique_chars(corrected_token):
                     corrected_tokens.append(corrected_token)
 
         return space_removal(' '.join(corrected_tokens))

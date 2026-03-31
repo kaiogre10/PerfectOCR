@@ -82,7 +82,7 @@ class DataFinder(OCRAbstractWorker):
 
                 elif not found_date and find_date(ocr_text):
                     skipped_semantic +=1
-                    logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {poly.semantic_clasification}")
+                    # logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {poly.semantic_clasification}")
                     found_date = True
                     polygon_updates[pid] = 9
                     continue
@@ -124,7 +124,7 @@ class DataFinder(OCRAbstractWorker):
 
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
-                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
+                # logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:
