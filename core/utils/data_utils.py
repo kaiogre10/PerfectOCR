@@ -375,7 +375,7 @@ NOT_VALID_PUNT_CHARS: Set[str] = {
 
 PUNC_CHARS: Set[str] = {".", ";", ":", "!", "?"}
 
-ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "u", "&"}
+ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "u"}
 
 ACCENT_NORMALIZATION: Dict[str, str] = {
     "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",

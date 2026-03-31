@@ -1,7 +1,6 @@
 import re
 import logging
 import numpy as np
-from datetime import datetime
 from typing import List, Tuple, Dict, Pattern, Set, Any
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import SPECIAL_CHARS, NOT_VALID_CHARS, NOT_VALID_PUNT_CHARS, CHAR_NUM, ALONE_CHARS
@@ -30,6 +29,7 @@ _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|
 
 # RFC
 _rfc_code_pattern: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
+_rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b')
 
 # IVA
 _iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b')
@@ -42,7 +42,6 @@ _date_patterns: List[Pattern[str]] = [
     re.compile(r'\b(199\d|20\d{2})\b'),
     re.compile(r'\b([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?\b'),
     re.compile(r'\b([01]\d|2[0-3])[0-5]\d\s*[AaPp]\.?[Mm]\.?\b'),
-    
 ]
 
 # UMD
@@ -147,31 +146,41 @@ def find_umd(s: str) -> bool:
 
 def find_date(s: str) -> bool:
     try:
+        s = s.replace(" ", "") if s else ""
+
         if not s:
             return False
-        if not any(c.isdecimal() for c in s):
+        
+        elif s.isalpha():
             return False
 
-        # Filtro rápido: si todos los caracteres son cuantitativos, no es fecha
-        s = s.replace(" ", "")
-        
-        if set(s).issubset(char_num_point):
+        elif len(s) < 4:
             return False
+        
+        elif not any(c.isdecimal() for c in s):
+            return False
+        
+        elif set(s).issubset(char_num_point):
+            return False
+        
+        elif any(p.search(s) for p in _date_patterns):
 
         # Validación especial para fechas tipo DDMMAAAA (8 dígitos)
         # Extraer fecha solo con regex, sin librerías externas
-        # date_match = _date_long.search(s)
-        # if date_match is not None:
-        #     logger.info(f"FECHAS: {s}: {date_match}")
-        #     return True
+            date_match = _date_long.search(s)
+            if date_match or date_match is not None:
+                logger.info(f"FECHA largas: {s}: {date_match}")
+                return True
         # else:
-        is_date = any(p.search(s) for p in _date_patterns)
-        is_umd = any(p.search(s) for p in _umd_patterns)
+       # is_date = any(p.search(s) for p in _date_patterns)
+            elif not any(p.search(s) for p in _umd_patterns):
+                return True
+            
+            else:
+                return False
 
-        # Solo es fecha si coincide con fecha y NO con UMD
-        if is_date and not is_umd:
-            return True
-        return False
+        else:
+            return False
     except TypeError as e:
         logger.error(f"Error buscando fecha: {e}", exc_info=True)
     return False
@@ -182,8 +191,11 @@ def find_rfc(s: str) -> bool:
             return False
         if not any(c.isdecimal() for c in s):
             return False
-        return bool(_rfc_code_pattern.search(s))
-    except Exception as e:
+        elif bool(_rfc_code_pattern.search(s)):
+            return True
+        else:
+            return bool(_rfc_acronyms.search(s))
+    except TypeError as e:
         logger.warning(f"Error buscando RFC: {e}", exc_info=True)
         return False
 
@@ -193,7 +205,7 @@ def find_iva(s: str) -> bool:
             return False
         return bool(_iva_pattern.search(s))
     except Exception as e:
-        logger.warning(f"Error buscando IVA: {e}", exc_info=True)
+        logger.warning(f"Error B 6uscando IVA: {e}", exc_info=True)
     return False
 
 def contains_quantitative(s: str) -> bool:
@@ -203,9 +215,9 @@ def contains_quantitative(s: str) -> bool:
     runs = find_quantitative_runs(s)
     return len(runs) > 0
 
-def is_quantitative(s: str) -> bool:
+def is_quantitative(s_norm: str) -> bool:
 
-    s_norm = s.replace("o", "0").replace("O", "0")
+  #  s_norm = s.replace("o", "0").replace("O", "0")
 
     # OCR típico: S1275.04 -> $1275.04
     if len(s_norm) > 1 and s_norm[0] in "Ss" and s_norm[1].isdecimal():
@@ -285,11 +297,11 @@ def validate_alone_chars(text: str) -> bool:
     text = text.strip()
     if len(text) > 1:
        return True
-
+          
     elif text.isdecimal():
         return True
-    
-    elif text.lower() in valid_chars:
+   
+    elif text in valid_chars:
         return True
 
     else:
@@ -462,7 +474,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         if not tokens:
             continue
         
-        elif 0 >= total_tokens:
+        elif 0 == total_tokens:
             continue
 
         elif total_tokens > 1:
