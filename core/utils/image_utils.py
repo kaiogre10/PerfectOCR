@@ -274,7 +274,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     cont_size_list: List[int] = []
     
     for i, cont in enumerate(contours):
-        cont_coords = cont.reshape(-1, 2).astype(np.int32)
+        cont_coords = np.array(cont.reshape(-1, 2), np.int32)
         cont_size = len(cont_coords)
         if cont_size < 3:
             continue
@@ -405,7 +405,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         min_side,                                       # 17
     ])
 
-    filtered_original_indices = metrics_array[:, 0].astype(np.int32)
+    filtered_original_indices = metrics_array[:, 0]
     valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(int(idx), cont_coords_list[valid_indices[int(idx)]][1]) for idx in filtered_original_indices]
 
     valid_contours = len(valid_coords) 

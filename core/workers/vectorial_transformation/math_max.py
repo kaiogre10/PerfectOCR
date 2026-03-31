@@ -57,7 +57,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 save_debug_table(corrected_df, file_name, output_paths, worker_name, header_polygons)
 
             # Log simple de cómo queda la tabla ya corregida
-            logger.debug("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
+            logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
 
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
@@ -198,7 +198,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                                 new_desc = (current_desc + " " + text_to_move).strip()
                                 
                             corrected_df.iloc[i, desc_col_idx] = new_desc
-                            logger.debug(f"Fila {i}: Texto '{text_to_move}' movido de {columns[role_global_idx]} a {desc_col_name}")
+                            logger.info(f"Fila {i}: Texto '{text_to_move}' movido de {columns[role_global_idx]} a {desc_col_name}")
 
         for j, col_name in enumerate(quant_cols):
             # Formatear como string conservando 2 decimales cuando aplique

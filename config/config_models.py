@@ -144,7 +144,6 @@ class TextualCleanConfig(ConfigWithNumpy):
 class TextRefiner(ConfigWithNumpy):
     num_passes: int
     min_cc_for_frag: int
-    semantic_range: Tuple[float, float]
     encode_mean: Tuple[float, float]
     morph_mean: Tuple[float, float]
 

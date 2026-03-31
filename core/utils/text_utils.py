@@ -1,6 +1,7 @@
 import re
 import logging
 import numpy as np
+from datetime import datetime
 from typing import List, Tuple, Dict, Pattern, Set, Any
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import SPECIAL_CHARS, NOT_VALID_CHARS, NOT_VALID_PUNT_CHARS, CHAR_NUM, ALONE_CHARS
@@ -14,13 +15,15 @@ _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0
 _numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
 
 _punt_split_pattern: Pattern[str] = re.compile(r'([=;:!?])')
-# _punt_detect_pattern: Pattern[str] = re.compile(r'[\s\.\-_,;:=]+')
 
 # Espacios múltiples
 _spaces_pattern: Pattern[str] = re.compile(r'\s+')
 
 # Terminación
 _termination_pattern: Pattern[str] = re.compile(r'(?i)(s|c|r)?i0n\b', re.IGNORECASE)
+
+# Num Teléfonos
+# _phone_number: Pattern[str] = re.compile(r'^\d{10}$')
 
 # Siglas/Acrónimos
 _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv|no)(?:[:;,.])?$', re.IGNORECASE)
@@ -31,7 +34,7 @@ _rfc_code_pattern: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[
 # IVA
 _iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b')
 
-# Fechas
+_date_long: Pattern[str] = re.compile(r'^\d{8}$')
 _date_patterns: List[Pattern[str]] = [
     re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b', re.IGNORECASE),
     re.compile(r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b'),
@@ -39,6 +42,7 @@ _date_patterns: List[Pattern[str]] = [
     re.compile(r'\b(199\d|20\d{2})\b'),
     re.compile(r'\b([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?\b'),
     re.compile(r'\b([01]\d|2[0-3])[0-5]\d\s*[AaPp]\.?[Mm]\.?\b'),
+    
 ]
 
 # UMD
@@ -53,26 +57,59 @@ _umd_patterns: List[Pattern[str]] = [
     re.compile(r'\b(m(t)?(2|\^2|²)|cm(2|\^2|²)|km(2|\^2|²))\b', re.IGNORECASE),
     re.compile(r'\b\d+\s*/\s*\d+\s*(kg(r)?|kilo(s)?|g(r)?|l(t(r)?)?|litro(s)?|ml|pz(a)?(s)?|ud(s)?)\b', re.IGNORECASE),
     re.compile(r'\b[1-9]\s*/\s*(2|4|8|16|32|64)\b'),
+    re.compile(r'\b\d+(?:\s*[xX]\s*\d+){1,}\b', re.IGNORECASE),
 ]
 
-# Cuantitativos
-def _build_quantitative_patterns() -> Dict[str, Pattern[str]]:
-    digit = r"[0-9oO]"
-    currency = r"[$¢]"
-    amount_body = rf"(?:{digit}+(?:[.,]{digit}+)?|{digit}{{1,3}}(?:[.,]{digit}{{3}})*)(?:[.,]{digit}+)?"
-    token = rf"{currency}\s*{amount_body}|{amount_body}\s*{currency}|{amount_body}"
-    return {
-        "currency":     re.compile(currency),
-        "token":        re.compile(token),
-        "start":        re.compile(rf"^{currency}\s*{amount_body}$", re.IGNORECASE),
-        "middle":       re.compile(rf"^{amount_body}\s*{currency}\s*{amount_body}$", re.IGNORECASE),
-        "end":          re.compile(rf"^{amount_body}\s*{currency}$", re.IGNORECASE),
-        "multi":        re.compile(rf"^(?:\s*{currency}\s*{amount_body}\s*){{2,}}$", re.IGNORECASE),
-        "decimal":      re.compile(r"^(?:\d+|\d{1,3}(?:[.,]\d{3})+)[.,]\d{2,}$", re.IGNORECASE),
-        "digits":       re.compile(r"\d+"),
-        "split":        re.compile(rf"{currency}\s*{amount_body}"),
-    }
+# Define los patrones como strings
+digit_pattern = r"[0-9oO]"
+currency_pattern = r"[$¢]"
 
+# Compila los patrones base
+digit = re.compile(digit_pattern)
+currency = re.compile(currency_pattern)
+
+# Usa los strings en las interpolaciones
+_amount_body_pattern = (
+    rf"(?:{digit_pattern}+(?:[.,]{digit_pattern}+)?|"
+    rf"{digit_pattern}{{1,3}}(?:[.,]{digit_pattern}{{3}})*)(?:[.,]{digit_pattern}+)?"
+)
+
+_token_pattern = (
+    rf"{currency_pattern}\s*{_amount_body_pattern}|"
+    rf"{_amount_body_pattern}\s*{currency_pattern}|"
+    rf"{_amount_body_pattern}"
+)
+_token = re.compile(_token_pattern)
+
+_start_pattern = rf"^{currency_pattern}\s*{_amount_body_pattern}$"
+_start = re.compile(_start_pattern, re.IGNORECASE)
+
+_middle_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}\s*{_amount_body_pattern}$"
+_middle = re.compile(_middle_pattern, re.IGNORECASE)
+
+_end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
+_end = re.compile(_end_pattern, re.IGNORECASE)
+
+_multi_pattern = rf"^(?:\s*{currency_pattern}\s*{_amount_body_pattern}\s*){{2,}}$"
+_multi = re.compile(_multi_pattern, re.IGNORECASE)
+
+_decimal = re.compile(r"^(?:\d+|\d{1,3}(?:[.,]\d{3})+)[.,]\d{2,}$", re.IGNORECASE)
+_digits = re.compile(r"\d+")
+_split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
+_split = re.compile(_split_pattern)
+
+def _build_quantitative_patterns() -> Dict[str, Pattern[str]]:
+    return {
+        "currency":     currency,
+        "token":        _token,
+        "start":        _start,
+        "middle":       _middle,
+        "end":          _end,
+        "multi":        _multi,
+        "decimal":      _decimal,
+        "digits":       _digits,
+        "split":        _split,
+    }
 _Q = _build_quantitative_patterns()
 
 char_num = CHAR_NUM
@@ -80,6 +117,8 @@ valid_chars = ALONE_CHARS
 special_chars = SPECIAL_CHARS
 not_valid_chars = NOT_VALID_CHARS
 not_valid_punt_chars = NOT_VALID_PUNT_CHARS
+char_num_point = char_num.copy()
+char_num_point.add(".")
         
 def termination_detect(text: str) -> bool:
     if not validate_text(text):
@@ -100,18 +139,39 @@ def find_umd(s: str) -> bool:
     try:
         if not s:
             return False
-        
         if any(p.search(s) for p in _umd_patterns):
             return True        
     except Exception as e:
         logger.warning(f"Error buscando unidades de medida: {e}", exc_info=True)
     return False
-    
+
 def find_date(s: str) -> bool:
     try:
         if not s:
             return False
-        return any(p.search(s) for p in _date_patterns)
+        if not any(c.isdecimal() for c in s):
+            return False
+
+        # Filtro rápido: si todos los caracteres son cuantitativos, no es fecha
+        s = s.replace(" ", "")
+        
+        if set(s).issubset(char_num_point):
+            return False
+
+        # Validación especial para fechas tipo DDMMAAAA (8 dígitos)
+        # Extraer fecha solo con regex, sin librerías externas
+        # date_match = _date_long.search(s)
+        # if date_match is not None:
+        #     logger.info(f"FECHAS: {s}: {date_match}")
+        #     return True
+        # else:
+        is_date = any(p.search(s) for p in _date_patterns)
+        is_umd = any(p.search(s) for p in _umd_patterns)
+
+        # Solo es fecha si coincide con fecha y NO con UMD
+        if is_date and not is_umd:
+            return True
+        return False
     except TypeError as e:
         logger.error(f"Error buscando fecha: {e}", exc_info=True)
     return False
@@ -119,6 +179,8 @@ def find_date(s: str) -> bool:
 def find_rfc(s: str) -> bool:
     try:
         if not s:
+            return False
+        if not any(c.isdecimal() for c in s):
             return False
         return bool(_rfc_code_pattern.search(s))
     except Exception as e:
@@ -133,7 +195,7 @@ def find_iva(s: str) -> bool:
     except Exception as e:
         logger.warning(f"Error buscando IVA: {e}", exc_info=True)
     return False
-        
+
 def contains_quantitative(s: str) -> bool:
     """
     Devuelve True si hay al menos un cuantitativo válido en cualquier parte del texto.
@@ -141,19 +203,12 @@ def contains_quantitative(s: str) -> bool:
     runs = find_quantitative_runs(s)
     return len(runs) > 0
 
-def get_quantitative_patterns() -> Dict[str, Pattern[str]]:
-    """Devuelve los patrones cuantitativos ya compilados."""
-    return _Q
-
-def find_quantitative(s: str) -> bool:
-    s = (s or "").strip()
-    if not validate_text(s) or "%" in s:
-        return False
+def is_quantitative(s: str) -> bool:
 
     s_norm = s.replace("o", "0").replace("O", "0")
 
     # OCR típico: S1275.04 -> $1275.04
-    if len(s_norm) > 1 and s_norm[0] in "Ss" and s_norm[1].isdigit():
+    if len(s_norm) > 1 and s_norm[0] in "Ss" and s_norm[1].isdecimal():
         s_norm = "$" + s_norm[1:]
 
     currency_symbols = "$¢"
@@ -161,14 +216,14 @@ def find_quantitative(s: str) -> bool:
         idx = s_norm.find(sym)
         if idx != -1:
             after = s_norm[idx+1:]
-            if any(c.isdigit() for c in after):
+            if any(c.isdecimal() for c in after):
                 maybe_amt = after.lstrip()
-                possible_num = "".join(ch for ch in maybe_amt if ch.isdigit() or ch in ".,")
+                possible_num = "".join(ch for ch in maybe_amt if ch.isdecimal() or ch in ".,")
                 if possible_num == "00":
                     return False
                 if idx == len(s_norm) - 1:
                     return False
-                if idx == 0 or not s_norm[:idx].strip().isdigit():
+                if idx == 0 or not s_norm[:idx].strip().isdecimal():
                     break
 
     if _Q["end"].match(s_norm):
@@ -192,7 +247,7 @@ def find_quantitative_runs(s: str) -> List[Tuple[int, int, str]]:
 
     for m in _Q["token"].finditer(s_norm):
         tok = m.group(0)
-        if find_quantitative(tok):
+        if is_quantitative(tok):
             runs.append((m.start(), m.end(), s[m.start():m.end()]))
 
     currency_count = sum(1 for _, _, tok in runs if _Q["currency"].search(tok))
@@ -284,8 +339,6 @@ def detect_special_strings(text: str) -> bool:
     if not text:
         return True
     
-    # Buscamos al menos un caracter que sea letra o número
-    # Cualquier cosa que no tenga letras (incluidas con acento) ni números es ruido
     return not any(char.isalnum() for char in text)
 
 def numeric_separator(token: str) -> str:
@@ -300,7 +353,7 @@ def numeric_separator(token: str) -> str:
             return token
 
         t = token.strip()
-        if not find_quantitative(t):
+        if not is_quantitative(t):
             return token
 
         match = _numeric_separator.match(t)
@@ -314,7 +367,7 @@ def numeric_separator(token: str) -> str:
 
         last_sep = separators[-1]
         frac = number[last_sep + 1 :]
-        if not (frac.isdigit() and len(frac) == 2):
+        if not (frac.isdecimal() and len(frac) == 2):
             return token
 
         int_digits = number[:last_sep].replace(".", "").replace(",", "")
@@ -341,91 +394,118 @@ def numeric_separator(token: str) -> str:
         return token
         
 def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> Dict[str, Tuple[List[int], int]]:
-    semantic_range: Tuple[float, float] = worker_config["semantic_range"]
-    encode_mean: Tuple[float, float] = worker_config["encode_mean"]
+    density_mean: Tuple[float, float] = worker_config["encode_mean"]
     morph_mean: Tuple[float, float] = worker_config["morph_mean"]
 
     final_results: Dict[str, Tuple[List[int], int]] = {}
 
     def classify_token(s: str) -> Tuple[int, int]:
-        total = len(s)
-        total_cuant = int(sum(1 for ch in s if ch in CHAR_NUM)) if total > 0 else 0
-        pct = (total_cuant / total) * 100.0 if total_cuant > 0 else 0.0
+        if not s:
+            return (0, 0)
         
-        encoded_text = text_encode(s, ["all"])
-        means = np.mean(encoded_text, axis=1)
-        
-        poly_mean = means[0]
-        inv_poly_mean = means[1]
-        poly_morph_mean = means[2]
+        elif s.isalpha():
+            return (0, 0)
+    
+        elif s.isdecimal():
+            return (1, len(s))
 
-        if contains_quantitative(s):
+        total_cuant = sum(1 for ch in s if ch in CHAR_NUM)
+
+        if total_cuant == 0:
+            if find_umd(s):
+                return (-2, total_cuant)
+            else:
+                return (0, 0)
+        
+        elif set(s).issubset(char_num_point):
+            return (2, len(s))
+        
+        elif contains_quantitative(s):
             return (2, total_cuant)
-
+            
         elif find_umd(s):
             return (-2, total_cuant)
         
-        elif morph_mean[1] < poly_morph_mean and poly_mean < encode_mean[0] and encode_mean[1] < inv_poly_mean and semantic_range[1] < pct:
-            return (1, total_cuant)  # numeric
-        elif semantic_range[0] < pct < semantic_range[1] and morph_mean[0] < poly_morph_mean < morph_mean[1]:
-            return (-1, total_cuant)  # code
+        elif s.isalnum():
+            if all(c.isupper() for c in s if c.isalpha()):
+                # logger.info(f"Texto code: {s}")
+                return (-1, total_cuant)
+            else:
+                return (0, 0)
+
+        encoded_text = text_encode(s, ["density", "morphological"])
+        text_means = np.mean(encoded_text, axis=1, dtype=np.float32)
+
+        if text_means[0] > density_mean[1]:
+            return (0, 0)
         
-        else:
+        elif text_means[0] < density_mean[0]:
+            if contains_quantitative(s):
+                return (2, total_cuant)
+            else:
+                return (1, total_cuant)  # numeric
+        
+        elif text_means[0] < density_mean[1] and text_means[1] > morph_mean[0]:
+            return (-1, total_cuant)  # code
+
+        else: 
             return (0, total_cuant)  # descriptive
 
     for pid, polygon in polygons.items():
         s = polygon.ocr_text or ""
+        s = s.strip()
         if not s:
             continue
 
         tokens = s.split()
+        total_tokens = len(tokens)
         if not tokens:
             continue
-
-        compact = "".join(tokens)  # texto sin espacios
-
-        # Fast Path 1: Alfabético puro
-        total_tokens = len(tokens)
-        if compact.isalpha():
-            result = [0] * total_tokens if total_tokens > 1 else [0]
-            final_results[pid] = (result, 0)
+        
+        elif 0 >= total_tokens:
             continue
 
-        # Fast Path 2: Numérico puro
-        elif compact.isdecimal():
-            result = [1] * total_tokens if total_tokens > 1 else [1]
-            c = sum(1 for ch in compact if ch.isdecimal())
-            final_results[pid] = (result, c)
-            continue
-
-        elif total_tokens == 1:
-            token = tokens[0]
-            c = sum(1 for ch in token if ch in CHAR_NUM)
-
-            if find_umd(token):
-                final_results[pid] = ([-2], c)
-                continue
-            elif contains_quantitative(token):
-                final_results[pid] = ([2], c)
-                continue
-
-            # fallback correcto para token único
-            t_class, t_cuant = classify_token(token)
-            final_results[pid] = ([t_class], t_cuant)
-            continue
-
-        # Procesamiento normal
         elif total_tokens > 1:
+            if "".join(tokens).isalpha():
+                result = [0] * total_tokens
+                final_results[pid] = (result, 0)
+                continue
+
             token_classes: List[int] = []
             poly_total_cuant = 0
             for t in tokens:
-                t_class, t_cuant = classify_token(t)
+                t_class, t_cuant = classify_token(t.strip())
                 token_classes.append(t_class)
                 poly_total_cuant += t_cuant
             final_results[pid] = (token_classes, poly_total_cuant)
+        
         else:
-            t_class, t_cuant = classify_token(tokens[0])
-            final_results[pid] = ([t_class], t_cuant)
+            if s.isalpha():
+                final_results[pid] = ([0], 0)
+                continue
+
+            elif s.isdecimal():
+                final_results[pid] = ([1], len(s))
+                continue
+
+            elif set(s).issubset(char_num_point):
+                final_results[pid] = ([2], len(s))
+                continue
+
+            elif is_quantitative(s):
+                final_results[pid] = ([2], len(s))
+                continue
+
+            elif find_umd(s):
+                c = sum(1 for ch in s if ch in CHAR_NUM)
+                final_results[pid] = ([-2], c)
+                continue
+
+            else:
+                t_class, t_cuant = classify_token(s)
+                final_results[pid] = ([t_class], t_cuant)
+                continue
+
     return final_results
 
 def normalize_umd_ocr(token: str) -> str:

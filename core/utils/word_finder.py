@@ -69,6 +69,10 @@ class WordFinder:
                 if not s:
                     continue
 
+                if s.isdecimal():
+                    logger.info(f"Descartado numerico: {s} de {text}")
+                    continue
+
                 q = self._normalize(s)
                 if not q:
                     continue

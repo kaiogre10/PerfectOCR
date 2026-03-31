@@ -196,7 +196,7 @@ class Vectorizer(VectorizationAbstractWorker):
             return np.zeros((len(sorted_lines), 6), dtype=np.float32)
 
     def _calculate_geometric_line_features(self, sorted_lines: List[AllLines]) -> np.ndarray[Any, Any]:
-        line_index = np.array([lid.line_index for lid in sorted_lines], np.int32)
+        line_index = np.array([lid.line_index for lid in sorted_lines], np.int16)
         geometry = [lid.line_geometry for lid in sorted_lines]
         bbox = np.array([geo.line_bbox for geo in geometry], np.float32)
         centroid = np.array([geo.line_centroid for geo in geometry], np.float32)

@@ -3,14 +3,13 @@ from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import logging
 from sklearn.cluster import DBSCAN # type: ignore
-from core.utils.data_utils import DENSITY_ENCODER, CHAR_FRECUENCY, INV_FRECUENCY_ENCODER, CHAR_NUM
+from core.utils.data_utils import DENSITY_ENCODER, CHAR_FRECUENCY, CHAR_NUM
 
 logger = logging.getLogger(__name__)
 
 char_num = CHAR_NUM
 density = DENSITY_ENCODER
 frecuency = CHAR_FRECUENCY
-inverse = INV_FRECUENCY_ENCODER
 
 def alignment(ref_c: List[float], other_c: List[float]) -> float:
     """
@@ -21,11 +20,11 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
     if not other_c:
         return 1.0
     ref_point = np.array([ref_c[0], 0.0])
-    vec_to_other = np.array([other_c[0] - ref_point[0], other_c[1] - ref_point[1]]).astype(np.float32)
+    vec_to_other = np.array([other_c[0] - ref_point[0], other_c[1] - ref_point[1]], np.float32)
     ref_vec = np.array([1, 0]).astype(np.float32)  # eje X positivo
     if np.linalg.norm(vec_to_other) == 0.0:
         return 1.0
-    cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec)).astype(np.float32)
+    cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec), np.float32)
     return 1.0 - abs(float(cosine))
 
 def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
@@ -46,7 +45,7 @@ def get_morphological_encode(text: str) -> List[float]:
     try:
         result: List[float] = []
         for ch in text:
-            if ch in char_num or ch.isdecimal():
+            if ch in char_num:
                 result.append(1.0)
             elif ch.isalpha():
                 result.append(-1.0)
@@ -60,7 +59,7 @@ def get_morphological_encode(text: str) -> List[float]:
     
 def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype[np.float32]]:
     if "all" in encoding_type and len(encoding_type) == 1:
-        encoding_type = ["density", "inverse", "morphological"]
+        encoding_type = ["density", "morphological", "frequency"]
 
     encoders: List[List[float]]= []
     for enc_type in encoding_type:
@@ -68,13 +67,10 @@ def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype
         if enc_type == "density":
             dense = encode_text(text.lower(), density)
             encoders.append(dense)
-        if enc_type == "inverse":
-            inv = encode_text(text.lower(), inverse)
-            encoders.append(inv)
-        if enc_type == "frequency":
+        elif enc_type == "frequency":
             frec = encode_text(text, frecuency)
             encoders.append(frec)
-        if enc_type == "morphological":
+        elif enc_type == "morphological":
            morph = get_morphological_encode(text)
            encoders.append(morph)
     

@@ -2,7 +2,6 @@
 import time
 from typing import Dict, Any, Optional, List
 import logging
-from statistics import median
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -38,16 +37,9 @@ class DataFinder(OCRAbstractWorker):
                 logger.error("No hay polygons para procesar")
                 return False
 
-            # Llamar al meetodo original que funciona
             polygon_updates = self._find_data(polygons)
-            if polygon_updates:
-                # polygon_updates = self.find_correct_data(polygon_updates)
-
-            # Actualiza los key_fields
-            # start_time = time.perf_counter()
-                if manager.update_key_field(polygon_updates):
-                    # logger.info(f"DataFinder acabo en {time.perf_counter() - start_time:.6f}s")
-                    return True
+            if manager.update_key_field(polygon_updates):
+                return True
         except Exception as e:
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
         return True
@@ -71,25 +63,28 @@ class DataFinder(OCRAbstractWorker):
 
                 ocr_text = poly.ocr_text or ""
                 text_len = len(ocr_text)
-                sc_real = median(poly.semantic_clasification)
+                sc = poly.semantic_clasification
+                set_sc = set(sc)
+                sc_forb = {-2, 1, 2}
                 if not ocr_text:
                     skipped_semantic += 1
                     continue
 
-                elif ocr_text.isdecimal():
+                elif text_len == 1:
+                    skipped_semantic += 1
+                    # logger.info(f"Skipeado por longitud: {ocr_text}")
+                    continue
+
+                elif len(sc) == 1 and not sc_forb.isdisjoint(set_sc):
+                    # logger.info(f"Skipeado por sc: {ocr_text}: {sc}")
                     skipped_semantic += 1
                     continue
 
                 elif not found_date and find_date(ocr_text):
                     skipped_semantic +=1
-                    # logger.debug(f"FECHA encontrado en {pid}, '{ocr_text}'")
+                    logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {poly.semantic_clasification}")
                     found_date = True
                     polygon_updates[pid] = 9
-                    continue
-                
-                elif sc_real < -1.5 or sc_real > 1.5:
-                    # logger.info(f"{pid} omitido cuantitativo sc: '{ocr_text}': '{sc_real}' ")
-                    skipped_semantic += 1
                     continue
 
                 elif not found_rfc and text_len > 11 and find_rfc(ocr_text):
@@ -102,7 +97,7 @@ class DataFinder(OCRAbstractWorker):
                 elif not found_iva and find_iva(ocr_text):
                     skipped_semantic +=1
                     found_iva = True
-                    logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
+                    # logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
                     continue
 
@@ -139,6 +134,4 @@ class DataFinder(OCRAbstractWorker):
         except Exception as e:
             logger.warning(f"Error encontrando keyfields: {e}")
         return {}
-
-    # def find_correct_data(self, polygon_updates: Dict[str, List[int] | int]) -> Dict[str, List[int] | int]:
-
+    

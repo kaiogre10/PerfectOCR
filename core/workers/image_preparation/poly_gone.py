@@ -78,7 +78,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             
             # Liberar la imagen completa lo antes posible
             if manager.update_full_img(corrected=False, full_img=None):
-                logger.info(f"full_img: '{image_name}' liberada")
+                logger.debug(f"Imagen completa '{image_name}' liberada")
 
             valid_dims = (px2 > px1) & (py2 > py1)
             valid_indices = np.where(valid_dims)[0]
@@ -123,7 +123,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 if p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
                     discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
                     status = "bn"
-                    logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO DE COLOR '{p_data['poly_mean']}'")
+                    # logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO DE COLOR '{p_data['poly_mean']}'")
 
                     if self.disoutput:
                         status = "bn"
