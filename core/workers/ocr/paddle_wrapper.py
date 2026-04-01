@@ -120,10 +120,10 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             text = data["text"]
             
             text = space_removal(text)
-            text = separate_punt(text)
+            clean_text = separate_punt(text)
             
             # Filtro por contenido (Ya no repetimos el de confianza)
-            if validate_text(text):
-                final_results[poly_id] = {"text": text}
+            if validate_text(clean_text):
+                final_results[poly_id] = {"text": clean_text}
         
         return final_results

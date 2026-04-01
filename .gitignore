@@ -4,7 +4,7 @@
 *.idea
 *.ini
 *.txt
-*.png
+# *.png
 *.jpg
 *.jpeg
 *.xml
@@ -32,7 +32,7 @@ tools/
 C:/PerfectOCR/data/models/
 data/models/paddle/
 input/
-input2/
+# input2/
 output/
 input3/
 

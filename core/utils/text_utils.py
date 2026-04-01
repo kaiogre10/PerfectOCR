@@ -21,9 +21,6 @@ _spaces_pattern: Pattern[str] = re.compile(r'\s+')
 # Terminación
 _termination_pattern: Pattern[str] = re.compile(r'(?i)(s|c|r)?i0n\b', re.IGNORECASE)
 
-# Num Teléfonos
-# _phone_number: Pattern[str] = re.compile(r'^\d{10}$')
-
 # Siglas/Acrónimos
 _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv|no)(?:[:;,.])?$')
 
@@ -35,6 +32,14 @@ _rfc_code_patterns = re.compile("|".join(p.pattern for p in [_rfc_acronyms, _rfc
 
 # IVA
 _iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b')
+
+# Datos Globales
+_phone_number: Pattern[str] = re.compile(r'^\d{10}$')
+_mail_pattern: Pattern[str] = re.compile(r'^(?:.*@.*|.*mail.*|.*\.com)$', re.IGNORECASE)
+_cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$', re.IGNORECASE)
+
+_code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_iva_pattern, _rfc_code_patterns, _phone_number, _mail_pattern, _cp_pattern]), re.IGNORECASE)
+
 
 # Fecha
 _date_patterns_list: List[Pattern[str]] = [
@@ -53,7 +58,6 @@ _date_patterns = re.compile("|".join(p.pattern for p in _date_patterns_list), re
 _umd_correct = re.compile(r'(?<=/)[0-9Oo]+(?=\b)', re.IGNORECASE)
 
 _umd_patterns_list: List[Pattern[str]] = [
-    # Pesos (kg, g, mg, lb, oz, ton).
     re.compile(r'\b\d+([.,]\d+)?\s*(kg(r)?|g(r)?|mg|lb(s)?|oz|ton)\b'),
     # Cantidad (C/) y Volúmenes (l, ml, cc, gal)
     re.compile(r'\b([Cc]\s*/\s*\d+|\d+([.,]\d+)?\s*(l(t)?|ml|cc|gal))\b'),
@@ -116,11 +120,50 @@ char_num = CHAR_NUM
 valid_chars = ALONE_CHARS
 char_num_point = char_num.copy()
 char_num_point.add(".")
+
+def validate_text(text: str) -> bool:
+    if not text and not text.strip():
+        return False
+
+    elif not any(char.isalnum() for char in text):
+        return False
+
+    elif len(text) < 2 and not text in valid_chars:
+        return False
+    else:
+        return True
         
 def termination_detect(text: str) -> bool:
-    if not validate_text(text):
+    if text:
         return False
-    return bool(_termination_pattern.search(text))
+    elif len(text) < 6:
+        return False
+    else:
+        return bool(_termination_pattern.search(text))
+
+def is_code(s: str) -> bool:
+    if not s:
+        return False
+    elif not any(c.isalpha() for c in s):
+        return False
+    elif len(s) < 4:
+        return False
+    elif s.isalpha():
+        return False
+    elif s.isdigit():
+        return False
+         
+    if s.isalnum():
+        if s.endswith("0"):
+            correct: str = s.replace("0", "").strip()
+            if correct.isalnum():
+                return True
+            else:
+                logger.info(f"No codigo: {s}")
+                return False
+        return all(c.isupper() for c in s if c.isalpha())
+    else:
+        return bool(_code_patterns.search(s))
 
 def is_acronym(text: str) -> bool:
     try:
@@ -208,10 +251,7 @@ def contains_quantitative(s: str) -> bool:
     Devuelve True si hay al menos un cuantitativo válido en cualquier parte del texto.
     Retorna False si el texto no contiene ningún dígito.
     """
-    if len(s) < 3:
-        return False
-    
-    elif not any(c.isdigit() for c in s):
+    if not any(c.isdigit() for c in s):
         return False
     
     runs = find_quantitative_runs(s)
@@ -274,18 +314,6 @@ def separate_punt(text: str) -> str:
     else:
         parts = _punt_split_pattern.split(text)
         return " ".join(p.strip() for p in parts if p.strip() and not _punt_split_pattern.fullmatch(p))
-
-def validate_text(text: str) -> bool:
-    if not bool(text and text.strip()):
-        return False
-    
-    elif not any(char.isalnum() for char in text):
-        return False
-    
-    elif len(text) < 2 and not text in valid_chars:
-        return False
-    else:
-        return True
 
 def validate_unique_chars(text: str) -> bool:
     """Valida si un caracter unico es válido o no"""
@@ -405,13 +433,10 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             
         elif find_umd(s):
             return (-2, total_cuant)
-        
-        elif s.isalnum():
-            if all(c.isupper() for c in s if c.isalpha()):
-                # logger.info(f"Texto code: {s}")
-                return (-1, total_cuant)
-            else:
-                return (0, 0)
+
+        elif is_code(s):
+            logger.info(f"Texto code: {s}")
+            return (-1, total_cuant)
 
         encoded_text = text_encode(s, ["density", "morphological"])
         text_means = np.mean(encoded_text, axis=1, dtype=np.float32)
@@ -441,9 +466,6 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         total_tokens = len(tokens)
         if not tokens:
             continue
-        
-        elif 0 == total_tokens:
-            continue
 
         elif total_tokens > 1:
             if "".join(tokens).isalpha():
@@ -458,6 +480,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 token_classes.append(t_class)
                 poly_total_cuant += t_cuant
             final_results[pid] = (token_classes, poly_total_cuant)
+            continue
         
         else:
             if s.isalpha():
@@ -480,6 +503,10 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 c = sum(1 for ch in s if ch in CHAR_NUM)
                 final_results[pid] = ([-2], c)
                 continue
+            
+            elif is_code(s):
+                c = sum(1 for ch in s if ch in CHAR_NUM)
+                final_results[pid] = ([-1], c)
 
             else:
                 t_class, t_cuant = classify_token(s)
@@ -487,20 +514,3 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 continue
 
     return final_results
-
-def normalize_umd_ocr(token: str) -> str:
-    """
-    Corrección conservadora O/0 para UMD.
-    Solo toca el segmento después de '/' y valida con find_umd.
-    Ej: C/1O -> C/10, C/O1 -> C/01
-    """
-    t = token.strip()    
-    if not find_umd(t):
-        return token
-
-    candidate = re.sub(
-        _umd_correct,
-        lambda m: m.group(0).replace("O", "0").replace("o", "0"),
-        t
-    )
-    return candidate
