@@ -75,7 +75,7 @@ class DataFinder(OCRAbstractWorker):
                     # logger.info(f"Skipeado por longitud: {ocr_text}")
                     continue
 
-                elif len(sc) == 1 and not sc_forb.isdisjoint(set_sc):
+                elif len(sc) == 1 and not any(s for s in sc if s in sc_forb):
                     # logger.info(f"Skipeado por sc: {ocr_text}: {sc}")
                     skipped_semantic += 1
                     continue
