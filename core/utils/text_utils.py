@@ -1,6 +1,5 @@
 import re
 import logging
-from tkinter.tix import Tree
 import numpy as np
 from typing import List, Tuple, Dict, Pattern, Any
 from core.utils.math_utils import text_encode
@@ -23,7 +22,7 @@ _spaces_pattern: Pattern[str] = re.compile(r'\s+')
 _termination_pattern: Pattern[str] = re.compile(r'(?i)(s|c|r)?i0n\b', re.IGNORECASE)
 
 # Siglas/Acrónimos
-_acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv|no)(?:[:;,.])?$')
+_acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv|no)(?:[:;,.])?$', re.IGNORECASE)
 
 # RFC
 _rfc_code_pattern: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$')
@@ -36,15 +35,14 @@ _iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b')
 
 # Datos Globales
 _phone_number: Pattern[str] = re.compile(r'^\d{10}$')
-_mail_pattern: Pattern[str] = re.compile(r'^(?:.*@.*|.*mail.*|.*\.com)$', re.IGNORECASE)
-_cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$', re.IGNORECASE)
+_mail_pattern: Pattern[str] = re.compile(r'^(?:.*@.*|.*mail.*|.*\.com)$')
+_cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$')
 
 _code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_iva_pattern, _rfc_code_patterns, _phone_number, _mail_pattern, _cp_pattern]), re.IGNORECASE)
 
-
 # Fecha
 _date_patterns_list: List[Pattern[str]] = [
-    re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b'),
+    re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b', re.IGNORECASE),
     re.compile(r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b'),
     re.compile(r'\b(0?[1-9]|[12]\d|3[01])[\/\-\.](0?[1-9]|1[0-2])\b'),
     re.compile(r'\b(199\d|20\d{2})\b'),
@@ -59,15 +57,17 @@ _date_patterns = re.compile("|".join(p.pattern for p in _date_patterns_list), re
 _umd_correct = re.compile(r'(?<=/)[0-9Oo]+(?=\b)', re.IGNORECASE)
 
 _umd_patterns_list: List[Pattern[str]] = [
-    re.compile(r'\b\d+([.,]\d+)?\s*(kg(r)?|g(r)?|mg|lb(s)?|oz|ton)\b'),
-    # Cantidad (C/) y Volúmenes (l, ml, cc, gal)
-    re.compile(r'\b([Cc]\s*/\s*\d+|\d+([.,]\d+)?\s*(l(t)?|ml|cc|gal))\b'),
-    # Longitudes y Áreas (m, cm, mm, km, in, ft, m2, etc.)
-    # Se consolida para detectar tanto "5m2" como "m2" solo, eliminando la redundancia previa.
-    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t)?(r|2|²|³)?|cm(2|²|³)?|mm|km|in|ft|pulg)\b'),
-    # Fracciones (1/2, 1/4) y Dimensiones (10x20)
-    # Se agrupan los patrones de proporciones y multiplicaciones.
-    re.compile(r'\b([1-9]\d*\s*/\s*[1-9]\d*(\s*(kg|g|l|ml|pz|ud))?|[1-9]\s*/\s*(2|4|8|16|32|64)|\d+(?:\s*[xX]\s*\d+)+)\b'),
+    # Masas: kg, g, mg, lb, oz, ton. Incluye variaciones de OCR como kgr.
+    re.compile(r'\b\d*([.,]\d+)?\s*(kg(r)?|g(r)?|mg|lb(s)?|oz|ton)\b', re.IGNORECASE),
+    # Volúmenes: l, ml, cc, gal. Incluye variaciones como lt, ltr.
+    re.compile(r'\b\d*([.,]\d+)?\s*(l(t(r)?)?|ml|cc|gal)\b', re.IGNORECASE),
+    # Cantidad: C/ o C/ con número.
+    re.compile(r'\b[Cc]\s*/\s*\d*\b'),
+    # Longitudes y Áreas: m, cm, mm, km, in, ft, pulg. Detecta la unidad sola o con número.
+    # Soporta m2, m^2, m² para áreas.
+    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(r)?)?|cm|mm|km|in|ft|pulg|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b', re.IGNORECASE),
+    # Fracciones (1/2 kg, 1/4) y Dimensiones (10x20).
+    re.compile(r'\b(\d+\s*/\s*\d+(\s*(kg(r)?|g(r)?|l(t)?|ml|pz(a)?|ud(s)?))?|[1-9]\s*/\s*(2|4|8|16|32|64)|\d+(?:\s*[xX]\s*\d+)+)\b', re.IGNORECASE),
 ]
 
 _umd_patterns = re.compile(
@@ -147,24 +147,24 @@ def is_code(s: str) -> bool:
         return False
     elif not any(c.isalpha() for c in s):
         return False
-    elif len(s) < 4:
-        return False
+    # elif len(s) < 4:
+    #     return False
     elif s.isalpha():
         return False
     elif s.isdigit():
         return False
          
-    if s.isalnum():
-        if s.endswith("0"):
-            correct: str = s.replace("0", "").strip()
-            if correct.isalpha():
-                logger.info(f"No codigo: {s}")
-                return False
-            elif correct.isdecimal():
-                return False
-            else:
-                return True
-        return all(c.isupper() for c in s if c.isalpha())
+    # if s.isalnum():
+    #     if s.endswith("0"):
+    #         correct: str = s.replace("0", "").strip()
+    #         if correct.isalpha():
+    #             logger.info(f"No codigo: {s}")
+    #             return False
+    #         elif correct.isdecimal():
+    #             return False
+    #         else:
+    #             return True
+    #     return all(c.isupper() for c in s if c.isalpha())
     else:
         return bool(_code_patterns.search(s))
 
@@ -172,8 +172,7 @@ def is_acronym(text: str) -> bool:
     try:
         if not text:
             return False
-        elif _acronym_pattern.search(text):
-            return True
+        return bool(_acronym_pattern.search(text))
     except Exception as e:
         logger.error(f"Error buscando siglas: {e}", exc_info=True)
     return False
@@ -189,8 +188,9 @@ def find_umd(s: str) -> bool:
         elif not any(c.isalnum() for c in s):
             return False
         
-        elif _umd_patterns.search(s):
-            return True
+        else:
+            return bool(_umd_patterns.search(s))
+            
     except Exception as e:
         logger.warning(f"Error buscando unidades de medida: {e}", exc_info=True)
     return False
@@ -483,7 +483,6 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 token_classes.append(t_class)
                 poly_total_cuant += t_cuant
             final_results[pid] = (token_classes, poly_total_cuant)
-            continue
         
         else:
             if s.isalpha():
@@ -510,10 +509,10 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             elif is_code(s):
                 c = sum(1 for ch in s if ch in CHAR_NUM)
                 final_results[pid] = ([-1], c)
+                continue
 
             else:
                 t_class, t_cuant = classify_token(s)
                 final_results[pid] = ([t_class], t_cuant)
-                continue
 
     return final_results
