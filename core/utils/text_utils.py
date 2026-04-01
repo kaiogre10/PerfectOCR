@@ -1,5 +1,6 @@
 import re
 import logging
+from tkinter.tix import Tree
 import numpy as np
 from typing import List, Tuple, Dict, Pattern, Any
 from core.utils.math_utils import text_encode
@@ -156,11 +157,13 @@ def is_code(s: str) -> bool:
     if s.isalnum():
         if s.endswith("0"):
             correct: str = s.replace("0", "").strip()
-            if correct.isalnum():
-                return True
-            else:
+            if correct.isalpha():
                 logger.info(f"No codigo: {s}")
                 return False
+            elif correct.isdecimal():
+                return False
+            else:
+                return True
         return all(c.isupper() for c in s if c.isalpha())
     else:
         return bool(_code_patterns.search(s))
