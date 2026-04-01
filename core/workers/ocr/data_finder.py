@@ -57,6 +57,7 @@ class DataFinder(OCRAbstractWorker):
             found_date = False
             found_rfc = False
             found_iva = False
+            sc_forb = {1, 2, -2}
 
             for pid, poly in polygons.items():
                 processed_count += 1
@@ -64,47 +65,50 @@ class DataFinder(OCRAbstractWorker):
                 ocr_text = poly.ocr_text or ""
                 text_len = len(ocr_text)
                 sc = poly.semantic_clasification
-                set_sc = set(sc)
-                sc_forb = {-2, 1, 2}
+                
                 if not ocr_text:
                     skipped_semantic += 1
                     continue
 
-                elif text_len == 1:
+                elif text_len < 2:
                     skipped_semantic += 1
-                    # logger.info(f"Skipeado por longitud: {ocr_text}")
+              #      logger.info(f"Skipeado por longitud: {ocr_text}")
                     continue
 
-                elif len(sc) == 1 and not any(s for s in sc if s in sc_forb):
-                    # logger.info(f"Skipeado por sc: {ocr_text}: {sc}")
+                elif ocr_text.isdecimal():
+                    logger.info(f"Numerico Pequeño: '{ocr_text}'")
+
+                elif len(sc) == 1 and any(c in sc_forb for c in sc):
+                   # logger.info(f"Skipeado por sc: {ocr_text}: {sc}")
                     skipped_semantic += 1
                     continue
 
                 elif not found_date and find_date(ocr_text):
                     skipped_semantic +=1
-                    # logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {poly.semantic_clasification}")
+                 #   logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {poly.semantic_clasification}")
                     found_date = True
                     polygon_updates[pid] = 9
                     continue
 
-                elif not found_rfc and text_len > 11 and find_rfc(ocr_text):
+                elif text_len > 11 and not found_rfc and find_rfc(ocr_text):
                     skipped_semantic +=1
                     found_rfc = True
-                    # logger.debug(f"RFC encontrado en {pid}, '{ocr_text}'")
+                  #  logger.info(f"RFC encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 7
                     continue
 
                 elif not found_iva and find_iva(ocr_text):
                     skipped_semantic +=1
                     found_iva = True
-                    # logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
+                    #logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
                     continue
 
                 else:
                     ocr_text = ocr_text.lower()
-                    # logger.info(f"Poly: {pid}: TEXTO: '{ocr_text}")
-                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
+                    #logger.info(f"Poly: {pid}: TEXTO: '{ocr_text}")
+                    valid_results: List[Dict[str
+                                             , Any]] = self.model.find_keywords(ocr_text)
                     if not valid_results:
                         continue
 
@@ -123,8 +127,8 @@ class DataFinder(OCRAbstractWorker):
                         logger.debug(f"'{pid}': Key_Field {key_field}")
 
             if polygon_updates:
-                # logger.info(f"KEY_FIELDS: {polygon_updates}")
-                # logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
+                #logger.info(f"KEY_FIELDS: {polygon_updates}")
+                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:

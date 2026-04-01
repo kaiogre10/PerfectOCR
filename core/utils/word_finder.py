@@ -70,7 +70,7 @@ class WordFinder:
                     continue
 
                 if s.isdecimal():
-                    logger.info(f"Descartado numerico: {s} de {text}")
+                    #logger.info(f"Descartado numerico: {s} de {text}")
                     continue
 
                 q = self._normalize(s)

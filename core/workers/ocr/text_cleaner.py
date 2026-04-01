@@ -47,20 +47,19 @@ class TextCleaner(OCRAbstractWorker):
 
         for poly_id in sorted_poly_ids:
             polygon = polygons_in[poly_id]
-            # confidence = polygon.ocr_confidence or 0.0
 
             text = polygon.ocr_text or ""
             text = space_removal(text)
 
             if not text:
-                logger.debug(f"Eliminado {poly_id} sin texto inicial")
+                logger.info(f"Eliminado {poly_id} sin texto inicial")
                 eliminated_count += 1
                 continue
 
             text_sec = remove_special_sequences(text)
             if text_sec != text:
                 removed_chars = sorted(set(text) - set(text_sec))
-                logger.debug(
+                logger.info(
                     "Secuencia especial eliminada: [%s] in %s",
                     "".join(removed_chars),
                     polygon.polygon_id if polygon else ""
@@ -112,7 +111,7 @@ class TextCleaner(OCRAbstractWorker):
             
             # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if not validate_unique_chars(token):
-                # logger.info(f"Eliminado único: '{token}' in {polygon.polygon_id if polygon else ''}")
+                logger.info(f"Eliminado único: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             else:
                 processed_words.append(token)
