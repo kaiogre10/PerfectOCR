@@ -3,11 +3,11 @@ import numpy as np
 import logging
 import time
 import dataclasses
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.image_utils import calculate_img_values
+from core.utils.image_utils import  make_contiguous
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('polygon_extractor', {})
-        self.bin_interval = config["bin_interval"]
+        self.bin_interval: Tuple[int, int] = config["bin_interval"]
         self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
         self.filtered_ouputs = config.get("final_polys", False)
@@ -25,14 +25,14 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae polígonos en batch usando operaciones vectorizadas para optimizar el recorte."""
-        start_time = time.time()
+        start_time = time.perf_counter()
         try:
             img_obj = manager.get_full_img()
             full_img = img_obj.full_img if img_obj is not None else None
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-                
+
             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
             context["image_name"] = image_name
             img_h = full_img.shape[0]
@@ -77,8 +77,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             py2 = np.minimum(img_h, y2 + self.padding)
             
             # Liberar la imagen completa lo antes posible
-            if manager.update_full_img(corrected=False, full_img=None):
-                logger.debug(f"Imagen completa '{image_name}' liberada")
+            manager.update_full_img(corrected=False, full_img=None)
 
             valid_dims = (px2 > px1) & (py2 > py1)
             valid_indices = np.where(valid_dims)[0]
@@ -92,50 +91,38 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             discarded_poly_ids: List[str] = []
             valid_poly_ids: List[str] = []
 
-            poly_data_to_filter: List[Dict[str, Any]] = []
+            valid_polygons_data: List[Dict[str, Any]] = []
             for i, idx in enumerate(valid_indices):
                 poly_id: str = poly_ids_order[idx] # type: ignore
                 poly_index = i
                 crop_x1, crop_y1 = int(px1[idx]), int(py1[idx])
                 crop_x2, crop_y2 = int(px2[idx]), int(py2[idx])
-                cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
+                cropped: np.ndarray[Any, np.dtype[np.uint8]] = make_contiguous(full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy())
 
                 if self.output:
                     self.save_debug(cropped, context, "all", poly_id) # type: ignore
+                if not bool(self.bin_interval[0] < int(np.mean(cropped)) < self.bin_interval[1]):
+                    discarded_poly_ids.append(poly_id) # type: ignore
+                    logger.debug(f"ELIMINADO '{poly_id}': FUERA DE RANGO DE COLOR")
+                    if self.disoutput:
+                        status = "bn"
+                        self.save_debug(cropped, context, status, poly_id)
                 
-                poly_mean, _ = calculate_img_values(cropped)
-                
-                poly_data_to_filter.append({
+                else:
+                    valid_polygons_data.append({
                     "poly_id": poly_id,
                     "poly_index": poly_index,
                     "cropped": cropped,
-                    "i": i,
-                    "poly_mean": poly_mean
-                })
+                    "i": i
+                    })
 
-            if not poly_data_to_filter:
+            if not valid_polygons_data:
                 logger.warning("PolygonExtractor: No hay polígonos válidos para procesar.")
-                return False 
-
-            valid_polygons_data: List[Dict[str, Any]] = []
-            for p_data in poly_data_to_filter:
-
-                if p_data['poly_mean'] < self.bin_interval[0] or p_data['poly_mean'] > self.bin_interval[1]:
-                    discarded_poly_ids.append(f"{p_data['poly_id']}, {p_data['poly_mean']}")
-                    status = "bn"
-                    # logger.info(f"ELIMINADO '{p_data['poly_id']}': FUERA DE RANGO DE COLOR '{p_data['poly_mean']}'")
-
-                    if self.disoutput:
-                        status = "bn"
-                        self.save_debug(p_data['cropped'], context, status, p_data['poly_id'])
-
-                else:
-                    valid_polygons_data.append(p_data)
-                    valid_poly_ids.append(p_data['poly_id'])
+                return False
 
             for i, p_data in enumerate(valid_polygons_data):
                 new_id = f"poly_{i:04d}"
-                cropped_images[new_id] = p_data["cropped"]
+                cropped_images[new_id] = make_contiguous(p_data["cropped"])
 
             # Eliminar los descartados del manager.workflow.polygons
             for poly_id in discarded_poly_ids:
@@ -166,11 +153,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             if not manager.save_cropped_images(cropped_images):
                 logger.error("No se pudieron guardar las imagenes en el manager")
                 return False
-            
-            total_time = time.time() - start_time
-                
-            extracted_count = len(cropped_images)
-            logger.debug(f"'{extracted_count}' polígonos recortados en {total_time:.6f}s.")
+
+            logger.info(f"'{len(cropped_images)}' polígonos recortados en {time.perf_counter() - start_time:.6f}s.")
 
             if self.filtered_ouputs:
                 polygons = manager.workflow.polygons if manager.workflow else {}
@@ -182,7 +166,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
         except Exception as e:
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
-            return False
+        return False
         
     def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], status: str, id: str):
         worker_name = context.get("worker_name") or "poly_gone"

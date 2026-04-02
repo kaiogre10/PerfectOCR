@@ -28,7 +28,8 @@ class GeometryDetector(ImagePrepAbstractWorker):
     def engine(self) -> Optional[Any]:
         if self._engine is None:
             paddle_manager = ModelsManager.get_instance()
-            self._engine = paddle_manager.detection_engine            
+            self._engine = paddle_manager.detection_engine
+
             if self._engine is None:
                 logger.error("GeometryDetector: Motor de detección no disponible en PaddleManager")
         
@@ -38,6 +39,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.perf_counter()
+        worker_name = context.get("worker_name") or "geometry_detector"
         try:
             engine = self.engine
             if engine is None:
@@ -54,14 +56,16 @@ class GeometryDetector(ImagePrepAbstractWorker):
             logger.debug("Full_img obtenida con éxito")
             full_img = normalice_image(full_img)
             if full_img is None:
+                logger.critical(f"{worker_name} Error después de normalizar")
                 return False
-                
-            bin_img = binarice_img(full_img, {})
+            
             kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (2, 2))
-            img=cv2.morphologyEx(bin_img.copy(), cv2.MORPH_CLOSE, kernel, iterations=2)
+
+            bin_img = binarice_img(full_img, {})
+
+            img=cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=2)
 
             if self.output2:
-                worker_name = context.get("worker_name") or "geometry_detector"
                 output_paths = context["output_paths"]
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 # imag_id = f"opened_{image_name}_{worker_name}"
@@ -119,4 +123,4 @@ class GeometryDetector(ImagePrepAbstractWorker):
         
         except Exception as e:
             logger.error(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
-            return False
+        return False

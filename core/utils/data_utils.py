@@ -194,6 +194,17 @@ CHAR_FRECUENCY: Dict[str, float] ={
     "Ó": 1.0,
 }
 
+# @lru_cache
+# def frecuency_norm() -> Dict[str, float]:
+#     try:
+#         max_val = max(CHAR_FRECUENCY.values())
+#         freq_norm: Dict[str, float] = {char: (val / max_val) * 100 for char, val in CHAR_FRECUENCY.items()}
+#         return freq_norm
+    
+#     except TypeError as e:
+#         print(f"Error al obtener frecuencias normalizadas: {e}")
+#     return {}
+
 VECTOR_MEAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([    
     1.1919195,
     0.9051989,
@@ -378,7 +389,7 @@ NOT_VALID_CHARS: Set[str] = {
 }
 NOT_VALID_CHARS.update(VALID_NUM_PUNT_CHARS)
 
-ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "u"}
+ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "A", "E", "Y", "O"}
 
 ACCENT_NORMALIZATION: Dict[str, str] = {
     "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",

@@ -3,13 +3,11 @@ from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import logging
 from sklearn.cluster import DBSCAN # type: ignore
-from core.utils.data_utils import DENSITY_ENCODER, CHAR_FRECUENCY, CHAR_NUM
+from core.utils.data_utils import DENSITY_ENCODER, CHAR_NUM
+
+# REL_FRECUENCY_CHAR = frecuency_norm()
 
 logger = logging.getLogger(__name__)
-
-char_num = CHAR_NUM
-density = DENSITY_ENCODER
-frecuency = CHAR_FRECUENCY
 
 def alignment(ref_c: List[float], other_c: List[float]) -> float:
     """
@@ -27,6 +25,22 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
     cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec), np.float32)
     return 1.0 - abs(float(cosine))
 
+def get_morphological_encode(text: str) -> List[float]:
+    try:
+        result: List[float] = []
+        for ch in text:
+            if ch in CHAR_NUM:
+                result.append(1.0)
+            elif ch.isalpha():
+                result.append(-1.0)
+            else:
+                result.append(0.0)
+        return result
+
+    except Exception as e:
+        logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
+    return []
+
 def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
     try:
         if not text:
@@ -40,22 +54,6 @@ def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
     except Exception as e:
         logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
     return []
-                
-def get_morphological_encode(text: str) -> List[float]:
-    try:
-        result: List[float] = []
-        for ch in text:
-            if ch in char_num:
-                result.append(1.0)
-            elif ch.isalpha():
-                result.append(-1.0)
-            else:
-                result.append(0.0)
-        return result
-
-    except Exception as e:
-        logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
-    return []
     
 def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype[np.float32]]:
     if "all" in encoding_type and len(encoding_type) == 1:
@@ -65,11 +63,11 @@ def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype
     for enc_type in encoding_type:
 
         if enc_type == "density":
-            dense = encode_text(text.lower(), density)
+            dense = encode_text(text, DENSITY_ENCODER)
             encoders.append(dense)
-        elif enc_type == "frequency":
-            frec = encode_text(text, frecuency)
-            encoders.append(frec)
+        # # elif enc_type == "frequency":
+        # #     frec = encode_text(text, REL_FRECUENCY_CHAR)
+        #     encoders.append(frec)
         elif enc_type == "morphological":
            morph = get_morphological_encode(text)
            encoders.append(morph)

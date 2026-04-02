@@ -6,7 +6,7 @@ import time
 from typing import Dict, Any, List, Tuple, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import extract_contours_metrics
+from core.utils.image_utils import extract_contours_metrics, make_contiguous
 from core.utils.math_utils import extract_contours_histogram
 from services.output_service import save_shapes, save_croped_image
 
@@ -43,6 +43,7 @@ class InkCorrector(ImagePrepAbstractWorker):
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
+            full_img = make_contiguous(full_img)
 
             # enhanced, enhanced_cont = self.enhance_ink(full_img)
 
@@ -190,7 +191,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 lines_correct += 1
 
         # logger.info(f"Outliers: {lines_correct}")
-        return grey_img, outlier_cont, outlier_cont2
+        return make_contiguous(grey_img), outlier_cont, outlier_cont2
     
     def fill_gaps(self, grey_img: np.ndarray[Any, Any]):
         cont_coords_list, metrics = extract_contours_metrics(grey_img)

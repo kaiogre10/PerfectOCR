@@ -114,10 +114,10 @@ class DataFormatter:
                 updated_polygon = dataclasses.replace(polygon, cropped_img=None)
                 self.workflow.polygons[poly_id] = updated_polygon
 
-            logger.debug("Todas las imágenes recortadas han sido liberadas de memoria.")
+            logger.info("Todas las imágenes recortadas han sido liberadas de memoria.")
             return True
         except Exception as e:
-            logger.error(f"Error liberando imágenes recortadas: {e}", exc_info=True)
+            logger.warning(f"Error liberando imágenes recortadas: {e}", exc_info=True)
             return False
 
     def get_tabular_lines(self, return_objects: bool) -> Union[Dict[str, Any], List[str]] | List[str]:

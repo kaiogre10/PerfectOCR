@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 from typing import Any, Optional, List, Dict, Tuple
@@ -89,28 +88,20 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)
     return None
 
-def elevate_dims(img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-    return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any, Any]]:
+    try:
+        return [make_contiguous(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)) for img in image_list]
+    except cv2.error as e:
+        logger.critical(f"Error añadiendo dimensiones a la imagen: {e}", exc_info=True)
+    return []
 
 def calculate_img_values(img: np.ndarray[Any, Any]):
     img_mean = np.mean(img)
     img_dims = img.shape[:2]
     return int(img_mean), img_dims
 
-def validate_image(img: Optional[np.ndarray[Any, Any]]) -> bool:
-    min_threshold = 10
-    max_threshold = 250
-    if img is None:
-        return False
-    
-    img_mean, img_dims = calculate_img_values(img)
-    img_size = img_dims[0] * img_dims[1] 
-
-    if img_mean < min_threshold or max_threshold < img_mean or img_size==0:
-        return False
-    
-    else:
-        return True
+def validate_image(img: np.ndarray[Any, Any]) -> bool:
+    return bool(7 < int(np.mean(img)) < 251)
 
 def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np.ndarray[Any, Any]] | np.ndarray[Any, Any], padding: Optional[int] = None) -> np.ndarray[Any, np.dtype[np.uint8]]:
     img_h = full_img.shape[0]
@@ -171,7 +162,7 @@ def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config
     else:
         bin_img = adaptive_mean_fallback(cropped_img, block, c_value)
 
-    bin_img = cv2.bitwise_not(bin_img).astype(np.uint8)
+    bin_img = make_contiguous(cv2.bitwise_not(bin_img))
    
     return bin_img
 

@@ -1,5 +1,5 @@
 # Ignorar tipos de archivo 
-*.md
+#*.md
 *.pyc
 *.idea
 *.ini
@@ -12,9 +12,8 @@
 *.cursorignore
 # *.pkl
 
-
 # Ignorar carpetas
-__pycache__/
+.__pycache__/
 .pytest_cache/
 .cache/
 .pyc/
@@ -23,7 +22,7 @@ __pycache__/
 .cursor/
 .github/
 .github/chatmodes/
-.typings/
+#.typings/
 
 # Ignorar carpeta
 documentation/
@@ -33,8 +32,8 @@ C:/PerfectOCR/data/models/
 data/models/paddle/
 input/
 input2/
-output/
 input3/
+output/
 
 # secrets
 .env

@@ -79,7 +79,7 @@ class TextCleaner(OCRAbstractWorker):
                 list_of_final_polygons.append(updated_polygon)
                 
             else:
-                # logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
+                logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
                 eliminated_count += 1
 
         # 4. Reconstrucción y reindexación final
@@ -110,12 +110,12 @@ class TextCleaner(OCRAbstractWorker):
         for token in words:
                 # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if not any(char.isalnum() for char in token):
-                logger.info(f"Eliminado texto basura: '{token}' in {polygon.polygon_id if polygon else ''}")
+                # logger.info(f"Eliminado texto basura: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             else:
                 processed_words.append(token)
         
-        return ' '.join(processed_words)
+        return space_removal(' '.join(processed_words))
 
     def filter_low_prob_tokens(self, text: str, polygon: Polygons) -> str:
         """

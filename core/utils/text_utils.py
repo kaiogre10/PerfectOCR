@@ -1,7 +1,5 @@
 import re
 import logging
-# import numpy as np
-from statistics import mean
 from typing import List, Tuple, Dict, Pattern, Any
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import CHAR_NUM, ALONE_CHARS, VALID_NUM_PUNT_CHARS
@@ -249,14 +247,17 @@ def get_cuants(text: str) -> str:
             result = result[:start] + f" {tok} " + result[end:]
 
     # Limpia los espacios múltiples generados por la inyección
-    return space_removal(result)
+    return result
 
 def separate_punt(text: str) -> str:
     text = text.strip()
     if not text:
         return ""
     
-    if is_acronym(text):
+    elif text.isalnum():
+        return text
+
+    elif is_acronym(text):
         return text
 
     tokens = text.split()
@@ -274,27 +275,20 @@ def separate_punt(text: str) -> str:
             processed_tokens.append(t)
     
     # Une los tokens procesados y limpia los espacios extra.
-    return space_removal(" ".join(processed_tokens))
+    return " ".join(processed_tokens)
 
 def normalice_text(text: str) -> str:
     """Normaliza eliminando ruido, no aplica formato o codificación"""
     if not text.strip():
         return ""
    
-    if contains_quantitative(text):
-        cuant_text = get_cuants(text)
-        if cuant_text != text:
-            logger.info(f"Cuantitativos separados: '{text}' -> '{cuant_text}")
-            return cuant_text
-    punt_text = separate_punt(text)
-    if not punt_text:
-        return ""
-    
-    clean_text = remove_special_sequences(punt_text)
-    if not clean_text:
-        return punt_text
-    
-    return space_removal(clean_text)
+    elif not contains_quantitative(text):
+        punt_text = separate_punt(text)
+        if not punt_text:
+            return ""
+        return remove_special_sequences(punt_text)
+    else:
+        return space_removal(text)
 
 def space_removal(text: str) -> str:
     """
@@ -304,31 +298,38 @@ def space_removal(text: str) -> str:
     if not text:
         return ""
     
-    if text == text.strip() and "  " not in text:
+    if "  " not in text and text == text.strip():
         return text
     # Reemplaza cualquier secuencia de espacios (\s+) p%\bor uno solo y limpia bordes
     clean_text = _spaces_pattern.sub(" ", text).strip()
     return clean_text if clean_text else text.strip()
 
 def remove_special_sequences(text: str) -> str:
+    """
+    Elimina secuencias especiales de dos o más caracteres no alfanuméricos.
+    Conserva los caracteres sueltos válidos, pero reemplaza por un espacio las
+    secuencias internas de símbolos, y luego limpia espacios sobrantes.
+    Ejemplo:
+        remove_special_sequences("abc@@def!!ghi") -> 'abc def ghi'
+    """
     cleaned = _sequence_middle_pattern.sub(' ', text)
     cleaned = _secuence_pattern.sub('', cleaned)
-    return cleaned.strip()
+    return cleaned
         
 def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> Dict[str, Tuple[List[int], int]]:
-    density_mean: Tuple[float, float] = worker_config["encode_mean"]
-    morph_mean: Tuple[float, float] = worker_config["morph_mean"]
+    density_thr: Tuple[float, float] = worker_config["encode_mean"]
+    morph_thr: Tuple[float, float] = worker_config["morph_mean"]
     final_results: Dict[str, Tuple[List[int], int]] = {}
 
     def classify_token(s: str) -> Tuple[int, int]:
         if not s:
             return (0, 0)
-        
+        total_text = len(s)
         if s.isalpha():
             return (0, 0)
     
         elif s.isdecimal():
-            return (1, len(s))
+            return (1, total_text)
 
         total_cuant = sum(1 for ch in s if ch in CHAR_NUM)
 
@@ -350,14 +351,19 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             #logger.info(f"Code Por función: {s}")
             return (-1, total_cuant)
 
-        text_encoded = text_encode(s, ["density", "morphological"])
-        dense_mean: float = mean(text_encoded[0])
-        morphology_mean: float = mean(text_encoded[1])
+        encoders = text_encode(s.lower(), ["all"])
+        
+        dense_mean = float(sum(encoders[0]) / total_text)
+        morphology_mean = float(sum(encoders[1]) / total_text)
+        # frec_mean = float(sum(encoders[2])) / total_text
+        # logger.info(f"CODIFICACIONES PARA: '{s}':"
+        #             "\n"f"{encoders}"
+        #             "\n"f"{dense_mean, morphology_mean, frec_mean}")
 
-        if dense_mean > density_mean[1]:
+        if dense_mean > density_thr[1]:
             return (0, 0)
         
-        elif dense_mean < density_mean[0]:
+        elif dense_mean < density_thr[0]:
             if s.isnumeric() or any(c in VALID_NUM_PUNT_CHARS for c in s):
                 # logger.info(F"NUME por codificación cuant: '{s}'")
                 return (1, total_cuant)
@@ -365,7 +371,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 # logger.info(F"CODE por codificación cuant: '{s}'")
                 return (-1, total_cuant)  # numeric
         
-        elif dense_mean < density_mean[1] and morphology_mean > morph_mean[0]:
+        elif dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
                 #logger.info(f"Code por codificación: '{s}'")
             return (-1, total_cuant)  # code
             # else:
@@ -425,8 +431,9 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 continue
 
             else:
-                logger.info(f"Token sin clasificación: '{s}'")
+                # logger.info(f"Token sin clasificación: '{s}'")
                 t_class, t_cuant = classify_token(s)
                 final_results[pid] = ([t_class], t_cuant)
+                continue
 
     return final_results

@@ -1,13 +1,13 @@
 # PerfectOCR/core/workflow/ocr/paddle_wrapper.py
 import logging
 import time
-import numpy as np
-from typing import Dict, Any, List, Optional
+# import numpy as np
+from typing import Dict, Any, List, Optional, Tuple
 from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import normalice_text, validate_text
+from core.utils.text_utils import space_removal, validate_text
 from core.utils.image_utils import elevate_dims
 from services.output_service import save_raw_json
 
@@ -46,28 +46,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
 
-            image_list: List[np.ndarray[Any, np.dtype[np.uint8]]] = []
-            polygon_ids: List[str] = []
-            
-            for poly_id, polygon in polygons.items():
-                cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-                
-                if cropped_img is not None:
-                    cropped_img = elevate_dims(cropped_img)
-                    image_list.append(cropped_img)
-                    polygon_ids.append(poly_id)
-            
-            if not image_list:
-                logger.warning(" No se encontraron imágenes válidas para OCR.")
-                return False
-                
-            raw_results = self.recognize_text_from_batch(image_list, polygon_ids)
-            if not manager.delete_cropped_images():
-                logger.warning("Cropped images no se liberaron")
-
-            # logger.info("Cropped images liberadas con éxito")
-
-            final_results = self._is_valid_polygon(raw_results)
+            final_results = self.recognize_text_from_batch(polygons, manager)
 
             processed_count = 0
             if final_results:
@@ -87,45 +66,50 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             logger.error(f"Error en paddle OCR: {e}", exc_info=True)
         return False
         
-    def recognize_text_from_batch(self, image_list: List[np.ndarray[Any, np.dtype[np.uint8]]], polygon_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    def recognize_text_from_batch(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, Dict[str, Any]]:
         """
         Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead.
         """
-        if self.engine is None or not image_list:
+        time0 = time.perf_counter()
+        if self.engine is None:
             return {}
-
         try:
-            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
-                                    
-            if len(batch_result) == 1 and isinstance(batch_result[0], list):
-                consolidated = batch_result[0]
-                
-                if len(consolidated) == len(image_list):
-                    raw_map: Dict[str, Dict[str, Any]] = {}
-                    for idx, (text, _) in enumerate(consolidated):
-                        raw_map[polygon_ids[idx]] = {
-                            "text": text,
-                        }
-                        
-                    return raw_map
-            
-        except Exception as e:
-            logger.error(f"Error en recognize_text_from_batch: {e}")
-        return {}
+            if not polygons:
+                return {}
+            # polygons_list = [polygon for polygon in polygons.values() if polygon.cropped_img.cropped_img is not None]
 
-    def _is_valid_polygon(self, results: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
-        """Lógica de limpieza textual post-filtro de confianza."""
-        final_results: Dict[str, Dict[str, Any]] = {}
-        for poly_id, data in results.items():
-            text = data["text"]
+            polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img.cropped_img is not None]
+            img_list = [p.cropped_img.cropped_img for p in polygons.values() if p.cropped_img.cropped_img is not None]
+            logger.info(f"Coherencia: {len(polygon_ids) == len(img_list)}")
+            image_list = elevate_dims(img_list)
             
-            clean_text = normalice_text(text)
-            if text != clean_text:
-                logger.info(f"Texto corregido: '{text}' -> '{clean_text}' | Especiales")
+            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
+            manager.delete_cropped_images()
+
+            # logger.info(f"BATCH RESULT OCR TYPO:{type(batch_result)}"
+            #             "\n"f"Resultado 0: {batch_result}")
             
-            # Filtro por contenido (Ya no repetimos el de confianza)
-            if validate_text(clean_text):
-                #logger.info(f"Texto final: '{text}' -> '{clean_text}'")
-                final_results[poly_id] = {"text": clean_text}
-        
-        return final_results
+            raw_map: Dict[str, Dict[str, Any]] = {}
+            # confidence_list: List[Tuple[str, float]] = []
+            for idx, (text, _) in enumerate(batch_result):
+                # confidence_list.append((text, confid))
+                clean_text = space_removal(text)
+                if validate_text(clean_text):
+                    raw_map[polygon_ids[idx]] = {
+                        "text": clean_text,
+                    }
+                else:
+                    logger.debug(f"Texto filtrado: '{text}'")
+                    continue
+
+            # Ordenar por confianza de mayor a menor
+            # confidence_list_sorted = sorted(confidence_list, key=lambda x: x[1], reverse=False)
+            # logger.info("Confianzas ordenadas (mayor a menor): "
+            #             "\n"f"{confidence_list_sorted[:7]}")
+
+            logger.info(f"Tiempo en OCR: {time.perf_counter() - time0:.6f}'s")
+            return raw_map
+            
+        except TypeError as e:
+            logger.error(f"Error en recognize_text_from_batch: {e}", exc_info=True)
+        return {}

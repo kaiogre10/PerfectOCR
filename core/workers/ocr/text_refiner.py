@@ -77,14 +77,14 @@ class Refiner(OCRAbstractWorker):
                     self.classify_strings(manager)
                     self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo limpiados)")
                     
-                    # if self.corrector:
-                    #     corrector_name = self.corrector.__class__.__name__
-                    #     logger.debug(f"Bucle #{pass_num}: Corrección textual")
-                    #     step_t0 = time.perf_counter()
-                    #     self.corrector.transcribe(context, manager)
-                    #     self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
+                    if self.corrector:
+                        corrector_name = self.corrector.__class__.__name__
+                        logger.debug(f"Bucle #{pass_num}: Corrección textual")
+                        step_t0 = time.perf_counter()
+                        self.corrector.transcribe(context, manager)
+                        self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
 
-                    # logger.debug(f"Bucle #{pass_num} | Tiempo total iteración: {time.perf_counter() - pass_t0:.6f}s")
+                    logger.debug(f"Bucle #{pass_num} | Tiempo total iteración: {time.perf_counter() - pass_t0:.6f}s")
 
                 logger.debug(f"Pasada final: Clasificación Semántica completa")
                 step_t0 = time.perf_counter()
