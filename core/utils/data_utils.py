@@ -362,6 +362,12 @@ DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
     "\\": "/",
 }
 
+VALID_NUM_PUNT_CHARS: Set[str] = {
+    ":", ",", ".", "/"
+    "-", "%", "$", "#",
+    "+", "+", "<", ">",
+    "=", "÷",
+}
 NOT_VALID_CHARS: Set[str] = {
     "~", "©", "®", "™", "`",
     "¬", "¨", "°",
@@ -370,13 +376,7 @@ NOT_VALID_CHARS: Set[str] = {
     "´", "''",
 
 }
-
-VALID_NUM_PUNT_CHARS: Set[str] = {
-    ":", ",", ".", "/"
-    "-", "%", "$", "#",
-    "+", "+", "<", ">",
-    "=", "÷",
-}
+NOT_VALID_CHARS.update(VALID_NUM_PUNT_CHARS)
 
 ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "u"}
 

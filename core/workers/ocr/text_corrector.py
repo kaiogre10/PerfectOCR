@@ -65,7 +65,7 @@ class TextCorrector(OCRAbstractWorker):
         return True
 
     def _apply_corrections(self, text: str, semantic_clasification: List[int]) -> str:
-        return text
+
         tokens = text.split(' ')
         if len(semantic_clasification) != len(tokens):
             return text
@@ -103,7 +103,7 @@ class TextCorrector(OCRAbstractWorker):
         if not corrections_map:
             return token
         
-        token = token.strip(self.not_valid_chars)        
+        # token = token.strip(self.not_valid_chars)
         corrected_chars = list(token)
 
         for i, char in enumerate(token):

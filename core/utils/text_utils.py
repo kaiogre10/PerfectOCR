@@ -402,7 +402,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 continue
 
             else:
-                # logger.info(f"Token unico sin clasificación: '{s}'")
+                logger.info(f"Token sin clasificación: '{s}'")
                 t_class, t_cuant = classify_token(s)
                 final_results[pid] = ([t_class], t_cuant)
 
