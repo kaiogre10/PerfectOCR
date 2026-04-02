@@ -2,11 +2,12 @@
 import time
 from typing import Dict, Any, Optional, List
 import logging
+import numpy as np
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import find_rfc, find_iva, find_date
+from core.utils.text_utils import RFC_PATTERNS, IVA_PATTERN, DATE_PATTENRS
 
 logger = logging.getLogger(__name__)
 
@@ -57,47 +58,48 @@ class DataFinder(OCRAbstractWorker):
             found_date = False
             found_rfc = False
             found_iva = False
-            sc_forb = {1, 2, -2}
+            sc_forb = {2, 1, -2}
 
-            for pid, poly in polygons.items():
+            all_idx = np.array([p.poly_index for p in polygons.values()], np.int16)
+
+            sc = [(p.semantic_clasification) for p in polygons.values()]
+            texts = [(p.ocr_text or "") for p in polygons.values()]
+
+            texts_length = np.array([len(t) for t in texts])
+            decimal_p = np.array([t.isdecimal() for t in texts])
+
+            sc_length = np.array([len(c) for c in sc])
+            forb_sc = np.array([any(c in sc_forb for c in s) for s in sc])
+
+            mask_sc = (sc_length == 1) & (forb_sc == True) 
+            mask_len = (texts_length < 2) & (decimal_p == True)
+            mask = mask_sc & mask_len
+            skip_idx = set(np.compress(mask, all_idx).tolist())
+
+            for idx, (pid, poly) in enumerate(polygons.items()):
+                if poly.poly_index in skip_idx:
+                    skipped_semantic += 1
+                    continue
+
                 processed_count += 1
 
-                ocr_text = poly.ocr_text or ""
-                text_len = len(ocr_text)
-                sc = poly.semantic_clasification
-                
-                if not ocr_text:
-                    skipped_semantic += 1
-                    continue
+                ocr_text = texts[idx]
 
-                elif text_len < 2:
-                    skipped_semantic += 1
-              #      logger.info(f"Skipeado por longitud: {ocr_text}")
-                    continue
-
-                elif ocr_text.isdecimal():
-                    logger.info(f"Numerico Pequeño: '{ocr_text}'")
-
-                elif len(sc) == 1 and any(c in sc_forb for c in sc):
-                   # logger.info(f"Skipeado por sc: {ocr_text}: {sc}")
-                    skipped_semantic += 1
-                    continue
-
-                elif not found_date and find_date(ocr_text):
+                if not found_date and self.find_date(ocr_text):
                     skipped_semantic +=1
-                 #   logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {poly.semantic_clasification}")
+                    logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {sc[idx]}")
                     found_date = True
                     polygon_updates[pid] = 9
                     continue
 
-                elif text_len > 11 and not found_rfc and find_rfc(ocr_text):
+                elif not found_rfc and self.find_rfc(ocr_text):
                     skipped_semantic +=1
                     found_rfc = True
                   #  logger.info(f"RFC encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 7
                     continue
 
-                elif not found_iva and find_iva(ocr_text):
+                elif not found_iva and self.find_iva(ocr_text):
                     skipped_semantic +=1
                     found_iva = True
                     #logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
@@ -107,8 +109,7 @@ class DataFinder(OCRAbstractWorker):
                 else:
                     ocr_text = ocr_text.lower()
                     #logger.info(f"Poly: {pid}: TEXTO: '{ocr_text}")
-                    valid_results: List[Dict[str
-                                             , Any]] = self.model.find_keywords(ocr_text)
+                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
                     if not valid_results:
                         continue
 
@@ -128,7 +129,7 @@ class DataFinder(OCRAbstractWorker):
 
             if polygon_updates:
                 #logger.info(f"KEY_FIELDS: {polygon_updates}")
-                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
+                # logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:
@@ -139,3 +140,38 @@ class DataFinder(OCRAbstractWorker):
             logger.warning(f"Error encontrando keyfields: {e}")
         return {}
     
+    def find_rfc(self, s: str) -> bool:
+        try:
+            if len(s) < 12:
+                return False
+            
+            elif not any(c.isdecimal() for c in s):
+                return False
+            
+            else:
+                return bool(RFC_PATTERNS.search(s))
+
+        except TypeError as e:
+            logger.warning(f"Error buscando RFC: {e}", exc_info=True)
+        return False
+
+    def find_iva(self, s: str) -> bool:
+        try:
+            if not any(c.isalpha() for c in s):
+                return False
+            
+            return bool(IVA_PATTERN.search(s))
+        except TypeError as e:
+            logger.warning(f"Error Buscando IVA: {e}", exc_info=True)
+        return False
+    
+    def find_date(self, s: str) -> bool:
+        try:
+            if s.isalpha():
+                return False
+            else:
+                return bool(DATE_PATTENRS.search(s))
+
+        except TypeError as e:
+            logger.warning(f"Error buscando fecha: {e}", exc_info=True)
+        return False

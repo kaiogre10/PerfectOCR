@@ -364,16 +364,19 @@ DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
 
 NOT_VALID_CHARS: Set[str] = {
     "~", "©", "®", "™", "`",
-    "¬", "¨", "÷", "°", "=",
+    "¬", "¨", "°",
+    "*", "^", "°", "'", "¨",
+    "-", "_", ";", 
+    "´", "''",
+
 }
 
-NOT_VALID_PUNT_CHARS: Set[str] = {
-    ".", "*", "^", "°", ",",
-    "-", "_", ";", ":",
-    "'", "´", "''", "¨"
+VALID_NUM_PUNT_CHARS: Set[str] = {
+    ":", ",", ".", "/"
+    "-", "%", "$", "#",
+    "+", "+", "<", ">",
+    "=", "÷",
 }
-
-PUNC_CHARS: Set[str] = {".", ";", ":", "!", "?"}
 
 ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "u"}
 
@@ -382,6 +385,3 @@ ACCENT_NORMALIZATION: Dict[str, str] = {
     "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
     "ü": "u", "Ü": "U", "ñ": "n", "Ñ": "N",
 }
-
-def valid_punt_chars() -> Set[str]:
-    return NOT_VALID_PUNT_CHARS.union(NOT_VALID_CHARS)

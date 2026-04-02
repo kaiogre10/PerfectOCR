@@ -53,6 +53,10 @@ class WordFinder:
         try:
             if not text:
                 return []
+            
+            elif text in self.noise_words:
+                logger.info(f"Ruido inmediato: {text}")
+                return []
 
             single = False
             if isinstance(text, str):
@@ -68,11 +72,7 @@ class WordFinder:
                 s = queue.pop(0)
                 if not s:
                     continue
-
-                if s.isdecimal():
-                    #logger.info(f"Descartado numerico: {s} de {text}")
-                    continue
-
+                
                 q = self._normalize(s)
                 if not q:
                     continue

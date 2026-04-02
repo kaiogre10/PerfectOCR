@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import validate_unique_chars, space_removal, remove_special_sequences
+from core.utils.text_utils import space_removal, remove_special_sequences
 from core.utils.math_utils import text_encode
 
 logger = logging.getLogger(__name__)
@@ -52,15 +52,15 @@ class TextCleaner(OCRAbstractWorker):
             text = space_removal(text)
 
             if not text:
-                logger.info(f"Eliminado {poly_id} sin texto inicial")
+                logger.debug(f"Eliminado {poly_id} sin texto inicial")
                 eliminated_count += 1
                 continue
 
             text_sec = remove_special_sequences(text)
             if text_sec != text:
                 removed_chars = sorted(set(text) - set(text_sec))
-                logger.info(
-                    "Secuencia especial eliminada: [%s] in %s",
+                logger.debug(
+                    "Secuencia especial eliminada: '%s' in %s",
                     "".join(removed_chars),
                     polygon.polygon_id if polygon else ""
                 )
@@ -108,10 +108,9 @@ class TextCleaner(OCRAbstractWorker):
         processed_words: List[str] = []
 
         for token in words:
-            
-            # Eliminar tokens que sean un carácter especial especificado (ej. ")")
-            if not validate_unique_chars(token):
-                logger.info(f"Eliminado único: '{token}' in {polygon.polygon_id if polygon else ''}")
+                # Eliminar tokens que sean un carácter especial especificado (ej. ")")
+            if not any(char.isalnum() for char in token):
+                logger.info(f"Eliminado texto basura: '{token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             else:
                 processed_words.append(token)

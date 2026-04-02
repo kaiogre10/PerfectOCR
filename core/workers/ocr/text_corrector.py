@@ -1,12 +1,12 @@
 # PerfectOCR/core/workers/ocr/text_corrector.py
 import logging
 import dataclasses
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import termination_detect, numeric_separator, validate_unique_chars, space_removal, find_quantitative_runs
-from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, valid_punt_chars
+from core.utils.text_utils import termination_detect, validate_unique_chars, space_removal
+from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class TextCorrector(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get("text_corrector", {})
-        self.not_valid_chars = ''.join(valid_punt_chars())
+        self.not_valid_chars = ''.join(NOT_VALID_CHARS)
         self.conf_threshold = (worker_config.get("confidence_threshold") * 100.0)
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -65,6 +65,7 @@ class TextCorrector(OCRAbstractWorker):
         return True
 
     def _apply_corrections(self, text: str, semantic_clasification: List[int]) -> str:
+        return text
         tokens = text.split(' ')
         if len(semantic_clasification) != len(tokens):
             return text
@@ -74,22 +75,22 @@ class TextCorrector(OCRAbstractWorker):
         for i, token in enumerate(tokens):
             token_sc = semantic_clasification[i]
 
-            if token_sc == 2:
-                # 1. Primero corregir chars del token completo
-                corrected_token = self._correct_token(token, token_sc)
+            # if token_sc == 2:
+            #     # 1. Primero corregir chars del token completo
+        #     corrected_token = self._correct_token(token, token_sc)
 
-                # 2. Luego separar por runs cuantitativos
-                parts = self.split_by_quantitative_runs(corrected_token)
+            #     # 2. Luego separar por runs cuantitativos
+            #     parts = self.split_by_quantitative_runs(corrected_token)
 
-                for part, is_quant in parts:
-                    # 3. Aplicar numeric_separator solo a partes cuantitativas
-                    final_part = numeric_separator(part) if is_quant else part
-                    if final_part and validate_unique_chars(final_part):
-                        corrected_tokens.append(final_part)
-            else:
-                corrected_token = self._correct_token(token, token_sc)
-                if corrected_token and validate_unique_chars(corrected_token):
-                    corrected_tokens.append(corrected_token)
+            # for part, is_quant in parts:
+            #     # 3. Aplicar numeric_separator solo a partes cuantitativas
+            #     final_part = numeric_separator(part) if is_quant else part
+            #     if final_part and validate_unique_chars(final_part):
+            #         corrected_tokens.append(final_part)
+            # else:
+            corrected_token = self._correct_token(token, token_sc)
+            if corrected_token and validate_unique_chars(corrected_token):
+                corrected_tokens.append(corrected_token)
 
         return space_removal(' '.join(corrected_tokens))
     
@@ -233,36 +234,3 @@ class TextCorrector(OCRAbstractWorker):
             return True
         else:
             return False
-        
-    def split_by_quantitative_runs(self, text: str) -> List[Tuple[str, bool]]:
-        """
-        Separa únicamente los substrings cuantitativos del resto.
-        No fragmenta por espacios partes no cuantitativas.
-        """
-        if ' ' not in text:
-            # Si todos los caracteres son numéricos/monetarios → token completo cuantitativo
-            _QUANT_CHARS = CHAR_NUM
-            if set(text) <= _QUANT_CHARS:
-                return [(text, True)]
-
-            runs = find_quantitative_runs(text)
-            if not runs:
-                return [(text, False)]
-
-            out: List[Tuple[str, bool]] = []
-            cursor = 0
-
-            for start, end, _ in runs:
-                if cursor < start:
-                    prefix = text[cursor:start].strip()
-                    if prefix:
-                        out.append((prefix, False))
-                out.append((text[start:end], True))
-                cursor = end
-
-            if cursor < len(text):
-                tail = text[cursor:].strip()
-                if tail:
-                    out.append((tail, False))
-            return out
-        return [(text, False)]

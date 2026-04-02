@@ -5,10 +5,9 @@ from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, Geometry
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import is_acronym, find_date
+from core.utils.text_utils import is_acronym
 from core.utils.math_utils import fragment_geometry_horizontal
 from services.output_service import save_croped_image
-
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class Fragmenter(OCRAbstractWorker):
                     continue
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
-                if is_acronym(ocr_text) or find_date(ocr_text):
+                if is_acronym(ocr_text):
                     # logger.info(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
                     final_polygons.append(polygon)
                     continue
