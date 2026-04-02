@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import separate_punt, validate_text
+from core.utils.text_utils import normalice_text, validate_text
 from core.utils.image_utils import elevate_dims
 from services.output_service import save_raw_json
 
@@ -119,9 +119,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         for poly_id, data in results.items():
             text = data["text"]
             
-            clean_text = separate_punt(text)
-            # if text != clean_text:
-            #     logger.info(f"Texto corregido: '{text}' -> '{clean_text}' | Especiales")
+            clean_text = normalice_text(text)
+            if text != clean_text:
+                logger.info(f"Texto corregido: '{text}' -> '{clean_text}' | Especiales")
             
             # Filtro por contenido (Ya no repetimos el de confianza)
             if validate_text(clean_text):

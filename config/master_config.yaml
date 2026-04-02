@@ -145,7 +145,7 @@ modules:
       min_confidence: 60.0
       
     text_refiner:
-      num_passes: 2
+      num_passes: 1
       encode_mean: [23.7, 105.7] # Promedio de densidad
       morph_mean: [-0.297, 0.337] # Promedio morfológico
       min_cc_for_frag: 2

@@ -54,9 +54,10 @@ _umd_patterns_list: List[Pattern[str]] = [
     # Cantidad: C/ o C/ con número.
     re.compile(r'\b[Cc]\s*/\s*\d*\b'),
     # Longitudes y Áreas: m, cm, mm, km, in, ft, pulg. Detecta la unidad sola o con número. Soporta m2, m^2, m² para áreas.
-    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|pul|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b'), 
+    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|pul|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b'),
+    re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b'),
     # Fracciones (1/2 kg, 1/4).
-    re.compile(r'\b\d+\s*/\s*\d+\b'),
+  #  re.compile(r'\b\d+\s*/\s*\d+\b'),
     # Dimensiones (10x20)
     re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b')
 ]
@@ -150,10 +151,11 @@ def is_code(s: str) -> bool:
         return False
     elif s.isalpha():
         return False
-    elif s.isdigit():
-        return False
+    elif s.startswith("0") and not contains_quantitative(s):
+        logger.info(f"Código comienza n 0")
+        return True
          
-    if all(c.isupper() for c in s if c.isalpha()):
+    elif all(c.isupper() for c in s if c.isalpha()):
         if s.endswith("0"):
             correct: str = s.replace("0", "").strip()
             if correct.isalpha():
@@ -229,6 +231,9 @@ def get_cuants(text: str) -> str:
     """
     if not text:
         return ""
+   
+    elif not contains_quantitative(text):
+        return text
 
     matches = list(_token.finditer(text))
     if not matches:
@@ -257,6 +262,8 @@ def separate_punt(text: str) -> str:
     tokens = text.split()
     processed_tokens: List[str] = []
     for t in tokens:
+        if t.endswith("."):
+            t = t.replace(".", "")
         # Si el token actual NO es una hora, sepárale la puntuación.
         if not _hour_pattern.fullmatch(t):
             # Reemplaza los signos de puntuación por un espacio en este token.
@@ -269,9 +276,25 @@ def separate_punt(text: str) -> str:
     # Une los tokens procesados y limpia los espacios extra.
     return space_removal(" ".join(processed_tokens))
 
-# def normalice_text(text: str) -> str:
-#     """Normaliza eliminando ruido, no aplica formato o codificación"""
-#     if not 
+def normalice_text(text: str) -> str:
+    """Normaliza eliminando ruido, no aplica formato o codificación"""
+    if not text.strip():
+        return ""
+   
+    if contains_quantitative(text):
+        cuant_text = get_cuants(text)
+        if cuant_text != text:
+            logger.info(f"Cuantitativos separados: '{text}' -> '{cuant_text}")
+            return cuant_text
+    punt_text = separate_punt(text)
+    if not punt_text:
+        return ""
+    
+    clean_text = remove_special_sequences(punt_text)
+    if not clean_text:
+        return punt_text
+    
+    return space_removal(clean_text)
 
 def space_removal(text: str) -> str:
     """
@@ -283,7 +306,7 @@ def space_removal(text: str) -> str:
     
     if text == text.strip() and "  " not in text:
         return text
-    # Reemplaza cualquier secuencia de espacios (\s+) por uno solo y limpia bordes
+    # Reemplaza cualquier secuencia de espacios (\s+) p%\bor uno solo y limpia bordes
     clean_text = _spaces_pattern.sub(" ", text).strip()
     return clean_text if clean_text else text.strip()
 
@@ -327,9 +350,9 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             #logger.info(f"Code Por función: {s}")
             return (-1, total_cuant)
 
-        density_encode, morph_encode = text_encode(s, ["density", "morphological"])
-        dense_mean: float = mean(density_encode)
-        morphology_mean: float = mean(morph_encode)
+        text_encoded = text_encode(s, ["density", "morphological"])
+        dense_mean: float = mean(text_encoded[0])
+        morphology_mean: float = mean(text_encoded[1])
 
         if dense_mean > density_mean[1]:
             return (0, 0)

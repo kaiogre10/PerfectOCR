@@ -93,8 +93,8 @@ class Refiner(OCRAbstractWorker):
 
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-                if 2 in poly_data.semantic_clasification:
-                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                if poly_data.semantic_clasification:
+                    logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
             file_name: str = manager.workflow.metadata.image_name  # type: ignore
             if self.output:

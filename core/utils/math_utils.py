@@ -83,7 +83,7 @@ def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]], ref_vec: Opt
     ref_vec es la de referencia (shape n_samples_ref, n_features) o None (usa X contra sí misma).
     El resultado será (n_samples_X, n_samples_ref).
     """
-    return cosine_similarity(X, ref_vec, dense_output=dense_output)
+    return cosine_similarity(X, ref_vec, dense_output=dense_output) # type: ignore
 
 def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
     """
