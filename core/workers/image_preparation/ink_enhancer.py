@@ -43,7 +43,6 @@ class InkCorrector(ImagePrepAbstractWorker):
             if full_img is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-            full_img = make_contiguous(full_img)
 
             # enhanced, enhanced_cont = self.enhance_ink(full_img)
 
@@ -91,7 +90,8 @@ class InkCorrector(ImagePrepAbstractWorker):
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
         return True
 
-    def delete_outliers(self, grey_img: np.ndarray[Any, Any]):
+    def delete_outliers(self, full_img: np.ndarray[Any, Any]):
+        grey_img = make_contiguous(full_img)
         cont_coords_list, metrics = extract_contours_metrics(grey_img)
         # logger.info(f"Total de contornos outliers: {metrics.shape[0]}")
         area_hist = extract_contours_histogram(metrics[:, 1])
@@ -193,7 +193,8 @@ class InkCorrector(ImagePrepAbstractWorker):
         # logger.info(f"Outliers: {lines_correct}")
         return make_contiguous(grey_img), outlier_cont, outlier_cont2
     
-    def fill_gaps(self, grey_img: np.ndarray[Any, Any]):
+    def fill_gaps(self,  full_img: np.ndarray[Any, Any]):
+        grey_img = make_contiguous(full_img)
         cont_coords_list, metrics = extract_contours_metrics(grey_img)
         # logger.info(f"Total de contornos gaps: {metrics.shape[0]}")
         hist_values = extract_contours_histogram(metrics[: ,1])

@@ -114,7 +114,7 @@ class DataFormatter:
                 updated_polygon = dataclasses.replace(polygon, cropped_img=None)
                 self.workflow.polygons[poly_id] = updated_polygon
 
-            logger.info("Todas las imágenes recortadas han sido liberadas de memoria.")
+            # logger.info("Todas las imágenes recortadas han sido liberadas de memoria.")
             return True
         except Exception as e:
             logger.warning(f"Error liberando imágenes recortadas: {e}", exc_info=True)
@@ -352,7 +352,7 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
             
-                    # logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
+                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
 
             if updated_count > 0:
                 logger.debug(f"Actualizados {updated_count} polígonos con key_fields")

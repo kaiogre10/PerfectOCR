@@ -7,11 +7,7 @@ from skimage.filters import threshold_sauvola #type: ignore
 logger = logging.getLogger(__name__)
 
 def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    # Asegurar contigüidad para OpenCV
-    if not img_arr.flags['C_CONTIGUOUS']:
-        return np.ascontiguousarray(img_arr)
-    else:
-        return img_arr
+    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(img_arr)
 
 def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     """
@@ -69,12 +65,12 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
                 except Exception:
                     return None
 
-        img_arr = make_contiguous(img_arr)
+        # 
         # Logueo detallado para trazabilidad
-        try:
-            vmin = int(img_arr.min()); vmax = int(img_arr.max()); vmean = float(img_arr.mean())
-        except Exception:
-            vmin = vmax = None; vmean = None
+        # try:
+        #     vmin = int(img_arr.min()); vmax = int(img_arr.max()); vmean = float(img_arr.mean())
+        # except Exception:
+        #     vmin = vmax = None; vmean = None
 
         # logger.debug(
         #     "normalice_image: id=%d shape=%s dtype=%s min=%s max=%s mean=%s",
@@ -82,7 +78,7 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
         #     vmin, vmax, f"{vmean:.2f}" if vmean is not None else None
         # )
     
-        return img_arr # type: ignore
+        return make_contiguous(img_arr)
         
     except Exception  as e:
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)
@@ -162,10 +158,8 @@ def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config
     else:
         bin_img = adaptive_mean_fallback(cropped_img, block, c_value)
 
-    bin_img = make_contiguous(cv2.bitwise_not(bin_img))
+    return make_contiguous(cv2.bitwise_not(bin_img))
    
-    return bin_img
-
 def get_adaptive_block_size(height: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
     """Calcula el tamaño de bloque adaptativo basado en la altura del polígono."""
     for i, threshold in enumerate(height_thresholds):
@@ -201,8 +195,7 @@ def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) ->
 
 def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     resultis = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    bin_img = resultis[1].astype(np.uint8)
-    return bin_img
+    return make_contiguous(resultis[1])
 
 def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value).astype(np.uint8)
@@ -211,16 +204,16 @@ def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_
     """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
     thresh_sauvola = threshold_sauvola(image=cropped_img, window_size=adaptive_block_size) 
     bin_bool: np.ndarray[Any, np.dtype[np.bool_]] = (cropped_img > thresh_sauvola)
-    bin_img: np.ndarray[Any, np.dtype[np.uint8]] = (bin_bool * 255)
-    return bin_img 
+    return make_contiguous(bin_bool * 255)
 
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)).astype(np.uint8)
+    return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)))
 
 def decolorate(full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """
     Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro.
     """
+    full_img = make_contiguous(full_img)
     # Máscara para píxeles negros (todos los canales <= threshold_black)
     mask_black = np.all(full_img < 160, axis=2)
     
@@ -234,14 +227,14 @@ def decolorate(full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any,
     full_img[~mask_valid] = [255, 255, 255]
 
     # Convierte a escala de grises para continuar el flujo normal
-    gray = normalice_image(full_img)    
-    if gray is not None:
-        return gray
+    # gray = normalice_image(full_img)
+    if not validate_image(full_img):
+        logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
+        return make_contiguous(cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY))
         
     else:
-        logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
-        return cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY).astype(np.uint8)
-        # return cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel1, iterations=2, borderType=cv2.BORDER_REPLICATE).astype(np.uint8)
+        grey_img = normalice_image(full_img)
+        return grey_img if grey_img is not None else make_contiguous(cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY))
 
 def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
     """
@@ -288,7 +281,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     pixels_val: List[int] = []
     lonely: List[int] = []
     # Máscara reutilizable
-    single_mask = np.zeros((sh, sw), dtype=np.uint8)
+    single_mask = np.ascontiguousarray(np.zeros((sh, sw), dtype=np.uint8))
     
     # Variables para limpiar la región anterior
     prev_x, prev_y, prev_w, prev_h = 0, 0, 0, 0
@@ -399,16 +392,13 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     filtered_original_indices = metrics_array[:, 0]
     valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(int(idx), cont_coords_list[valid_indices[int(idx)]][1]) for idx in filtered_original_indices]
 
-    valid_contours = len(valid_coords) 
+    valid_contours = len(valid_coords)
     matrix_size = metrics_array.shape[0]
     if valid_contours != matrix_size:
         logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
         return [], np.empty((0, 5))
 
-    variances = np.array([
-        np.var(np.linalg.norm(coords.reshape(-1, 2) - c, axis=1))
-        for (_, coords), c in zip(valid_coords, metrics_array[:, 5:7])
-    ], dtype=np.float32)
+    variances = np.array([np.var(np.linalg.norm(coords.reshape(-1, 2) - c, axis=1))for (_, coords), c in zip(valid_coords, metrics_array[:, 5:7])], dtype=np.float32)
     metrics_array = np.column_stack([metrics_array, variances])
 
     # logger.info(f"Contornos validos: {valid_contours}")

@@ -55,9 +55,9 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
                 return []
         
             # 7. Main ejecuta procesamiento secuencial usando el builder único
-            t4 = time.perf_counter()
+            # t4 = time.perf_counter()
             results = execute_sequential_processing(processing_builder, workflow_report)
-            logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
+            # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
             cleanup_project_cache(project_root)
             return results if results is not None else []
             

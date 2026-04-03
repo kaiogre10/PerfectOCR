@@ -7,6 +7,7 @@ import math
 from typing import Dict, Any, Tuple, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
+from core.utils.image_utils import make_contiguous
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -67,12 +68,13 @@ class AngleCorrector(ImagePrepAbstractWorker):
         """
         total_time = time.perf_counter()
         try:
-                
+            
             h =  full_img.shape[0]
             w =  full_img.shape[1]
             
             center = w // 2, h // 2
             min_len = min(w // 3, self.hough_min_line_length_cap_px)
+            full_img = make_contiguous(full_img)
             
             edges = cv2.Canny(full_img, self.canny_thresholds[0], self.canny_thresholds[1])
             lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=self.hough_threshold, minLineLength=min_len, maxLineGap=self.hough_max_line_gap_px)
@@ -90,7 +92,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
 
             angle = np.median(filtered_angles)
             if abs(angle) > self.min_angle_for_correction:
-                rotation_matrix = cv2.getRotationMatrix2D(center, float(angle), 1.0)
+                rotation_matrix = make_contiguous(cv2.getRotationMatrix2D(center, float(angle), 1.0))
             
             # Calcular nuevas dimensiones
                 cos = np.abs(rotation_matrix[0, 0])
@@ -102,11 +104,9 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 rotation_matrix[0, 2] += (new_w / 2) - center[0]
                 rotation_matrix[1, 2] += (new_h / 2) - center[1]
                 
-                deskew_img = cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.color).astype(np.uint8)
                 logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
-
-                # deskew_img = self.rotate_and_crop(deskew_img)
-                return deskew_img, True
+                return make_contiguous(cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.color)), True
+                
             
             else:             
                 logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")

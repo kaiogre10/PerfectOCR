@@ -74,6 +74,10 @@ class InkConfig(ConfigWithNumpy):
     solid_thr: float
     shape_thr: float
 
+class GeometryDetect(ConfigWithNumpy):
+    morph_kernel: Tuple[int, int]
+    iterations: int
+
 class SharpeningConfig(ConfigWithNumpy):
     sharpness_threshold: float
     kernel: int
@@ -111,7 +115,7 @@ class CuttingConfig(ConfigWithNumpy):
 class ImagePreparation(ConfigWithNumpy):
     ink_enhancement: InkConfig
     angle_corrector: DeskewConfig
-    moire: MoireConfig
+    geometry_detect: GeometryDetect
     polygon_extractor: CuttingConfig
 
 class ContrastConfig(ConfigWithNumpy):
@@ -130,6 +134,7 @@ class RestoreConfig(ConfigWithNumpy):
 
 class PreprocessingConfig(ConfigWithNumpy):
     restorer: RestoreConfig
+    moire: MoireConfig
     sp_config: SaltPepper 
     gauss_params: GaussianConfig
     contrast: ContrastConfig
@@ -184,7 +189,6 @@ class UtilsConfig(ConfigWithNumpy):
     dpi_range: List[int]
     bin_interval: Tuple[int, int]
     percentile: Tuple[float, float]
-    morph_kernel: Tuple[float, float]
     valid_image_extensions: Tuple[str, ...]
     
 class ModulesConfig(ConfigWithNumpy):

@@ -79,7 +79,7 @@ class TextCleaner(OCRAbstractWorker):
                 list_of_final_polygons.append(updated_polygon)
                 
             else:
-                logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
+                # logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
                 eliminated_count += 1
 
         # 4. Reconstrucción y reindexación final

@@ -97,22 +97,26 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 poly_index = i
                 crop_x1, crop_y1 = int(px1[idx]), int(py1[idx])
                 crop_x2, crop_y2 = int(px2[idx]), int(py2[idx])
-                cropped: np.ndarray[Any, np.dtype[np.uint8]] = make_contiguous(full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy())
+                cropped: np.ndarray[Any, np.dtype[np.uint8]] = np.ascontiguousarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2])
 
                 if self.output:
                     self.save_debug(cropped, context, "all", poly_id) # type: ignore
-                if not bool(self.bin_interval[0] < int(np.mean(cropped)) < self.bin_interval[1]):
-                    discarded_poly_ids.append(poly_id) # type: ignore
-                    logger.debug(f"ELIMINADO '{poly_id}': FUERA DE RANGO DE COLOR")
+
+                poly_mean = int(np.mean(cropped))
+                if not bool(self.bin_interval[0] < poly_mean < self.bin_interval[1]):
+                    discarded_poly_ids.append(poly_id)
+                    # logger.info(f"ELIMINADO '{poly_id}': FUERA DE RANGO DE COLOR")
                     if self.disoutput:
                         status = "bn"
-                        self.save_debug(cropped, context, status, poly_id)
+                        pid = f"{poly_id}_{poly_mean}"
+                        self.save_debug(cropped, context, status, pid)
                 
                 else:
+                    valid_poly_ids.append(poly_id)
                     valid_polygons_data.append({
                     "poly_id": poly_id,
                     "poly_index": poly_index,
-                    "cropped": cropped,
+                    "cropped": make_contiguous(cropped),
                     "i": i
                     })
 
@@ -122,7 +126,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             for i, p_data in enumerate(valid_polygons_data):
                 new_id = f"poly_{i:04d}"
-                cropped_images[new_id] = make_contiguous(p_data["cropped"])
+                cropped_images[new_id] = p_data["cropped"]
 
             # Eliminar los descartados del manager.workflow.polygons
             for poly_id in discarded_poly_ids:
@@ -154,7 +158,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.error("No se pudieron guardar las imagenes en el manager")
                 return False
 
-            logger.info(f"'{len(cropped_images)}' polígonos recortados en {time.perf_counter() - start_time:.6f}s.")
+            # logger.(f"'{len(cropped_images)}' polígonos recortados en {time.perf_counter() - start_time:.6f}s.")
 
             if self.filtered_ouputs:
                 polygons = manager.workflow.polygons if manager.workflow else {}

@@ -2,8 +2,8 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    #- "angle_corrector"
-    #- "ink_enhancement"
+    - "angle_corrector"
+    - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
@@ -16,9 +16,9 @@ pipeline_secuence:
     # - "sharp"
 
   ocr_stage:
-    # - "paddle_wrapper"
-#    - "text_refiner"
-    # - "data_finder"
+    - "paddle_wrapper"
+    - "text_refiner"
+    - "data_finder"
     
   vector_stage:
     # - "lineal"
@@ -104,14 +104,11 @@ modules:
       hough_angle_filter_range_degrees: [-22.5, 22.5]
       border_cutt: 100
       border_color: [255, 255, 255]
-
-    moire:
-      min_distance_from_center: 150
-      notch_radius: 3
-      percentile_threshold: 96
-      mean_factor: 4
-      abs_threshold: 20000000
       
+    geometry_detect:
+      morph_kernel: [2, 2]
+      iterations: 2
+
     polygon_extractor:
       cropping_padding: 1
 
@@ -119,6 +116,13 @@ modules:
     restorer:
       area_threshold: 12
       kernel_threshold: 3
+
+    moire:
+      min_distance_from_center: 150
+      notch_radius: 3
+      percentile_threshold: 96
+      mean_factor: 4
+      abs_threshold: 20000000
 
     sp_config:
       kernel_size: 3
@@ -142,10 +146,10 @@ modules:
         
   ocr:
     paddle_wrapper:
-      min_confidence: 60.0
+      min_confidence: 0.51
       
     text_refiner:
-      num_passes: 0
+      num_passes: 1
       encode_mean: [23.7, 105.7] # Promedio de densidad
       morph_mean: [-0.297, 0.337] # Promedio morfológico
       min_cc_for_frag: 2
@@ -184,5 +188,4 @@ utils:
   dpi_range: [100, 200, 300, 400, 600, 1200]
   bin_interval: [10, 245]
   percentile: [0.10, 0.99]
-  morph_kernel: [2, 3]
   

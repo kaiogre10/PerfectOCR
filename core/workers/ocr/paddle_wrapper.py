@@ -1,14 +1,13 @@
 # PerfectOCR/core/workflow/ocr/paddle_wrapper.py
 import logging
 import time
-# import numpy as np
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Optional
 from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
 from core.utils.text_utils import space_removal, validate_text
-from core.utils.image_utils import elevate_dims
+from core.utils.image_utils import elevate_dims, make_contiguous
 from services.output_service import save_raw_json
 
 logger = logging.getLogger(__name__)
@@ -74,40 +73,24 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         if self.engine is None:
             return {}
         try:
-            if not polygons:
-                return {}
-            # polygons_list = [polygon for polygon in polygons.values() if polygon.cropped_img.cropped_img is not None]
-
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img.cropped_img is not None]
-            img_list = [p.cropped_img.cropped_img for p in polygons.values() if p.cropped_img.cropped_img is not None]
-            logger.info(f"Coherencia: {len(polygon_ids) == len(img_list)}")
+            img_list = [make_contiguous(p.cropped_img.cropped_img) for p in polygons.values() if p.cropped_img.cropped_img is not None]
             image_list = elevate_dims(img_list)
             
-            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
+            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
             manager.delete_cropped_images()
-
-            # logger.info(f"BATCH RESULT OCR TYPO:{type(batch_result)}"
-            #             "\n"f"Resultado 0: {batch_result}")
             
             raw_map: Dict[str, Dict[str, Any]] = {}
-            # confidence_list: List[Tuple[str, float]] = []
-            for idx, (text, _) in enumerate(batch_result):
-                # confidence_list.append((text, confid))
-                clean_text = space_removal(text)
-                if validate_text(clean_text):
-                    raw_map[polygon_ids[idx]] = {
-                        "text": clean_text,
-                    }
-                else:
-                    logger.debug(f"Texto filtrado: '{text}'")
+
+            for idx, (text, confidence) in enumerate(batch_result[0]):
+                if not text or not validate_text(text):
+                    continue
+                
+                if confidence < self.min_confidence:
                     continue
 
-            # Ordenar por confianza de mayor a menor
-            # confidence_list_sorted = sorted(confidence_list, key=lambda x: x[1], reverse=False)
-            # logger.info("Confianzas ordenadas (mayor a menor): "
-            #             "\n"f"{confidence_list_sorted[:7]}")
-
-            logger.info(f"Tiempo en OCR: {time.perf_counter() - time0:.6f}'s")
+                raw_map[polygon_ids[idx]] = {"text": text}
+            # logger.info(f"Cantiadad de Textp detectadp: {raw_map}")
             return raw_map
             
         except TypeError as e:

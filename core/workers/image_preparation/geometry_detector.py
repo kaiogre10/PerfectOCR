@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 from core.domain.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import binarice_img, normalice_image, cropp_img
+from core.utils.image_utils import binarice_img, normalice_image, cropp_img, make_contiguous
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.kernel_threshold = config["morph_kernel"]
+        worker_config = config.get("geometry_detect", {})
+        self.kernel_threshold = worker_config["morph_kernel"]
+        self.iterations = worker_config.get("iterations")
         self.output = config.get("deleted_polys")
         self.output2 = config.get("opened")
         self._engine = None
@@ -53,17 +55,15 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
 
-            logger.debug("Full_img obtenida con éxito")
             full_img = normalice_image(full_img)
             if full_img is None:
                 logger.critical(f"{worker_name} Error después de normalizar")
                 return False
-            
-            kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (2, 2))
 
             bin_img = binarice_img(full_img, {})
 
-            img=cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=2)
+            kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (self.kernel_threshold[0], self.kernel_threshold[1]))
+            img= make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=self.iterations))
 
             if self.output2:
                 output_paths = context["output_paths"]
@@ -74,19 +74,16 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
             # paddle_time = time.perf_counter()
-            polygons: List[List[float]] = engine.ocr(img=img, det=True, cls=False, rec=False)
+            # polygons = np.array(engine.ocr(img=img, det=True, cls=False, rec=False), np.int16).reshape(-1, 4, 2)
+            polygons = engine.ocr(img=img, det=True, cls=False, rec=False)[0]
             # logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
-
-            if not (polygons and len(polygons) > 0 and polygons[0] is not None): # type: ignore
-                logger.warning("GeometryDetector: No se encontraron polígonos de texto.")
-                return False
             
             final_polygons_list: List[Dict[str, Any]] = []
             
-            for idx, poly_pts in enumerate(polygons[0]):
+            for idx, poly_pts in enumerate(polygons):
                 poly_id = f"poly_{idx:04d}"
                 poly_index = idx
-                coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts]) # type: ignore
+                coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts])
                 bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()])
                 centroid = coords.mean(axis=0)
                     
@@ -114,7 +111,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             # logger.info(f"Polígonos inciales: {len(polygons[0])}, finales: {len(final_polygons)}, descartados {len(discarted_polys)}: {discarted_polys}")
 
             if not manager.create_polygon_dicts(final_polygons):
-                logger.error("GeometryDetector: Fallo al estructurar polígonos.")
+                logger.critical("GeometryDetector: Fallo al estructurar polígonos.")
                 return False
 
             else:
@@ -122,5 +119,5 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return True
         
         except Exception as e:
-            logger.error(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
+            logger.critical(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
         return False
