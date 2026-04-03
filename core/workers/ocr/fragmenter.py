@@ -52,7 +52,7 @@ class Fragmenter(OCRAbstractWorker):
                 semantic_frag = len(sc) > 1 and any(c != 0 for c in sc)
                                     
                 if semantic_frag:
-                    # logger.info(f"Poligono {poly_id}: '{ocr_text} se fragmentará")
+                    logger.debug(f"Poligono {poly_id}: '{ocr_text} se fragmentará")
                     fragments = self.fragment_by_semantic_classification(polygon)
                 else:
                     fragments = [polygon]

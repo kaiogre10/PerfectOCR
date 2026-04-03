@@ -92,7 +92,7 @@ class TextCorrector(OCRAbstractWorker):
             if corrected_token and validate_unique_chars(corrected_token):
                 corrected_tokens.append(corrected_token)
 
-        return space_removal(' '.join(corrected_tokens))
+        return ' '.join(corrected_tokens)
     
     def _correct_token(self, token: str, semantic_clasification: int) -> str:
         """Aplica correcciones a un único token basado en su clasificación semántica."""

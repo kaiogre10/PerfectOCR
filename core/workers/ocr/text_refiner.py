@@ -24,7 +24,7 @@ class Refiner(OCRAbstractWorker):
         self.output = config.get("cleanned_text")
         self.cleaner = cleaner
         self.fragmenter = fragmenter
-        self.corrector = corrector
+        # self.corrector = corrector
 
     def _log_worker_time(self, pass_num: int, worker_name: str, start_time: float, stage_name: str = "") -> None:
         elapsed = time.perf_counter() - start_time
@@ -77,12 +77,12 @@ class Refiner(OCRAbstractWorker):
                     self.classify_strings(manager)
                     self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo limpiados)")
                     
-                    if self.corrector:
-                        corrector_name = self.corrector.__class__.__name__
-                        logger.debug(f"Bucle #{pass_num}: Corrección textual")
-                        step_t0 = time.perf_counter()
-                        self.corrector.transcribe(context, manager)
-                        self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
+                    # if self.corrector:
+                    #     corrector_name = self.corrector.__class__.__name__
+                    #     logger.debug(f"Bucle #{pass_num}: Corrección textual")
+                    #     step_t0 = time.perf_counter()
+                    #     self.corrector.transcribe(context, manager)
+                        # self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
 
                     logger.debug(f"Bucle #{pass_num} | Tiempo total iteración: {time.perf_counter() - pass_t0:.6f}s")
 
@@ -111,7 +111,7 @@ class Refiner(OCRAbstractWorker):
                     }
                 save_raw_json( output_paths, worker_name, results, file_name)
 
-            logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s para '{file_name}'")
+            # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s para '{file_name}'")
             return True
 
         except Exception as e:
