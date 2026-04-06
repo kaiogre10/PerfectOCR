@@ -6,7 +6,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import space_removal, validate_text
+from core.utils.text_utils import validate_text
 from core.utils.image_utils import elevate_dims, make_contiguous
 from services.output_service import save_raw_json
 
@@ -86,7 +86,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 if not text or not validate_text(text):
                     continue
                 
-                if confidence < self.min_confidence:
+                elif confidence < self.min_confidence:
                     continue
 
                 raw_map[polygon_ids[idx]] = {"text": text}

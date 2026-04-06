@@ -12,19 +12,25 @@ class ConfigService:
     def __init__(self, config_path: str, TEST_MODE: bool, output_paths: List[str]):
         validated_config = self._load_and_validate_yaml(config_path)
         self.config = validated_config.model_dump()
-        elemental_params = "image_loader" in self.create_stager[0][1]
-        self.det = "geometry_detector"
-        self.ocr_workers = {self.det, "polygon_extractor", "paddle_wrapper"}
-        # self.min_workers: Set[str] = self.ocr_workers.union(elemental_worker) #"lineal", "vectorizer", "cos_sim", "table_structurer"
+        elemental_worker: Set[str] = {"image_loader"}
+        elemental_params = elemental_worker.issubset(self.create_stager[0][1])
+        self.det = {"geometry_detector"}
+        self.ocr_workers: Set[str] = {"polygon_extractor", "paddle_wrapper"}
+        self.ocr_workers.update(self.det)
+        self.min_workers: Set[str] = self.ocr_workers.union(elemental_worker) #"lineal", "vectorizer", "cos_sim", "table_structurer"
         self.no_modules = (elemental_params is False) and (TEST_MODE is True)
         self.enable_outputs = True if output_paths else False
         
-        if not elemental_params and not TEST_MODE:
+        if not TEST_MODE and not elemental_params:
             logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
             self.config = {}
 
+        elif TEST_MODE and not elemental_params:
+            logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. '{self.log_active_areas()}'")
+            self.config = self.config
+            
         elif TEST_MODE:
-            logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. Stages activas: '{self.log_active_areas()}'")
+            logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. Modulos '{self.log_active_areas()}'")
             self.config = self.config
 
         elif not self.no_modules and self._validate_min_workers():
@@ -83,9 +89,10 @@ class ConfigService:
             logger.debug("Sin all workers")
             return {}
 
-        full_ocr = self.ocr_workers.union({"data_finder"})
+        finder: Set[str] = {"data_finder"}
+        full_ocr = self.ocr_workers.union(finder)
 
-        if self.det not in self.all_workers:
+        if not self.det.issubset(self.all_workers):
             logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
             return {}
 
@@ -137,7 +144,7 @@ class ConfigService:
        
     @cached_property
     def preprocessing_config(self)-> Dict[str, Any]:
-        if not self.create_stager[1][1]:
+        if self.no_modules or not self.create_stager[1][1]:
             return {}
         else:
             return {
@@ -149,7 +156,7 @@ class ConfigService:
 
     @cached_property
     def ocr_config(self) -> Dict[str, Any]:
-        if not self.create_stager[2][1] or not self.ocr_workers.issubset(self.all_workers):
+        if self.no_modules or not self.create_stager[2][1] or not self.ocr_workers.issubset(self.all_workers):
             return {}
         else:
             create_refiners = self.modules_config.get("ocr", {}).get("text_refiner", {}).get("num_passes", 0)
@@ -164,7 +171,7 @@ class ConfigService:
     @cached_property
     def vectorization_config(self) -> Dict[str, Any]:
         vect_stage = self.create_stager[3][1]
-        if not vect_stage or not "lineal" in vect_stage or not self.ocr_workers.issubset(self.all_workers):
+        if self.no_modules or not vect_stage or not "lineal" in vect_stage or not self.ocr_workers.issubset(self.all_workers):
             return {}
         else:
             return {
@@ -187,25 +194,14 @@ class ConfigService:
     def _validate_min_workers(self) -> bool:
         try:
             if not self.workers_order:
-                logger.error("No hay configuración de workers disponible")
+                logger.critical("No hay configuración de workers disponible")
                 return False
-            # if not self.min_workers.issubset(self.all_workers):
-            #     workers_missing: Set[str] = self.min_workers - self.all_workers
-            #     logger.warning(f"Faltan: {workers_missing} de los '{len(self.min_workers)}' workers mínimos para el pipeline")
-            #     return False
-            # else:
-            for stage, stage_workers in self.workers_order.items():
-                if isinstance(stage_workers, (list, tuple, set)): #type: ignore
-                    count = len(stage_workers)
-                    workers_set = set(w for w in stage_workers if isinstance(w, str)) #type: ignore
-                elif isinstance(stage_workers, str): #type: ignore
-                    count = 1
-                    workers_set = {stage_workers}
-                else:
-                    count = 0
-                    workers_set: Set[str] = set()
-                logger.debug(f"Activos '({count}, {workers_set})' workers para '{stage}'")
-            return True
+            elif self.min_workers.issubset(self.all_workers):
+                return True
+            else:
+                workers_missing: Set[str] = self.min_workers.difference(self.all_workers)
+                logger.critical(f"Faltan: {workers_missing} de los '{len(self.min_workers)}' workers mínimos para el pipeline")
+                return False
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
         return False
@@ -242,4 +238,4 @@ class ConfigService:
             stage = stage.replace("_", " ", 1).title()
             stages_list.append(stage)
             
-        return ", ".join(stages_list)
+        return ", ".join(stages_list) if stages_list else "SOLO BUILDERS"

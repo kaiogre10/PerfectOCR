@@ -18,11 +18,11 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
     - "lineal"
-    - "vectorizer"
+    # - "vectorizer"
     #- "cos_sim"
  #   - "table_structurer"
    # - "math_max"
@@ -80,7 +80,7 @@ models_config:
   
   det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
   rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
-  wf_model_path: "C:/PerfectOCR/data/models/paddle/wf/wf_model.pkl"
+  wf_model_path: "C:/PerfectOCR/data/models/wf/wf_model.pkl"
   set_wf_params: False
   
 modules:
@@ -149,7 +149,7 @@ modules:
       min_confidence: 0.51
       
     text_refiner:
-      num_passes: 2
+      num_passes: 1
       encode_mean: [23.7, 105.7] # Promedio de densidad
       morph_mean: [-0.297, 0.337] # Promedio morfológico
       min_cc_for_frag: 2

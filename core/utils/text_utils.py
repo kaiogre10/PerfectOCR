@@ -198,7 +198,7 @@ def contains_quantitative(text: str) -> bool:
     Recibe un string completo. Escanea el texto y devuelve True 
     si encuentra algún sub-string que sea puramente cuantitativo.
     """
-    if not text:
+    if not text or text.isalpha():
         return False
     
     for match in _token.finditer(text):
@@ -234,6 +234,7 @@ def get_cuants(text: str) -> str:
             result = result[:start] + f" {tok} " + result[end:]
 
     # Limpia los espacios múltiples generados por la inyección
+    logger.info(f"Text: '{text}' -> Cuants: '{result}'")
     return result
 
 def separate_punt(text: str) -> str:
@@ -372,7 +373,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         if not s:
             continue
        
-        s = get_cuants(s)
+        # s = get_cuants(s)
 
         tokens = s.split()
         total_tokens = len(tokens)

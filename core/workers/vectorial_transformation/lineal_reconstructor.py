@@ -143,8 +143,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     else:
                         tabular_line = True
 
-                    joined_text = " ".join(texts)
-                    joined_text = space_removal(joined_text)
+                    joined_text = space_removal(" ".join(texts))
 
                     # Validar el texto antes de crear la entrada
                     if not joined_text:

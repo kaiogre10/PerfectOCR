@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons, Geometry
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import is_acronym
 from core.utils.math_utils import fragment_geometry_horizontal
-from services.output_service import save_croped_image
+# from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,7 @@ class Fragmenter(OCRAbstractWorker):
         
         # Usar split() sin argumentos ayuda a lidiar con cualquier formato de espacios en blanco
         parts = [p for p in text.split(' ') if p]
+        logger.info(f"TEXTO: '{text}' | PARTS: '{parts}'")
         
         # Verificar alineación
         if len(parts) != len(sc):

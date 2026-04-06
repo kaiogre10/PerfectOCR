@@ -7,8 +7,9 @@ from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.fragmenter import Fragmenter
 from services.output_service import save_raw_json
-from core.utils.text_utils import clasify_words
+from core.utils.text_utils import clasify_words, get_cuants
 import logging
+import dataclasses
 import time
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class Refiner(OCRAbstractWorker):
         self.worker_config = config.get("text_refiner", {})
         self.num_passes = self.worker_config.get("num_passes")
         self.output = config.get("cleanned_text")
-        self.cleaner = cleaner
+        # self.cleaner = cleaner
         self.fragmenter = fragmenter
         # self.corrector = corrector
 
@@ -37,6 +38,18 @@ class Refiner(OCRAbstractWorker):
         """
         t0 = time.perf_counter()
         try:
+            if not manager.workflow or not manager.workflow.polygons:
+                logger.warning("Semantic Clasificator no tiene polígonos para procesar")
+                return False
+            polygons: Dict[str, Polygons] = manager.workflow.polygons
+            updated_polygons: Dict[str, Polygons] = {}
+            for poly, poly_data in polygons.items():
+                qtext = get_cuants(poly_data.ocr_text or "")
+                if not qtext:
+                    continue
+                updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
+
+            polygons = updated_polygons
             if 0 >= self.num_passes:
                 step_t0 = time.perf_counter()
                 self.classify_strings(manager)
@@ -65,12 +78,12 @@ class Refiner(OCRAbstractWorker):
                     self.classify_strings(manager)
                     self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo fragmentados)")
 
-                    if self.cleaner:
-                        cleaner_name = self.cleaner.__class__.__name__
-                        logger.debug(f"Bucle #{pass_num}: Limpieza de Texto")
-                        step_t0 = time.perf_counter()
-                        self.cleaner.transcribe(context, manager)
-                        self._log_worker_time(pass_num, cleaner_name, step_t0, "Limpieza de Texto")
+                    # if self.cleaner:
+                    #     cleaner_name = self.cleaner.__class__.__name__
+                    #     logger.debug(f"Bucle #{pass_num}: Limpieza de Texto")
+                    #     step_t0 = time.perf_counter()
+                    #     self.cleaner.transcribe(context, manager)
+                        # self._log_worker_time(pass_num, cleaner_name, step_t0, "Limpieza de Texto")
                     
                     logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
                     step_t0 = time.perf_counter()
@@ -82,7 +95,7 @@ class Refiner(OCRAbstractWorker):
                     #     logger.debug(f"Bucle #{pass_num}: Corrección textual")
                     #     step_t0 = time.perf_counter()
                     #     self.corrector.transcribe(context, manager)
-                        # self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
+                    #     self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
 
                     logger.debug(f"Bucle #{pass_num} | Tiempo total iteración: {time.perf_counter() - pass_t0:.6f}s")
 
@@ -94,7 +107,7 @@ class Refiner(OCRAbstractWorker):
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
                 if poly_data.semantic_clasification:
-                    logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
             file_name: str = manager.workflow.metadata.image_name  # type: ignore
             if self.output:
@@ -130,7 +143,7 @@ class Refiner(OCRAbstractWorker):
             if not polygons_to_classify:
                 logger.warning("No hay polígonos que clasificar")
                 return True
-
+                                        
             # Clasificar solo los polígonos seleccionados
             # t0 = time.perf_counter()
             final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify, self.worker_config)
