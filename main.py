@@ -54,7 +54,7 @@ DEFAULT_INPUT_PATH = [
 ]
 
 CONSOLE_LEVEL = "INFO"
-FILE_LEVEL = "DEBUG"
+FILE_LEVEL = "INFO"
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 FILE_FORMAT = "%(module)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%H:%M" #"%Y-%m-%d %H:%M:%S"

@@ -28,6 +28,7 @@ _termination_pattern: Pattern[str] = re.compile(r'(?i)(s|c|r)?i0n\b', re.IGNOREC
 _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv|no)(?:[:;,.])?$', re.IGNORECASE)
 
 # Datos Globales
+_numeric_code: Pattern[str] = re.compile(r'^[0O]\d+$')
 _phone_number: Pattern[str] = re.compile(r'^\d{10}$')
 _mail_pattern: Pattern[str] = re.compile(r'^(?:.*@.*|.*mail*|.*\.com)$')
 _cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$')
@@ -143,26 +144,12 @@ def termination_detect(text: str) -> bool:
         return bool(_termination_pattern.search(text))
 
 def is_code(s: str) -> bool:
-    if not s:
-        return False
-    elif not any(c.isalpha() for c in s):
+    if not any(c.isalpha() for c in s):
         return False
     elif s.isalpha():
         return False
-    elif s.startswith("0") and not contains_quantitative(s):
+    elif _numeric_code.search(s) and not contains_quantitative(s):
         logger.info(f"Código comienza n 0")
-        return True
-         
-    elif all(c.isupper() for c in s if c.isalpha()):
-        if s.endswith("0"):
-            correct: str = s.replace("0", "").strip()
-            if correct.isalpha():
-                #logger.info(f"No codigo: {s}")
-                return False
-            elif correct.isdecimal():
-                return False
-            else:
-                return True
         return True
     else:
         return bool(_code_patterns.search(s))
@@ -384,6 +371,8 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         s = s.strip()
         if not s:
             continue
+       
+        s = get_cuants(s)
 
         tokens = s.split()
         total_tokens = len(tokens)

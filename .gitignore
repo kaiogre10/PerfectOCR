@@ -10,7 +10,7 @@
 *.xml
 *.iml
 *.cursorignore
-# *.pkl
+#*.pkl
 
 # Ignorar carpetas
 .__pycache__/

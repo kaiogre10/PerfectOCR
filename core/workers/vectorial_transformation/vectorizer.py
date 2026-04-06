@@ -81,8 +81,6 @@ class Vectorizer(VectorizationAbstractWorker):
         """
         try:
             t0 = time.perf_counter()
-
-            # t2 = time.perf_counter()
             geoline_features: np.ndarray[Any, Any] = self._calculate_geometric_line_features(sorted_lines)
             # logger.debug(f"Features geometricas calculadas en {time.perf_counter() - t2:.7f}s")
             # logger.debug(f"Features geometricas: {geoline_features}")
@@ -111,7 +109,7 @@ class Vectorizer(VectorizationAbstractWorker):
             # 5. Agregar features textuales
             all_lines_features = np.ascontiguousarray(np.column_stack([all_features, textual_features]))
             # logger.debug(f"{all_lines_features}")
-            logger.info(f"TODAS LAS FEATURES calculadas en {time.perf_counter() - t0:.7f}s")
+            logger.debug(f"TODAS LAS FEATURES calculadas en {time.perf_counter() - t0:.7f}s")
 
             return all_lines_features
 
@@ -123,6 +121,7 @@ class Vectorizer(VectorizationAbstractWorker):
         """
         Devuelve features textuales ajustadas a la lógica de vectorize.py (-1.0/1.0 y conteos correctos).
         """
+        timef = time.perf_counter()
         try:
             polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             index_to_id_map = {p.poly_index: p.polygon_id for p in polygons_dict.values()}
@@ -189,6 +188,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     kf_abs
                     ])
                     
+            logger.info(f"Features textuales; {time.perf_counter() - timef:.6}'s")
             return np.array(textual_features, dtype=np.float32)
         
         except Exception as e:
@@ -196,7 +196,8 @@ class Vectorizer(VectorizationAbstractWorker):
             return np.zeros((len(sorted_lines), 6), dtype=np.float32)
 
     def _calculate_geometric_line_features(self, sorted_lines: List[AllLines]) -> np.ndarray[Any, Any]:
-        line_index = np.array([lid.line_index for lid in sorted_lines], np.int16)
+        timeg = time.perf_counter()
+        line_index = np.array([lid.line_index for lid in sorted_lines], np.int8)
         geometry = [lid.line_geometry for lid in sorted_lines]
         bbox = np.array([geo.line_bbox for geo in geometry], np.float32)
         centroid = np.array([geo.line_centroid for geo in geometry], np.float32)
@@ -209,8 +210,9 @@ class Vectorizer(VectorizationAbstractWorker):
         angle = np.degrees(np.arctan2(height, width))
         slope = (width / height)
 
+        logger.info(f"Features Geométricas calculadas en: {time.perf_counter() - timeg:.6}'s")
         return np.column_stack([
-            line_index.astype(np.int8),     # [0] line_index
+            line_index,     # [0] line_index
             width,          # [1] width
             height,         # [2] height
             area,           # [3] area
@@ -224,6 +226,7 @@ class Vectorizer(VectorizationAbstractWorker):
         ])
             
     def calculate_global_stats(self, geoline_features: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
+        
         MAX_COLS = [1, 3, 4, 5, 6]
         MEDIAN_COLS = [1, 2, 3, 4, 5, 6, 7, 8] 
 
@@ -251,6 +254,7 @@ class Vectorizer(VectorizationAbstractWorker):
         # return global_stats
 
     def calculate_all_features(self, sorted_lines: List[AllLines], geoline_features: np.ndarray[Any, Any], global_stats: np.ndarray[Any, np.dtype[np.float32]], manager: DataFormatter)-> np.ndarray[Any, Any]:
+        timeall = time.perf_counter()
         img_dims: List[int] = manager.workflow.metadata.img_dims if manager.workflow else []
             
         total_width = img_dims[1] or 0.0
@@ -387,7 +391,7 @@ class Vectorizer(VectorizationAbstractWorker):
         line_ind = geoline_features[:, 0]
 
         all_features = np.column_stack([
-            line_ind.astype(np.int32), # [0] Índice de línea
+            line_ind, # [0] Índice de línea
             bbox_height_inv,     # [1] height normalized/inverse median
             bbox_h_dif,          # [2] diferencia de height vs mediana
             bbox_width_inv,      # [3] width normalized/inverse median
@@ -419,6 +423,7 @@ class Vectorizer(VectorizationAbstractWorker):
             align_prev,          # [29] 
             align_next           # [30]
         ])
+        logger.info(f"Todas Las features culculadas en: {time.perf_counter() - timeall:.6}")
         return all_features
                 
     def count_numeric_tokens(self, semantic_clasification: List[int]) -> int:

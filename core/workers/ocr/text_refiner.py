@@ -111,7 +111,7 @@ class Refiner(OCRAbstractWorker):
                     }
                 save_raw_json( output_paths, worker_name, results, file_name)
 
-            # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s para '{file_name}'")
+            logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s para '{file_name}'")
             return True
 
         except Exception as e:
