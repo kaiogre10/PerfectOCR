@@ -7,7 +7,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import space_removal, remove_special_sequences, validate_text, separate_punt
-from core.utils.math_utils import text_encode
+#ore.utils.math_utils import text_encode
 
 logger = logging.getLogger(__name__)
 
@@ -69,17 +69,18 @@ class TextCleaner(OCRAbstractWorker):
                # eliminated_count += 1
             
             fil_text = separate_punt(text_sec)
-            if fil_text:
-                logger.info(f"Poly {poly_id} text: {fil_text}")
+            if fil_text != text_sec:
+               # fil = text_sec.replace(fil_text, "")
+                logger.debug(f"Separación: '{text_sec}' -> '{fil_text}'")
             #     eliminated_count += 1
             #     continue
 
            # cleaned_text = self.process_single_text(text_sec, polygon)
-          #  if cleaned_text:
+            if fil_text:
                 updated_polygon = dataclasses.replace(polygon, ocr_text=fil_text)
                 list_of_final_polygons.append(updated_polygon)
                 
-            if not fil_text:
+            else:
               #  logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
                 eliminated_count += 1
 
@@ -150,5 +151,6 @@ class TextCleaner(OCRAbstractWorker):
         if not token:
             return 100.0
 
-        encoded = text_encode(token, ["frequency"])
-        return float(np.mean(encoded))
+        #encoded = text_encode(token, ["frequency"])
+        #return float 
+        return 100.0

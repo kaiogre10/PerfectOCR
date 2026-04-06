@@ -66,6 +66,7 @@ _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.I
 # Define los patrones como strings
 digit_pattern = r"[0-9oO]"
 currency_pattern = r"[$]"
+_currency_stick_pattern: Pattern[str] = re.compile(r'([a-zA-Z])([\$])')
 
 # Compila los patrones base
 currency = re.compile(currency_pattern)
@@ -234,13 +235,16 @@ def get_cuants(text: str) -> str:
             result = result[:start] + f" {tok} " + result[end:]
 
     # Limpia los espacios múltiples generados por la inyección
-    # logger.info(f"Text: '{text}' -> Cuants: '{result}'")
+    logger.info(f"Text: '{text}' -> Cuants: '{result}'")
     return result
 
 def separate_punt(text: str) -> str:
     text = text.strip()
     if not text:
         return ""
+    
+    # 1. Separar símbolo de moneda pegado a letras (ej: B$ -> B $)
+    text = _currency_stick_pattern.sub(r'\1 \2', text)
     
     if text.isalnum():
         return text
@@ -266,7 +270,7 @@ def separate_punt(text: str) -> str:
             processed_tokens.append(t)
     
     # Une los tokens procesados y limpia los espacios extra.
-    return " ".join(processed_tokens)
+    return " ".join(processed_tokens).strip()
 
 def normalice_text(text: str) -> str:
     """Normaliza eliminando ruido, no aplica formato o codificación"""
