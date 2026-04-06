@@ -234,7 +234,7 @@ def get_cuants(text: str) -> str:
             result = result[:start] + f" {tok} " + result[end:]
 
     # Limpia los espacios múltiples generados por la inyección
-    logger.info(f"Text: '{text}' -> Cuants: '{result}'")
+    # logger.info(f"Text: '{text}' -> Cuants: '{result}'")
     return result
 
 def separate_punt(text: str) -> str:

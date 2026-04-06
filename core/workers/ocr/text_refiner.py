@@ -85,10 +85,10 @@ class Refiner(OCRAbstractWorker):
                     #     self.cleaner.transcribe(context, manager)
                         # self._log_worker_time(pass_num, cleaner_name, step_t0, "Limpieza de Texto")
                     
-                    logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
-                    step_t0 = time.perf_counter()
-                    self.classify_strings(manager)
-                    self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo limpiados)")
+                    # logger.debug(f"Pasada 3, bucle #{pass_num}: Clasificación Semántica (solo limpiados)")
+                    # step_t0 = time.perf_counter()
+                    # self.classify_strings(manager)
+                    # self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo limpiados)")
                     
                     # if self.corrector:
                     #     corrector_name = self.corrector.__class__.__name__
@@ -104,10 +104,10 @@ class Refiner(OCRAbstractWorker):
                 self.classify_strings(manager)
                 self._log_worker_time(self.num_passes + 1, "SemanticClassifier", step_t0, "Clasificación Semántica final")
 
-            polygons = manager.workflow.polygons if manager.workflow else {}
-            for poly, poly_data in polygons.items():
-                if poly_data.semantic_clasification:
-                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+            # polygons = manager.workflow.polygons if manager.workflow else {}
+            # for poly, poly_data in polygons.items():
+            #     if poly_data.semantic_clasification:
+            #         logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
             file_name: str = manager.workflow.metadata.image_name  # type: ignore
             if self.output:
