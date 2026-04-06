@@ -242,10 +242,13 @@ def separate_punt(text: str) -> str:
     if not text:
         return ""
     
-    elif text.isalnum():
+    if text.isalnum():
         return text
 
-    elif is_acronym(text):
+    if is_acronym(text):
+        return text
+   
+    if is_quantitative(text):
         return text
 
     tokens = text.split()
@@ -286,7 +289,7 @@ def space_removal(text: str) -> str:
     if not text:
         return ""
     
-    if "  " not in text and text == text.strip():
+    if " " not in text and text == text.strip():
         return text
     # Reemplaza cualquier secuencia de espacios (\s+) p%\bor uno solo y limpia bordes
     clean_text = _spaces_pattern.sub(" ", text).strip()
@@ -302,7 +305,7 @@ def remove_special_sequences(text: str) -> str:
     """
     cleaned = _sequence_middle_pattern.sub(' ', text)
     cleaned = _secuence_pattern.sub('', cleaned)
-    return cleaned
+    return cleaned if cleaned else ""
         
 def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> Dict[str, Tuple[List[int], int]]:
     density_thr: Tuple[float, float] = worker_config["encode_mean"]

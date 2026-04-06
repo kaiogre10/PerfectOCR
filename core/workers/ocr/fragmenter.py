@@ -157,5 +157,5 @@ class Fragmenter(OCRAbstractWorker):
             )
             new_polys.append(new_poly)
         
-        logger.info(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
+      #  logger.info(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
         return new_polys

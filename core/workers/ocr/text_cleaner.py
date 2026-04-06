@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import space_removal, remove_special_sequences
+from core.utils.text_utils import space_removal, remove_special_sequences, validate_text, separate_punt
 from core.utils.math_utils import text_encode
 
 logger = logging.getLogger(__name__)
@@ -49,37 +49,38 @@ class TextCleaner(OCRAbstractWorker):
             polygon = polygons_in[poly_id]
 
             text = polygon.ocr_text or ""
-            text = space_removal(text)
+            #text = space_removal(text)
 
-            if not text:
-                logger.debug(f"Eliminado {poly_id} sin texto inicial")
+            if not text or not validate_text(text):
+              ## logger.info(f"Eliminado {poly_id} sin texto valido: {text}")
                 eliminated_count += 1
                 continue
 
-            text_sec = remove_special_sequences(text)
-            if text_sec != text:
-                removed_chars = sorted(set(text) - set(text_sec))
+          #  punt_text = separate_punt(text)
+            txt = space_removal(text)
+
+            text_sec = remove_special_sequences(txt)
+            if text_sec != txt:
+                sec = txt.replace(text_sec, "")
                 logger.debug(
-                    "Secuencia especial eliminada: '%s' in %s",
-                    "".join(removed_chars),
-                    polygon.polygon_id if polygon else ""
-                )
-                eliminated_count += 1
-                continue
+                    f"Secuencia especial eliminada: '{sec}'"
+                    "\n"f"'{txt}' -> '{text_sec}'")
+
+               # eliminated_count += 1
             
-            # fil_text = self.filter_low_prob_tokens(text_sec, polygon)
-            # if not validate_text(fil_text):
-            #     # logger.info(f"Eliminado {poly_id} sin texto después de filtrado de probabilidad")
+            fil_text = separate_punt(text_sec)
+            if fil_text:
+                logger.info(f"Poly {poly_id} text: {fil_text}")
             #     eliminated_count += 1
             #     continue
 
-            cleaned_text = self.process_single_text(text_sec, polygon)
-            if cleaned_text:
-                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
+           # cleaned_text = self.process_single_text(text_sec, polygon)
+          #  if cleaned_text:
+                updated_polygon = dataclasses.replace(polygon, ocr_text=fil_text)
                 list_of_final_polygons.append(updated_polygon)
                 
-            else:
-                # logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
+            if not fil_text:
+              #  logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
                 eliminated_count += 1
 
         # 4. Reconstrucción y reindexación final
