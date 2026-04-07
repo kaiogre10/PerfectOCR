@@ -197,7 +197,7 @@ class Vectorizer(VectorizationAbstractWorker):
 
     def _calculate_geometric_line_features(self, sorted_lines: List[AllLines]) -> np.ndarray[Any, Any]:
         timeg = time.perf_counter()
-        line_index = np.array([lid.line_index for lid in sorted_lines], np.int8)
+        line_index = np.array([lid.line_index for lid in sorted_lines], np.int16)
         geometry = [lid.line_geometry for lid in sorted_lines]
         bbox = np.array([geo.line_bbox for geo in geometry], np.float32)
         centroid = np.array([geo.line_centroid for geo in geometry], np.float32)
@@ -428,5 +428,5 @@ class Vectorizer(VectorizationAbstractWorker):
                 
     def count_numeric_tokens(self, semantic_clasification: List[int]) -> int:
         sc = np.asarray(semantic_clasification, dtype=np.int8)
-        mask = (sc > 0) & (sc < 3) | (sc == -2) # cuenta 1 y 2
+        mask = (sc == 2) | (sc == -2)
         return int(np.count_nonzero(mask))

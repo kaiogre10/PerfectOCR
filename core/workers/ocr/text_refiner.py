@@ -41,9 +41,9 @@ class Refiner(OCRAbstractWorker):
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para procesar")
                 return False
-            polygons: Dict[str, Polygons] = manager.workflow.polygons
+            polygons_to_up: Dict[str, Polygons] = manager.workflow.polygons
             updated_polygons: Dict[str, Polygons] = {}
-            for poly, poly_data in polygons.items():
+            for poly, poly_data in polygons_to_up.items():
                 qtext = get_cuants(poly_data.ocr_text or "")
                 updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
 
@@ -101,10 +101,10 @@ class Refiner(OCRAbstractWorker):
                 self.classify_strings(manager)
                 self._log_worker_time(self.num_passes + 1, "SemanticClassifier", step_t0, "Clasificación Semántica final")
 
-            polygons = manager.workflow.polygons if manager.workflow else {}
-            for poly, poly_data in polygons.items():
-                if 2 in poly_data.semantic_clasification:
-                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+            # polygons = manager.workflow.polygons if manager.workflow else {}
+            # for poly, poly_data in polygons.items():
+            #     if poly_data.semantic_clasification:
+            #         logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
             file_name: str = manager.workflow.metadata.image_name  # type: ignore
             if self.output:

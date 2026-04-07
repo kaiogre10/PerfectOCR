@@ -1,13 +1,13 @@
 # core/workers/vectorial_transformation/geometric_table_structurer.py
 import logging
 import time
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, cast
 import pandas as pd #type: ignore
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
 from core.utils.math_utils import alignment, euclidean_distance
-from services.output_service import save_debug_table
+# from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
 
@@ -78,12 +78,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # Pasar target_columns a la función de extracción
                 header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons, H)
 
-                # 3. Seleccionar filas S para procesamiento
-                selected_lines = self._select_table_rows(header_line_id, tabular_line_ids, all_lines)
+                # 3. Seleccionar filas tabulares para procesamiento
+                selected_lines = self._select_table_rows(tabular_line_ids, all_lines)
                 
                 # 4. Aplicar algoritmo geométrico de asignación a celdas
                 table_matrix = self._apply_geometric_assignment(selected_lines, all_lines, polygons, header_centroids, H)
-                logger.info(f"Tabla matrix generada con {table_matrix} filas")
+                # logger.info(f"Tabla matrix generada con {table_matrix} filas")
 
                 # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
                 context["table_matrix"] = table_matrix
@@ -95,24 +95,26 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if table_matrix:
                     logger.debug(f"Estructuración de tabla completada en {total_time:.10f}s")
 
-                    if self.output:
-                        all_lines = manager.workflow.all_lines if manager.workflow else {}
-                        polygons = manager.workflow.polygons if manager.workflow else {}
-                        df = self._create_structured_dataframe(table_matrix, H)
+                    # if self.output:
+                    all_lines = manager.workflow.all_lines if manager.workflow else {}
+                    polygons = manager.workflow.polygons if manager.workflow else {}
+                    df = self._create_structured_dataframe(table_matrix, H)
+                    logger.info("Tabla geometrical:\n" + df.to_string(index=False))
 
-                        header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
-                        header_line_id = header_line_ids[0] if header_line_ids else None
 
-                        header_polygons = []
-                        if header_line_id and header_line_id in all_lines:
-                            line_obj = all_lines[header_line_id]
-                            polygon_ids = getattr(line_obj, "polygon_ids", [])
-                            header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
+                        # header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
+                        # header_line_id = header_line_ids[0] if header_line_ids else None
 
-                        file_name: str = manager.workflow.metadata.image_name # type: ignore
-                        worker_name = context.get("worker_name") or "geometrical_structurer"
-                        output_paths = context["output_paths"]
-                        save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
+                        # header_polygons = []
+                        # if header_line_id and header_line_id in all_lines:
+                        #     line_obj = all_lines[header_line_id]
+                        #     polygon_ids = getattr(line_obj, "polygon_ids", [])
+                        #     header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
+
+                        # file_name: str = manager.workflow.metadata.image_name # type: ignore
+                        # worker_name = context.get("worker_name") or "geometrical_structurer"
+                        # output_paths = context["output_paths"]
+                        # save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
 
                     logger.debug("Table matrix publicada en contexto éxitosamente")
                     return True
@@ -187,21 +189,15 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error extrayendo encabezado: {e}", exc_info=True)
             return []
 
-    def _select_table_rows(self, header_line_id: str, tabular_line_ids: List[str], all_lines: Dict[str, AllLines]) -> List[str]:
+    def _select_table_rows(self, tabular_line_ids: List[str], all_lines: Dict[str, AllLines]) -> List[str]:
         """
-        Selecciona filas S_k del conjunto P  H* para procesamiento tabular.
+        Selecciona solo filas marcadas como tabulares, preservando el orden de lectura.
         """
         try:
             all_line_ids = list(all_lines.keys())
-            line_order = {lid: idx for idx, lid in enumerate(all_line_ids)}
-            
-            if header_line_id in line_order and tabular_line_ids:
-                header_idx = line_order[header_line_id]
-                last_tabular_idx = max([line_order[lid] for lid in tabular_line_ids if lid in line_order])
-                selected_lines = all_line_ids[header_idx + 1:last_tabular_idx + 1]
-            else:
-                selected_lines = tabular_line_ids
-                
+            tabular_set = set(tabular_line_ids)
+            selected_lines = [line_id for line_id in all_line_ids if line_id in tabular_set]
+
             return selected_lines
         
         except Exception as e:
@@ -221,7 +217,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
                 # Extraer elementos P_i de la fila S_k usando data classes
                 row_elements = self._extract_row_elements(line_obj, polygons)
-                logger.info(f"Row elements: {row_elements}")
                 L_k = len(row_elements)  # Cardinalidad |S_k|
                 
                 # Inicializar fila de celdas vacías
@@ -230,14 +225,20 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if L_k == 0:
                     table_matrix.append(self._finalize_row_cells(row_cells, H))
                     continue
+
+                # CASO 0: L_k == H (Mismo número de polígonos que columnas)
+                if L_k == H:
+                    row_cells = self._case_exact_assignment(row_elements, H)
+                    table_matrix.append(self._finalize_row_cells(row_cells, H))
+                    continue
                 
-                # CASO A: L_k ≥ H (Más palabras que columnas)
-                if L_k >= H:
+                # CASO A: L_k > H (Más palabras que columnas)
+                if L_k > H:
                     # logger.info(f"Asignación A para {line_id}, elementos {L_k}")
                     row_cells = self._case_a_assignment(row_elements, H, L_k)
                 
                 # CASO B: L_k < H (Menos palabras que columnas)
-                if L_k < H:
+                else:
                     # logger.info(f"Asignación B para {line_id}, elementos: {L_k}")
                     row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids)
                 
@@ -272,9 +273,27 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         "polygon_ids": line_obj.polygon_ids, 
                     }
                     row_elements.append(element)
+
+                    # Orden estable izquierda->derecha para soportar asignación secuencial.
+                    row_elements.sort(key=lambda element: float(element.get("cx", 0.0)))
                     
             return row_elements
         
+        except Exception as e:
+            logger.error(f"Error en geometric: {e}", exc_info=True)
+            return []
+
+    def _case_exact_assignment(self, row_elements: List[Dict[str, Any]], H: int) -> List[Dict[str, Any]]:
+        """
+        CASO 0: L_k == H - Asignación secuencial 1 a 1 por orden horizontal.
+        """
+        try:
+            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+            for col_idx, element in enumerate(row_elements[:H]):
+                row_cells[col_idx]['words'] = [element]
+
+            return row_cells
+
         except Exception as e:
             logger.error(f"Error en geometric: {e}", exc_info=True)
             return []
@@ -432,8 +451,11 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
                 semantic_value = elem.get('semantic_clasification', [])
                 if isinstance(semantic_value, list):
-                    for value in semantic_value:
+                    semantic_list = cast(List[Any], semantic_value)
+                    for value in semantic_list:
                         if value is None:
+                            continue
+                        if not isinstance(value, (int, float, str)):
                             continue
                         try:
                             semantic_values.append(int(value))

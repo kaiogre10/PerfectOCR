@@ -129,7 +129,7 @@ class DataFinder(OCRAbstractWorker):
 
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
-              #  logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
+                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:

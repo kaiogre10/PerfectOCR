@@ -70,7 +70,7 @@ class TextCleaner(OCRAbstractWorker):
             
             fil_text = separate_punt(text_sec)
           #  if fil_text != text_sec:
-               # fil = text_sec.replace(fil_text, "")
+    
              #   logger.debug(f"Separación: '{text_sec}' -> '{fil_text}'")
             #     eliminated_count += 1
             #     continue

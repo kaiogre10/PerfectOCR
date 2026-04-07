@@ -6,20 +6,20 @@ from core.utils.data_utils import CHAR_NUM, ALONE_CHARS, VALID_NUM_PUNT_CHARS
 
 logger = logging.getLogger(__name__)
 
-_base_zeros_pattern: Pattern[str] = re.compile(r'^[0O]{2}$')
-_base_date_num_str = r'[0123O][0-9O]' # Bloque base para días/meses (máx 3X o OX)
-_base_date_num: Pattern[str] = re.compile(rf'^{_base_date_num_str}$')
+# _base_zeros_pattern: Pattern[str] = re.compile(r'^[0O]{2}$')
+_base_date_num_str = re.compile(r'[0123O][0-9O]', re.IGNORECASE) # Bloque base para días/meses (máx 3X o OX)
+# _base_date_num: Pattern[str] = re.compile(rf'^{_base_date_num_str}$')
 
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, ,)
-_secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s$]{2,}')
-_sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0-9\s$]{2,}(?=[a-zA-Z0-9$])')
+_secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s$]{2,}', re.IGNORECASE)
+_sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0-9\s$]{2,}(?=[a-zA-Z0-9$])', re.IGNORECASE)
 
 # _numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
-_hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b')
-_punt_split_pattern: Pattern[str] = re.compile(r'[=.;:!?-]', re.IGNORECASE)
+_hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
+_punt_split_pattern: Pattern[str] = re.compile(r'[=.,:;-]', re.IGNORECASE)
 
 # Espacios múltiples
-_spaces_pattern: Pattern[str] = re.compile(r'\s+')
+_spaces_pattern: Pattern[str] = re.compile(r'\s+', re.IGNORECASE)
 
 # Terminación
 _termination_pattern: Pattern[str] = re.compile(r'(?i)(s|c|r)?i0n\b', re.IGNORECASE)
@@ -28,48 +28,55 @@ _termination_pattern: Pattern[str] = re.compile(r'(?i)(s|c|r)?i0n\b', re.IGNOREC
 _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv|no)(?:[:;,.])?$', re.IGNORECASE)
 
 # Datos Globales
-_numeric_code: Pattern[str] = re.compile(r'^[0O]\d+$')
+_numeric_code: Pattern[str] = re.compile(r'^[0O]\d+$', re.IGNORECASE)
 _phone_number: Pattern[str] = re.compile(r'^\d{10}$')
-_mail_pattern: Pattern[str] = re.compile(r'^(?:.*@.*|.*mail*|.*\.com)$')
-_cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$')
+_mail_pattern: Pattern[str] = re.compile(r'.*@.+', re.IGNORECASE)
+_cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$', re.IGNORECASE)
 
 _code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_phone_number, _mail_pattern, _cp_pattern]), re.IGNORECASE)
 
 # Fecha
 _date_patterns_list: List[Pattern[str]] = [
     # Fechas completas y día/mes: Usa el bloque base para evitar confundirse con fracciones/cuantitativos
-    re.compile(rf'\b{_base_date_num_str}[\s\/\-]{_base_date_num_str}(?:[\s\/\-](?:\d{{2,4}}))?\b'),
+    re.compile(rf'\b{_base_date_num_str}[\s\/\-]{_base_date_num_str}(?:[\s\/\-](?:\d{{2,4}}))?\b', re.IGNORECASE),
     # Meses (palabras)
-    re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b'),
+    re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b', re.IGNORECASE),
     # Años
-    re.compile(r'\b(199\d|20\d{2})\b'),
+    re.compile(r'\b(199\d|20\d{2})\b', re.IGNORECASE),
 ]
+
+_mass_pattern = re.compile(r'\b(kg?|g(r)?(s)?|mg|lb(s)?|oz|ton)\b', re.IGNORECASE)
+_vol_pattern = re.compile(r'\b(l(t(r)?(s)?)?|ltrs?|lts?|ml|cc|gal)\b', re.IGNORECASE)
+_len_pattern = re.compile(r'\b(m(t(s)?)?|cm|mm|km|in|ft)\b', re.IGNORECASE)
 
 _umd_patterns_list: List[Pattern[str]] = [
     # Masas: kg, g, mg, lb, oz, ton. Incluye variaciones de OCR como kgr.
-    re.compile(r'\b\d*([.,]\d+)?\s*(kg?|g(r)?(s)?|mg|lb(s)?|oz|ton)\b'),
+    re.compile(rf'\b\d*([.,]\d+)?\s*{_mass_pattern}\b', re.IGNORECASE),
     # Volúmenes: l, ml, cc, gal. Incluye variaciones como lt, ltr.
-    re.compile(r'\b\d*([.,]\d+)?\s*(l(t(r)?(s)?)?|ltrs?|lts?|ml|cc|gal)\b'),
+    re.compile(rf'\b\d*([.,]\d+)?\s*{_vol_pattern}\b', re.IGNORECASE),
     # Cantidad: C/ o C/ con número.
-    re.compile(r'\b[Cc]\s*/\s*\d*\b'),
+    re.compile(r'\b[Cc]\s*/\s*\d*\b', re.IGNORECASE),
     # Longitudes y Áreas: m, cm, mm, km, in, ft, pulg. Detecta la unidad sola o con número. Soporta m2, m^2, m² para áreas.
-    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|pul|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b'),
-    re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b'),
+    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b', re.IGNORECASE),
+    re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b', re.IGNORECASE),
     # Fracciones (1/2 kg, 1/4).
   #  re.compile(r'\b\d+\s*/\s*\d+\b'),
     # Dimensiones (10x20)
-    re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b')
+    re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b', re.IGNORECASE)
 ]
+
+_size_pattern = re.compile(r'\b(gde|med|ch|paq)\b', re.IGNORECASE)
+_mesure_patterns= re.compile("|".join(p.pattern for p in [_size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
 
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
 # Define los patrones como strings
-digit_pattern = r"[0-9oO]"
+digit_pattern = re.compile(r"[0-9oO]", re.IGNORECASE)
 currency_pattern = r"[$]"
-_currency_stick_pattern: Pattern[str] = re.compile(r'([a-zA-Z])([\$])')
+# _currency_stick_pattern: Pattern[str] = re.compile(r'([a-zA-Z])([\$])')
 
 # Compila los patrones base
-currency = re.compile(currency_pattern)
+# currency = re.compile(currency_pattern)
 
 # Usa los strings en las interpolaciones
 _amount_body_pattern = (
@@ -85,32 +92,32 @@ _token_pattern = (
 _token = re.compile(_token_pattern, re.IGNORECASE)
 
 _start_pattern = rf"^{currency_pattern}\s*{_amount_body_pattern}$"
-_start = re.compile(_start_pattern)
+_start = re.compile(_start_pattern, re.IGNORECASE)
 
 _middle_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}\s*{_amount_body_pattern}$"
-_middle = re.compile(_middle_pattern)
+_middle = re.compile(_middle_pattern, re.IGNORECASE)
 
 _multi_pattern = rf"^(?:\s*{currency_pattern}\s*{_amount_body_pattern}\s*){{2,}}$"
-_multi = re.compile(_multi_pattern)
+_multi = re.compile(_multi_pattern, re.IGNORECASE)
 
-_decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
+_decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$", re.IGNORECASE)
 
 _quant_runs_patterns = re.compile("|".join(p.pattern for p in [_start, _middle, _multi, _decimal]), re.IGNORECASE)
 
-_end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
-_end = re.compile(_end_pattern, re.IGNORECASE)
+# _end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
+# _end = re.compile(_end_pattern, re.IGNORECASE)
 
-_digits = re.compile(r"\d+")
-_end_quants = re.compile(r'[.,]00$')
+# _digits = re.compile(r"\d+")
+# _end_quants = re.compile(r'[.,]00$')
 
-_split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
-_split = re.compile(_split_pattern)
+# _split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
+# _split = re.compile(_split_pattern)
 
-RFC_PATTERNS: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$')
+RFC_PATTERNS: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
 # _rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b')
 
 # RFC_PATTERNS = re.compile("|".join(p.pattern for p in [_rfc_code_pattern, _rfc_acronyms]))
-IVA_PATTERN: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b')
+IVA_PATTERN: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
 DATE_PATTENRS = re.compile("|".join(p.pattern for p in _date_patterns_list), re.IGNORECASE)
 valid_chars = ALONE_CHARS
 char_num_point = CHAR_NUM.copy()
@@ -167,9 +174,6 @@ def is_acronym(text: str) -> bool:
 def find_umd(s: str) -> bool:
     try:
         if not s:
-            return False
-        
-        elif len(s) > 11:
             return False
         
         elif not any(c.isalnum() for c in s):
@@ -260,9 +264,6 @@ def separate_punt(text: str) -> str:
     if not text:
         return ""
     
-    # 1. Separar símbolo de moneda pegado a letras (ej: B$ -> B $)
-   # text = _currency_stick_pattern.sub(r'\1 \2', text).strip()
-    
     if text.isalnum():
         return text
 
@@ -275,8 +276,7 @@ def separate_punt(text: str) -> str:
     tokens = text.split()
     processed_tokens: List[str] = []
     for t in tokens:
-        if t.endswith("."):
-            t = t.replace(".", "")
+        t = re.sub(rf'{_punt_split_pattern.pattern}+$', '', t)
         # Si el token actual NO es una hora, sepárale la puntuación.
         if not _hour_pattern.fullmatch(t):
             # Reemplaza los signos de puntuación por un espacio en este token.
@@ -288,19 +288,6 @@ def separate_punt(text: str) -> str:
     
     # Une los tokens procesados y limpia los espacios extra.
     return " ".join(processed_tokens).strip()
-
-def normalice_text(text: str) -> str:
-    """Normaliza eliminando ruido, no aplica formato o codificación"""
-    if not text.strip():
-        return ""
-   
-    elif not contains_quantitative(text):
-        punt_text = separate_punt(text)
-        if not punt_text:
-            return ""
-        return remove_special_sequences(punt_text)
-    else:
-        return space_removal(text)
 
 def space_removal(text: str) -> str:
     """
@@ -338,15 +325,21 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             return (0, 0)
         total_text = len(s)
         if s.isalpha():
-            return (0, 0)
+            if bool(_mesure_patterns.match(s)):
+                return (-2, 0)
+            else:
+                return (0, 0)
     
         elif s.isdecimal():
-            return (1, total_text)
+            if total_text > 1 and s.startswith("0"):
+                return (-1, 0)
+            else:
+                return (1, total_text)
 
         total_cuant = sum(1 for ch in s if ch in CHAR_NUM)
 
         if total_cuant == 0:
-            if find_umd(s):
+            if bool(_mesure_patterns.search(s)):
                 return (-2, 0)
             else:
                 # logger.info(f"DESCRIP. no UMD: '{s}'")
@@ -396,19 +389,17 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         s = s.strip()
         if not s:
             continue
-       
-        # s = get_cuants(s)
 
         tokens = s.split()
         total_tokens = len(tokens)
         if not tokens or total_tokens == 0:
             continue
 
-        elif total_tokens > 1:
-            if "".join(tokens).isalpha():
-                result = [0] * total_tokens
-                final_results[pid] = (result, 0)
-                continue
+        elif total_tokens >= 2:
+            # if "".join(tokens).isalpha():
+            #     result = [0] * total_tokens
+            #     final_results[pid] = (result, 0)
+            #     continue
 
             token_classes: List[int] = []
             poly_total_cuant = 0
@@ -420,34 +411,35 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         
         else:
             if s.isalpha():
-                final_results[pid] = ([0], 0)
-                continue
+                if _mesure_patterns.match(s):
+                    final_results[pid] = ([-2], 0)
+                else:
+                    final_results[pid] = ([0], 0)
 
-            elif s.isdecimal():
-                final_results[pid] = ([1], len(s))
-                continue
+            total_text = len(s)
+            if s.isdecimal():
+                if total_text > 1 and s.startswith("0"):
+                    final_results[pid] = ([-1], total_text)
+                else:
+                    final_results[pid] = ([1], total_text)
 
             elif is_quantitative(s):
-                final_results[pid] = ([2], len(s))
+                final_results[pid] = ([2], total_text)
                 # logger.info(f"CUANT POR SET: '{s}'")
-                continue
 
             elif find_umd(s):
                 #logger.info(f"UMD inicial: '{s}'")
                 c = sum(1 for ch in s if ch in CHAR_NUM)
                 final_results[pid] = ([-2], c)
-                continue
             
             elif is_code(s):
                 #logger.info(f"CODE INICIAL: '{s}")
                 c = sum(1 for ch in s if ch in CHAR_NUM)
                 final_results[pid] = ([-1], c)
-                continue
 
             else:
                 # logger.info(f"Token sin clasificación: '{s}'")
                 t_class, t_cuant = classify_token(s)
                 final_results[pid] = ([t_class], t_cuant)
-                continue
 
     return final_results
