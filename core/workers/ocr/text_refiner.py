@@ -45,11 +45,9 @@ class Refiner(OCRAbstractWorker):
             updated_polygons: Dict[str, Polygons] = {}
             for poly, poly_data in polygons.items():
                 qtext = get_cuants(poly_data.ocr_text or "")
-                if not qtext:
-                    continue
                 updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
 
-            polygons = updated_polygons
+            manager.workflow.polygons = updated_polygons
             if 0 >= self.num_passes:
                 step_t0 = time.perf_counter()
                 self.classify_strings(manager)
@@ -105,8 +103,8 @@ class Refiner(OCRAbstractWorker):
 
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-                if poly_data.semantic_clasification:
-                    logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                if 2 in poly_data.semantic_clasification:
+                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
             file_name: str = manager.workflow.metadata.image_name  # type: ignore
             if self.output:

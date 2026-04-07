@@ -87,7 +87,7 @@ class DataFinder(OCRAbstractWorker):
 
                 if not found_date and self.find_date(ocr_text):
                     skipped_semantic +=1
-                    logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {sc[idx]}")
+                   # logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {sc[idx]}")
                     found_date = True
                     polygon_updates[pid] = 9
                     continue
@@ -95,14 +95,14 @@ class DataFinder(OCRAbstractWorker):
                 elif not found_rfc and self.find_rfc(ocr_text):
                     skipped_semantic +=1
                     found_rfc = True
-                    logger.info(f"RFC encontrado en {pid}, '{ocr_text}'")
+                   # logger.info(f"RFC encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 7
                     continue
 
                 elif not found_iva and self.find_iva(ocr_text):
                     skipped_semantic +=1
                     found_iva = True
-                    logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
+                   # logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
                     polygon_updates[pid] = 8
                     continue
 
@@ -129,7 +129,7 @@ class DataFinder(OCRAbstractWorker):
 
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
-                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
+              #  logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:

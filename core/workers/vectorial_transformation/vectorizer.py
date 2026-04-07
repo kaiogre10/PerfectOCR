@@ -188,7 +188,7 @@ class Vectorizer(VectorizationAbstractWorker):
                     kf_abs
                     ])
                     
-            logger.info(f"Features textuales; {time.perf_counter() - timef:.6}'s")
+         #   logger.info(f"Features textuales; {time.perf_counter() - timef:.6}'s")
             return np.array(textual_features, dtype=np.float32)
         
         except Exception as e:
@@ -423,10 +423,10 @@ class Vectorizer(VectorizationAbstractWorker):
             align_prev,          # [29] 
             align_next           # [30]
         ])
-        logger.info(f"Todas Las features culculadas en: {time.perf_counter() - timeall:.6}")
+      #  logger.info(f"Todas Las features culculadas en: {time.perf_counter() - timeall:.6}")
         return all_features
                 
     def count_numeric_tokens(self, semantic_clasification: List[int]) -> int:
         sc = np.asarray(semantic_clasification, dtype=np.int8)
-        mask = (sc > 1) & (sc < 3) | (sc == -2) # cuenta 1 y 2
+        mask = (sc > 0) & (sc < 3) | (sc == -2) # cuenta 1 y 2
         return int(np.count_nonzero(mask))

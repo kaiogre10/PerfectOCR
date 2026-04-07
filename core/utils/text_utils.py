@@ -16,7 +16,7 @@ _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0
 
 # _numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
 _hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b')
-_punt_split_pattern: Pattern[str] = re.compile(r'[=;:!?]', re.IGNORECASE)
+_punt_split_pattern: Pattern[str] = re.compile(r'[=.;:!?-]', re.IGNORECASE)
 
 # Espacios múltiples
 _spaces_pattern: Pattern[str] = re.compile(r'\s+')
@@ -191,7 +191,7 @@ def is_quantitative(text: str) -> bool:
     if not text:
         return False
     
-    return all(c in char_num_point for c in text) or bool(_quant_runs_patterns.match(text))
+    return bool(all(c in char_num_point for c in text)) or bool(_quant_runs_patterns.fullmatch(text))
 
 def contains_quantitative(text: str) -> bool:
     """
@@ -211,32 +211,49 @@ def contains_quantitative(text: str) -> bool:
 def get_cuants(text: str) -> str:
     """
     3. EXTRACTOR / SEPARADOR:
-    Recibe un string, detecta cuantitativos incrustados en ruido y 
-    los aísla con espacios. Nunca devuelve None.
-    Ej: '879.00$3.67X' -> '879.00 $3.67 X'
+    Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto).
+    Si ya están separados por espacios, no modifica el texto.
     """
     if not text:
         return ""
    
-    elif not contains_quantitative(text):
+    if not contains_quantitative(text):
         return text
+   
+   # if is_quantitative(text):
+       # return text
 
+    # Buscamos todos los tokens cuantitativos
     matches = list(_token.finditer(text))
     if not matches:
         return text
 
     result = text
-    # Se itera en reversa para no alterar los índices al inyectar los espacios
+    # Iteramos en reversa para mantener la validez de los índices (span)
     for m in reversed(matches):
         tok = m.group(0)
-        if is_quantitative(tok):
-            start, end = m.span()
-            # Aísla el cuantitativo inyectando espacios a sus lados
-            result = result[:start] + f" {tok} " + result[end:]
+        start, end = m.span()
+        
+        # Verificamos si necesita espacio a la IZQUIERDA
+        # (Si no es el inicio del string y el carácter anterior NO es un espacio)
+        needs_left_space = start > 0 and not text[start-1].isspace()
+        
+        # Verificamos si necesita espacio a la DERECHA
+        # (Si no es el final del string y el carácter siguiente NO es un espacio)
+        needs_right_space = end < len(text) and not text[end].isspace()
 
-    # Limpia los espacios múltiples generados por la inyección
-    logger.info(f"Text: '{text}' -> Cuants: '{result}'")
-    return result
+        if needs_left_space or needs_right_space:
+            left_part = result[:start]
+            right_part = result[end:]
+            
+            # Construimos el reemplazo con espacios condicionales
+            mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
+            result = left_part + mid + right_part
+
+    # Finalmente normalizamos espacios múltiples si se generaron
+    #final_text = space_removal(result)
+    #logger.info(f"Text: '{text}' -> Cuants: '{result}'")
+    return result.strip()
 
 def separate_punt(text: str) -> str:
     text = text.strip()
@@ -244,7 +261,7 @@ def separate_punt(text: str) -> str:
         return ""
     
     # 1. Separar símbolo de moneda pegado a letras (ej: B$ -> B $)
-    text = _currency_stick_pattern.sub(r'\1 \2', text)
+   # text = _currency_stick_pattern.sub(r'\1 \2', text).strip()
     
     if text.isalnum():
         return text

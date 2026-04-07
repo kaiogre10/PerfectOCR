@@ -28,7 +28,7 @@ class Fragmenter(OCRAbstractWorker):
             
             polygons_in: Dict[str, Polygons] = manager.workflow.polygons
             sorted_poly_ids = sorted(polygons_in.keys())
-            logger.debug(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+           # logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
             
             fragmented_count = 0
             final_polygons: List[Polygons] = []
@@ -72,7 +72,7 @@ class Fragmenter(OCRAbstractWorker):
                 final_polygons_dict[new_id] = final_poly_obj
             manager.workflow.polygons = final_polygons_dict
             if fragmented_count > 0:
-                logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
+               # logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
                 return True
                 
         except Exception as e:
@@ -157,5 +157,5 @@ class Fragmenter(OCRAbstractWorker):
             )
             new_polys.append(new_poly)
         
-      #  logger.info(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
+        #logger.info(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
         return new_polys

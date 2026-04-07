@@ -5,7 +5,7 @@ import time
 from itertools import permutations
 import math
 import numpy as np
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, cast
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from services.output_service import save_debug_table
@@ -29,15 +29,29 @@ class MatrixSolver(VectorizationAbstractWorker):
         try:
             start_time = time.time()
 
-            df = manager.get_structured_table()
-            if df is None or df.empty:
-                logger.error("No hay tabla estructurada para procesar")
+            table_matrix = cast(List[List[Dict[str, Any]]], context.get("table_matrix", []))
+            if not table_matrix:
+                logger.error("No hay table_matrix en contexto para procesar")
+                return False
+
+            table_columns = cast(List[str], context.get("table_columns", []))
+            if not table_columns:
+                inferred_width = len(table_matrix[0]) if table_matrix else 0
+                table_columns = [f"col_{i}" for i in range(inferred_width)]
+
+            df = self._table_matrix_to_dataframe(table_matrix, table_columns)
+            if df.empty:
+                logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
             # Log simple de cómo recibe la tabla (antes de corregir)
-            logger.debug("Tabla recibida para corrección matemática:\n" + df.to_string(index=False))
+            logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=False))
 
-            corrected_df, final_semantic_types = self.solve(df)
+            corrected_df, final_semantic_types = self.solve(df, table_matrix)
+            if df.equals(corrected_df):
+                logger.info("No se corrigió tabla; se conserva versión original")
+                corrected_df = df.copy()
+            
             if self.output:
                 all_lines = manager.workflow.all_lines if manager.workflow else {}
                 polygons = manager.workflow.polygons if manager.workflow else {}
@@ -60,15 +74,17 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=False))
 
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
+            context["table_matrix_corrected"] = corrected_df.fillna("").astype(str).values.tolist()
+            context["table_semantic_types"] = final_semantic_types
 
             total_time = time.time() - start_time
-            logger.debug(f"Corrección matemática completada en {total_time:.6f}s, Se encontraron {len(corrected_df)} filas.")
+            logger.info(f"Corrección matemática completada en {total_time:.6f}s, Se encontraron {len(corrected_df)} filas.")
             return True
         except Exception as e:
             logger.error(f"Error en MatrixSolver.vectorize: {e}", exc_info=True)
             return False
             
-    def solve(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
+    def solve(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]]) -> Tuple[pd.DataFrame, List[str]]:
         """Resuelve inconsistencias directamente sobre un DataFrame.
         - Infiera tipos semánticos básicos por columna.
         - Seleccione C, PU, MTL por axiomas y máxima puntuación.
@@ -77,23 +93,27 @@ class MatrixSolver(VectorizationAbstractWorker):
         """
 
         columns: List[str] = list(df.columns)
-        basic_types = self._infer_semantic_types_basic(df)
-        logger.info(f"BASI TIPES: {basic_types}")
+        
+        # --- NUEVA LÓGICA: Inferencia de tipos basada en fragmentación y contenido ---
+        # Identificamos columnas candidatas a cuantitativas por su contenido dominante
+        basic_types = self._infer_semantic_types_basic(df, table_matrix)
+        logger.info(f"BASI TIPES iniciales: {basic_types}")
+        
         quant_indices_map = [i for i, t in enumerate(basic_types) if t == "cuantitativo"]
-        if len(quant_indices_map) < 3:
-            logger.debug("Menos de 3 columnas cuantitativas; no se aplica corrección.")
+        if len(quant_indices_map) < 2:
+            logger.info("Menos de 2 columnas cuantitativas; no se aplica corrección.")
             return df, basic_types
 
         quant_cols = [columns[i] for i in quant_indices_map]
-        numeric_df = pd.DataFrame({columns: self._to_numeric_series(df[columns]) for columns in quant_cols})
+        numeric_df = pd.DataFrame({col: self._to_numeric_series(df[col]) for col in quant_cols})
 
-        # --- FASE 1: Selección de Hipótesis ---
+        # --- FASE 1: Selección de Hipótesis (Voto Global) ---
         col_indices_in_numeric_matrix = list(range(len(quant_cols)))
         permutations_indices = list(permutations(col_indices_in_numeric_matrix, 3))
         hypothesis_scores = {p: 0.0 for p in permutations_indices}
             
         for _, row in numeric_df.iterrows():
-            row_list: List[float] = [None if (pd.isna(v)) else float(v) for v in row.tolist()]
+            row_list: List[float | None] = [None if (pd.isna(v)) else float(v) for v in row.tolist()]
             
             valid_hypotheses = self._get_valid_hypotheses_for_row(row_list, permutations_indices)
             if len(valid_hypotheses) == 1:
@@ -107,24 +127,25 @@ class MatrixSolver(VectorizationAbstractWorker):
             return df, basic_types
         
         c_idx, pu_idx, mtl_idx = max(hypothesis_scores, key=lambda k: hypothesis_scores[k])
-        c_name = quant_cols[c_idx]
-        pu_name = quant_cols[pu_idx]
-        mtl_name = quant_cols[mtl_idx]
-        logger.info(f"Roles: C='{c_name}', PU='{pu_name}', MTL='{mtl_name}'")
-        # --- FASE 2: Reconstrucción ---
+        
+        # Índices globales de los roles fijos
+        global_c_idx = quant_indices_map[c_idx]
+        global_pu_idx = quant_indices_map[pu_idx]
+        global_mtl_idx = quant_indices_map[mtl_idx]
+        numeric_role_indices = {global_c_idx, global_pu_idx, global_mtl_idx}
+        
+        logger.info(f"Roles Globales: C='{columns[global_c_idx]}', PU='{columns[global_pu_idx]}', MTL='{columns[global_mtl_idx]}'")
+
+        # --- FASE 2: Reconstrucción Numérica ---
         reconstructed: np.ndarray[Any, np.dtype[np.float32]] = numeric_df.to_numpy(dtype=np.float32, copy=True)
-                
         col_medians = {i: np.nanmedian(reconstructed[:, i]) for i in col_indices_in_numeric_matrix}
 
-        rows_with_two_missing = []
         for i in range(reconstructed.shape[0]):
             c, pu, mtl = reconstructed[i, c_idx], reconstructed[i, pu_idx], reconstructed[i, mtl_idx]
             present = [not np.isnan(v) for v in [c, pu, mtl]]
             missing_count = 3 - sum(present)
 
-            if missing_count >= 2:
-                rows_with_two_missing.append(i)
-                continue
+            if missing_count >= 2: continue
 
             try:
                 if np.isnan(mtl) and (not np.isnan(c)) and (not np.isnan(pu)):
@@ -134,101 +155,157 @@ class MatrixSolver(VectorizationAbstractWorker):
                 elif np.isnan(c) and (not np.isnan(mtl)) and (not np.isnan(pu)) and pu != 0:
                     reconstructed[i, c_idx] = mtl / pu
                 else:
-                    # Si no faltan, verificar consistencia y corregir la de mayor desviación
                     c, pu, mtl = reconstructed[i, c_idx], reconstructed[i, pu_idx], reconstructed[i, mtl_idx]
                     if not (np.isnan(c) or np.isnan(pu) or np.isnan(mtl)) and not math.isclose(c * pu, mtl, rel_tol=self.arithmetic_tolerance):
                         dev_c = abs(c - col_medians.get(c_idx, c))
                         dev_pu = abs(pu - col_medians.get(pu_idx, pu))
                         dev_mtl = abs(mtl - col_medians.get(mtl_idx, mtl))
                         max_dev = max(dev_c, dev_pu, dev_mtl)
-                        if max_dev == dev_c and pu != 0:
-                            reconstructed[i, c_idx] = mtl / pu
-                        elif max_dev == dev_pu and c != 0:
-                            reconstructed[i, pu_idx] = mtl / c
-                        else:
-                            reconstructed[i, mtl_idx] = c * pu
-            except ZeroDivisionError:
-                pass
+                        if max_dev == dev_c and pu != 0: reconstructed[i, c_idx] = mtl / pu
+                        elif max_dev == dev_pu and c != 0: reconstructed[i, pu_idx] = mtl / c
+                        else: reconstructed[i, mtl_idx] = c * pu
+            except ZeroDivisionError: pass
 
-        # --- FASE 3: Integración al DF original ---
+        # --- FASE 3: Reasignación de Información (De afuera hacia adentro) ---
         corrected_df = df.copy()
-
-        # Identificar la columna de descripción (candidata: tipo texto y no es rol numérico)
-        global_c_idx = quant_indices_map[c_idx]
-        global_pu_idx = quant_indices_map[pu_idx]
-        global_mtl_idx = quant_indices_map[mtl_idx]
-        numeric_role_indices = {global_c_idx, global_pu_idx, global_mtl_idx}
-        
-        desc_col_idx = -1
-        # Primero buscar explícitamente una columna de tipo "texto"
-        for idx, t in enumerate(basic_types):
-            if idx not in numeric_role_indices and t == "texto":
-                desc_col_idx = idx
-                break
-        
-        # Si no, cualquier columna que no sea rol numérico
+        # Buscamos la columna de descripción (centro/texto)
+        desc_col_idx = next((i for i, t in enumerate(basic_types) if t == "texto"), -1)
         if desc_col_idx == -1:
-             for idx in range(len(columns)):
-                if idx not in numeric_role_indices:
-                    desc_col_idx = idx
-                    break
+            desc_col_idx = next((i for i in range(len(columns)) if i not in numeric_role_indices), -1)
 
-        # Si encontramos una columna de descripción, movemos texto "intruso" de las columnas numéricas
-        if desc_col_idx != -1:
-            desc_col_name = columns[desc_col_idx]
-            for i in range(len(df)):
-                # Verificar cada rol numérico
-                for role_global_idx, role_local_idx in [(global_c_idx, c_idx), (global_pu_idx, pu_idx), (global_mtl_idx, mtl_idx)]:
-                    original_val = df.iloc[i, role_global_idx]
-                    reconstructed_val = reconstructed[i, role_local_idx]
+        for i in range(len(df)):
+            final_vals = {idx: str(df.iloc[i, idx]) if pd.notna(df.iloc[i, idx]) else "" for idx in range(len(columns))}
+            
+            # Recolectamos información extra desplazada hacia el centro (desc_col_idx)
+            left_info = []   # Info de columnas a la izquierda de la descripción
+            right_info = []  # Info de columnas a la derecha de la descripción
+
+            for role_global, local_idx in [(global_c_idx, c_idx), (global_pu_idx, pu_idx), (global_mtl_idx, mtl_idx)]:
+                original_text = final_vals[role_global].strip()
+                validated_val = reconstructed[i, local_idx]
+                
+                if not np.isnan(validated_val):
+                    formatted_val = self._format_num(validated_val)
                     
-                    # Si el original NO es numérico Y tenemos un valor reconstruido válido
-                    if not self._is_numeric_like(original_val) and not np.isnan(reconstructed_val):
-                        # Mover texto a descripción
-                        text_to_move = str(original_val).strip()
-                        if text_to_move and text_to_move.lower() != "nan" and text_to_move.lower() != "none":
-                            current_desc = str(corrected_df.iloc[i, desc_col_idx])
-                            if current_desc.lower() == "nan" or current_desc.lower() == "none":
-                                current_desc = ""
-                            
-                            # Concatenación inteligente: si columna origen está a la izquierda -> prefijo
-                            if role_global_idx < desc_col_idx:
-                                new_desc = (text_to_move + " " + current_desc).strip()
+                    # Extraemos lo que NO es el número validado
+                    if original_text and original_text != formatted_val:
+                        # Limpieza selectiva: solo removemos el número exacto si es idéntico o parte del token
+                        # pero preservamos el resto (UMD, prefijos, etc)
+                        clean_text = original_text.replace(formatted_val, "").strip()
+                        # Backup: si es .00, a veces el OCR lo leyó pegado
+                        if validated_val.is_integer():
+                            clean_text = clean_text.replace(str(int(validated_val)), "").strip()
+                        
+                        if clean_text:
+                            if role_global < desc_col_idx:
+                                left_info.append(clean_text)
                             else:
-                                new_desc = (current_desc + " " + text_to_move).strip()
-                                
-                            corrected_df.iloc[i, desc_col_idx] = new_desc
-                            logger.info(f"Fila {i}: Texto '{text_to_move}' movido de {columns[role_global_idx]} a {desc_col_name}")
+                                right_info.append(clean_text)
+                    
+                    final_vals[role_global] = formatted_val
+                elif original_text:
+                    # Sin validación matemática, movemos todo el contenido al centro para no borrarlo
+                    if role_global < desc_col_idx:
+                        left_info.append(original_text)
+                    else:
+                        right_info.append(original_text)
+                    final_vals[role_global] = ""
 
-        for j, col_name in enumerate(quant_cols):
-            # Formatear como string conservando 2 decimales cuando aplique
-            # Asignar con cuidado para no romper celdas no numéricas originales
-            series_num = pd.Series(reconstructed[:, j], index=corrected_df.index)
-            # Aplicamos el valor reconstruido (incluso si sobrescribe texto original, ya que lo movimos arriba)
-            corrected_df[col_name] = series_num.apply(lambda x: (f"{x:.2f}" if not np.isnan(x) and not float(x).is_integer() else (str(int(round(x))) if not np.isnan(x) else None)))
+            # Ensamblamos la descripción (Afuera -> Adentro)
+            if desc_col_idx != -1:
+                current_desc = final_vals[desc_col_idx]
+                # Orden: [Info de la izquierda] + [Descripción Original] + [Info de la derecha]
+                parts = []
+                if left_info: parts.extend(left_info)
+                if current_desc: parts.append(current_desc)
+                if right_info: parts.extend(right_info)
+                
+                final_vals[desc_col_idx] = " ".join(parts).strip()
 
-            # NOTA: Se eliminó la restauración de valores no numéricos originales (líneas 167-169 antiguas)
-            # para permitir que el valor reconstruido ocupe su lugar tras haber movido el texto.
-
+            for idx in range(len(columns)):
+                corrected_df.iloc[i, idx] = final_vals[idx]
 
         final_semantic_types = basic_types[:]
-        final_semantic_types[quant_indices_map[c_idx]] = "cuantitativo, c"
-        final_semantic_types[quant_indices_map[pu_idx]] = "cuantitativo, pu"
-        final_semantic_types[quant_indices_map[mtl_idx]] = "cuantitativo, mtl"
+        final_semantic_types[global_c_idx] = "cuantitativo, c"
+        final_semantic_types[global_pu_idx] = "cuantitativo, pu"
+        final_semantic_types[global_mtl_idx] = "cuantitativo, mtl"
 
         return corrected_df, final_semantic_types
 
-    def _infer_semantic_types_basic(self, df: pd.DataFrame, numeric_ratio_threshold: float = 0.6) -> List[str]:
+    def _format_num(self, x: float) -> str:
+        """Formatea números para el DataFrame final."""
+        if np.isnan(x): return ""
+        return f"{x:.2f}" if not float(x).is_integer() else str(int(round(x)))
+
+    def _infer_semantic_types_basic(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], numeric_ratio_threshold: float = 0.3) -> List[str]:
+        """Infiere tipos semánticos priorizando semantic_clasification y luego contenido textual."""
         basic_types: List[str] = []
-        for columns in df.columns:
+        for col_idx, columns in enumerate(df.columns):
             series = df[columns]
-            total = len(series)
-            if total == 0:
+            # Filtrar valores vacíos o solo espacios
+            non_empty = [v for v in series if v and str(v).strip() and str(v).strip() not in ['', 'nan', 'NaN', 'None']]
+            semantic_votes = self._collect_column_semantics(table_matrix, col_idx)
+            quantitative_votes = semantic_votes.get(2, 0)
+            text_like_votes = semantic_votes.get(0, 0) + semantic_votes.get(-1, 0) + semantic_votes.get(-2, 0)
+            total_votes = sum(semantic_votes.values())
+
+            if total_votes > 0 and quantitative_votes > text_like_votes:
+                basic_types.append("cuantitativo")
+                continue
+            
+            if len(non_empty) == 0:
                 basic_types.append("texto")
                 continue
-            numeric_like = sum(1 for v in series if self._is_numeric_like(v))
-            basic_types.append("cuantitativo" if (numeric_like / total) >= numeric_ratio_threshold else "texto")
+            
+            # Contar valores numéricos sobre valores NO vacíos
+            numeric_like = sum(1 for v in non_empty if self._is_numeric_like(v))
+            
+            # Detectar patrones monetarios ($ o valores con formato de precio)
+            has_currency_pattern = any('$' in str(v) or '€' in str(v) for v in non_empty)
+            
+            # Si tiene patrón monetario Y al menos 30% son números, es cuantitativo
+            # O si más del 30% de valores NO vacíos son numéricos
+            if has_currency_pattern and numeric_like > 0:
+                basic_types.append("cuantitativo")
+            elif (numeric_like / len(non_empty)) >= numeric_ratio_threshold:
+                basic_types.append("cuantitativo")
+            else:
+                basic_types.append("texto")
         return basic_types
+
+    def _collect_column_semantics(self, table_matrix: List[List[Dict[str, Any]]], col_idx: int) -> Dict[int, int]:
+        votes: Dict[int, int] = {}
+        for row in table_matrix:
+            if col_idx >= len(row):
+                continue
+            cell = row[col_idx]
+            semantic_values = cell.get("semantic_clasification", [])
+            if isinstance(semantic_values, int):
+                semantic_values = [semantic_values]
+
+            if not isinstance(semantic_values, list):
+                continue
+
+            for val in semantic_values:
+                try:
+                    key = int(val)
+                    votes[key] = votes.get(key, 0) + 1
+                except Exception:
+                    continue
+        return votes
+
+    def _table_matrix_to_dataframe(self, table_matrix: List[List[Dict[str, Any]]], columns: List[str]) -> pd.DataFrame:
+        rows: List[List[str]] = []
+        width = len(columns)
+        for row in table_matrix:
+            row_values: List[str] = []
+            for col_idx in range(width):
+                text_val = ""
+                if col_idx < len(row):
+                    text_val = str(row[col_idx].get("text", "") or "")
+                row_values.append(text_val)
+            rows.append(row_values)
+        return pd.DataFrame(rows, columns=columns)
     
     def _to_numeric_series(self, series: pd.Series) -> pd.Series:
         def to_float(v: Any):
@@ -250,7 +327,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         cleaned = float(cleaned)
         return cleaned
     
-    def _get_valid_hypotheses_for_row(self, row_list: List[float], permutations_indices: List[tuple[int, int, int]]) -> List[tuple[int, int, int]]:
+    def _get_valid_hypotheses_for_row(self, row_list: List[float | None], permutations_indices: List[tuple[int, int, int]]) -> List[tuple[int, int, int]]:
         """Encuentra todas las hipótesis válidas para una sola fila."""
         valid_hypotheses: List[tuple[int, int, int]] = []
         for p_indices in permutations_indices:
@@ -262,9 +339,6 @@ class MatrixSolver(VectorizationAbstractWorker):
             c, pu, mtl = row_list[c_idx], row_list[pu_idx], row_list[mtl_idx]
             
             if c is None or pu is None or mtl is None: # type: ignore
-                continue
-
-            if not all(isinstance(v, (int,float)) for v in [c, pu, mtl]):
                 continue
 
             # Axiomas

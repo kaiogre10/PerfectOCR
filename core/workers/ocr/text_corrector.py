@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import termination_detect, validate_unique_chars, space_removal
+from core.utils.text_utils import termination_detect, validate_unique_chars, validate_text
 from core.utils.data_utils import CHAR_NUM, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
 
 logger = logging.getLogger(__name__)
@@ -41,8 +41,8 @@ class TextCorrector(OCRAbstractWorker):
             original_text = polygon.ocr_text or ""
             
             # Si el texto está vacío, no hay nada que corregir
-            if not original_text:
-                logger.debug(f"Sin texto: {poly_id}: '{original_text}'")
+            if not original_text or not validate_text(original_text):
+                logger.debug(f"Sin Texto válido: {poly_id}: '{original_text}'")
                 continue
 
             #token_corr = correct_termination(token)

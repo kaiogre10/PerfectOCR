@@ -83,21 +83,22 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
                 # 4. Aplicar algoritmo geométrico de asignación a celdas
                 table_matrix = self._apply_geometric_assignment(selected_lines, all_lines, polygons, header_centroids, H)
+                logger.info(f"Tabla matrix generada con {table_matrix} filas")
 
-                # 5. Generar DataFrame estructurado
-                df = self._create_structured_dataframe(table_matrix, H)
-                
-                # 6. LOG COMPLETO DE LA TABLA ESTRUCTURADA
+                # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
+                context["table_matrix"] = table_matrix
+                context["table_columns"] = [f"col_{i}" for i in range(H)]
+                context["table_width"] = H
+
+                # 5. Validar y loggear estructura generada
                 total_time = time.time() - start_time
-                if not df.empty:
-                    logger.info(f"Se encontraron {len(table_matrix)} filas.\n{df.to_string(index=False)}") # type: ignore
+                if table_matrix:
                     logger.debug(f"Estructuración de tabla completada en {total_time:.10f}s")
-
-                   # context["table_copy"] = df.copy()
 
                     if self.output:
                         all_lines = manager.workflow.all_lines if manager.workflow else {}
                         polygons = manager.workflow.polygons if manager.workflow else {}
+                        df = self._create_structured_dataframe(table_matrix, H)
 
                         header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
                         header_line_id = header_line_ids[0] if header_line_ids else None
@@ -113,10 +114,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         output_paths = context["output_paths"]
                         save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
 
-                    if manager.save_structured_table(df=df, columns=list(df.columns)):
-                        logger.debug("Tabla guardada éxitosamente")
-
-                        return True
+                    logger.debug("Table matrix publicada en contexto éxitosamente")
+                    return True
 
                 return False
             
@@ -222,13 +221,14 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
                 # Extraer elementos P_i de la fila S_k usando data classes
                 row_elements = self._extract_row_elements(line_obj, polygons)
+                logger.info(f"Row elements: {row_elements}")
                 L_k = len(row_elements)  # Cardinalidad |S_k|
                 
                 # Inicializar fila de celdas vacías
-                row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
+                row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
                 
                 if L_k == 0:
-                    table_matrix.append(row_cells)
+                    table_matrix.append(self._finalize_row_cells(row_cells, H))
                     continue
                 
                 # CASO A: L_k ≥ H (Más palabras que columnas)
@@ -241,13 +241,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     # logger.info(f"Asignación B para {line_id}, elementos: {L_k}")
                     row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids)
                 
-                # Generar texto de celda
-                for cell_idx in range(H):
-                    cell_elements = row_cells[cell_idx]['words']
-                    if cell_elements:
-                        row_cells[cell_idx]['cell_text'] = " ".join([elem.get('ocr_text', '') for elem in cell_elements]).strip()
-                
-                table_matrix.append(row_cells)
+                table_matrix.append(self._finalize_row_cells(row_cells, H))
                 
             return table_matrix
         
@@ -267,6 +261,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if poly_data and poly_data.geometry:
                     geom = poly_data.geometry
                     element: Dict[str, Any] = {
+                        "polygon_id": poly_id,
                         "xmin": geom.bounding_box[0],
                         "xmax": geom.bounding_box[2], 
                         "cx": geom.centroid[0],
@@ -290,7 +285,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Calcula Δ_i = x_{i+1}^min - x_i^max y selecciona H-1 mayores espacios.
         """
         try:
-            row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
+            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
 
             # 1. Calcular distancias horizontales Δ_i
             horizontal_distances: List[Tuple[float, float]] = []
@@ -331,7 +326,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             # Inicializar celdas vacías
-            row_cells: List[Dict[str, Any]] = [{'words': [], 'cell_text': ''} for _ in range(H)]
+            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
             
             # Si no hay elementos en la fila, devolver celdas vacías
             if not row_elements:
@@ -412,7 +407,55 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
         except Exception as e:
             logger.error(f"Error en geometric: {e}", exc_info=True)
-            return [{'words': [], 'cell_text': ''} for _ in range(H)]
+            return [{'words': []} for _ in range(H)]
+
+    def _finalize_row_cells(self, row_cells: List[Dict[str, Any]], H: int) -> List[Dict[str, Any]]:
+        """
+        Reduce la representación interna de cada celda a solo texto, IDs de polígonos
+        y clasificación semántica.
+        """
+        final_row: List[Dict[str, Any]] = []
+
+        for cell in row_cells[:H]:
+            cell_words = cell.get('words', [])
+            text = " ".join(
+                [str(elem.get('ocr_text', '')).strip() for elem in cell_words if elem.get('ocr_text')]
+            ).strip()
+
+            polygon_ids: List[str] = []
+            semantic_values: List[int] = []
+
+            for elem in cell_words:
+                polygon_id = elem.get('polygon_id')
+                if polygon_id and polygon_id not in polygon_ids:
+                    polygon_ids.append(polygon_id)
+
+                semantic_value = elem.get('semantic_clasification', [])
+                if isinstance(semantic_value, list):
+                    for value in semantic_value:
+                        if value is None:
+                            continue
+                        try:
+                            semantic_values.append(int(value))
+                        except Exception:
+                            continue
+                elif semantic_value is not None:
+                    semantic_values.append(int(semantic_value))
+
+            final_row.append({
+                'text': text,
+                'polygon_ids': polygon_ids,
+                'semantic_clasification': sorted(set(semantic_values)),
+            })
+
+        while len(final_row) < H:
+            final_row.append({
+                'text': '',
+                'polygon_ids': [],
+                'semantic_clasification': [],
+            })
+
+        return final_row
 
     def _is_semantically_available(self, cell_content: List[Dict[str, Any]], element_semantic: List[int] | int) -> bool:
         """
@@ -455,7 +498,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
             df_data: List[List[str]] = []
             for row in table_matrix:
-                row_data = [cell.get('cell_text', '') for cell in row[:H]]
+                row_data = [cell.get('text', '') for cell in row[:H]]
                 df_data.append(row_data)
                 
             df = pd.DataFrame(df_data, columns=columns)

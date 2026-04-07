@@ -80,14 +80,14 @@ class AngleCorrector(ImagePrepAbstractWorker):
             lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=self.hough_threshold, minLineLength=min_len, maxLineGap=self.hough_max_line_gap_px)
                 
             if lines is None or len(lines) == 0: # type: ignore
-                logger.warning(f"No se detectaron líneas para la corrección de inclinación")
+               # logger.warning(f"No se detectaron líneas para la corrección de inclinación")
                 return full_img, False
 
             angles = [math.degrees(math.atan2(l[0][3]-l[0][1], l[0][2]-l[0][0])) for l in lines]
             filtered_angles = [a for a in angles if self.hough_angle_filter_range_degrees[0] < a < self.hough_angle_filter_range_degrees[1]]
             
             if not filtered_angles:
-                logger.warning(f"Ninguna línea detectada en el rango de ángulos para corrección")
+               # logger.warning(f"Ninguna línea detectada en el rango de ángulos para corrección")
                 return full_img, False
 
             angle = np.median(filtered_angles)

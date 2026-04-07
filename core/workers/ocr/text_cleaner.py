@@ -60,18 +60,18 @@ class TextCleaner(OCRAbstractWorker):
             txt = space_removal(text)
 
             text_sec = remove_special_sequences(txt)
-            if text_sec != txt:
-                sec = txt.replace(text_sec, "")
-                logger.debug(
-                    f"Secuencia especial eliminada: '{sec}'"
-                    "\n"f"'{txt}' -> '{text_sec}'")
+           # if text_sec != txt:
+              #  sec = txt.replace(text_sec, "")
+              #  logger.debug(
+              ##     f"Secuencia especial eliminada: '{sec}'"
+              #      "\n"f"'{txt}' -> '{text_sec}'")
 
                # eliminated_count += 1
             
             fil_text = separate_punt(text_sec)
-            if fil_text != text_sec:
+          #  if fil_text != text_sec:
                # fil = text_sec.replace(fil_text, "")
-                logger.debug(f"Separación: '{text_sec}' -> '{fil_text}'")
+             #   logger.debug(f"Separación: '{text_sec}' -> '{fil_text}'")
             #     eliminated_count += 1
             #     continue
 
@@ -153,4 +153,4 @@ class TextCleaner(OCRAbstractWorker):
 
         #encoded = text_encode(token, ["frequency"])
         #return float 
-        return 100.0
+        return h
