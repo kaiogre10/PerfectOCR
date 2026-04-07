@@ -84,13 +84,16 @@ class PaddleOCRWrapper(OCRAbstractWorker):
 
             for idx, (text, confidence) in enumerate(batch_result[0]):
                 if not text or not validate_text(text):
+                    logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
                     continue
                 
                 elif confidence < self.min_confidence:
+                    logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0}% | '{text}'")
                     continue
 
+                # logger.info(f"{polygon_ids[idx]}: '{text}'")
                 raw_map[polygon_ids[idx]] = {"text": text}
-            # logger.info(f"Cantiadad de Textp detectadp: {raw_map}")
+            # logger.info(f"Texto detectado: {raw_map}")
             return raw_map
             
         except TypeError as e:

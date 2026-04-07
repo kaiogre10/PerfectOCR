@@ -7,7 +7,7 @@ from core.utils.data_utils import CHAR_NUM, ALONE_CHARS, VALID_NUM_PUNT_CHARS
 logger = logging.getLogger(__name__)
 
 # _base_zeros_pattern: Pattern[str] = re.compile(r'^[0O]{2}$')
-_base_date_num_str = re.compile(r'[0123O][0-9O]', re.IGNORECASE) # Bloque base para días/meses (máx 3X o OX)
+_base_date_num_str = r'[0123O][0-9O]'
 # _base_date_num: Pattern[str] = re.compile(rf'^{_base_date_num_str}$')
 
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, ,)
@@ -16,7 +16,8 @@ _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0
 
 # _numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
 _hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
-_punt_split_pattern: Pattern[str] = re.compile(r'[=.,:;-]', re.IGNORECASE)
+_punt_split_pattern: Pattern[str] = re.compile(r"[*'`=.,:;-]")
+_edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
 
 # Espacios múltiples
 _spaces_pattern: Pattern[str] = re.compile(r'\s+', re.IGNORECASE)
@@ -71,7 +72,7 @@ _mesure_patterns= re.compile("|".join(p.pattern for p in [_size_pattern, _mass_p
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
 # Define los patrones como strings
-digit_pattern = re.compile(r"[0-9oO]", re.IGNORECASE)
+digit_pattern = r"[0-9oO]"
 currency_pattern = r"[$]"
 # _currency_stick_pattern: Pattern[str] = re.compile(r'([a-zA-Z])([\$])')
 
@@ -89,18 +90,18 @@ _token_pattern = (
     rf"{_amount_body_pattern}\s*{currency_pattern}|"
     rf"{_amount_body_pattern}"
 )
-_token = re.compile(_token_pattern, re.IGNORECASE)
+_token = re.compile(_token_pattern)
 
 _start_pattern = rf"^{currency_pattern}\s*{_amount_body_pattern}$"
-_start = re.compile(_start_pattern, re.IGNORECASE)
+_start = re.compile(_start_pattern)
 
 _middle_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}\s*{_amount_body_pattern}$"
-_middle = re.compile(_middle_pattern, re.IGNORECASE)
+_middle = re.compile(_middle_pattern)
 
 _multi_pattern = rf"^(?:\s*{currency_pattern}\s*{_amount_body_pattern}\s*){{2,}}$"
-_multi = re.compile(_multi_pattern, re.IGNORECASE)
+_multi = re.compile(_multi_pattern)
 
-_decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$", re.IGNORECASE)
+_decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
 
 _quant_runs_patterns = re.compile("|".join(p.pattern for p in [_start, _middle, _multi, _decimal]), re.IGNORECASE)
 
@@ -131,7 +132,7 @@ def validate_text(text: str) -> bool :
         return any(char.isalnum() for char in text)
     # Si es un solo carácter, debe ser válido (número o en valid_chars)
     elif total_txt == 1:
-        return text in valid_chars or text.isdecimal()
+        return text.isdecimal() or text in valid_chars
     else:
         return False
          
@@ -195,7 +196,7 @@ def is_quantitative(text: str) -> bool:
     if not text:
         return False
     
-    return bool(all(c in char_num_point for c in text)) or bool(_quant_runs_patterns.fullmatch(text))
+    return all(c in char_num_point for c in text) or bool(_quant_runs_patterns.fullmatch(text))
 
 def contains_quantitative(text: str) -> bool:
     """
@@ -208,8 +209,7 @@ def contains_quantitative(text: str) -> bool:
     
     for match in _token.finditer(text):
         if is_quantitative(match.group(0)):
-            return True
-            
+            return True        
     return False
 
 def get_cuants(text: str) -> str:
@@ -221,12 +221,9 @@ def get_cuants(text: str) -> str:
     if not text:
         return ""
    
-    if not contains_quantitative(text):
+    elif not contains_quantitative(text) or is_quantitative(text):
         return text
    
-   # if is_quantitative(text):
-       # return text
-
     # Buscamos todos los tokens cuantitativos
     matches = list(_token.finditer(text))
     if not matches:
@@ -259,34 +256,53 @@ def get_cuants(text: str) -> str:
     #logger.info(f"Text: '{text}' -> Cuants: '{result}'")
     return result.strip()
 
+def clean_punct(text: str) -> str:
+    """
+    Elimina los caracteres de puntuación definidos en _punt_split_pattern
+    que se encuentran al inicio y al final de cada token en el texto.
+    """
+    if not text:
+        return ""
+    
+    # if is_quantitative(text):
+    #     return text
+
+    tokens = text.split()
+    processed_tokens: List[str] = []
+    # Patrón para encontrar puntuación al inicio o al final de un token
+    for t in tokens:
+        # Elimina la puntuación del inicio y del final del token
+        cleaned_token = _edge_punt_pattern.sub('', t)
+        processed_tokens.append(cleaned_token)
+
+    return " ".join(processed_tokens).strip()
+
 def separate_punt(text: str) -> str:
     text = text.strip()
     if not text:
         return ""
     
-    if text.isalnum():
+    elif text.isalnum():
         return text
 
-    if is_acronym(text):
+    elif is_acronym(text):
         return text
    
-    if is_quantitative(text):
+    elif contains_quantitative(text):
         return text
 
     tokens = text.split()
     processed_tokens: List[str] = []
     for t in tokens:
-        t = re.sub(rf'{_punt_split_pattern.pattern}+$', '', t)
-        # Si el token actual NO es una hora, sepárale la puntuación.
+        # Si el token no es una excepción (como una hora), separa la puntuación
         if not _hour_pattern.fullmatch(t):
-            # Reemplaza los signos de puntuación por un espacio en este token.
             cleaned_token = _punt_split_pattern.sub(' ', t)
             processed_tokens.append(cleaned_token)
         else:
-            # Si el token ES una hora, déjalo como está.
+            # Si es una hora, se mantiene intacta
             processed_tokens.append(t)
-    
-    # Une los tokens procesados y limpia los espacios extra.
+
+    # Une los tokens y usa space_removal para normalizar todos los espacios
     return " ".join(processed_tokens).strip()
 
 def space_removal(text: str) -> str:

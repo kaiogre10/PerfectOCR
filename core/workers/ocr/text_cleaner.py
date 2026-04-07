@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import space_removal, remove_special_sequences, validate_text, separate_punt
+from core.utils.text_utils import space_removal, remove_special_sequences, validate_text, separate_punt, clean_punct
 #ore.utils.math_utils import text_encode
 
 logger = logging.getLogger(__name__)
@@ -52,38 +52,51 @@ class TextCleaner(OCRAbstractWorker):
             #text = space_removal(text)
 
             if not text or not validate_text(text):
-              ## logger.info(f"Eliminado {poly_id} sin texto valido: {text}")
+                logger.info(f"Eliminado {poly_id} sin texto valido incial: {text}")
                 eliminated_count += 1
                 continue
 
-          #  punt_text = separate_punt(text)
             txt = space_removal(text)
+            if txt != text:
+               logger.info(
+                  f" {poly_id} Espacios eliminados:"
+                   "\n"f"'{text}' -> '{txt}'")
+               
+            if not txt or not validate_text(txt):
+                logger.info(f"Eliminado {poly_id} sin texto válido después de espacios: {text}")
+                eliminated_count += 1
+                continue
 
             text_sec = remove_special_sequences(txt)
-           # if text_sec != txt:
-              #  sec = txt.replace(text_sec, "")
-              #  logger.debug(
-              ##     f"Secuencia especial eliminada: '{sec}'"
-              #      "\n"f"'{txt}' -> '{text_sec}'")
-
-               # eliminated_count += 1
+            if text_sec != txt:
+               sec = txt.replace(text_sec, "")
+               logger.info(
+                  f" {poly_id} Secuencia especial eliminada: '{sec}'"
+                   "\n"f"'{txt}' -> '{text_sec}'")
+               
+            if not text_sec or not validate_text(text_sec):
+                logger.info(f"Eliminado {poly_id} sin texto valido después de secuencias especiales: {text}")
+                eliminated_count += 1
+                continue
             
             fil_text = separate_punt(text_sec)
-          #  if fil_text != text_sec:
-    
-             #   logger.debug(f"Separación: '{text_sec}' -> '{fil_text}'")
-            #     eliminated_count += 1
-            #     continue
+            if fil_text != text_sec:
+               logger.info(f"Separación {poly_id}: '{text_sec}' -> '{fil_text}'")
 
-           # cleaned_text = self.process_single_text(text_sec, polygon)
-            if fil_text:
-                updated_polygon = dataclasses.replace(polygon, ocr_text=fil_text)
+            if not fil_text or not validate_text(fil_text):
+                logger.info(f"Eliminado {poly_id} sin texto valido después de separar puntuación: {text}")
+                eliminated_count += 1
+                continue
+
+            cleaned_text = self.process_single_text(text_sec, polygon)
+            if not cleaned_text or not validate_text(cleaned_text):
+                logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
+                eliminated_count += 1
+                continue
+            else:
+                updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
                 list_of_final_polygons.append(updated_polygon)
                 
-            else:
-              #  logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
-                eliminated_count += 1
-
         # 4. Reconstrucción y reindexación final
         final_polygons_dict: Dict[str, Polygons] = {}
         for idx, poly_obj in enumerate(list_of_final_polygons):
@@ -110,47 +123,49 @@ class TextCleaner(OCRAbstractWorker):
         processed_words: List[str] = []
 
         for token in words:
+
+            clean_token = clean_punct(token)
                 # Eliminar tokens que sean un carácter especial especificado (ej. ")")
-            if not any(char.isalnum() for char in token):
-                # logger.info(f"Eliminado texto basura: '{token}' in {polygon.polygon_id if polygon else ''}")
+            if not clean_token or not validate_text(clean_token):
+                logger.info(f"Eliminado texto basura : '{clean_token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             else:
-                processed_words.append(token)
+                processed_words.append(clean_token)
         
-        return space_removal(' '.join(processed_words))
+        return ' '.join(processed_words).strip()
 
-    def filter_low_prob_tokens(self, text: str, polygon: Polygons) -> str:
-        """
-        Filtra por probabilidad usando el texto completo (no por token).
-        Retorna "" si el texto completo se considera ruido.
-        """
-        try:
-            sc: List[int] = polygon.semantic_clasification or [0]
+    # def filter_low_prob_tokens(self, text: str, polygon: Polygons) -> str:
+    #     """
+    #     Filtra por probabilidad usando el texto completo (no por token).
+    #     Retorna "" si el texto completo se considera ruido.
+    #     """
+    #     try:
+    #         sc: List[int] = polygon.semantic_clasification or [0]
 
-            sc_array = np.array(sc, np.int8)
-            sc_real = np.median(sc_array)
-            if int(sc_real) in (1.0, 2.0, -2.0):
-                return text
+    #         sc_array = np.array(sc, np.int8)
+    #         sc_real = np.median(sc_array)
+    #         if int(sc_real) in (1.0, 2.0, -2.0):
+    #             return text
 
-            score = self.token_freq_score(text.lower())
-            if score < self.min_probability:
-                # logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{text}' | Probabilidad global: {score:.4f}")
-                return ""
+    #         score = self.token_freq_score(text.lower())
+    #         if score < self.min_probability:
+    #             # logger.info(f"Eliminado:{polygon.polygon_id} | Texto:'{text}' | Probabilidad global: {score:.4f}")
+    #             return ""
 
-            return text
+    #         return text
 
-        except Exception as e:
-            logger.error(f"Error eliminando texto por frecuencia global: {e}", exc_info=True)
-            return text
+    #     except Exception as e:
+    #         logger.error(f"Error eliminando texto por frecuencia global: {e}", exc_info=True)
+    #         return text
 
-    def token_freq_score(self, token: str) -> float:
-        """
-        Calcula la probabilidad del token usando text_encode para obtener 
-        la media de frecuencia (frecuencia normalizada).
-        """
-        if not token:
-            return 100.0
+    # def token_freq_score(self, token: str) -> float:
+    #     """
+    #     Calcula la probabilidad del token usando text_encode para obtener 
+    #     la media de frecuencia (frecuencia normalizada).
+    #     """
+    #     if not token:
+    #         return 100.0
 
-        #encoded = text_encode(token, ["frequency"])
-        #return float 
-        return h
+    #     #encoded = text_encode(token, ["frequency"])
+    #     #return float 
+    #     return h
