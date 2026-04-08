@@ -139,8 +139,7 @@ def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
     sobel, _ = calculate_img_values(np.abs(cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize))) #type: ignore
     return float(sobel)
 
-def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    
+def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:    
     c_value: int = worker_config.get('c_value', 7)
     height_thresholds: List[int] = worker_config.get('height_thresholds_px', [100, 800, 1500, 2500])
     block_sizes_map: List[int] = worker_config.get('block_sizes_map', [15, 21, 25, 35, 41])
@@ -148,6 +147,8 @@ def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config
 
     block = get_adaptive_block_size(height, height_thresholds, block_sizes_map)
     mode: str = measure_polygon_quality(cropped_img)
+
+    cropped_img = make_contiguous(cropped_img)
 
     if mode == "otsu":
         bin_img = otsu_binarize(cropped_img)
@@ -198,12 +199,12 @@ def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarra
     return make_contiguous(resultis[1])
 
 def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value).astype(np.uint8)
+    return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value))
 
 def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
     thresh_sauvola = threshold_sauvola(image=cropped_img, window_size=adaptive_block_size) 
-    bin_bool: np.ndarray[Any, np.dtype[np.bool_]] = (cropped_img > thresh_sauvola)
+    bin_bool = (cropped_img > thresh_sauvola)
     return make_contiguous(bin_bool * 255)
 
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
@@ -281,7 +282,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     pixels_val: List[int] = []
     lonely: List[int] = []
     # Máscara reutilizable
-    single_mask = np.ascontiguousarray(np.zeros((sh, sw), dtype=np.uint8))
+    single_mask = make_contiguous(np.zeros((sh, sw), dtype=np.uint8))
     
     # Variables para limpiar la región anterior
     prev_x, prev_y, prev_w, prev_h = 0, 0, 0, 0
@@ -365,6 +366,12 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0.0 else 0.0, m["m01"] / m["m00"] if m["m00"] != 0.0 else 0.0)
         for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.float32)
 
+    x_min = np.array([np.min(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
+    x_max = np.array([np.max(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
+
+    y_min = np.array([np.min(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
+    y_max = np.array([np.max(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
+
     valid_areas = areas[valid_indices]
     
     # Agrega el índice secuencial como primera columna y pixels_val al final
@@ -374,8 +381,8 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         rec_widith,                                     # 2
         rec_height,                                     # 3
         angles,                                         # 4
-        centroids[:, 0],                                # 5
-        centroids[:, 1],                                # 6
+        centroids[:, 0],                                # 5 centroide x
+        centroids[:, 1],                                # 6 centroide y
         convex_area,                                    # 7
         pixels_val_array,                               # 8
         lonely_array,                                   # 9
@@ -387,6 +394,10 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         black_pixels_array,                             # 15
         irregular_ratio,                                # 16
         min_side,                                       # 17
+        x_min,                                          # 18
+        x_max,                                          # 19
+        y_min,                                          # 20
+        y_max,                                          # 21
     ])
 
     filtered_original_indices = metrics_array[:, 0]

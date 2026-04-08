@@ -110,7 +110,7 @@ class DeskewConfig(ConfigWithNumpy):
     border_color: List[int]
 
 class CuttingConfig(ConfigWithNumpy):
-    cropping_padding: int
+    cropping_padding: float
     
 class ImagePreparation(ConfigWithNumpy):
     ink_enhancement: InkConfig

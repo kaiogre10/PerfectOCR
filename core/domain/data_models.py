@@ -1,7 +1,7 @@
 # core/domain/workflow_models.py
 import numpy as np
 import pandas as pd 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 
 @dataclass
@@ -72,7 +72,7 @@ class Metadata:
     image_name: str
     date_creation: str
     dpi: Optional[int]
-    img_dims: List[int]
+    img_dims: Tuple[int, int]
 
 @dataclass
 class FullImage:

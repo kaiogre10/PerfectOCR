@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 from core.domain.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import binarice_img, normalice_image, cropp_img, make_contiguous
+from core.utils.image_utils import binarice_img, normalice_image, make_contiguous
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 poly_id = f"poly_{idx:04d}"
                 poly_index = idx
                 coords = np.array([[float(p[0]), float(p[1])] for p in poly_pts])
-                bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()])
+                bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()], np.float32)
                 centroid = coords.mean(axis=0)
                     
                     # if self.output:

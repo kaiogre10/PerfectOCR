@@ -34,7 +34,7 @@ class DataFormatter:
                 image_name=str(metadata.get("image_name", "")),
                 date_creation=str(metadata.get("date_creation", "")),
                 dpi=int(metadata.get("dpi", 0)),
-                img_dims=[]
+                img_dims = (0 , 0)
             )
 
             self.workflow = WorkflowDict(
@@ -166,10 +166,7 @@ class DataFormatter:
                 
             if full_img is None or not corrected:
                 # Medir dims de la imagen real almacenada antes de liberar memoria
-                self.workflow = dataclasses.replace(
-                    self.workflow,
-                    full_img=None
-                )
+                self.workflow = dataclasses.replace(self.workflow,full_img=None)
                 return True
             
             elif corrected:
@@ -178,10 +175,14 @@ class DataFormatter:
                     img_arr = getattr(full_img, "full_img", None)
                 else:
                     img_arr = full_img
-                                    
                 img_arr = normalice_image(full_img)
-        
+                if img_arr is None:
+                    logger.critical(f"Error normalizando")
+                    return False
                 # Wrap en la dataclass FullImage y actualizar workflow
+                h = img_arr.shape[0]
+                w = img_arr.shape[1]
+                self.workflow.metadata.img_dims = (h, w)
                 full_image_obj = FullImage(img_arr)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
                 logger.debug("Imagen actualizada con éxito.")
