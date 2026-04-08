@@ -45,7 +45,7 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
             config=self.module_config, 
             project_root=self.project_root,
             cleaner=workers.get("cleaner"),  #type: ignore
-            corrector=workers.get("corrector", None),  
+            # corrector=workers.get("corrector", None),  
             fragmenter=workers.get("fragmenter"),  #type: ignore
         )
     

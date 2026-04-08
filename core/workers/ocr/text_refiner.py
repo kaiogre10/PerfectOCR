@@ -1,13 +1,13 @@
 # core/workers/ocr/text_refiner.py
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Union
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
-from core.workers.ocr.text_corrector import TextCorrector
+# from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.fragmenter import Fragmenter
 from services.output_service import save_raw_json
-from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative
+from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
 import logging
 import dataclasses
 import time
@@ -18,10 +18,11 @@ class Refiner(OCRAbstractWorker):
     """
     Orquesta un ciclo de refinamiento de texto post-OCR con clasificación selectiva optimizada.
     """
-    def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, corrector: Optional[TextCorrector] = None, fragmenter: Optional[Fragmenter] = None):
+    def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
         self.worker_config = config.get("text_refiner", {})
         self.num_passes = self.worker_config.get("num_passes")
+        self.preprocess_key_data_enabled = self.worker_config.get("preprocess_key_data", True)
         self.output = config.get("cleanned_text")
         self.cleaner = cleaner
         self.fragmenter = fragmenter
@@ -38,9 +39,9 @@ class Refiner(OCRAbstractWorker):
         """
         t0 = time.perf_counter()
         try:
-            if not manager.workflow or not manager.workflow.polygons:
-                logger.warning("Semantic Clasificator no tiene polígonos para procesar")
-                return False
+            if not manager.workflow.polygons:
+                logger.warning("Mnanager no tiene polígonos para procesar")
+            
             polygons: Dict[str, Polygons] = manager.workflow.polygons
             updated_polygons: Dict[str, Polygons] = {}
             for poly, poly_data in polygons.items():
@@ -56,6 +57,9 @@ class Refiner(OCRAbstractWorker):
                     updated_polygons[poly] = poly_data
 
             manager.workflow.polygons = updated_polygons
+
+            self.preprocess_key_data(manager)
+
             if 0 >= self.num_passes:
                 step_t0 = time.perf_counter()
                 self.classify_strings(manager)
@@ -111,7 +115,7 @@ class Refiner(OCRAbstractWorker):
 
             # polygons = manager.workflow.polygons if manager.workflow else {}
             # for poly, poly_data in polygons.items():
-                # logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+            #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
                 # if any(sc in poly_data.semantic_clasification for sc in (1, 2)):
                 #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
@@ -162,4 +166,47 @@ class Refiner(OCRAbstractWorker):
 
         except Exception as e:
             logger.warning(f"Error en el clasificador: {e}", exc_info=True)
+
+    def preprocess_key_data(self, manager: DataFormatter) -> bool:
+        """
+        Asigna key_field (fecha, RFC, IVA) sobre texto OCR crudo antes de fragmentar/clasificar.
+        Cada tipo de dato se marca como mucho una vez por documento (orden lectura: poly_index).
+        """
+        if not manager.workflow or not manager.workflow.polygons:
+            logger.warning("Semantic Clasificator no tiene polígonos para procesar")
             return False
+
+        polygons: Dict[str, Polygons] = manager.workflow.polygons
+        # [fecha, rfc, iva] — ya satisfechos en el documento
+        state: List[bool] = [False, False, False]
+
+        for _, pd in polygons.items():
+            kf = pd.key_field
+            if kf is None:
+                continue
+            keys = kf if isinstance(kf, list) else [kf]
+            if 9 in keys:
+                state[0] = True
+            if 7 in keys:
+                state[1] = True
+            if 8 in keys:
+                state[2] = True
+
+        polygon_updates: Dict[str, Union[int, List[int]]] = {}
+        ordered = sorted(polygons.items(), key=lambda item: item[1].poly_index)
+
+        for poly_id, poly_data in ordered:
+            if poly_data.key_field is not None:
+                continue
+
+            text = poly_data.ocr_text or ""
+            key_field = find_key_data(text, state)
+
+            if key_field != 0:
+                polygon_updates[poly_id] = key_field
+                tlog = f"{text[:80]}..." if len(text) > 80 else text
+                logger.debug(f"preprocess_key_data: {poly_id} key_field={key_field} text='{tlog}'")
+
+        if polygon_updates:
+            manager.update_key_field(polygon_updates)
+        return True

@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import RFC_PATTERNS, IVA_PATTERN, DATE_PATTENRS
+from core.utils.text_utils import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class DataFinder(OCRAbstractWorker):
                 logger.debug("Modelo de búsqueda obtenido del ModelsManager")
             return self._model #type: ignore
 
-        except Exception as e:
+        except ImportError as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
         return None
 
@@ -55,14 +55,14 @@ class DataFinder(OCRAbstractWorker):
             processed_count = 0
             polygon_updates: Dict[str, List[int] | int] = {}
             skipped_semantic = 0
-            found_date = False
-            found_rfc = False
-            found_iva = False
+            # found_date = False
+            # found_rfc = False
+            # found_iva = False
             sc_forb = {2, 1, -2}
 
             all_idx = np.array([p.poly_index for p in polygons.values()], np.int16)
 
-            sc = [(p.semantic_clasification) for p in polygons.values()]
+            sc = [p.semantic_clasification for p in polygons.values()]
             texts = [(p.ocr_text or "") for p in polygons.values()]
 
             texts_length = np.array([len(t) for t in texts])
@@ -73,38 +73,47 @@ class DataFinder(OCRAbstractWorker):
 
             mask_sc = (sc_length == 1) & (forb_sc == True) 
             mask_len = (texts_length < 2) & (decimal_p == True)
-            mask = mask_sc & mask_len
-            skip_idx = set(np.compress(mask, all_idx).tolist())
+            mask = mask_sc | mask_len
+            skip_idx = np.compress(mask, all_idx).tolist()
 
-            for idx, (pid, poly) in enumerate(polygons.items()):
+            for pid, poly in polygons.items():
                 if poly.poly_index in skip_idx:
+                    # logger.info(f"{pid} Omitido: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     skipped_semantic += 1
                     continue
 
                 processed_count += 1
 
-                ocr_text = texts[idx]
-
-                if not found_date and self.find_date(ocr_text):
-                    skipped_semantic +=1
-                   # logger.info(f"FECHA encontrado en {pid}, '{ocr_text}', sc: {sc[idx]}")
-                    found_date = True
-                    polygon_updates[pid] = 9
+                ocr_text = poly.ocr_text or ""
+                # logger.info(f"Texto a procesar: {ocr_text}")
+                if ocr_text.isdecimal():
+                    skipped_semantic += 1
                     continue
 
-                elif not found_rfc and self.find_rfc(ocr_text):
-                    skipped_semantic +=1
-                    found_rfc = True
-                   # logger.info(f"RFC encontrado en {pid}, '{ocr_text}'")
-                    polygon_updates[pid] = 7
+                if not validate_text(ocr_text):
+                    skipped_semantic += 1
                     continue
 
-                elif not found_iva and self.find_iva(ocr_text):
-                    skipped_semantic +=1
-                    found_iva = True
-                   # logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
-                    polygon_updates[pid] = 8
-                    continue
+                # if not found_date and self.find_date(ocr_text):
+                #     skipped_semantic +=1
+                #     logger.info(f"FECHA encontrado en {pid}, '{ocr_text}'")
+                #     found_date = True
+                #     polygon_updates[pid] = 9
+                #     continue
+
+                # if not found_rfc and self.find_rfc(ocr_text):
+                #     skipped_semantic +=1
+                #     found_rfc = True
+                #     # logger.info(f"RFC encontrado en {pid}, '{ocr_text}'")
+                #     polygon_updates[pid] = 7
+                #     continue
+
+                # elif not found_iva and self.find_iva(ocr_text):
+                #     skipped_semantic +=1
+                #     found_iva = True
+                #     # logger.info(f"IVA encontrado en {pid}, '{ocr_text}'")
+                #     polygon_updates[pid] = 8
+                #     continue
 
                 else:
                     ocr_text = ocr_text.lower()
@@ -120,12 +129,12 @@ class DataFinder(OCRAbstractWorker):
                     # Verificar si todos son headers (key_field == 6)
                     if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
                         polygon_updates[pid] = all_key_fields
-                        logger.debug(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
+                        logger.info(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
 
                     else:
                         key_field = valid_results[0]['key_field']
                         polygon_updates[pid] = key_field
-                        logger.debug(f"'{pid}': Key_Field {key_field}")
+                        # logger.info(f"'{pid}': Key_Field: '{key_field}'")
 
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
@@ -140,38 +149,45 @@ class DataFinder(OCRAbstractWorker):
             logger.warning(f"Error encontrando keyfields: {e}")
         return {}
     
-    def find_rfc(self, s: str) -> bool:
-        try:
-            if len(s) < 12:
-                return False
-            
-            elif not any(c.isdecimal() for c in s):
-                return False
-            
-            else:
-                return bool(RFC_PATTERNS.search(s))
+    # def find_date(self, texts: List[str]) -> Optional[List[int]]:
+    #     """
+    #     Busca la primera coincidencia de fecha en la lista completa de textos.
+    #     Devuelve los índices de los polígonos que componen la fecha.
+    #     """
+    #     try:
+    #         # Usar un separador que no interfiera con los patrones de fecha
+    #         separator = " "
+    #         full_text = separator.join(texts)
 
-        except TypeError as e:
-            logger.warning(f"Error buscando RFC: {e}", exc_info=True)
-        return False
-
-    def find_iva(self, s: str) -> bool:
-        try:
-            if not any(c.isalpha() for c in s):
-                return False
+    #         logger.info(f"texts: {texts}")
             
-            return bool(IVA_PATTERN.search(s))
-        except TypeError as e:
-            logger.warning(f"Error Buscando IVA: {e}", exc_info=True)
-        return False
-    
-    def find_date(self, s: str) -> bool:
-        try:
-            if s.isalpha():
-                return False
-            else:
-                return bool(DATE_PATTENRS.search(s))
+    #         match = DATE_PATTENRS.findall(full_text)
+    #         if not match:
+    #             return None
 
-        except TypeError as e:
-            logger.warning(f"Error buscando fecha: {e}", exc_info=True)
-        return False
+    #         # Calcular los índices de los polígonos que componen la fecha
+    #         start_char, end_char = match.span()
+            
+    #         # Contar cuántos espacios (separadores) hay antes del inicio del match
+    #         # para saber en qué índice de la lista original de textos empezar.
+    #         start_poly_index = full_text[:start_char].count(separator)
+            
+    #         # Contar cuántos polígonos abarca el texto encontrado
+    #         matched_text = full_text[start_char:end_char]
+    #         num_polys_in_match = matched_text.count(separator) + 1
+            
+    #         return list(range(start_poly_index, start_poly_index + num_polys_in_match))
+
+    #     except Exception as e:
+    #         logger.warning(f"Error buscando fecha global: {e}", exc_info=True)
+    #         return None
+# def find_date(self, s: str) -> bool:
+#         try:
+#             if s.isalpha():
+#                 return False
+#             else:
+#                 return bool(DATE_PATTENRS.search(s))
+
+#         except TypeError as e:
+#             logger.warning(f"Error buscando fecha: {e}", exc_info=True)
+#         return False

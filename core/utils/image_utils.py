@@ -271,7 +271,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
             return [], np.empty((0, 5))
     
     areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
-    valid_mask = (areas > 0)
+    valid_mask = (areas > 1)
     valid_indices = np.where(valid_mask)[0]
 
     if len(valid_indices) == 0:
@@ -282,7 +282,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     pixels_val: List[int] = []
     lonely: List[int] = []
     # Máscara reutilizable
-    single_mask = make_contiguous(np.zeros((sh, sw), dtype=np.uint8))
+    single_mask = np.ascontiguousarray(np.zeros((sh, sw), dtype=np.uint8))
     
     # Variables para limpiar la región anterior
     prev_x, prev_y, prev_w, prev_h = 0, 0, 0, 0
@@ -366,11 +366,11 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0.0 else 0.0, m["m01"] / m["m00"] if m["m00"] != 0.0 else 0.0)
         for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.float32)
 
-    x_min = np.array([np.min(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
-    x_max = np.array([np.max(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
+    # x_min = np.array([np.min(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
+    # x_max = np.array([np.max(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
 
-    y_min = np.array([np.min(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
-    y_max = np.array([np.max(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
+    # y_min = np.array([np.min(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
+    # y_max = np.array([np.max(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
 
     valid_areas = areas[valid_indices]
     
@@ -394,10 +394,10 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         black_pixels_array,                             # 15
         irregular_ratio,                                # 16
         min_side,                                       # 17
-        x_min,                                          # 18
-        x_max,                                          # 19
-        y_min,                                          # 20
-        y_max,                                          # 21
+        # x_min,                                          # 18
+        # x_max,                                          # 19
+        # y_min,                                          # 20
+        # y_max,                                          # 21
     ])
 
     filtered_original_indices = metrics_array[:, 0]

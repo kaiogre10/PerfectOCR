@@ -1,35 +1,33 @@
 import re
 import logging
-from typing import List, Tuple, Dict, Pattern, Any
+from typing import List, Tuple, Dict, Pattern, Any, Set
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import CHAR_NUM, ALONE_CHARS, VALID_NUM_PUNT_CHARS
 
 logger = logging.getLogger(__name__)
 
-_zeros_pattern: Pattern[str] = re.compile(r'[oOQD]')
+_zeros_str = r'[O0QD]'
 _base_date_num_str = r'[0123O][0-9O]'
 # _base_date_num: Pattern[str] = re.compile(rf'^{_base_date_num_str}$')
+_zeros_pattern = re.compile(_zeros_str, re.IGNORECASE)
 
-# Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, ,)
-_secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECASE)
-_sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0-9\s/$]{2,}(?=[a-zA-Z0-9$])', re.IGNORECASE)
+# Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, /,)
+_secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9/\s/$]{2,}', re.IGNORECASE)
+_sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9/$])[^a-zA-Z0-9/\s/$]{2,}(?=[a-zA-Z0-9/$])', re.IGNORECASE)
 
 # _numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
 _hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
-_punt_split_pattern: Pattern[str] = re.compile(r"[*'`=.,:;&-]")
+_punt_split_pattern: Pattern[str] = re.compile(r"[*_'`=.,:;&-]")
 _edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
 
 # Espacios múltiples
-_spaces_pattern: Pattern[str] = re.compile(r'\s+', re.IGNORECASE)
-
-# Terminación
-_termination_pattern: Pattern[str] = re.compile(r'(?i)(s|c|r)?i0n\b', re.IGNORECASE)
+_spaces_pattern: Pattern[str] = re.compile(r'\s+')
 
 # Siglas/Acrónimos
 _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv|no)(?:[:;,.])?$', re.IGNORECASE)
 
 # Datos Globales
-_numeric_code: Pattern[str] = re.compile(r'^[0O]\d+$', re.IGNORECASE)
+_numeric_code: Pattern[str] = re.compile(rf'^{_zeros_str}\d+$', re.IGNORECASE)
 _phone_number: Pattern[str] = re.compile(r'^\d{10}$')
 _mail_pattern: Pattern[str] = re.compile(r'.*@.+', re.IGNORECASE)
 _cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$', re.IGNORECASE)
@@ -38,12 +36,17 @@ _code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_phone_nu
 
 # Fecha
 _date_patterns_list: List[Pattern[str]] = [
+    # Día + mes en letras + año en un solo string OCR (ej. "21 mar 2023")
+    re.compile(
+        rf'\b{_base_date_num_str}\s+(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\s+(?:19\d{{2}}|20\d{{2}})\b',
+        re.IGNORECASE,
+    ),
     # Fechas completas y día/mes: Usa el bloque base para evitar confundirse con fracciones/cuantitativos
     re.compile(rf'\b{_base_date_num_str}[\s\/\-]{_base_date_num_str}(?:[\s\/\-](?:\d{{2,4}}))?\b', re.IGNORECASE),
     # Meses (palabras)
-    re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(sto)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b', re.IGNORECASE),
+    re.compile(r'\b(ene(ro)?|feb(rero)?|mar(zo)?|abr(il)?|may(o)?|jun(io)?|jul(io)?|ago(s(to)?)?|sep(t(iembre)?)?|oct(ubre)?|nov(iembre)?|dic(iembre)?)\b', re.IGNORECASE),
     # Años
-    re.compile(r'\b(199\d|20\d{2})\b', re.IGNORECASE),
+    re.compile(r'\b(199\d|20\d{2})\b', re.IGNORECASE)
 ]
 
 _mass_pattern = r'(kg?|g(r)?(s)?|mg|lb(s)?|oz|ton)\b'
@@ -52,13 +55,14 @@ _len_pattern = r'(m(t(s)?)?|cm|mm|km|in|ft)\b'
 
 _umd_patterns_list: List[Pattern[str]] = [
     # Masas: kg, g, mg, lb, oz, ton. Incluye variaciones de OCR como kgr.
-    re.compile(rf'\b\d*([.,]\d+)?\s*{_mass_pattern}'),
+    re.compile(rf'\b\d*([.,]\d+)?\s*{_mass_pattern}', re.IGNORECASE),
     # Volúmenes: l, ml, cc, gal. Incluye variaciones como lt, ltr.
-    re.compile(rf'\b\d*([.,]\d+)?\s*{_vol_pattern}'),
+    re.compile(rf'\b\d*([.,]\d+)?\s*{_vol_pattern}', re.IGNORECASE),
     # Cantidad: C/ o C/ con número.
-    re.compile(r'\b[Cc]\s*/\s*\d*\b'),
+    re.compile(r'\b[Cc]\s*/\s*\d*\b', re.IGNORECASE),
     # Longitudes y Áreas: m, cm, mm, km, in, ft, pulg. Detecta la unidad sola o con número. Soporta m2, m^2, m² para áreas.
-    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b'),
+    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b', re.IGNORECASE),
+
     re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b'),
     # Fracciones (1/2 kg, 1/4).
   #  re.compile(r'\b\d+\s*/\s*\d+\b'),
@@ -113,70 +117,121 @@ _multi = re.compile(_multi_pattern)
 # Patrón: Decimales grandes tipo 1,230.50 (sin $)
 _decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
 
-_quant_runs_patterns = re.compile("|".join(p.pattern for p in [_start, _middle, _multi, _decimal]), re.IGNORECASE)
+_quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start, _middle, _multi]), re.IGNORECASE)
 
 # Patrón: Monto terminado en símbolo (80.00 $)
-_end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
-_end = re.compile(_end_pattern, re.IGNORECASE)
+# _end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
+# _end = re.compile(_end_pattern, re.IGNORECASE)
 
 # Extrae solo los dígitos (sin formato decimal)
-_digits = re.compile(r"\d+")
+# _digits = re.compile(r"\d+")
 
 # Detecta terminaciones típicas de dinero (.00 ó ,00)
-_end_quants = re.compile(r'[.,]00$', re.IGNORECASE)
+# _end_quants = re.compile(r'[.,]00$', re.IGNORECASE)
 
 # Patrón equivalente a _split, pero requiere $ al inicio y una cantidad
 _split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
 _split = re.compile(_split_pattern, re.IGNORECASE)
 
-RFC_PATTERNS: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
-# _rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b')
+_rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b')
+_rfc_pattern: Pattern[str] = re.compile(r'^([A-ZÑ]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
 
-# RFC_PATTERNS = re.compile("|".join(p.pattern for p in [_rfc_code_pattern, _rfc_acronyms]))
+
 IVA_PATTERN: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
 DATE_PATTENRS = re.compile("|".join(p.pattern for p in _date_patterns_list), re.IGNORECASE)
-valid_chars = ALONE_CHARS
-char_num_point = CHAR_NUM.copy()
+
+char_num_point: Set[str] = CHAR_NUM.copy()
 char_num_point.update(".")
 
 def validate_text(text: str) -> bool :
     """valida que un string contenga caracteres válidos y que no esté vacío"""
-    total_txt = len(text.strip())
+    text = text.strip()
+    total_txt = len(text)
     # Si tiene más de un carácter, debe tener al menos un alfanumérico
     if total_txt > 1:
         return any(char.isalnum() for char in text)
-    # Si es un solo carácter, debe ser válido (número o en valid_chars)
+    # Si es un solo carácter, debe ser válido (número o en ALONE_CHARS)
     elif total_txt == 1:
-        return text.isdecimal() or text in valid_chars
+        return text.isdecimal() or text in ALONE_CHARS
     else:
         return False
-         
-def validate_unique_chars(text: str) -> bool:
-    """Valida si un caracter unico es válido o no"""
-    text = text.strip()
-    if len(text) != 1:
-        return False
-    else:
-        return text in valid_chars or text.isdecimal()
-
-def termination_detect(text: str) -> bool:
-    if not text:
-        return False
-    elif len(text) < 6:
-        return False
-    else:
-        return bool(_termination_pattern.search(text))
 
 def is_code(s: str) -> bool:
     if not any(c.isalpha() for c in s):
         return False
     elif s.isalpha():
         return False
-    elif _numeric_code.search(s) and not contains_quantitative(s):
+    elif bool(_numeric_code.match(s)):
         logger.info(f"Código comienza n 0")
         return True
     else:
         return bool(_code_patterns.search(s))
+
+def find_key_data(s: str, activate_func: List[bool]) -> int:
+    """
+    Busca fecha (9), RFC (7) o IVA (8) en el texto crudo del polígono.
+    activate_func: [fecha_ya_encontrada, rfc_ya_encontrado, iva_ya_encontrado];
+    se pone True en el índice correspondiente al devolver un key_field distinto de 0.
+    Prioridad: fecha > RFC > IVA (solo un tipo por llamada).
+    """
+    try:
+        s = s.strip()
+        if not any(c.isalnum() for c in s):
+            return 0
+
+        if not activate_func[0] and bool(DATE_PATTENRS.search(s)):
+            activate_func[0] = True
+            return 9
+
+        if not activate_func[1] and bool(RFC_PATTERNS.search(s)):
+            activate_func[1] = True
+            return 7
+
+        if not activate_func[2] and bool(IVA_PATTERN.search(s)):
+            activate_func[2] = True
+            return 8
+
+        return 0
+
+    except ValueError as e:
+        logger.warning(f"Error buscando datos globales: {e}", exc_info=True)
+    return 0
+
+def find_date(s: str) -> bool:
+    try:
+        if s.isalpha():
+            return False
+        else:
+            return bool(DATE_PATTENRS.search(s))
+
+    except TypeError as e:
+        logger.warning(f"Error buscando fecha: {e}", exc_info=True)
+    return False
+
+def find_rfc(s: str) -> bool:
+    try:
+        if len(s) < 12:
+            return False
+        
+        elif not any(c.isdecimal() for c in s):
+            return False
+        
+        else:
+            return bool(RFC_PATTERNS.search(s))
+
+    except TypeError as e:
+        logger.warning(f"Error buscando RFC: {e}", exc_info=True)
+    return False
+
+def find_iva(s: str) -> bool:
+    try:
+        if not any(c.isalnum() for c in s):
+            return False
+        
+        return bool(IVA_PATTERN.search(s))
+    except TypeError as e:
+        logger.warning(f"Error Buscando IVA: {e}", exc_info=True)
+    return False
 
 def is_acronym(text: str) -> bool:
     try:
@@ -233,10 +288,13 @@ def get_cuants(text: str) -> str:
     Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto).
     Si ya están separados por espacios, no modifica el texto.
     """
-    if not text or text.isalpha():
+    if not text:
         return ""
     
-    if not contains_quantitative(text):
+    elif text.isalpha():
+        return text
+    
+    elif not contains_quantitative(text):
         return text
 
     words = text.split(" ")
@@ -292,9 +350,6 @@ def clean_punct(text: str) -> str:
     """
     if not text:
         return ""
-    
-    # if is_quantitative(text):
-    #     return text
 
     tokens = text.split()
     processed_tokens: List[str] = []
@@ -340,7 +395,7 @@ def space_removal(text: str) -> str:
     if not text:
         return ""
     
-    if " " not in text and text == text.strip():
+    elif " " not in text or text == text.strip():
         return text
     # Reemplaza cualquier secuencia de espacios (\s+) p%\bor uno solo y limpia bordes
     clean_text = _spaces_pattern.sub(" ", text).strip()

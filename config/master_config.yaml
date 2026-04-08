@@ -18,10 +18,10 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
-   - "lineal"
+  #  - "lineal"
    - "vectorizer"
    - "cos_sim"
    - "table_structurer"

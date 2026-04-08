@@ -331,12 +331,6 @@ SEMATIC_TYPES_MAP: Dict[str, int] = {
 
 CHAR_NUM: Set[str] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "$"}
 
-SPECIAL_CHARS: Set[str] = {
-    ")", "(", "]", "[", "{", "}", "|", "*", "^",
-    "-", "_", "+", "=", "<", ">", ";", ":", "@",
-    "'", "!", "¡", "?", "¿", "'", "\\", "''",
-}
-
 UMD_CORRECTIONS: Dict[str, str] = {
     "o": "0",
     "O": "0"
@@ -374,20 +368,26 @@ DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
 }
 
 VALID_NUM_PUNT_CHARS: Set[str] = {
-    ":", ",", ".", "/"
-    "-", "%", "$", "#",
-    "+", "+", "<", ">",
-    "=", "÷",
+    ":", ",", ".",
+    "-", "%", "$",
+    "+", "@",
 }
-NOT_VALID_CHARS: Set[str] = {
-    "~", "©", "®", "™", "`",
-    "¬", "¨", "°",
-    "*", "^", "°", "'", "¨",
-    "-", "_", ";", 
-    "´", "''",
 
+not_valid_chars: Set[str] = {
+    "~", "©", "®", "™", "`",
+    "¬", "¨", "<", ">",
+    "*", "^", "°", "'",
+    "-", "_", ";", "#", 
+    '`', '"', "÷", "=",
 }
-NOT_VALID_CHARS.update(VALID_NUM_PUNT_CHARS)
+
+SPECIAL_CHARS: Set[str] = {
+    ")", "(", "]", "[", "{", "}", "|"
+    "-", "_",
+    "!", "¡", "?", "¿", "'", "\\", "/"
+}
+
+NOT_VALID_CHARS = not_valid_chars.union(SPECIAL_CHARS)
 
 ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "A", "E", "Y", "O"}
 

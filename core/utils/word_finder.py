@@ -472,9 +472,9 @@ class WordFinder:
     
     def _length_penalty(self, a: str, b: str) -> float:
         """Penalización simétrica por diferencia de longitud."""
-        la, lb = len(a), len(b)
-        if la == 0 or lb == 0:
+        if not a or not b:
             return 0.0
+        la, lb = len(a), len(b)
         if la == lb:
             return 1.0
         return min(la, lb) / max(la, lb)

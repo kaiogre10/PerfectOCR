@@ -92,7 +92,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     # logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0}% | '{text}'")
                     continue
 
-                # logger.info(f"{polygon_ids[idx]}: '{text}' | conf: {confidence}")
+                # logger.info(f"{polygon_ids[idx]}: '{text}'")
                 raw_map[polygon_ids[idx]] = {"text": text}
             # logger.info(f"Texto detectado: {raw_map}")
             return raw_map

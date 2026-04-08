@@ -79,10 +79,9 @@ class DataFormatter:
                     geometry=geometry,
                     cropped_img=None,
                     ocr_text=None,
-                    was_fragmented=False,
                     key_field=None,
                     semantic_clasification=[0],
-                    cuant_chars = 0,
+                    cuant_chars=0,
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
