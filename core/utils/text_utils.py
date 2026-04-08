@@ -6,17 +6,17 @@ from core.utils.data_utils import CHAR_NUM, ALONE_CHARS, VALID_NUM_PUNT_CHARS
 
 logger = logging.getLogger(__name__)
 
-# _base_zeros_pattern: Pattern[str] = re.compile(r'^[0O]{2}$')
+_zeros_pattern: Pattern[str] = re.compile(r'[oOQD]')
 _base_date_num_str = r'[0123O][0-9O]'
 # _base_date_num: Pattern[str] = re.compile(rf'^{_base_date_num_str}$')
 
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, ,)
-_secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s$]{2,}', re.IGNORECASE)
-_sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0-9\s$]{2,}(?=[a-zA-Z0-9$])', re.IGNORECASE)
+_secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECASE)
+_sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$])[^a-zA-Z0-9\s/$]{2,}(?=[a-zA-Z0-9$])', re.IGNORECASE)
 
 # _numeric_separator: Pattern[str] =  re.compile(r'^([$\u00A2]?\s*)(-?\d[\d.,]*)(\s*[$\u00A2]?)$', re.IGNORECASE)
 _hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
-_punt_split_pattern: Pattern[str] = re.compile(r"[*'`=.,:;-]")
+_punt_split_pattern: Pattern[str] = re.compile(r"[*'`=.,:;&-]")
 _edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
 
 # Espacios múltiples
@@ -46,28 +46,29 @@ _date_patterns_list: List[Pattern[str]] = [
     re.compile(r'\b(199\d|20\d{2})\b', re.IGNORECASE),
 ]
 
-_mass_pattern = re.compile(r'\b(kg?|g(r)?(s)?|mg|lb(s)?|oz|ton)\b', re.IGNORECASE)
-_vol_pattern = re.compile(r'\b(l(t(r)?(s)?)?|ltrs?|lts?|ml|cc|gal)\b', re.IGNORECASE)
-_len_pattern = re.compile(r'\b(m(t(s)?)?|cm|mm|km|in|ft)\b', re.IGNORECASE)
+_mass_pattern = r'(kg?|g(r)?(s)?|mg|lb(s)?|oz|ton)\b'
+_vol_pattern = r'(l(t(r)?(s)?)?|ltrs?|lts?|ml|cc|gal)\b'
+_len_pattern = r'(m(t(s)?)?|cm|mm|km|in|ft)\b'
 
 _umd_patterns_list: List[Pattern[str]] = [
     # Masas: kg, g, mg, lb, oz, ton. Incluye variaciones de OCR como kgr.
-    re.compile(rf'\b\d*([.,]\d+)?\s*{_mass_pattern}\b', re.IGNORECASE),
+    re.compile(rf'\b\d*([.,]\d+)?\s*{_mass_pattern}'),
     # Volúmenes: l, ml, cc, gal. Incluye variaciones como lt, ltr.
-    re.compile(rf'\b\d*([.,]\d+)?\s*{_vol_pattern}\b', re.IGNORECASE),
+    re.compile(rf'\b\d*([.,]\d+)?\s*{_vol_pattern}'),
     # Cantidad: C/ o C/ con número.
-    re.compile(r'\b[Cc]\s*/\s*\d*\b', re.IGNORECASE),
+    re.compile(r'\b[Cc]\s*/\s*\d*\b'),
     # Longitudes y Áreas: m, cm, mm, km, in, ft, pulg. Detecta la unidad sola o con número. Soporta m2, m^2, m² para áreas.
-    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b', re.IGNORECASE),
-    re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b', re.IGNORECASE),
+    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b'),
+    re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b'),
     # Fracciones (1/2 kg, 1/4).
   #  re.compile(r'\b\d+\s*/\s*\d+\b'),
     # Dimensiones (10x20)
-    re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b', re.IGNORECASE)
+    re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b')
 ]
 
-_size_pattern = re.compile(r'\b(gde|med|ch|paq)\b', re.IGNORECASE)
-_mesure_patterns= re.compile("|".join(p.pattern for p in [_size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
+_size_str = r'\b(gde|med|ch|paq)\b'
+#size_pattern: Pattern[str] = re.compile(_size_str, re.IGNORECASE)
+_mesure_patterns= re.compile("|".join(p for p in [_size_str, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
 
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
@@ -77,7 +78,7 @@ currency_pattern = r"[$]"
 # _currency_stick_pattern: Pattern[str] = re.compile(r'([a-zA-Z])([\$])')
 
 # Compila los patrones base
-# currency = re.compile(currency_pattern)
+#rrency = re.compile(currency_pattern, re.IGNORECASE)
 
 # Usa los strings en las interpolaciones
 _amount_body_pattern = (
@@ -105,14 +106,14 @@ _decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
 
 _quant_runs_patterns = re.compile("|".join(p.pattern for p in [_start, _middle, _multi, _decimal]), re.IGNORECASE)
 
-# _end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
-# _end = re.compile(_end_pattern, re.IGNORECASE)
+_end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
+_end = re.compile(_end_pattern, re.IGNORECASE)
 
-# _digits = re.compile(r"\d+")
-# _end_quants = re.compile(r'[.,]00$')
+_digits = re.compile(r"\d+")
+_end_quants = re.compile(r'[.,]00$', re.IGNORECASE)
 
-# _split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
-# _split = re.compile(_split_pattern)
+_split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
+_split = re.compile(_split_pattern)
 
 RFC_PATTERNS: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
 # _rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b')
@@ -220,41 +221,58 @@ def get_cuants(text: str) -> str:
     """
     if not text:
         return ""
-   
-    elif not contains_quantitative(text) or is_quantitative(text):
-        return text
-   
-    # Buscamos todos los tokens cuantitativos
-    matches = list(_token.finditer(text))
-    if not matches:
+    
+    if not contains_quantitative(text):
         return text
 
-    result = text
-    # Iteramos en reversa para mantener la validez de los índices (span)
-    for m in reversed(matches):
-        tok = m.group(0)
-        start, end = m.span()
-        
-        # Verificamos si necesita espacio a la IZQUIERDA
-        # (Si no es el inicio del string y el carácter anterior NO es un espacio)
-        needs_left_space = start > 0 and not text[start-1].isspace()
-        
-        # Verificamos si necesita espacio a la DERECHA
-        # (Si no es el final del string y el carácter siguiente NO es un espacio)
-        needs_right_space = end < len(text) and not text[end].isspace()
+    # Dividir por espacios sin convertir a lista
+    words = text.split(" ")
+    result_parts: List[str] = []
+    
+    for word in words:
+        # Si el token completo es cuantitativo, no lo separa
+        if is_quantitative(word) and word.count("$") >= 2:
+            compact = word.replace(" ", "")
+            chunks = [m.group(0).replace(" ", "") for m in _split.finditer(compact)]
+            if len(chunks) >= 2 and "".join(chunks) == compact:
+                result_parts.append(" ".join(chunks))
+                continue
 
-        if needs_left_space or needs_right_space:
-            left_part = result[:start]
-            right_part = result[end:]
+       # if is_quantitative(word) and word.count("$") == 1:
+         #   result_parts.append(word)
+         #   continue
+
+        # Buscamos tokens cuantitativos dentro de la palabra
+        matches = list(_token.finditer(word))
+        if not matches:
+            result_parts.append(word)
+            continue
+        
+        # Iteramos en reversa para mantener validez de índices
+        result = word
+        for m in reversed(matches):
+            tok = m.group(0)
+            if is_quantitative(tok):
+                continue
+                
+            start, end = m.span()
             
-            # Construimos el reemplazo con espacios condicionales
-            mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
-            result = left_part + mid + right_part
-
-    # Finalmente normalizamos espacios múltiples si se generaron
-    #final_text = space_removal(result)
-    #logger.info(f"Text: '{text}' -> Cuants: '{result}'")
-    return result.strip()
+            # Verificar si necesita espacio a la izquierda
+            needs_left_space = start > 0 and result[start - 1] not in (' ', '\t')
+            
+            # Verificar si necesita espacio a la derecha
+            needs_right_space = end < len(result) and result[end] not in (' ', '\t')
+            
+            if needs_left_space or needs_right_space:
+                left_part = result[:start]
+                right_part = result[end:]
+                mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
+                result = left_part + mid + right_part
+        
+        result_parts.append(result)
+    
+    quants =  " ".join(result_parts)
+    return _zeros_pattern.sub("0", quants).strip()
 
 def clean_punct(text: str) -> str:
     """
@@ -288,15 +306,13 @@ def separate_punt(text: str) -> str:
     elif is_acronym(text):
         return text
    
-    elif contains_quantitative(text):
-        return text
-
     tokens = text.split()
     processed_tokens: List[str] = []
     for t in tokens:
-        # Si el token no es una excepción (como una hora), separa la puntuación
-        if not _hour_pattern.fullmatch(t):
-            cleaned_token = _punt_split_pattern.sub(' ', t)
+        t = t.strip()
+        # Mantiene intactas horas y cuantitativos puros; limpia los tokens mixtos.
+        if not _hour_pattern.fullmatch(t) and not is_quantitative(t):
+            cleaned_token = _punt_split_pattern.sub(' ', t).strip()
             processed_tokens.append(cleaned_token)
         else:
             # Si es una hora, se mantiene intacta

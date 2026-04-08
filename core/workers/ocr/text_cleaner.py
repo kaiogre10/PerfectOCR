@@ -1,7 +1,7 @@
 # PerfectOCR/core/workers/ocr/text_cleaner.py
 import logging
 import dataclasses
-import numpy as np
+#port numpy as np
 from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -88,7 +88,7 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
 
-            cleaned_text = self.process_single_text(text_sec, polygon)
+            cleaned_text = self.process_single_text(fil_text, polygon)
             if not cleaned_text or not validate_text(cleaned_text):
                 logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
                 eliminated_count += 1
@@ -117,7 +117,7 @@ class TextCleaner(OCRAbstractWorker):
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
         y seguro a los valores que parecen numéricos.
         """ 
-        
+        text = text.strip()
         # Dividir por espacios para procesar token por token, preservando la estructura.
         words = text.split(' ')
         processed_words: List[str] = []

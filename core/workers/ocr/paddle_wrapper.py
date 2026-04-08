@@ -83,6 +83,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             raw_map: Dict[str, Dict[str, Any]] = {}
 
             for idx, (text, confidence) in enumerate(batch_result[0]):
+                text: str = text.strip()
                 if not text or not validate_text(text):
                     logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
                     continue

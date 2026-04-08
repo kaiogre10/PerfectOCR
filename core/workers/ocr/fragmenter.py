@@ -82,8 +82,10 @@ class Fragmenter(OCRAbstractWorker):
     def fragment_by_semantic_classification(self, polygon: Polygons) -> List[Polygons]:
         """
         Fragmenta un polígono según su clasificación semántica.
-        Regla: solo se permite más de una clasificación por polígono si todas son 0.
-        Cualquier valor distinto de 0 (1, 2, -1, -2) debe estar solo en su polígono.
+        Regla: agrupa tokens consecutivos del mismo tipo de clasificación.
+        - Tokens con cls=0 se agrupan entre sí
+        - Tokens con cls=-2 se agrupan entre sí
+        - Otros valores (-1, 1, 2) van cada uno en su propio fragmento
         """
         text: str = polygon.ocr_text or ""
         if not text:
@@ -101,27 +103,36 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
         
         # Construir fragmentos según la regla:
-        # - 0s consecutivos → un solo fragmento
-        # - Cada valor no-0 → un fragmento individual
+        # - Agrupa tokens consecutivos con cls=0
+        # - Agrupa tokens consecutivos con cls=-2
+        # - Cada otro valor va en su propio fragmento
         fragments: List[Tuple[List[str], List[int]]] = []
         current_tokens: List[str] = []
         current_scs: List[int] = []
+        current_cls: int | None = None
         
         for _, (token, cls) in enumerate(zip(parts, sc)):
-            if cls == 0:
-                # Acumular 0s consecutivos
+            if cls in (0, -2):
+                # Si la clase cambia o es la primera, cerrar fragmento anterior
+                if current_cls is not None and current_cls != cls:
+                    if current_tokens:
+                        fragments.append((current_tokens, current_scs))
+                    current_tokens = []
+                    current_scs = []
+                current_cls = cls
                 current_tokens.append(token)
                 current_scs.append(cls)
             else:
-                # Primero, cerrar cualquier fragmento de 0s pendiente
+                # Cerrar fragmento anterior si existe
                 if current_tokens:
                     fragments.append((current_tokens, current_scs))
                     current_tokens = []
                     current_scs = []
-                # Cada no-0 va en su propio fragmento
+                    current_cls = None
+                # Cada otro valor va en su propio fragmento
                 fragments.append(([token], [cls]))
         
-        # Cerrar último fragmento de 0s si quedó pendiente
+        # Cerrar último fragmento si quedó pendiente
         if current_tokens:
             fragments.append((current_tokens, current_scs))
         
