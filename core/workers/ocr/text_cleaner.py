@@ -24,8 +24,6 @@ class TextCleaner(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get("text_cleaner", {})
-        self.min_confidence: float  = worker_config.get("min_confidence")
-        self.min_char = int(worker_config.get("min_char"))
         self.min_probability = float(worker_config.get("min_probability"))
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -49,48 +47,43 @@ class TextCleaner(OCRAbstractWorker):
             polygon = polygons_in[poly_id]
 
             text = polygon.ocr_text or ""
-            #text = space_removal(text)
 
             if not text or not validate_text(text):
-                logger.info(f"Eliminado {poly_id} sin texto valido incial: {text}")
+                # logger.info(f"Eliminado {poly_id} sin texto valido incial: {text}")
                 eliminated_count += 1
                 continue
 
             txt = space_removal(text)
-            if txt != text:
-               logger.info(
-                  f" {poly_id} Espacios eliminados:"
-                   "\n"f"'{text}' -> '{txt}'")
+            # if txt != text:
+            #    logger.info(f"Espacios eliminados de {poly_id}: '{text}' -> '{txt}'")
                
             if not txt or not validate_text(txt):
-                logger.info(f"Eliminado {poly_id} sin texto válido después de espacios: {text}")
+                # logger.info(f"Eliminado {poly_id} sin texto válido después de espacios: {text}")
                 eliminated_count += 1
                 continue
 
             text_sec = remove_special_sequences(txt)
-            if text_sec != txt:
-               sec = txt.replace(text_sec, "")
-               logger.info(
-                  f" {poly_id} Secuencia especial eliminada: '{sec}'"
-                   "\n"f"'{txt}' -> '{text_sec}'")
+            # if text_sec != txt:
+            #    sec = txt.replace(text_sec, "")
+            #    logger.info(f" {poly_id} Secuencia especial eliminada: '{sec}' | '{txt}' -> '{text_sec}'")
                
             if not text_sec or not validate_text(text_sec):
-                logger.info(f"Eliminado {poly_id} sin texto valido después de secuencias especiales: {text}")
+                # logger.info(f"Eliminado {poly_id} sin texto valido después de secuencias especiales: {text}")
                 eliminated_count += 1
                 continue
             
             fil_text = separate_punt(text_sec)
-            if fil_text != text_sec:
-               logger.info(f"Separación {poly_id}: '{text_sec}' -> '{fil_text}'")
+            # if fil_text != text_sec:
+            #    logger.info(f"Separación {poly_id}: '{text_sec}' -> '{fil_text}'")
 
             if not fil_text or not validate_text(fil_text):
-                logger.info(f"Eliminado {poly_id} sin texto valido después de separar puntuación: {text}")
+                # logger.info(f"Eliminado {poly_id} sin texto valido después de separar puntuación: {text}")
                 eliminated_count += 1
                 continue
 
             cleaned_text = self.process_single_text(fil_text, polygon)
             if not cleaned_text or not validate_text(cleaned_text):
-                logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
+                # logger.info(f"Eliminado {poly_id}: Sin texto en limpieza final")
                 eliminated_count += 1
                 continue
             else:
@@ -127,7 +120,7 @@ class TextCleaner(OCRAbstractWorker):
             clean_token = clean_punct(token)
                 # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if not clean_token or not validate_text(clean_token):
-                logger.info(f"Eliminado texto basura : '{clean_token}' in {polygon.polygon_id if polygon else ''}")
+                # logger.info(f"Eliminado texto basura : '{clean_token}' in {polygon.polygon_id if polygon else ''}")
                 continue
             else:
                 processed_words.append(clean_token)

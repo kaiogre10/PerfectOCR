@@ -7,8 +7,8 @@ from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.image_utils import  make_contiguous, extract_contours_metrics
-from services.output_service import save_croped_image, save_shapes
+from core.utils.image_utils import  make_contiguous#, extract_contours_metrics
+from services.output_service import save_croped_image#, save_shapes
 
 logger = logging.getLogger(__name__)
 
@@ -86,15 +86,15 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             # Liberar la imagen completa lo antes posible
             manager.update_full_img(corrected=False, full_img=None)
 
-            full_img = make_contiguous(full_img)
-            contours_list, metrics = extract_contours_metrics(full_img)
+            # full_img = make_contiguous(full_img)
+            # contours_list, metrics = extract_contours_metrics(full_img)
 
-            asigned_cont = self.asign_contours(metrics[:, [0, 5, 6, 18, 19, 20, 21]], bboxes_array_id)
-            valid_cont = asigned_cont[:, 0].tolist()
-            all_contour_indices = metrics[:, 0].astype(int)
-            contours = [contours_list[i][1] for i in valid_cont]
-            contours2 = [contours_list[i][1] for i in all_contour_indices if i not in valid_cont]
-            save_shapes(image_name, "not_valid", full_img, context["output_paths"], contours, contours2)
+            # asigned_cont = self.asign_contours(metrics[:, [0, 5, 6, 18, 19, 20, 21]], bboxes_array_id)
+            # valid_cont = asigned_cont[:, 0].tolist()
+            # all_contour_indices = metrics[:, 0].astype(int)
+            # contours = [contours_list[i][1] for i in valid_cont]
+            # contours2 = [contours_list[i][1] for i in all_contour_indices if i not in valid_cont]
+            # save_shapes(image_name, "not_valid", full_img, context["output_paths"], contours, contours2)
             cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]] = {}
             discarded_poly_ids: List[str] = []
             valid_poly_ids: List[str] = []
@@ -166,7 +166,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.error("No se pudieron guardar las imagenes en el manager")
                 return False
 
-            logger.info(f"'{len(cropped_images)}' polígonos recortados en {time.perf_counter() - start_time:.6f}s.")
+            # logger.info(f"'{len(cropped_images)}' polígonos recortados en {time.perf_counter() - start_time:.6f}s.")
 
             if self.filtered_ouputs:
                 polygons = manager.workflow.polygons if manager.workflow else {}

@@ -76,23 +76,23 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img.cropped_img is not None]
             img_list = [make_contiguous(p.cropped_img.cropped_img) for p in polygons.values() if p.cropped_img.cropped_img is not None]
             image_list = elevate_dims(img_list)
-            
-            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
             manager.delete_cropped_images()
             
+            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
+            image_list = None
             raw_map: Dict[str, Dict[str, Any]] = {}
 
             for idx, (text, confidence) in enumerate(batch_result[0]):
                 text: str = text.strip()
                 if not text or not validate_text(text):
-                    logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
+                    # logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
                     continue
                 
                 elif confidence < self.min_confidence:
-                    logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0}% | '{text}'")
+                    # logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0}% | '{text}'")
                     continue
 
-                # logger.info(f"{polygon_ids[idx]}: '{text}'")
+                # logger.info(f"{polygon_ids[idx]}: '{text}' | conf: {confidence}")
                 raw_map[polygon_ids[idx]] = {"text": text}
             # logger.info(f"Texto detectado: {raw_map}")
             return raw_map

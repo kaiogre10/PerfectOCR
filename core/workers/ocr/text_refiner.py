@@ -48,7 +48,7 @@ class Refiner(OCRAbstractWorker):
                 if contains_quantitative(text):
                     qtext = get_cuants(text)
                     if qtext != text:
-                        logger.info(f"CUANTS: '{text}' -> '{qtext}'")
+                        # logger.info(f"CUANTS: '{text}' -> '{qtext}'")
                         updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
                     else:
                         updated_polygons[poly] = poly_data
@@ -109,10 +109,11 @@ class Refiner(OCRAbstractWorker):
                 self.classify_strings(manager)
                 self._log_worker_time(self.num_passes + 1, "SemanticClassifier", step_t0, "Clasificación Semántica final")
 
-            polygons = manager.workflow.polygons if manager.workflow else {}
-            for poly, poly_data in polygons.items():
-                if poly_data.semantic_clasification:
-                    logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+            # polygons = manager.workflow.polygons if manager.workflow else {}
+            # for poly, poly_data in polygons.items():
+                # logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                # if any(sc in poly_data.semantic_clasification for sc in (1, 2)):
+                #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
 
             file_name: str = manager.workflow.metadata.image_name  # type: ignore
             if self.output:

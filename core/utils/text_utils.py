@@ -73,12 +73,16 @@ _mesure_patterns= re.compile("|".join(p for p in [_size_str, _mass_pattern, _vol
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
 # Define los patrones como strings
-digit_pattern = r"[0-9oO]"
+digit_pattern = r"[0-9oOQ]"
 currency_pattern = r"[$]"
+_clean_currency_pattern = (rf'\b[{currency_pattern},]')
+# Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
+# _s_correct_pattern = re.compile(r'^S\d{3,}[.,]', re.IGNORECASE)
+
 # _currency_stick_pattern: Pattern[str] = re.compile(r'([a-zA-Z])([\$])')
 
 # Compila los patrones base
-#rrency = re.compile(currency_pattern, re.IGNORECASE)
+_clean_currency = re.compile(_clean_currency_pattern, re.IGNORECASE)
 
 # Usa los strings en las interpolaciones
 _amount_body_pattern = (
@@ -91,29 +95,39 @@ _token_pattern = (
     rf"{_amount_body_pattern}\s*{currency_pattern}|"
     rf"{_amount_body_pattern}"
 )
+# Detecta patrones cuantitativos en texto:
 _token = re.compile(_token_pattern)
 
+# Patrón: Montos con símbolo al inicio ($ 80.50)
 _start_pattern = rf"^{currency_pattern}\s*{_amount_body_pattern}$"
 _start = re.compile(_start_pattern)
 
+# Patrón: Monto con símbolo en medio (80 $ 50)
 _middle_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}\s*{_amount_body_pattern}$"
 _middle = re.compile(_middle_pattern)
 
+# Patrón: Múltiples montos seguidos de símbolo ($100 $200)
 _multi_pattern = rf"^(?:\s*{currency_pattern}\s*{_amount_body_pattern}\s*){{2,}}$"
 _multi = re.compile(_multi_pattern)
 
+# Patrón: Decimales grandes tipo 1,230.50 (sin $)
 _decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
 
 _quant_runs_patterns = re.compile("|".join(p.pattern for p in [_start, _middle, _multi, _decimal]), re.IGNORECASE)
 
+# Patrón: Monto terminado en símbolo (80.00 $)
 _end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
 _end = re.compile(_end_pattern, re.IGNORECASE)
 
+# Extrae solo los dígitos (sin formato decimal)
 _digits = re.compile(r"\d+")
+
+# Detecta terminaciones típicas de dinero (.00 ó ,00)
 _end_quants = re.compile(r'[.,]00$', re.IGNORECASE)
 
+# Patrón equivalente a _split, pero requiere $ al inicio y una cantidad
 _split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
-_split = re.compile(_split_pattern)
+_split = re.compile(_split_pattern, re.IGNORECASE)
 
 RFC_PATTERNS: Pattern[str] = re.compile(r'^([A-ZÑ&]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
 # _rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b')
@@ -219,18 +233,16 @@ def get_cuants(text: str) -> str:
     Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto).
     Si ya están separados por espacios, no modifica el texto.
     """
-    if not text:
+    if not text or text.isalpha():
         return ""
     
     if not contains_quantitative(text):
         return text
 
-    # Dividir por espacios sin convertir a lista
     words = text.split(" ")
     result_parts: List[str] = []
     
     for word in words:
-        # Si el token completo es cuantitativo, no lo separa
         if is_quantitative(word) and word.count("$") >= 2:
             compact = word.replace(" ", "")
             chunks = [m.group(0).replace(" ", "") for m in _split.finditer(compact)]
@@ -238,41 +250,40 @@ def get_cuants(text: str) -> str:
                 result_parts.append(" ".join(chunks))
                 continue
 
-       # if is_quantitative(word) and word.count("$") == 1:
-         #   result_parts.append(word)
-         #   continue
+        if is_quantitative(word) and word.count("$") == 1:
+            result_parts.append(word)
+            continue
 
-        # Buscamos tokens cuantitativos dentro de la palabra
         matches = list(_token.finditer(word))
         if not matches:
             result_parts.append(word)
             continue
         
-        # Iteramos en reversa para mantener validez de índices
         result = word
         for m in reversed(matches):
             tok = m.group(0)
-            if is_quantitative(tok):
-                continue
-                
             start, end = m.span()
-            
-            # Verificar si necesita espacio a la izquierda
-            needs_left_space = start > 0 and result[start - 1] not in (' ', '\t')
-            
-            # Verificar si necesita espacio a la derecha
-            needs_right_space = end < len(result) and result[end] not in (' ', '\t')
-            
-            if needs_left_space or needs_right_space:
-                left_part = result[:start]
-                right_part = result[end:]
-                mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
-                result = left_part + mid + right_part
-        
+
+            # Caso clave: cuantitativo válido pegado a letras (ej. "93v", "v93")
+            if is_quantitative(tok):
+                needs_left_space = start > 0 and result[start - 1].isalpha()
+                needs_right_space = end < len(result) and result[end].isalpha()
+
+                if needs_left_space or needs_right_space:
+                    left_part = result[:start]
+                    right_part = result[end:]
+                    mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
+                    result = left_part + mid + right_part
+
         result_parts.append(result)
     
-    quants =  " ".join(result_parts)
+    quants = " ".join(result_parts)
     return _zeros_pattern.sub("0", quants).strip()
+
+def clean_cuant(text: str) -> str:
+    """Normaliza texto para Decimal"""
+    text_0 = _zeros_pattern.sub("0", text).strip()
+    return _clean_currency.sub('', text_0).strip()
 
 def clean_punct(text: str) -> str:
     """
@@ -428,11 +439,6 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             continue
 
         elif total_tokens >= 2:
-            # if "".join(tokens).isalpha():
-            #     result = [0] * total_tokens
-            #     final_results[pid] = (result, 0)
-            #     continue
-
             token_classes: List[int] = []
             poly_total_cuant = 0
             for t in tokens:
@@ -443,7 +449,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         
         else:
             if s.isalpha():
-                if _mesure_patterns.match(s):
+                if bool(_mesure_patterns.match(s)):
                     final_results[pid] = ([-2], 0)
                 else:
                     final_results[pid] = ([0], 0)
