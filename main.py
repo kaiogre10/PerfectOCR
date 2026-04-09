@@ -21,34 +21,30 @@ TEST_MODE = True
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
-LATITUDE_PATH = "D:/outputs/perfectocr"
+LATITUDE_OUTPUT_PATH = "D:/outputs/perfectocr"
 
 env_local = "remote" if os.environ.get("CODESPACES") == "true" else "latitude"
 if env_local == "remote":
     print("Ejecución remota")
-    log_file_paths = os.path.join(PROJECT_ROOT, "perfectocr.txt")
     output_paths = ["output"]
     default_output = output_paths
     
-elif os.path.exists(LATITUDE_PATH):
+elif os.path.exists(LATITUDE_OUTPUT_PATH):
     print("Ejecución en LATITUDE")
-    output_paths =[LATITUDE_PATH]
-    log_file_paths = "D:/outputs/logs/perfectocr.txt"
-    default_output = output_paths
+    output_paths = [LATITUDE_OUTPUT_PATH]
+    default_output = [LATITUDE_OUTPUT_PATH]
 
 else:
     print("Ejecución en Inspiron")
     output_paths = []
-    log_file_paths = ""
-    default_output = ["output"]
+    default_output = []
     
-LOG_FILE_PATH = log_file_paths
 DEFAULT_OUTPUT_PATH = default_output
 OUTPUT_PATH = output_paths
 
 DEFAULT_INPUT_PATH = [
-   "input",
-    #   "input2",
+#    "input",
+      "input2",
     #    "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
@@ -61,6 +57,7 @@ DATE_FORMAT = "%H:%M" #"%Y-%m-%d %H:%M:%S"
 
 logger_root = logging.getLogger()
 logger_root.setLevel(logging.DEBUG)
+
 if logger_root.hasHandlers():
     logger_root.handlers.clear()
 
@@ -72,12 +69,15 @@ file_formatter = logging.Formatter(
 console_formatter = logging.Formatter(
     fmt=CONSOLE_FORMAT
 )
-
-if os.path.exists(LOG_FILE_PATH):
-    file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
-    file_handler.setFormatter(file_formatter)
-    file_handler.setLevel(FILE_LEVEL.upper())
-    logger_root.addHandler(file_handler)
+try:
+    LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
+    if os.path.exists(LOG_FILE_PATH):    
+        file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
+        file_handler.setFormatter(file_formatter)
+        file_handler.setLevel(FILE_LEVEL.upper())
+        logger_root.addHandler(file_handler)
+except FileNotFoundError as e:
+    logger.warning(f"Error generando archivo log: '{e}'", exc_info=True)
 
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(console_formatter)
@@ -88,7 +88,7 @@ def main():
     """Función main para compatibilidad con ejecución directa."""
     if len(sys.argv) == 1:
         input_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_INPUT_PATH]
-        output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in OUTPUT_PATH]
+        output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
         config_path = DEFAULT_CONFIG_FILE
         project_root = PROJECT_ROOT
         

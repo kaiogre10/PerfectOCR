@@ -27,9 +27,8 @@ class Polygons:
     geometry: Geometry
     cropped_img: Optional[CroppedImage]
     ocr_text: Optional[str]
-    # ocr_confidence: Optional[float]
     key_field: Optional[List[int] | int]
-#    'noise_words': 0
+#    'GlobalData': 0
 #    'MontoTotalDocumento': 1
 #    'TotalProductos': 2
 #    'Subtotal': 3
@@ -46,7 +45,7 @@ class Polygons:
         # descriptive: 0
         # code: -1
         # umd: -2
-    was_fragmented: bool
+
     cuant_chars: int
 
 @dataclass

@@ -1,7 +1,7 @@
 # PerfectOCR/core/workflow/ocr/paddle_wrapper.py
 import logging
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -76,25 +76,28 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img.cropped_img is not None]
             img_list = [make_contiguous(p.cropped_img.cropped_img) for p in polygons.values() if p.cropped_img.cropped_img is not None]
             image_list = elevate_dims(img_list)
-            
-            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
             manager.delete_cropped_images()
             
+            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
+            image_list = None
+            deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
             for idx, (text, confidence) in enumerate(batch_result[0]):
                 text: str = text.strip()
                 if not text or not validate_text(text):
-                    logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
+                    deleted.append([polygon_ids[idx], text])
+                    logger.debug(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
                     continue
                 
                 elif confidence < self.min_confidence:
-                    logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0}% | '{text}'")
+                    deleted.append([polygon_ids[idx], text])
+                    logger.debug(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0}% | '{text}'")
                     continue
 
-                # logger.info(f"{polygon_ids[idx]}: '{text}'")
+                logger.debug(f"{polygon_ids[idx]}: '{text}'")
                 raw_map[polygon_ids[idx]] = {"text": text}
-            # logger.info(f"Texto detectado: {raw_map}")
+            # logger.info(f"Texto filteado: {deleted}")
             return raw_map
             
         except TypeError as e:

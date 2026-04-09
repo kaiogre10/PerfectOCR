@@ -58,7 +58,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:04d}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
-                logger.debug(f"'{image_name}' cargada en {time.perf_counter() - time0:.4f}s")
+                logger.info(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.4f}'s")
             
                 if self.output:
                     output_paths = context["output_paths"]

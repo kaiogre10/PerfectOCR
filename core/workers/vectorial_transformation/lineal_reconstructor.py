@@ -7,7 +7,6 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from services.output_service import save_raw_json
-from core.utils.text_utils import space_removal
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +187,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
                     # if tabular_line:
                     #     logger.info(f"{line_id}: '{joined_text}'")
-                    logger.info(f"{line_id}: '{joined_text}'")
+                    # logger.info(f"{line_id}: '{joined_text}'")
                     # logger.info(f"{line_id}: '{joined_text}' | polygons: {polygon_ids}")
 
         # Finaliza la última línea
@@ -236,7 +235,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 # if tabular_line:
                     # logger.info(f"{line_id}: '{joined_text}'")
                 # logger.info(f"{line_id}: '{joined_text}' | polygons: {polygon_ids}")
-                logger.info(f"{line_id}: '{joined_text}'")
+                # logger.info(f"{line_id}: '{joined_text}'")
 
         return lines_info, (header_idx if header_idx > 0 else 0, footer_idx if footer_idx > 0 else 0)
 

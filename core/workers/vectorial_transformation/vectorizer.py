@@ -210,7 +210,7 @@ class Vectorizer(VectorizationAbstractWorker):
         angle = np.degrees(np.arctan2(height, width))
         slope = (width / height)
 
-        logger.info(f"Features Geométricas calculadas en: {time.perf_counter() - timeg:.6}'s")
+        # logger.info(f"Features Geométricas calculadas en: {time.perf_counter() - timeg:.6}'s")
         return np.column_stack([
             line_index,     # [0] line_index
             width,          # [1] width

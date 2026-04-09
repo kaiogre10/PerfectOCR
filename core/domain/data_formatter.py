@@ -79,10 +79,9 @@ class DataFormatter:
                     geometry=geometry,
                     cropped_img=None,
                     ocr_text=None,
-                    was_fragmented=False,
                     key_field=None,
                     semantic_clasification=[0],
-                    cuant_chars = 0,
+                    cuant_chars=0,
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -118,7 +117,7 @@ class DataFormatter:
             return True
         except Exception as e:
             logger.warning(f"Error liberando imágenes recortadas: {e}", exc_info=True)
-            return False
+        return True
 
     def get_tabular_lines(self, return_objects: bool) -> Union[Dict[str, Any], List[str]] | List[str]:
         """
@@ -351,19 +350,22 @@ class DataFormatter:
 
                     updated_polygon = dataclasses.replace(polygon, key_field=key_field)
                     self.workflow.polygons[poly_id] = updated_polygon
+                
+            for pid, poly_data in self.workflow.polygons.items():
+                kf = poly_data.key_field
+                if kf is not None:
                     updated_count += 1
-            
-                    logger.info(f"UPDATED: poly_id: {poly_id}, key_field= '{key_field}', text='{polygon.ocr_text}'")
-
+                    logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
+                
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
+                # logger.info(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
             else:
                 logger.warning("No hubo poligonos con key_field")
                 return True
             
-        except Exception as e:
+        except ValueError as e:
             logger.warning(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
         return False
 
@@ -408,15 +410,16 @@ class DataFormatter:
             
             self.workflow.all_lines = all_lines_dataclasses
             
-            # all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
-            # for line_id, line_data in all_lines.items():
+            all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
+            for lid, l in all_lines.items():
+                logger.info(f"{lid}: '{l.text}'")
             #     tabular_line = line_data.tabular_line
             #     text = line_data.text
             #     if tabular_line:
             #         logger.info(f"Lineas tabulares para {line_id}: '{text}', {tabular_line}")
             return True
                         
-        except Exception as e:
+        except ValueError as e:
             logger.error(f"Error guardando líneas de texto: {e}", exc_info=True)
         return False
 

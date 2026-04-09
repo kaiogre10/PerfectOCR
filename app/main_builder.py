@@ -6,6 +6,7 @@ from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
 from core.domain.models_manager import ModelsManager
 from services.cache_service import cleanup_project_cache
+from datetime import datetime
 import time
 import logging
 
@@ -126,7 +127,7 @@ def execute_sequential_processing(builder: ProcessingBuilder, workflow_report: D
 
         if db_paths:
             mean_time = total_processing_time / len(db_paths)
-            logger.warning(f"Total de imágenes: '{len(db_paths)}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
+            logger.warning(f"'{len(db_paths)}' Archivos Digitalizados el '{datetime.now().strftime('%m/%d %H:%M:%S')}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
 
         return ["db_path"]
 

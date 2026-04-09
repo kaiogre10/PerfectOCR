@@ -142,18 +142,11 @@ class PreprocessingConfig(ConfigWithNumpy):
 
 class TextualCleanConfig(ConfigWithNumpy):
     min_probability: float
-    min_char: int
-    min_confidence: float
-    min_conf_to_clean: float
             
 class TextRefiner(ConfigWithNumpy):
     num_passes: int
-    min_cc_for_frag: int
     encode_mean: Tuple[float, float]
     morph_mean: Tuple[float, float]
-
-class TextCorrector(ConfigWithNumpy):
-    confidence_threshold: float
 
 class PaddleTranscription(ConfigWithNumpy):
     min_confidence: float
@@ -162,7 +155,6 @@ class OCRConfig(ConfigWithNumpy):
     paddle_wrapper: PaddleTranscription
     text_refiner: TextRefiner
     text_cleaner: TextualCleanConfig
-    text_corrector: TextCorrector
 
 class Lineal(ConfigWithNumpy):
     get_vectors: bool

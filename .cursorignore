@@ -1,24 +1,27 @@
 # Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
 .vscode/
 # Para ignorar directorios completos, simplemente agrega el nombre del directorio seguido de una barra inclinada (/) en una línea nueva.
-*.vscode
-*input
-*input2
-*input3
-*data
-*tools
-*.idea
-*documentation
-*data_base
+input/
+input2/
+input3/
+data/
+tools/
+idea/
+documentation/
+data_base/
+__pycache__/
 
-*test
+test/
 # Para ignorar un archivo específico, simplemente escribe su nombre o ruta relativa, por ejemplo:
 # ejemplo.txt
 # Para ignorar todos los archivos de un tipo específico, usa el comodín, por ejemplo:
 # *.csv
+*.pyc
 *.ini
 *.env
-desktop.ini
+*.gitignore
+*.png
+
 
 # Si quieres ignorar varias carpetas, agrégalas una por línea:
 # logs/

@@ -7,7 +7,6 @@ from core.domain.data_models import Polygons, Geometry
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import is_acronym
 from core.utils.math_utils import fragment_geometry_horizontal
-# from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +15,6 @@ class Fragmenter(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config.get("text_refiner", {})
-        self.min_contours_for_frag = worker_config.get("min_cc_for_frag")
         self.output = config.get("fragmented_polys", False)
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool: 
@@ -26,26 +23,29 @@ class Fragmenter(OCRAbstractWorker):
                 logger.warning("Fragmentador no tiene polígonos para procesar")
                 return False
             
-            polygons_in: Dict[str, Polygons] = manager.workflow.polygons
-            sorted_poly_ids = sorted(polygons_in.keys())
-           # logger.info(f"Cantidad de polígonos recibidos:{len(sorted_poly_ids)}")
+            polygons_in: Dict[str, Polygons] = manager.workflow.polygons            
             
             fragmented_count = 0
             final_polygons: List[Polygons] = []
-            
-            for poly_id in sorted_poly_ids:
-                polygon = polygons_in[poly_id]
+            for poly_id, polygon in polygons_in.items():
                 
                 sc: List[int]= polygon.semantic_clasification
                 ocr_text: str = polygon.ocr_text or ""
+                ocr_text = ocr_text.strip()
                 
                 if not ocr_text:
                     logger.debug(f"Polygono sin texto: {poly_id}")
                     continue
+                
+                kf = polygon.key_field
+                if kf or kf is not None:
+                    logger.debug(f"'{poly_id}' con KEYFIELD no se fragmenta: '{ocr_text}'")
+                    final_polygons.append(polygon)
+                    continue
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
                 if is_acronym(ocr_text):
-                    # logger.info(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
+                    logger.debug(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
                     final_polygons.append(polygon)
                     continue
                 
@@ -72,10 +72,10 @@ class Fragmenter(OCRAbstractWorker):
                 final_polygons_dict[new_id] = final_poly_obj
             manager.workflow.polygons = final_polygons_dict
             if fragmented_count > 0:
-               # logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
+                logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
                 return True
                 
-        except Exception as e:
+        except ValueError as e:
             logger.warning(f"Error fragmentando: {e}", exc_info=True)
         return False
 
@@ -95,7 +95,7 @@ class Fragmenter(OCRAbstractWorker):
         
         # Usar split() sin argumentos ayuda a lidiar con cualquier formato de espacios en blanco
         parts = [p for p in text.split(' ') if p]
-        # logger.info(f"TEXTO: '{text}' | PARTS: '{parts}'")
+        # logger.debug(f"TEXTO: '{text}' | PARTS: '{parts}'")
         
         # Verificar alineación
         if len(parts) != len(sc):
@@ -168,5 +168,5 @@ class Fragmenter(OCRAbstractWorker):
             )
             new_polys.append(new_poly)
         
-        #logger.info(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
+        logger.debug(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
         return new_polys
