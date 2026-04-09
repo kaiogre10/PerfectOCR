@@ -1,12 +1,14 @@
 # core/workers/ocr/text_refiner.py
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Union
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 # from core.workers.ocr.text_corrector import TextCorrector
+# from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.fragmenter import Fragmenter
 from services.output_service import save_raw_json
+from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
 from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
 import logging
 import dataclasses
@@ -19,9 +21,11 @@ class Refiner(OCRAbstractWorker):
     Orquesta un ciclo de refinamiento de texto post-OCR con clasificación selectiva optimizada.
     """
     def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, fragmenter: Optional[Fragmenter] = None):
+    def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
         self.worker_config = config.get("text_refiner", {})
         self.num_passes = self.worker_config.get("num_passes")
+        self.preprocess_key_data_enabled = self.worker_config.get("preprocess_key_data", True)
         self.output = config.get("cleanned_text")
         self.cleaner = cleaner
         self.fragmenter = fragmenter
@@ -49,7 +53,7 @@ class Refiner(OCRAbstractWorker):
                 if contains_quantitative(text):
                     qtext = get_cuants(text)
                     if qtext != text:
-                        logger.info(f"CUANTS: '{text}' -> '{qtext}'")
+                        # logger.info(f"CUANTS: '{text}' -> '{qtext}'")
                         updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
                     else:
                         updated_polygons[poly] = poly_data

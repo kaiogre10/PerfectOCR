@@ -77,6 +77,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             img_list = [make_contiguous(p.cropped_img.cropped_img) for p in polygons.values() if p.cropped_img.cropped_img is not None]
             image_list = elevate_dims(img_list)
             manager.delete_cropped_images()
+            manager.delete_cropped_images()
             
             batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
             image_list = None

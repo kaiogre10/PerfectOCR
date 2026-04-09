@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List, Tuple, Dict, Pattern, Any, Set, Optional
+from typing import List, Tuple, Dict, Pattern, Any, Set, Optional, Set
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import CHAR_NUM, ALONE_CHARS, VALID_NUM_PUNT_CHARS
 
@@ -19,6 +19,7 @@ _punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&-]")
 _edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
 
 # Espacios múltiples
+_spaces_pattern: Pattern[str] = re.compile(r'\s+')
 _spaces_pattern: Pattern[str] = re.compile(r'\s+')
 
 # Siglas/Acrónimos
@@ -55,7 +56,10 @@ _umd_patterns_list: List[Pattern[str]] = [
     re.compile(rf'\b\d*([.,]\d+)?\s*{_vol_str}', re.IGNORECASE),
     # Cantidad: C/ o C/ con número.
     re.compile(r'\b[Cc]\s*/\s*\d*\b', re.IGNORECASE),
+    re.compile(r'\b[Cc]\s*/\s*\d*\b', re.IGNORECASE),
     # Longitudes y Áreas: m, cm, mm, km, in, ft, pulg. Detecta la unidad sola o con número. Soporta m2, m^2, m² para áreas.
+    re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b', re.IGNORECASE),
+
     re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b', re.IGNORECASE),
 
     re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b'),
@@ -76,7 +80,12 @@ _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.I
 
 # Define los patrones como strings
 digit_pattern = r"[0-9oOQ]"
+digit_pattern = r"[0-9oOQ]"
 currency_pattern = r"[$]"
+_clean_currency_pattern = (rf'\b[{currency_pattern},]')
+# Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
+# _s_correct_pattern = re.compile(r'^S\d{3,}[.,]', re.IGNORECASE)
+
 _clean_currency_pattern = (rf'\b[{currency_pattern},]')
 # Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
 # _s_correct_pattern = re.compile(r'^S\d{3,}[.,]', re.IGNORECASE)
@@ -84,6 +93,7 @@ _clean_currency_pattern = (rf'\b[{currency_pattern},]')
 # _currency_stick_pattern: Pattern[str] = re.compile(r'([a-zA-Z])([\$])')
 
 # Compila los patrones base
+_clean_currency = re.compile(_clean_currency_pattern, re.IGNORECASE)
 _clean_currency = re.compile(_clean_currency_pattern, re.IGNORECASE)
 
 # Usa los strings en las interpolaciones
@@ -98,25 +108,34 @@ _token_pattern = (
     rf"{_amount_body_pattern}"
 )
 # Detecta patrones cuantitativos en texto:
+# Detecta patrones cuantitativos en texto:
 _token = re.compile(_token_pattern)
 
+# Patrón: Montos con símbolo al inicio ($ 80.50)
 # Patrón: Montos con símbolo al inicio ($ 80.50)
 _start_pattern = rf"^{currency_pattern}\s*{_amount_body_pattern}$"
 _start = re.compile(_start_pattern)
 
 # Patrón: Monto con símbolo en medio (80 $ 50)
+# Patrón: Monto con símbolo en medio (80 $ 50)
 _middle_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}\s*{_amount_body_pattern}$"
 _middle = re.compile(_middle_pattern)
 
+# Patrón: Múltiples montos seguidos de símbolo ($100 $200)
 # Patrón: Múltiples montos seguidos de símbolo ($100 $200)
 _multi_pattern = rf"^(?:\s*{currency_pattern}\s*{_amount_body_pattern}\s*){{2,}}$"
 _multi = re.compile(_multi_pattern)
 
 # Patrón: Decimales grandes tipo 1,230.50 (sin $)
+# Patrón: Decimales grandes tipo 1,230.50 (sin $)
 _decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
 
 _quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start, _middle, _multi]), re.IGNORECASE)
+_quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start, _middle, _multi]), re.IGNORECASE)
 
+# Patrón: Monto terminado en símbolo (80.00 $)
+# _end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
+# _end = re.compile(_end_pattern, re.IGNORECASE)
 # Patrón: Monto terminado en símbolo (80.00 $)
 # _end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
 # _end = re.compile(_end_pattern, re.IGNORECASE)
@@ -126,7 +145,13 @@ _quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start,
 
 # Detecta terminaciones típicas de dinero (.00 ó ,00)
 # _end_quants = re.compile(r'[.,]00$', re.IGNORECASE)
+# Extrae solo los dígitos (sin formato decimal)
+# _digits = re.compile(r"\d+")
 
+# Detecta terminaciones típicas de dinero (.00 ó ,00)
+# _end_quants = re.compile(r'[.,]00$', re.IGNORECASE)
+
+# Patrón equivalente a _split, pero requiere $ al inicio y una cantidad
 # Patrón equivalente a _split, pero requiere $ al inicio y una cantidad
 _split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
 _split = re.compile(_split_pattern, re.IGNORECASE)
@@ -285,10 +310,27 @@ def get_cuants(text: str) -> str:
                     mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
                     result = left_part + mid + right_part
 
+
+            # Caso clave: cuantitativo válido pegado a letras (ej. "93v", "v93")
+            if is_quantitative(tok):
+                needs_left_space = start > 0 and result[start - 1].isalpha()
+                needs_right_space = end < len(result) and result[end].isalpha()
+
+                if needs_left_space or needs_right_space:
+                    left_part = result[:start]
+                    right_part = result[end:]
+                    mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
+                    result = left_part + mid + right_part
+
         result_parts.append(result)
     
     return " ".join(result_parts).strip()
     # return _zeros_pattern.sub("0", quants).strip()
+
+def clean_cuant(text: str) -> str:
+    """Normaliza texto para Decimal"""
+    text_0 = _zeros_pattern.sub("0", text).strip()
+    return _clean_currency.sub('', text_0).strip()
 
 def clean_cuant(text: str) -> str:
     """Normaliza texto para Decimal"""
