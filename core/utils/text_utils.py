@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List, Tuple, Dict, Pattern, Any, Set, Optional, Set
+from typing import List, Tuple, Dict, Pattern, Any, Set, Optional
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import CHAR_NUM, ALONE_CHARS, VALID_NUM_PUNT_CHARS
 
@@ -19,11 +19,12 @@ _punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&-]")
 _edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
 
 # Espacios múltiples
-_spaces_pattern: Pattern[str] = re.compile(r'\s+')
-_spaces_pattern: Pattern[str] = re.compile(r'\s+')
+_spaces_pattern: Pattern[str] = re.compile(r'\s+', re.IGNORECASE)
 
 # Siglas/Acrónimos
 _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|sa|cv)(?:[:;,.])?$', re.IGNORECASE)
+
+_bad_title: Pattern[str] = re.compile(r'^([A-Za-z0-9])(?: [A-Za-z0-9])+$', re.IGNORECASE)
 
 # Datos Globales
 _phone_number: Pattern[str] = re.compile(r'^\d{10}$')
@@ -55,7 +56,6 @@ _umd_patterns_list: List[Pattern[str]] = [
     # Volúmenes: l, ml, cc, gal. Incluye variaciones como lt, ltr.
     re.compile(rf'\b\d*([.,]\d+)?\s*{_vol_str}', re.IGNORECASE),
     # Cantidad: C/ o C/ con número.
-    re.compile(r'\b[Cc]\s*/\s*\d*\b', re.IGNORECASE),
     re.compile(r'\b[Cc]\s*/\s*\d*\b', re.IGNORECASE),
     # Longitudes y Áreas: m, cm, mm, km, in, ft, pulg. Detecta la unidad sola o con número. Soporta m2, m^2, m² para áreas.
     re.compile(r'\b(\d+([.,]\d+)?\s*)?(m(t(s)?)?|cm|mm|km|in|ft|m(t)?(\^2|2|²)|cm(\^2|2|²)|km(\^2|2|²))\b', re.IGNORECASE),
@@ -332,11 +332,6 @@ def clean_cuant(text: str) -> str:
     text_0 = _zeros_pattern.sub("0", text).strip()
     return _clean_currency.sub('', text_0).strip()
 
-def clean_cuant(text: str) -> str:
-    """Normaliza texto para Decimal"""
-    text_0 = _zeros_pattern.sub("0", text).strip()
-    return _clean_currency.sub('', text_0).strip()
-
 def clean_punct(text: str) -> str:
     """
     Elimina los caracteres de puntuación definidos en _punt_split_pattern
@@ -392,10 +387,14 @@ def space_removal(text: str) -> str:
     if not text:
         return ""
     
-    if " " not in text or text == text.strip():
+    if not " " in text and text == text.strip():
         return text
     # Reemplaza cualquier secuencia de espacios (\s+) p%\bor uno solo y limpia bordes
     clean_text = _spaces_pattern.sub(" ", text).strip()
+    if bool(_bad_title.fullmatch(clean_text)):
+        cleaned_token = clean_text.replace(" ", "")
+        # logger.info(f"Mal título: '{clean_text} -> '{cleaned_token}'")
+        clean_text = cleaned_token
     return clean_text if clean_text else text.strip()
 
 def remove_special_sequences(text: str) -> str:
@@ -423,7 +422,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         total_cuant = sum(1 for ch in s if ch in CHAR_NUM)
         
         if s.isalpha() or total_cuant == 0:
-            if bool(_mesure_patterns.search(s)):
+            if bool(_mesure_patterns.match(s)):
                 return (-2, 0)
             return (0, 0)
     
@@ -437,7 +436,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             return (2, total_cuant)
             
         if find_umd(s):
-            # logger.info(f"UMD por función '{s}'")
+            # logger.info(f"UMD por REGEX '{s}'")
             return (-2, total_cuant)
 
         if is_code(s):
@@ -488,7 +487,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         elif total_tokens == 1:
             
             if s.isalpha():
-                if bool(_mesure_patterns.search(s)):
+                if bool(_mesure_patterns.match(s)):
                     final_results[pid] = ([-2], 0)
                     continue
                 # else:
@@ -510,7 +509,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 continue
 
             if find_umd(s):
-                #logger.info(f"UMD inicial: '{s}'")
+                # logger.info(f"UMD POR REGEX: '{s}'")
                 c = sum(1 for ch in s if ch in CHAR_NUM)
                 final_results[pid] = ([-2], c)
                 continue

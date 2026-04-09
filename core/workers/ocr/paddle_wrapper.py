@@ -6,7 +6,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import validate_text
+from core.utils.text_utils import validate_text, space_removal
 from core.utils.image_utils import elevate_dims, make_contiguous
 from services.output_service import save_raw_json
 
@@ -84,8 +84,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
-            for idx, (text, confidence) in enumerate(batch_result[0]):
-                text: str = text.strip()
+            for idx, (txt, confidence) in enumerate(batch_result[0]):
+                txt = txt.strip()
+                text = space_removal(txt)
                 if not text or not validate_text(text):
                     deleted.append([polygon_ids[idx], text])
                     logger.debug(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
@@ -96,7 +97,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     logger.debug(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0}% | '{text}'")
                     continue
 
-                logger.debug(f"{polygon_ids[idx]}: '{text}'")
+                # logger.info(f"{polygon_ids[idx]}: '{text}'")
                 raw_map[polygon_ids[idx]] = {"text": text}
             # logger.info(f"Texto filteado: {deleted}")
             return raw_map

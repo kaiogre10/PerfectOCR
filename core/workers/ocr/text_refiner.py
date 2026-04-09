@@ -6,7 +6,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from services.output_service import save_raw_json
-from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative
+from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
 import logging
 import dataclasses
 import time
@@ -39,6 +39,7 @@ class Refiner(OCRAbstractWorker):
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para procesar")
                 return False
+                
             polygons: Dict[str, Polygons] = manager.workflow.polygons
             updated_polygons: Dict[str, Polygons] = {}
             for poly, poly_data in polygons.items():
@@ -54,6 +55,10 @@ class Refiner(OCRAbstractWorker):
                     updated_polygons[poly] = poly_data
 
             manager.workflow.polygons = updated_polygons
+            
+            if self.preprocess_key_data(manager):
+                logger.debug(f"KEY FIEL ACTUALIZADOS")
+            
             if 0 >= self.num_passes:
                 step_t0 = time.perf_counter()
                 self.classify_strings(manager)
@@ -146,18 +151,65 @@ class Refiner(OCRAbstractWorker):
             
             if not polygons_to_classify:
                 logger.warning("No hay polígonos que clasificar")
-                return True
+                return False
                                         
             # Clasificar solo los polígonos seleccionados
             # t0 = time.perf_counter()
             final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify, self.worker_config)
             # logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
 
-            # Actualizar semantic_type Y resetear was_refined si es modo filtrado
             manager.update_semantic_clasification(final_results)
 
             return True
 
         except Exception as e:
             logger.warning(f"Error en el clasificador: {e}", exc_info=True)
+            return False
+    def preprocess_key_data(self, manager: DataFormatter) -> bool:
+        """
+        Asigna key_field (fecha, RFC, IVA) sobre texto OCR crudo antes de fragmentar/clasificar.
+        Cada tipo de dato se marca como mucho una vez por documento (orden lectura: poly_index).
+        """
+        try:
+            if not manager.workflow or not manager.workflow.polygons:
+                logger.warning("Semantic Clasificator no tiene polígonos para procesar")
+                return False
+
+            polygons: Dict[str, Polygons] = manager.workflow.polygons
+            # [fecha, rfc, iva] — ya satisfechos en el documento
+            state: List[bool] = [False, False, False]
+
+            for _, pd in polygons.items():
+                kf = pd.key_field
+                if kf is None:
+                    continue
+                keys = kf if isinstance(kf, list) else [kf]
+                if 9 in keys:
+                    state[0] = True
+                if 7 in keys:
+                    state[1] = True
+                if 8 in keys:
+                    state[2] = True
+
+            polygon_updates: Dict[str, List[int] | int] = {}
+
+            for poly_id, poly_data in polygons.items():
+                if poly_data.key_field is not None:
+                    continue
+
+                text = poly_data.ocr_text or ""
+                key_field = find_key_data(text, state)
+
+                if key_field is None:
+                    continue
+                
+                polygon_updates[poly_id] = key_field
+
+            if polygon_updates:
+                manager.update_key_field(polygon_updates)
+                
+                return True
+            return False
+        except Exception as e:
+            logger.warning(f"Error encontrando keydata: '{e}", exc_info=True)
             return False

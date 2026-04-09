@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import validate_text
+from core.utils.text_utils import validate_text, is_acronym
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +37,11 @@ class DataFinder(OCRAbstractWorker):
             if not polygons:
                 logger.error("No hay polygons para procesar")
                 return False
-            # polygons.pop(polygons)
 
             polygon_updates = self._find_data(polygons)
             if manager.update_key_field(polygon_updates):
                 return True
+                
         except Exception as e:
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
         return True
@@ -64,7 +64,7 @@ class DataFinder(OCRAbstractWorker):
             texts = [(p.ocr_text or "") for p in polygons.values()]
 
             texts_length = np.array([len(t) for t in texts])
-            decimal_p = np.array([t.isdecimal() for t in texts])
+            decimal_p = np.array([t.isnumeric() for t in texts])
 
             sc_length = np.array([len(c) for c in sc])
             forb_sc = np.array([any(c in sc_forb for c in s) for s in sc])
@@ -81,25 +81,24 @@ class DataFinder(OCRAbstractWorker):
                     continue
 
                 processed_count += 1
-                kf = poly.key_field
-                if kf or kf is not None:
+                kf = poly.key_field or None
+                if kf is not None or kf:
                     skipped_semantic += 1
-                    # logger.info(f"KeyField redundante en WODR FINDER {pid}: '{poly.ocr_text}'")
+                    # logger.info(f"KeyField redundante en WODR FINDER {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     continue
 
                 ocr_text = poly.ocr_text or ""
-                # logger.info(f"Texto a procesar: {ocr_text}")
-                if ocr_text.isdecimal():
-                    skipped_semantic += 1
-                    continue
 
                 if not validate_text(ocr_text):
+                    # logger.info(f"Texto INVÁLIDO: '{ocr_text}' | sc: {poly.semantic_clasification}")
                     skipped_semantic += 1
                     continue
-
+            
                 else:
+                    # if is_acronym(ocr_text):
+                    #     ocr_text = ocr_text.replace(".", "")
                     ocr_text = ocr_text.lower()
-                    #logger.info(f"Poly: {pid}: TEXTO: '{ocr_text}")
+                    # logger.info(f"Texto a procesar: '{ocr_text}' | sc: {poly.semantic_clasification}")
                     valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
                     if not valid_results:
                         continue

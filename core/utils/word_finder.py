@@ -54,7 +54,7 @@ class WordFinder:
             if not text:
                 return []
             
-            elif text in self.noise_words:
+            if text in self.noise_words:
                 logger.info(f"Ruido inmediato: {text}")
                 return []
 
@@ -73,16 +73,21 @@ class WordFinder:
                 if not s:
                     continue
                 
+                if s in self.noise_words:
+                    logger.info(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
+                    continue
+                
                 q = self._normalize(s)
+                # logger.debug(f"TEXTO NORMALIZADO: '{s}' -> '{q}'")
                 if not q:
                     continue
 
                 if q in self.noise_words:
-                    logger.debug(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
+                    logger.info(f"Ruido temprano 2: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
                     continue
 
                 if not self._is_potential_keyword(q):
-                    # logger.debug(f"Texto no válido: {q}")
+                    logger.debug(f"Texto no paso filtro global: {q}")
                     continue
 
                 # ELIMINACIÓN DE RUIDO: No usa assigned_fields
@@ -91,7 +96,7 @@ class WordFinder:
                     q = q_cleaned
 
                 if q in self.noise_words:
-                    logger.debug(f"Ruido temprano 2: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
+                    logger.info(f"Ruido temprano 3: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
                     continue
 
                 found_matches_for_s: List[Dict[str, Any]] = []
@@ -337,7 +342,7 @@ class WordFinder:
 
         if total_ngrams_cand == 0.0:
             return 0.0
-
+        
         return total_score / total_ngrams_cand
 
     def _is_potential_keyword(self, q: str) -> bool:

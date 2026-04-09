@@ -44,6 +44,7 @@ class DataFormatter:
                 polygons={},
                 all_lines={}
             )
+            logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{IDRegistro}'")
             return True
             
         except Exception as e:
@@ -165,6 +166,7 @@ class DataFormatter:
                 
             if full_img is None or not corrected:
                 # Medir dims de la imagen real almacenada antes de liberar memoria
+                logger.debug("Full image liberada")
                 self.workflow = dataclasses.replace(self.workflow,full_img=None)
                 return True
             
@@ -350,22 +352,23 @@ class DataFormatter:
 
                     updated_polygon = dataclasses.replace(polygon, key_field=key_field)
                     self.workflow.polygons[poly_id] = updated_polygon
-                
-            for pid, poly_data in self.workflow.polygons.items():
-                kf = poly_data.key_field
-                if kf is not None:
                     updated_count += 1
-                    logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
+                    
+                    
+            for pid, poly_data in self.workflow.polygons.items():
+                kf = poly_data.key_field or None
+                if kf is not None:
+                    logger.debug(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
                 
             if updated_count > 0:
-                # logger.info(f"Actualizados {updated_count} polígonos con key_fields")
+                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
             else:
                 logger.warning("No hubo poligonos con key_field")
                 return True
             
-        except ValueError as e:
+        except Exception as e:
             logger.warning(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
         return False
 
