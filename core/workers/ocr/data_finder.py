@@ -8,7 +8,6 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
 from core.utils.text_utils import validate_text
-from core.utils.text_utils import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,6 @@ class DataFinder(OCRAbstractWorker):
                 logger.debug("Modelo de búsqueda obtenido del ModelsManager")
             return self._model #type: ignore
 
-        except ImportError as e:
         except ImportError as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
         return None
@@ -63,7 +61,6 @@ class DataFinder(OCRAbstractWorker):
             all_idx = np.array([p.poly_index for p in polygons.values()], np.int16)
 
             sc = [p.semantic_clasification for p in polygons.values()]
-            sc = [p.semantic_clasification for p in polygons.values()]
             texts = [(p.ocr_text or "") for p in polygons.values()]
 
             texts_length = np.array([len(t) for t in texts])
@@ -76,13 +73,9 @@ class DataFinder(OCRAbstractWorker):
             mask_len = (texts_length < 2) & (decimal_p == True)
             mask = mask_sc | mask_len
             skip_idx = np.compress(mask, all_idx).tolist()
-            mask = mask_sc | mask_len
-            skip_idx = np.compress(mask, all_idx).tolist()
 
             for pid, poly in polygons.items():
-            for pid, poly in polygons.items():
                 if poly.poly_index in skip_idx:
-                    # logger.info(f"{pid} Omitido: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     # logger.info(f"{pid} Omitido: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     skipped_semantic += 1
                     continue
@@ -123,7 +116,6 @@ class DataFinder(OCRAbstractWorker):
                     else:
                         key_field = valid_results[0]['key_field']
                         polygon_updates[pid] = key_field
-                        # logger.info(f"'{pid}': Key_Field: '{key_field}'")
                         # logger.info(f"'{pid}': Key_Field: '{key_field}'")
 
             if polygon_updates:
