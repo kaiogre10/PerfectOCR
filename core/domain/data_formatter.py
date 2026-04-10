@@ -184,6 +184,7 @@ class DataFormatter:
                 # Wrap en la dataclass FullImage y actualizar workflow
                 full_image_obj = FullImage(img_arr)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
+                
                 up_img = self.workflow.full_img.full_img if self.workflow else None
                 if up_img is None:
                     return True
@@ -358,11 +359,11 @@ class DataFormatter:
 
                     updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[0], cuant_chars=0)
                     self.workflow.polygons[poly_id] = updated_polygon
-                    updated_count += 1
                     
             for pid, poly_data in self.workflow.polygons.items():
                 kf = poly_data.key_field or None
                 if kf is not None:
+                    updated_count += 1
                     logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
                 
             if updated_count > 0:
@@ -416,11 +417,11 @@ class DataFormatter:
                     t_cuant = line_data["t_cuant"]
                 )
             
-            self.workflow.all_lines = all_lines_dataclasses
+                self.workflow.all_lines = all_lines_dataclasses
             
             all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
             for lid, l in all_lines.items():
-                logger.debug(f"{lid}: '{l.text}'")
+                logger.info(f"{lid}: '{l.text}'")
             #     tabular_line = line_data.tabular_line
             #     text = line_data.text
             #     if tabular_line:

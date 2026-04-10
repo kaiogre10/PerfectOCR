@@ -30,14 +30,17 @@ _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|
 # _bad_title: Pattern[str] = re.compile(r'^([A-Za-z0-9])(?: [A-Za-z0-9])+$', re.IGNORECASE)
 
 # Datos Globales
-_phone_number: Pattern[str] = re.compile(r'^\d{10}$')
-_mail_pattern: Pattern[str] = re.compile(r'\b[\w.+-]*@mail(?:\.com)?\b', re.IGNORECASE)
+_phone_str = r'^\d{10}$'
+_kind_phon= r'\b(cel|tel)\b'
+_phone_number = re.compile("|".join(p for p in [_kind_phon, _phone_str]), re.IGNORECASE)
 
-_cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$', re.IGNORECASE)
+_mail_pattern: Pattern[str] = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b', re.IGNORECASE)
+
+_cp_pattern: Pattern[str] = re.compile(r'\b(?:C\.?\s*P\.?)\b|\b\d{5}\b', re.IGNORECASE)
 
 _numeric_code: Pattern[str] = re.compile(rf'^{_zeros_str}[0-9]+$')
 
-_code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_cp_pattern, _numeric_code]), re.IGNORECASE)
+# _code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_cp_pattern, _numeric_code]), re.IGNORECASE)
 
 # Fecha
 _date_patterns_list: List[Pattern[str]] = [
@@ -156,10 +159,7 @@ def is_code(s: str) -> bool:
         return False
     if s.isalpha():
         return False
-    if bool(_numeric_code.match(s)):
-        logger.debug(f"Código comienza n 0")
-        return True
-    return bool(_code_patterns.search(s))
+    return bool(_numeric_code.search(s))
 
 def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
     """
@@ -191,7 +191,11 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
         if not activate_func[4] and bool(_mail_pattern.search(s)):
             activate_func[4] = True
             return 11
-
+        
+        if not activate_func[5] and bool(_cp_pattern.search(s)):
+            activate_func[5] = True
+            return 12
+            
         return None
 
     except ValueError as e:
@@ -284,7 +288,6 @@ def get_cuants(text: str) -> str:
                     mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
                     result = left_part + mid + right_part
 
-
             # Caso clave: cuantitativo válido pegado a letras (ej. "93v", "v93")
             if is_quantitative(tok):
                 needs_left_space = start > 0 and result[start - 1].isalpha()
@@ -303,8 +306,8 @@ def get_cuants(text: str) -> str:
 
 def clean_cuant(text: str) -> str:
     """Normaliza texto para Decimal"""
-    text_0 = _zeros_pattern.sub("0", text).strip()
-    return _clean_currency.sub('', text_0).strip()
+    text_0 = _zeros_pattern.sub("0", text)
+    return _clean_currency.sub('', text_0)
 
 def punct_strip(text: str) -> str:
     """
@@ -533,5 +536,5 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             poly_total_cuant += t_cuant
         final_results[pid] = (token_classes, poly_total_cuant)
     
-    logger.info(f"TOTAL CLASIFICADOS SIN CUANTITATIVOS: '{no_cuants}', SIN CUANTS: {has_cuants}, CODIFICADOS: {encoded}, MIXTOS: {mixed}")
+    # logger.info(f"TOTAL CLASIFICADOS SIN CUANTITATIVOS: '{no_cuants}', SIN CUANTS: {has_cuants}, CODIFICADOS: {encoded}, MIXTOS: {mixed}")
     return final_results

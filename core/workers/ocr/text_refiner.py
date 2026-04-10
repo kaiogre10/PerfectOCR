@@ -94,9 +94,9 @@ class Refiner(OCRAbstractWorker):
             logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-                logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
-                # if any(sc in poly_data.semantic_clasification for sc in (-1, 0)):
-                #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                # logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                if -1 in poly_data.semantic_clasification:
+                    logger.info(f"{poly}: RARO '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
             
             if self.output:
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore    
@@ -156,7 +156,7 @@ class Refiner(OCRAbstractWorker):
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons
             # [fecha, rfc, iva] — ya satisfechos en el documento
-            state: List[bool] = [False, False, False, False, False]
+            state: List[bool] = [False, False, False, False, False, False]
 
             for _, pd in polygons.items():
                 kf = pd.key_field
@@ -173,6 +173,8 @@ class Refiner(OCRAbstractWorker):
                     state[3] = True
                 if 11 in keys:
                     state[4] = True
+                if 12 in keys:
+                    state[5] = True
 
             polygon_updates: Dict[str, List[int] | int] = {}
 
@@ -210,7 +212,7 @@ class Refiner(OCRAbstractWorker):
                 if contains_quantitative(text):
                     qtext = get_cuants(text)
                     if qtext != text:
-                        # logger.info(f"CUANTS: '{text}' -> '{qtext}'")
+                        logger.info(f"CUANTS: '{text}' -> '{qtext}'")
                         updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
                     else:
                         updated_polygons[poly] = poly_data

@@ -52,7 +52,7 @@ OUTPUT_PATH = output_paths
 CONSOLE_LEVEL = "INFO"
 FILE_LEVEL = "INFO"
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
-FILE_FORMAT = "%(module)s:%(lineno)d - %(message)s"
+FILE_FORMAT = "%(module)s:%(lineno)d - %(message)s" #"%(asctime)s - %(module)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%H:%M" #"%Y-%m-%d %H:%M:%S"
 
 logger_root = logging.getLogger()

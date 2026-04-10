@@ -17,7 +17,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         self.project_root = project_root
         worker_config = config.get('lineal', {})
         self.overlap_threshold = worker_config.get('overlap_threshold')
-        self.get_vectors: bool = worker_config.get('get_vectors')
+        self.get_vectors = worker_config.get('get_vectors')
         self.output = config.get("reconstructed_lines", False)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -47,7 +47,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 else:
                     # Hay tabla detectada → vectorizar solo si get_vectors está activo
                     table_lines = list(range(head + 1, foot))
-                    logger.debug(f"Table range: {table_range}")
+                    logger.info(f"Table range: {table_range}")
                     context["vectorice"] = self.get_vectors
                     context["table_range"] = table_lines
 
@@ -76,9 +76,9 @@ class LinealReconstructor(VectorizationAbstractWorker):
         current_line_polys: List[Polygons] = []
         current_line_bbox: Optional[List[float]] = None
         line_counter = 0
-        boundaries = self.find_tabular_lines(polygons)        
+        boundaries = self.find_tabular_lines(polygons)
         headers = set(boundaries[0])
-        footers = set([boundaries[1][0]]) if boundaries[1] else None
+        footers = set(boundaries[1]) if boundaries[0] else None
         bboxes: List[np.ndarray[Any, Any]] = []
         lines_bbox: List[Any] = []
         header_idx: int = 0
@@ -117,30 +117,32 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 else:
                     # Finaliza la línea actual y guarda la debug
                     polygon_ids = [p.polygon_id for p in current_line_polys]
-                    line_index = line_counter
                     polygons_index = [p.poly_index for p in current_line_polys]
                     texts = [p.ocr_text or "" for p in current_line_polys]
 
-                    header_line = line_counter if (headers and headers.intersection(set(polygons_index))) else None
-                    footer_line = line_counter if (footers and footers.intersection(set(polygons_index))) else None
+                    header_line = line_counter if (headers and headers.intersection(set(polygons_index)) and header_idx == 0) else None
+                    footer_line = line_counter if (footers and footers.intersection(set(polygons_index)) and footer_idx == 0) else None
                      
                     tabular_line: bool = False
 
                     if header_line is not None:
-                        header_idx += header_line
+                        header_idx = header_line  # Asignación directa, no suma
                         tabular_line = False
 
                     elif footer_line is not None:
-                        footer_idx += footer_line
+                        # Validar que el footer aparezca DESPUÉS del header
+                        if header_idx > 0 and line_counter > header_idx:
+                            footer_idx = footer_line
+                        else:
+                            footer_line = None # Invalida si aparece antes del header
                         tabular_line = False
                     
-                    elif header_idx == footer_idx:
-                        tabular_line = False
-
-                    elif header_idx > 0 and footer_idx > 0:
-                        tabular_line = False
-                    else:
+                    elif header_idx > 0 and footer_idx == 0:
+                        # Si ya pasamos el header y no hay footer, es tabla
                         tabular_line = True
+                        
+                    else:
+                        tabular_line = False
 
                     joined_text = " ".join(texts).strip()
 
@@ -164,7 +166,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     line_id = f"line_{line_counter:04d}"
                     lines_info[line_id] = {
                         "text": joined_text,
-                        "line_index": line_index,
+                        "line_index": line_counter,
                         "line_bbox": current_line_bbox,
                         "line_centroid": line_centroid,
                         "polygon_ids": polygon_ids,
@@ -180,13 +182,13 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     current_line_bbox = list(bbox)
                 
                     # if header_line is not None:
-                    #     logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | Encbezado: {header_line}")
+                    #     logger.info(f"{line_id}: ENCABEZADO '{joined_text}' | {polygon_ids} ")
                         
                     # if footer_line is not None:
-                    #     logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | FOOTER: {footer_line}")
+                    #     logger.info(f"{line_id}: FOOTER '{joined_text}' | {polygon_ids}")
 
                     # if tabular_line:
-                    #     logger.info(f"{line_id}: '{joined_text}'")
+                    #     logger.info(f"{line_id}: '{joined_text}' TABULAR")
                     # logger.info(f"{line_id}: '{joined_text}'")
                     # logger.info(f"{line_id}: '{joined_text}' | polygons: {polygon_ids}")
 
@@ -197,12 +199,18 @@ class LinealReconstructor(VectorizationAbstractWorker):
             texts = [p.ocr_text or "" for p in current_line_polys]
             joined_text = " ".join(texts).strip()
             
-            footer_line = line_counter if (footers and footers.intersection(set(polygons_index))) else None
+            footer_line = line_counter if (footers and footers.intersection(set(polygons_index)) and footer_idx == 0) else None
+            
             if footer_line is not None:
-                footer_idx += footer_line
+                if header_idx > 0 and line_counter > header_idx:
+                    footer_idx = footer_line
+                else:
+                    footer_line = None
                 tabular_line = False
-                
-            tabular_line = False if footer_idx > 0 or header_idx == 0 else True
+            elif header_idx > 0 and footer_idx == 0:
+                tabular_line = True
+            else:
+                tabular_line = False
             
             # Validar también el texto de la última línea
             if joined_text:
@@ -217,12 +225,12 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 
                 line_id = f"line_{line_counter:04d}"
                 lines_info[line_id] = {
+                    "text": joined_text,
                     "line_index": line_counter,
                     "line_bbox": current_line_bbox,
                     "line_centroid": line_centroid,
                     "polygon_ids": polygon_ids,
                     "polygons_index": polygons_index,
-                    "text": joined_text,
                     "header_line": None,
                     "footer_line": footer_line,
                     "tabular_line": tabular_line,
@@ -230,10 +238,10 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 }
 
                 # if footer_line is not None:
-                #     logger.info(f"{line_id}: '{joined_text}' | {polygon_ids} | FOOTER: {footer_line}")
+                #     logger.info(f"{line_id}: FOOTER '{joined_text}' | {polygon_ids}")
                 
                 # if tabular_line:
-                    # logger.info(f"{line_id}: '{joined_text}'")
+                #     logger.info(f"{line_id}: '{joined_text}' TABULAR")
                 # logger.info(f"{line_id}: '{joined_text}' | polygons: {polygon_ids}")
                 # logger.info(f"{line_id}: '{joined_text}'")
 
@@ -255,20 +263,27 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 polygon_index = poly.poly_index
 
                 if 6 in keys:
-                    logger.debug(f"Encabezado encontrado en: {poly_id}, idx: {polygon_index}")
+                    # logger.info(f"Encabezado encontrado en: {poly_id}, idx: {polygon_index}")
                     headers.append(polygon_index)
+                    continue
 
-                elif 1 in keys or 2 in keys:
+                elif 1 in keys:
                     footer.append(polygon_index)
-                    logger.debug(f"Pie de tabla encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
+                    # logger.info(f"Pie de tabla TOTAL MONETARIO encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
+                    continue
+                
+                elif 2 in keys:
+                    footer.append(polygon_index)
+                    # logger.debug(f"Pie de tabla TOTALES CANTIDAD encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
+                    continue
 
                 else:
                     continue
 
             table_boundaries: Tuple[List[int], List[int]] = headers, footer
-            logger.debug(f"Límites de la tabla: {table_boundaries}")
+            # logger.info(f"Límites de la tabla: {table_boundaries}")
 
             return table_boundaries
         except Exception as e:
             logger.warning(f"Error buscando límites: {e}", exc_info=True)
-            return [], []
+        return [], []

@@ -370,7 +370,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             if col_idx >= len(row):
                 continue
             cell = row[col_idx]
-            semantic_values = cell.get("semantic_clasification", [])
+            semantic_values = cell["semantic_clasification"]
             if isinstance(semantic_values, int):
                 semantic_values = [semantic_values]
             if not isinstance(semantic_values, list):

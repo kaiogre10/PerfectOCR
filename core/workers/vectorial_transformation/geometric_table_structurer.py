@@ -98,8 +98,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     # if self.output:
                     # all_lines = manager.workflow.all_lines if manager.workflow else {}
                     # polygons = manager.workflow.polygons if manager.workflow else {}
-                    df = self._create_structured_dataframe(table_matrix, H)
-                    logger.info("Tabla geometrical:\n" + df.to_string(index=False))
+                    # df = self._create_structured_dataframe(table_matrix, H)
+                    # logger.info("Tabla geometrical:\n" + df.to_string(index=False))
 
 
                         # header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
