@@ -164,13 +164,13 @@ class InkCorrector(ImagePrepAbstractWorker):
         rect2 = rect2[rect2[:, 11] == 1, 0]
 
         # Transformación a Sets
-        rect1ind: Set[int] = set(rect1.astype(np.int32).tolist())
-        rect2ind: Set[int] = set(rect2.astype(np.int32).tolist())
-        solidity_indices: Set[int] = set(solidity.astype(np.int32).tolist())
-        vertical_indices: Set[int] = set(vertical.astype(np.int32).tolist())
-        lines_indices: Set[int] = set(lines.astype(np.int32).tolist())
-        irreg_indices: Set[int] = set(irreg.astype(np.int32).tolist())
-        dist_indices: Set[int] = set(dist_var.astype(np.int32).tolist())
+        rect1ind: Set[int] = set(rect1.astype(np.int16).tolist())
+        rect2ind: Set[int] = set(rect2.astype(np.int16).tolist())
+        solidity_indices: Set[int] = set(solidity.astype(np.int16).tolist())
+        vertical_indices: Set[int] = set(vertical.astype(np.int16).tolist())
+        lines_indices: Set[int] = set(lines.astype(np.int16).tolist())
+        irreg_indices: Set[int] = set(irreg.astype(np.int16).tolist())
+        dist_indices: Set[int] = set(dist_var.astype(np.int16).tolist())
 
         outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         outlier_cont2: List[np.ndarray[Any, np.dtype[np.int32]]] = []

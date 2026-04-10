@@ -94,7 +94,7 @@ class Refiner(OCRAbstractWorker):
             logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-                logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
                 # if any(sc in poly_data.semantic_clasification for sc in (-1, 0)):
                 #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
             

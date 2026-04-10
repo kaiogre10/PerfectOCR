@@ -74,7 +74,7 @@ class WordFinder:
                     continue
                 
                 if s in self.noise_words:
-                    logger.info(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
+                    logger.info(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(s))}'")
                     continue
                 
                 q = self._normalize(s)

@@ -66,10 +66,11 @@ class DataFinder(OCRAbstractWorker):
             texts_length = np.array([len(t) for t in texts])
             decimal_p = np.array([t.isnumeric() for t in texts])
 
-            sc_length = np.array([len(c) for c in sc])
+            # sc_length = np.array([len(c) for c in sc])
+            sc_eq = np.array([len(set(t)) for t in sc])
             forb_sc = np.array([any(c in sc_forb for c in s) for s in sc])
 
-            mask_sc = (sc_length == 1) & (forb_sc == True) 
+            mask_sc = (sc_eq == 1) & (forb_sc == True) 
             mask_len = (texts_length < 2) & (decimal_p == True)
             mask = mask_sc | mask_len
             skip_idx = np.compress(mask, all_idx).tolist()

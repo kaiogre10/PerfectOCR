@@ -204,8 +204,8 @@ class Vectorizer(VectorizationAbstractWorker):
         width = (bbox[:, 2] - bbox[:, 0])
         height = (bbox[:, 3] - bbox[:, 1])
         area = (width * height)
-        perimeter = 2 * (width + height)
-        aspect_ratio = (height / width) * 100
+        perimeter = 2.0 * (width + height)
+        aspect_ratio = (height / width) * 100.0
         diagonal = np.sqrt((width**2.0) + (height**2.0))
         angle = np.degrees(np.arctan2(height, width))
         slope = (width / height)
@@ -256,10 +256,10 @@ class Vectorizer(VectorizationAbstractWorker):
     def calculate_all_features(self, sorted_lines: List[AllLines], geoline_features: np.ndarray[Any, Any], global_stats: np.ndarray[Any, np.dtype[np.float32]], manager: DataFormatter)-> np.ndarray[Any, Any]:
         timeall = time.perf_counter()
         img_dims: Tuple[int, int] = manager.workflow.metadata.img_dims if manager.workflow else (0, 0)
-            
         total_width = img_dims[1] or 0.0
         total_height = img_dims[0] or 0.0
         total_size = total_width * total_height
+        logger.info(f"IMG_SIMS: {img_dims} SIZE: {total_size}")
         
         # Funciones helpers para división segura igualando la lógica de "if x != 0 else 0.0"
         def safe_div(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]):

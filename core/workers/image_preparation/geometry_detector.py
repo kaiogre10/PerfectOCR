@@ -1,5 +1,6 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
+import cv2
 import time
 import numpy as np
 from typing import Dict, Any, Optional, List
@@ -59,10 +60,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.critical(f"{worker_name} Error después de normalizar")
                 return False
 
-            img = binarice_img(full_img, {})
+            bin_img = binarice_img(full_img, {})
 
-            # kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (self.kernel_threshold[0], self.kernel_threshold[1]))
-            # img= make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=self.iterations))
+            kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (self.kernel_threshold[0], self.kernel_threshold[1]))
+            img= make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=self.iterations))
 
             if self.output2:
                 output_paths = context["output_paths"]
@@ -81,7 +82,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             for idx, poly_pts in enumerate(polygons):
                 poly_id = f"poly_{idx:04d}"
                 coords = np.array([[p[0], p[1]] for p in poly_pts], np.int32)
-                bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()], np.int16)
+                bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()], np.float32)
                 centroid = np.mean(coords, axis=0, dtype=np.float32)
                     
                     # if self.output:

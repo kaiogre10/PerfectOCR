@@ -65,7 +65,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             for idx, old_poly_id in enumerate(poly_ids_order):
                 # Filtrar por dimensiones válidas
-                if not ((px2[idx] > px1[idx]) or (py2[idx] > py1[idx])):
+                if not ((px2[idx] > px1[idx]) and (py2[idx] > py1[idx])):
                     logger.info(f"POLÍGONO INVÁLIDO: {old_poly_id}")
                     # if self.disoutput:
                     #     pid = f"{old_poly_id}"

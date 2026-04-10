@@ -88,7 +88,8 @@ class DataFormatter:
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
-            self.workflow.polygons = polygons_dataclass
+            if self.workflow:
+                self.workflow.polygons = polygons_dataclass
                 
             logger.debug(f"Polígonos creados y validados: {len(polygons_dataclass)}")
             return True

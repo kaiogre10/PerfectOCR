@@ -7,7 +7,7 @@ from skimage.filters import threshold_sauvola #type: ignore
 logger = logging.getLogger(__name__)
 
 def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(img_arr)
+    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(img_arr, np.uint8)
 
 def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     """
@@ -129,11 +129,11 @@ def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np
     crop_x1, crop_y1 = px1, py1
     crop_x2, crop_y2 = px2, py2
 
-    cropped: np.ndarray[Any, np.dtype[np.uint8]] = full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy()
+    cropped: np.ndarray[Any, np.dtype[np.uint8]] = make_contiguous(full_img[crop_y1:crop_y2, crop_x1:crop_x2])
     return cropped
 
 def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:
-    return cv2.bilateralFilter(img, d, sigma_color, sigma_space).astype(np.uint8)
+    return make_contiguous(cv2.bilateralFilter(img, d, sigma_color, sigma_space))
 
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
     sobel, _ = calculate_img_values(np.abs(cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize))) #type: ignore
@@ -202,7 +202,7 @@ def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_si
     return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value))
 
 def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
+    """Sauvola thresholding producin0g uint8 mask with text as foreground (0) and background (255)"""
     thresh_sauvola = threshold_sauvola(image=cropped_img, window_size=adaptive_block_size) 
     bin_bool = (cropped_img > thresh_sauvola)
     return make_contiguous(bin_bool * 255)
@@ -247,10 +247,10 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         cont_coords: Lista de [idx_original, coords_array] para cada contorno válido
         metrics: np.ndarray con columnas [idx_original, area, width, height, angle]
     """
-    if is_binarized(img):
-        bin_img = img
-    else:
-        bin_img = binarice_img(img, {})
+    # if is_binarized(img):
+    #     bin_img = img
+    # else:
+    bin_img = binarice_img(img, {})
     sh, sw = bin_img.shape[:2]
 
     contours, hierarchy = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -419,9 +419,9 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
 
     return valid_coords, metrics_array
 
-def is_binarized(img: np.ndarray[Any, Any]) -> bool:
-    """Devuelve True si la imagen solo contiene dos valores únicos (0 y 255)."""
-    if img.dtype != np.uint8:
-        return False
-    unique_vals = np.unique(img)
-    return unique_vals.size == 2 and set(unique_vals) <= {0, 255}
+# def is_binarized(img: np.ndarray[Any, Any]) -> bool:
+#     """Devuelve True si la imagen solo contiene dos valores únicos (0 y 255)."""
+#     if img.dtype != np.uint8:
+#         return False
+#     unique_vals = np.unique(img)
+#     return unique_vals.size == 2 and set(unique_vals) <= {0, 255}
