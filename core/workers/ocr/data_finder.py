@@ -56,7 +56,7 @@ class DataFinder(OCRAbstractWorker):
             processed_count = 0
             polygon_updates: Dict[str, List[int] | int] = {}
             skipped_semantic = 0
-            sc_forb = {2, 1, -2}
+            sc_forb = {0, 2, 4, 5}
 
             all_idx = np.array([p.poly_index for p in polygons.values()], np.int16)
 

@@ -1,12 +1,11 @@
 # PerfectOCR/core/workers/ocr/text_cleaner.py
 import logging
 import dataclasses
-#port numpy as np
 from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import space_removal, remove_special_sequences, validate_text, separate_punt, clean_punct
+from core.utils.text_utils import separate_punt, validate_text, remove_special_sequences, punct_strip
 #ore.utils.math_utils import text_encode
 
 logger = logging.getLogger(__name__)
@@ -40,56 +39,55 @@ class TextCleaner(OCRAbstractWorker):
         eliminated_count = 0
 
         for poly_id, polygon in polygons_in.items():
-            text = polygon.ocr_text or ""
-            text = text.strip()
             kf = polygon.key_field
-            
             if kf or kf is not None:
-                logger.debug(f"'{poly_id}' con KEYFIELD ya no se limpia: '{text_sec}'")
-                updated_polygon = dataclasses.replace(polygon, ocr_text=text)
+                # logger.debug(f"'{poly_id}' con KEYFIELD ya no se limpia: '{polygon.ocr_text}'")
+                updated_polygon = dataclasses.replace(polygon)
                 list_of_final_polygons.append(updated_polygon)
                 continue
+            
+            text = polygon.ocr_text or ""
                 
             if not text or not validate_text(text):
-                logger.debug(f"Eliminado {poly_id} sin texto valido incial: {text}")
+                # logger.info(f"Eliminado {poly_id} sin texto valido incial: '{text}'")
                 eliminated_count += 1
                 continue
 
-            txt = space_removal(text)
-            if txt != text:
-               logger.debug(f"Espacios eliminados de {poly_id}: '{text}' -> '{txt}'")
+            txt = punct_strip(text)
+            # if txt != text:
+            #    logger.info(f"Espacios eliminados de {poly_id}: '{text}' -> '{txt}'")
                
             if not txt or not validate_text(txt):
-                logger.debug(f"{poly_id} sin texto válido después de espacios: {txt}")
+                # logger.info(f"{poly_id} sin texto válido después de espacios: {txt}")
                 eliminated_count += 1
                 continue
 
             text_sec = remove_special_sequences(txt)
-            if text_sec != txt:
-               sec = txt.replace(text_sec, "")
-               logger.debug(f" {poly_id} Secuencia especial eliminada: '{sec}' | '{txt}' -> '{text_sec}'")
+            # if text_sec != txt:
+            #    sec = txt.replace(text_sec, "")
+            #    logger.info(f"{poly_id} Secuencia especial eliminada: '{sec}' | '{txt}' -> '{text_sec}'")
                
             if not text_sec or not validate_text(text_sec):
-                logger.debug(f"{poly_id} sin texto valido después de secuencias especiales: {text_sec}")
+                # logger.info(f"{poly_id} sin texto valido después de secuencias especiales: {text_sec}")
                 eliminated_count += 1
                 continue
                 
             fil_text = separate_punt(text_sec)
-            if fil_text != text_sec:
-               logger.debug(f"Separación {poly_id}: '{text_sec}' -> '{fil_text}'")
+            # if fil_text != text_sec:
+            #    logger.info(f"Separación {poly_id}: '{text_sec}' -> '{fil_text}'")
 
             if not fil_text or not validate_text(fil_text):
-                # logger.debug(f"{poly_id} sin texto valido después de separar puntuación: {fil_text}")
+                # logger.info(f"{poly_id} sin texto valido después de separar puntuación: {fil_text}")
                 eliminated_count += 1
                 continue
 
-            cleaned_text = self.process_single_text(fil_text, polygon)
-            if not cleaned_text or not validate_text(cleaned_text):
-                # logger.debug(f"Eliminado {poly_id}: Sin texto en limpieza final")
-                eliminated_count += 1
-                continue
+            # cleaned_text = self.process_single_text(fil_text, polygon)
+            # if not cleaned_text or not validate_text(cleaned_text):
+            #     # logger.debug(f"Eliminado {poly_id}: Sin texto en limpieza final")
+            #     eliminated_count += 1
+            #     continue
             
-            updated_polygon = dataclasses.replace(polygon, ocr_text=cleaned_text)
+            updated_polygon = dataclasses.replace(polygon, ocr_text=fil_text)
             list_of_final_polygons.append(updated_polygon)
                 
         # 4. Reconstrucción y reindexación final

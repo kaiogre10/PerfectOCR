@@ -28,19 +28,18 @@ class Fragmenter(OCRAbstractWorker):
             fragmented_count = 0
             final_polygons: List[Polygons] = []
             for poly_id, polygon in polygons_in.items():
-                
+                kf = polygon.key_field
                 sc: List[int]= polygon.semantic_clasification
+                if sc == [0] or kf or kf is not None:
+                    logger.debug(f"'{poly_id}' con KEYFIELD no se fragmenta: '{polygon.ocr_text}'")
+                    final_polygons.append(polygon)
+                    continue
+                
                 ocr_text: str = polygon.ocr_text or ""
                 ocr_text = ocr_text.strip()
                 
                 if not ocr_text:
                     logger.debug(f"Polygono sin texto: {poly_id}")
-                    continue
-                
-                kf = polygon.key_field
-                if kf or kf is not None:
-                    logger.debug(f"'{poly_id}' con KEYFIELD no se fragmenta: '{ocr_text}'")
-                    final_polygons.append(polygon)
                     continue
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
@@ -49,7 +48,7 @@ class Fragmenter(OCRAbstractWorker):
                     final_polygons.append(polygon)
                     continue
                 
-                semantic_frag = len(sc) > 1 and any(c != 0 for c in sc)
+                semantic_frag = len(sc) > 1 and any(c > 1 for c in sc)
                                     
                 if semantic_frag:
                     logger.debug(f"Poligono {poly_id}: '{ocr_text} se fragmentará")

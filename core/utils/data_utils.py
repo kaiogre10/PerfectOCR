@@ -322,14 +322,14 @@ FEATURES_NAME: List[str] = [
 ]
 
 SEMATIC_TYPES_MAP: Dict[str, int] = {
-    "quantitative": 2, # Cantidades monetarias, sub clasificación de numeric
-    "numeric": 1, # Strings numericos refernte a cantidades generales
-    "descriptive": 0, # Palabras en general, siglas aquí
-    "code": -1, # Códigos generales tipo SKU, de identificación, contienen letras y números.
-    "umd": -2 # Sub clasificación de code, son str cortos que suelen informar el contenido de los productos
+    "noise": -1, # Ruido y caracteres especiales en general
+    "unique": 0, # Clasificación que se le da a ciertos strings con características especificas, sirve como difereciador, casi no los hay
+    "descriptive": 1, # Palabras en general, siglas aquí
+    "umd": 2, # Con str cortos que suelen informar el contenido de los productos
+    "code": 3, # Códigos generales tipo SKU, de identificación, contienen letras y números. Selen ser alfanuméricos
+    "quantitative": 4, # Cantidades monetarias, sub clasificación de numericos
+    "numeric": 5, # Strings numericos refernte a cantidades generales, no confudir con "isnumeric()"
 }
-
-CHAR_NUM: Set[str] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "$"}
 
 UMD_CORRECTIONS: Dict[str, str] = {
     "o": "0",
@@ -387,7 +387,11 @@ SPECIAL_CHARS: Set[str] = {
     "!", "¡", "?", "¿", "'", "\\", "/"
 }
 
+VOWELS = {"A", "E", "I", "O", "U", "a", "e", "i", "o", "u"}
 NOT_VALID_CHARS = not_valid_chars.union(SPECIAL_CHARS)
+
+VALID_CUANT_CHARS: Set[str] = {".", ",", "$"}
+CHAR_NUM: Set[str] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
 
 ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "A", "E", "Y", "O"}
 

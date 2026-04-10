@@ -6,7 +6,7 @@ from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import validate_text, space_removal
+from core.utils.text_utils import validate_text
 from core.utils.image_utils import elevate_dims, make_contiguous
 from services.output_service import save_raw_json
 
@@ -69,9 +69,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         """
         Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead.
         """
-        time0 = time.perf_counter()
         if self.engine is None:
             return {}
+        time0 = time.perf_counter()
         try:
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img.cropped_img is not None]
             img_list = [make_contiguous(p.cropped_img.cropped_img) for p in polygons.values() if p.cropped_img.cropped_img is not None]
@@ -84,9 +84,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
-            for idx, (txt, confidence) in enumerate(batch_result[0]):
-                txt = txt.strip()
-                text = space_removal(txt)
+            for idx, (text, confidence) in enumerate(batch_result[0]):
                 if not text or not validate_text(text):
                     deleted.append([polygon_ids[idx], text])
                     logger.debug(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
@@ -99,7 +97,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
 
                 # logger.info(f"{polygon_ids[idx]}: '{text}'")
                 raw_map[polygon_ids[idx]] = {"text": text}
-            # logger.info(f"Texto filteado: {deleted}")
+            logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")
             return raw_map
             
         except TypeError as e:

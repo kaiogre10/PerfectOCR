@@ -81,7 +81,7 @@ class DataFormatter:
                     cropped_img=None,
                     ocr_text=None,
                     key_field=None,
-                    semantic_clasification=[0],
+                    semantic_clasification=[1],
                     cuant_chars=0,
                 )
                 polygons_dataclass[poly_id] = polygon_obj
@@ -350,10 +350,9 @@ class DataFormatter:
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
-                    updated_polygon = dataclasses.replace(polygon, key_field=key_field)
+                    updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[0], cuant_chars=0)
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
-                    
                     
             for pid, poly_data in self.workflow.polygons.items():
                 kf = poly_data.key_field or None
@@ -415,7 +414,7 @@ class DataFormatter:
             
             all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
             for lid, l in all_lines.items():
-                logger.info(f"{lid}: '{l.text}'")
+                logger.debug(f"{lid}: '{l.text}'")
             #     tabular_line = line_data.tabular_line
             #     text = line_data.text
             #     if tabular_line:
@@ -466,7 +465,7 @@ class DataFormatter:
             if marked_ids:
                 logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 for log_debug in tabular_lines_debug:
-                    logger.info(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
+                    logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
             else:
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 

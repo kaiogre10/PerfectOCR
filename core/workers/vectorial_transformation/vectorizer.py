@@ -428,5 +428,5 @@ class Vectorizer(VectorizationAbstractWorker):
                 
     def count_numeric_tokens(self, semantic_clasification: List[int]) -> int:
         sc = np.asarray(semantic_clasification, dtype=np.int8)
-        mask = (sc == 2) | (sc == -2)
+        mask = (sc == 2) | (sc == 4)
         return int(np.count_nonzero(mask))

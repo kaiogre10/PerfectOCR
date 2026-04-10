@@ -98,8 +98,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     # if self.output:
                     # all_lines = manager.workflow.all_lines if manager.workflow else {}
                     # polygons = manager.workflow.polygons if manager.workflow else {}
-                    # df = self._create_structured_dataframe(table_matrix, H)
-                    # logger.info("Tabla geometrical:\n" + df.to_string(index=False))
+                    df = self._create_structured_dataframe(table_matrix, H)
+                    logger.info("Tabla geometrical:\n" + df.to_string(index=False))
 
 
                         # header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
@@ -488,7 +488,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             # Tipos que tienen restricciones (solo uno por celda)
-            restricted_types = {2}
+            restricted_types = {4}
             current_semantics = set(element_semantic if isinstance(element_semantic, list) else [element_semantic])
 
             # Si el elemento no es restrictivo, siempre puede ir
@@ -497,7 +497,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             # Si el elemento ES restrictivo, verificar que no haya otros restrictivos en la celda
             for existing_element in cell_content:
-                existing_semantic_val = existing_element.get('semantic_clasification', 0)
+                existing_semantic_val = existing_element.get('semantic_clasification', 1)
                 existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val]) # type: ignore
                 
                 if existing_semantics & restricted_types:

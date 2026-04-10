@@ -148,7 +148,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
                 quant_pids: List[str] = [
                     pid for pid in pids
-                    if pid in polygons_dict and 2 in polygons_dict[pid].semantic_clasification
+                    if pid in polygons_dict and 4 in polygons_dict[pid].semantic_clasification
                 ]
 
                 if len(quant_pids) < 2:
@@ -165,7 +165,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                     target_cell = row[target_col]
                     target_pids = target_cell.get('polygon_ids', [])
                     target_has_quant = any(
-                        tpid in polygons_dict and 2 in polygons_dict[tpid].semantic_clasification
+                        tpid in polygons_dict and 4 in polygons_dict[tpid].semantic_clasification
                         for tpid in target_pids
                     )
                     if not target_has_quant:
@@ -180,7 +180,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                         target_cell = row[target_col]
                         target_pids = target_cell.get('polygon_ids', [])
                         target_has_quant = any(
-                            tpid in polygons_dict and 2 in polygons_dict[tpid].semantic_clasification
+                            tpid in polygons_dict and 4 in polygons_dict[tpid].semantic_clasification
                             for tpid in target_pids
                         )
                         if not target_has_quant:
@@ -208,8 +208,8 @@ class MatrixSolver(VectorizationAbstractWorker):
             return
 
         # Mover polígono a celda destino
-        target_cell['polygon_ids'] = target_cell.get('polygon_ids', []) + [pid]
-        target_sc: List[int] = target_cell.get('semantic_clasification', [])
+        target_cell['polygon_ids'] = target_cell['polygon_ids'] + [pid]
+        target_sc: List[int] = target_cell['semantic_clasification']
         target_cell['semantic_clasification'] = sorted(set(target_sc + list(poly.semantic_clasification)))
         old_target_text = (target_cell.get('text', '') or '').strip()
         

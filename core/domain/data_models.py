@@ -38,14 +38,19 @@ class Polygons:
 #    "RFCProveedor": 7,
 #    "MontoIVAGeneral": 8,
 #    "FechaDocumento": 9
+#    "TelefonoP": 10
+#    "CorreoP": 11
+#    "DirecciónP": 12
 
     semantic_clasification: List[int]
-        # quantitative: 2
-        # numeric: 1
-        # descriptive: 0
-        # code: -1
-        # umd: -2
-
+        # noise: -1
+        # unique: 0
+        # descriptive: 1
+        # umd: 2
+        # code: 3
+        # quantitative: 4
+        # numeric: 5
+        
     cuant_chars: int
 
 @dataclass
