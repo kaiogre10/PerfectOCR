@@ -102,7 +102,7 @@ class Fragmenter(OCRAbstractWorker):
             return [polygon]
         
         # Construir fragmentos según la regla:
-        # - Agrupa tokens consecutivos con cls=0
+        # - Agrupa tokens consecutivos con cls=1
         # - Agrupa tokens consecutivos con cls=-2
         # - Cada otro valor va en su propio fragmento
         fragments: List[Tuple[List[str], List[int]]] = []

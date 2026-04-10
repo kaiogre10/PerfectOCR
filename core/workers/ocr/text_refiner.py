@@ -36,11 +36,10 @@ class Refiner(OCRAbstractWorker):
         """
         t0 = time.perf_counter()
         self.preprocess_text(manager)
-        if self.get_early_data(manager):
-                logger.debug(f"KEY FIEL ACTUALIZADOS")
+        self.get_early_data(manager)
         try:
             if 0 >= self.num_passes:
-                step_t0 = time.perf_counter()
+                # step_t0 = time.perf_counter()
                 self.classify_strings(manager)
                 # self._log_worker_time(0, "SemanticClassifier", step_t0, "Clasificación Semántica")
             
@@ -95,9 +94,9 @@ class Refiner(OCRAbstractWorker):
             logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
-            #     # logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
-                if any(sc in poly_data.semantic_clasification for sc in (-1, 0)):
-                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+                # if any(sc in poly_data.semantic_clasification for sc in (-1, 0)):
+                #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
             
             if self.output:
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore    
@@ -196,7 +195,7 @@ class Refiner(OCRAbstractWorker):
             return False
         except Exception as e:
             logger.warning(f"Error encontrando keydata: '{e}", exc_info=True)
-            return False
+        return False
             
     def preprocess_text(self, manager: DataFormatter) -> bool:
         try:

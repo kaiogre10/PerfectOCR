@@ -242,7 +242,6 @@ class LinealReconstructor(VectorizationAbstractWorker):
     def find_tabular_lines(self, polygons: Dict[str, Polygons]) -> Tuple[List[int], List[int]]:
         """
         Método placeholder para encontrar líneas tabulares.
-        Actualmente no implementado.
         """
         try:
             headers: List[int] = []

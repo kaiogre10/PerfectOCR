@@ -62,7 +62,7 @@ class DataFormatter:
             for pid, poly_data in results.items():
                 poly_id = pid
                 poly_index = poly_data["poly_index"]
-                contours = poly_data["contours_count"] or 0
+                # contours = poly_data["contours_count"] or 0
                 coords = poly_data["polygon_coords"]
                 bbox = poly_data["bounding_box"]
                 centroid = poly_data["centroid"]
@@ -84,7 +84,7 @@ class DataFormatter:
                     key_field=None,
                     semantic_clasification=[1],
                     cuant_chars=0,
-                    contours=contours,
+                    contours=0,
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -419,7 +419,7 @@ class DataFormatter:
             
             all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
             for lid, l in all_lines.items():
-                logger.info(f"{lid}: '{l.text}'")
+                logger.debug(f"{lid}: '{l.text}'")
             #     tabular_line = line_data.tabular_line
             #     text = line_data.text
             #     if tabular_line:

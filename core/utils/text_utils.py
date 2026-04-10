@@ -533,5 +533,5 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             poly_total_cuant += t_cuant
         final_results[pid] = (token_classes, poly_total_cuant)
     
-    # logger.info(f"TOTAL CLASIFICADOS SIN CUANTITATIVOS: '{no_cuants}', SIN CUANTS: {has_cuants}, CODIFICADOS: {encoded}, MIXTOS: {mixed}")
+    logger.info(f"TOTAL CLASIFICADOS SIN CUANTITATIVOS: '{no_cuants}', SIN CUANTS: {has_cuants}, CODIFICADOS: {encoded}, MIXTOS: {mixed}")
     return final_results

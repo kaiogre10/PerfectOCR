@@ -19,6 +19,13 @@ os.environ.update({
 
 TEST_MODE = True
 
+DEFAULT_INPUT_PATH = [
+   "input",
+    #   "input2",
+    #    "input3"
+#  "C:/Users/USER/Desktop/tickets_nuevo"
+]
+
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
 LATITUDE_OUTPUT_PATH = "D:/outputs/perfectocr"
@@ -42,13 +49,6 @@ else:
 DEFAULT_OUTPUT_PATH = default_output
 OUTPUT_PATH = output_paths
 
-DEFAULT_INPUT_PATH = [
-   "input",
-    #   "input2",
-    #    "input3"
-#  "C:/Users/USER/Desktop/tickets_nuevo"
-]
-
 CONSOLE_LEVEL = "INFO"
 FILE_LEVEL = "INFO"
 CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
@@ -60,12 +60,10 @@ logger_root.setLevel(logging.DEBUG)
 
 if logger_root.hasHandlers():
     logger_root.handlers.clear()
-
 file_formatter = logging.Formatter(
     fmt=FILE_FORMAT,
     datefmt=DATE_FORMAT
 )
-
 console_formatter = logging.Formatter(
     fmt=CONSOLE_FORMAT
 )

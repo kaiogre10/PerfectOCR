@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional, List
 from core.domain.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import binarice_img, normalice_image, extract_contours_metrics
+from core.utils.image_utils import binarice_img, normalice_image, extract_contours_metrics, make_contiguous
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
             # paddle_time = time.perf_counter()
-            # polygons = np.array(engine.ocr(img=img, det=True, cls=False, rec=False), np.int16).reshape(-1, 4, 2)
             polygons = engine.ocr(img=img, det=True, cls=False, rec=False)[0]
             # logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
             

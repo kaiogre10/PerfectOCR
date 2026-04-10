@@ -369,11 +369,11 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0.0 else 0.0, m["m01"] / m["m00"] if m["m00"] != 0.0 else 0.0)
         for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.float32)
 
-    x_min = np.array([np.min(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
-    x_max = np.array([np.max(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
+    # x_min = np.array([np.min(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
+    # x_max = np.array([np.max(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
 
-    y_min = np.array([np.min(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
-    y_max = np.array([np.max(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
+    # y_min = np.array([np.min(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
+    # y_max = np.array([np.max(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
 
     valid_areas = areas[valid_indices]
     
@@ -397,10 +397,10 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         black_pixels_array,                             # 15
         irregular_ratio,                                # 16
         min_side,                                       # 17
-        x_min,                                          # 18
-        x_max,                                          # 19
-        y_min,                                          # 20
-        y_max,                                          # 21
+        # x_min,                                          # 18
+        # x_max,                                          # 19
+        # y_min,                                          # 20
+        # y_max,                                          # 21
     ])
 
     filtered_original_indices = metrics_array[:, 0]
@@ -418,6 +418,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     # logger.info(f"Contornos validos: {valid_contours}")
 
     return valid_coords, metrics_array
+
 def is_binarized(img: np.ndarray[Any, Any]) -> bool:
     """Devuelve True si la imagen solo contiene dos valores únicos (0 y 255)."""
     if img.dtype != np.uint8:
