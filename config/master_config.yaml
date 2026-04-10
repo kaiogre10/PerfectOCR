@@ -18,13 +18,13 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
    - "lineal"
-  #  - "vectorizer"
-  #  - "cos_sim"
-  #  - "table_structurer"
+   - "vectorizer"
+   - "cos_sim"
+   - "table_structurer"
   #  - "math_max"
 
 # Configuración de salida
@@ -149,7 +149,7 @@ modules:
       min_confidence: 0.5307
       
     text_refiner:
-      num_passes: 0
+      num_passes: 1
       encode_mean: [23.7, 105.7] # Promedio de densidad
       morph_mean: [-0.297, 0.337] # Promedio morfológico
   

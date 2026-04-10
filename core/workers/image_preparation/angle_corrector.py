@@ -39,8 +39,10 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 return False
             
             logger.debug("Full_img obtenida con éxito")
+            
+            full_image = make_contiguous(full_image)
 
-            full_img, corrected = self.correct_angle(full_image, manager)
+            full_img, corrected = self.correct_angle(full_image)
 
             if corrected:
                 if self.output:
@@ -62,7 +64,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             logger.error(f"Error angular; {e}", exc_info=True)
         return False
 
-    def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter) -> Tuple[np.ndarray[Any, np.dtype[np.uint8]], bool]:
+    def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[np.ndarray[Any, np.dtype[np.uint8]], bool]:
         """
         Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no).
         """
@@ -74,7 +76,6 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
             center = w // 2, h // 2
             min_len = min(w // 3, self.hough_min_line_length_cap_px)
-            full_img = make_contiguous(full_img)
             
             edges = cv2.Canny(full_img, self.canny_thresholds[0], self.canny_thresholds[1])
             lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=self.hough_threshold, minLineLength=min_len, maxLineGap=self.hough_max_line_gap_px)
@@ -105,9 +106,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 rotation_matrix[1, 2] += (new_h / 2) - center[1]
                 
                 logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
-                return make_contiguous(cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.color)), True
-                
-            
+                return make_contiguous(cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.color)), True            
             else:             
                 logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
                 return full_img, False

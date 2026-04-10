@@ -7,8 +7,8 @@ from typing import Dict, Any, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.image_utils import  make_contiguous#, extract_contours_metrics
-from services.output_service import save_croped_image#, save_shapes
+from core.utils.image_utils import  make_contiguous
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.warning("PolygonExtractor: No hay workflow o polígonos para procesar.")
                 return False
 
-            polygons = manager.workflow.polygons
+            polygons: Dict[str, Polygons] = manager.workflow.polygons
 
             # 1. Recopilar Bounding Boxes y IDs
             poly_ids_order = list(polygons.keys())
@@ -128,43 +128,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         except Exception as e:
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
             return False
-    
-    def asign_contours(self, metrics: np.ndarray[Any, Any], bboxes_array: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.int16]]:
-        # Índice original de cada contorno
-        contour_ids = metrics[:, 0]
-
-        c_x = metrics[:, 1][:, None]
-        c_y = metrics[:, 2][:, None]
-
-        x_min = metrics[:, 3][:, None]
-        x_max = metrics[:, 4][:, None]
-        y_min = metrics[:, 5][:, None]
-        y_max = metrics[:, 6][:, None]
-
-        bbox_ids = bboxes_array[:, 0]
-
-        b_x1 = bboxes_array[:, 1][None, :]
-        b_y1 = bboxes_array[:, 2][None, :]
-        b_x2 = bboxes_array[:, 3][None, :]
-        b_y2 = bboxes_array[:, 4][None, :]
-
-        centroid_inside = (c_x > b_x1) & (c_x < b_x2) & (c_y > b_y1) & (c_y < b_y2)
-
-        # 2) contorno completamente dentro (evita ruido parcialmente metido)
-        contour_fully_inside = (x_min > b_x1) & (x_max < b_x2) & (y_min > b_y1) & (y_max < b_y2)
-
-        # criterio final
-        is_inside = centroid_inside & contour_fully_inside
-
-        has_bbox = np.any(is_inside, axis=1)          # (N,)
-        bbox_local_idx = np.argmax(is_inside, axis=1)  # (N,)
-
-        # Mapear bbox local -> bbox original
-        bbox_original_ids = np.where(has_bbox, bbox_ids[bbox_local_idx], -1)
-
-        # Resultado final: [contour_original_idx, bbox_original_idx]
-        mapped_ids = np.column_stack([contour_ids, bbox_original_ids]).astype(np.int16)
-        return np.compress(mapped_ids[:, 1] >= 0, mapped_ids, 0)
     
     def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], manager: DataFormatter, status: str, id: str):
         image_name = manager.workflow.metadata.image_name if manager.workflow else ""

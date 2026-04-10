@@ -26,7 +26,7 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], outp
             if contours1 and contours2:
                 logger.debug("Todos los contornos, contornos 1: Rojo, Contornos 2: Azul")
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # Rojo
-                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (255 ,0, 0), thickness=cv2.FILLED) # AZUL
+                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (255 ,0, 0), thickness=1) # AZUL
                 save_image(image, output_dir, file_name)
 
             elif not contours1:
@@ -143,7 +143,6 @@ def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: L
 
 def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, image_features: bool):
     try:
-
         if isinstance(all_features, dict):
             df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index') # type: ignore
             df.index.name = 'line_id'

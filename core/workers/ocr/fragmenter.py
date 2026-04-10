@@ -94,7 +94,7 @@ class Fragmenter(OCRAbstractWorker):
         
         # Usar split() sin argumentos ayuda a lidiar con cualquier formato de espacios en blanco
         parts = [p for p in text.split(' ') if p]
-        # logger.debug(f"TEXTO: '{text}' | PARTS: '{parts}'")
+        logger.debug(f"TEXTO: '{text}' | PARTS: '{parts}'")
         
         # Verificar alineación
         if len(parts) != len(sc):
@@ -111,7 +111,7 @@ class Fragmenter(OCRAbstractWorker):
         current_cls: int | None = None
         
         for _, (token, cls) in enumerate(zip(parts, sc)):
-            if cls in (0, -2):
+            if cls in (1, 2):
                 # Si la clase cambia o es la primera, cerrar fragmento anterior
                 if current_cls is not None and current_cls != cls:
                     if current_tokens:
@@ -167,5 +167,5 @@ class Fragmenter(OCRAbstractWorker):
             )
             new_polys.append(new_poly)
         
-        logger.debug(f"Fragmentación semántica de {polygon.polygon_id}: Original: '{text}' -> '{fragments}'")
+        # logger.info(f"Fragmentación semántica de '{polygon.polygon_id}' = Original: '{text}' -> '{fragments}'")
         return new_polys

@@ -16,9 +16,9 @@ class CroppedImage:
             
 @dataclass
 class Geometry:
-    polygon_coords: np.ndarray[Any, Any]  # shape: (n_points, 2)
-    bounding_box: np.ndarray[Any, Any]    # shape: (4,)
-    centroid: np.ndarray[Any, Any]        # shape: (2,)
+    polygon_coords: np.ndarray[Any, np.dtype[np.int32]]  # shape: (n_points, 2)
+    bounding_box: np.ndarray[Any, np.dtype[np.int16]]    # shape: (4,)
+    centroid: np.ndarray[Any, np.dtype[np.float32]]       # shape: (2,)
 
 @dataclass
 class Polygons:
@@ -52,6 +52,7 @@ class Polygons:
         # numeric: 5
         
     cuant_chars: int
+    contours: int
 
 @dataclass
 class LineGeometry:

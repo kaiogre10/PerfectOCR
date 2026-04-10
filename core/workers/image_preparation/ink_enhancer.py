@@ -50,7 +50,6 @@ class InkCorrector(ImagePrepAbstractWorker):
             # all_gaps = white_gaps.copy()
             # all_gaps.extend(black_gaps.copy())
             # bin_gap = binarice_img(gap_img.copy(), {})
-            # correct, out_conts, out_conts2 = self.delete_outliers(full_img)
             correct, out_conts, out_conts2 = self.delete_outliers(full_img)
             # all_outliers = out_conts.copy()
             # all_outliers.extend(out_conts2.copy())
@@ -61,7 +60,7 @@ class InkCorrector(ImagePrepAbstractWorker):
             if not manager.update_full_img(True, correct):
 
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
-                return False    
+                return True
             else:
                 logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 if self.output:
@@ -109,7 +108,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         child_metric = metrics[outlier_mask]
         # Indexación booleana directa a la columna 0
         child_metrics = child_metric[child_metric[:, 11] == 1, 0] 
-        out_index: Set[int] = set(child_metrics.astype(np.int32).tolist())
+        out_index: Set[int] = set(child_metrics.astype(np.int8).tolist())
 
         # 2. Varianza de Distancia
         med_short_side = np.median(metrics[:, 17])
@@ -165,13 +164,13 @@ class InkCorrector(ImagePrepAbstractWorker):
         rect2 = rect2[rect2[:, 11] == 1, 0]
 
         # Transformación a Sets
-        rect1ind: Set[int] = set(rect1.astype(np.int32).tolist())
-        rect2ind: Set[int] = set(rect2.astype(np.int32).tolist())
-        solidity_indices: Set[int] = set(solidity.astype(np.int32).tolist())
-        vertical_indices: Set[int] = set(vertical.astype(np.int32).tolist())
-        lines_indices: Set[int] = set(lines.astype(np.int32).tolist())
-        irreg_indices: Set[int] = set(irreg.astype(np.int32).tolist())
-        dist_indices: Set[int] = set(dist_var.astype(np.int32).tolist())
+        rect1ind: Set[int] = set(rect1.astype(np.int16).tolist())
+        rect2ind: Set[int] = set(rect2.astype(np.int16).tolist())
+        solidity_indices: Set[int] = set(solidity.astype(np.int16).tolist())
+        vertical_indices: Set[int] = set(vertical.astype(np.int16).tolist())
+        lines_indices: Set[int] = set(lines.astype(np.int16).tolist())
+        irreg_indices: Set[int] = set(irreg.astype(np.int16).tolist())
+        dist_indices: Set[int] = set(dist_var.astype(np.int16).tolist())
 
         outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         outlier_cont2: List[np.ndarray[Any, np.dtype[np.int32]]] = []

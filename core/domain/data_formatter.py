@@ -62,6 +62,7 @@ class DataFormatter:
             for pid, poly_data in results.items():
                 poly_id = pid
                 poly_index = poly_data["poly_index"]
+                contours = poly_data["contours_count"] or 0
                 coords = poly_data["polygon_coords"]
                 bbox = poly_data["bounding_box"]
                 centroid = poly_data["centroid"]
@@ -83,12 +84,11 @@ class DataFormatter:
                     key_field=None,
                     semantic_clasification=[1],
                     cuant_chars=0,
+                    contours=contours,
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
-            # Actualizar 
-            if self.workflow:
-                self.workflow.polygons = polygons_dataclass
+            self.workflow.polygons = polygons_dataclass
                 
             logger.debug(f"Polígonos creados y validados: {len(polygons_dataclass)}")
             return True
@@ -181,11 +181,16 @@ class DataFormatter:
                     logger.critical(f"Error normalizando")
                     return False
                 # Wrap en la dataclass FullImage y actualizar workflow
-                h = img_arr.shape[0]
-                w = img_arr.shape[1]
-                self.workflow.metadata.img_dims = (h, w)
                 full_image_obj = FullImage(img_arr)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
+                up_img = self.workflow.full_img.full_img if self.workflow else None
+                if up_img is None:
+                    return True
+                h = up_img.shape[0]
+                w = up_img.shape[1]
+                dims = (h, w)
+                self.workflow.metadata.img_dims = dims
+
                 logger.debug("Imagen actualizada con éxito.")
                 return True    
             else:
