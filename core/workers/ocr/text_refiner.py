@@ -36,10 +36,9 @@ class Refiner(OCRAbstractWorker):
         """
         t0 = time.perf_counter()
         self.preprocess_text(manager)
-        try:                
-            if self.get_early_data(manager):
+        if self.get_early_data(manager):
                 logger.debug(f"KEY FIEL ACTUALIZADOS")
-            
+        try:
             if 0 >= self.num_passes:
                 step_t0 = time.perf_counter()
                 self.classify_strings(manager)
@@ -93,11 +92,11 @@ class Refiner(OCRAbstractWorker):
                 self.classify_strings(manager)
                 # self._log_worker_time(self.num_passes + 1, "SemanticClassifier", step_t0, "Clasificación Semántica final")
             logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
-            polygons = manager.workflow.polygons if manager.workflow else {}
-            for poly, poly_data in polygons.items():
-                # logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
-                if any(sc in poly_data.semantic_clasification for sc in (-1, 0)):
-                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+            # polygons = manager.workflow.polygons if manager.workflow else {}
+            # for poly, poly_data in polygons.items():
+            #     # logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+            #     if any(sc in poly_data.semantic_clasification for sc in (-1, 0)):
+            #         logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
             
             if self.output:
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore    
@@ -157,7 +156,7 @@ class Refiner(OCRAbstractWorker):
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons
             # [fecha, rfc, iva] — ya satisfechos en el documento
-            state: List[bool] = [False, False, False]
+            state: List[bool] = [False, False, False, False, False]
 
             for _, pd in polygons.items():
                 kf = pd.key_field
@@ -170,6 +169,10 @@ class Refiner(OCRAbstractWorker):
                     state[1] = True
                 if 8 in keys:
                     state[2] = True
+                if 10 in keys:
+                    state[3] = True
+                if 11 in keys:
+                    state[4] = True
 
             polygon_updates: Dict[str, List[int] | int] = {}
 

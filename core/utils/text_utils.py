@@ -11,6 +11,7 @@ CUANT_CHAR = CHAR_NUM.union(VALID_CUANT_CHARS)
 
 _zeros_str = r'[O0QDo]'
 _base_date_num_str = r'[0123O][0-9O]'
+_month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
 _zeros_pattern = re.compile(_zeros_str, re.IGNORECASE)
 
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, /,)
@@ -30,19 +31,20 @@ _acronym_pattern: Pattern[str] = re.compile(r'^(?:(?:[A-Za-z]\.){1,}[A-Za-z]\.?|
 
 # Datos Globales
 _phone_number: Pattern[str] = re.compile(r'^\d{10}$')
-_mail_pattern: Pattern[str] = re.compile(r'.*@.+', re.IGNORECASE)
+_mail_pattern: Pattern[str] = re.compile(r'\b[\w.+-]*@mail(?:\.com)?\b', re.IGNORECASE)
+
 _cp_pattern: Pattern[str] = re.compile(r'^(?:C\.?P\.?\s*)\d{5}$', re.IGNORECASE)
 
 _numeric_code: Pattern[str] = re.compile(rf'^{_zeros_str}[0-9]+$')
 
-_code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_phone_number, _mail_pattern, _cp_pattern]), re.IGNORECASE)
+_code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_cp_pattern, _numeric_code]), re.IGNORECASE)
 
 # Fecha
 _date_patterns_list: List[Pattern[str]] = [
     # Día + mes en letras + año en un solo string OCR (ej. "21 mar 2023")
-    re.compile(rf'\b{_base_date_num_str}\s+(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\s+(?:19\d{{2}}|20\d{{2}})\b', re.IGNORECASE),
+    re.compile(rf'\b(?:{_month_name_str}|{_base_date_num_str}\s+{_month_name_str}(?:\s*\.?\s*(?:19\d{{2}}|20\d{{2}}|\d{{2}}))?)\b', re.IGNORECASE),
     # Fechas completas y día/mes: Usa el bloque base para evitar confundirse con fracciones/cuantitativos
-    re.compile(rf'\b{_base_date_num_str}[\s\/\-]{_base_date_num_str}(?:[\s\/\-](?:\d{{2,4}}))?\b', re.IGNORECASE),
+    re.compile(rf'\b{_base_date_num_str}[\s\/\-]{_base_date_num_str}(?:[\s\/\-](?:\d{{2,4}}))?\b'),
     # Años
     re.compile(r'\b(199\d|20\d{2})\b', re.IGNORECASE)
 ]
@@ -181,6 +183,14 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
         if not activate_func[2] and bool(_iva_pattern.search(s)):
             activate_func[2] = True
             return 8
+            
+        if not activate_func[3] and bool(_phone_number.search(s)):
+            activate_func[3] = True
+            return 10
+            
+        if not activate_func[4] and bool(_mail_pattern.search(s)):
+            activate_func[4] = True
+            return 11
 
         return None
 

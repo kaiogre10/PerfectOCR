@@ -43,8 +43,8 @@ DEFAULT_OUTPUT_PATH = default_output
 OUTPUT_PATH = output_paths
 
 DEFAULT_INPUT_PATH = [
-#    "input",
-      "input2",
+   "input",
+    #   "input2",
     #    "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
@@ -76,6 +76,7 @@ try:
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(FILE_LEVEL.upper())
         logger_root.addHandler(file_handler)
+        
 except FileNotFoundError as e:
     logger.warning(f"Error generando archivo log: '{e}'", exc_info=True)
 

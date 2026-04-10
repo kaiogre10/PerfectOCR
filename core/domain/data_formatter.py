@@ -357,10 +357,10 @@ class DataFormatter:
             for pid, poly_data in self.workflow.polygons.items():
                 kf = poly_data.key_field or None
                 if kf is not None:
-                    logger.debug(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
+                    logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
                 
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
+                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
             else:
@@ -414,7 +414,7 @@ class DataFormatter:
             
             all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
             for lid, l in all_lines.items():
-                logger.debug(f"{lid}: '{l.text}'")
+                logger.info(f"{lid}: '{l.text}'")
             #     tabular_line = line_data.tabular_line
             #     text = line_data.text
             #     if tabular_line:
