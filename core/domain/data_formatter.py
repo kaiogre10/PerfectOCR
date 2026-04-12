@@ -365,7 +365,7 @@ class DataFormatter:
                     # logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
                 
             if updated_count > 0:
-                logger.info(f"Actualizados {updated_count} polígonos con key_fields")
+                # logger.info(f"Actualizados {updated_count} polígonos con key_fields")
                 return True
             
             else:
@@ -419,7 +419,7 @@ class DataFormatter:
             
             # all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
             # for lid, l in all_lines.items():
-            #     logger.info(f"{lid}: '{l.text}' | TABULAR: '{l.tabular_line}'")
+            #     logger.info(f"{lid}: '{l.text}' | TABULAR: '{l.polygon_ids}'")
             #     tabular_line = line_data.tabular_line
             #     text = line_data.text
             #     if tabular_line:

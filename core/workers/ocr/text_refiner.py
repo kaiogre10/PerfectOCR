@@ -52,7 +52,7 @@ class Refiner(OCRAbstractWorker):
                 
                 if self.cleaner:
                     self.cleaner.transcribe(context, manager)
-                    logger.info(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (solo limpios)")
+                    # logger.info(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (solo limpios)")
                     self.classify_strings(manager)
 
                 if self.corrector:
@@ -61,14 +61,14 @@ class Refiner(OCRAbstractWorker):
                 
                 if self.fragmenter:
                     self.fragmenter.transcribe(context, manager)
-                    logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo fragmentados)")
+                    # logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo fragmentados)")
                     # step_t0 = time.perf_counter()
 
-            logger.info(f"Pasada final: Clasificación Semántica completa")
+            # logger.info(f"Pasada final: Clasificación Semántica completa")
             # step_t0 = time.perf_counter()
             self.classify_strings(manager)
                 
-            logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
+            # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
             # polygons = manager.workflow.polygons if manager.workflow else {}
             # for poly, poly_data in polygons.items():
             #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")

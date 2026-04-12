@@ -120,7 +120,7 @@ class TextCleaner(OCRAbstractWorker):
             clean_token = punct_strip(token)
                 # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if not clean_token or not any(c.isalnum() for c in clean_token):
-                logger.info(f"Eliminado texto basura : '{clean_token}' in {polygon.polygon_id if polygon else ' '}")
+                # logger.info(f"Eliminado texto basura : '{clean_token}' in {polygon.polygon_id if polygon else ' '}")
                 continue
             else:
                 processed_words.append(clean_token)

@@ -36,7 +36,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             analysis: np.ndarray[Any, Any] = context["all_features"]
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
+                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
                     "\n"f"{table_line_ids}")
                 succes = manager.save_tabular_lines(table_line_ids)
                 if succes:     
@@ -156,11 +156,11 @@ class MatricialCusine(VectorizationAbstractWorker):
             # Devolver TODAS las líneas comprendidas entre start_idx y end_idx de line_ids
             # Garantizando la contigüidad absoluta en base al ID general.
             table_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
-            logger.info(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
+            # logger.info(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
             return table_line_ids
 
         # Si ninguna línea superó el umbral, activar emergencia desde aquí
-        logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
+        # logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
         return self._emergency_fallback(analysis, line_ids)
 
     def _emergency_fallback(self, analysis: np.ndarray[Any, Any], line_ids: List[str]) -> List[str]:

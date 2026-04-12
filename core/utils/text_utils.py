@@ -81,7 +81,7 @@ _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.I
 # Define los patrones como strings
 digit_pattern = r"[0-9oOQ]"
 currency_pattern = r"[$]"
-_clean_currency_pattern = (rf'\b[{currency_pattern},]')
+_clean_currency_pattern = rf'^{currency_pattern}'
 # Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
 # _s_correct_pattern = re.compile(r'^S\d{3,}[.,]', re.IGNORECASE)
 
@@ -346,8 +346,9 @@ def get_cuants(text: str) -> str:
 
 def clean_cuant(text: str) -> str:
     """Normaliza texto para Decimal"""
-    text_0 = _zeros_pattern.sub("0", text).strip()
-    return _clean_currency.sub('', text_0).strip()
+    text = text.replace(",", "")
+    text_0 = _zeros_pattern.sub("0", text)
+    return _clean_currency.sub('', text_0)
 
 def punct_strip(text: str) -> str:
     """

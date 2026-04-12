@@ -129,14 +129,11 @@ class TextCorrector(OCRAbstractWorker):
         if token.isdecimal():
             return token
         
-        if validate_quant_chars(token):
-            return token
-        
         elif semantic_clasification == 4:
+            return token
             dec_token = clean_cuant(token)
-            logger.info(f"Correct cuants: '{dec_token}")
             cor = self._correct_cuants(dec_token)
-            logger.info(f"Correct cuants: '{cor}")
+            # logger.info(f"Correct cuants: '{token}' -> '{dec_token}' -> '{cor}")
             return cor
 
         elif semantic_clasification == 2:

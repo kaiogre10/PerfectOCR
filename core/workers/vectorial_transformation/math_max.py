@@ -1,6 +1,7 @@
 # PerfectOCR/core/workers/vectorial_transformation/math_max.py
 import pandas as pd # type: ignore
 import logging
+import numpy as np
 import time
 from itertools import permutations
 from typing import Dict, Any, List, Tuple, Optional, cast
@@ -85,10 +86,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error(f"Error en MatrixSolver.vectorize: {e}", exc_info=True)
             return False
             
-    def solve(
-        self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]],
-        polygons_dict: Dict[str, Polygons]
-    ) -> Tuple[pd.DataFrame, List[str]]:
+    def solve(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], polygons_dict: Dict[str, Polygons]) -> Tuple[pd.DataFrame, List[str]]:
         """
         Fase 1: Identifica roles C, PU, MTL usando clasificación semántica
         de polígonos y votación global con aritmética Decimal.
@@ -96,6 +94,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         df = df.copy()
         columns: List[str] = list(df.columns)
         H = len(columns)
+        
+        # logger.info(f"TABLE MATRIX: {table_matrix[0]}")
 
         # --- PASO 0: Validación de Soledad ---
         df, table_matrix = self._enforce_solitude(df, table_matrix, polygons_dict, H)
@@ -128,21 +128,113 @@ class MatrixSolver(VectorizationAbstractWorker):
         final_semantic_types[pu_col] = "cuantitativo, pu"
         final_semantic_types[mtl_col] = "cuantitativo, mtl"
 
-        # TODO: Fase 2 (reconstrucción con Decimal) y Fase 3 (desplazamiento secuencial)
+        # --- FASE 2: Reconstrucción Aritmética ---
+        ZERO = Decimal('0')
+        for row_idx in complete_rows:
+            row_cells = table_matrix[row_idx]
+            
+            try:
+                c_val = Decimal(clean_cuant(str(row_cells[c_col].get('text', '') or '')))
+            except (InvalidOperation, ValueError):
+                c_val = None
+                
+            try:
+                pu_val = Decimal(clean_cuant(str(row_cells[pu_col].get('text', '') or '')))
+            except (InvalidOperation, ValueError):
+                pu_val = None
+                
+            try:
+                mtl_val = Decimal(clean_cuant(str(row_cells[mtl_col].get('text', '') or '')))
+            except (InvalidOperation, ValueError):
+                mtl_val = None
+
+            if c_val is not None and pu_val is not None and c_val > ZERO and pu_val > ZERO:
+                expected_mtl = c_val * pu_val
+                if mtl_val is None or expected_mtl != mtl_val:
+                    new_mtl_str = self._format_num(expected_mtl)
+                    row_cells[mtl_col]['text'] = new_mtl_str
+                    df.iloc[row_idx, mtl_col] = new_mtl_str
+                    logger.info(f"Fila {row_idx}: Corrección MTL -> {new_mtl_str}")
+            elif c_val is not None and mtl_val is not None and c_val > ZERO:
+                expected_pu = mtl_val / c_val
+                if pu_val is None or expected_pu != pu_val:
+                    new_pu_str = self._format_num(expected_pu)
+                    row_cells[pu_col]['text'] = new_pu_str
+                    df.iloc[row_idx, pu_col] = new_pu_str
+                    logger.info(f"Fila {row_idx}: Corrección PU -> {new_pu_str}")
 
         return df, final_semantic_types
 
     # ── Validación de Soledad ────────────────────────────────────────────
 
-    def _enforce_solitude(
-        self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]],
-        polygons_dict: Dict[str, Polygons], H: int
-    ) -> Tuple[pd.DataFrame, List[List[Dict[str, Any]]]]:
+    def _enforce_solitude(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], polygons_dict: Dict[str, Polygons], H: int) -> Tuple[pd.DataFrame, List[List[Dict[str, Any]]]]:
         """Si una celda contiene 2+ polígonos con sc=2, desplaza el excedente a celda adyacente."""
+        R = len(table_matrix)
+        matrix_array = np.zeros((R, H), np.int8)
+        matrix_decimal = matrix_array.copy()
+        matrix_quantity = matrix_array.copy()
+        elements_array = matrix_array.copy()
+        
+        cols_vot: List[Tuple[str, int]] = []
+        elements: List[int] = []
+        for row_id, rows in enumerate(table_matrix):
+            # logger.info(f"ROWS 0: '{table_matrix[row_id][0]}'")
+            rows = table_matrix[row_id]
+            for i in range(H):
+                # logger.info(f"ROWS: '{rows[i]}'")
+                sc_v = rows[i]["semantic_clasification"]
+                pids = len(rows[i]["polygon_ids"])
+                elements.append(pids)
+                
+                if any(s == 4 for s in sc_v):
+                    matrix_decimal[row_id, i] = len(sc_v)
+                    cols_vot.append(("decimal", i))
+                    
+                elif any(s == 5 for s in sc_v):
+                    matrix_quantity[row_id, i] = len(sc_v)
+                    cols_vot.append(("cantidad", i))
+                    
+                else:
+                    cols_vot.append(("textual", i))
+                    
+        # logger.info(f"VOTOS: '{cols_vot}")
+        # matrix_decimal = np.array(votes_decimal).reshape(-1, H)
+        # matrix_quantity = np.array(votes_quantity).reshape(-1, H)
+        # elements_array = np.array(elements).reshape(-1, H)
+        decimal_votes = np.count_nonzero(matrix_decimal, axis=0)
+        quantityt_votes = np.count_nonzero(matrix_quantity, axis=0)
+        
+        logger.info(f"MATRIz DE CUANTITATIVOS: \n"f"'{matrix_decimal}': CANTIDAD DE CUANTITATIVOS: {decimal_votes}")
+        logger.info(f"MATRIz DE CANTIDADES NUMERICAS: \n"f"'{matrix_quantity}': CANTIDAD DE CANTIDADES NUMERICAS: {quantityt_votes}")
+        
+        logger.debug(f"Cantidad de elementos por celda: \n"f"'{elements_array}'")
+        decimal_cols = np.where(decimal_votes > 0)[0]
+        quantity_cols = np.where(quantityt_votes > 0)[0]
+        leftsquantity = 3 - decimal_cols.shape[0]
+        idx = np.argsort(quantity_cols)[-leftsquantity:][::-1]  # índices de los 2 más grandes
+        final_quantity_col = quantity_cols[idx] 
+        
+        logger.info(f"COLUMNAS CUANTITATIVAS: {decimal_cols}, COMPLEMENTARIAS: {final_quantity_col}")
+        
+            # for row in rows:
+            #     pids = row["polygon_ids"]
+            #     text = row.get("text", "")
+            #     sc = row["semantic_clasification"]
+                    
+            #     # logger.info(f"FILA: {row_id}, TEXTO: {text} | SC: {sc} | POLY: {pids}")
+            #     if sc[0] in {4, 5} and len(pids) == len(sc):
+            #         # logger.info(f"strings para decimal encontrados: '{text}' | {sc}")
+            #         total_decimal += 1
+            # # logger.info(f"Decimales por fila: {row_id}: {total_decimal}")
+            # if total_decimal >= 3:
+            #     valid_rows.append(rows)
+            #     # logger.info(f"FILAS COMPLETAS: {row_id} {rows}")
+        
+            
         for row_idx, row in enumerate(table_matrix):
             for col_idx in range(min(len(row), H)):
                 cell = row[col_idx]
-                pids: List[str] = cell.get('polygon_ids', [])
+                pids: List[str] = cell['polygon_ids']
                 if len(pids) < 2:
                     continue
 
@@ -289,9 +381,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         return row_quant_map, qualifying_rows
 
-    def _vote_hypothesis(
-        self, row_quant_map: List[Dict[int, Decimal]], qualifying_rows: List[int]
-    ) -> Optional[Tuple[int, int, int]]:
+    def _vote_hypothesis(self, row_quant_map: List[Dict[int, Decimal]], qualifying_rows: List[int]) -> Optional[Tuple[int, int, int]]:
         """Votación global: cada fila cualificada vota por permutaciones (C, PU, MTL)."""
         all_quant_cols: set[int] = set()
         for ri in qualifying_rows:
@@ -319,9 +409,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         return max(scores, key=lambda k: scores[k])
 
-    def _test_hypotheses(
-        self, row_values: Dict[int, Decimal], perm_list: List[Tuple[int, int, int]]
-    ) -> List[Tuple[int, int, int]]:
+    def _test_hypotheses(self, row_values: Dict[int, Decimal], perm_list: List[Tuple[int, int, int]]) -> List[Tuple[int, int, int]]:
         """Prueba cada permutación contra los axiomas usando aritmética Decimal."""
         valid: List[Tuple[int, int, int]] = []
         ZERO = Decimal('0')
@@ -359,7 +447,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         types: List[str] = []
         for col_idx in range(H):
             sc_votes = self._collect_column_semantics(table_matrix, col_idx)
-            quant_votes = sc_votes.get(1, 0) + sc_votes.get(2, 0)
+            quant_votes = sc_votes.get(1, 0) + sc_votes.get(2, 0) + sc_votes.get(4, 0) + sc_votes.get(5, 0)
             text_votes = sc_votes.get(0, 0) + sc_votes.get(-1, 0) + sc_votes.get(-2, 0)
             types.append("cuantitativo" if quant_votes > text_votes else "texto")
         return types
