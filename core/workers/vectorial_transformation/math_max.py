@@ -1,6 +1,7 @@
 # PerfectOCR/core/workers/vectorial_transformation/math_max.py
 import pandas as pd # type: ignore
 import logging
+from itertools import permutations
 import numpy as np
 import time
 from itertools import permutations
@@ -47,7 +48,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=True))
+            logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=False))
 
             polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             corrected_df, final_semantic_types = self.solve(df, table_matrix, polygons_dict)
@@ -98,6 +99,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.info(f"TABLE MATRIX: {table_matrix[0]}")
 
         # --- PASO 0: Validación de Soledad ---
+        self._validate_cells(table_matrix, H)
         df, table_matrix = self._enforce_solitude(df, table_matrix, polygons_dict, H)
 
         # --- FASE 1: Votación basada en clasificación semántica ---
@@ -165,72 +167,68 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         return df, final_semantic_types
 
-    # ── Validación de Soledad ────────────────────────────────────────────
-
-    def _enforce_solitude(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], polygons_dict: Dict[str, Polygons], H: int) -> Tuple[pd.DataFrame, List[List[Dict[str, Any]]]]:
-        """Si una celda contiene 2+ polígonos con sc=2, desplaza el excedente a celda adyacente."""
+    def _validate_cells(self, table_matrix: List[List[Dict[str, Any]]], H: int):
         R = len(table_matrix)
         matrix_array = np.zeros((R, H), np.int8)
         matrix_decimal = matrix_array.copy()
         matrix_quantity = matrix_array.copy()
         elements_array = matrix_array.copy()
+        textual_array = matrix_array.copy()
         
         cols_vot: List[Tuple[str, int]] = []
-        elements: List[int] = []
         for row_id, rows in enumerate(table_matrix):
             # logger.info(f"ROWS 0: '{table_matrix[row_id][0]}'")
             rows = table_matrix[row_id]
             for i in range(H):
                 # logger.info(f"ROWS: '{rows[i]}'")
                 sc_v = rows[i]["semantic_clasification"]
-                pids = len(rows[i]["polygon_ids"])
-                elements.append(pids)
+                elements_array[row_id, i] = len(rows[i]["polygon_ids"])
                 
-                if any(s == 4 for s in sc_v):
+                if all(s == 4 for s in sc_v):
                     matrix_decimal[row_id, i] = len(sc_v)
-                    cols_vot.append(("decimal", i))
+                    # cols_vot.append(("decimal", i))
                     
-                elif any(s == 5 for s in sc_v):
+                elif all(s == 5 for s in sc_v):
                     matrix_quantity[row_id, i] = len(sc_v)
-                    cols_vot.append(("cantidad", i))
-                    
+                    # cols_vot.append(("cantidad", i))
+                
                 else:
-                    cols_vot.append(("textual", i))
+                    textual_array[row_id, i] = -1
+                #     cols_vot.append(("textual", i))
                     
-        # logger.info(f"VOTOS: '{cols_vot}")
-        # matrix_decimal = np.array(votes_decimal).reshape(-1, H)
-        # matrix_quantity = np.array(votes_quantity).reshape(-1, H)
-        # elements_array = np.array(elements).reshape(-1, H)
+        logger.info(f"TEXTUAL ARRAY: \n"f"{elements_array}")
         decimal_votes = np.count_nonzero(matrix_decimal, axis=0)
         quantityt_votes = np.count_nonzero(matrix_quantity, axis=0)
         
-        logger.info(f"MATRIz DE CUANTITATIVOS: \n"f"'{matrix_decimal}': CANTIDAD DE CUANTITATIVOS: {decimal_votes}")
-        logger.info(f"MATRIz DE CANTIDADES NUMERICAS: \n"f"'{matrix_quantity}': CANTIDAD DE CANTIDADES NUMERICAS: {quantityt_votes}")
-        
-        logger.debug(f"Cantidad de elementos por celda: \n"f"'{elements_array}'")
+        mask_decimal = (decimal_votes > R//2) & ((np.sum(matrix_decimal > 1, axis=0)) < R //2)
+ 
         decimal_cols = np.where(decimal_votes > 0)[0]
-        quantity_cols = np.where(quantityt_votes > 0)[0]
+        # quantity_cols = np.where(quantityt_votes > 0)[0]
+        
         leftsquantity = 3 - decimal_cols.shape[0]
-        idx = np.argsort(quantity_cols)[-leftsquantity:][::-1]  # índices de los 2 más grandes
-        final_quantity_col = quantity_cols[idx] 
         
-        logger.info(f"COLUMNAS CUANTITATIVAS: {decimal_cols}, COMPLEMENTARIAS: {final_quantity_col}")
+        idx = np.argsort(quantityt_votes)[-leftsquantity:][::-1]
         
-            # for row in rows:
-            #     pids = row["polygon_ids"]
-            #     text = row.get("text", "")
-            #     sc = row["semantic_clasification"]
-                    
-            #     # logger.info(f"FILA: {row_id}, TEXTO: {text} | SC: {sc} | POLY: {pids}")
-            #     if sc[0] in {4, 5} and len(pids) == len(sc):
-            #         # logger.info(f"strings para decimal encontrados: '{text}' | {sc}")
-            #         total_decimal += 1
-            # # logger.info(f"Decimales por fila: {row_id}: {total_decimal}")
-            # if total_decimal >= 3:
-            #     valid_rows.append(rows)
-            #     # logger.info(f"FILAS COMPLETAS: {row_id} {rows}")
+        logger.info(f"COLUMNAS CUANTITATIVAS: {decimal_cols}, COMPLEMENTARIAS: {idx}")
         
-            
+        decimal_matrix_final = matrix_decimal + matrix_quantity
+        # decimal_matrix_final = matrix_decimal[non_idx]
+        logger.info(f"MATRIZ FINAL: {decimal_matrix_final}")
+        
+        # Construimos la lista de tipos semánticos columna a columna acorde a los índices de decimal_cols y final_quantity_col
+        types_s = []
+        for col_idx in range(H):
+            if col_idx in decimal_cols:
+                types_s.append("decimal")
+            elif col_idx in idx:
+                types_s.append("decimal")
+            else:
+                types_s.append("textual")
+ 
+        logger.info(f"TYPOS: '{types_s}'")
+
+    def _enforce_solitude(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], polygons_dict: Dict[str, Polygons], H: int) -> Tuple[pd.DataFrame, List[List[Dict[str, Any]]]]:
+        """Si una celda contiene 2+ polígonos con sc=2, desplaza el excedente a celda adyacente."""
         for row_idx, row in enumerate(table_matrix):
             for col_idx in range(min(len(row), H)):
                 cell = row[col_idx]

@@ -82,9 +82,9 @@ class Fragmenter(OCRAbstractWorker):
         """
         Fragmenta un polígono según su clasificación semántica.
         Regla: agrupa tokens consecutivos del mismo tipo de clasificación.
-        - Tokens con cls=0 se agrupan entre sí
-        - Tokens con cls=-2 se agrupan entre sí
-        - Otros valores (-1, 1, 2) van cada uno en su propio fragmento
+        - Tokens con cls=1 se agrupan entre sí
+        - Tokens con cls=2 se agrupan entre sí
+        - Otros valores (3, 4, 5) van cada uno en su propio fragmento
         """
         text: str = polygon.ocr_text or ""
         if not text:
@@ -111,7 +111,7 @@ class Fragmenter(OCRAbstractWorker):
         current_tokens: List[str] = []
         current_scs: List[int] = []
         current_cls: int | None = None
-        
+        C
         for _, (token, cls) in enumerate(zip(parts, sc)):
             if cls in (1, 2):
                 # Si la clase cambia o es la primera, cerrar fragmento anterior
