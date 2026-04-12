@@ -24,8 +24,8 @@ pipeline_secuence:
    - "lineal"
    - "vectorizer"
    - "cos_sim"
-  #  - "table_structurer"
-  #  - "math_max"
+   - "table_structurer"
+   - "math_max"
 
 # Configuración de salida
 enabled_outputs:
@@ -57,7 +57,7 @@ enabled_outputs:
   vectorization_outputs:
     reconstructed_lines: False
     table_lines: False
-    features: True
+    features: False
     image_features: False
     table_structured: False
     math_max_corrected: False

@@ -108,9 +108,9 @@ class Vectorizer(VectorizationAbstractWorker):
         
             # 5. Agregar features textuales
             all_lines_features = np.ascontiguousarray(np.column_stack([all_features, textual_features]))
-            logger.info("TODAS LAS FEATURES"
+            # logger.info("TODAS LAS FEATURES"
                 # "\n"f"{np.array2string(all_lines_features, precision=5, suppress_small=True)}"
-                    "\n"f"SHAPE:{all_lines_features.shape}")
+                    # "\n"f"SHAPE:{all_lines_features.shape}")
             # logger.info(f"TODAS LAS FEATURES calculadas en {time.perf_counter() - t0:.7f}s")
 
             return all_lines_features

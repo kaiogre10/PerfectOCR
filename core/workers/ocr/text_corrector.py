@@ -135,7 +135,9 @@ class TextCorrector(OCRAbstractWorker):
         elif semantic_clasification == 4:
             dec_token = clean_cuant(token)
             logger.info(f"Correct cuants: '{dec_token}")
-            return self._correct_cuants(dec_token)
+            cor = self._correct_cuants(dec_token)
+            logger.info(f"Correct cuants: '{cor}")
+            return cor
 
         elif semantic_clasification == 2:
             return find_umd(token)
