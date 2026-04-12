@@ -171,7 +171,7 @@ class DataFormatter:
                 self.workflow = dataclasses.replace(self.workflow,full_img=None)
                 return True
             
-            elif corrected:
+            if corrected:
                 # Normalizar si se recibe la dataclass FullImage corregida
                 if isinstance(full_img, FullImage):
                     img_arr = getattr(full_img, "full_img", None)
@@ -194,10 +194,8 @@ class DataFormatter:
                 self.workflow.metadata.img_dims = dims
 
                 logger.debug("Imagen actualizada con éxito.")
-                return True    
-            else:
-                logger.debug("Imagen completa sin modificaciones")
                 return True
+            return True
             
         except Exception as e:
             logger.error(f"Error actualizando full_img: {e}", exc_info=True)
@@ -364,7 +362,7 @@ class DataFormatter:
                 kf = poly_data.key_field or None
                 if kf is not None:
                     updated_count += 1
-                    logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
+                    # logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
                 
             if updated_count > 0:
                 logger.info(f"Actualizados {updated_count} polígonos con key_fields")
@@ -419,9 +417,9 @@ class DataFormatter:
             
                 self.workflow.all_lines = all_lines_dataclasses
             
-            all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
-            for lid, l in all_lines.items():
-                logger.info(f"{lid}: '{l.text}'")
+            # all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
+            # for lid, l in all_lines.items():
+            #     logger.info(f"{lid}: '{l.text}' | TABULAR: '{l.tabular_line}'")
             #     tabular_line = line_data.tabular_line
             #     text = line_data.text
             #     if tabular_line:

@@ -24,8 +24,8 @@ pipeline_secuence:
    - "lineal"
    - "vectorizer"
    - "cos_sim"
-   - "table_structurer"
-   - "math_max"
+  #  - "table_structurer"
+  #  - "math_max"
 
 # Configuración de salida
 enabled_outputs:
@@ -57,7 +57,7 @@ enabled_outputs:
   vectorization_outputs:
     reconstructed_lines: False
     table_lines: False
-    features: False
+    features: True
     image_features: False
     table_structured: False
     math_max_corrected: False
@@ -70,7 +70,7 @@ models_config:
   enable_mkldnn: True
   rec_batch_num: 32
   cpu_threads: 3
-  max_batch_size: 20
+  max_batch_size: 32
   det_limit_side_len: 1280
   det_db_score_mode: 'slow'
   table: False
@@ -165,7 +165,7 @@ modules:
       metric: "euclidean"
       eps: 0.97
       min_cluster: 2
-      similarity_threshold: 0.903
+      similarity_threshold: 0.901
       emergency_threshold: 0.83
       dummie_weights: [0.35, 0.65]
     

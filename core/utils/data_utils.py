@@ -1,4 +1,4 @@
-from typing import Dict, List, Any, Set
+from typing import Dict, List, Any, FrozenSet
 import numpy as np
 
 field_conversion_map: Dict[str, int] = {
@@ -293,7 +293,7 @@ FEATURES_NAME: List[str] = [
     "area_norm",
     "area_inv",
     "area_dif",
-    "center_aling",
+    "center_align",
     "ratio_area_norm",
     "aspcrat_inv_norm",
     "perimeter_norm",
@@ -350,14 +350,16 @@ NUMERIC_CORRECTIONS: Dict[str, str] = {
     "!": "1",
     "¡": "1",
     "l": "1",
-    "S": "$",
-    "s": "$",
+    "S": "5",
+    "s": "5",
+    "$": "5",
     "G": "6",
     "g": "9",
     "B": "8",
     "Z": "2",
     "z": "2",
-    "j": "9"
+    "j": "9",
+    "/": "7",
 }
 
 DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
@@ -367,36 +369,39 @@ DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
     "\\": "/",
 }
 
-VALID_NUM_PUNT_CHARS: Set[str] = {
-    ":", ",", ".",
-    "-", "%", "$",
-    "+", "@",
-}
-
-not_valid_chars: Set[str] = {
-    "~", "©", "®", "™", "`",
-    "¬", "¨", "<", ">",
-    "*", "^", "°", "'",
-    "-", "_", ";", "#", 
-    '`', '"', "÷", "=",
-}
-
-SPECIAL_CHARS: Set[str] = {
-    ")", "(", "]", "[", "{", "}", "|"
-    "-", "_",
-    "!", "¡", "?", "¿", "'", "\\", "/"
-}
-
-VOWELS = {"A", "E", "I", "O", "U", "a", "e", "i", "o", "u"}
-NOT_VALID_CHARS = not_valid_chars.union(SPECIAL_CHARS)
-
-VALID_CUANT_CHARS: Set[str] = {".", ",", "$"}
-CHAR_NUM: Set[str] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
-
-ALONE_CHARS: Set[str] = {"a", "e", "y", "o", "A", "E", "Y", "O"}
-
 ACCENT_NORMALIZATION: Dict[str, str] = {
     "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u",
     "Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U",
     "ü": "u", "Ü": "U", "ñ": "n", "Ñ": "N",
 }
+
+VALID_NUM_PUNT_CHARS: FrozenSet[str] = frozenset({
+    ":", ",", ".",
+    "-", "%", "$",
+    "+", "@",
+})
+
+not_valid_chars: FrozenSet[str] = frozenset({
+    "~", "©", "®", "™", "`",
+    "¬", "¨", "<", ">",
+    "*", "^", "°", "'",
+    "-", "_", ";", "#", 
+    '`', '"', "÷", "=",
+})
+
+SPECIAL_CHARS: FrozenSet[str] = frozenset({
+    ")", "(", "]", "[", "{", "}", "|"
+    "-", "_",
+    "!", "¡", "?", "¿", "'", "\\", "/"
+})
+
+VOWELS: FrozenSet[str] = frozenset({"A", "E", "I", "O", "U", "a", "e", "i", "o", "u"})
+NOT_VALID_CHARS = not_valid_chars.union(SPECIAL_CHARS)
+
+VALID_CUANT_CHARS: FrozenSet[str] = frozenset({".", ",", "$"})
+CHAR_NUM: FrozenSet[str]= frozenset({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"})
+
+CUANT_CHAR: FrozenSet[str] = frozenset(CHAR_NUM.union(VALID_CUANT_CHARS))
+
+alone_chars: FrozenSet[str] = frozenset({"a", "e", "y", "o", "A", "E", "Y", "O"})
+VALID_ALONE_CHARS: FrozenSet[str] = frozenset(CHAR_NUM.union(alone_chars))

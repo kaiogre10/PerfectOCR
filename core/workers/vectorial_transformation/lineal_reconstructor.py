@@ -5,7 +5,7 @@ import numpy as np
 from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
+from core.domain.data_models import Polygons, AllLines
 from services.output_service import save_raw_json
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     worker_name = context.get("worker_name") or "lineal"
-                    output_paths = context["output_paths"]
+                    output_paths = context["output_paths"]                    
                     save_raw_json(output_paths, worker_name, lines_info, file_name)
 
                 return True
@@ -68,10 +68,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         Reconstruye líneas agrupando polígonos y devuelve un dict con la debug completa de cada línea,
         incluyendo los textos OCR concatenados.
         """
-        prepared_sorted = sorted(
-            polygons.values(),
-            key=lambda p: p.geometry.centroid[1]
-        )        
+        prepared_sorted = sorted(polygons.values(), key=lambda p: p.geometry.centroid[1])
         lines_info: Dict[str, Any] = {}
         current_line_polys: List[Polygons] = []
         current_line_bbox: Optional[List[float]] = None
@@ -153,7 +150,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         current_line_bbox = list(bbox)
                         continue
                     
-                    line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys)
+                    line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys) if poly.key_field is not None or not 0 in poly.semantic_clasification else 0
                     
                     lines_bbox.append(current_line_bbox)  # Agregar aquí: bbox de la línea completada
                     
@@ -215,7 +212,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             # Validar también el texto de la última línea
             if joined_text:
                 current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
-                line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys)
+                line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys) if poly.key_field is not None or not 0 in poly.semantic_clasification else 0
                 lines_bbox.append(current_line_bbox)
                 
                 line_centroid = [
@@ -254,7 +251,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         try:
             headers: List[int] = []
             footer: List[int] = []
-            for poly_id, poly in polygons.items():
+            for _, poly in polygons.items():
                 key_field = poly.key_field
                 if key_field is None:
                     continue

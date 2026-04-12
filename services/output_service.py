@@ -7,6 +7,7 @@ import cv2
 import pandas as pd # type: ignore
 from typing import Dict, Any, List
 import csv
+from core.utils.data_utils import FEATURES_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,7 @@ def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: L
         logger.error(f"Error guardadndo tabla JSON de {worker_name},: {e}", exc_info=True)
 
 def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, image_features: bool):
+    feature_names = FEATURES_NAME
     try:
         if isinstance(all_features, dict):
             df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index') # type: ignore
@@ -149,9 +151,9 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] 
             df = df.reset_index()
             header = list(df.columns)
         else:
-            from core.utils.data_utils import FEATURES_NAME
+            
             df: pd.DataFrame = pd.DataFrame(all_features[1:, :])
-            header = list(FEATURES_NAME)
+            header = list(feature_names)
 
         for path in output_paths:
             output_dir = os.path.join(path, worker_name)

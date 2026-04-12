@@ -1,9 +1,12 @@
 import numpy as np
 from typing import List, Any, Optional, Tuple, Dict, Sequence
-from sklearn.metrics.pairwise import cosine_similarity # type: ignore
+from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 import logging
 from sklearn.cluster import DBSCAN # type: ignore
-from core.utils.data_utils import DENSITY_ENCODER, CHAR_NUM
+from core.utils.data_utils import DENSITY_ENCODER, CUANT_CHAR
+
+density_encoder = DENSITY_ENCODER
+cuant_char = CUANT_CHAR
 
 # REL_FRECUENCY_CHAR = frecuency_norm()
 
@@ -29,7 +32,7 @@ def get_morphological_encode(text: str) -> List[float]:
     try:
         result: List[float] = []
         for ch in text:
-            if ch in CHAR_NUM:
+            if ch in cuant_char:
                 result.append(1.0)
             elif ch.isalpha():
                 result.append(-1.0)
@@ -63,7 +66,7 @@ def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype
     for enc_type in encoding_type:
 
         if enc_type == "density":
-            dense = encode_text(text, DENSITY_ENCODER)
+            dense = encode_text(text, density_encoder)
             encoders.append(dense)
         # # elif enc_type == "frequency":
         # #     frec = encode_text(text, REL_FRECUENCY_CHAR)

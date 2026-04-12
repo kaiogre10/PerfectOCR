@@ -36,7 +36,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             analysis: np.ndarray[Any, Any] = context["all_features"]
             table_line_ids: List[str] = self._compare_vectors(manager, analysis)
             if table_line_ids:
-                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
+                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
                     "\n"f"{table_line_ids}")
                 succes = manager.save_tabular_lines(table_line_ids)
                 if succes:     
@@ -56,7 +56,6 @@ class MatricialCusine(VectorizationAbstractWorker):
 
     def _compare_vectors(self, manager: DataFormatter, analysis: np.ndarray[Any, Any]) -> List[str]:
         try:
-            start_time = time.perf_counter()
             logger.debug("Calculando matriz de similitud")
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             line_ids: List[str] = [lid.lineal_id for lid in all_lines.values()]
@@ -67,7 +66,6 @@ class MatricialCusine(VectorizationAbstractWorker):
 
                 if tabular_lines:
                     tabular_lines = self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
-                    logger.debug(f"Validación coseno completada en {time.perf_counter() - start_time:.6f}s. Líneas: {tabular_lines}")
                     return tabular_lines
                 else:
                     tabular_lines = self._emergency_fallback(analysis, line_ids)
@@ -158,11 +156,11 @@ class MatricialCusine(VectorizationAbstractWorker):
             # Devolver TODAS las líneas comprendidas entre start_idx y end_idx de line_ids
             # Garantizando la contigüidad absoluta en base al ID general.
             table_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
-            logger.debug(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
+            logger.info(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
             return table_line_ids
 
         # Si ninguna línea superó el umbral, activar emergencia desde aquí
-        logger.debug("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
+        logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
         return self._emergency_fallback(analysis, line_ids)
 
     def _emergency_fallback(self, analysis: np.ndarray[Any, Any], line_ids: List[str]) -> List[str]:
@@ -170,7 +168,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         Fallback de emergencia optimizado. Compara todas las líneas del documento contra vectores DUMMIE
         usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares.
         """
-        logger.warning(f"INICIANDO MÉTODO DE EMERGENCA")
+        # logger.warning(f"INICIANDO MÉTODO DE EMERGENCA")
         mean_w, median_w = self.dummie_weights
         
         median_ref_vec = VECTOR_MEDIAN_DUMMIE.reshape(1, -1)
@@ -398,6 +396,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Paso 4: Mapear de vuelta a line_id (str)
         full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        logger.debug(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
+        logger.info(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
 
         return full_range_line_ids

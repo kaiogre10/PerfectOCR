@@ -38,8 +38,8 @@ if env_local == "remote":
     
 elif os.path.exists(LATITUDE_OUTPUT_PATH):
     print("Ejecución en LATITUDE")
-    output_paths = [LATITUDE_OUTPUT_PATH]
-    default_output = [LATITUDE_OUTPUT_PATH]
+    output_paths = ["output"]
+    default_output = ["output"]
 
 else:
     print("Ejecución en Inspiron")
@@ -51,9 +51,9 @@ OUTPUT_PATH = output_paths
 
 CONSOLE_LEVEL = "INFO"
 FILE_LEVEL = "INFO"
-CONSOLE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
-FILE_FORMAT = "%(module)s:%(lineno)d - %(message)s" #"%(asctime)s - %(module)s:%(lineno)d - %(message)s"
-DATE_FORMAT = "%H:%M" #"%Y-%m-%d %H:%M:%S"
+CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
+FILE_FORMAT = "%(asctime)s - %(module)s:%(lineno)d - %(message)s"
+DATE_FORMAT = "%H:%M:%S"  # Solo horas:minutos:segundos en formato 00:00:00
 
 logger_root = logging.getLogger()
 logger_root.setLevel(logging.DEBUG)
@@ -65,7 +65,8 @@ file_formatter = logging.Formatter(
     datefmt=DATE_FORMAT
 )
 console_formatter = logging.Formatter(
-    fmt=CONSOLE_FORMAT
+    fmt=CONSOLE_FORMAT,
+    datefmt=DATE_FORMAT
 )
 try:
     LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")

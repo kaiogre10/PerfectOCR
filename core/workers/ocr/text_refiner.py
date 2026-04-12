@@ -5,6 +5,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
+from core.workers.ocr.text_corrector import TextCorrector
 from services.output_service import save_raw_json
 from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
 import logging
@@ -17,18 +18,14 @@ class Refiner(OCRAbstractWorker):
     """
     Orquesta un ciclo de refinamiento de texto post-OCR con clasificación selectiva optimizada.
     """
-    def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None,  fragmenter: Optional[Fragmenter] = None):
+    def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, corrector: Optional[TextCorrector] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
         self.worker_config = config.get("text_refiner", {})
         self.num_passes = self.worker_config.get("num_passes")
         self.output = config.get("cleanned_text")
         self.cleaner = cleaner
         self.fragmenter = fragmenter
-
-    def _log_worker_time(self, pass_num: int, worker_name: str, start_time: float, stage_name: str = "") -> None:
-        elapsed = time.perf_counter() - start_time
-        stage_label = f" | Etapa: {stage_name}" if stage_name else ""
-        logger.debug(f"Bucle #{pass_num} | Worker: {worker_name}{stage_label} | Tiempo: {elapsed:.6f}s")
+        self.corrector = corrector
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """
@@ -38,65 +35,45 @@ class Refiner(OCRAbstractWorker):
         self.preprocess_text(manager)
         self.get_early_data(manager)
         try:
-            if 0 >= self.num_passes:
-                # step_t0 = time.perf_counter()
-                self.classify_strings(manager)
-                # self._log_worker_time(0, "SemanticClassifier", step_t0, "Clasificación Semántica")
+            # if 0 >= self.num_passes:
+            #     # step_t0 = time.perf_counter()
+            #     self.classify_strings(manager)
             
-            else:
-                for i in range(self.num_passes):
-                    pass_num = i + 1
-                    # pass_t0 = time.perf_counter()
-                    # logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
+            # else:
+            for i in range(self.num_passes):
+                pass_num = i + 1
+                # pass_t0 = time.perf_counter()
+                # logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
 
-                    # logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
-                    # step_t0 = time.perf_counter()
-                    # self.classify_strings(manager)
-                    # self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica")
-                    
-                    if self.cleaner:
-                    #     cleaner_name = self.cleaner.__class__.__name__
-                        # logger.info(f"Bucle #{pass_num}: Limpieza de Texto")
-                    #     step_t0 = time.perf_counter()
-                        self.cleaner.transcribe(context, manager)
-                        # self._log_worker_time(pass_num, cleaner_name, step_t0, "Limpieza de Texto")
-                        
-                    # logger.info(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (solo limpios)")
-                    # step_t0 = time.perf_counter()
-                    self.classify_strings(manager)
-                    # self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo limpiados)")
-
-                    if self.fragmenter:
-                        # fragmenter_name = self.fragmenter.__class__.__name__
-                        # logger.info(f"Bucle #{pass_num}: Fragmentación Textual")
-                        # step_t0 = time.perf_counter()
-                        self.fragmenter.transcribe(context, manager)
-                        # self._log_worker_time(pass_num, fragmenter_name, step_t0, "Fragmentación Textual")
-
-                    # logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo fragmentados)")
-                    # # step_t0 = time.perf_counter()
-                    # self.classify_strings(manager)
-                    # self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica (solo fragmentados)")
-                    
-                    # if self.corrector:
-                    #     corrector_name = self.corrector.__class__.__name__
-                    #     logger.debug(f"Bucle #{pass_num}: Corrección textual")
-                    #     step_t0 = time.perf_counter()
-                    #     self.corrector.transcribe(context, manager)
-                    #     self._log_worker_time(pass_num, corrector_name, step_t0, "Corrección textual")
-
-                    # logger.debug(f"Bucle #{pass_num} | Tiempo total iteración: {time.perf_counter() - pass_t0:.6f}s")
-                # logger.debug(f"Pasada final: Clasificación Semántica completa")
+                # logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
                 # step_t0 = time.perf_counter()
-                self.classify_strings(manager)
-                # self._log_worker_time(self.num_passes + 1, "SemanticClassifier", step_t0, "Clasificación Semántica final")
+                # self.classify_strings(manager)
+                # self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica")
+                
+                if self.cleaner:
+                    self.cleaner.transcribe(context, manager)
+                    logger.info(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (solo limpios)")
+                    self.classify_strings(manager)
+
+                if self.corrector:
+                    self.corrector.transcribe(context, manager)
+                    self.classify_strings(manager)
+                
+                if self.fragmenter:
+                    self.fragmenter.transcribe(context, manager)
+                    logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo fragmentados)")
+                    # step_t0 = time.perf_counter()
+
+            logger.info(f"Pasada final: Clasificación Semántica completa")
+            # step_t0 = time.perf_counter()
+            self.classify_strings(manager)
                 
             logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
-            polygons = manager.workflow.polygons if manager.workflow else {}
-            for poly, poly_data in polygons.items():
-                # logger.debug(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
-                if -1 in poly_data.semantic_clasification:
-                    logger.info(f"{poly}: RARO '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+            # polygons = manager.workflow.polygons if manager.workflow else {}
+            # for poly, poly_data in polygons.items():
+            #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+            #     if -1 in poly_data.semantic_clasification:
+            #         logger.info(f"{poly}: RARO '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
             
             if self.output:
                 file_name: str = manager.workflow.metadata.image_name  # type: ignore    

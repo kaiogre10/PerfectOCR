@@ -97,8 +97,10 @@ class Fragmenter(OCRAbstractWorker):
         logger.debug(f"TEXTO: '{text}' | PARTS: '{parts}'")
         
         # Verificar alineación
-        if len(parts) != len(sc):
-            logger.warning(f"Desalineación en {polygon.polygon_id}: {len(parts)} tokens vs {len(sc)} clasificaciones. Texto: {parts}, Clas: {sc}")
+        total_tokens = len(parts)
+        total_sc = len(sc)
+        if total_tokens != total_sc:
+            logger.warning(f"Desalineación en '{text}': {total_tokens} tokens vs {total_sc} clasificaciones. Texto: {parts}, Clas: {sc}")
             return [polygon]
         
         # Construir fragmentos según la regla:

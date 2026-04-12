@@ -6,7 +6,7 @@ from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from core.workers.ocr.text_refiner import Refiner
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
-# from core.workers.ocr.text_corrector import TextCorrector
+from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.data_finder import DataFinder
 
 class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
@@ -23,7 +23,7 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
                 self._shared_refiner_workers = {
                     "cleaner": TextCleaner(config=self.module_config, project_root=self.project_root),
                     "fragmenter": Fragmenter(config=self.module_config, project_root=self.project_root),
-                    # "corrector": TextCorrector(config=self.module_config, project_root=self.project_root)
+                    "corrector": TextCorrector(config=self.module_config, project_root=self.project_root)
                 }
             else:
                 self._shared_refiner_workers = {}
@@ -44,9 +44,9 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
         return Refiner(
             config=self.module_config, 
             project_root=self.project_root,
-            cleaner=workers.get("cleaner"),  #type: ignore
-            # corrector=workers.get("corrector", None),  
-            fragmenter=workers.get("fragmenter"),  #type: ignore
+            cleaner=workers.get("cleaner"), # type: ignore
+            corrector=workers.get("corrector"), # type: ignore
+            fragmenter=workers.get("fragmenter"), # type: ignore
         )
     
     def _create_finder(self, context: Dict[str, Any]) -> DataFinder:

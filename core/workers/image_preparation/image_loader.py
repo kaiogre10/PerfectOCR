@@ -20,8 +20,6 @@ class ImageLoader(ImagePrepAbstractWorker):
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Carga la imagen y extrae metadatos."""
-        time0 = time.perf_counter()
-        
         image_info = context.get("image_data", self.image_data)
         
         # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
@@ -36,7 +34,9 @@ class ImageLoader(ImagePrepAbstractWorker):
             # Carga condicional según formato (extension ya viene del builder)
             if extension in self.valid_extensions:
                 # cv2.imread ya retorna uint8, no necesita .astype()
+                time0 = time.perf_counter()
                 full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
+                logger.debug(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.4f}'s")
             else:
                 logger.error(f"Formato de imagen no válida: {image_name}")
                 return False
@@ -58,7 +58,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:04d}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
-                logger.info(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.4f}'s")
+                logger.debug(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
             
                 if self.output:
                     output_paths = context["output_paths"]
