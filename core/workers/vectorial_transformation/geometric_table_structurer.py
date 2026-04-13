@@ -7,6 +7,7 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
 from core.utils.math_utils import alignment, euclidean_distance
+from core.utils.text_utils import clean_cuant
 # from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
@@ -267,7 +268,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         "xmax": geom.bounding_box[2], 
                         "cx": geom.centroid[0],
                         "cy": geom.centroid[1],
-                        "ocr_text": poly_data.ocr_text or "",
+                        "ocr_text": clean_cuant(poly_data.ocr_text or "") if 4 in poly_data.semantic_clasification else poly_data.ocr_text,
                         "semantic_clasification": poly_data.semantic_clasification,
                         "lineal_id": line_obj.lineal_id,
                         "polygon_ids": line_obj.polygon_ids, 

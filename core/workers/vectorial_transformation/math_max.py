@@ -48,7 +48,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=False))
+            logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=True))
 
             polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             corrected_df, final_semantic_types = self.solve(df, table_matrix, polygons_dict)
@@ -75,8 +75,8 @@ class MatrixSolver(VectorizationAbstractWorker):
                 output_paths = context["output_paths"]
                 save_debug_table(corrected_df, file_name, output_paths, worker_name, header_polygons)
 
-            logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=True))
-            logger.info(f"Cambios:\n" + df.compare(corrected_df).to_string(index=True))
+            # logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=True))
+            # logger.info(f"Cambios:\n" + df.compare(corrected_df).to_string(index=True))
 
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
@@ -99,7 +99,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.info(f"TABLE MATRIX: {table_matrix[0]}")
 
         # --- PASO 0: Validación de Soledad ---
-        self._validate_cells(table_matrix, H)
+        self._validate_cells(df, table_matrix, H)
         df, table_matrix = self._enforce_solitude(df, table_matrix, polygons_dict, H)
 
         # --- FASE 1: Votación basada en clasificación semántica ---
@@ -167,7 +167,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         return df, final_semantic_types
 
-    def _validate_cells(self, table_matrix: List[List[Dict[str, Any]]], H: int):
+    def _validate_cells(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int):
         R = len(table_matrix)
         matrix_array = np.zeros((R, H), np.int8)
         matrix_decimal = matrix_array.copy()
@@ -175,7 +175,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         elements_array = matrix_array.copy()
         textual_array = matrix_array.copy()
         
-        cols_vot: List[Tuple[str, int]] = []
         for row_id, rows in enumerate(table_matrix):
             # logger.info(f"ROWS 0: '{table_matrix[row_id][0]}'")
             rows = table_matrix[row_id]
@@ -183,25 +182,42 @@ class MatrixSolver(VectorizationAbstractWorker):
                 # logger.info(f"ROWS: '{rows[i]}'")
                 sc_v = rows[i]["semantic_clasification"]
                 elements_array[row_id, i] = len(rows[i]["polygon_ids"])
+                text = rows[i]["text"]
                 
-                if all(s == 4 for s in sc_v):
+                if not text:
+                    elements_array[row_id, i] = 0
+                    
+                elif all(s == 4 for s in sc_v):
                     matrix_decimal[row_id, i] = len(sc_v)
-                    # cols_vot.append(("decimal", i))
                     
                 elif all(s == 5 for s in sc_v):
                     matrix_quantity[row_id, i] = len(sc_v)
-                    # cols_vot.append(("cantidad", i))
                 
                 else:
                     textual_array[row_id, i] = -1
                 #     cols_vot.append(("textual", i))
-                    
-        logger.info(f"TEXTUAL ARRAY: \n"f"{elements_array}")
+        
+        decimal_mask = (np.count_nonzero(matrix_decimal, axis=1) > 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
+        
+        full_rows_mask = (np.count_nonzero(elements_array, axis=1) == H) & decimal_mask
+        
+        full_idx = np.where(full_rows_mask)[0]
+        matrix_decimal = elements_array[full_idx]
+        
         decimal_votes = np.count_nonzero(matrix_decimal, axis=0)
         quantityt_votes = np.count_nonzero(matrix_quantity, axis=0)
         
-        mask_decimal = (decimal_votes > R//2) & ((np.sum(matrix_decimal > 1, axis=0)) < R //2)
- 
+        # dec_idx = np.where(decimal_rows)[0]
+        # matrix_decimal = matrix_decimal[dec_idx]
+        
+        logger.info(f"{full_idx}")
+        # logger.info(f"DECIMAL: \n"f"{matrix_decimal}")
+        # df = df.iloc[full_idx]
+        logger.info("FULL ROWS:\n" + df.iloc[full_idx].to_string(index=True))
+        
+        
+        
+        
         decimal_cols = np.where(decimal_votes > 0)[0]
         # quantity_cols = np.where(quantityt_votes > 0)[0]
         
@@ -211,9 +227,9 @@ class MatrixSolver(VectorizationAbstractWorker):
         
         logger.info(f"COLUMNAS CUANTITATIVAS: {decimal_cols}, COMPLEMENTARIAS: {idx}")
         
-        decimal_matrix_final = matrix_decimal + matrix_quantity
+        # decimal_matrix_final = matrix_decimal + matrix_quantity
         # decimal_matrix_final = matrix_decimal[non_idx]
-        logger.info(f"MATRIZ FINAL: {decimal_matrix_final}")
+        # logger.info(f"MATRIZ FINAL: {decimal_matrix_final}")
         
         # Construimos la lista de tipos semánticos columna a columna acorde a los índices de decimal_cols y final_quantity_col
         types_s = []
@@ -345,9 +361,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 complete.add(row_idx)
         return complete
 
-    def _identify_quant_cells(
-        self, table_matrix: List[List[Dict[str, Any]]], complete_rows: set[int], H: int
-    ) -> Tuple[List[Dict[int, Decimal]], List[int]]:
+    def _identify_quant_cells(self, table_matrix: List[List[Dict[str, Any]]], complete_rows: set[int], H: int) -> Tuple[List[Dict[int, Decimal]], List[int]]:
         """
         Solo en filas completas, identifica celdas cuantitativas válidas:
         len(sc)==1, sc[0] in {1,2}, len(polygon_ids)==1.

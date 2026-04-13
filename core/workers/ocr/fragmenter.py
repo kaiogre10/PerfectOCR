@@ -111,7 +111,6 @@ class Fragmenter(OCRAbstractWorker):
         current_tokens: List[str] = []
         current_scs: List[int] = []
         current_cls: int | None = None
-        C
         for _, (token, cls) in enumerate(zip(parts, sc)):
             if cls in (1, 2):
                 # Si la clase cambia o es la primera, cerrar fragmento anterior

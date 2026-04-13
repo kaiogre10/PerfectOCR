@@ -265,7 +265,7 @@ def is_quantitative(text: str) -> bool:
     """
     Válida rapidamente si un string es cuantitativo.
     """
-    if not text or len(text) < 3 or text.isdecimal():
+    if len(text) < 3 or text.isdecimal():
         return False
     
     return validate_quant_chars(text) or validate_quant_pattern(text)
@@ -316,17 +316,6 @@ def get_cuants(text: str) -> str:
         for m in reversed(matches):
             tok = m.group(0)
             start, end = m.span()
-
-            # Caso clave: cuantitativo válido pegado a letras (ej. "93v", "v93")
-            if is_quantitative(tok):
-                needs_left_space = start > 0 and result[start - 1].isalpha()
-                needs_right_space = end < len(result) and result[end].isalpha()
-
-                if needs_left_space or needs_right_space:
-                    left_part = result[:start]
-                    right_part = result[end:]
-                    mid = f"{' ' if needs_left_space else ''}{tok}{' ' if needs_right_space else ''}"
-                    result = left_part + mid + right_part
 
             # Caso clave: cuantitativo válido pegado a letras (ej. "93v", "v93")
             if is_quantitative(tok):

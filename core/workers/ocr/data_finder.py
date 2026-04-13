@@ -7,7 +7,7 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import validate_text, is_acronym
+from core.utils.text_utils import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class DataFinder(OCRAbstractWorker):
                 logger.debug("Modelo de búsqueda obtenido del ModelsManager")
             return self._model #type: ignore
 
-        except ImportError as e:
+        except ModuleNotFoundError as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
         return None
 
@@ -47,11 +47,10 @@ class DataFinder(OCRAbstractWorker):
         return True
 
     def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, List[int] | int]:
-        time0 = time.perf_counter()
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
             return {}
-
+        time0 = time.perf_counter()
         try:
             processed_count = 0
             polygon_updates: Dict[str, List[int] | int] = {}
@@ -117,16 +116,16 @@ class DataFinder(OCRAbstractWorker):
                         key_field = valid_results[0]['key_field']
                         polygon_updates[pid] = key_field
                         # logger.info(f"'{pid}': Key_Field: '{key_field}'")
-
+                        
+            logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
-                logger.info(f"Cantidad de keyfields: {len(polygon_updates)} completados en: {time.perf_counter() - time0:.6}, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:
                 logger.warning("No se hallaron Keywords")
                 return {}
 
-        except Exception as e:
+        except ValueError as e:
             logger.warning(f"Error encontrando keyfields: {e}")
         return {}

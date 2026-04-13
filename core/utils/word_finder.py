@@ -5,9 +5,11 @@ import pickle
 import re
 import unicodedata
 import time
-from typing import List, Any, Dict, Tuple, Set
+from typing import List, Any, Dict, Tuple, Set, FrozenSet
 
 logger = logging.getLogger(__name__)
+
+_space_pattern = re.compile(r"\s+")
 
 class WordFinder:
     def __init__(self, model_path: str, set_params: bool):
@@ -22,16 +24,19 @@ class WordFinder:
         global_filter = model.get("global_filter", {})
         
         self.all_ngrams: Dict[str, Tuple[int, Dict[int, List[str]]]] = model.get("all_ngrams", {})
-        self.global_words: Set[str] = set(model["global_words"])
-        self.noise_words: Set[str] = set(model["noise_words"])
+        self.global_words: FrozenSet[str] = frozenset(model["global_words"])
+        self.noise_words: FrozenSet[str] = frozenset(model["noise_words"])
+        
         self.global_filter_threshold: float = params.get("global_filter_threshold", {})
         self.noise_grams: List[Dict[int, List[str]]] = noise_filter["noise_grams"]
-        self.noise_array: List[np.ndarray[Any, np.dtype[np.uint8]]] = noise_filter["noise_array"]
+        
         self.threshold: float = params.get("threshold_similarity", {})
         self.ngrams: Tuple[int, int] = params["char_ngrams"]
         self.window_flex: int = params.get("window_flexibility", {})
         self.forb_match: float = params.get("forb_match", {})
         self.min_diff: float = params.get("min_diff", {})
+        
+        self.noise_array: List[np.ndarray[Any, np.dtype[np.uint8]]] = noise_filter["noise_array"]
         self.global_matrices: Dict[int, np.ndarray[Any, np.dtype[np.uint8]]] = global_filter.get("global_matrices", {})
 
     def _load_model(self, model_path: str) -> Dict[str, Any]:
@@ -45,7 +50,7 @@ class WordFinder:
                 raise ValueError("El pickle no tiene el formato esperado (dict).")
             logger.debug(f"Modelo cargado en: '{time.perf_counter() - t0:.6f}s'")
             return self.model
-        except Exception as e:
+        except ExceptionGroup as e:
             logger.error(f"Error al cargar el modelo {e}", exc_info=True)
             raise
 
@@ -156,8 +161,7 @@ class WordFinder:
                                 else:
                                     grams_sub = self._build_query_grams(sub)
                                     final_score = self._score_hybrid_greedy(grams_cand, grams_sub)
-                                    penalty = self._length_penalty(sub, cand)
-                                    final_score *= penalty
+                                final_score *= self._length_penalty(sub, cand)
 
                                 if final_score > best_score_for_cand:
                                     best_score_for_cand = final_score
@@ -432,12 +436,12 @@ class WordFinder:
                             else:
                                 grams_sub = self._build_query_grams(sub)
                                 similarity = self._score_hybrid_greedy(grams_forbidden, grams_sub)
-                            # Penalización simétrica
+                                # Penalización simétrica
                             similarity *= self._length_penalty(sub, noise_word)
 
                             if similarity > self.forb_match:
                                 cleaned = (cleaned[:j] + " " + cleaned[j + w:]).strip()
-                                cleaned = re.sub(r"\s+", " ", cleaned).strip()
+                                cleaned = _space_pattern.sub(" ", cleaned).strip()
                                 removed_noise.append(sub)
                                 logger.debug(f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
                                 found_any = True
@@ -458,10 +462,9 @@ class WordFinder:
             # Convertir cualquier cosa que NO sea letra o espacio en un ESPACIO
             q = re.sub(r"[^a-z\s]+", " ", q)
             # Limpiar espacios múltiples / extremos
-            q = re.sub(r"\s+", " ", q).strip()
-            return q
-        except Exception as e:
-            logger.error(msg=f"Error limpiando texto: {e}", exc_info=True)
+            return _space_pattern.sub(" ", q).strip()
+        except UnicodeError as e:
+            logger.error(f"Error limpiando texto: {e}", exc_info=True)
         return ""
     
     def _update_best_match(self, current_best: Dict[str, Any], match: Dict[str, Any]) -> Dict[str, Any]:
