@@ -42,7 +42,8 @@ class DataFormatter:
                 full_img=full_image,
                 metadata=metadata_obj,
                 polygons={},
-                all_lines={}
+                all_lines={},
+                H=0
             )
             logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{IDRegistro}'")
             return True

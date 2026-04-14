@@ -90,3 +90,4 @@ class WorkflowDict:
     metadata: Metadata
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
+    H: int

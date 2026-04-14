@@ -67,12 +67,11 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # if H == 0:
                 #     logger.error("No se pudieron extraer centroides del encabezado")
                 #     return False
-                h, header_line_id = self.get_headers(all_lines, polygons)
-                if not header_line_id or h==0:
+                H, header_line_id = self.get_headers(all_lines, polygons)
+                if not header_line_id or H==0:
                     logger.error("No hay encabezados disponibles")
                     return False
-                
-                H = int(h)
+                manager.workflow.H = H
                 
                 # logger.info(f"Encabezado detectado: {header_line_id}, H={H} columnas")
 
@@ -88,8 +87,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
                 # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
                 context["table_matrix"] = table_matrix
-                context["table_columns"] = [f"col_{i}" for i in range(H)]
-                context["table_width"] = H
 
                 # 5. Validar y loggear estructura generada
                 total_time = time.time() - start_time

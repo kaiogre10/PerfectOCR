@@ -31,26 +31,22 @@ class MatrixSolver(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
         try:
             start_time = time.time()
-
+            if not manager.workflow:
+                return False
+            H = manager.workflow.H 
             table_matrix = cast(List[List[Dict[str, Any]]], context["table_matrix"])
             if not table_matrix:
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            table_columns = cast(List[str], context["table_columns"])
-            if not table_columns:
-                inferred_width = len(table_matrix[0]) if table_matrix else 0
-                table_columns = [f"col_{i}" for i in range(inferred_width)]
-
-            df = self._table_matrix_to_dataframe(table_matrix, table_columns)
+            df = self._table_matrix_to_dataframe(table_matrix, H)
             if df.empty:
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
             # logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=True))
 
-            polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            corrected_df, final_semantic_types = self.solve(df, table_matrix, polygons_dict)
+            corrected_df = self.solve(df, table_matrix)
 
             if df.equals(corrected_df):
                 logger.info("No se corrigió tabla; se conserva versión original")
@@ -76,7 +72,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             # logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=True))
             # logger.info(f"Cambios:\n" + df.compare(corrected_df).to_string(index=True))
-
+            final_semantic_types = list(corrected_df.columns)
             manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
 
             total_time = time.time() - start_time
@@ -86,142 +82,23 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error(f"Error en MatrixSolver.vectorize: {e}", exc_info=True)
             return False
             
-    def solve(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], polygons_dict: Dict[str, Polygons]) -> Tuple[pd.DataFrame, List[str]]:
+    def solve(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]]) -> pd.DataFrame:
         """
         Fase 1: Identifica roles C, PU, MTL usando clasificación semántica
         de polígonos y votación global con aritmética Decimal.
         """
         df = df.copy()
-        columns: List[str] = list(df.columns)
-        H = len(columns)
+        H = df.shape[1]
+        # columns: List[str] = list(df.columns)
         
         # logger.info(f"TABLE MATRIX: {table_matrix[0]}")
 
         # --- PASO 0: Validación de Soledad ---
         aritmetic_df, dec_cols = self._separate_rows(df, table_matrix, H)
-        self._find_hypotesis(df, aritmetic_df, dec_cols)
-        return (df, [])
-        df, table_matrix = self._enforce_solitude(df, table_matrix, polygons_dict, H)
-
-        # --- FASE 1: Votación basada en clasificación semántica ---
-        complete_rows = self._get_complete_rows(table_matrix, H)
-        logger.info(f"Filas completas: {sorted(complete_rows)}")
-
-        row_quant_map, qualifying_rows = self._identify_quant_cells(table_matrix, complete_rows, H)
-        logger.info(f"Filas cualificadas (>=3 cuantitativos válidos): {qualifying_rows}")
-
-        basic_types = self._infer_column_types(table_matrix, H)
-        logger.info(f"Tipos semánticos: {basic_types}")
-
-        if not qualifying_rows:
-            logger.info("No hay filas con >= 3 cuantitativos válidos; no se corrige.")
-            return df, basic_types
-
-        hypothesis = self._vote_hypothesis(row_quant_map, qualifying_rows)
-
-        if hypothesis is None:
-            logger.error("No se encontró hipótesis válida; no se corrige.")
-            return df, basic_types
-
-        c_col, pu_col, mtl_col = hypothesis
-        logger.info(f"Roles Globales: C='{columns[c_col]}', PU='{columns[pu_col]}', MTL='{columns[mtl_col]}'")
-
-        final_semantic_types = basic_types[:]
-        final_semantic_types[c_col] = "c"
-        final_semantic_types[pu_col] = "pu"
-        final_semantic_types[mtl_col] = "mtl"
-
-        # --- FASE 2: Reconstrucción Aritmética ---
-        ZERO = Decimal('0')
-        for row_idx in complete_rows:
-            row_cells = table_matrix[row_idx]
-            
-            try:
-                c_val = Decimal(clean_cuant(str(row_cells[c_col].get('text', '') or '')))
-            except (InvalidOperation, ValueError):
-                c_val = None
-                
-            try:
-                pu_val = Decimal(clean_cuant(str(row_cells[pu_col].get('text', '') or '')))
-            except (InvalidOperation, ValueError):
-                pu_val = None
-                
-            try:
-                mtl_val = Decimal(clean_cuant(str(row_cells[mtl_col].get('text', '') or '')))
-            except (InvalidOperation, ValueError):
-                mtl_val = None
-
-            if c_val is not None and pu_val is not None and c_val > ZERO and pu_val > ZERO:
-                expected_mtl = c_val * pu_val
-                if mtl_val is None or expected_mtl != mtl_val:
-                    new_mtl_str = self._format_num(expected_mtl)
-                    row_cells[mtl_col]['text'] = new_mtl_str
-                    df.iloc[row_idx, mtl_col] = new_mtl_str
-                    logger.info(f"Fila {row_idx}: Corrección MTL -> {new_mtl_str}")
-            elif c_val is not None and mtl_val is not None and c_val > ZERO:
-                expected_pu = mtl_val / c_val
-                if pu_val is None or expected_pu != pu_val:
-                    new_pu_str = self._format_num(expected_pu)
-                    row_cells[pu_col]['text'] = new_pu_str
-                    df.iloc[row_idx, pu_col] = new_pu_str
-                    logger.info(f"Fila {row_idx}: Corrección PU -> {new_pu_str}")
-
-        return df, final_semantic_types
-
-    def _enforce_solitude(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], polygons_dict: Dict[str, Polygons], H: int) -> Tuple[pd.DataFrame, List[List[Dict[str, Any]]]]:
-        """Si una celda contiene 2+ polígonos con sc=2, desplaza el excedente a celda adyacente."""
-        for row_idx, row in enumerate(table_matrix):
-            for col_idx in range(min(len(row), H)):
-                cell = row[col_idx]
-                pids: List[str] = cell['polygon_ids']
-                if len(pids) < 2:
-                    continue
-
-                quant_pids: List[str] = [
-                    pid for pid in pids
-                    if pid in polygons_dict and 4 in polygons_dict[pid].semantic_clasification
-                ]
-
-                if len(quant_pids) < 2:
-                    continue
-
-                # Intentar preservar orden geométrico
-                # Si hay 2, intentamos mover el derecho hacia la derecha, o el izquierdo hacia la izquierda
-                placed = False
-
-                # 1. Intentar mover el último hacia la derecha
-                right_pid = quant_pids[-1]
-                target_col = col_idx + 1
-                if target_col < H:
-                    target_cell = row[target_col]
-                    target_pids = target_cell.get('polygon_ids', [])
-                    target_has_quant = any(
-                        tpid in polygons_dict and 4 in polygons_dict[tpid].semantic_clasification
-                        for tpid in target_pids
-                    )
-                    if not target_has_quant:
-                        self._move_polygon(df, row, row_idx, col_idx, target_col, right_pid, polygons_dict)
-                        placed = True
-
-                # 2. Si no se pudo, intentar mover el primero hacia la izquierda
-                if not placed:
-                    left_pid = quant_pids[0]
-                    target_col = col_idx - 1
-                    if target_col >= 0:
-                        target_cell = row[target_col]
-                        target_pids = target_cell.get('polygon_ids', [])
-                        target_has_quant = any(
-                            tpid in polygons_dict and 4 in polygons_dict[tpid].semantic_clasification
-                            for tpid in target_pids
-                        )
-                        if not target_has_quant:
-                            self._move_polygon(df, row, row_idx, col_idx, target_col, left_pid, polygons_dict)
-                            placed = True
-
-                if not placed:
-                    logger.warning(f"No se pudo aislar cuantitativos en fila {row_idx}, col_{col_idx} sin violar orden")
-
-        return df, table_matrix
+        df = self._find_hypotesis(df, aritmetic_df, dec_cols)
+        logger.info("RENAMED:\n" + df.to_string(index=False))
+        # correct_df = self._correct_df(df)
+        return df
 
     def _move_polygon(self, df: pd.DataFrame, row: List[Dict[str, Any]], row_idx: int, src_col: int, target_col: int, pid: str, polygons_dict: Dict[str, Polygons]) -> None:
         """Mueve un polígono de src_col a target_col y actualiza df y row."""
@@ -267,147 +144,10 @@ class MatrixSolver(VectorizationAbstractWorker):
         df.iloc[row_idx, target_col] = target_cell['text']
         logger.info(f"Soledad: '{displaced_text}' de col_{src_col} -> col_{target_col} (fila {row_idx})")
 
-    # ── Fase 1: Identificación de cuantitativos y votación ───────────────
-
-    def _get_complete_rows(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> set[int]:
-        """Filas donde todas las H columnas tienen texto no vacío."""
-        complete: set[int] = set()
-        for row_idx, row in enumerate(table_matrix):
-            if len(row) < H:
-                continue
-            is_complete = all(
-                str(row[col_idx].get('text', '') or '').strip() != ''
-                for col_idx in range(H)
-            )
-            if is_complete:
-                complete.add(row_idx)
-        return complete
-
-    def _identify_quant_cells(self, table_matrix: List[List[Dict[str, Any]]], complete_rows: set[int], H: int) -> Tuple[List[Dict[int, Decimal]], List[int]]:
-        """
-        Solo en filas completas, identifica celdas cuantitativas válidas:
-        len(sc)==1, sc[0] in {1,2}, len(polygon_ids)==1.
-        Solo convierte a Decimal el texto de esas celdas.
-        """
-        row_quant_map: List[Dict[int, Decimal]] = []
-        qualifying_rows: List[int] = []
-
-        for row_idx, row in enumerate(table_matrix):
-            quant_values: Dict[int, Decimal] = {}
-
-            if row_idx in complete_rows:
-                for col_idx in range(min(len(row), H)):
-                    cell = row[col_idx]
-                    sc: List[int] = cell.get('semantic_clasification', [])
-                    pids: List[str] = cell.get('polygon_ids', [])
-
-                    if len(sc) == 1 and sc[0] in (1, 2) and len(pids) == 1:
-                        text = str(cell.get('text', '') or '').strip()
-                        # try:
-                            # cleaned = clean_cuant(text)
-                            # quant_values[col_idx] = Decimal(cleaned)
-                        # except (InvalidOperation, ValueError):
-                            # continue
-
-            row_quant_map.append(quant_values)
-            if len(quant_values) >= 3:
-                qualifying_rows.append(row_idx)
-
-        return row_quant_map, qualifying_rows
-
-    def _vote_hypothesis(self, row_quant_map: List[Dict[int, Decimal]], qualifying_rows: List[int]) -> Optional[Tuple[int, int, int]]:
-        """Votación global: cada fila cualificada vota por permutaciones (C, PU, MTL)."""
-        all_quant_cols: set[int] = set()
-        for ri in qualifying_rows:
-            all_quant_cols.update(row_quant_map[ri].keys())
-
-        quant_col_list = sorted(all_quant_cols)
-        if len(quant_col_list) < 3:
-            return None
-
-        perm_list: List[Tuple[int, int, int]] = list(permutations(quant_col_list, 3))
-        scores: Dict[Tuple[int, int, int], float] = {p: 0.0 for p in perm_list}
-
-        for row_idx in qualifying_rows:
-            qv = row_quant_map[row_idx]
-            valid = self._test_hypotheses(qv, perm_list)
-
-            if len(valid) == 1:
-                scores[valid[0]] += 1.0
-            elif len(valid) == 2:
-                scores[valid[0]] += 0.5
-                scores[valid[1]] += 0.5
-
-        if not any(s > 0 for s in scores.values()):
-            return None
-
-        return max(scores, key=lambda k: scores[k])
-
-    def _test_hypotheses(self, row_values: Dict[int, Decimal], perm_list: List[Tuple[int, int, int]]) -> List[Tuple[int, int, int]]:
-        """Prueba cada permutación contra los axiomas usando aritmética Decimal."""
-        valid: List[Tuple[int, int, int]] = []
-        ZERO = Decimal('0')
-
-        for c_col, pu_col, mtl_col in perm_list:
-            c = row_values.get(c_col)
-            pu = row_values.get(pu_col)
-            mtl = row_values.get(mtl_col)
-
-            if c is None or pu is None or mtl is None:
-                continue
-
-            # Axiomas
-            if c <= ZERO or pu <= ZERO or mtl <= ZERO:
-                continue
-            if mtl < c * pu:
-                continue
-            if pu < mtl:
-                continue
-
-            product = c * pu
-            if product == ZERO:
-                continue
-
-            rel_diff = abs(product - mtl) / product
-            if rel_diff <= self.arithmetic_tolerance:
-                valid.append((c_col, pu_col, mtl_col))
-
-        return valid
-
-    # ── Inferencia de tipos por columna ──────────────────────────────────
-
-    def _infer_column_types(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> List[str]:
-        """Clasifica columnas por mayoría de votos semánticos de sus polígonos."""
-        types: List[str] = []
-        for col_idx in range(H):
-            sc_votes = self._collect_column_semantics(table_matrix, col_idx)
-            quant_votes = sc_votes.get(1, 0) + sc_votes.get(2, 0) + sc_votes.get(4, 0) + sc_votes.get(5, 0)
-            text_votes = sc_votes.get(0, 0) + sc_votes.get(-1, 0) + sc_votes.get(-2, 0)
-            types.append("cuantitativo" if quant_votes > text_votes else "texto")
-        return types
-
-    def _collect_column_semantics(self, table_matrix: List[List[Dict[str, Any]]], col_idx: int) -> Dict[int, int]:
-        votes: Dict[int, int] = {}
-        for row in table_matrix:
-            if col_idx >= len(row):
-                continue
-            cell = row[col_idx]
-            semantic_values = cell["semantic_clasification"]
-            if isinstance(semantic_values, int):
-                semantic_values = [semantic_values]
-            if not isinstance(semantic_values, list):
-                continue
-            for val in semantic_values:
-                try:
-                    key = int(val)
-                    votes[key] = votes.get(key, 0) + 1
-                except Exception:
-                    continue
-        return votes
-
-    def _table_matrix_to_dataframe(self, table_matrix: List[List[Dict[str, Any]]], columns: List[str]) -> pd.DataFrame:
+    def _table_matrix_to_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> pd.DataFrame:
         rows: List[List[str]] = []
-        width = len(columns)
+        columns = [f"col_{i}" for i in range(H)]
+        width = len(table_matrix[0])
         for row in table_matrix:
             row_values: List[str] = []
             for col_idx in range(width):
@@ -417,11 +157,6 @@ class MatrixSolver(VectorizationAbstractWorker):
                 row_values.append(text_val)
             rows.append(row_values)
         return pd.DataFrame(rows, columns=columns)
-
-    def _format_num(self, val: Decimal) -> str:
-        if val == val.to_integral_value():
-            return str(int(val))
-        return str(val.quantize(Decimal('0.01')))
         
     def _separate_rows(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int) -> Tuple[pd.DataFrame, List[Tuple[str, str]]]:
         try:
@@ -437,14 +172,11 @@ class MatrixSolver(VectorizationAbstractWorker):
                 rows = table_matrix[row_id]
                 for i in range(H):
                     sc_v = rows[i]["semantic_clasification"]
-                    pids = rows[i]["polygon_ids"]
-                    text = rows[i]["text"]
-                    
                     total_sc = len(sc_v)
                     
                     elements_array[row_id, i] = total_sc
                     
-                    if not text or not sc_v or not pids:
+                    if not sc_v or not rows[i]["text"] or not rows[i]["polygon_ids"]:
                         elements_array[row_id, i] = 0
                         matrix_decimal[row_id, i] = 0
                         matrix_quantity[row_id, i] = 0
@@ -496,7 +228,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                     type_col.append((col, "textual"))
                     
             # logger.info(f"TYPOS: '{type_col}'")
-            full_rows_df = df.iloc[full_idx]
+            # full_rows_df = df.iloc[full_idx]
             aritmetic_df = df.loc[text_mask, decimal_cols_str]
             if aritmetic_df.empty: 
                 return (df, type_col)
@@ -510,23 +242,15 @@ class MatrixSolver(VectorizationAbstractWorker):
         return (df.empty, type_col)
 
     def _find_hypotesis(self, df: pd.DataFrame, aritmetic_df: pd.DataFrame, dec_cols: List[Tuple[str, str]]):
-        n_rows = aritmetic_df.shape[0]
         cols_name = [cols[0] for cols in dec_cols if cols[1] == "decimal"]
         # logger.info(f"COLS NAME: {cols_name}, CANTIDAD DE FILAS: {n_rows}")
-        # new_df = aritmetic_df.iloc[2]
         # logger.info("ARITMETIC:\n" + aritmetic_df.to_string(index=False))
-        # try:
-        #     array_df = aritmetic_df.astype(np.float64).values
-        # except TypeError as e:
-        #     logger.error(f"ERROR CONVIRTIENDO A ARRAY: '{e}'", exc_info=True)
-        #     return None
-        # logger.info(f"ARRAYFRAME: \n"f"{np.array2string(array_df, precision=3)}")
         try:
             perm_df = aritmetic_df.map(lambda x: Decimal(x))
         except InvalidOperation as e:
             logger.error(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
             return None
-        logger.info("DECIMAL DF:\n" + perm_df.to_string(index=False))
+        # logger.info("DECIMAL DF:\n" + perm_df.to_string(index=False))
         time_t = time.perf_counter()
         try:
             all_hypotesis = []
@@ -562,9 +286,6 @@ class MatrixSolver(VectorizationAbstractWorker):
                         array_votes[:, pu_idx] = 2
                         array_votes[:, mtl_idx] = 3
                         break
-                    
-                    # if pu_col == mtl_col and mtl_col/pu_col == ONE:
-                    
                 all_hypotesis.append(row_validated)
                     
             # logger.info(f"HIPOTESIS GANADORA: {all_hypotesis} \n"f"ARRAY:\n"f"{array_votes}")
@@ -572,9 +293,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error(f"ERROR PERMUTANDO: '{e}'", exc_info=True)
             return None
         logger.info(f"TIempo Permutando: {time.perf_counter() - time_t:.6f}'s")
-        c_column = np.argmax(np.count_nonzero(array_votes==1, axis=0))
-        pu_column = np.argmax(np.count_nonzero(array_votes==2, axis=0))
-        mtl_column = np.argmax(np.count_nonzero(array_votes==3, axis=0))
+        c_column, pu_column, mtl_column = [np.argmax(np.count_nonzero(array_votes==i, axis=0)) for i in (1, 2, 3)]
         logger.info(f"INDICES DE COLUMNA: C-PU-MTL: {c_column, pu_column, mtl_column}")
         for i, col in enumerate(cols_name):
             if i == c_column:
@@ -585,6 +304,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 df.rename(columns={col: "mtl_col"}, inplace=True)
             else:
                 continue
+        return df
         
-        logger.info("RENAMED:\n"f"{df.columns}")
-        logger.info("HEAD:\n" + df.head().to_string(index=False))
+    # def _correct_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        
