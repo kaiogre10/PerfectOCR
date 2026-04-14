@@ -177,26 +177,21 @@ class Refiner(OCRAbstractWorker):
         return False
             
     def preprocess_text(self, manager: DataFormatter) -> bool:
-        try:
-            if not manager.workflow or not manager.workflow.polygons:
-                logger.warning("Semantic Clasificator no tiene polígonos para procesar")
-                return False
-                
-            polygons: Dict[str, Polygons] = manager.workflow.polygons
-            updated_polygons: Dict[str, Polygons] = {}
-            for poly, poly_data in polygons.items():
-                text = poly_data.ocr_text or ""
-                if contains_quantitative(text):
-                    qtext = get_cuants(text)
-                    if qtext != text:
-                        logger.info(f"CUANTS: '{text}' -> '{qtext}'")
-                        updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
-                    else:
-                        updated_polygons[poly] = poly_data
+        if not manager.workflow or not manager.workflow.polygons:
+            logger.warning("Semantic Clasificator no tiene polígonos para procesar")
+            return False
+        polygons: Dict[str, Polygons] = manager.workflow.polygons
+        updated_polygons: Dict[str, Polygons] = {}
+        for poly, poly_data in polygons.items():
+            text = poly_data.ocr_text or ""
+            if contains_quantitative(text):
+                qtext = get_cuants(text)
+                if qtext != text:
+                    # logger.info(f"CUANTS: '{text}' -> '{qtext}'")
+                    updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
                 else:
                     updated_polygons[poly] = poly_data
+            else:
+                updated_polygons[poly] = poly_data
 
-            manager.workflow.polygons = updated_polygons
-        except Exception as e:
-            logger.warning(f"Error preprocesando texto: '{e}", exc_info=True)
-        return False
+        manager.workflow.polygons = updated_polygons

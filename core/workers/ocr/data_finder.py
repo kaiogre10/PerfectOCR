@@ -117,7 +117,7 @@ class DataFinder(OCRAbstractWorker):
                         polygon_updates[pid] = key_field
                         # logger.info(f"'{pid}': Key_Field: '{key_field}'")
                         
-            logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+            # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
                 return polygon_updates

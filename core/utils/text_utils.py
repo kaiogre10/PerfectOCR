@@ -10,10 +10,13 @@ alone_chars = VALID_ALONE_CHARS
 cuant_chars = CUANT_CHAR
 vowels = VOWELS
 
-_zeros_str = r'[O0QDo]'
+_zeros_str = r'00'
+_punt_quant_chars = r'[.,]'
+_zeros_to_sub = r'[OQDo]'
 _base_date_num_str = r'[0123O][0-9O]'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
-_zeros_pattern = re.compile(_zeros_str, re.IGNORECASE)
+_zeros_pattern = re.compile(_zeros_to_sub)
+_punt_pattern = re.compile(_punt_quant_chars, re.IGNORECASE)
 
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, /,)
 _secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECASE)
@@ -40,8 +43,6 @@ _phone_number = re.compile("|".join(p for p in [_kind_phon, _phone_str]), re.IGN
 _mail_pattern: Pattern[str] = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b', re.IGNORECASE)
 _cp_pattern: Pattern[str] = re.compile(rf'\b(?:{_cp_letters}(?:\s*\d{{5}})?|\d{{5}})\b', re.IGNORECASE)
 _numeric_code: Pattern[str] = re.compile(rf'^{_zeros_str}[0-9]+$', re.IGNORECASE)
-
-# _code_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_cp_pattern, _numeric_code]), re.IGNORECASE)
 
 # Fecha
 _date_patterns_list: List[Pattern[str]] = [
@@ -79,41 +80,39 @@ _umd_patterns_list: List[Pattern[str]] = [
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
 # Define los patrones como strings
-digit_pattern = r"[0-9oOQ]"
-currency_pattern = r"[$]"
-_clean_currency_pattern = rf'^{currency_pattern}'
+_digit_pattern = r"[0-9oOQ]"
+_currency_pattern = r"[$]"
+_clean_currency_pattern = r"^(?:\$)|,"
+_clean_currency = re.compile(_clean_currency_pattern)
 # Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
 # _s_correct_pattern = re.compile(r'^S\d{3,}[.,]', re.IGNORECASE)
 
 # _currency_stick_pattern: Pattern[str] = re.compile(r'([a-zA-Z])([\$])')
 
-# Compila los patrones base
-_clean_currency = re.compile(_clean_currency_pattern, re.IGNORECASE)
-
 # Usa los strings en las interpolaciones
 _amount_body_pattern = (
-    rf"(?:{digit_pattern}+(?:[.,]{digit_pattern}+)?|" # Caso simple: 10.50
-    rf"{digit_pattern}{{1,3}}(?:[.,]{digit_pattern}{{3}})*)(?:[.,]{digit_pattern}{{2}})" # Caso miles: 1,000.00
+    rf"(?:{_digit_pattern}+(?:[.,]{_digit_pattern}+)?|" # Caso simple: 10.50
+    rf"{_digit_pattern}{{1,3}}(?:[.,]{_digit_pattern}{{3}})*)(?:[.,]{_digit_pattern}{{2}})" # Caso miles: 1,000.00
 )
 
 _token_pattern = (
-    rf"{currency_pattern}\s*{_amount_body_pattern}|"
-    rf"{_amount_body_pattern}\s*{currency_pattern}|"
+    rf"{_currency_pattern}\s*{_amount_body_pattern}|"
+    rf"{_amount_body_pattern}\s*{_currency_pattern}|"
     rf"{_amount_body_pattern}"
 )
 # Detecta patrones cuantitativos en texto:
 _token = re.compile(_token_pattern, re.IGNORECASE)
 
 # Patrón: Montos con símbolo al inicio ($ 80.50)
-_start_pattern = rf"^{currency_pattern}\s*{_amount_body_pattern}$"
+_start_pattern = rf"^{_currency_pattern}\s*{_amount_body_pattern}$"
 _start = re.compile(_start_pattern, re.IGNORECASE)
 
 # Patrón: Monto con símbolo en medio (80 $ 50)
-_middle_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}\s*{_amount_body_pattern}$"
+_middle_pattern = rf"^{_amount_body_pattern}\s*{_currency_pattern}\s*{_amount_body_pattern}$"
 _middle = re.compile(_middle_pattern, re.IGNORECASE)
 
 # Patrón: Múltiples montos seguidos de símbolo ($100 $200)
-_multi_pattern = rf"^(?:\s*{currency_pattern}\s*{_amount_body_pattern}\s*){{2,}}$"
+_multi_pattern = rf"^(?:\s*{_currency_pattern}\s*{_amount_body_pattern}\s*){{2,}}$"
 _multi = re.compile(_multi_pattern, re.IGNORECASE)
 
 # Patrón: Decimales grandes tipo 1,230.50 (sin $)
@@ -122,17 +121,15 @@ _decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
 _quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start, _middle, _multi]), re.IGNORECASE)
 
 # Patrón: Monto terminado en símbolo (80.00 $)
-# _end_pattern = rf"^{_amount_body_pattern}\s*{currency_pattern}$"
+# _end_pattern = rf"^{_amount_body_pattern}\s*{_currency_pattern}$"
 # _end = re.compile(_end_pattern, re.IGNORECASE)
 
-# Extrae solo los dígitos (sin formato decimal)
-# _digits = re.compile(r"\d+")
-
 # Detecta terminaciones típicas de dinero (.00 ó ,00)
-# _end_quants = re.compile(r'[.,]00$', re.IGNORECASE)
+_end_cuant_str = f'.{_zeros_str}'
+_end_quants = re.compile(rf'{_punt_quant_chars}{_zeros_str}$', re.IGNORECASE)
 
 # Patrón equivalente a _split, pero requiere $ al inicio y una cantidad
-_split_pattern = rf"{currency_pattern}\s*{_amount_body_pattern}"
+_split_pattern = rf"{_currency_pattern}\s*{_amount_body_pattern}"
 _split = re.compile(_split_pattern, re.IGNORECASE)
 
 _rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
@@ -296,13 +293,27 @@ def get_cuants(text: str) -> str:
     result_parts: List[str] = []
     
     for word in words:
-        if word.count("$") >= 2 and is_quantitative(word):
-            compact = word.replace(" ", "")
-            chunks = [m.group(0).replace(" ", "") for m in _split.finditer(compact)]
-            if len(chunks) >= 2 and "".join(chunks) == compact:
+        if word.count("$") >= 2 and contains_quantitative(word):  # $10.50.$31.50 | $10.50$31.50
+            compact = word.replace(" ", "")                 # $10.50.$31.50 | $10.50$31.50
+            chunks = [m.group(0).replace(" ", "") for m in _split.finditer(compact)] # $10.50.$31.50 | $10.50 $31.50
+            
+            total_chunks = len(chunks)
+            compact_chunks = "".join(chunks)
+            
+            if total_chunks == 1:
+                if compact_chunks == compact:
+                    chunks = compact.replace("$", " $")
+                    result_parts.append(" ".join(chunks.split()))
+                    continue
+                
                 result_parts.append(" ".join(chunks))
                 continue
-
+            
+            if total_chunks >= 2:                            # $10.50.$31.50 == 1| $10.50 $31.50 == 2
+                if compact_chunks != compact:                # Siempre True
+                    result_parts.append(" ".join(chunks))
+                    continue
+            
         if word.count("$") == 1 and is_quantitative(word):
             result_parts.append(word)
             continue
@@ -331,14 +342,20 @@ def get_cuants(text: str) -> str:
         result_parts.append(result)
     
     return " ".join(result_parts)
-    # return _zeros_pattern.sub("0", quants).strip()
 
-def clean_cuant(text: str) -> str:
-    """Normaliza texto para Decimal"""
-    text = text.replace(",", "")
+def format_cuant(text: str) -> str:
+    """Convierte strings numericos a cuantitativos y limpia los que ya son cuantitativos para usar Decimal"""
+    if text.isdecimal():
+        return (text + _end_cuant_str).strip()
     text_0 = _zeros_pattern.sub("0", text)
-    return _clean_currency.sub('', text_0)
-
+    cuant_txt = _clean_currency.sub('', text_0).strip()
+    temp_txt = cuant_txt.replace(".", "")
+    if not temp_txt.isdecimal():
+        logger.warning(f"CARACTER INTRUSO EN '{text}' NO SE PUDO FORMATEAR")
+        return text
+    else:
+        return cuant_txt.strip()
+            
 def punct_strip(text: str) -> str:
     """
     Elimina los caracteres de puntuación definidos en _punt_split_pattern

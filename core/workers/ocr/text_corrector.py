@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import  validate_text, clean_cuant, validate_quant_chars, find_umd
+from core.utils.text_utils import  validate_text, find_umd
 from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
 
 cuant_char = CUANT_CHAR
@@ -129,33 +129,17 @@ class TextCorrector(OCRAbstractWorker):
         if token.isdecimal():
             return token
         
-        elif semantic_clasification == 4:
-            return token
-            dec_token = clean_cuant(token)
-            cor = self._correct_cuants(dec_token)
-            # logger.info(f"Correct cuants: '{token}' -> '{dec_token}' -> '{cor}")
-            return cor
+        elif semantic_clasification in (4, 5):
+            dec_token =  self._correct_cuants(token)
+            if dec_token != token:
+                logger.info(f"CORRECT NUM: '{token}' -> '{dec_token}'")
+            return dec_token
 
         elif semantic_clasification == 2:
             return find_umd(token)
 
         else:
             return token
-    
-            # 1. Primero corregir chars del token completo
-
-        #     # 2. Luego separar por runs cuantitativos
-        #     parts = self.split_by_quantitative_runs(corrected_token)
-
-        # for part, is_quant in parts:
-        #     # 3. Aplicar numeric_separator solo a partes cuantitativas
-        #     final_part = numeric_separator(part) if is_quant else part
-        #     if final_part and validate_unique_chars(final_part):
-        #         corrected_tokens.append(final_part)
-        # else:
-        # corrected_token = self._correct_token(token, token_sc)
-        # if corrected_token and validate_unique_chars(corrected_token):
-        #     corrected_tokens.append(corrected_token)    
     
     def _correct_cuants(self, token: str) -> str:
         corrected_chars = [numeric_corrections.get(ch, ch) for ch in token]

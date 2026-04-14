@@ -7,7 +7,7 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
 from core.utils.math_utils import alignment, euclidean_distance
-from core.utils.text_utils import clean_cuant
+from core.utils.text_utils import format_cuant
 # from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
                 H = int(h)
                 
-                logger.info(f"Encabezado detectado: {header_line_id}, H={H} columnas")
+                # logger.info(f"Encabezado detectado: {header_line_id}, H={H} columnas")
 
                 # Pasar target_columns a la función de extracción
                 header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons, H)
@@ -271,14 +271,16 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 poly_data = polygons.get(poly_id)
                 if poly_data and poly_data.geometry:
                     geom = poly_data.geometry
+                    sc = poly_data.semantic_clasification
+                    ocr_text = format_cuant(poly_data.ocr_text or "") if (4 in sc or 5 in sc) else poly_data.ocr_text
                     element: Dict[str, Any] = {
                         "polygon_id": poly_id,
                         "xmin": geom.bounding_box[0],
                         "xmax": geom.bounding_box[2], 
                         "cx": geom.centroid[0],
                         "cy": geom.centroid[1],
-                        "ocr_text": clean_cuant(poly_data.ocr_text or "") if 4 in poly_data.semantic_clasification else poly_data.ocr_text,
-                        "semantic_clasification": poly_data.semantic_clasification,
+                        "ocr_text": ocr_text,
+                        "semantic_clasification": sc,
                         "lineal_id": line_obj.lineal_id,
                         "polygon_ids": line_obj.polygon_ids, 
                     }

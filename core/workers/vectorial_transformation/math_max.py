@@ -1,19 +1,18 @@
 # PerfectOCR/core/workers/vectorial_transformation/math_max.py
 import pandas as pd # type: ignore
 import logging
-from itertools import permutations
 import numpy as np
 import time
 from itertools import permutations
-from typing import Dict, Any, List, Tuple, Optional, cast, Optional
+from typing import Dict, Any, List, Tuple, Optional, cast
 from decimal import Decimal, InvalidOperation
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from services.output_service import save_debug_table
-from core.utils.text_utils import clean_cuant
 
 logger = logging.getLogger(__name__)
+ONE = Decimal('1.00')
 
 class MatrixSolver(VectorizationAbstractWorker):
     """
@@ -26,7 +25,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         worker_config = config.get('math_max', {})
         self.total_mtl_tolerance = worker_config.get('total_mtl_abs_tolerance')
         tol = worker_config.get('row_relative_tolerance')
-        self.arithmetic_tolerance = Decimal(str(tol)) if tol is not None else Decimal('0.01')
+        self.arithmetic_tolerance = Decimal(str(tol)) if tol is not None else Decimal('0.15')
         self.output = config.get("math_max_corrected", False)
         
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
@@ -48,7 +47,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=True))
+            # logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=True))
 
             polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             corrected_df, final_semantic_types = self.solve(df, table_matrix, polygons_dict)
@@ -99,7 +98,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.info(f"TABLE MATRIX: {table_matrix[0]}")
 
         # --- PASO 0: Validación de Soledad ---
-        self._validate_cells(df, table_matrix, H)
+        aritmetic_df, dec_cols = self._separate_rows(df, table_matrix, H)
+        self._find_hypotesis(df, aritmetic_df, dec_cols)
         return (df, [])
         df, table_matrix = self._enforce_solitude(df, table_matrix, polygons_dict, H)
 
@@ -127,9 +127,9 @@ class MatrixSolver(VectorizationAbstractWorker):
         logger.info(f"Roles Globales: C='{columns[c_col]}', PU='{columns[pu_col]}', MTL='{columns[mtl_col]}'")
 
         final_semantic_types = basic_types[:]
-        final_semantic_types[c_col] = "cuantitativo, c"
-        final_semantic_types[pu_col] = "cuantitativo, pu"
-        final_semantic_types[mtl_col] = "cuantitativo, mtl"
+        final_semantic_types[c_col] = "c"
+        final_semantic_types[pu_col] = "pu"
+        final_semantic_types[mtl_col] = "mtl"
 
         # --- FASE 2: Reconstrucción Aritmética ---
         ZERO = Decimal('0')
@@ -303,11 +303,11 @@ class MatrixSolver(VectorizationAbstractWorker):
 
                     if len(sc) == 1 and sc[0] in (1, 2) and len(pids) == 1:
                         text = str(cell.get('text', '') or '').strip()
-                        try:
-                            cleaned = clean_cuant(text)
-                            quant_values[col_idx] = Decimal(cleaned)
-                        except (InvalidOperation, ValueError):
-                            continue
+                        # try:
+                            # cleaned = clean_cuant(text)
+                            # quant_values[col_idx] = Decimal(cleaned)
+                        # except (InvalidOperation, ValueError):
+                            # continue
 
             row_quant_map.append(quant_values)
             if len(quant_values) >= 3:
@@ -423,7 +423,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             return str(int(val))
         return str(val.quantize(Decimal('0.01')))
         
-    def _validate_cells(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int) -> Optional[Tuple[pd.DataFrame, List[Tuple[str, str]]]]:
+    def _separate_rows(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int) -> Tuple[pd.DataFrame, List[Tuple[str, str]]]:
         try:
             R = len(table_matrix)
             cols = range(H)
@@ -464,37 +464,24 @@ class MatrixSolver(VectorizationAbstractWorker):
                     else:
                         elements_array[row_id, i] = total_sc
                         textual_array[row_id, i] = total_sc
-                    
-            # logger.info(f"DECIMAL INICIAL: \n"f"{matrix_decimal}")
-            # textual_mask = (np.count_nonzero(textual_array, axis=0)>= max(1, int(np.ceil(R / 2))))
-            # textual_cols = np.where(textual_mask)[0]
-            logger.info(f"ELEMTS: \n"f"{elements_array}")
             
             # Matriz con unicamente las filas completas y al menos 1 un decimal y un numerico
             decimal_mask = (np.count_nonzero(matrix_decimal, axis=1) > 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
-            elements_mask = (np.count_nonzero(elements_array, axis=1) >= H)
-            full_rows_mask = decimal_mask & elements_mask
+            full_rows_mask = decimal_mask & (np.count_nonzero(elements_array, axis=1) >= H)
             full_idx = np.where(full_rows_mask)[0]
-            matrix_full_row = elements_array[full_idx]
-            # textual_array = textual_array[full_idx]
-            
-            # no_text_cols = (np.count_nonzero(matrix_decimal, axis=1) == 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
-            # no1text1id = np.where(no_text_cols)
-            # logger.info(f"{full_idx}, no text: {no1text1id}")
+            # matrix_full_row = elements_array[full_idx]
             
             n_full = len(full_idx)
             # Columnas decimales: solo celdas con sc=4 en filas completas (submatriz tras full_idx)
             if n_full > 0:
                 comple_cols_mask = ((np.count_nonzero(matrix_decimal[full_idx], axis=0) >= 1) | (np.count_nonzero(matrix_quantity[full_idx], axis=0) >= 1))
             else:
-                comple_cols_mask = np.zeros(H, dtype=bool)
+                return (df, [])
         
             decimal_cols = np.where(comple_cols_mask)[0]
         
             textual_array = textual_array[:, decimal_cols]
             text_mask = np.where(np.count_nonzero(textual_array, axis=1) == 0)[0]
-            # no_text = np.where(text_mask)[0]
-            # logger.info(f"no_text: \n"f"{no_text}, mask: {text_mask}")
             
             type_col: List[Tuple[str, str]] = []
             decimal_cols_str: List[str] = []
@@ -506,16 +493,98 @@ class MatrixSolver(VectorizationAbstractWorker):
                     
                 else:
                     col = f"col_{id:01d}"
-                    # decimal_cols_str.append(col)
                     type_col.append((col, "textual"))
                     
-            logger.info(f"TYPOS: '{type_col}'")
+            # logger.info(f"TYPOS: '{type_col}'")
             full_rows_df = df.iloc[full_idx]
             aritmetic_df = df.loc[text_mask, decimal_cols_str]
-            logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=False))
-            logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=False))
-            return (aritmetic_df, type_col)
+            if aritmetic_df.empty: 
+                return (df, type_col)
+            else:
+                # logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=False))
+                # logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=False))
+                return (aritmetic_df, type_col)
             
         except Exception as e:
             logger.info(f"ERROR EN ASIGANCIÓN: '{e}'", exc_info=True)
-        return None
+        return (df.empty, type_col)
+
+    def _find_hypotesis(self, df: pd.DataFrame, aritmetic_df: pd.DataFrame, dec_cols: List[Tuple[str, str]]):
+        n_rows = aritmetic_df.shape[0]
+        cols_name = [cols[0] for cols in dec_cols if cols[1] == "decimal"]
+        # logger.info(f"COLS NAME: {cols_name}, CANTIDAD DE FILAS: {n_rows}")
+        # new_df = aritmetic_df.iloc[2]
+        # logger.info("ARITMETIC:\n" + aritmetic_df.to_string(index=False))
+        # try:
+        #     array_df = aritmetic_df.astype(np.float64).values
+        # except TypeError as e:
+        #     logger.error(f"ERROR CONVIRTIENDO A ARRAY: '{e}'", exc_info=True)
+        #     return None
+        # logger.info(f"ARRAYFRAME: \n"f"{np.array2string(array_df, precision=3)}")
+        try:
+            perm_df = aritmetic_df.map(lambda x: Decimal(x))
+        except InvalidOperation as e:
+            logger.error(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
+            return None
+        logger.info("DECIMAL DF:\n" + perm_df.to_string(index=False))
+        time_t = time.perf_counter()
+        try:
+            all_hypotesis = []
+            array_votes = np.zeros(perm_df.shape, np.int8)
+            for _, row in perm_df.iterrows():
+                row_validated = []
+                row_values = row.values
+                n_cols = len(row_values)
+                for c_idx, pu_idx, mtl_idx in permutations(range(n_cols), 3):
+                    c_col = row_values[c_idx]
+                    pu_col = row_values[pu_idx]
+                    mtl_col = row_values[mtl_idx]
+                    if mtl_col < pu_col:
+                        continue
+                    if c_col > mtl_col:
+                        continue
+                    if c_col > pu_col:
+                        continue
+                    
+                    upper_tol = mtl_col + self.arithmetic_tolerance
+                    lower_tol = mtl_col - self.arithmetic_tolerance
+                    artimetic_mtl = c_col * pu_col
+                    
+                    if artimetic_mtl == mtl_col:
+                        row_validated.append([c_col, pu_col, mtl_col])
+                        array_votes[:, c_idx] = 1
+                        array_votes[:, pu_idx] = 2
+                        array_votes[:, mtl_idx] = 3
+                        break
+                    elif artimetic_mtl > lower_tol and artimetic_mtl < upper_tol:
+                        row_validated.append([c_col, pu_col, mtl_col])
+                        array_votes[:, c_idx] = 1
+                        array_votes[:, pu_idx] = 2
+                        array_votes[:, mtl_idx] = 3
+                        break
+                    
+                    # if pu_col == mtl_col and mtl_col/pu_col == ONE:
+                    
+                all_hypotesis.append(row_validated)
+                    
+            # logger.info(f"HIPOTESIS GANADORA: {all_hypotesis} \n"f"ARRAY:\n"f"{array_votes}")
+        except ValueError as e:
+            logger.error(f"ERROR PERMUTANDO: '{e}'", exc_info=True)
+            return None
+        logger.info(f"TIempo Permutando: {time.perf_counter() - time_t:.6f}'s")
+        c_column = np.argmax(np.count_nonzero(array_votes==1, axis=0))
+        pu_column = np.argmax(np.count_nonzero(array_votes==2, axis=0))
+        mtl_column = np.argmax(np.count_nonzero(array_votes==3, axis=0))
+        logger.info(f"INDICES DE COLUMNA: C-PU-MTL: {c_column, pu_column, mtl_column}")
+        for i, col in enumerate(cols_name):
+            if i == c_column:
+                df.rename(columns={col: "c_col"})
+            elif i == pu_column:
+                df.rename(columns={col: "pu_col"})
+            elif i == mtl_column:
+                df.rename(columns={col: "mtl_col"})
+            else:
+                continue
+        
+        logger.info("RENAMED:\n"f"{df.columns}")
+        logger.info("HEAD:\n" + df.head().to_string(index=False))
