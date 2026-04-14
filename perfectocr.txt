@@ -1,0 +1,58 @@
+16:23:06 - config_service:33 - TEST MODE ACTIVADO, verificaciones robustas desactivadas. Modulos 'Image Preparation, Ocr, Vectorization'
+16:23:06 - workflow_builder:84 - Número de imágenes: 1
+16:23:15 - math_max:256 - TIempo Permutando: 0.000525's
+16:23:15 - math_max:258 - INDICES DE COLUMNA: C-PU-MTL: (0, 1, 2)
+16:23:15 - math_max:101 - RENAMED:
+            c_col                          col_1  pu_col mtl_col  col_4
+0            3.00  VINCI 25.00 AM LIM 50.00 C/10   85.50  256.50  12.00
+1            5.00               PUNTILLAS PM 0.5    9.49   47.45  15.00
+2            1.00            PASTA CTA SURT C/25  135.00  135.00  12.00
+3            2.00             FOLDER CTA CR C/10   22.50   45.00   5.00
+4            1.00          SOBRE C/ROND CTA C/10   49.80   49.80   7.00
+5            2.00                 CREPE NGO C/10   48.00   96.00   8.00
+6          KM MED                        NG C/12   39.90   39.90   5.00
+7              KM                   FIN0 NG C/12   42.30   42.30   6.00
+8            3.00        CARTA DIAM CANARI0 C/10   30.00   90.00   5.00
+9           10.00             PLACA UNIC 25X25X1    2.98   29.76   5.00
+10  PAL0 RED DELG                   4X60 K 95.00   59.28   59.28   2.00
+11          GLOB0                5.00 SURT C/100   34.93   34.93  50.00
+12           2.00          CART FLUORESC AM C/10   49.10   98.20   8.00
+16:23:15 - math_max:318 - [('col_0', 'decimal'), ('col_1', 'textual'), ('col_2', 'decimal'), ('col_3', 'decimal'), ('col_4', 'decimal')]
+16:23:15 - math_max:345 - FILAS INCOMPLETAS DECIMALES: [ 6  7 10 11]
+16:23:15 - math_max:347 - INCOMPLETE ROWS:
+            c_col pu_col mtl_col
+6          KM MED  39.90   39.90
+7              KM  42.30   42.30
+10  PAL0 RED DELG  59.28   59.28
+11          GLOB0  34.93   34.93
+16:23:15 - math_max:406 - CORRECT:
+    c_col                          col_1  pu_col mtl_col  col_4
+0    3.00  VINCI 25.00 AM LIM 50.00 C/10   85.50  256.50  12.00
+1    5.00               PUNTILLAS PM 0.5    9.49   47.45  15.00
+2    1.00            PASTA CTA SURT C/25  135.00  135.00  12.00
+3    2.00             FOLDER CTA CR C/10   22.50   45.00   5.00
+4    1.00          SOBRE C/ROND CTA C/10   49.80   49.80   7.00
+5    2.00                 CREPE NGO C/10   48.00   96.00   8.00
+6    0.00                 KM MED NG C/12   39.90   39.90   5.00
+7    0.00                KM FIN0 NG C/12   42.30   42.30   6.00
+8    3.00        CARTA DIAM CANARI0 C/10   30.00   90.00   5.00
+9   10.00             PLACA UNIC 25X25X1    2.98   29.76   5.00
+10   0.00     PAL0 RED DELG 4X60 K 95.00   59.28   59.28   2.00
+11   0.00          GLOB0 5.00 SURT C/100   34.93   34.93  50.00
+12   2.00          CART FLUORESC AM C/10   49.10   98.20   8.00
+16:23:15 - math_max:407 - ZEROS: 
+[[0 0 0 0 0]
+ [0 0 0 0 0]
+ [0 0 0 0 0]
+ [0 0 0 0 0]
+ [0 0 0 0 0]
+ [0 0 0 0 0]
+ [1 0 0 0 0]
+ [1 0 0 0 0]
+ [0 0 0 0 0]
+ [0 0 0 0 0]
+ [1 0 0 0 0]
+ [1 0 0 0 0]
+ [0 0 0 0 0]]
+16:23:15 - math_max:80 - Corrección matemática completada en 0.016005s, Se encontraron 13 filas.
+16:23:15 - main_builder:130 - '1' Archivos Digitalizados el '04/14 16:23:15' en: 7.400577s, promedio: 7.400577s

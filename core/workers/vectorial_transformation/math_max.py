@@ -325,7 +325,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         for i, col_name in enumerate(dec_cols):
             cols_name.append((i, col_name[1]))
         
-        matrix_decimal, matrix_quantity, _, textual_array = self.get_arrays_table(table_matrix, H)
+        matrix_decimal, matrix_quantity, _, _ = self.get_arrays_table(table_matrix, H)
         cols = np.arange(len(table_matrix))
         non_complete_qty = np.setdiff1d(cols, np.nonzero(matrix_quantity[:, idx_map])[0], True)
         non_complete_dec = np.setdiff1d(cols, np.nonzero(matrix_decimal[:, idx_map])[0], True)
@@ -344,17 +344,18 @@ class MatrixSolver(VectorizationAbstractWorker):
         
         logger.info(f"FILAS INCOMPLETAS DECIMALES: {non_mask}")
         df_tocorrect = df.loc[non_mask, targets]
-        # logger.info("INCOMPLETE ROWS:\n"+ df_tocorrect.to_string(index=True))
+        logger.info("INCOMPLETE ROWS:\n"+ df_tocorrect.to_string(index=True))
         
         text_cols = [cols[0] for cols in dec_cols if cols[1] == "textual"]
         # logger.info("TEXTUAL COLS:\n"+ df.loc[:, text_cols].to_string(index=True))
         
-        textual_indices = [df.columns.get_loc(name) for name in text_cols if name in df.columns]
+        textual_indices: List[int] = [df.columns.get_loc(name) for name in text_cols if name in df.columns]
+        # logger.info(f"TEXTUAL: {textual_indices}, \n"f"TYPO: {type(textual_indices)}")
         
         if not textual_indices:
             logger.warning("No hay columnas textuales para mover el texto.")
             return df
-            
+        zeros_repl = np.zeros((matrix_decimal.shape), np.uint8)
         for row_idx in non_mask:
             for target_col_idx in idx_map:
                 if target_col_idx is None:
@@ -373,8 +374,9 @@ class MatrixSolver(VectorizationAbstractWorker):
                     
                 extracted_text = str(cell_text).strip()
                 
-                # 1. Limpiar la celda original (poner ZERO)
+                # 1. Limpiar la celda original (poner zero)
                 df.iat[row_idx, target_col_idx] = ZERO
+                zeros_repl[row_idx, target_col_idx] = 1
                 
                 # 2. Encontrar la columna textual más cercana
                 closest_textual_idx = textual_indices[0]
@@ -400,6 +402,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                     new_text = f"{current_text_target} {extracted_text}".strip()
                     
                 df.iat[row_idx, closest_textual_idx] = new_text
-                
+
         logger.info("CORRECT:\n"+ df.to_string(index=True))
+        logger.info(f"ZEROS: \n"f"{zeros_repl}")
         return df
