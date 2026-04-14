@@ -22,8 +22,8 @@ pipeline_secuence:
     
   vector_stage:
    - "lineal"
-   - "vectorizer"
-   - "cos_sim"
+  #  - "vectorizer"
+  #  - "cos_sim"
    - "table_structurer"
    - "math_max"
 

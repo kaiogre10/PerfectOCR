@@ -219,6 +219,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 # Extraer elementos P_i de la fila S_k usando data classes
                 row_elements = self._extract_row_elements(line_obj, polygons)
                 L_k = len(row_elements)  # Cardinalidad |S_k|
+                semantic_blocks = self._build_semantic_blocks(row_elements)
+                B_k = len(semantic_blocks)
                 
                 # Inicializar fila de celdas vacías
                 row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
@@ -227,18 +229,25 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     table_matrix.append(self._finalize_row_cells(row_cells, H))
                     continue
 
-                # CASO 0: L_k == H (Mismo número de polígonos que columnas)
-                if L_k == H:
-                    row_cells = self._case_exact_assignment(row_elements, H)
+                # CASO 0 por bloques: B_k == H (mismo número de bloques que columnas)
+                if B_k == H:
+                    row_cells = self._case_exact_assignment_by_blocks(semantic_blocks, H)
                     table_matrix.append(self._finalize_row_cells(row_cells, H))
                     continue
-                
-                # CASO A: L_k > H (Más palabras que columnas)
-                if L_k > H:
-                    # logger.info(f"Asignación A para {line_id}, elementos {L_k}")
+
+                # CASO A por bloques: B_k > H (más bloques que columnas)
+                if B_k > H:
+                    row_cells = self._case_a_assignment_by_blocks(semantic_blocks, H, B_k)
+
+                # CASO 0 por polígonos: L_k == H (fallback)
+                elif L_k == H:
+                    row_cells = self._case_exact_assignment(row_elements, H)
+
+                # CASO A por polígonos: L_k > H (fallback)
+                elif L_k > H:
                     row_cells = self._case_a_assignment(row_elements, H, L_k)
-                
-                # CASO B: L_k < H (Menos palabras que columnas)
+
+                # CASO B: L_k < H (menos palabras que columnas)
                 else:
                     # logger.info(f"Asignación B para {line_id}, elementos: {L_k}")
                     row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids)
@@ -299,6 +308,19 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error en geometric: {e}", exc_info=True)
             return []
 
+    def _case_exact_assignment_by_blocks(self, semantic_blocks: List[List[Dict[str, Any]]], H: int) -> List[Dict[str, Any]]:
+        """
+        CASO 0 por bloques: B_k == H - Asignación secuencial 1 bloque por columna.
+        """
+        try:
+            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+            for col_idx, block in enumerate(semantic_blocks[:H]):
+                row_cells[col_idx]['words'] = block
+            return row_cells
+        except Exception as e:
+            logger.error(f"Error en geometric: {e}", exc_info=True)
+            return []
+
     def _case_a_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int) -> List[Dict[str, Any]]:
         """
         CASO A: L_k ≥ H - Algoritmo de distancias horizontales Δ_i
@@ -339,6 +361,113 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error en geometric: {e}", exc_info=True)
             return []
 
+    def _case_a_assignment_by_blocks(self, semantic_blocks: List[List[Dict[str, Any]]], H: int, B_k: int) -> List[Dict[str, Any]]:
+        """
+        CASO A por bloques: B_k > H.
+        Usa distancias horizontales entre bloques contiguos para elegir cortes.
+        """
+        try:
+            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+            if not semantic_blocks:
+                return row_cells
+
+            horizontal_distances: List[Tuple[float, int]] = []
+            for i in range(B_k - 1):
+                left_block = semantic_blocks[i]
+                right_block = semantic_blocks[i + 1]
+                left_xmax = max(float(elem.get('xmax', 0.0)) for elem in left_block)
+                right_xmin = min(float(elem.get('xmin', 0.0)) for elem in right_block)
+                delta_i = max(0.001, right_xmin - left_xmax)
+                horizontal_distances.append((delta_i, i))
+
+            horizontal_distances.sort(key=lambda x: x[0], reverse=True)
+            cut_indices = sorted([idx for _, idx in horizontal_distances[:H - 1]])
+
+            start_idx = 0
+            for col_idx in range(H):
+                if col_idx < len(cut_indices):
+                    end_idx = cut_indices[col_idx] + 1
+                else:
+                    end_idx = B_k
+
+                merged_words: List[Dict[str, Any]] = []
+                for block in semantic_blocks[start_idx:end_idx]:
+                    merged_words.extend(block)
+                row_cells[col_idx]['words'] = merged_words
+                start_idx = end_idx
+
+                if start_idx >= B_k:
+                    break
+
+            return row_cells
+        except Exception as e:
+            logger.error(f"Error en geometric: {e}", exc_info=True)
+            return []
+
+    def _build_semantic_blocks(self, row_elements: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+        """
+        Construye bloques semánticos contiguos sobre la fila (izquierda->derecha).
+        Regla:
+        - SC=4 (cuantitativo) siempre va aislado en un bloque propio.
+        - El resto se agrupa si la clase dominante es la misma y no es 4.
+        """
+        try:
+            if not row_elements:
+                return []
+
+            blocks: List[List[Dict[str, Any]]] = []
+            current_block: List[Dict[str, Any]] = []
+            current_class: int | None = None
+
+            for element in row_elements:
+                element_class = self._get_primary_semantic_class(element)
+
+                if element_class == 4:
+                    if current_block:
+                        blocks.append(current_block)
+                        current_block = []
+                        current_class = None
+                    blocks.append([element])
+                    continue
+
+                if not current_block:
+                    current_block = [element]
+                    current_class = element_class
+                    continue
+
+                if current_class == element_class:
+                    current_block.append(element)
+                else:
+                    blocks.append(current_block)
+                    current_block = [element]
+                    current_class = element_class
+
+            if current_block:
+                blocks.append(current_block)
+
+            return blocks
+        except Exception as e:
+            logger.error(f"Error construyendo bloques semánticos: {e}", exc_info=True)
+            return [[element] for element in row_elements]
+
+    def _get_primary_semantic_class(self, element: Dict[str, Any]) -> int:
+        """
+        Obtiene la clase semántica dominante del elemento.
+        Prioriza SC=4 si existe en la lista.
+        """
+        semantic_value = element.get('semantic_clasification', 1)
+        if isinstance(semantic_value, list):
+            semantic_list = [int(v) for v in semantic_value if isinstance(v, (int, float, str))]
+            if 4 in semantic_list:
+                return 4
+            if semantic_list:
+                return semantic_list[0]
+            return 1
+        try:
+            return int(semantic_value)
+        except Exception:
+            return 1
+
     def _case_b_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int, header_centroids: List[List[float]]) -> List[Dict[str, Any]]:
         """
         CASO B: L_k < H - Asignación por similitud coseno con restricciones semánticas
@@ -368,7 +497,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # Asignar cada elemento a una celda según restricciones semánticas
             for element in row_elements:
                 element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
-                element_semantic: List[int] | int = element.get('semantic_clasification', 0)
+                element_semantic: List[int] | int = element.get('semantic_clasification', 1)
                 
                 # 1. Filtrar celdas semánticamente disponibles
                 available_columns: List[int] = []
@@ -484,25 +613,34 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         Verifica si una celda está semánticamente disponible para un elemento.
         Reglas:
-        - Solo UN polígono numérico/cuantitativo por celda
-        - Descriptivos y códigos no tienen restricciones
+        - SC=4 (cuantitativo) siempre va aislado.
+        - Nunca conviven cuantitativos con otros tipos.
+        - Como máximo 1 cuantitativo por celda.
         """
         try:
             # Tipos que tienen restricciones (solo uno por celda)
             restricted_types = {4}
             current_semantics = set(element_semantic if isinstance(element_semantic, list) else [element_semantic])
+            current_is_restricted = bool(current_semantics & restricted_types)
 
-            # Si el elemento no es restrictivo, siempre puede ir
-            if not (current_semantics & restricted_types):
-                return True
-            
-            # Si el elemento ES restrictivo, verificar que no haya otros restrictivos en la celda
+            # Analizar contenido semántico actual de la celda
+            cell_has_restricted = False
+            cell_has_non_restricted = False
             for existing_element in cell_content:
                 existing_semantic_val = existing_element.get('semantic_clasification', 1)
                 existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val]) # type: ignore
-                
                 if existing_semantics & restricted_types:
-                    return False
+                    cell_has_restricted = True
+                else:
+                    cell_has_non_restricted = True
+
+            # Si la celda ya tiene un cuantitativo, no puede entrar ningún otro elemento.
+            if cell_has_restricted:
+                return False
+
+            # Si el elemento actual es cuantitativo, no puede entrar a celda no vacía.
+            if current_is_restricted and (cell_has_non_restricted or len(cell_content) > 0):
+                return False
             
             return True
         

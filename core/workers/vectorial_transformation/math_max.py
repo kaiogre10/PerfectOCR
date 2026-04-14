@@ -5,7 +5,7 @@ from itertools import permutations
 import numpy as np
 import time
 from itertools import permutations
-from typing import Dict, Any, List, Tuple, Optional, cast
+from typing import Dict, Any, List, Tuple, Optional, cast, Optional
 from decimal import Decimal, InvalidOperation
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -100,6 +100,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         # --- PASO 0: Validación de Soledad ---
         self._validate_cells(df, table_matrix, H)
+        return (df, [])
         df, table_matrix = self._enforce_solitude(df, table_matrix, polygons_dict, H)
 
         # --- FASE 1: Votación basada en clasificación semántica ---
@@ -167,82 +168,6 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         return df, final_semantic_types
 
-    def _validate_cells(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int):
-        R = len(table_matrix)
-        matrix_array = np.zeros((R, H), np.int8)
-        matrix_decimal = matrix_array.copy()
-        matrix_quantity = matrix_array.copy()
-        elements_array = matrix_array.copy()
-        textual_array = matrix_array.copy()
-        
-        for row_id, rows in enumerate(table_matrix):
-            # logger.info(f"ROWS 0: '{table_matrix[row_id][0]}'")
-            rows = table_matrix[row_id]
-            for i in range(H):
-                # logger.info(f"ROWS: '{rows[i]}'")
-                sc_v = rows[i]["semantic_clasification"]
-                elements_array[row_id, i] = len(rows[i]["polygon_ids"])
-                text = rows[i]["text"]
-                
-                if not text:
-                    elements_array[row_id, i] = 0
-                    
-                elif all(s == 4 for s in sc_v):
-                    matrix_decimal[row_id, i] = len(sc_v)
-                    
-                elif all(s == 5 for s in sc_v):
-                    matrix_quantity[row_id, i] = len(sc_v)
-                
-                else:
-                    textual_array[row_id, i] = -1
-                #     cols_vot.append(("textual", i))
-        
-        decimal_mask = (np.count_nonzero(matrix_decimal, axis=1) > 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
-        
-        full_rows_mask = (np.count_nonzero(elements_array, axis=1) == H) & decimal_mask
-        
-        full_idx = np.where(full_rows_mask)[0]
-        matrix_decimal = elements_array[full_idx]
-        
-        decimal_votes = np.count_nonzero(matrix_decimal, axis=0)
-        quantityt_votes = np.count_nonzero(matrix_quantity, axis=0)
-        
-        # dec_idx = np.where(decimal_rows)[0]
-        # matrix_decimal = matrix_decimal[dec_idx]
-        
-        logger.info(f"{full_idx}")
-        # logger.info(f"DECIMAL: \n"f"{matrix_decimal}")
-        # df = df.iloc[full_idx]
-        logger.info("FULL ROWS:\n" + df.iloc[full_idx].to_string(index=True))
-        
-        
-        
-        
-        decimal_cols = np.where(decimal_votes > 0)[0]
-        # quantity_cols = np.where(quantityt_votes > 0)[0]
-        
-        leftsquantity = 3 - decimal_cols.shape[0]
-        
-        idx = np.argsort(quantityt_votes)[-leftsquantity:][::-1]
-        
-        logger.info(f"COLUMNAS CUANTITATIVAS: {decimal_cols}, COMPLEMENTARIAS: {idx}")
-        
-        # decimal_matrix_final = matrix_decimal + matrix_quantity
-        # decimal_matrix_final = matrix_decimal[non_idx]
-        # logger.info(f"MATRIZ FINAL: {decimal_matrix_final}")
-        
-        # Construimos la lista de tipos semánticos columna a columna acorde a los índices de decimal_cols y final_quantity_col
-        types_s = []
-        for col_idx in range(H):
-            if col_idx in decimal_cols:
-                types_s.append("decimal")
-            elif col_idx in idx:
-                types_s.append("decimal")
-            else:
-                types_s.append("textual")
- 
-        logger.info(f"TYPOS: '{types_s}'")
-
     def _enforce_solitude(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], polygons_dict: Dict[str, Polygons], H: int) -> Tuple[pd.DataFrame, List[List[Dict[str, Any]]]]:
         """Si una celda contiene 2+ polígonos con sc=2, desplaza el excedente a celda adyacente."""
         for row_idx, row in enumerate(table_matrix):
@@ -298,10 +223,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         return df, table_matrix
 
-    def _move_polygon(
-        self, df: pd.DataFrame, row: List[Dict[str, Any]], row_idx: int, src_col: int,
-        target_col: int, pid: str, polygons_dict: Dict[str, Polygons]
-    ) -> None:
+    def _move_polygon(self, df: pd.DataFrame, row: List[Dict[str, Any]], row_idx: int, src_col: int, target_col: int, pid: str, polygons_dict: Dict[str, Polygons]) -> None:
         """Mueve un polígono de src_col a target_col y actualiza df y row."""
         cell = row[src_col]
         target_cell = row[target_col]
@@ -500,3 +422,100 @@ class MatrixSolver(VectorizationAbstractWorker):
         if val == val.to_integral_value():
             return str(int(val))
         return str(val.quantize(Decimal('0.01')))
+        
+    def _validate_cells(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int) -> Optional[Tuple[pd.DataFrame, List[Tuple[str, str]]]]:
+        try:
+            R = len(table_matrix)
+            cols = range(H)
+            matrix_array = np.zeros((R, H), np.int8)
+            matrix_decimal = matrix_array.copy()
+            matrix_quantity = matrix_array.copy()
+            elements_array = matrix_array.copy()
+            textual_array = matrix_array.copy()
+            
+            for row_id, rows in enumerate(table_matrix):
+                rows = table_matrix[row_id]
+                for i in range(H):
+                    sc_v = rows[i]["semantic_clasification"]
+                    pids = rows[i]["polygon_ids"]
+                    text = rows[i]["text"]
+                    
+                    total_sc = len(sc_v)
+                    
+                    elements_array[row_id, i] = total_sc
+                    
+                    if not text or not sc_v or not pids:
+                        elements_array[row_id, i] = 0
+                        matrix_decimal[row_id, i] = 0
+                        matrix_quantity[row_id, i] = 0
+                        textual_array[row_id, i] = 0
+                        continue
+                        
+                    elif all(s == 4 for s in sc_v):
+                        matrix_decimal[row_id, i] = total_sc
+                        textual_array[row_id, i] = 0
+                        continue
+                        
+                    elif all(s == 5 for s in sc_v):
+                        matrix_quantity[row_id, i] = total_sc
+                        textual_array[row_id, i] = 0
+                        continue
+                    
+                    else:
+                        elements_array[row_id, i] = total_sc
+                        textual_array[row_id, i] = total_sc
+                    
+            # logger.info(f"DECIMAL INICIAL: \n"f"{matrix_decimal}")
+            # textual_mask = (np.count_nonzero(textual_array, axis=0)>= max(1, int(np.ceil(R / 2))))
+            # textual_cols = np.where(textual_mask)[0]
+            logger.info(f"ELEMTS: \n"f"{elements_array}")
+            
+            # Matriz con unicamente las filas completas y al menos 1 un decimal y un numerico
+            decimal_mask = (np.count_nonzero(matrix_decimal, axis=1) > 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
+            elements_mask = (np.count_nonzero(elements_array, axis=1) >= H)
+            full_rows_mask = decimal_mask & elements_mask
+            full_idx = np.where(full_rows_mask)[0]
+            matrix_full_row = elements_array[full_idx]
+            # textual_array = textual_array[full_idx]
+            
+            # no_text_cols = (np.count_nonzero(matrix_decimal, axis=1) == 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
+            # no1text1id = np.where(no_text_cols)
+            # logger.info(f"{full_idx}, no text: {no1text1id}")
+            
+            n_full = len(full_idx)
+            # Columnas decimales: solo celdas con sc=4 en filas completas (submatriz tras full_idx)
+            if n_full > 0:
+                comple_cols_mask = ((np.count_nonzero(matrix_decimal[full_idx], axis=0) >= 1) | (np.count_nonzero(matrix_quantity[full_idx], axis=0) >= 1))
+            else:
+                comple_cols_mask = np.zeros(H, dtype=bool)
+        
+            decimal_cols = np.where(comple_cols_mask)[0]
+        
+            textual_array = textual_array[:, decimal_cols]
+            text_mask = np.where(np.count_nonzero(textual_array, axis=1) == 0)[0]
+            # no_text = np.where(text_mask)[0]
+            # logger.info(f"no_text: \n"f"{no_text}, mask: {text_mask}")
+            
+            type_col: List[Tuple[str, str]] = []
+            decimal_cols_str: List[str] = []
+            for id in cols:
+                if id in decimal_cols:
+                    col = f"col_{id:01d}"
+                    decimal_cols_str.append(col)
+                    type_col.append((col, "decimal"))
+                    
+                else:
+                    col = f"col_{id:01d}"
+                    # decimal_cols_str.append(col)
+                    type_col.append((col, "textual"))
+                    
+            logger.info(f"TYPOS: '{type_col}'")
+            full_rows_df = df.iloc[full_idx]
+            aritmetic_df = df.loc[text_mask, decimal_cols_str]
+            logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=False))
+            logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=False))
+            return (aritmetic_df, type_col)
+            
+        except Exception as e:
+            logger.info(f"ERROR EN ASIGANCIÓN: '{e}'", exc_info=True)
+        return None
