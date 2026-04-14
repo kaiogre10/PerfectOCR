@@ -166,13 +166,13 @@ class DataFormatter:
                 logger.error("No hay workflow inicializado para actualizar full_img.")
                 return False
                 
-            if full_img is None or not corrected:
+            if full_img is None and not corrected:
                 # Medir dims de la imagen real almacenada antes de liberar memoria
                 logger.debug("Full image liberada")
                 self.workflow = dataclasses.replace(self.workflow,full_img=None)
                 return True
             
-            if corrected:
+            if corrected or full_img is not None:
                 # Normalizar si se recibe la dataclass FullImage corregida
                 if isinstance(full_img, FullImage):
                     img_arr = getattr(full_img, "full_img", None)

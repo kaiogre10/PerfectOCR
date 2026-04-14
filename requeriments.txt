@@ -1,0 +1,8 @@
+numpy=1.26.4
+skicit-learn=1.8.0
+opencv=4.11.0
+pandas
+pydantic
+
+paddlepaddle=2.6.1
+paddleocr2.8.1
