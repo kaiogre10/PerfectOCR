@@ -578,11 +578,11 @@ class MatrixSolver(VectorizationAbstractWorker):
         logger.info(f"INDICES DE COLUMNA: C-PU-MTL: {c_column, pu_column, mtl_column}")
         for i, col in enumerate(cols_name):
             if i == c_column:
-                df.rename(columns={col: "c_col"})
+                df.rename(columns={col: "c_col"}, inplace=True)
             elif i == pu_column:
-                df.rename(columns={col: "pu_col"})
+                df.rename(columns={col: "pu_col"}, inplace=True)
             elif i == mtl_column:
-                df.rename(columns={col: "mtl_col"})
+                df.rename(columns={col: "mtl_col"}, inplace=True)
             else:
                 continue
         
