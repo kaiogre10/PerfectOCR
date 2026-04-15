@@ -480,13 +480,15 @@ class DataFormatter:
             logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)
         return False
                 
-    def save_structured_table(self, df: pd.DataFrame, columns: List[str], semantic_types: Optional[List[str]] = None) -> bool:
+    def save_structured_table(self, df: pd.DataFrame) -> bool:
         try:
-            self.structured_table = StructuredTable(df=df, columns=columns, semantic_types=semantic_types)
+            self.structured_table = StructuredTable(df=df)
+            table_f = self.structured_table.df
+            logger.info("Tabla recibida:\n" + table_f.to_string(index=True))
             return True
-        except Exception as e:
+        except TypeError as e:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
-            return False
+        return False
 
     # def _parse_number(self, s: Any):
     #     try:

@@ -7,8 +7,6 @@ from dataclasses import dataclass
 @dataclass
 class StructuredTable:
     df: pd.DataFrame
-    columns: List[str]
-    semantic_types: Optional[List[str]] = None
     
 @dataclass
 class CroppedImage:

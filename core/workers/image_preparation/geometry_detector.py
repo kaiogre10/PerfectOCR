@@ -49,12 +49,16 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             img_obj = manager.get_full_img()
-            full_img = img_obj.full_img if img_obj is not None else None
-                    
-            if full_img is None:
+            full_imag = img_obj.full_img if img_obj is not None else None
+            
+            if full_imag is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-
+            full_img = full_imag.copy()
+            if not manager.update_full_img(False, full_imag):
+                logger.error("No full IMG DE GEOMETRY")
+                return False
+            
             full_img = normalice_image(full_img)
             if full_img is None:
                 logger.critical(f"{worker_name} Error después de normalizar")
@@ -76,6 +80,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
             # paddle_time = time.perf_counter()
             polygons = engine.ocr(img=img, det=True, cls=False, rec=False)[0]
             # logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
+            if not polygons:
+                logger.critical("No hay polygonos detectados")
+                return False
             
             polygons_list: List[Dict[str, Any]] = []
             

@@ -8,7 +8,6 @@ from typing import Dict, Any, List, Tuple, cast
 from decimal import Decimal, InvalidOperation
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
 from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
@@ -49,9 +48,9 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             corrected_df = self.solve(df, table_matrix)
 
-            if df.equals(corrected_df):
-                logger.info("No se corrigió tabla; se conserva versión original")
-                return True
+            # if df.equals(corrected_df):
+            #     logger.info("No se corrigió tabla; se conserva versión original")
+            #     return True
             
             if self.output:
                 all_lines = manager.workflow.all_lines if manager.workflow else {}
@@ -73,8 +72,9 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             # logger.info("Tabla tras corrección matemática:\n" + corrected_df.to_string(index=True))
             # logger.info(f"Cambios:\n" + df.compare(corrected_df).to_string(index=True))
-            final_semantic_types = list(corrected_df.columns)
-            manager.save_structured_table(df=corrected_df, columns=list(corrected_df.columns), semantic_types=final_semantic_types)
+            if not manager.save_structured_table(corrected_df):
+                logger.info("No se pudo guardar data frame")
+                return False
 
             total_time = time.time() - start_time
             logger.info(f"Corrección matemática completada en {total_time:.6f}s, Se encontraron {len(corrected_df)} filas.")
@@ -88,64 +88,19 @@ class MatrixSolver(VectorizationAbstractWorker):
         Fase 1: Identifica roles C, PU, MTL usando clasificación semántica
         de polígonos y votación global con aritmética Decimal.
         """
-        df = df.copy()
         H = df.shape[1]
 
         # --- PASO 0: Validación de Soledad ---
-        aritmetic_df, dec_cols, full_rows_df = self.get_full_rows(df, table_matrix, H)
+        aritmetic_df, dec_cols = self.get_full_rows(df, table_matrix, H)
         df = self._find_hypotesis(df, aritmetic_df, dec_cols)
         if df.empty:
             logger.error("DATAFRAME VACÍO")
             return df.iloc[0:0]
 
-        logger.info("RENAMED:\n" + df.to_string(index=True))
-        df = self._correct_df(df, table_matrix, H, full_rows_df, dec_cols)
+        # logger.info("RENAMED:\n" + df.to_string(index=True))
+        df = self._correct_df(df, table_matrix, H, dec_cols)
         return df
-
-    def _move_polygon(self, df: pd.DataFrame, row: List[Dict[str, Any]], row_idx: int, src_col: int, target_col: int, pid: str, polygons_dict: Dict[str, Polygons]) -> None:
-        """Mueve un polígono de src_col a target_col y actualiza df y row."""
-        cell = row[src_col]
-        target_cell = row[target_col]
-        poly = polygons_dict.get(pid)
-        if not poly or not poly.ocr_text:
-            return
-            
-        displaced_text = poly.ocr_text.strip()
-        if not displaced_text:
-            return
-
-        # Mover polígono a celda destino
-        target_cell['polygon_ids'] = target_cell['polygon_ids'] + [pid]
-        target_sc: List[int] = target_cell['semantic_clasification']
-        target_cell['semantic_clasification'] = sorted(set(target_sc + list(poly.semantic_clasification)))
-        old_target_text = (target_cell.get('text', '') or '').strip()
         
-        # Mantener el orden geométrico estricto del texto dependiendo de la dirección original
-        # Si la columna destino está a la derecha (target_col > src_col), 
-        # el polígono que movemos estaba originalmente a la izquierda, así que va PRIMERO.
-        if target_col > src_col:
-            target_cell['text'] = f"{displaced_text} {old_target_text}".strip() if old_target_text else displaced_text
-        # Si la columna destino está a la izquierda (target_col < src_col),
-        # el polígono que movemos estaba originalmente a la derecha, así que va DESPUÉS.
-        else:
-            target_cell['text'] = f"{old_target_text} {displaced_text}".strip() if old_target_text else displaced_text
-
-        # Actualizar celda fuente
-        new_pids = [p for p in cell['polygon_ids'] if p != pid]
-        cell['polygon_ids'] = new_pids
-        remaining_sc: set[int] = set()
-        for rpid in new_pids:
-            rpoly = polygons_dict.get(rpid)
-            if rpoly:
-                remaining_sc.update(rpoly.semantic_clasification)
-        cell['semantic_clasification'] = sorted(remaining_sc)
-        cell['text'] = (cell.get('text', '') or '').replace(displaced_text, '').strip()
-
-        # Sincronizar DataFrame
-        df.iloc[row_idx, src_col] = cell['text']
-        df.iloc[row_idx, target_col] = target_cell['text']
-        logger.info(f"Soledad: '{displaced_text}' de col_{src_col} -> col_{target_col} (fila {row_idx})")
-
     def _table_matrix_to_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> pd.DataFrame:
         rows: List[List[str]] = []
         columns = [f"col_{i}" for i in range(H)]
@@ -255,7 +210,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             
         logger.info(f"TIempo Permutando: {time.perf_counter() - time_t:.6f}'s")
         c_column, pu_column, mtl_column = [np.argmax(np.count_nonzero(array_votes==i, axis=0)) for i in (1, 2, 3)]
-        logger.info(f"INDICES DE COLUMNA: C-PU-MTL: {c_column, pu_column, mtl_column}")
+        # logger.info(f"INDICES DE COLUMNA: C-PU-MTL: {c_column, pu_column, mtl_column}")
         for i, col in enumerate(cols_name):
             if i == c_column:
                 df.rename(columns={col: "c_col"}, inplace=True)
@@ -267,7 +222,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 continue
         return df
     
-    def get_full_rows(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int):
+    def get_full_rows(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int) -> Tuple[pd.DataFrame, List[Tuple[str, str]]]:
         try:
             matrix_decimal, matrix_quantity, elements_array, textual_array = self.get_arrays_table(table_matrix, H)
             # Matriz con unicamente las filas completas y al menos 1 un decimal y un numerico
@@ -281,7 +236,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             if n_full > 0:
                 comple_cols_mask = ((np.count_nonzero(matrix_decimal[full_idx], axis=0) >= 1) | (np.count_nonzero(matrix_quantity[full_idx], axis=0) >= 1))
             else:
-                return (df, [], df.iloc[0:0])
+                return (df, [])
         
             decimal_cols = np.where(comple_cols_mask)[0]
         
@@ -301,21 +256,20 @@ class MatrixSolver(VectorizationAbstractWorker):
                     type_col.append((col, "textual"))
                     
             # logger.info(f"TYPOS: '{type_col}'")
-            full_rows_df = df.iloc[full_idx]
+            # full_rows_df = df.iloc[full_idx]
             aritmetic_df = df.loc[text_mask, decimal_cols_str]
             if aritmetic_df.empty: 
-                return (df, type_col, df)
+                return (df, type_col)
             else:
                 # logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=False))
                 # logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=False))
-                return (aritmetic_df, type_col, full_rows_df)
+                return (aritmetic_df, type_col)
             
         except Exception as e:
             logger.info(f"ERROR EN ASIGANCIÓN: '{e}'", exc_info=True)
-        return (df.iloc[0:0], [], df.iloc[0:0])
+        return (df.iloc[0:0], [])
         
-    def _correct_df(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int, full_rows_df: pd.DataFrame, dec_cols: List[Tuple[str, str]]) -> pd.DataFrame:
-        logger.info(f"{dec_cols}")
+    def _correct_df(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int, dec_cols: List[Tuple[str, str]]) -> pd.DataFrame:
         targets = ["c_col", "pu_col", "mtl_col"]
         idx_map = np.array([(df.columns.get_loc(name) if name in df.columns else None) for name in targets], np.uint8)
         if idx_map.size==0:
@@ -342,9 +296,9 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.warning("TABLA COMPLETA")
             return df
         
-        logger.info(f"FILAS INCOMPLETAS DECIMALES: {non_mask}")
-        df_tocorrect = df.loc[non_mask, targets]
-        logger.info("INCOMPLETE ROWS:\n"+ df_tocorrect.to_string(index=True))
+        # logger.info(f"FILAS INCOMPLETAS DECIMALES: {non_mask}")
+        # df_tocorrect = df.loc[non_mask, targets]
+        # logger.info("INCOMPLETE ROWS:\n"+ df_tocorrect.to_string(index=True))
         
         text_cols = [cols[0] for cols in dec_cols if cols[1] == "textual"]
         # logger.info("TEXTUAL COLS:\n"+ df.loc[:, text_cols].to_string(index=True))
@@ -361,12 +315,10 @@ class MatrixSolver(VectorizationAbstractWorker):
                 if target_col_idx is None:
                     continue
                 
-                # ------ ESTA ES LA CLAVE DE LA ABSTRACCIÓN ------
                 # Leemos la matriz semántica directamente en la misma coordenada
                 # Si es > 0 en decimal o en quantity, el array nos dice que es un número.
                 if matrix_decimal[row_idx, target_col_idx] > 0 or matrix_quantity[row_idx, target_col_idx] > 0:
                     continue  # El array dice que está bien, no lo movemos.
-                # ------------------------------------------------
                     
                 cell_text = df.iat[row_idx, target_col_idx]
                 if pd.isna(cell_text) or not str(cell_text).strip() or str(cell_text).strip() == str(ZERO):
@@ -403,6 +355,52 @@ class MatrixSolver(VectorizationAbstractWorker):
                     
                 df.iat[row_idx, closest_textual_idx] = new_text
 
-        logger.info("CORRECT:\n"+ df.to_string(index=True))
-        logger.info(f"ZEROS: \n"f"{zeros_repl}")
+        # logger.info("CORRECT:\n"+ df.to_string(index=True))
+        # logger.info(f"ZEROS: \n"f"{zeros_repl}")
+        if np.count_nonzero(zeros_repl) == 0:
+            logger.info(f"Tabla completa acomodada correctamente")
+            return df
+        df = self._complete_decimal_vals(df, zeros_repl)
+        return df
+        
+    def _complete_decimal_vals(self, df: pd.DataFrame, zeros_repl: np.ndarray[Any, np.dtype[np.uint8]]) -> pd.DataFrame:
+        rows_id, cols_id = np.nonzero(zeros_repl)
+        coords = np.column_stack((rows_id, cols_id))
+        
+        c_idx = df.columns.get_loc("c_col") if "c_col" in df.columns else None
+        pu_idx = df.columns.get_loc("pu_col") if "pu_col" in df.columns else None
+        mtl_idx = df.columns.get_loc("mtl_col") if "mtl_col" in df.columns else None
+        
+        if c_idx is None or pu_idx is None or mtl_idx is None:
+            logger.error("No se encontraron las columnas c_col, pu_col o mtl_col para calcular los valores.")
+            return df
+            
+        for coord in coords:
+            r = coord[0]
+            c = coord[1]
+            
+            try:
+                val_c = Decimal(str(df.iat[r, c_idx]).replace(',', '')) if c != c_idx else ZERO
+                val_pu = Decimal(str(df.iat[r, pu_idx]).replace(',', '')) if c != pu_idx else ZERO
+                val_mtl = Decimal(str(df.iat[r, mtl_idx]).replace(',', '')) if c != mtl_idx else ZERO
+                
+                result = ZERO
+                
+                if c == c_idx:
+                    if val_pu != ZERO:
+                        result = val_mtl / val_pu
+                elif c == pu_idx:
+                    if val_c != ZERO:
+                        result = val_mtl / val_c
+                elif c == mtl_idx:
+                    result = val_c * val_pu
+                else:
+                    continue  # El cero no está en las columnas objetivo
+                    
+                df.iat[r, c] = f"{result.quantize(Decimal('0.01'))}"
+                
+            except (InvalidOperation, ZeroDivisionError, ValueError) as err:
+                logger.error(f"Fallo cálculo aritmético en fila {r}, col {c}: {err}")
+                continue
+        # logger.info("CORRECTED:\n"+ df.to_string(index=True))
         return df

@@ -1,44 +1,20 @@
-17:14:18 - config_service:33 - TEST MODE ACTIVADO, verificaciones robustas desactivadas. Modulos 'Image Preparation, Ocr, Vectorization'
-17:14:18 - workflow_builder:84 - Número de imágenes: 1
-17:14:37 - text_utils:354 - CARACTER INTRUSO EN '100T1' NO SE PUDO FORMATEAR
-17:14:37 - text_utils:354 - CARACTER INTRUSO EN '06/100' NO SE PUDO FORMATEAR
-17:14:37 - math_max:211 - ERROR CONVIRTIENDO VALORES DEL DF: '[<class 'decimal.ConversionSyntax'>]'
-Traceback (most recent call last):
-  File "C:\PerfectOCR\core\workers\vectorial_transformation\math_max.py", line 209, in _find_hypotesis
-    perm_df = aritmetic_df.map(lambda x: Decimal(x))
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\frame.py", line 12572, in map
-    return self.apply(infer).__finalize__(self, "map")
-           ^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\frame.py", line 12423, in apply
-    return op.apply().__finalize__(self, method="apply")
-           ^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\apply.py", line 1015, in apply
-    return self.apply_standard()
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\apply.py", line 1167, in apply_standard
-    results, res_index = self.apply_series_generator()
-                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\apply.py", line 1183, in apply_series_generator
-    results[i] = self.func(v, *self.args, **self.kwargs)
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\frame.py", line 12570, in infer
-    return x._map_values(func, na_action=na_action)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\base.py", line 1020, in _map_values
-    return arr.map(mapper, na_action=na_action)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\arrays\base.py", line 2744, in map
-    return map_array(self, mapper, na_action=na_action)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\USER\miniconda3\envs\intel\Lib\site-packages\pandas\core\algorithms.py", line 1710, in map_array
-    return lib.map_infer(values, mapper)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "pandas/_libs/lib.pyx", line 3071, in pandas._libs.lib.map_infer
-  File "C:\PerfectOCR\core\workers\vectorial_transformation\math_max.py", line 209, in <lambda>
-    perm_df = aritmetic_df.map(lambda x: Decimal(x))
-                                         ^^^^^^^^^^
-decimal.InvalidOperation: [<class 'decimal.ConversionSyntax'>]
-17:14:37 - math_max:98 - DATAFRAME VACÍO
-17:14:37 - math_max:80 - Corrección matemática completada en 0.025404s, Se encontraron 0 filas.
-17:14:37 - main_builder:130 - '1' Archivos Digitalizados el '04/14 17:14:37' en: 17.339527s, promedio: 17.339527s
+18:30:26 - config_service:33 - TEST MODE ACTIVADO, verificaciones robustas desactivadas. Modulos 'Image Preparation, Ocr, Vectorization'
+18:30:26 - workflow_builder:84 - Número de imágenes: 1
+18:30:35 - math_max:211 - TIempo Permutando: 0.000468's
+18:30:35 - data_formatter:487 - Tabla recibida:
+    c_col                          col_1  pu_col mtl_col  col_4
+0    3.00  VINCI 25.00 AM LIM 50.00 C/10   85.50  256.50  12.00
+1    5.00               PUNTILLAS PM 0.5    9.49   47.45  15.00
+2    1.00            PASTA CTA SURT C/25  135.00  135.00  12.00
+3    2.00             FOLDER CTA CR C/10   22.50   45.00   5.00
+4    1.00          SOBRE C/ROND CTA C/10   49.80   49.80   7.00
+5    2.00                 CREPE NGO C/10   48.00   96.00   8.00
+6    1.00                 KM MED NG C/12   39.90   39.90   5.00
+7    1.00                KM FIN0 NG C/12   42.30   42.30   6.00
+8    3.00        CARTA DIAM CANARI0 C/10   30.00   90.00   5.00
+9   10.00             PLACA UNIC 25X25X1    2.98   29.76   5.00
+10   1.00     PAL0 RED DELG 4X60 K 95.00   59.28   59.28   2.00
+11   1.00          GLOB0 5.00 SURT C/100   34.93   34.93  50.00
+12   2.00          CART FLUORESC AM C/10   49.10   98.20   8.00
+18:30:35 - math_max:80 - Corrección matemática completada en 0.017637s, Se encontraron 13 filas.
+18:30:35 - main_builder:130 - '1' Archivos Digitalizados el '04/14 18:30:35' en: 7.669795s, promedio: 7.669795s
