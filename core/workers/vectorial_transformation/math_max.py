@@ -119,6 +119,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         return pd.DataFrame(rows, columns=columns)
         
     def get_arrays_table(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> np.ndarray[Any, np.dtype[np.int8]]:
+        """"Devuelve [matrix_decimal, matrix_quantity, elements_array, textual_arrays]"""
         R = len(table_matrix)
         matrix_array = np.zeros((R, H), np.int8)
         matrix_decimal = matrix_array.copy()
@@ -130,10 +131,6 @@ class MatrixSolver(VectorizationAbstractWorker):
             rows = table_matrix[row_id]
             for i in range(H):
                 sc_v = rows[i]["semantic_clasification"]
-                total_sc = len(sc_v)
-                
-                elements_array[row_id, i] = total_sc
-                logger.info(f"Clasificación por columnas: {sc_v}")
                 
                 if not sc_v or not rows[i]["text"] or not rows[i]["polygon_ids"]:
                     elements_array[row_id, i] = 0
@@ -141,22 +138,20 @@ class MatrixSolver(VectorizationAbstractWorker):
                     matrix_quantity[row_id, i] = 0
                     textual_array[row_id, i] = 0
                     continue
-                    
-                elif all(s == 4 for s in sc_v):
-                    matrix_decimal[row_id, i] = total_sc
-                    textual_array[row_id, i] = 0
-                    continue
-                    
-                elif all(s == 5 for s in sc_v):
-                    matrix_quantity[row_id, i] = total_sc
-                    textual_array[row_id, i] = 0
-                    continue
                 
-                else:
-                    elements_array[row_id, i] = total_sc
-                    textual_array[row_id, i] = total_sc
+                total_sc = len(sc_v)
+                elements_array[row_id, i] = total_sc
                     
-        table_arrays =  np.stack([matrix_decimal, matrix_quantity, elements_array, textual_array], dtype=np.int8)
+                if any(s == 4 for s in sc_v):
+                    matrix_decimal[row_id, i] = sum(1 for ch in sc_v if ch == 4)
+                    
+                if any(s == 5 for s in sc_v):
+                    matrix_quantity[row_id, i] = sum(1 for ch in sc_v if ch == 5)
+                    
+                if any(s == 1 or s == 2 for s in sc_v):
+                    textual_array[row_id, i] = sum(1 for ch in sc_v if ch in (1, 2))
+                    
+        table_arrays = np.stack([matrix_decimal, matrix_quantity, elements_array, textual_array], dtype=np.int8)
         # logger.info(f"ARRAYS TABLE: \n"f"{table_arrays}")
         return table_arrays
 
@@ -228,16 +223,19 @@ class MatrixSolver(VectorizationAbstractWorker):
     
     def get_full_rows(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int) -> Tuple[pd.DataFrame, List[Tuple[str, str]]]:
         try:
-            matrix_decimal, matrix_quantity, elements_array, _ = self.get_arrays_table(table_matrix, H)
+            matrix_decimal, matrix_quantity, elements_array, textual_array = self.get_arrays_table(table_matrix, H)
             # Matriz con unicamente las filas completas y al menos 1 un decimal y un numerico
-            decimal_mask = (np.count_nonzero(matrix_decimal, axis=1) > 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
-            full_rows_mask = decimal_mask & (np.count_nonzero(elements_array, axis=1) >= H)
+            # decimal_mask = (np.count_nonzero(matrix_decimal, axis=1) > 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
+            full_rows_mask = np.count_nonzero(elements_array, axis=1) >= H
             full_idx = np.where(full_rows_mask)[0]
-            logger.info("FULL_ID:\n"f"{full_idx}")
+            
             full_dec = matrix_decimal + matrix_quantity
+            # full_dec = full_dec[full_idx]
+            # logger.info("FULL_ID:\n"f"{np.column_stack([full_idx, elements_array[full_idx]])}")
+            # logger.info("FULL_DEC:\n"f"{np.column_stack([full_idx, full_dec[full_idx]])}")
             full_n = full_idx.size
             if full_n > 0:
-                comple_cols_mask = (np.count_nonzero(matrix_decimal[full_idx], axis=0) >= 1) | (np.count_nonzero(matrix_quantity[full_idx], axis=0) >= 1)
+                comple_cols_mask = ((np.count_nonzero(full_dec[full_idx], axis=0)) > full_n / 2) | (np.count_nonzero(textual_array[full_idx]== full_n, axis=0))
             else:
                 return (df, [])
             
@@ -245,10 +243,12 @@ class MatrixSolver(VectorizationAbstractWorker):
             
             full_dec = full_dec[:, decimal_cols]
             
+            # logger.info("FULL_COL:\n"f"{np.column_stack([np.arange(len(table_matrix)), full_dec])}")
+            
             rows_mask = np.count_nonzero(full_dec, axis=1) >= (decimal_cols.shape[0])
             dec_rows = np.where(rows_mask)[0]
             
-            logger.info(f"DECIMAL_COLS: {decimal_cols} |  SHAPE: {decimal_cols.shape[0]}, DEC_ROWS: {dec_rows} | ROWS_MASK: {rows_mask}")
+            # logger.info(f"DECIMAL_COLS: {decimal_cols} SHAPE: {decimal_cols.shape[0]} | DEC_ROWS: {dec_rows} | ROWS_MASK: {rows_mask}")
             
             type_col: List[Tuple[str, str]] = []
             decimal_cols_str: List[str] = []
@@ -291,7 +291,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         non_complete_qty = np.setdiff1d(cols, np.nonzero(matrix_quantity[:, idx_map])[0], True)
         non_complete_dec = np.setdiff1d(cols, np.nonzero(matrix_decimal[:, idx_map])[0], True)
         
-        logger.info(f"ALL SC: \n"f"{elements_array}")
+        # full_dec = matrix_decimal + matrix_quantity
+        # logger.info("FULL_ID:\n"f"{np.column_stack([cols, full_dec])}")
         
         if np.all([non_complete_qty.size, non_complete_dec.size]) > 0:
             non_mask = np.sort(np.union1d(non_complete_dec, non_complete_qty))
@@ -303,9 +304,14 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.warning("TABLA COMPLETA")
             return df
         
-        # logger.info(f"FILAS INCOMPLETAS DECIMALES: {non_mask}")
+        # incomplete = np.count_nonzero(elements_array, axis=1) < H
+        # non_dec = np.count_nonzero(full_dec, axis=1) < 1
+        # mask = non_dec & incomplete
+        # incomplete_mask = np.where(mask)[0]
+        # df_doubles = df.iloc[incomplete_mask]
+        # logger.info(f"FILAS INCOMPLETAS DECIMALES: {incomplete_mask}")
         # df_tocorrect = df.loc[non_mask, targets]
-        # logger.info("INCOMPLETE ROWS:\n"+ df_tocorrect.to_string(index=True))
+        # logger.info("INCOMPLETE ROWS:\n"+ df_doubles.to_string(index=True))
         
         text_cols = [cols[0] for cols in dec_cols if cols[1] == "textual"]
         # logger.info("TEXTUAL COLS:\n"+ df.loc[:, text_cols].to_string(index=True))
@@ -377,7 +383,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         coords = np.column_stack((rows_id, cols_id))
         
         # logger.info("TO COMPLETE:\n"+ df.to_string(index=True))
-        logger.info(f"ZEROS: \n"f"{zeros_repl}")
+        logger.info("ZEROS: \n"f"{zeros_repl} \n"f"CCORDS: \n"f"{coords}")
         
         c_idx = df.columns.get_loc("c_col") if "c_col" in df.columns else None
         pu_idx = df.columns.get_loc("pu_col") if "pu_col" in df.columns else None
@@ -399,13 +405,14 @@ class MatrixSolver(VectorizationAbstractWorker):
                 result = ZERO
                 
                 if c == c_idx:
-                    if val_pu != ZERO:
+                    if val_pu != ZERO and val_mtl != ZERO:
                         result = val_mtl / val_pu
                 elif c == pu_idx:
-                    if val_c != ZERO:
+                    if val_c != ZERO and val_mtl != ZERO:
                         result = val_mtl / val_c
                 elif c == mtl_idx:
-                    result = val_c * val_pu
+                    if val_c != ZERO and val_pu != ZERO:
+                        result = val_c * val_pu
                 else:
                     continue  # El cero no está en las columnas objetivo
                     

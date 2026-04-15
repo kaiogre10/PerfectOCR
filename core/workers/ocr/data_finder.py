@@ -116,13 +116,18 @@ class DataFinder(OCRAbstractWorker):
                             continue
                     
                         key_word = set([result['key_word'] for result in valid_results])
-                        orig_text = set([result['text'] for result in valid_results])
+                        orig_text = set([result['norm_ocr_text'] for result in valid_results])
                         leftovers = orig_text.difference(key_word)
                         if leftovers:
                             add_kf = len(leftovers)
+                            logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> '{leftovers}'")
                             # Asigna una lista de 6's: uno por cada palabra (keyword + leftovers)
                             polygon_updates[pid] = [6] * (add_kf + 1)
                             continue
+                        
+                        key_field = valid_results[0]['key_field']
+                        polygon_updates[pid] = key_field
+                        continue
                     
                     else:
                         key_field = valid_results[0]['key_field']

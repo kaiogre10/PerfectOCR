@@ -25,7 +25,7 @@ pipeline_secuence:
   #  - "vectorizer"
   #  - "cos_sim"
    - "table_structurer"
-  #  - "math_max"
+   - "math_max"
    
 log_debug:
   text_ocr: False
@@ -63,7 +63,7 @@ enabled_outputs:
     cropp_blobs: False
     fragmented_polys: False
     semantic_field: False
-    seman_clas: True
+    seman_clas: False
     cleanned_text: False
   
   vectorization_outputs:

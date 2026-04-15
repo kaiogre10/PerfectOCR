@@ -251,7 +251,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if poly_data and poly_data.geometry:
                     geom = poly_data.geometry
                     sc = poly_data.semantic_clasification
-                    ocr_text = format_cuant(poly_data.ocr_text or "") if (4 in sc or 5 in sc) else poly_data.ocr_text
+                    ocr_text = format_cuant(poly_data.ocr_text or "") if (4 in sc) else poly_data.ocr_text
                     element: Dict[str, Any] = {
                         "polygon_id": poly_id,
                         "xmin": geom.bounding_box[0],
@@ -578,7 +578,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             final_row.append({
                 'text': text,
                 'polygon_ids': polygon_ids,
-                'semantic_clasification': sorted(set(semantic_values)),
+                'semantic_clasification': semantic_values,
             })
 
         while len(final_row) < H:
@@ -590,7 +590,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
         sc = [row['semantic_clasification'] for row in final_row]
         text = [row['text'] for row in final_row]
-        logger.info(f"TEXT: '{text}' | SC: {sc}")
         return final_row
 
     def _is_semantically_available(self, cell_content: List[Dict[str, Any]], element_semantic: List[int] | int) -> bool:
