@@ -58,22 +58,22 @@ class ConfigService:
     @cached_property
     def activate_modules(self) -> bool:
         return self.no_modules
-
+    
     @cached_property
     def enabled_outputs(self) -> Dict[str, Any]:
         if self.no_modules:
-            logger.debug("Enabled output desactivados, sin workers")
+            logger.info("Enabled output desactivados, sin workers")
             return {}
             
-        elif not self.enable_outputs:
-            logger.debug("Enabled output desactivados, sin rutas de salida, posible ejecución en Inspiron")
-            return {}
-        else:
-            return self.config.get("enabled_outputs", {})
+        return self.config.get("enabled_outputs", {})
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
+        
+    @cached_property
+    def logs_debug(self) -> Dict[str, Any]:
+        return {} if self.no_modules else self.config.get("log_debug", {})
 
     @cached_property
     def models_config(self) -> Dict[str, Any]:
@@ -159,7 +159,7 @@ class ConfigService:
         if self.no_modules or not self.create_stager[2][1] or not self.ocr_workers.issubset(self.all_workers):
             return {}
         else:
-            create_refiners = self.modules_config.get("ocr", {}).get("text_refiner", {}).get("num_passes", 0)
+            create_refiners = self.modules_config.get("ocr", {}).get("text_refiner", {}).get("num_passes")
             return {
                 **self.modules_config.get("ocr", {}),
                 **self.enabled_outputs.get("ocr_outputs", {}),

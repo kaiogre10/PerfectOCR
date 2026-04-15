@@ -154,7 +154,7 @@ class Fragmenter(OCRAbstractWorker):
         if not geom_parts:
             return [polygon]
             
-        for (frag_tokens, _), geom_part in zip(fragments, geom_parts):
+        for (frag_tokens, frag_scs), geom_part in zip(fragments, geom_parts):
             new_geom = Geometry(
                 polygon_coords=geom_part["polygon_coords"],
                 bounding_box=geom_part["bounding_box"],
@@ -165,6 +165,7 @@ class Fragmenter(OCRAbstractWorker):
                 polygon,
                 geometry=new_geom,
                 ocr_text=frag_text,
+                semantic_clasification=frag_scs
             )
             new_polys.append(new_poly)
         

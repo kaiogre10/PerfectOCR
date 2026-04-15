@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "angle_corrector"
+    - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
@@ -25,8 +25,19 @@ pipeline_secuence:
   #  - "vectorizer"
   #  - "cos_sim"
    - "table_structurer"
-   - "math_max"
-
+  #  - "math_max"
+   
+log_debug:
+  text_ocr: False
+  key_fields: False
+  lines: False
+  table_lines: False
+  table_geo: False
+  table_correct: True
+  
+  semantic_types_log: [2, 3, 4, 5]
+  kf_list_log: [6]
+  
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
@@ -52,6 +63,7 @@ enabled_outputs:
     cropp_blobs: False
     fragmented_polys: False
     semantic_field: False
+    seman_clas: True
     cleanned_text: False
   
   vectorization_outputs:

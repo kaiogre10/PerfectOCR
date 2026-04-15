@@ -103,19 +103,31 @@ class DataFinder(OCRAbstractWorker):
                     if not valid_results:
                         continue
 
-                    # logger.info(f"Results: {valid_results}")
+                    # logger.info(f"Valid Results: {valid_results}")
                     num_keywords = len(valid_results)
                     all_key_fields = [result['key_field'] for result in valid_results]
 
                     # Verificar si todos son headers (key_field == 6)
-                    if num_keywords > 1 and all(kf == 6 for kf in all_key_fields):
-                        polygon_updates[pid] = all_key_fields
-                        # logger.info(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
-
+                    if all(kf == 6 for kf in all_key_fields):
+                    
+                        if num_keywords > 1:
+                            polygon_updates[pid] = all_key_fields
+                            # logger.info(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
+                            continue
+                    
+                        key_word = set([result['key_word'] for result in valid_results])
+                        orig_text = set([result['text'] for result in valid_results])
+                        leftovers = orig_text.difference(key_word)
+                        if leftovers:
+                            add_kf = len(leftovers)
+                            # Asigna una lista de 6's: uno por cada palabra (keyword + leftovers)
+                            polygon_updates[pid] = [6] * (add_kf + 1)
+                            continue
+                    
                     else:
                         key_field = valid_results[0]['key_field']
                         polygon_updates[pid] = key_field
-                        # logger.info(f"'{pid}': Key_Field: '{key_field}'")
+                        # logger.info(f"'{pid}': Key_Field: '{key_field}', Text: '{ocr_text}'")
                         
             # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
             if polygon_updates:

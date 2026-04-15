@@ -21,8 +21,10 @@ class Refiner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, corrector: Optional[TextCorrector] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
         self.worker_config = config.get("text_refiner", {})
-        self.num_passes = self.worker_config.get("num_passes")
         self.output = config.get("cleanned_text")
+        self.seman_clas_log = config.get("seman_clas")
+        self.semantic_types_log: List[int] = [-1, 0, 1, 2, 3, 4, 5]
+        self.num_passes = self.worker_config.get("num_passes")
         self.cleaner = cleaner
         self.fragmenter = fragmenter
         self.corrector = corrector
@@ -34,15 +36,12 @@ class Refiner(OCRAbstractWorker):
         t0 = time.perf_counter()
         self.preprocess_text(manager)
         self.get_early_data(manager)
-        try:
-            # if 0 >= self.num_passes:
-            #     # step_t0 = time.perf_counter()
-            #     self.classify_strings(manager)
-            
-            # else:
+        
+        if self.num_passes == 0:
+            self.classify_strings(manager)
+        else:            
             for i in range(self.num_passes):
                 pass_num = i + 1
-                # pass_t0 = time.perf_counter()
                 # logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
 
                 # logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
@@ -61,39 +60,31 @@ class Refiner(OCRAbstractWorker):
                 
                 if self.fragmenter:
                     self.fragmenter.transcribe(context, manager)
-                    # logger.debug(f"Pasada 2, bucle #{pass_num}: Clasificación Semántica (solo fragmentados)")
-                    # step_t0 = time.perf_counter()
+                    self.classify_strings(manager)
 
-            # logger.info(f"Pasada final: Clasificación Semántica completa")
-            # step_t0 = time.perf_counter()
-            self.classify_strings(manager)
-                
-            # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
-            # polygons = manager.workflow.polygons if manager.workflow else {}
-            # for poly, poly_data in polygons.items():
-            #     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
-            #     if -1 in poly_data.semantic_clasification:
-            #         logger.info(f"{poly}: RARO '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
-            
-            if self.output:
-                file_name: str = manager.workflow.metadata.image_name  # type: ignore    
-                name = "cleanned_text"
-                worker_name = f"{name}" or "refiner"
-                output_paths = context["output_paths"]
-                polygons = manager.workflow.polygons if manager.workflow else {}
-                results: Dict[str, Any] = {}
-                for poly_id, polygon in polygons.items():
-                    text = getattr(polygon, "ocr_text", None)
-                    results[poly_id] = {
-                        "text": text,
-                    }
-                save_raw_json( output_paths, worker_name, results, file_name)
+        # logger.info(f"Pasada final: Clasificación Semántica completa")
+        logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
+        if self.seman_clas_log:
+            polygons = manager.workflow.polygons if manager.workflow else {}
+            for poly, poly_data in polygons.items():
+                if any(sc in self.semantic_types_log for sc in  poly_data.semantic_clasification):
+                    logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
+        
+        if self.output:
+            file_name: str = manager.workflow.metadata.image_name  # type: ignore    
+            name = "cleanned_text"
+            worker_name = f"{name}" or "refiner"
+            output_paths = context["output_paths"]
+            polygons = manager.workflow.polygons if manager.workflow else {}
+            results: Dict[str, Any] = {}
+            for poly_id, polygon in polygons.items():
+                text = getattr(polygon, "ocr_text", None)
+                results[poly_id] = {
+                    "text": text,
+                }
+            save_raw_json( output_paths, worker_name, results, file_name)
 
-            return True
-
-        except Exception as e:
-            logger.error(f"Error durante el refinamiento de texto: {e}", exc_info=True)
-            return False
+        return True
         
     def classify_strings(self, manager: DataFormatter) -> bool:
         """Clasifica polígonos semánticamente"""

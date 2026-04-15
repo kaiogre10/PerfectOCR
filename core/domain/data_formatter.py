@@ -14,15 +14,22 @@ logger = logging.getLogger(__name__)
 
 class DataFormatter:
     """Válvula de entrada/salida para todas las operaciones del workflow."""
-    def __init__(self):
+    def __init__(self, logs_config: Dict[str, Any]):
         self.workflow: Optional[WorkflowDict] = None
         self.structured_table: Optional[StructuredTable] = None
+        
+        self.text_ocr_log = logs_config.get("text_ocr", False)
+        self.key_fields_log = logs_config.get("key_fields", False)
+        self.lines_log = logs_config.get("lines", False)
+        self.table_lines_log = logs_config.get("table_lines", False)
+        self.table_geo_log = logs_config.get("table_geo", False)
+        self.table_correct_log = logs_config.get("table_correct", False)
         
     def reset(self):
         """Reinicia el estado del DataFormatter para una nueva tarea."""
         self.workflow = None
         self.structured_table = None
-    
+        
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
         try:
@@ -299,7 +306,12 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                 else:
                     logger.warning(f"Polígono {poly_id} no encontrado en workflow.polygons")
-
+                    
+            if self.text_ocr_log:
+                polys: Dict[str, Polygons] = self.workflow.polygons if self.workflow.polygons else {}
+                for pid, poly, in polys.items():
+                    logger.info(f"{pid}: TEXT: '{poly.ocr_text}'")
+                    
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
@@ -325,12 +337,7 @@ class DataFormatter:
                         cuant_chars=semantic_type[1]
                     )                    
                     self.workflow.polygons[poly_id] = updated_polygon
-
-            # polygons: Dict[str, Polygons] = self.workflow.polygons if self.workflow else {}
-            # for poly_id, poly_data in polygons.items():
-            #     sc = poly_data.semantic_clasification
-            #     text = poly_data.ocr_text 
-            #     logger.info(f"Clasificación semántica actualizada para {poly_id}: '{text}', SC: {sc}")
+                    
             return True
             
         except Exception as e:
@@ -359,23 +366,26 @@ class DataFormatter:
                     updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[0], cuant_chars=0)
                     self.workflow.polygons[poly_id] = updated_polygon
                     
-            for pid, poly_data in self.workflow.polygons.items():
-                kf = poly_data.key_field or None
-                if kf is not None:
-                    updated_count += 1
-                    # logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
+            if self.key_fields_log:
+                for pid, poly_data in self.workflow.polygons.items():
+                    kf = poly_data.key_field or None
+                    if kf is not None:
+                        updated_count += 1
+                        if (kf in self.kf_list_log or (isinstance(kf, (list, tuple, set)) and any(k in self.kf_list_log for k in kf))):
+                            logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
                 
-            if updated_count > 0:
-                # logger.info(f"Actualizados {updated_count} polígonos con key_fields")
-                return True
+                if updated_count > 0:
+                    logger.info(f"Actualizados {updated_count} polígonos con key_fields")
             
-            else:
-                logger.warning("No hubo poligonos con key_field")
-                return True
+            
+                else:
+                    logger.warning("No hubo poligonos con key_field")
+                    return True
+            return True
             
         except Exception as e:
             logger.warning(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
-        return False
+        return True
 
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
         """
@@ -417,14 +427,11 @@ class DataFormatter:
                 )
             
                 self.workflow.all_lines = all_lines_dataclasses
-            
-            # all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
-            # for lid, l in all_lines.items():
-            #     logger.info(f"{lid}: '{l.text}' | TABULAR: '{l.polygon_ids}'")
-            #     tabular_line = line_data.tabular_line
-            #     text = line_data.text
-            #     if tabular_line:
-            #         logger.info(f"Lineas tabulares para {line_id}: '{text}', {tabular_line}")
+                
+            if self.lines_log:
+                all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
+                for lid, l in all_lines.items():
+                    logger.info(f"{lid}: '{l.text}''")
             return True
                         
         except ValueError as e:
@@ -470,8 +477,9 @@ class DataFormatter:
 
             if marked_ids:
                 logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
-                for log_debug in tabular_lines_debug:
-                    logger.debug(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
+                if self.table_lines_log:
+                    for log_debug in tabular_lines_debug:
+                        logger.info(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
             else:
                 logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
 
@@ -484,7 +492,8 @@ class DataFormatter:
         try:
             self.structured_table = StructuredTable(df=df)
             table_f = self.structured_table.df
-            logger.info("Tabla recibida:\n" + table_f.to_string(index=True))
+            if self.table_correct_log:
+                logger.info("Tabla recibida:\n" + table_f.to_string(index=True))
             return True
         except TypeError as e:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)

@@ -49,7 +49,8 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=project_root)
             
             # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
-            processing_builder = create_single_builder(stagers_factory=stagers_factory, output_paths=output_paths)
+            logs_config = config_services.logs_debug
+            processing_builder = create_single_builder(stagers_factory=stagers_factory, output_paths=output_paths, logs_config=logs_config)
             if not processing_builder:
                 logger.error("No se pudo crear el ProcessingBuilder")
                 cleanup_project_cache(project_root)
@@ -70,7 +71,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         logger.error(f"ERROR FATAL EN BUILDERS, FINALIZANDO PROCESO: {e}", exc_info=True)
     return []
     
-def create_single_builder(stagers_factory: StagersFactory, output_paths: List[str]) -> Optional[ProcessingBuilder]:
+def create_single_builder(stagers_factory: StagersFactory, output_paths: List[str], logs_config: Dict[str, Any]) -> Optional[ProcessingBuilder]:
     """Crea un único builder reutilizable usando StagersFactory."""
     try:
         # Contexto inicial genérico (se enriquecerá en cada ejecución)
@@ -86,7 +87,8 @@ def create_single_builder(stagers_factory: StagersFactory, output_paths: List[st
             input_stager=input_stager,
             preprocessing_stager=preprocessing_stager,
             ocr_stager=ocr_stager,
-            vectorization_stager=vectorization_stager
+            vectorization_stager=vectorization_stager,
+            logs_config=logs_config
         )
         return builder
 

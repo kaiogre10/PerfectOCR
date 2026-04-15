@@ -49,24 +49,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 return False
                 
             try:
-                
-            
-                # header_line_id = [lid for lid, l in all_lines.items() if getattr(l, "header_line", None)]
-                # header_line_id = header_line_id[0] if header_line_id else None
-
-                # # logger.info(f"{header_line_id}")
-
-                # line_ids: List[str] = list(all_lines.keys())
-                # if header_line_id not in line_ids:
-                #     logger.warning("Header no encontrado en el manager")
-                #     return False
-                
-                # # 2. Extraer centroides de referencia c_j del encabezado
-                # H = len(header_centroids)  # Número de columnas
-                
-                # if H == 0:
-                #     logger.error("No se pudieron extraer centroides del encabezado")
-                #     return False
                 H, header_line_id = self.get_headers(all_lines, polygons)
                 if not header_line_id or H==0:
                     logger.error("No hay encabezados disponibles")
@@ -454,7 +436,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Obtiene la clase semántica dominante del elemento.
         Prioriza SC=4 si existe en la lista.
         """
-        semantic_value = element.get('semantic_clasification', 1)
+        semantic_value = element['semantic_clasification']
         if isinstance(semantic_value, list):
             semantic_list = [int(v) for v in semantic_value if isinstance(v, (int, float, str))]
             if 4 in semantic_list:
@@ -496,7 +478,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # Asignar cada elemento a una celda según restricciones semánticas
             for element in row_elements:
                 element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
-                element_semantic: List[int] | int = element.get('semantic_clasification', 1)
+                element_semantic: List[int]= element['semantic_clasification']
                 
                 # 1. Filtrar celdas semánticamente disponibles
                 available_columns: List[int] = []
@@ -578,7 +560,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if polygon_id and polygon_id not in polygon_ids:
                     polygon_ids.append(polygon_id)
 
-                semantic_value = elem.get('semantic_clasification', [])
+                semantic_value = elem['semantic_clasification']
                 if isinstance(semantic_value, list):
                     semantic_list = cast(List[Any], semantic_value)
                     for value in semantic_list:
@@ -605,7 +587,10 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 'polygon_ids': [],
                 'semantic_clasification': [],
             })
-
+            
+        sc = [row['semantic_clasification'] for row in final_row]
+        text = [row['text'] for row in final_row]
+        logger.info(f"TEXT: '{text}' | SC: {sc}")
         return final_row
 
     def _is_semantically_available(self, cell_content: List[Dict[str, Any]], element_semantic: List[int] | int) -> bool:
@@ -626,7 +611,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             cell_has_restricted = False
             cell_has_non_restricted = False
             for existing_element in cell_content:
-                existing_semantic_val = existing_element.get('semantic_clasification', 1)
+                existing_semantic_val = existing_element['semantic_clasification']
                 existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val]) # type: ignore
                 if existing_semantics & restricted_types:
                     cell_has_restricted = True
@@ -671,30 +656,35 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             return pd.DataFrame()
 
     def get_headers(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> Tuple[int, str]:
-        try:
-            for line_id, line_data in all_lines.items():
-                if line_data.header_line is not None:
-                    header_line_id = line_id
-                    h = 0
-                    
-                    # Asignar key_field = 6 a todos los polígonos de la línea de encabezado
-                    # y calcular la cantidad de columnas (H) basado en los key_fields
-                    for poly_id in line_data.polygon_ids:
-                        poly = polygons.get(poly_id)
-                        if poly:
-                            if poly.key_field is None:
-                                poly.key_field = 6
-                                h += 1
-                            elif isinstance(poly.key_field, list):
-                                h += len(poly.key_field)
-                                if 6 not in poly.key_field:
-                                    poly.key_field.append(6)
-                            else:
-                                h += 1
-                                if poly.key_field != 6:
-                                    poly.key_field = [poly.key_field, 6]
-                                
-                    return h, header_line_id
-        except Exception as e:
-            logger.error(f"Error buscando encabezados: {e}")
-        return 0, ""
+        for line_id, line_data in all_lines.items():
+            if line_data.header_line is not None:
+                # line_text = line_data.text
+                header_line_id = line_id
+                h = 0
+                header_line_text: List[str] = []
+                
+                # Asignar key_field = 6 a todos los polígonos de la línea de encabezado
+                # y calcular la cantidad de columnas (H) basado en los key_fields
+                for poly_id in line_data.polygon_ids:
+                    poly = polygons.get(poly_id)
+                    if poly:
+                        poly_text = poly.ocr_text or ""
+                        if poly.key_field is None:
+                            poly.key_field = 6
+                            h += 1
+                            header_line_text.append(poly_text)
+                        elif isinstance(poly.key_field, list):
+                            h += len(poly.key_field)
+                            header_line_text.append(poly_text)
+                            if 6 not in poly.key_field:
+                                poly.key_field.append(6)
+                                header_line_text.append(poly_text)
+                        else:
+                            h += 1
+                            header_line_text.append(poly_text)
+                            if poly.key_field != 6:
+                                poly.key_field = [poly.key_field, 6]
+                            
+                # logger.info(f"H: {h} LINEA DE ENCABEZADO POLY:'{" ".join(header_line_text)}'\n"f"Linea: '{line_text}'")
+                return h, header_line_id
+        return (0, "")

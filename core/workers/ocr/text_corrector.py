@@ -71,14 +71,14 @@ class TextCorrector(OCRAbstractWorker):
 
             if corrected_text != original_text:
                 correced_count +=1
-                updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
-                corrected_polygons[poly_id] = updated_polygon
+            
                 logger.debug(
                     f"Corrección para '{poly_id}':"
                     f"Original: '{original_text}' → Corregido: '{corrected_text}' SC: {sc}"
                 )
-            else:
-                corrected_polygons[poly_id] = polygon
+                
+            updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
+            corrected_polygons[poly_id] = updated_polygon
                 
         manager.workflow.polygons = corrected_polygons
         return True
@@ -129,7 +129,7 @@ class TextCorrector(OCRAbstractWorker):
         if token.isdecimal():
             return token
         
-        elif semantic_clasification in (4, 5):
+        if semantic_clasification in (4, 5):
             dec_token =  self._correct_cuants(token)
             if dec_token != token:
                 logger.info(f"CORRECT NUM: '{token}' -> '{dec_token}'")

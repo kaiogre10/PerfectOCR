@@ -28,6 +28,7 @@ class OCROutputs(ConfigWithNumpy):
     cropp_blobs: bool
     fragmented_polys: bool
     semantic_field: bool
+    seman_clas: bool
     cleanned_text: bool
 
 class VectorizingOutputs(ConfigWithNumpy):
@@ -194,6 +195,16 @@ class PipelineConfig(ConfigWithNumpy):
     preprocessing_stage: Optional[List[str]] = None
     ocr_stage: Optional[List[str]] = None
     vector_stage: Optional[List[str]] = None
+    
+class DebugOutputs(ConfigWithNumpy):
+    text_ocr: bool
+    key_fields: bool
+    lines: bool
+    table_lines: bool
+    table_geo: bool
+    table_correct: bool    
+    kf_list_log: List[int]
+    semantic_types_log: List[int]
 
 class MasterConfig(ConfigWithNumpy):
     pipeline_secuence: PipelineConfig
@@ -201,3 +212,4 @@ class MasterConfig(ConfigWithNumpy):
     models_config: ModelsConfig
     modules: ModulesConfig
     utils: UtilsConfig
+    log_debug: DebugOutputs
