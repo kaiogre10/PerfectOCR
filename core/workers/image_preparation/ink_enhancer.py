@@ -30,8 +30,8 @@ class InkCorrector(ImagePrepAbstractWorker):
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Detecta y restaura texto con tinta gastada."""
+        start_time = time.perf_counter()
         try:
-            start_time = time.perf_counter()
             logger.debug("Mejoramiento de tinta empezado con éxito")
             
             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
@@ -62,7 +62,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
                 return True
             else:
-                logger.debug(f"Restauración de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
+                logger.info(f"Corrección de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 if self.output:
                     worker_name = context.get("worker_name") or "inker"
                     output_paths = context["output_paths"]
@@ -177,18 +177,20 @@ class InkCorrector(ImagePrepAbstractWorker):
         lines_correct = 0
 
         # Unimos las condiciones en un único set O(1) de chequeo rápido
-        group_outliers2 = dist_indices | irreg_indices | rect1ind | rect2ind | vertical_indices | lines_indices | solidity_indices
-
-        for idx, cont_coords in cont_coords_list:
-            if idx in out_index:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont2.append(cont_coords)
-                lines_correct += 1
-            elif idx in group_outliers2:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont.append(cont_coords)
-                lines_correct += 1
-
+        group_outliers2 = dist_indices | irreg_indices | rect1ind | rect2ind | vertical_indices | lines_indices | solidity_indices | out_index
+        try:
+            for idx, cont_coords in cont_coords_list:
+                # if idx in out_index:
+                #     cv2.drawContours(grey_img, [cont_coords[idx]], -1, self.white, thickness=cv2.FILLED)
+                #     outlier_cont2.append(cont_coords)
+                #     lines_correct += 1
+                if idx in group_outliers2:
+                    # cont = cont_coords[idx]
+                    cv2.drawContours(grey_img, list(cont_coords), -1, self.white, thickness=cv2.FILLED)
+                    outlier_cont.append(cont_coords)
+                    lines_correct += 1
+        except cv2.error as e:
+            logger.info(f"ERROR DIBUJANDO CONTORNOS: '{e}'", exc_info=True)
         # logger.info(f"Outliers: {lines_correct}")
         return make_contiguous(grey_img), outlier_cont, outlier_cont2
     

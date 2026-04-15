@@ -3,6 +3,7 @@ import numpy as np
 from typing import Any, Optional, List, Dict, Tuple
 import logging
 from skimage.filters import threshold_sauvola #type: ignore
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -247,11 +248,15 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         cont_coords: Lista de [idx_original, coords_array] para cada contorno válido
         metrics: np.ndarray con columnas [idx_original, area, width, height, angle]
     """
+    time0 = time.perf_counter()
     # if is_binarized(img):
     #     bin_img = img
     # else:
     bin_img = binarice_img(img, {})
     sh, sw = bin_img.shape[:2]
+    half_total_area = (sh * sw) / 2.0
+
+    # get_conected_comps_metrics(bin_img)
 
     contours, hierarchy = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
@@ -259,23 +264,34 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         return [], np.empty((0, 5))
     
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
-    cont_size_list: List[int] = []
+    # logger.info(f"TOTAL CONTORNOS:{len(contours)}")
     
+    metrics_list: List[float] = []
     for i, cont in enumerate(contours):
         cont_coords = np.array(cont.reshape(-1, 2), np.int32)
         cont_size = len(cont_coords)
         if cont_size < 3:
             continue
+
+        area = cv2.contourArea(cont_coords)
+        if area < 2:
+            continue
+
+        if area > half_total_area:
+            continue
         
-        cont_size_list.append(cont_size)
+        metrics_list.append(area)
         cont_coords_list.append((i, cont_coords))
 
         if not cont_coords_list:
             return [], np.empty((0, 5))
     
-    areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
-    valid_mask = (areas > 1)
-    valid_indices = np.where(valid_mask)[0]
+    valid_areas = np.array(metrics_list)
+    # areas = np.array([cv2.contourArea(c[1]) for c in cont_coords_list])
+    # valid_mask = (areas > 1)
+    # valid_indices = np.where(valid_mask)[0]
+    valid_indices = np.array([cont[0] for cont in cont_coords_list], np.int16)
+    # logger.info(f"valid indices: {valid_indices}")
 
     if len(valid_indices) == 0:
         return [], np.empty((0, 9))
@@ -296,21 +312,20 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     total_pixels: List[int] = []
     # bbox_area: List[int] = []
 
-    for idx in valid_indices:
-        conts = cont_coords_list[idx]
+    for i, conts in cont_coords_list:
         
         # Limpia solo la región usada del contorno anterior
         if prev_w > 0 and prev_h > 0:
             single_mask[prev_y:prev_y+prev_h, prev_x:prev_x+prev_w] = 0
         
-        convex_hull = cv2.convexHull(conts[1])
+        convex_hull = cv2.convexHull(conts)
         hull.append(convex_hull)
         # Calcula bounding box del contorno actual
-        x, y, w, h = cv2.boundingRect(conts[1])
+        x, y, w, h = cv2.boundingRect(conts)
         # bbox_area.append(h * w)
         
         # Dibuja el contorno actual
-        cv2.drawContours(single_mask, [conts[1]], -1, [255], cv2.FILLED)
+        cv2.drawContours(single_mask, [conts], -1, [255], cv2.FILLED)
         
         # Extrae solo la región de interés
         roi_mask = single_mask[y:y+h, x:x+w]
@@ -345,10 +360,10 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     lonely_array = np.array(lonely, dtype=np.int32)
     pixels_val_array = np.array(pixels_val, dtype=np.int32)
    
-    perimeter = np.array([cv2.arcLength(cont_coords_list[i][1], True) for i in valid_indices])
+    perimeter = np.array([(cv2.arcLength(conts[1], True)) for conts in cont_coords_list])
     irregular_ratio = perimeter / convex_peri
 
-    rects = [cv2.minAreaRect(cont_coords_list[i][1]) for i in valid_indices]
+    rects = [cv2.minAreaRect(conts[1]) for conts in cont_coords_list]
     shapes = np.array([r[1] for r in rects])
     angles = np.array([r[2] for r in rects])
 
@@ -367,7 +382,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     aspect_ratio = (np.maximum(rec_widith, rec_height) / np.minimum(rec_widith, rec_height)).astype(np.float32)
     
     centroids = np.array([(m["m10"] / m["m00"] if m["m00"] != 0.0 else 0.0, m["m01"] / m["m00"] if m["m00"] != 0.0 else 0.0)
-        for m in [cv2.moments(cont_coords_list[i][1]) for i in valid_indices]], np.float32)
+        for m in [cv2.moments(conts[1]) for conts in cont_coords_list]], np.float32)
 
     # x_min = np.array([np.min(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
     # x_max = np.array([np.max(cont_coords_list[i][1][:, 0]) for i in valid_indices], dtype=np.int32)
@@ -375,11 +390,12 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
     # y_min = np.array([np.min(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
     # y_max = np.array([np.max(cont_coords_list[i][1][:, 1]) for i in valid_indices], dtype=np.int32)
 
-    valid_areas = areas[valid_indices]
+    # valid_areas = areas[valid_indices]
     
     # Agrega el índice secuencial como primera columna y pixels_val al final
+    filtered_original_indices = np.arange(len(valid_indices), dtype=np.int32)
     metrics_array = np.column_stack([
-        np.arange(len(valid_indices), dtype=np.int32),  # 0
+        filtered_original_indices,  # 0
         valid_areas,                                    # 1
         rec_widith,                                     # 2
         rec_height,                                     # 3
@@ -403,8 +419,7 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         # y_max,                                          # 21
     ])
 
-    filtered_original_indices = metrics_array[:, 0]
-    valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(int(idx), cont_coords_list[valid_indices[int(idx)]][1]) for idx in filtered_original_indices]
+    valid_coords: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = [(idx, cont_coords_list[idx]) for idx in filtered_original_indices]
 
     valid_contours = len(valid_coords)
     matrix_size = metrics_array.shape[0]
@@ -412,16 +427,42 @@ def extract_contours_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[
         logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
         return [], np.empty((0, 5))
 
-    variances = np.array([np.var(np.linalg.norm(coords.reshape(-1, 2) - c, axis=1))for (_, coords), c in zip(valid_coords, metrics_array[:, 5:7])], dtype=np.float32)
+    variances = np.array([np.var(np.linalg.norm(coords[1].reshape(-1, 2) - c, axis=1))for (_, coords), c in zip(valid_coords, metrics_array[:, 5:7])], dtype=np.float32)
     metrics_array = np.column_stack([metrics_array, variances])
 
-    # logger.info(f"Contornos validos: {valid_contours}")
-
+    logger.info(f"Contornos validos: {valid_contours}")
+    logger.info(f"Tiempo extrayendo métricas: {time.perf_counter()-time0:.6f}'s")
     return valid_coords, metrics_array
 
-# def is_binarized(img: np.ndarray[Any, Any]) -> bool:
-#     """Devuelve True si la imagen solo contiene dos valores únicos (0 y 255)."""
-#     if img.dtype != np.uint8:
-#         return False
-#     unique_vals = np.unique(img)
-#     return unique_vals.size == 2 and set(unique_vals) <= {0, 255}
+def get_conected_comps_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]):
+    # img_bin: imagen binaria (uint8, valores 0/255)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(img, connectivity=4)
+
+    # Visualizar: cada componente con color aleatorio
+    h, w = labels.shape
+    vis = np.zeros((h, w, 3), dtype=np.uint8)
+
+    # label 0 es fondo, por eso empezamos en 1
+    rng = np.random.default_rng(42)
+    colors = rng.integers(0, 255, size=(num_labels, 3), dtype=np.uint8)
+    colors[0] = [0, 0, 0]
+
+    for label_id in range(1, num_labels):
+        vis[labels == label_id] = colors[label_id]
+
+    # (Opcional) dibujar bounding boxes y centroides
+    for label_id in range(1, num_labels):
+        x, y, bw, bh, area = stats[label_id]
+        cx, cy = centroids[label_id]
+        cv2.rectangle(vis, (x, y), (x + bw, y + bh), (255, 255, 255), 1)
+        cv2.circle(vis, (int(cx), int(cy)), 2, (0, 255, 255), -1)
+
+    screen_w, screen_h = 1366, 768  # o los valores de tu monitor
+    h, w = vis.shape[:2]
+    scale = min(screen_w / w, screen_h / h, 1.0)
+    show_w, show_h = int(w * scale), int(h * scale)
+    cv2.namedWindow("Componentes conectados", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("Componentes conectados", show_w, show_h)
+    cv2.imshow("Componentes conectados", vis)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
