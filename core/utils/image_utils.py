@@ -439,4 +439,4 @@ def calculate_complementary_feats(metrics_array_new: np.ndarray[Any, Any]):
 
 def _is_binarized(img: np.ndarray[Any, Any]) -> bool:
     """True si es una imagen binarizada"""
-    return np.all((img == 0) | (img == 255))
+    return bool(np.all((img == 0) | (img == 255)))

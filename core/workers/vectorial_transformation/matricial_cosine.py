@@ -2,12 +2,12 @@
 import numpy as np
 import time
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines
+from core.domain.data_models import AllLines, Polygons
 from core.utils.data_utils import VECTOR_MEAN_DUMMIE, VECTOR_MEDIAN_DUMMIE
-from core.utils.math_utils import get_cosine_similarity, density_cluster
+from core.utils.math_utils import get_cosine_similarity, density_cluster, calculate_features
 from services.output_service import save_debug_json
 
 logger = logging.getLogger(__name__)
@@ -32,9 +32,8 @@ class MatricialCusine(VectorizationAbstractWorker):
             if not vectorice:
                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                return True
-    
-            analysis: np.ndarray[Any, Any] = context["all_features"]
-            table_line_ids: List[str] = self._compare_vectors(manager, analysis)
+
+            table_line_ids: List[str] = self._compare_vectors(manager)
             if table_line_ids:
                 logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
                     "\n"f"{table_line_ids}")
@@ -54,9 +53,17 @@ class MatricialCusine(VectorizationAbstractWorker):
             logger.error(f"Error en matriz coseno: {e}", exc_info=True)
         return True
 
-    def _compare_vectors(self, manager: DataFormatter, analysis: np.ndarray[Any, Any]) -> List[str]:
+    def _compare_vectors(self, manager: DataFormatter) -> List[str]:
         try:
             logger.debug("Calculando matriz de similitud")
+            all_lines_dict = manager.workflow.all_lines if manager.workflow else {}
+            
+            
+            sorted_line_keys = sorted(all_lines_dict.keys())
+            sorted_lines = [all_lines_dict[k] for k in sorted_line_keys]
+            polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            img_dims: Tuple[int, int] = manager.workflow.metadata.img_dims if manager.workflow else (0, 0)
+            analysis = calculate_features(sorted_lines, polygons_dict, img_dims)
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             line_ids: List[str] = [lid.lineal_id for lid in all_lines.values()]
             check_tabular_lines = [lid.tabular_line for lid in all_lines.values()]

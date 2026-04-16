@@ -17,13 +17,12 @@ pipeline_secuence:
 
   ocr_stage:
     - "paddle_wrapper"
-    # - "text_refiner"
-    # - "data_finder"
+    - "text_refiner"
+    - "data_finder"
     
   vector_stage:
-  #  - "lineal"
-  #  - "vectorizer"
-  #  - "cos_sim"
+   - "lineal"
+   - "cos_sim"
    - "table_structurer"
   #  - "math_max"
    
@@ -170,7 +169,7 @@ modules:
     
   vectorization:
     lineal:
-      get_vectors: False
+      get_vectors: True
       overlap_threshold: 0.596
       
     cos_sim:

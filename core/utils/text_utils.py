@@ -411,8 +411,7 @@ def space_removal(text: str) -> str:
 def remove_special_sequences(text: str) -> str:
     """
     Elimina secuencias especiales de dos o más caracteres no alfanuméricos.
-    Conserva los caracteres sueltos válidos, pero reemplaza por un espacio las
-    secuencias internas de símbolos, y luego limpia espacios sobrantes.
+    Conserva los caracteres sueltos válidos, pero reemplaza por un espacio lassecuencias internas de símbolos, y luego limpia espacios sobrantes.
     Ejemplo:
         remove_special_sequences("abc@@def!!ghi") -> 'abc def ghi'
     """

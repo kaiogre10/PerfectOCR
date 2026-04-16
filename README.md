@@ -217,7 +217,6 @@ config_path         = "config/master_config.yaml"
 
 | Trabajador | Descripción |
 |------------|-------------|
-| `vectorizer` | Convierte el texto en vectores de características |
 | `cos_sim` | Agrupa texto relacionado usando similitud coseno |
 | `table_structurer` | Organiza la información en tablas estructuradas |
 | `math_max` | Validación matemática de cantidades y totales |
