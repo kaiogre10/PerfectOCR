@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 from core.domain.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import binarice_img, normalice_image, extract_contours_metrics, make_contiguous
+from core.utils.image_utils import binarice_img, make_contiguous # vec_contours_metrics
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -58,13 +58,8 @@ class GeometryDetector(ImagePrepAbstractWorker):
             if not manager.update_full_img(False, full_imag):
                 logger.error("No full IMG DE GEOMETRY")
                 return False
-            
-            full_img = normalice_image(full_img)
-            if full_img is None:
-                logger.critical(f"{worker_name} Error después de normalizar")
-                return False
 
-            bin_img = binarice_img(full_img, {})
+            bin_img = binarice_img(full_img.copy(), {})
 
             kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (self.kernel_threshold[0], self.kernel_threshold[1]))
             img= make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=self.iterations))
@@ -128,86 +123,86 @@ class GeometryDetector(ImagePrepAbstractWorker):
             logger.critical(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
         return False
 
-    def validate_polygons(self, img: np.ndarray[Any, np.dtype[np.uint8]], polygons_list: List[Dict[str, Any]], manager: DataFormatter, context: Dict[str, Any]) -> List[Dict[str, Any]]:
-        try:
-            _, metrics = extract_contours_metrics(img)
-            all_bboxes = np.array([p["bounding_box"] for p in polygons_list])
-            bbox_ids = np.arange(len(polygons_list), dtype=np.int16)
-            bboxes_array = np.column_stack([bbox_ids, np.array(all_bboxes)])
+    # def validate_polygons(self, img: np.ndarray[Any, np.dtype[np.uint8]], polygons_list: List[Dict[str, Any]], manager: DataFormatter, context: Dict[str, Any]) -> List[Dict[str, Any]]:
+    #     try:
+    #         # _, metrics = vec_contours_metrics(img)
+    #         all_bboxes = np.array([p["bounding_box"] for p in polygons_list])
+    #         bbox_ids = np.arange(len(polygons_list), dtype=np.int16)
+    #         bboxes_array = np.column_stack([bbox_ids, np.array(all_bboxes)])
 
-            # Índice original de cada contorno
-            contour_ids = metrics[:, 0]
+    #         # Índice original de cada contorno
+    #         contour_ids = metrics[:, 0]
             
-            c_x = metrics[:, 5][:, None]
-            c_y = metrics[:, 6][:, None]
+    #         c_x = metrics[:, 5][:, None]
+    #         c_y = metrics[:, 6][:, None]
 
-            x_min = metrics[:, 18][:, None]
-            x_max = metrics[:, 19][:, None]
-            y_min = metrics[:, 20][:, None]
-            y_max = metrics[:, 21][:, None]
+    #         x_min = metrics[:, 18][:, None]
+    #         x_max = metrics[:, 19][:, None]
+    #         y_min = metrics[:, 20][:, None]
+    #         y_max = metrics[:, 21][:, None]
 
-            b_x1 = bboxes_array[:, 1][None, :]
-            b_y1 = bboxes_array[:, 2][None, :]
-            b_x2 = bboxes_array[:, 3][None, :]
-            b_y2 = bboxes_array[:, 4][None, :]
+    #         b_x1 = bboxes_array[:, 1][None, :]
+    #         b_y1 = bboxes_array[:, 2][None, :]
+    #         b_x2 = bboxes_array[:, 3][None, :]
+    #         b_y2 = bboxes_array[:, 4][None, :]
 
-            # cont_h = y_max - y_min
-            # bbox_h = b_y2 - b_y1
+    #         # cont_h = y_max - y_min
+    #         # bbox_h = b_y2 - b_y1
 
-            # mask_h = (cont_h > bbox_h)
-            # invalid_mask = np.any(mask_h, axis=1)
-            # invalid_ids = contour_ids[invalid_mask].astype(np.int16)
+    #         # mask_h = (cont_h > bbox_h)
+    #         # invalid_mask = np.any(mask_h, axis=1)
+    #         # invalid_ids = contour_ids[invalid_mask].astype(np.int16)
 
-            centroid_inside = (c_x > b_x1) & (c_x < b_x2) & (c_y > b_y1) & (c_y < b_y2)
+    #         centroid_inside = (c_x > b_x1) & (c_x < b_x2) & (c_y > b_y1) & (c_y < b_y2)
 
-            # 2) contorno completamente dentro (evita ruido parcialmente metido)
-            contour_fully_inside = (x_min > b_x1) & (x_max < b_x2) & (y_min > b_y1) & (y_max < b_y2)
+    #         # 2) contorno completamente dentro (evita ruido parcialmente metido)
+    #         contour_fully_inside = (x_min > b_x1) & (x_max < b_x2) & (y_min > b_y1) & (y_max < b_y2)
 
-            # criterio final
-            is_inside = centroid_inside & contour_fully_inside
+    #         # criterio final
+    #         is_inside = centroid_inside & contour_fully_inside
 
-            has_bbox = np.any(is_inside, axis=1)          # (N,)
-            bbox_local_idx = np.argmax(is_inside, axis=1)  # (N,)
+    #         has_bbox = np.any(is_inside, axis=1)          # (N,)
+    #         bbox_local_idx = np.argmax(is_inside, axis=1)  # (N,)
 
-            # Mapear bbox local -> bbox original
-            bbox_original_ids = np.where(has_bbox, bbox_ids[bbox_local_idx], -1)
+    #         # Mapear bbox local -> bbox original
+    #         bbox_original_ids = np.where(has_bbox, bbox_ids[bbox_local_idx], -1)
 
-            # Resultado final: [contour_original_idx, bbox_original_idx]
-            mapped = np.column_stack([contour_ids, bbox_original_ids]).astype(np.int16)
+    #         # Resultado final: [contour_original_idx, bbox_original_idx]
+    #         mapped = np.column_stack([contour_ids, bbox_original_ids]).astype(np.int16)
 
-            # inv_mapped_ids = np.compress(mapped[:, 1] < 0, mapped, 0) 
-            mapped_ids = np.compress(mapped[:, 1] >= 0, mapped, 0)
+    #         # inv_mapped_ids = np.compress(mapped[:, 1] < 0, mapped, 0) 
+    #         mapped_ids = np.compress(mapped[:, 1] >= 0, mapped, 0)
 
-            conts_bbbox = np.bincount(mapped_ids[:, 1])
-            # logger.info("Contornos por bbox:"
-            #             "\n"f"{conts_bbbox}")
+    #         conts_bbbox = np.bincount(mapped_ids[:, 1])
+    #         # logger.info("Contornos por bbox:"
+    #         #             "\n"f"{conts_bbbox}")
             
-            for poly in polygons_list:
-                idx = int(poly["poly_index"])
-                poly["contours_count"] = int(conts_bbbox[idx])
-            # min_indx = np.where(conts_bbbox < 1)[0]
+    #         for poly in polygons_list:
+    #             idx = int(poly["poly_index"])
+    #             poly["contours_count"] = int(conts_bbbox[idx])
+    #         # min_indx = np.where(conts_bbbox < 1)[0]
 
-            # img_obj = manager.get_full_img()
-            # full_img = img_obj.full_img if img_obj is not None else None
-            # if full_img is None:
-            #     logger.error(f"No Hay full_img en el Formatter")
-            #     return polygons_list
+    #         # img_obj = manager.get_full_img()
+    #         # full_img = img_obj.full_img if img_obj is not None else None
+    #         # if full_img is None:
+    #         #     logger.error(f"No Hay full_img en el Formatter")
+    #         #     return polygons_list
             
-            # min_bboxes = [p["polygon_coords"] for p in polygons_list if p["poly_index"] in min_indx]
+    #         # min_bboxes = [p["polygon_coords"] for p in polygons_list if p["poly_index"] in min_indx]
             
-            # inv_valid_cont = [int(idx) for idx in inv_mapped_ids[:, 0].tolist()]
-            # valid_cont = [int(idx) for idx in mapped_ids[:, 0].tolist()]
+    #         # inv_valid_cont = [int(idx) for idx in inv_mapped_ids[:, 0].tolist()]
+    #         # valid_cont = [int(idx) for idx in mapped_ids[:, 0].tolist()]
 
-            # contours1 = [contours_list[i][1] for i in inv_valid_cont]
-            # contours2 = [contours_list[i][1] for i in valid_cont]
+    #         # contours1 = [contours_list[i][1] for i in inv_valid_cont]
+    #         # contours2 = [contours_list[i][1] for i in valid_cont]
 
-            # bboxes = [p["polygon_coords"] for p in polygons_list]
-            # contours2.extend(bboxes)
+    #         # bboxes = [p["polygon_coords"] for p in polygons_list]
+    #         # contours2.extend(bboxes)
 
-            if self.output:
-                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                # save_shapes(image_name, "not_valid", full_img, context["output_paths"], contours1, min_bboxes)
-            return polygons_list
-        except ValueError as e:
-            logger.warning(f"Error de contornos: {e}", exc_info=True)
-            return polygons_list
+    #         if self.output:
+    #             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+    #             # save_shapes(image_name, "not_valid", full_img, context["output_paths"], contours1, min_bboxes)
+    #         return polygons_list
+    #     except ValueError as e:
+    #         logger.warning(f"Error de contornos: {e}", exc_info=True)
+    #         return polygons_list

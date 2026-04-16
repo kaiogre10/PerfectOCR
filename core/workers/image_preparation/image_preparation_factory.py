@@ -22,8 +22,7 @@ class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
         }
     
     def _create_loader(self, context: Dict[str, Any]) -> ImageLoader:
-        image_data = context.get('image_data', {})
-        return ImageLoader(config=self.module_config, image_data=image_data, project_root=self.project_root)
+        return ImageLoader(config=self.module_config, project_root=self.project_root)
     
     def _create_inker(self, context: Dict[str, Any]) -> InkCorrector:
         return InkCorrector(config=self.module_config, project_root=self.project_root)

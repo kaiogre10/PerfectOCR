@@ -5,22 +5,21 @@ from datetime import datetime
 from typing import Dict, Any, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import decolorate
+from core.utils.image_utils import decolorate, make_contiguous
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
 class ImageLoader(ImagePrepAbstractWorker):
-    def __init__(self, config: Dict[str, Any], image_data: Dict[str, Any], project_root: str):
+    def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.valid_extensions: Set[str] = set(config["valid_image_extensions"])
         self.output = config.get("full_img")
-        self.image_data = image_data
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Carga la imagen y extrae metadatos."""
-        image_info = context.get("image_data", self.image_data)
+        image_info = context.get("image_data", {})
         
         # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
         image_name = image_info.get('name', "")
@@ -35,15 +34,15 @@ class ImageLoader(ImagePrepAbstractWorker):
             if extension in self.valid_extensions:
                 # cv2.imread ya retorna uint8, no necesita .astype()
                 time0 = time.perf_counter()
-                full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
+                full_image = make_contiguous(cv2.imread(input_path, cv2.IMREAD_COLOR))
                 logger.debug(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.4f}'s")
             else:
                 logger.error(f"Formato de imagen no válida: {image_name}")
                 return False
 
-            if full_image is None:
-                logger.error(f"No se pudo cargar: '{image_name}{extension}'")
-                return False
+            # if full_image is None:
+            #     logger.error(f"No se pudo cargar: '{image_name}{extension}'")
+            #     return False
                 
             full_img = decolorate(full_image)
             

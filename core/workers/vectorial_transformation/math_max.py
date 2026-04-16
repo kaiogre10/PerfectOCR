@@ -230,9 +230,13 @@ class MatrixSolver(VectorizationAbstractWorker):
             full_idx = np.where(full_rows_mask)[0]
             
             full_dec = matrix_decimal + matrix_quantity
-            # full_dec = full_dec[full_idx]
+            full_dec_mask = np.count_nonzero(full_dec[full_idx]==1, axis=1) == 3
+            full_idx_dec = np.where(full_dec_mask)[0]
+
             # logger.info("FULL_ID:\n"f"{np.column_stack([full_idx, elements_array[full_idx]])}")
-            # logger.info("FULL_DEC:\n"f"{np.column_stack([full_idx, full_dec[full_idx]])}")
+            logger.info("FULL_DEC:\n"f"{np.column_stack([full_idx_dec, full_dec[full_idx_dec]])}")
+            full_rows_dfs = df.iloc[full_idx_dec]
+            logger.info("FULL ROWS:\n"+ full_rows_dfs.to_string(index=True))
             full_n = full_idx.size
             if full_n > 0:
                 comple_cols_mask = ((np.count_nonzero(full_dec[full_idx], axis=0)) > full_n / 2) | (np.count_nonzero(textual_array[full_idx]== full_n, axis=0))
@@ -421,5 +425,5 @@ class MatrixSolver(VectorizationAbstractWorker):
             except (InvalidOperation, ZeroDivisionError, ValueError) as err:
                 logger.error(f"Fallo cálculo aritmético en fila {r}, col {c}: {err}")
                 continue
-        # logger.info("CORRECTED:\n"+ df.to_string(index=True))
+        logger.info("CORRECTED:\n"+ df.to_string(index=True))
         return df

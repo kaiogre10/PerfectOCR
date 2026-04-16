@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons 
-from core.utils.image_utils import cropp_img, extract_contours_metrics
+from core.utils.image_utils import cropp_img, vec_contours_metrics
 from services.output_service import save_shapes
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class ImageRestorer(PreprocessingAbstractWorker):
             return False
 
     def get_morph_stats(self, cropped_img: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], manager: DataFormatter, poly_id: str) -> List[Any]:
-        metrics, bin_img = extract_cc_metrics(cropped_img, worker_config={}, binarice=True)
+        metrics, bin_img = vec_contours_metrics(cropped_img, worker_config={}, binarice=True)
         if bin_img is None:
             return []
         img_w, img_h = bin_img.shape
