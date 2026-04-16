@@ -3,8 +3,8 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     # - "angle_corrector"
-    - "ink_enhancement"
-    # - "geometry_detector"
+    # - "ink_enhancement"
+    - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
@@ -42,7 +42,7 @@ log_debug:
 enabled_outputs:
   image_load_outputs:
     full_img: False
-    bin_full_img: True
+    bin_full_img: False
     angle_corrected: False
     moire_poly: False
     cropped_img: False

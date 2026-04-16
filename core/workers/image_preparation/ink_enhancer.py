@@ -50,8 +50,8 @@ class InkCorrector(ImagePrepAbstractWorker):
             # all_gaps = white_gaps.copy()
             # all_gaps.extend(black_gaps.copy())
             # bin_gap = binarice_img(gap_img.copy(), {})
-            correctvect, out_conts, _ = self.delete_outliersvec(full_img.copy())
-            correct, _, out_conts2 = self.delete_outliers(full_img.copy())
+            # correctvect, out_conts, _ = self.delete_outliersvec(full_img.copy())
+            correct, _, out_conts2 = self.delete_outliers(full_img)
             # all_outliers = out_conts.copy()
             # all_outliers.extend(out_conts2.copy())
             # bin_correct = binarice_img(correct.copy(), {})
@@ -59,7 +59,6 @@ class InkCorrector(ImagePrepAbstractWorker):
 
             #self.refine_text_quality(grey_img.copy(), context, image_name)
             if not manager.update_full_img(True, correct):
-
                 logger.warning("No se actualizo imagen en escala de grises del enhancer", exc_info=True)
                 
             if manager.update_full_img(True, correct):
@@ -77,10 +76,10 @@ class InkCorrector(ImagePrepAbstractWorker):
             
                     save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
                     # save_croped_image(image_name, id, bin_gap, output_paths, worker_name)
-                    save_croped_image(image_name, img_id, correctvect, output_paths, worker_name)
+                    # save_croped_image(image_name, img_id, correctvect, output_paths, worker_name)
                     
                     # save_shapes(image_name, gaps_id, full_img, output_paths, scan_cont, scan_cont2)
-                    save_shapes(image_name, image_id, full_img, output_paths, out_conts, out_conts2)
+                    # save_shapes(image_name, image_id, full_img, output_paths, out_conts, out_conts2)
 
                     # save_shapes(image_name, all_cont_id, full_img, output_paths, all_gaps, all_outliers)
                             
@@ -186,11 +185,11 @@ class InkCorrector(ImagePrepAbstractWorker):
                 if idx in group_outliers2:
                     # cont = cont_coords[idx]
                     cv2.drawContours(grey_img, [cont_coords[1]], -1, self.white, thickness=cv2.FILLED)
-                    outlier_cont2.append(cont_coords)
+                    outlier_cont2.append(cont_coords[1])
                     lines_correct += 1
         except cv2.error as e:
             logger.info(f"ERROR DIBUJANDO CONTORNOS: '{e}'", exc_info=True)
-        logger.info(f"Outliers: {lines_correct}")
+        # logger.info(f"Outliers: {lines_correct}")
         return make_contiguous(grey_img), [], outlier_cont2
         
     def delete_outliersvec(self, full_img: np.ndarray[Any, Any]):

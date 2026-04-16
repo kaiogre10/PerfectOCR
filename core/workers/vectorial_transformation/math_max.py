@@ -98,7 +98,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error("DATAFRAME VACÍO")
             return df.iloc[0:0]
 
-        # logger.info("RENAMED:\n" + df.to_string(index=True))
+        logger.info("RENAMED:\n" + df.to_string(index=True))
         df = self._correct_df(df, table_matrix, H, dec_cols)
         if df.empty:
             return df.iloc[0:0]
@@ -263,13 +263,13 @@ class MatrixSolver(VectorizationAbstractWorker):
                     type_col.append((col, "textual"))
                     
             # logger.info(f"TYPOS: '{type_col}'")
-            # full_rows_df = df.iloc[full_idx]
+            full_rows_df = df.iloc[full_idx]
             aritmetic_df = df.loc[dec_rows, decimal_cols_str]
             if aritmetic_df.empty: 
                 return (df, type_col)
             else:
-                # logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=True))
-                # logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
+                logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=True))
+                logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
                 return (aritmetic_df, type_col)
             
         except Exception as e:

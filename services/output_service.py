@@ -25,18 +25,18 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], outp
             file_name = f"{image_name}_{poly_id}.png"            # Dibuja todos los contornos sobre la imagen
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) #type: ignore
             if contours1 and contours2:
-                logger.debug("Todos los contornos, contornos 1: Rojo, Contornos 2: Azul")
+                logger.info("Todos los contornos, contornos 1: Rojo, Contornos 2: Azul")
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # Rojo
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (255 ,0, 0), thickness=1) # AZUL
                 save_image(image, output_dir, file_name)
 
             elif not contours1:
-                # logger.info("Solo contornos principales 2")
+                logger.info("Solo contornos principales 2")
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
                 save_image(image, output_dir, file_name)
             
             elif not contours2:
-                # logger.info("Solo contornos principales 1")
+                logger.info("Solo contornos principales 1")
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
                 save_image(image, output_dir, file_name)
             else:
