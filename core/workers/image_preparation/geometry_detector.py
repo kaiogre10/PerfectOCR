@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 from core.domain.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import binarice_img, make_contiguous # vec_contours_metrics
+from core.utils.image_utils import binarice_img, make_contiguous # get_contours_values
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -125,7 +125,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
     # def validate_polygons(self, img: np.ndarray[Any, np.dtype[np.uint8]], polygons_list: List[Dict[str, Any]], manager: DataFormatter, context: Dict[str, Any]) -> List[Dict[str, Any]]:
     #     try:
-    #         # _, metrics = vec_contours_metrics(img)
+    #         # _, metrics = get_contours_values(img)
     #         all_bboxes = np.array([p["bounding_box"] for p in polygons_list])
     #         bbox_ids = np.arange(len(polygons_list), dtype=np.int16)
     #         bboxes_array = np.column_stack([bbox_ids, np.array(all_bboxes)])
