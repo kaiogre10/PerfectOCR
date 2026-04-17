@@ -21,7 +21,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         self.min_cluster = int(worker_config.get("min_cluster", 1))
         self.dummie_weights = worker_config["dummie_weights"]
         self.emergency_threshold = worker_config.get("emergency_threshold")
-        self.eps = float(worker_config.get("eps"))
+        self.eps = worker_config.get("eps")
         self.metric = worker_config.get("metric", "")
         self.output = config.get("table_lines", False)
                 
@@ -35,10 +35,9 @@ class MatricialCusine(VectorizationAbstractWorker):
 
             table_line_ids: List[str] = self._compare_vectors(manager)
             if table_line_ids:
-                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
+                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
                     "\n"f"{table_line_ids}")
-                succes = manager.save_tabular_lines(table_line_ids)
-                if succes:     
+                if manager.save_tabular_lines(table_line_ids):
                     logger.debug("Tablas guaradas en el manager desde coseno")
                     if self.output:
                         return_objects: bool = True
@@ -49,25 +48,31 @@ class MatricialCusine(VectorizationAbstractWorker):
                         save_debug_json(output_paths, worker_name, tab_info, file_name)
     
                     return True
+                return False
         except Exception as e:
             logger.error(f"Error en matriz coseno: {e}", exc_info=True)
         return True
 
     def _compare_vectors(self, manager: DataFormatter) -> List[str]:
         try:
-            logger.debug("Calculando matriz de similitud")
-            all_lines_dict = manager.workflow.all_lines if manager.workflow else {}
-            
-            
-            sorted_line_keys = sorted(all_lines_dict.keys())
-            sorted_lines = [all_lines_dict[k] for k in sorted_line_keys]
             polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            all_lines_dict: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+            if not polygons_dict or not all_lines_dict:
+                return []
+                
             img_dims: Tuple[int, int] = manager.workflow.metadata.img_dims if manager.workflow else (0, 0)
+            
+            line_ids = sorted(all_lines_dict.keys())
+            sorted_lines = [all_lines_dict[k] for k in line_ids]
+            
+            tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
+            # idxs = [lid.lineal_id for lid in sorted_lines]
+            logger.info(f"TABULARS: {tabular_lines}")
             analysis = calculate_features(sorted_lines, polygons_dict, img_dims)
-            all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-            line_ids: List[str] = [lid.lineal_id for lid in all_lines.values()]
-            check_tabular_lines = [lid.tabular_line for lid in all_lines.values()]
-            if not any(check_tabular_lines):
+            
+            if tabular_lines:
+                return self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
+            else:
                 logger.debug("Sin lineas tabulares, DBSCAN como soporte")
                 tabular_lines: List[str] = self._apply_dbscan_clustering(analysis, manager)
 
@@ -77,9 +82,6 @@ class MatricialCusine(VectorizationAbstractWorker):
                 else:
                     tabular_lines = self._emergency_fallback(analysis, line_ids)
                     return tabular_lines
-            else:
-                tabular_lines = manager.get_tabular_lines(False) #type: ignore
-                return self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
                                     
         except Exception as e:
             logger.error(f"Error en matriz de similitud coseno: {e}", exc_info=True)
@@ -346,8 +348,8 @@ class MatricialCusine(VectorizationAbstractWorker):
     def _apply_dbscan_clustering(self, features_array: np.ndarray[Any, Any], manager: DataFormatter) -> List[str]:
         """Aplica DBSCAN para agrupar líneas similares"""
         all_lines = manager.workflow.all_lines if manager.workflow else {}
-        int_line_ids = features_array[:, 0].astype(np.int8)
-        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
+        int_line_ids = features_array[:, 0].dtype(np.int8)
+        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float64)
 
         # Crear un diccionario que mapea line_index (int) a line_id (str)
         index_to_id: Dict[int, str] = {}

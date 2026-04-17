@@ -6,7 +6,7 @@ import logging
 # import json
 # from datetime import datetime
 # import time
-from typing import Dict, Any, Optional, List, Union, Tuple
+from typing import Dict, Any, Optional, List, Tuple
 from core.utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 
@@ -128,43 +128,6 @@ class DataFormatter:
         except Exception as e:
             logger.warning(f"Error liberando imágenes recortadas: {e}", exc_info=True)
         return True
-
-    def get_tabular_lines(self, return_objects: bool) -> Union[Dict[str, Any], List[str]] | List[str]:
-        """
-        Retorna las líneas marcadas como tabulares en workflow.all_lines.
-        Args:
-            return_objects: Si True, devuelve Dict[str, Any] con objetos completos.
-            Si False, devuelve List[str] con solo los line_ids.
-        Returns:
-            Dict[str, Any] o List[str] según el parámetro return_objects.
-            Devuelve estructura vacía si no hay workflow o no hay líneas marcadas.
-        """
-        try:
-            if not self.workflow or not getattr(self.workflow, "all_lines", None):
-                logger.debug("get_tabular_lines: No hay workflow o all_lines vacío.")
-                return {} if return_objects else []
-
-            tabular_lines: Dict[str, Any] = {}
-            tabular_ids: List[str] = []
-            
-            for line_id, line_obj in self.workflow.all_lines.items():
-                try:
-                    if getattr(line_obj, "tabular_line", False):
-                        tabular_lines[line_id] = line_obj
-                        tabular_ids.append(line_id)
-                except Exception:
-                    continue
-
-            logger.debug(f"Encontradas: {len(tabular_lines)} líneas tabulares.")
-            
-            if return_objects:
-                return tabular_lines
-            else:
-                return tabular_ids
-                
-        except Exception as e:
-            logger.error(f"Error obteniendo lineas tabulares: {e}", exc_info=True)
-            return {} if return_objects else []
 
     def update_full_img(self, corrected: bool, full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""
@@ -409,8 +372,8 @@ class DataFormatter:
             all_lines_dataclasses: Dict[str, AllLines] = {}
             for line_id, line_data in valid_lines.items():
                 line_geometry = LineGeometry(
-                    line_centroid=line_data["line_centroid"] or [0, 0],
-                    line_bbox=line_data["line_bbox"] or [0, 0, 0, 0]
+                    line_centroid=np.array(line_data["line_centroid"], np.float32),
+                    line_bbox=np.array(line_data["line_bbox"], np.float32)
                 )
                 
                 all_lines_dataclasses[line_id] = AllLines(

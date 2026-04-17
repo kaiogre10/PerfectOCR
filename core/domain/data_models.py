@@ -54,8 +54,8 @@ class Polygons:
 
 @dataclass
 class LineGeometry:
-    line_centroid: List[float]
-    line_bbox: List[float]
+    line_centroid: np.ndarray[Any, np.dtype[np.float32]]
+    line_bbox: np.ndarray[Any, np.dtype[np.float32]]
 
 @dataclass
 class AllLines:
