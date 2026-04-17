@@ -33,15 +33,15 @@ class Refiner(OCRAbstractWorker):
         """
         Ejecuta el ciclo de refinamiento con clasificación selectiva.
         """
-        t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         self.preprocess_text(manager)
         self.get_early_data(manager)
         
         if self.num_passes == 0:
             self.classify_strings(manager)
         else:            
-            for i in range(self.num_passes):
-                pass_num = i + 1
+            for _ in range(self.num_passes):
+                # pass_num = i + 1
                 # logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
 
                 # logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
@@ -63,7 +63,7 @@ class Refiner(OCRAbstractWorker):
                     self.classify_strings(manager)
 
         # logger.info(f"Pasada final: Clasificación Semántica completa")
-        logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
+        # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
         if self.seman_clas_log:
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
@@ -130,21 +130,20 @@ class Refiner(OCRAbstractWorker):
                 kf = pd.key_field
                 if kf is None:
                     continue
-                keys = kf if isinstance(kf, list) else [kf]
-                if 9 in keys:
+                if 9 in kf:
                     state[0] = True
-                if 7 in keys:
+                if 7 in kf:
                     state[1] = True
-                if 8 in keys:
+                if 8 in kf:
                     state[2] = True
-                if 10 in keys:
+                if 10 in kf:
                     state[3] = True
-                if 11 in keys:
+                if 11 in kf:
                     state[4] = True
-                if 12 in keys:
+                if 12 in kf:
                     state[5] = True
 
-            polygon_updates: Dict[str, List[int] | int] = {}
+            polygon_updates: Dict[str, List[int]] = {}
 
             for poly_id, poly_data in polygons.items():
                 if poly_data.key_field is not None:
@@ -156,7 +155,7 @@ class Refiner(OCRAbstractWorker):
                 if key_field is None:
                     continue
                 
-                polygon_updates[poly_id] = key_field
+                polygon_updates[poly_id] = [key_field]
 
             if polygon_updates:
                 manager.update_key_field(polygon_updates)
@@ -186,3 +185,4 @@ class Refiner(OCRAbstractWorker):
                 updated_polygons[poly] = poly_data
 
         manager.workflow.polygons = updated_polygons
+        return True

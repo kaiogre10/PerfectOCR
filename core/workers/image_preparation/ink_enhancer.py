@@ -18,10 +18,10 @@ class InkCorrector(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('ink_enhancement', {})
-        self.white = list(worker_config["white"]) or [255, 255, 255]
-        self.black = list(worker_config["black"]) or [0, 0, 0]
-        self.aspect_ratio_range: Tuple[float, float] = worker_config["aspect_ratio_range"]
-        self.angle_threshold: float = worker_config.get("angle_threshold", {})
+        self.white = worker_config["white"]
+        self.black = worker_config["black"]
+        self.aspect_ratio_range = worker_config["aspect_ratio_range"]
+        self.angle_threshold = worker_config.get("angle_threshold")
         self.thr = worker_config.get("thr")
         self.black_thr = worker_config.get("black_thr")
         self.solid_thr = worker_config.get("solid_thr")

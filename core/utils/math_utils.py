@@ -148,7 +148,7 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, floa
     # Inicia la recursión
     return recursive_cleanup(metrics, 0, 1)
    
-def density_cluster(features: np.ndarray[Any, np.dtype[np.float64]], eps: float, min_samples: int, metric: str) ->  np.ndarray[Any, Any]:
+def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int, metric: str) ->  np.ndarray[Any, Any]:
     clustering = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
     labels: np.ndarray[Any, Any] = clustering.fit_predict(features) # type: ignore
     return labels
@@ -232,12 +232,31 @@ def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], i
                 # "\n"f"{textual_features}")
 
     all_lines_features = np.column_stack([all_features, textual_features])
-    # logger.info("TODAS LAS FEATURES"
-        # "\n"f"{np.array2string(all_lines_features, precision=5, suppress_small=True)}"
-            # "\n"f"SHAPE:{all_lines_features.shape}")
+    logger.info("TODAS LAS FEATURES"
+            "\n"f"SHAPE:{all_lines_features.shape}"
+        "\n"f"{np.array2string(all_lines_features, precision=3, suppress_small=True)}")
+            
     logger.info(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.7f}s")
 
     return all_lines_features
+
+def calculate_global_stats(geoline_features: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
+
+    return  np.column_stack([
+        np.max(geoline_features[:, 1]),      # [0] Ancho máximo de los bounding boxes de las líneas 
+        np.max(geoline_features[:, 3]),      # [1] Área máxima cubierta por los bounding boxes de las líneas
+        np.max(geoline_features[:, 4]),      # [2] Perímetro máximo entre los bounding boxes de las líneas
+        np.max(geoline_features[:, 5]),      # [3] Máxima razón de aspecto (alto/ancho * 100) de las líneas
+        np.max(geoline_features[:, 6]),      # [4] Longitud diagonal máxima entre los bounding boxes de las líneas
+        
+        np.median(geoline_features[:, 1]),   # [5] Mediana del ancho de los bounding boxes de las líneas
+        np.median(geoline_features[:, 2]),   # [6] Mediana del alto de los bounding boxes de las líneas
+        np.median(geoline_features[:, 3]),   # [7] Mediana del área de los bounding boxes de las líneas
+        np.median(geoline_features[:, 4]),   # [8] Mediana del perímetro de los bounding boxes de las líneas
+        np.median(geoline_features[:, 5]),   # [9] Mediana de la razón de aspecto (alto/ancho * 100) de las líneas
+        np.median(geoline_features[:, 6]),   # [10] Mediana de la longitud diagonal de los bounding boxes de las líneas
+        np.median(geoline_features[:, 7]),   # [11] Mediana del ángulo de inclinación de las líneas
+    ])
 
 def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-> np.ndarray[Any, np.dtype[np.float32]]:
     # timeall = time.perf_counter()
@@ -245,7 +264,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     total_height = img_dims[0] or 0.0
     total_size = total_width * total_height
     
-    line_id = np.array([lid.line_index for lid in sorted_lines], np.int16)
+    line_id = np.array([lid.line_index for lid in sorted_lines])
     geometry = [lid.line_geometry for lid in sorted_lines]
     all_bboxes = np.array([geo.line_bbox for geo in geometry], np.float32)
     x, y, w, h = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
@@ -257,54 +276,54 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     diagonal = np.sqrt((width**2.0) + (height**2.0))
     angle = np.degrees(np.arctan2(h, w))
     
-    max_feats = np.max([width, area, perimeter, aspect_ratio, diagonal], axis=0)
-    max_w, max_area, max_perim, max_asp, max_diag = max_feats[0], max_feats[1], max_feats[2], max_feats[3], max_feats[4]
+    global_stats = calculate_global_stats(np.column_stack([line_id, width, height, area, perimeter, aspect_ratio, diagonal, angle]))
+    # max_feats = np.amax([width, area, perimeter, aspect_ratio, diagonal], axis=0)
+    # max_area, max_perim = max_feats[1], max_feats[2]
     
-    medians = np.median([width, height, area, perimeter, diagonal, angle], axis=0)
-    median_w, median_h, median_area, median_perim, median_diag, median_angle = medians[0], medians[1], medians[2], medians[3], medians[4], medians[5]
+    # medians = np.median([width, height, area, perimeter, diagonal, angle], axis=0)
+    # median_w, median_h, median_area, median_perim, median_diag = medians[0], medians[1], medians[2], medians[3], medians[4]
 
     # Funciones helpers para división segura igualando la lógica de "if x != 0 else 0.0"
     def safe_div(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]):
         return np.divide(a, b, out=np.zeros_like(a), where=b!=0)
     
+
     def safe_dif(val: np.ndarray[Any, Any], med: np.ndarray[Any, Any]):
         return np.where(med != 0, 1 - np.abs(val - med) / med, 0.0)
 
     # Reemplazos con división segura
-    bbox_height_inv = safe_div(height, median_h)
-    bbox_h_dif = safe_dif(height, median_h)
+    bbox_height_inv = safe_div(height, global_stats[:, 6])
+    bbox_h_dif = safe_dif(height, global_stats[:, 6])
     
-    bbox_width_inv = safe_div(width, median_w)
-    bbox_w_dif = safe_dif(width, median_w)
+    bbox_width_inv = safe_div(width, global_stats[:, 5])
+    bbox_w_dif = safe_dif(width, global_stats[:, 5])
     
-    norm_wid = safe_div(width, max_w)
+    norm_wid = safe_div(width, global_stats[:, 0])
     width_rel = safe_div(width, total_width) #type: ignore
     
-    area_norm = safe_div(area, max_area)
+    area_norm = safe_div(area, global_stats[:, 1])
     ratio_area = safe_div(area, total_size) #type: ignore
     
-    area_inv = safe_div(area, median_area)
-    area_dif = safe_dif(area, median_area)
+    area_inv = safe_div(area, global_stats[:, 7])
+    area_dif = safe_dif(area, global_stats[:, 7])
     
     max_ratio = safe_div(max_area, total_size) #type: ignore
     ratio_area_norm = safe_div(ratio_area, max_ratio)
     
-    aspcrat_inv_norm = 1 - safe_div(np.abs(aspect_ratio), max_asp) # Nota: vectorize usa abs(ar/max)
+    # aspect_ratio = geoline_features[:, 5]
+    aspcrat_inv_norm = 1 - safe_div(np.abs(aspect_ratio), global_stats[:, 3]) # Nota: vectorize usa abs(ar/max)
     
-    perimeter_norm = safe_div(perimeter, max_perim)
-    perimeter_inv = safe_div(perimeter, median_perim)
-    perimeter_dif = safe_dif(perimeter, median_perim)
+    perimeter_norm = safe_div(perimeter, global_stats[:, 2])
+    perimeter_inv = safe_div(perimeter, global_stats[:, 8])
+    perimeter_dif = safe_dif(perimeter, global_stats[:, 8])
     
-    diag_inv = safe_div(diagonal, median_diag)
-    diag_dif = safe_dif(diagonal, median_diag)
+    diag_inv = safe_div(diagonal, global_stats[:, 10])
+    diag_dif = safe_dif(diagonal, global_stats[:, 10])
     
-    angle_inv = safe_div(angle, median_angle)
-    diag_norm = safe_div(diagonal, max_diag)
+    angle_inv = safe_div(angle, global_stats[:, 11])
+    diag_norm = safe_div(diagonal, global_stats[:, 4])
     
     compact = safe_div((perimeter ** 2), area) / 100.0
-    
-    # slope_inv = safe_div(slope, global_stats[:, 12])
-    # slope_dif = safe_dif(slope, global_stats[:, 12])
     
     cw: float = (total_width / 2.0)  # centro horizontal de la imagen
     ch: float = (total_height / 2.0)  # centro vertical de la imagen
@@ -386,7 +405,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     center_align = _compute_centroid_align(centroids, main_centroid)
 
     all_features = np.column_stack([
-        line_id, # [0] Índice de línea
+        line_id,             # [0] Índice de línea
         bbox_height_inv,     # [1] height normalized/inverse median
         bbox_h_dif,          # [2] diferencia de height vs mediana
         bbox_width_inv,      # [3] width normalized/inverse median
@@ -440,8 +459,8 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
             if pid_str and pid_str in polygons_dict:
                 poly = polygons_dict[pid_str]
                 sc: List[int] = polygons_dict[pid_str].semantic_clasification
-                sc_quant_count += count_numeric_tokens(sc) if not [0] == sc or 0 in sc else 0
-                kf: Optional[List[int] | int] = poly.key_field
+                sc_quant_count += count_quantitative_tokens(sc)
+                kf: Optional[List[int]] = poly.key_field
                 if kf is not None:
                     if isinstance(kf, list):
                         kf_total += len(kf)
@@ -450,9 +469,6 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
                 
         features[i, 1] = line_data.t_cuant
         features[i, [0, 2]] = sc_quant_count, kf_total
-        # features_list.append([sc_count, dcount, kf_total])
-
-    # features = np.array(features_list, np.float32)
     
     if features.shape[0] == 0:
         return np.zeros((len(sorted_lines), 3), dtype=np.float32)
@@ -472,15 +488,13 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     else:
         kf_abs = np.zeros(features.shape[0], dtype=np.float32)
                 
-    # Lógica matching vectorize.py: 1.0 si >= mean, else -1.0
-    num_above = np.where(sc_quants > sc_quant_mean, 1.0, -1.0)
-    
-    # Lógica matching vectorize.py: 1.0 si > 1.0, else -1.0
+    digit_above = np.where(dec_chars > dec_mean, 1.0, -1.0)
     has_digit = np.where(dec_chars > 1.0, 1.0, -1.0)
     
     digit_char_frec = np.divide(np.float32(dec_chars), max_digit, out=np.zeros_like(dec_chars), where=max_digit!=0)
     
-    has_numeric = np.where(sc_quants > 0, 1.0, -1.0)
+    quant_above = np.where(sc_quants > sc_quant_mean, 1.0, -1.0)
+    has_quant = np.where(sc_quants > 0, 1.0, -1.0)
     
     if max_digit > 0:
         dig_margin = (dec_chars - dec_mean) / (max_digit / 2.0)
@@ -489,9 +503,9 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
         dig_margin = np.zeros_like(dec_chars, np.float32)
     
     # logger.info(f"Features textuales calculadas en: {time.perf_counter() - timef:.6f}'s")
-    return np.column_stack([dig_margin, has_numeric, num_count_norm, num_above, digit_char_frec, has_digit, kf_abs])
+    return np.column_stack([dig_margin, has_quant, num_count_norm, digit_above, digit_char_frec, has_digit, kf_abs, quant_above])
 
-def count_numeric_tokens(semantic_clasification: List[int]) -> int:
+def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
     sc = np.asarray(semantic_clasification, dtype=np.int8)
     mask = (sc == 2) | (sc == 4)
-    return int(np.count_nonzero(mask)) if not 0 in semantic_clasification else 0
+    return int(np.count_nonzero(mask))

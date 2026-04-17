@@ -46,14 +46,14 @@ class DataFinder(OCRAbstractWorker):
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
         return True
 
-    def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, List[int] | int]:
+    def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, List[int]]:
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede búsacar texto")
             return {}
         time0 = time.perf_counter()
         try:
             processed_count = 0
-            polygon_updates: Dict[str, List[int] | int] = {}
+            polygon_updates: Dict[str, List[int]] = {}
             skipped_semantic = 0
             sc_forb = {0, 2, 4, 5}
 
@@ -126,12 +126,12 @@ class DataFinder(OCRAbstractWorker):
                             continue
                         
                         key_field = valid_results[0]['key_field']
-                        polygon_updates[pid] = key_field
+                        polygon_updates[pid] = [key_field]
                         continue
                     
                     else:
                         key_field = valid_results[0]['key_field']
-                        polygon_updates[pid] = key_field
+                        polygon_updates[pid] = [key_field]
                         # logger.info(f"'{pid}': Key_Field: '{key_field}', Text: '{ocr_text}'")
                         
             # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")

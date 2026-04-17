@@ -241,6 +241,7 @@ VECTOR_MEAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
     0.7981898,
     0.96969697,
     1.0,
+    1.0
 ])
 
 VECTOR_MEDIAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
@@ -278,6 +279,7 @@ VECTOR_MEDIAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
     0.81666667,
     1.0,
     0.76470588,
+    1.0,
     1.0,
     1.0,
 ])
@@ -318,7 +320,8 @@ FEATURES_NAME: List[str] = [
     "num_above",
     "digit_char_frec",
     "has_digit",
-    "kf_abs"
+    "kf_abs",
+    "qunat_above"
 ]
 
 SEMATIC_TYPES_MAP: Dict[str, int] = {

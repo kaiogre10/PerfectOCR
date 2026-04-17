@@ -150,7 +150,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         current_line_bbox = list(bbox)
                         continue
                     
-                    line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys) if poly.key_field is not None or not 0 in poly.semantic_clasification else 0
+                    line_t_cuant = 0 if poly.key_field is not None or 0 in poly.semantic_clasification else sum((p.cuant_chars or 0) for p in current_line_polys) 
                     
                     lines_bbox.append(current_line_bbox)  # Agregar aquí: bbox de la línea completada
                     
@@ -210,7 +210,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             # Validar también el texto de la última línea
             if joined_text:
                 current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
-                line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys) if poly.key_field is not None or not 0 in poly.semantic_clasification else 0
+                line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys)
                 lines_bbox.append(current_line_bbox)
                 
                 line_centroid = [
@@ -252,7 +252,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 if key_field is None:
                     continue
 
-                keys = key_field if isinstance(key_field, list) else [key_field]
+                keys = key_field 
                 polygon_index = poly.poly_index
 
                 if 6 in keys:
@@ -260,14 +260,9 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     headers.append(polygon_index)
                     continue
 
-                elif 1 in keys:
+                elif any(k in (1, 2) for k in keys):
                     footer.append(polygon_index)
                     # logger.info(f"Pie de tabla TOTAL MONETARIO encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
-                    continue
-                
-                elif 2 in keys:
-                    footer.append(polygon_index)
-                    # logger.debug(f"Pie de tabla TOTALES CANTIDAD encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
                     continue
 
                 else:

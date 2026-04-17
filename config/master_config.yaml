@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "angle_corrector"
+    # - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
@@ -24,7 +24,7 @@ pipeline_secuence:
    - "lineal"
    - "cos_sim"
    - "table_structurer"
-  #  - "math_max"
+   - "math_max"
    
 log_debug:
   text_ocr: False
@@ -35,7 +35,7 @@ log_debug:
   table_correct: True
   
   semantic_types_log: [2, 3, 4, 5]
-  kf_list_log: [6]
+  kf_list_log: [-1]
   
 # Configuración de salida
 enabled_outputs:

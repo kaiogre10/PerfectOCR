@@ -35,7 +35,7 @@ class MatricialCusine(VectorizationAbstractWorker):
 
             table_line_ids: List[str] = self._compare_vectors(manager)
             if table_line_ids:
-                logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
+                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
                     "\n"f"{table_line_ids}")
                 if manager.save_tabular_lines(table_line_ids):
                     logger.debug("Tablas guaradas en el manager desde coseno")
@@ -66,8 +66,6 @@ class MatricialCusine(VectorizationAbstractWorker):
             sorted_lines = [all_lines_dict[k] for k in line_ids]
             
             tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
-            # idxs = [lid.lineal_id for lid in sorted_lines]
-            logger.info(f"TABULARS: {tabular_lines}")
             analysis = calculate_features(sorted_lines, polygons_dict, img_dims)
             
             if tabular_lines:
@@ -405,6 +403,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Paso 4: Mapear de vuelta a line_id (str)
         full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        logger.info(f"DSSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
+        logger.info(f"DBSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
 
         return full_range_line_ids

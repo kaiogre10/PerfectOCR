@@ -20,6 +20,7 @@ class DataFormatter:
         
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
+        self.kf_list_log =  range(12) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
         self.lines_log = logs_config.get("lines", False)
         self.table_lines_log = logs_config.get("table_lines", False)
         self.table_geo_log = logs_config.get("table_geo", False)
@@ -201,45 +202,7 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
             return False
-            
-    def validate_cropped_img(self) -> bool:
-        """
-        Valida automáticamente todas las imágenes recortadas y elimina las blancas/inválidas.
-        Retorna True si hay workflow válido, False si no hay workflow.
-        """
-        if not self.workflow:
-            logger.error("No hay workflow inicializado para validar imágenes.")
-            return False
-        
-        white_poly_ids: List[str] = []
-        
-        # Detectar polígonos blancos/inválidos usando el normalicer
-        for poly_id, polygon in self.workflow.polygons.items():
-            cropped_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None
-            if normalice_image(cropped_img) is None:  # None = imagen inválida
-                white_poly_ids.append(poly_id)
-        
-        if white_poly_ids:
-            logger.info(f"Eliminando {len(white_poly_ids)} polígonos blancos/inválidos")
-            
-            for poly_id in white_poly_ids:
-                if poly_id in self.workflow.polygons:
-                    del self.workflow.polygons[poly_id]
-            
-            # Reindexar polígonos restantes (patrón de poly_gone)
-            remaining_polygons = list(self.workflow.polygons.items())
-            new_polygons: Dict[str, Polygons] = {}
-            
-            for idx, (_, poly_obj) in enumerate(remaining_polygons): # type: ignore
-                new_id = f"poly_{idx:04d}"
-                updated_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id)
-                new_polygons[new_id] = updated_poly_obj
-            
-            self.workflow.polygons = new_polygons
-            logger.debug(f"Reindexados {len(new_polygons)} polígonos válidos")
-        
-        return True
-        
+                    
     def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]]) -> bool:
         """
         Actualiza los resultados de OCR en las dataclasses de polígonos.
@@ -307,7 +270,7 @@ class DataFormatter:
             logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
             return False
                 
-    def update_key_field(self, polygon_updates: Optional[Dict[str, List[int] | int]]) -> bool:
+    def update_key_field(self, polygon_updates: Optional[Dict[str, List[int]]]) -> bool:
         """
         Actualiza los datos de los polígonos en las dataclasses de polígonos.
         """
@@ -334,7 +297,7 @@ class DataFormatter:
                     kf = poly_data.key_field or None
                     if kf is not None:
                         updated_count += 1
-                        if (kf in self.kf_list_log or (isinstance(kf, (list, tuple, set)) and any(k in self.kf_list_log for k in kf))):
+                        if (kf in self.kf_list_log and any(k in self.kf_list_log for k in kf)):
                             logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
                 
                 if updated_count > 0:
@@ -372,8 +335,8 @@ class DataFormatter:
             all_lines_dataclasses: Dict[str, AllLines] = {}
             for line_id, line_data in valid_lines.items():
                 line_geometry = LineGeometry(
-                    line_centroid=np.array(line_data["line_centroid"], np.float32),
-                    line_bbox=np.array(line_data["line_bbox"], np.float32)
+                    line_centroid=line_data["line_centroid"] or [0, 0],
+                    line_bbox=line_data["line_bbox"] or [0, 0, 0, 0],
                 )
                 
                 all_lines_dataclasses[line_id] = AllLines(

@@ -79,14 +79,18 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.critical("No hay polygonos detectados")
                 return False
             
+            # total_conts = len(polygons)
+            # geometry_array = np.zeros((total_conts, 6), np.float32)
+            # geometry_array = np.zeros((total_conts, 17), np.float32)
+
             polygons_list: List[Dict[str, Any]] = []
-            
             for idx, poly_pts in enumerate(polygons):
                 poly_id = f"poly_{idx:04d}"
-                coords = np.array([[p[0], p[1]] for p in poly_pts], np.int32)
+                coords = np.array([[p[0], p[1]] for p in poly_pts], np.float32)
                 bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()], np.float32)
-                centroid = np.mean(coords, axis=0, dtype=np.float32)
-                    
+                centroid = np.mean(coords, axis=0)
+
+                # geometry_array[idx, [0, 1, 2, 3, 4, 5]] = bbox[0], bbox[1], bbox[2], bbox[3], centroid[0], centroid[1]
                     # if self.output:
                     #     cropped = cropp_img(img, bbox)
                     #     worker_name = context.get("worker_name") or "geometry_detector"
@@ -94,13 +98,16 @@ class GeometryDetector(ImagePrepAbstractWorker):
                     #     pid = f"{poly_id}_{worker_name}"
                     #     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     #     save_croped_image(image_name, pid, cropped, output_paths, worker_name)
-
+            
                 polygons_list.append({
                     "poly_index": idx,
                     "polygon_coords": coords.reshape(-1, 1, 2),
                     "bounding_box": bbox,
                     "centroid": centroid,
                 })
+
+            # ind = np.arange(total_conts)
+            # logger.info("POLYS ARRAY:\n"f"{np.array2string(np.column_stack([ind, geometry_array]), suppress_small=True)}")
 
             # final_polygons_list = self.validate_polygons(img, polygons_list, manager, context)
             final_polygons: Dict[str, Dict[str, Any]] = {}

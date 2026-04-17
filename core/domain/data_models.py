@@ -25,7 +25,7 @@ class Polygons:
     geometry: Geometry
     cropped_img: Optional[CroppedImage]
     ocr_text: Optional[str]
-    key_field: Optional[List[int] | int]
+    key_field: Optional[List[int]]
 #    'GlobalData': 0
 #    'MontoTotalDocumento': 1
 #    'TotalProductos': 2
@@ -54,8 +54,8 @@ class Polygons:
 
 @dataclass
 class LineGeometry:
-    line_centroid: np.ndarray[Any, np.dtype[np.float32]]
-    line_bbox: np.ndarray[Any, np.dtype[np.float32]]
+    line_centroid: List[float]
+    line_bbox: List[float]
 
 @dataclass
 class AllLines:

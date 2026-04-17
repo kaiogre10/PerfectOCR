@@ -588,7 +588,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 'semantic_clasification': [],
             })
             
-        sc = [row['semantic_clasification'] for row in final_row]
         text = [row['text'] for row in final_row]
         return final_row
 
@@ -655,6 +654,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             return pd.DataFrame()
 
     def get_headers(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> Tuple[int, str]:
+        """Asignar key_field = 6 a todos los polígonos de la línea de encabezadoy calcular la cantidad de columnas (H) basado en los key_fields"""
         for line_id, line_data in all_lines.items():
             if line_data.header_line is not None:
                 # line_text = line_data.text
@@ -662,14 +662,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 h = 0
                 header_line_text: List[str] = []
                 
-                # Asignar key_field = 6 a todos los polígonos de la línea de encabezado
-                # y calcular la cantidad de columnas (H) basado en los key_fields
                 for poly_id in line_data.polygon_ids:
                     poly = polygons.get(poly_id)
                     if poly:
                         poly_text = poly.ocr_text or ""
                         if poly.key_field is None:
-                            poly.key_field = 6
+                            poly.key_field = [6]
                             h += 1
                             header_line_text.append(poly_text)
                         elif isinstance(poly.key_field, list):
