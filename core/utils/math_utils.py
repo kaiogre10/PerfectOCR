@@ -94,7 +94,7 @@ def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float])
     
     return float(np.linalg.norm(np.subtract(point1, point2)))
         
-def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
+def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     """
     Calcula histograma de feature de contornos de forma recursiva.
     Elimina outliers hasta que no queden más gaps en el histograma.
@@ -111,9 +111,10 @@ def extract_contours_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, floa
         current_count = current_metrics.shape[0]
         max_feat = (np.max(current_metrics) + 0.1)
         
-        hist, bin_edges = np.histogram(current_metrics, bins=(np.histogram_bin_edges(current_metrics, 'fd', (min_feat, max_feat))).astype(np.float32))
+        hist, bin_edges = np.histogram(current_metrics, bins=(np.histogram_bin_edges(current_metrics, 'fd', (min_feat, max_feat))))
         relat = np.sum(hist)/np.max(hist)
         # logger.info(f"Relación {relat}")
+        # logger.info(f"EDGES: {bin_edges}")
         
         # logger.info(f"HIST iteración {iteration}: {hist}, elementos: {current_count}")
 
@@ -209,7 +210,6 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
             ],
             dtype=np.float32,
         )
-
         geoms.append({"polygon_coords": new_coords, "bounding_box": new_bbox, "centroid": new_centroid})
 
         current_x = new_xmax

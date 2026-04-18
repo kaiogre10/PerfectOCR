@@ -9,18 +9,24 @@ from typing import Dict, Any, List
 import csv
 from core.utils.data_utils import FEATURES_NAME
 
+OUTPUT_PATHS: List[str] = []
+
+def set_output_paths(output_paths: List[str]):
+    global OUTPUT_PATHS
+    OUTPUT_PATHS = output_paths # type: ignore
+
 logger = logging.getLogger(__name__)
 
-def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, contours1: List[np.ndarray[Any, Any]], contours2: List[np.ndarray[Any, Any]]):
+def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], contours1: List[np.ndarray[Any, Any]], contours2: List[np.ndarray[Any, Any]]):
     """Guarda una imagen con los contornos marcados sobre ella"""
     try:
-        if isinstance(output_paths, str):
-            output_paths = [output_paths]
+        # if isinstance(OUTPUT_PATHS, str):
+        #     OUTPUT_PATHS = [OUTPUT_PATHS]
 
-        # for path in output_paths:
+        # for path in OUTPUT_PATHS:
         #     output_dir = os.path.join(path, image_name)
 
-        for path in output_paths:
+        for path in OUTPUT_PATHS:
             output_dir = path
             file_name = f"{image_name}_{poly_id}.png"            # Dibuja todos los contornos sobre la imagen
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)      # type: ignore
@@ -45,12 +51,12 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], outp
     except Exception as e:
         logger.error(f"Error guardando contornos: {e}", exc_info=True)
 
-def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str): 
+def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any], worker_name: str): 
     """Guarda una imagen de depuración si la salida está habilitada."""
-    if isinstance(output_paths, str):
-        output_paths = [output_paths]
+    # if isinstance(OUTPUT_PATHS, str):
+    #     OUTPUT_PATHS = [OUTPUT_PATHS]
 
-    for path in output_paths:
+    for path in OUTPUT_PATHS:
         output_dir = os.path.join(path, image_name)
         file_name = f"{img_id}.png"
         save_image(image, output_dir, file_name)
@@ -69,7 +75,7 @@ def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file
     except Exception as e:
         logger.error(f"Error guardando '{file_name}' imagen: {e}")
         
-def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str):
+def save_debug_json(worker_name: str, results: Dict[str, Any], file_name: str):
     try:
         final_results: Dict[str, Any] = {}
         for line_id in results:
@@ -81,9 +87,7 @@ def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Di
                     'polygon_ids': line_obj.polygon_ids,
                 }
                 
-        if isinstance(output_paths, str):
-            output_paths = [output_paths]
-        for path in output_paths:
+        for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.json"
             save_json(final_results, output_dir, file_name)
@@ -93,12 +97,10 @@ def save_debug_json(output_paths: List[str] | str, worker_name: str, results: Di
     except Exception as e:
         logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
     
-def save_raw_json(output_paths: List[str] | str, worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
+def save_raw_json(worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
     try:
-        if isinstance(output_paths, str):
-            output_paths = [output_paths]
         results_ser = to_serializable(results)
-        for path in output_paths:
+        for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.json"
             if save_json(results_ser, output_dir, file_name):
@@ -124,7 +126,7 @@ def save_json(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: st
         logger.error(f"Error guardando JSON: {e}", exc_info=True)
         return False
         
-def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: List[str] | str, worker_name: str, header_polygons: List[Any]):
+def save_debug_table(corrected_df: pd.DataFrame, file_name: str, worker_name: str, header_polygons: List[Any]):
     try:
         header_text: List[str] = []
         for poly_obj in header_polygons:
@@ -134,7 +136,7 @@ def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: L
         if not header_text:
             header_text = list(corrected_df.columns)
 
-        for path in output_paths:
+        for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.csv"
             save_table(corrected_df, output_dir, file_name, header_text)
@@ -142,7 +144,7 @@ def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output_paths: L
     except Exception as e:
         logger.error(f"Error guardadndo tabla JSON de {worker_name},: {e}", exc_info=True)
 
-def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], output_paths: List[str] | str, worker_name: str, image_features: bool):
+def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], worker_name: str, image_features: bool):
     feature_names = FEATURES_NAME
     try:
         if isinstance(all_features, dict):
@@ -155,7 +157,7 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] 
             df: pd.DataFrame = pd.DataFrame(all_features[1:, :])
             header = list(feature_names)
 
-        for path in output_paths:
+        for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
             table_file_name = f"{file_name}_{worker_name}.csv"
             save_table(df, output_dir, table_file_name, header)

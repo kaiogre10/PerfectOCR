@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "angle_corrector"
+    # - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
@@ -17,19 +17,19 @@ pipeline_secuence:
 
   ocr_stage:
     - "paddle_wrapper"
-    - "text_refiner"
-    - "data_finder"
+    # - "text_refiner"
+    # - "data_finder"
     
   vector_stage:
-  #  - "lineal"
-   - "cos_sim"
-   - "table_structurer"
-   - "math_max"
+   - "lineal"
+  #  - "cos_sim"
+  #  - "table_structurer"
+  #  - "math_max"
    
 log_debug:
   text_ocr: False
   key_fields: False
-  lines: False
+  lines: True
   table_lines: False
   table_geo: False
   table_correct: True

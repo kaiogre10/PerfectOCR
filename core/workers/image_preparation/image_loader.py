@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Any, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import decolorate, get_contours_values
+from core.utils.image_utils import decolorate
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -39,13 +39,9 @@ class ImageLoader(ImagePrepAbstractWorker):
             else:
                 logger.error(f"Formato de imagen no válida: {image_name}")
                 return False
-
-            # if full_image is None:
-            #     logger.error(f"No se pudo cargar: '{image_name}{extension}'")
-            #     return False
                 
             full_img = decolorate(full_image)
-            
+
             # Metadata: una sola llamada a datetime
             now = datetime.now()
             metadata: Dict[str, Any] = {

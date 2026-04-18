@@ -283,7 +283,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     else:
         bin_img = binarice_img(img, {})
 
-    contours_hierarchy = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    contours_hierarchy = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = contours_hierarchy[0]
     if not contours:
         return [], np.empty((0, 5))
@@ -292,10 +292,9 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     contours = [np.array(cont.reshape(-1, 2), np.int32) for cont in contours]
 
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
-    metrics_array_new = np.zeros((total_conts, 17), np.float32)
-    single_mask = bin_img.copy()
-    single_mask[:] = 0
-    prev_x, prev_y, prev_w, prev_h = np.zeros(4, np.uint8)
+    metrics_array_new = np.zeros((total_conts, 12), np.float32)
+    # single_mask = bin_img.copy()
+    # single_mask[:] = 0
 
     for i, cont_coords in enumerate(contours):
         if len(cont_coords) < 3:
@@ -305,59 +304,35 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         if area < 2:
             continue
         
-        centers, dims, angle = cv2.minAreaRect(cont_coords)
-        w, h = int(dims[0]), int(dims[1])
+        _, dims, angle = cv2.minAreaRect(cont_coords)
+        rect_area = dims[0] * dims[1]
+
         metrics_array_new[i, 0] = area
-        metrics_array_new[i, 1] = w
-        metrics_array_new[i, 2] = h
+        metrics_array_new[i, 1] = dims[0]
+        metrics_array_new[i, 2] = dims[1]
         metrics_array_new[i, 3] = angle
+        metrics_array_new[i, 4] = rect_area                         # Area del Rect
         
         conv_hull = cv2.convexHull(cont_coords)
-        m = cv2.moments(cont_coords)
-        metrics_array_new[i, 4] = (m["m10"] / m["m00"]) if m["m00"] != 0.0 else 0.0
-        metrics_array_new[i, 5] = (m["m01"] / m["m00"]) if m["m00"] != 0.0 else 0.0
-        metrics_array_new[i, 6] = cv2.contourArea(conv_hull)
-        metrics_array_new[i, 7] = cv2.arcLength(conv_hull, True)
-        metrics_array_new[i, 8] = cv2.arcLength(cont_coords, True)
+        metrics_array_new[i, 5] = cv2.arcLength(cont_coords, True)  # Perimetro contorno
+        metrics_array_new[i, 6] = cv2.contourArea(conv_hull)        # Area de convexo
+        metrics_array_new[i, 7] = cv2.arcLength(conv_hull, True)    # Permietro del convex
 
-        if prev_w > 0 and prev_h > 0:
-            single_mask[prev_y:prev_y+prev_h, prev_x:prev_x+prev_w] = 0
+        x, y, w, h = cv2.boundingRect(cont_coords)
+        metrics_array_new[i, 8] = w                                 # Ancho del bbox de contorno
+        metrics_array_new[i, 9] = h                                 # Alto del bbox contorno
 
-        x, y = int(centers[0]), int(centers[1])
-        hx = slice(y, y+h)
-        wy = slice(x, x+w)
-        # Dibuja el contorno actual
-        cv2.drawContours(single_mask, [cont_coords], -1, [255], cv2.FILLED)
-        # Extrae solo la región de interés
-        roi_mask = single_mask[hx, wy]
-        roi_img = bin_img[hx, wy]
-        pixels = roi_img[roi_mask == 255]                                  # Todos los pixeles negros dentro del contorno
-        pixels_outside = roi_img[roi_mask == 0]                            # Todos los pixeles blancos alrededor del contorno
-        pcolor, hmany = np.unique(pixels, return_counts=True)             # Que tan negro es
-        pix_color, qty = np.unique(pixels_outside, return_counts=True)     # Valores Altos -> Posible Hueco | Blanco (0) siempre es [0]
+        roi_mask = np.zeros((h, w), dtype=np.uint8)
+        cv2.drawContours(roi_mask, [cont_coords], -1, [255], cv2.FILLED, offset=(-x, -y))
+        roi_img = bin_img[y:y+h, x:x+w]
+        black_pixels = cv2.countNonZero(cv2.bitwise_and(roi_img, roi_mask))  # Total píxeles negros dentro contorno
+        inside = roi_img[roi_mask == 255]               # pixeles dentro del contorno
+        total_inside = inside.size                      # total píxeles del contorno
         
-        def ensure_two(arr):
-            if arr.size == 0:
-                return np.array([-1, -1], dtype=np.int16)
-            elif arr.size == 1:
-                if 255 in arr:
-                    return np.array([-1, arr[0]], dtype=np.int16)  
-                else:
-                    return np.array([arr[0], -1], dtype=np.int16)
-            else:
-                return arr[:2]
+        metrics_array_new[i, 10] = black_pixels
+        metrics_array_new[i, 11] = total_inside
         
-        metrics_array_new[i, [-8, -7]] = ensure_two(pcolor)
-        metrics_array_new[i, [-6, -5]] = ensure_two(hmany)
-        metrics_array_new[i, [-4, -3]] = ensure_two(pix_color)
-        metrics_array_new[i, [-2, -1]] = ensure_two(qty)
-        # logger.info("\n"f" QUE COLORES: {pcolor}, CUANTOS: {hmany}")
-        # pcolor[0], pcolor[1] = pcolor
-        # hmany[0], hmany[1] = hmany
-        # pix_color[0], pix_color[1] = pix_color
-        # qty[0], qty[1] = qty
-        #             
-        prev_x, prev_y, prev_w, prev_h = x, y, w, h
+        # logger.info(f"{internal_pixels}, {density}")
 
         cont_coords_list.append((i, cont_coords))
 
@@ -367,9 +342,9 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     hierarchy = contours_hierarchy[1]
     childs = np.array((hierarchy[0, :, 2] != -1))
     idx = np.arange(total_conts, dtype=np.int16)
-    childs = childs[idx]
+    # childs = childs[idx]
     
-    contours_features_array = np.column_stack([idx, metrics_array_new])
+    contours_features_array = np.column_stack([idx, metrics_array_new, childs])
     contours_features_array = contours_features_array[[c[0] for c in cont_coords_list]]
     
     # logger.info(f"contours_features_array SHAPE: {contours_features_array.shape} ARRAY:\n"f"{np.array2string(contours_features_array, suppress_small=True)}")
@@ -381,7 +356,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
         return [], np.empty((0, 5))
         
-    logger.info(f"Tiempo calculando features de OPEN CV: {time.perf_counter()-time0:.6f}'s")
+    logger.info(f"Tiempo calculando features de {valid_contours} contornos: {time.perf_counter()-time0:.6f}'s")
     return cont_coords_list, contours_features_array
 
 def calculate_complementary_feats(metrics_array_new: np.ndarray[Any, Any]):

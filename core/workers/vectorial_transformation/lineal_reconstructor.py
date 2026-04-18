@@ -26,6 +26,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             logger.debug(f"Lineal: Estado de get_vectors: {self.get_vectors}")
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
+                logger.error("Sin poligonos")
                 return False
             
             reconsturctued_lines = self._reconstruct_lines(polygons)
@@ -34,10 +35,10 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 return False
             
             lines_info, table_range = reconsturctued_lines
-            logger.debug(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
+            logger.info(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
 
             if manager.create_text_lines(lines_info):
-                logger.debug(f"Lineas guardads correctamente en el manager")
+                logger.info("Lineas guardads correctamente en el manager")
             
                 head, foot = table_range
                 if head < 1 and foot < 1:
@@ -80,7 +81,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         lines_bbox: List[Any] = []
         header_idx: int = 0
         footer_idx: int = 0
-        
+        logger.info("Armado de lineas incidado")
         for poly in prepared_sorted:
             bbox = poly.geometry.bounding_box
             if bbox.size == 0:

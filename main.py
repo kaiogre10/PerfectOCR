@@ -10,6 +10,7 @@ import app.main_builder as main_builder
 main_builder.set_project_root(PROJECT_ROOT)
 import services.cache_service as cache_service
 cache_service.set_project_root(PROJECT_ROOT)
+import services.output_service as output_service
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ logger_root.addHandler(console_handler)
 input_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_INPUT_PATH]
 output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
 config_path = DEFAULT_CONFIG_FILE
-
+output_service.set_output_paths(output_paths)
 def main():
     """Función main para compatibilidad con ejecución directa."""
     if len(sys.argv) == 1:        

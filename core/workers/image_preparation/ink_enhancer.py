@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import make_contiguous, get_contours_values
-from core.utils.math_utils import extract_contours_histogram
+from core.utils.math_utils import soft_histogram
 from services.output_service import save_shapes, save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
 
-            correct, out_conts, out_conts2 = self.enhance_ink(full_img)
+            correct, out_conts = self.enhance_ink(full_img)
 
             # gap_img, white_gaps, black_gaps = self.fill_gaps(full_img)
             # all_gaps = white_gaps.copy()
@@ -62,21 +62,20 @@ class InkCorrector(ImagePrepAbstractWorker):
                 # logger.info(f"Corrección de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 if self.output:
                     worker_name = context.get("worker_name") or "inker"
-                    output_paths = context["output_paths"]
                     
                     imag_id = f"corrected_blobs_{image_name}_{worker_name}"
-                    image_id = f"outliers_{image_name}_{worker_name}"
+                    # image_id = f"outliers_{image_name}_{worker_name}"
                     # id = f"bin_gap_{image_name}_{worker_name}"
                     # gaps_id = f"gaps_{image_name}_{worker_name}"
                     # img_id = f"vec_correct_{image_name}_{worker_name}"
                     # all_cont_id = f"all_contours_{image_name}_{worker_name}"
             
-                    # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
-                    # save_croped_image(image_name, id, bin_gap, output_paths, worker_name)
-                    # save_croped_image(image_name, img_id, correctvect, output_paths, worker_name)
+                    save_croped_image(image_name, imag_id, correct, worker_name)
+                    # save_croped_image(image_name, id, bin_gap, worker_name)
+                    # save_croped_image(image_name, img_id, correctvect, worker_name)
                     
-                    # save_shapes(image_name, gaps_id, full_img, output_paths, scan_cont, scan_cont2)
-                    save_shapes(image_name, image_id, full_img, output_paths, out_conts, out_conts2)
+                    # save_shapes(image_name, gaps_id, full_img,  scan_cont, scan_cont2)
+                    # save_shapes(image_name, image_id, full_img, out_conts, [])
 
                     # save_shapes(image_name, all_cont_id, full_img, output_paths, all_gaps, all_outliers)
                             
@@ -87,9 +86,57 @@ class InkCorrector(ImagePrepAbstractWorker):
     def enhance_ink(self, full_img: np.ndarray[Any, Any]):
         grey_img = make_contiguous(full_img)
         cont_coords_list, metrics = get_contours_values(grey_img)
-        # idx = metrics[:, 0]
+        
+        cont_area = metrics[:, 1]
+        rect_height = metrics[:, 3]
+        rect_area = metrics[:, 5]
+        cont_perim = metrics[:, 6]
+        convex_area= metrics[:, 7]
+        convex_perim = metrics[:, 8]
+        
+        bbox_widith = metrics[:, 9]
+        bbox_height = metrics[:, 10]
+        
+        black_pixels = metrics[:, 11]
+        total_pixels = metrics[:, 12]
+        has_childs = metrics[:, -1]
+        _, relat = soft_histogram(cont_area)
+        
+        min_areas_mask = np.percentile(cont_area, relat) 
+        # top_areas = np.argsort(metrics[:, 1])[::-1]
+        
+        min_areas = np.where(min_areas_mask >= cont_area)[0]
+        
+        area_bbox = bbox_height * bbox_widith
+        white_pixels = total_pixels - black_pixels
+
+        # out_idx = (top_areas >= total_outliers) & (has_childs ==False) & (white_pixels > black_pixels)
+        # shape_mask = (cont_area > rect_area)
+        total_black = (black_pixels == total_pixels) & (convex_area > cont_area)
+        # idx_black = metrics[total_black, 0]
+        # half_boox = area_bbox / 2
+        # color_mask = (white_pixels > half_boox) | (black_pixels < white_pixels) | (black_pixels < 2)
+        idx_black = metrics[total_black, 0]
+        idx_areas = metrics[min_areas]
+
+        outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+        lines_correct = 0
+        for idx, cont_coords in cont_coords_list:
+            if idx in idx_black:
+                # cont = cont_coords[idx]
+                cv2.drawContours(grey_img, [cont_coords], -1, self.black, thickness=cv2.FILLED)
+                outlier_cont.append(cont_coords)
+                lines_correct += 1
+            elif idx in idx_areas:
+                # cont = cont_coords[idx]
+                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                outlier_cont.append(cont_coords)
+                lines_correct += 1
+                outlier_cont.append(cont_coords)
+        logger.info(f"RUIDO: {lines_correct}")
+        return grey_img, outlier_cont
         points = metrics[:, [-5, -6, -7, -8]]
-        logger.info("BLANCOS DENTRO:\n"f"{points}")
+        # logger.info("BLANCOS DENTRO:\n"f"{points}")
         maskblasj = metrics[:, -7] < 255
         nomer = metrics[:, -6] < 255
         white = metrics[:, -8] == 0
@@ -116,7 +163,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         #     f"Features cv2 Vectorizadas | SHAPE:{metrics.shape}\n"
         #     f"{np.array2string(metrics[:, -1:-8:], precision=2, suppress_small=True)}"
         # )
-        area_hist = extract_contours_histogram(metrics[:, 1])
+        area_hist = soft_histogram(metrics[:, 1])
 
         area_outliers = area_hist[0] if area_hist[0] > 0 else 1
 
