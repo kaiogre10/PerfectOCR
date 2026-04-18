@@ -10,15 +10,19 @@ from datetime import datetime
 import time
 import logging
 
+PROJECT_ROOT = ""
+
+def set_project_root(project_root: str):
+    global PROJECT_ROOT
+    PROJECT_ROOT = project_root # type: ignore
+
 logger = logging.getLogger(__name__)
 
-def activate_main(input_paths: List[str], output_paths: List[str], config_path: str, project_root: str, TEST_MODE: bool) -> List[str]:
+def activate_main(input_paths: List[str], output_paths: List[str], config_path: str, TEST_MODE: bool) -> List[str]:
     t0 = time.perf_counter()
     try:
-        if not input_paths or not config_path or not project_root:
-            import os
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            cleanup_project_cache(project_root)
+        if not input_paths or not config_path or not PROJECT_ROOT:
+            cleanup_project_cache()
             logger.error("NO HAY RUTAS PRINCIPALES PARA PIPELINE, REVISAR MAIN"
                          "\n"f"PROCESO DETENIDO: {time.perf_counter() - t0}s")
             return  []
@@ -29,13 +33,13 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         # logger.info(f"Config service completo en {time.perf_counter()-t1:.6f}s")
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
-        workflow_manager = WorkFlowBuilder(builder_config=config_services.utils_config, project_root=project_root, input_paths=input_paths)
+        workflow_manager = WorkFlowBuilder(builder_config=config_services.utils_config, project_root=PROJECT_ROOT, input_paths=input_paths)
         
         # 3. WorkflowManager analiza y reporta
         workflow_report = workflow_manager.count_and_plan()
         if not workflow_report:
             logger.error(f"Error en rutas para imágenes, abortando proceso:", exc_info=True)
-            cleanup_project_cache(project_root)
+            cleanup_project_cache()
             return []
         
         # 4. Iniciar modelos Singleton
@@ -46,25 +50,25 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         
         if not config_services.no_modules:
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
-            stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=project_root)
+            stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=PROJECT_ROOT)
             
             # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
             logs_config = config_services.logs_debug
             processing_builder = create_single_builder(stagers_factory=stagers_factory, output_paths=output_paths, logs_config=logs_config)
             if not processing_builder:
                 logger.error("No se pudo crear el ProcessingBuilder")
-                cleanup_project_cache(project_root)
+                cleanup_project_cache(PROJECT_ROOT)
                 return []
         
             # 7. Main ejecuta procesamiento secuencial usando el builder único
             # t4 = time.perf_counter()
             results = execute_sequential_processing(processing_builder, workflow_report)
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
-            cleanup_project_cache(project_root)
+            cleanup_project_cache()
             return results if results is not None else []
             
         logger.debug(f"Proceso debugger completo en {time.perf_counter()-t0:.6f}s")
-        cleanup_project_cache(project_root)
+        cleanup_project_cache()
         return []
         
     except NameError as e:

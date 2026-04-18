@@ -95,11 +95,6 @@ def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any,
         logger.critical(f"Error añadiendo dimensiones a la imagen: {e}", exc_info=True)
     return []
 
-def calculate_img_values(img: np.ndarray[Any, Any]):
-    img_mean = np.mean(img)
-    img_dims = img.shape[:2]
-    return int(img_mean), img_dims
-
 def validate_image(img: Optional[np.ndarray[Any, Any]]) -> bool:
     return bool(7 < int(np.mean(img)) < 251) if img is not None else False
 
@@ -140,12 +135,11 @@ def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma
     return make_contiguous(cv2.bilateralFilter(img, d, sigma_color, sigma_space))
 
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
-    sobel, _ = calculate_img_values(np.abs(cv2.Sobel(img, cv2.CV_64F, 1, 1, ksize))) #type: ignore
-    return float(sobel)
+    return float(np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float32))
 
 def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     if _is_binarized(cropped_img):
-        return make_contiguous(bin_img)
+        return make_contiguous(cropped_img)
         
     c_value: int = worker_config.get('c_value', 7)
     height_thresholds: List[int] = worker_config.get('height_thresholds_px', [100, 800, 1500, 2500])
@@ -209,7 +203,7 @@ def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_si
     return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value))
 
 def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    """Sauvola thresholding producin0g uint8 mask with text as foreground (0) and background (255)"""
+    """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
     thresh_sauvola = threshold_sauvola(image=cropped_img, window_size=adaptive_block_size) 
     bin_bool = (cropped_img > thresh_sauvola)
     return make_contiguous(bin_bool * 255)
@@ -310,7 +304,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         area = cv2.contourArea(cont_coords)
         if area < 2:
             continue
-
+        
         centers, dims, angle = cv2.minAreaRect(cont_coords)
         w, h = int(dims[0]), int(dims[1])
         metrics_array_new[i, 0] = area
@@ -339,7 +333,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         roi_img = bin_img[hx, wy]
         pixels = roi_img[roi_mask == 255]                                  # Todos los pixeles negros dentro del contorno
         pixels_outside = roi_img[roi_mask == 0]                            # Todos los pixeles blancos alrededor del contorno
-        pcolor, hmany  = np.unique(pixels, return_counts=True)             # Que tan negro es
+        pcolor, hmany = np.unique(pixels, return_counts=True)             # Que tan negro es
         pix_color, qty = np.unique(pixels_outside, return_counts=True)     # Valores Altos -> Posible Hueco | Blanco (0) siempre es [0]
         
         def ensure_two(arr):
@@ -357,6 +351,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         metrics_array_new[i, [-6, -5]] = ensure_two(hmany)
         metrics_array_new[i, [-4, -3]] = ensure_two(pix_color)
         metrics_array_new[i, [-2, -1]] = ensure_two(qty)
+        # logger.info("\n"f" QUE COLORES: {pcolor}, CUANTOS: {hmany}")
         # pcolor[0], pcolor[1] = pcolor
         # hmany[0], hmany[1] = hmany
         # pix_color[0], pix_color[1] = pix_color

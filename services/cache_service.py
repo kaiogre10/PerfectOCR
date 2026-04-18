@@ -4,6 +4,12 @@ import os
 import logging
 from typing import List, Set, Tuple
 
+PROJECT_ROOT: str = ""
+
+def set_project_root(project_root: str):
+    global PROJECT_ROOT
+    PROJECT_ROOT = project_root
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_ALLOWED_EXTENSIONS: Set[str] = {
@@ -109,13 +115,13 @@ def clear_output_folders(output_paths: List[str]) -> None:
 
     logger.debug(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
 
-def cleanup_project_cache(project_root: str):
+def cleanup_project_cache():
     """Elimina la caché del proyecto (__pycache__ y .pyc)."""
     logger.debug(" Limpieza Final: Eliminando caché del proyecto")
     cache_path: str
     
     try:
-        for dirpath, dirnames, filenames in os.walk(project_root):
+        for dirpath, dirnames, filenames in os.walk(PROJECT_ROOT):
             for d in list(dirnames):
                 if d == "__pycache__":
                     

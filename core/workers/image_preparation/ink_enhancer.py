@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import logging
 # import time
-from typing import Dict, Any, List, Tuple, Set
+from typing import Dict, Any, List, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import make_contiguous, get_contours_values
@@ -44,13 +44,13 @@ class InkCorrector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
 
-            # enhanced, enhanced_cont = self.enhance_ink(full_img)
+            correct, out_conts, out_conts2 = self.enhance_ink(full_img)
 
             # gap_img, white_gaps, black_gaps = self.fill_gaps(full_img)
             # all_gaps = white_gaps.copy()
             # all_gaps.extend(black_gaps.copy())
             # bin_gap = binarice_img(gap_img.copy(), {})
-            correct, out_conts, out_conts2 = self.delete_outliersvec(full_img)
+            # correct, out_conts, out_conts2 = self.delete_outliersvec(full_img)
             # all_outliers = out_conts.copy()
             # all_outliers.extend(out_conts2.copy())
             # bin_correct = binarice_img(correct.copy(), {})
@@ -71,7 +71,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     # img_id = f"vec_correct_{image_name}_{worker_name}"
                     # all_cont_id = f"all_contours_{image_name}_{worker_name}"
             
-                    save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
+                    # save_croped_image(image_name, imag_id, correct, output_paths, worker_name)
                     # save_croped_image(image_name, id, bin_gap, output_paths, worker_name)
                     # save_croped_image(image_name, img_id, correctvect, output_paths, worker_name)
                     
@@ -84,16 +84,41 @@ class InkCorrector(ImagePrepAbstractWorker):
             logger.error(f"Error en InkEnhancer: {e}", exc_info=True)
         return True
             
+    def enhance_ink(self, full_img: np.ndarray[Any, Any]):
+        grey_img = make_contiguous(full_img)
+        cont_coords_list, metrics = get_contours_values(grey_img)
+        # idx = metrics[:, 0]
+        points = metrics[:, [-5, -6, -7, -8]]
+        logger.info("BLANCOS DENTRO:\n"f"{points}")
+        maskblasj = metrics[:, -7] < 255
+        nomer = metrics[:, -6] < 255
+        white = metrics[:, -8] == 0
+        white2 = metrics[:, -5] > 0 
+        non_nlacj = nomer & maskblasj & white & white2
+        id = np.where(non_nlacj)[0]
+        metrics = metrics[id]
+        lines_correct = 0
+        outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+        for idx, cont_coords in cont_coords_list:
+            if idx in id:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                outlier_cont.append(cont_coords)
+                lines_correct += 1
+                continue
+        return grey_img, outlier_cont, []
+
+        
     def delete_outliersvec(self, full_img: np.ndarray[Any, Any]):
         grey_img = make_contiguous(full_img)
         cont_coords_list, metrics = get_contours_values(grey_img)
         
-        # logger.info(f"Total de contornos outliers: {metrics.shape[0]}")
+        # logger.info(
+        #     f"Features cv2 Vectorizadas | SHAPE:{metrics.shape}\n"
+        #     f"{np.array2string(metrics[:, -1:-8:], precision=2, suppress_small=True)}"
+        # )
         area_hist = extract_contours_histogram(metrics[:, 1])
-        dist_values = extract_contours_histogram(metrics[:, -1])
 
         area_outliers = area_hist[0] if area_hist[0] > 0 else 1
-        dist_var_outliers = dist_values[0] if dist_values[0] > 0 else 1
 
         # 1. Outliers de Área
         top_areas = np.sort(metrics[:, 1])[::-1][:area_outliers]
@@ -102,9 +127,6 @@ class InkCorrector(ImagePrepAbstractWorker):
         # Indexación booleana directa a la columna 0
         child_metrics = child_metric[child_metric[:, 11] == 1, 0] 
         out_index: Set[int] = set(child_metrics.astype(np.int8).tolist())
-        
-        top_dist_var = np.sort(metrics[:, -1])[::-1][:dist_var_outliers]
-        # dist_outlier_mask = (metrics[:, -1] > (np.min(top_dist_var) - 0.1))
 
         # 3. Shape y Líneas
         shape_mask = self.shape_thr > metrics[:, 16]
@@ -144,19 +166,17 @@ class InkCorrector(ImagePrepAbstractWorker):
 
         # Transformación a Sets
         rect1ind: Set[int] = set(rect1.astype(np.int16).tolist())
-        rect2ind: Set[int] = set(rect2.astype(np.int16).tolist())
         solidity_indices: Set[int] = set(solidity.astype(np.int16).tolist())
         vertical_indices: Set[int] = set(vertical.astype(np.int16).tolist())
         lines_indices: Set[int] = set(lines.astype(np.int16).tolist())
         irreg_indices: Set[int] = set(irreg.astype(np.int16).tolist())
-        dist_indices: Set[int] = set(dist_var.astype(np.int16).tolist())
 
         outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         outlier_cont2: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         lines_correct = 0
 
         # Unimos las condiciones en un único set O(1) de chequeo rápido
-        group_outliers = dist_indices | irreg_indices | rect1ind | rect2ind | vertical_indices | lines_indices | solidity_indices 
+        group_outliers = irreg_indices | rect1ind | vertical_indices | lines_indices | solidity_indices 
         try:
             for idx, cont_coords in cont_coords_list:
                 if idx in out_index:

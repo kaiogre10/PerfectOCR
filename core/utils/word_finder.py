@@ -10,6 +10,8 @@ from typing import List, Any, Dict, Tuple, Set, FrozenSet
 logger = logging.getLogger(__name__)
 
 _space_pattern = re.compile(r"\s+")
+_space_clean_pattern = re.compile(r"[^a-z\s]+")
+_nom_pattern= re.compile(r'(?<=[a-zA-Z])[^\w\s]+(?=[a-zA-Z])')
 
 class WordFinder:
     def __init__(self, model_path: str, set_params: bool):
@@ -152,16 +154,16 @@ class WordFinder:
                                     continue
 
                                 sub = q[start:end]
-                                if not sub: 
+                                if not sub:
                                     continue
-
-                                if sub == cand:
-                                    penalty = self._length_penalty(sub, cand)
+                                
+                                elif sub == cand:
+                                    penalty = self._length_penalty(w, cand_len)
                                     final_score = 1.0 * penalty
                                 else:
                                     grams_sub = self._build_query_grams(sub)
                                     final_score = self._score_hybrid_greedy(grams_cand, grams_sub)
-                                final_score *= self._length_penalty(sub, cand)
+                                final_score *= self._length_penalty(w, cand_len)
 
                                 if final_score > best_score_for_cand:
                                     best_score_for_cand = final_score
@@ -248,7 +250,8 @@ class WordFinder:
             base_similarity = self._score_hybrid_greedy(grams_word, grams_text)
 
             # Penalización simétrica: min/max siempre da un valor entre 0 y 1 no importa cuál sea más largo, el resultado es el mismo
-            length_penalty = self._length_penalty(norm_ocr_text, word_found)
+
+            length_penalty = self._length_penalty(len(norm_ocr_text), len(word_found))
 
             # Score final = similitud base * penalización por longitud
             match['score_final'] = base_similarity * length_penalty
@@ -321,7 +324,7 @@ class WordFinder:
                     else:
                         sim = self._ngram_similarity(gc, gs)
                     # Penalización simétrica
-                    sim *= self._length_penalty(gc, gs)
+                    # sim *= self._length_penalty(gc, gs)
 
                     if sim > 0.0:
                         possible_matches.append((sim, i, j))
@@ -432,15 +435,16 @@ class WordFinder:
                             sub = cleaned[j:j + w]
 
                             if sub == noise_word:
-                                similarity = 1.0 * self._length_penalty(sub, noise_word)
+                                # 
+                                similarity = 1.0 * self._length_penalty(w, noise_len)
                             else:
                                 grams_sub = self._build_query_grams(sub)
                                 similarity = self._score_hybrid_greedy(grams_forbidden, grams_sub)
                                 # Penalización simétrica
-                            similarity *= self._length_penalty(sub, noise_word)
+                            similarity *= self._length_penalty(w, noise_len)
 
                             if similarity > self.forb_match:
-                                cleaned = (cleaned[:j] + " " + cleaned[j + w:]).strip()
+                                cleaned = (cleaned[:j] + " " + cleaned[j + w:])
                                 cleaned = _space_pattern.sub(" ", cleaned).strip()
                                 removed_noise.append(sub)
                                 logger.debug(f"SUBSTRING ELIMINADO: '{sub}' | Similitud: {similarity:.4f} | RUIDO ORIG: '{noise_word}'")
@@ -455,18 +459,15 @@ class WordFinder:
             return text, []
 
     def _normalize(self, s: str) -> str:
-        try:
-            if not s:
-                return ""
-            q = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8')
-            # Convertir cualquier cosa que NO sea letra o espacio en un ESPACIO
-            q = re.sub(r"[^a-z\s]+", " ", q)
-            # Limpiar espacios múltiples / extremos
-            return _space_pattern.sub(" ", q).strip()
-        except UnicodeError as e:
-            logger.error(f"Error limpiando texto: {e}", exc_info=True)
-        return ""
-    
+        if not s:
+            return ""
+        s = s.lower()                                   # 1. Entra el texto y convertimos a minusuculas
+        s = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")        # 2. Convertimos letras con con puntuación a su versión estandar, NO ELIMINAMOS PUNTUACIÓN SOLO TRATAMOS CON ALFABÉTICOS
+        s = _nom_pattern.sub("", s)                     # 3. Eliminar especiales con el patrón definido internos juntando los caracteres.
+        s = _space_clean_pattern.sub(" ", s)            # 4. Ahora sí eliminamos puntuación y números convirtiendolos en espacios sin juntar aún
+        q = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8')     # 5. Normalizamos ASCII para estandarizar
+        return _space_pattern.sub(" ", q).strip()       # 6. Normalizar espacios dobles que se hayan podido generar
+            
     def _update_best_match(self, current_best: Dict[str, Any], match: Dict[str, Any]) -> Dict[str, Any]:
         """
         Decide si el nuevo match es mejor que el actual según las reglas de similitud y longitud.
@@ -478,11 +479,6 @@ class WordFinder:
                 return match
         return current_best
     
-    def _length_penalty(self, a: str, b: str) -> float:
+    def _length_penalty(self, a: int, b: int) -> float:
         """Penalización simétrica por diferencia de longitud."""
-        if not a or not b:
-            return 0.0
-        la, lb = len(a), len(b)
-        if la == lb:
-            return 1.0
-        return min(la, lb) / max(la, lb)
+        return min(a, b) / max(a, b)

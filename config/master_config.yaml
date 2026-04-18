@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "angle_corrector"
+    - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
@@ -21,7 +21,7 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-   - "lineal"
+  #  - "lineal"
    - "cos_sim"
    - "table_structurer"
    - "math_max"
@@ -41,7 +41,7 @@ log_debug:
 enabled_outputs:
   image_load_outputs:
     full_img: False
-    bin_full_img: False
+    bin_full_img: True
     angle_corrected: False
     moire_poly: False
     cropped_img: False

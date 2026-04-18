@@ -6,8 +6,10 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 import logging
-from services.cache_service import clear_output_folders
-from app.main_builder import activate_main
+import app.main_builder as main_builder
+main_builder.set_project_root(PROJECT_ROOT)
+import services.cache_service as cache_service
+cache_service.set_project_root(PROJECT_ROOT)
 
 logger = logging.getLogger(__name__)
 
@@ -84,19 +86,18 @@ console_handler.setFormatter(console_formatter)
 console_handler.setLevel(CONSOLE_LEVEL.upper())
 logger_root.addHandler(console_handler)
 
+input_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_INPUT_PATH]
+output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
+config_path = DEFAULT_CONFIG_FILE
+
 def main():
     """Función main para compatibilidad con ejecución directa."""
-    if len(sys.argv) == 1:
-        input_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_INPUT_PATH]
-        output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
-        config_path = DEFAULT_CONFIG_FILE
-        project_root = PROJECT_ROOT
-        
+    if len(sys.argv) == 1:        
         default_output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
-        clear_output_folders(default_output_paths)
-        return activate_main(input_paths, output_paths, config_path, project_root, TEST_MODE)
+        cache_service.clear_output_folders(default_output_paths)
+        return main_builder.activate_main(input_paths, output_paths, config_path, TEST_MODE)
 
-    return activate_main([], [], "", "", False)
+    return main_builder.activate_main([], [], "", False)
 
 if __name__ == "__main__":
     main()

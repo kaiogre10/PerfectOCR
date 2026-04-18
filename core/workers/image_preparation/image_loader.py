@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Dict, Any, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import decolorate, make_contiguous
+from core.utils.image_utils import decolorate, get_contours_values
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             if extension in self.valid_extensions:
                 # cv2.imread ya retorna uint8, no necesita .astype()
                 time0 = time.perf_counter()
-                full_image = make_contiguous(cv2.imread(input_path, cv2.IMREAD_COLOR))
+                full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
                 logger.debug(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.4f}'s")
             else:
                 logger.error(f"Formato de imagen no válida: {image_name}")
@@ -57,7 +57,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:04d}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
-                # logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
+                logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
             
                 if self.output:
                     output_paths = context["output_paths"]

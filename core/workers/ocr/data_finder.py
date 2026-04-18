@@ -48,7 +48,7 @@ class DataFinder(OCRAbstractWorker):
 
     def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, List[int]]:
         if self.model is None:
-            logger.error("DataFinder no iniciado, no se puede búsacar texto")
+            logger.error("DataFinder no iniciado, no se puede buscar Key FIelds")
             return {}
         time0 = time.perf_counter()
         try:
@@ -134,13 +134,13 @@ class DataFinder(OCRAbstractWorker):
                         polygon_updates[pid] = [key_field]
                         # logger.info(f"'{pid}': Key_Field: '{key_field}', Text: '{ocr_text}'")
                         
-            # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
+                logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:
-                logger.warning("No se hallaron Keywords")
+                logger.warning(f"No se hallaron Keywords, tiempo de ejecución: {time.perf_counter() - time0:.6}'s")
                 return {}
 
         except ValueError as e:

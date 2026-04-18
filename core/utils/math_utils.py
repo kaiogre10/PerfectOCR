@@ -277,11 +277,6 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     angle = np.degrees(np.arctan2(h, w))
     
     global_stats = calculate_global_stats(np.column_stack([line_id, width, height, area, perimeter, aspect_ratio, diagonal, angle]))
-    # max_feats = np.amax([width, area, perimeter, aspect_ratio, diagonal], axis=0)
-    # max_area, max_perim = max_feats[1], max_feats[2]
-    
-    # medians = np.median([width, height, area, perimeter, diagonal, angle], axis=0)
-    # median_w, median_h, median_area, median_perim, median_diag = medians[0], medians[1], medians[2], medians[3], medians[4]
 
     # Funciones helpers para división segura igualando la lógica de "if x != 0 else 0.0"
     def safe_div(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]):
@@ -307,7 +302,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     area_inv = safe_div(area, global_stats[:, 7])
     area_dif = safe_dif(area, global_stats[:, 7])
     
-    max_ratio = safe_div(max_area, total_size) #type: ignore
+    max_ratio = safe_div(global_stats[:, 1], total_size) #type: ignore
     ratio_area_norm = safe_div(ratio_area, max_ratio)
     
     # aspect_ratio = geoline_features[:, 5]

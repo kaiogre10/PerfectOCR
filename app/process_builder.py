@@ -11,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
     """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y coordina el procesamiento técnico de una sola imagen."""    
-    def __init__(self, input_stager: ImagePreparationStager, preprocessing_stager: Optional[PreprocessingStager], ocr_stager: Optional[OCRStager], vectorization_stager: Optional[VectorizationStager], logs_config: Dict[str, Any]):
-        # Se elimina self.manager del init. Ahora se crea por imagen.
+    def __init__(self, input_stager: Optional[ImagePreparationStager], preprocessing_stager: Optional[PreprocessingStager], ocr_stager: Optional[OCRStager], vectorization_stager: Optional[VectorizationStager], logs_config: Dict[str, Any]):
         self.input_stager = input_stager
         self.preprocessing_stager = preprocessing_stager
         self.ocr_stager = ocr_stager
@@ -24,16 +23,13 @@ class ProcessingBuilder:
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
         Recibe image_data para configurar el contexto de esta ejecución específica.
         """
-        try:
-            # logs_config = self.logs_config
-            # get_config_logs()
-            # logger.info("Configuración de logs no se pudo cargar")
+        try:    
+            if self.input_stager is None:
+                logger.warning(f"No hay Modulo de carga de imagen, acabando")
+                return None
                 
             # Crear instancia fresca de DataFormatter para esta imagen
             manager = DataFormatter(self.logs_config)
-            
-                
-            
             # Crear contexto para esta ejecución
             context: Dict[str, Any] = {
                 "image_data": image_data
@@ -74,5 +70,5 @@ class ProcessingBuilder:
             return manager
             
         except Exception as e:
-            logger.error(f"Error fatal procesando la imagen: {e}", exc_info=True)
+            logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)
         return None

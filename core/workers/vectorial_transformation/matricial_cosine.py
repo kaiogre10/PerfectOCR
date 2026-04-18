@@ -347,7 +347,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         """Aplica DBSCAN para agrupar líneas similares"""
         all_lines = manager.workflow.all_lines if manager.workflow else {}
         int_line_ids = features_array[:, 0].dtype(np.int8)
-        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float64)
+        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
 
         # Crear un diccionario que mapea line_index (int) a line_id (str)
         index_to_id: Dict[int, str] = {}

@@ -31,12 +31,12 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], outp
                 save_image(image, output_dir, file_name)
 
             elif not contours1:
-                logger.info("Solo contornos principales 2")
+                logger.info(f" {len(contours2)} contornos principales 2")
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
                 save_image(image, output_dir, file_name)
             
             elif not contours2:
-                logger.info("Solo contornos principales 1")
+                logger.info(f" {len(contours1)} contornos principales 1")
                 cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours1], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
                 save_image(image, output_dir, file_name)
             else:
