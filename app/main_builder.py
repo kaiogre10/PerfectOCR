@@ -54,10 +54,10 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             
             # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
             logs_config = config_services.logs_debug
-            processing_builder = create_single_builder(stagers_factory=stagers_factory, output_paths=output_paths, logs_config=logs_config)
+            processing_builder = create_single_builder(stagers_factory=stagers_factory, logs_config=logs_config)
             if not processing_builder:
                 logger.error("No se pudo crear el ProcessingBuilder")
-                cleanup_project_cache(PROJECT_ROOT)
+                cleanup_project_cache()
                 return []
         
             # 7. Main ejecuta procesamiento secuencial usando el builder único
@@ -75,16 +75,16 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         logger.error(f"ERROR FATAL EN BUILDERS, FINALIZANDO PROCESO: {e}", exc_info=True)
     return []
     
-def create_single_builder(stagers_factory: StagersFactory, output_paths: List[str], logs_config: Dict[str, Any]) -> Optional[ProcessingBuilder]:
+def create_single_builder(stagers_factory: StagersFactory, logs_config: Dict[str, Any]) -> Optional[ProcessingBuilder]:
     """Crea un único builder reutilizable usando StagersFactory."""
     try:
         # Contexto inicial genérico (se enriquecerá en cada ejecución)
         context: Dict[str, Any] = {}
         
-        input_stager = stagers_factory.create_image_prep_stager(context, output_paths)
-        preprocessing_stager = stagers_factory.create_preprocessing_stager(context, output_paths)
-        ocr_stager = stagers_factory.create_ocr_stager(context, output_paths)
-        vectorization_stager = stagers_factory.create_vectorization_stager(context, output_paths)
+        input_stager = stagers_factory.create_image_prep_stager(context)
+        preprocessing_stager = stagers_factory.create_preprocessing_stager(context)
+        ocr_stager = stagers_factory.create_ocr_stager(context)
+        vectorization_stager = stagers_factory.create_vectorization_stager(context)
         
         # El manager se crea dentro del proceso de cada imagen, no aquí
         builder = ProcessingBuilder(

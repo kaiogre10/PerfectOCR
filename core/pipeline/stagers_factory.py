@@ -20,7 +20,7 @@ class StagersFactory:
         self.vectorizing_workers = self.modules_config.get("vectorization", {}).get("vector_stage", [])
         self.main_factory = MainFactory(self.modules_config, project_root)
 
-    def create_image_prep_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> ImagePreparationStager:
+    def create_image_prep_stager(self, context: Dict[str, Any]) -> Optional[ImagePreparationStager]:
         """Crea stager de preparación de imagen con configuraciones específicas del master config."""
         factory = self.main_factory.get_image_preparation_factory()
         if "polygon_extractor" in self.image_workers:
@@ -28,15 +28,16 @@ class StagersFactory:
                 self.image_workers.remove("polygon_extractor")
 
         image_workers = factory.create_workers(self.image_workers, context)
+        if not self.image_workers:
+            return None
         
         return ImagePreparationStager(
             workers=image_workers,
             stage_config=self.modules_config,
-            output_paths=output_paths,
             project_root=self.project_root
         )
 
-    def create_preprocessing_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> Optional[PreprocessingStager]:
+    def create_preprocessing_stager(self, context: Dict[str, Any]) -> Optional[PreprocessingStager]:
         """Crea stager de preprocessing con configuraciones específicas del master config."""
         if not self.preprocessing_workers:
             return None
@@ -50,11 +51,10 @@ class StagersFactory:
         return PreprocessingStager(
             workers=preprocessing_workers,
             stage_config=self.modules_config,
-            output_paths=output_paths,
-            project_root=self.project_root
+            project_root=self.project_root,
         )
 
-    def create_ocr_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> Optional[OCRStager]:
+    def create_ocr_stager(self, context: Dict[str, Any]) -> Optional[OCRStager]:
         """Crea stager de OCR con configuraciones específicas del master config."""
         if not self.ocr_workers:
             return None
@@ -68,11 +68,10 @@ class StagersFactory:
         return OCRStager(
             workers=ocr_workers,
             stage_config=self.modules_config,
-            output_paths=output_paths,
             project_root=self.project_root
         )
     
-    def create_vectorization_stager(self, context: Dict[str, Any], output_paths: List[str] | str) -> Optional[VectorizationStager]:
+    def create_vectorization_stager(self, context: Dict[str, Any]) -> Optional[VectorizationStager]:
         """Crea stager de vectorización con configuraciones específicas del master config."""
         if not self.vectorizing_workers:
             return None
@@ -86,6 +85,5 @@ class StagersFactory:
         return VectorizationStager(
             workers=vectorizing_workers,
             stage_config=self.modules_config,
-            output_paths=output_paths,
             project_root=self.project_root
         )

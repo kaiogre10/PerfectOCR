@@ -56,9 +56,8 @@ class ImageLoader(ImagePrepAbstractWorker):
                 logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
             
                 if self.output:
-                    output_paths = context["output_paths"]
                     worker_name = context.get("worker_name") or "loader"
-                    save_croped_image(image_name, f"full_img_{image_name}_{worker_name}", full_img, output_paths, worker_name)
+                    save_croped_image(image_name, f"full_img_{image_name}_{worker_name}", full_img, worker_name)
 
                 return True
             

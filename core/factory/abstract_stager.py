@@ -12,12 +12,10 @@ class AbstractStager(ABC):
         self, 
         workers: List[Any],
         stage_config: Dict[str, Any], 
-        output_paths: List[str] | str,
         project_root: str
     ):
         self.workers = workers
         self.stage_config = stage_config
-        self.output_paths = output_paths
         self.project_root = project_root
     
     @abstractmethod

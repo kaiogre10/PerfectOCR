@@ -20,7 +20,7 @@ class DataFormatter:
         
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
-        self.kf_list_log =  range(12) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
+        self.kf_list_log =  list(range(12)) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
         self.lines_log = logs_config.get("lines", False)
         self.table_lines_log = logs_config.get("table_lines", False)
         self.table_geo_log = logs_config.get("table_geo", False)

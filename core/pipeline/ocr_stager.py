@@ -18,9 +18,6 @@ class OCRStager(AbstractStager):
         start_time = time.time()
         
         exec_context: Dict[str, Any] = context.copy() if context else {}
-        if "output_paths" not in exec_context:
-            exec_context["output_paths"] = self.output_paths
-
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.time()
             worker_name = worker.__class__.__name__

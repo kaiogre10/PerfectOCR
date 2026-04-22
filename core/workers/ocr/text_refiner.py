@@ -10,7 +10,6 @@ from services.output_service import save_raw_json
 from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
 import logging
 import dataclasses
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +73,6 @@ class Refiner(OCRAbstractWorker):
             file_name: str = manager.workflow.metadata.image_name  # type: ignore    
             name = "cleanned_text"
             worker_name = f"{name}" or "refiner"
-            output_paths = context["output_paths"]
             polygons = manager.workflow.polygons if manager.workflow else {}
             results: Dict[str, Any] = {}
             for poly_id, polygon in polygons.items():
@@ -82,7 +80,7 @@ class Refiner(OCRAbstractWorker):
                 results[poly_id] = {
                     "text": text,
                 }
-            save_raw_json( output_paths, worker_name, results, file_name)
+            save_raw_json(worker_name, results, file_name)
 
         return True
         

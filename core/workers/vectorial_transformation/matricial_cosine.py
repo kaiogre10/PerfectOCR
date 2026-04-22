@@ -40,12 +40,10 @@ class MatricialCusine(VectorizationAbstractWorker):
                 if manager.save_tabular_lines(table_line_ids):
                     logger.debug("Tablas guaradas en el manager desde coseno")
                     if self.output:
-                        return_objects: bool = True
-                        tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects) # type: ignore
+                        tab_info: Dict[str, Any] = manager.get_tabular_lines(return_objects=True) # type: ignore
                         file_name: str = manager.workflow.metadata.image_name # type: ignore
                         worker_name = context.get("worker_name") or "matrix_cosine"
-                        output_paths = context["output_paths"]
-                        save_debug_json(output_paths, worker_name, tab_info, file_name)
+                        save_debug_json(worker_name=worker_name, results=tab_info, file_name=file_name)
     
                     return True
                 return False

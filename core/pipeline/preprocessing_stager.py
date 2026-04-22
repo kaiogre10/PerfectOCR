@@ -19,8 +19,6 @@ class PreprocessingStager(AbstractStager):
         
         # Base context setup
         exec_context: Dict[str, Any] = context.copy() if context else {}
-        if "output_paths" not in exec_context:
-            exec_context["output_paths"] = self.output_paths
         if "project_root" not in exec_context:
             exec_context["project_root"] = self.project_root
 

@@ -55,7 +55,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 if self.output:
                     file_name: str = manager.workflow.metadata.image_name #type: ignore
                     worker_name = context.get("worker_name") or "paddle_wrapper"
-                    save_raw_json( worker_name, final_results, file_name)
+                    save_raw_json(worker_name, final_results, file_name)
             
             logger.debug(f"Batch OCR completado. {processed_count} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
             

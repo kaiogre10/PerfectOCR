@@ -132,6 +132,5 @@ class PolygonExtractor(ImagePrepAbstractWorker):
     def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], manager: DataFormatter, status: str, id: str):
         image_name = manager.workflow.metadata.image_name if manager.workflow else ""
         worker_name = context.get("worker_name") or "poly_gone"
-        output_paths = context["output_paths"]
         img_id = f"{status}_{id}_close"
-        save_croped_image(image_name, img_id, polygon, output_paths, worker_name)
+        save_croped_image(image_name, img_id, polygon, worker_name)

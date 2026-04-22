@@ -65,11 +65,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
             img= make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=self.iterations))
 
             if self.output2:
-                output_paths = context["output_paths"]
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 # imag_id = f"opened_{image_name}_{worker_name}"
                 img_id = f"bin_img_{image_name}_{worker_name}_+1"
-                save_croped_image(image_name, img_id, img, output_paths, worker_name)
+                save_croped_image(image_name, img_id, img, worker_name)
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
             # paddle_time = time.perf_counter()

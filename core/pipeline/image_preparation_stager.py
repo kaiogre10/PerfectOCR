@@ -18,11 +18,7 @@ class ImagePreparationStager(AbstractStager):
         start_time = time.perf_counter()
         
         # Usar contexto base si existe, sino crear uno nuevo
-        exec_context: Dict[str, Any] = context.copy() if context else {}
-        
-        # Asegurar output_paths en el contexto
-        if "output_paths" not in exec_context:
-            exec_context["output_paths"] = self.output_paths
+        exec_context: Dict[str, Any] = context if context else {}
 
         for worker_idx, worker in enumerate(self.workers):
             worker_start = time.perf_counter()

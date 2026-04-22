@@ -51,9 +51,8 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "angle_corrector"
-                output_paths = context["output_paths"]
                 img_id = f"full_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, img_id, full_img, output_paths, worker_name)
+                save_croped_image(image_name, img_id, full_img, worker_name)
             
             return True
             

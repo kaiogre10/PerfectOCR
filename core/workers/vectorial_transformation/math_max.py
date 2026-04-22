@@ -68,7 +68,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 file_name: str = manager.workflow.metadata.image_name # type: ignore
                 worker_name = context.get("worker_name") or "math_max"
                 output_paths = context["output_paths"]
-                save_debug_table(corrected_df, file_name, output_paths, worker_name, header_polygons)
+                save_debug_table(corrected_df, file_name, worker_name, header_polygons)
 
             if not manager.save_structured_table(corrected_df):
                 logger.info("No se pudo guardar data frame")
