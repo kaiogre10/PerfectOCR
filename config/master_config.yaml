@@ -17,11 +17,11 @@ pipeline_secuence:
 
   ocr_stage:
     - "paddle_wrapper"
-    - "text_refiner"
-    - "data_finder"
+    # - "text_refiner"
+    # - "data_finder"
     
   vector_stage:
-   - "lineal"
+  #  - "lineal"
    - "cos_sim"
    - "table_structurer"
    - "math_max"
@@ -57,7 +57,7 @@ enabled_outputs:
     sharp_poly: False
 
   ocr_outputs:
-    ocr_raw: False
+    ocr_raw: True
     binarized_polygons: False
     cropp_blobs: False
     fragmented_polys: False
@@ -91,7 +91,8 @@ models_config:
   
   det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
   rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
-  wf_model_path: "C:/PerfectOCR/data/models/wf/wf_model.pkl"
+  # wf_model_path: "C:/PerfectOCR/data/models/wf/wf_model.pkl"
+  wf_model_path: "C:/word_finder_model/models/wf_model.pkl"
   set_wf_params: False
   
 modules:
