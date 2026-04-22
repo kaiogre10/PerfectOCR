@@ -17,25 +17,25 @@ pipeline_secuence:
 
   ocr_stage:
     - "paddle_wrapper"
-    # - "text_refiner"
+    - "text_refiner"
     # - "data_finder"
     
   vector_stage:
   #  - "lineal"
-   - "cos_sim"
-   - "table_structurer"
-   - "math_max"
+  #  - "cos_sim"
+  #  - "table_structurer"
+  #  - "math_max"
    
 log_debug:
   text_ocr: False
-  key_fields: False
-  lines: False
-  table_lines: False
+  key_fields: True
+  lines: True
+  table_lines: True
   table_geo: False
   table_correct: True
   
-  semantic_types_log: [2, 3, 4, 5]
-  kf_list_log: [-1]
+  semantic_types_log: [3]
+  kf_list_log: [6]
   
 # Configuración de salida
 enabled_outputs:
@@ -57,18 +57,18 @@ enabled_outputs:
     sharp_poly: False
 
   ocr_outputs:
-    ocr_raw: True
+    ocr_raw: False
     binarized_polygons: False
     cropp_blobs: False
     fragmented_polys: False
     semantic_field: False
-    seman_clas: False
+    seman_clas: True
     cleanned_text: False
   
   vectorization_outputs:
     reconstructed_lines: False
     table_lines: False
-    features: False
+    features: True
     image_features: False
     table_structured: False
     math_max_corrected: False

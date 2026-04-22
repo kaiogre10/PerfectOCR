@@ -657,7 +657,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """Asignar key_field = 6 a todos los polígonos de la línea de encabezadoy calcular la cantidad de columnas (H) basado en los key_fields"""
         for line_id, line_data in all_lines.items():
             if line_data.header_line is not None:
-                # line_text = line_data.text
+                line_text = line_data.text
                 header_line_id = line_id
                 h = 0
                 header_line_text: List[str] = []
@@ -682,6 +682,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                             if poly.key_field != 6:
                                 poly.key_field = [poly.key_field, 6]
                             
-                # logger.info(f"H: {h} LINEA DE ENCABEZADO POLY:'{" ".join(header_line_text)}'\n"f"Linea: '{line_text}'")
+                logger.info(f"H: {h} LINEA DE ENCABEZADO POLY:'{" ".join(header_line_text)}'\n"f"Linea: '{line_text}'")
                 return h, header_line_id
         return (0, "")

@@ -8,7 +8,7 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
 from core.utils.data_utils import VECTOR_MEAN_DUMMIE, VECTOR_MEDIAN_DUMMIE
 from core.utils.math_utils import get_cosine_similarity, density_cluster, calculate_features
-from services.output_service import save_debug_json
+from services.output_service import save_debug_json, save_table_values
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         self.eps = worker_config.get("eps")
         self.metric = worker_config.get("metric", "")
         self.output = config.get("table_lines", False)
+        self.output_features = config.get("features")
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         timw9 = time.perf_counter()
@@ -65,6 +66,14 @@ class MatricialCusine(VectorizationAbstractWorker):
             
             tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
             analysis = calculate_features(sorted_lines, polygons_dict, img_dims)
+
+            if self.output_features:
+                all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+                line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
+                features_to_ind = analysis[:, 1:].astype(np.str_)
+                features_id = np.column_stack([line_id, features_to_ind])
+                file_name: str = manager.workflow.metadata.image_name
+                save_table_values(file_name, features_id, "vectorizer", False)
             
             if tabular_lines:
                 return self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)

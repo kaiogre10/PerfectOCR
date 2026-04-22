@@ -289,7 +289,7 @@ class DataFormatter:
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
-                    updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[0], cuant_chars=0)
+                    updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[0], cuant_chars=-1)
                     self.workflow.polygons[poly_id] = updated_polygon
                     
             if self.key_fields_log:
