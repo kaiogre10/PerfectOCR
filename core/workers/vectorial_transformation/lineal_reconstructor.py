@@ -35,10 +35,10 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 return False
             
             lines_info, table_range = reconsturctued_lines
-            logger.info(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
+            logger.debug(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
 
             if manager.create_text_lines(lines_info):
-                logger.info("Lineas guardads correctamente en el manager")
+                logger.debug("Lineas guardads correctamente en el manager")
             
                 head, foot = table_range
                 if head < 1 and foot < 1:
@@ -54,9 +54,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    worker_name = context.get("worker_name") or "lineal"
-                    output_paths = context["output_paths"]                    
-                    save_raw_json(output_paths, worker_name, lines_info, file_name)
+                    worker_name = context.get("worker_name") or "lineal"                
+                    save_raw_json(worker_name, lines_info, file_name)
 
                 return True
                                             

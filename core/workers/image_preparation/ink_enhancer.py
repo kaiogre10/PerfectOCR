@@ -133,8 +133,8 @@ class InkCorrector(ImagePrepAbstractWorker):
                 outlier_cont.append(cont_coords)
                 lines_correct += 1
                 outlier_cont.append(cont_coords)
-        logger.info(f"RUIDO: {lines_correct}")
-        return grey_img, outlier_cont
+      #  logger.info(f"RUIDO: {lines_correct}")
+        return make_contiguous(grey_img), outlier_cont
         points = metrics[:, [-5, -6, -7, -8]]
         # logger.info("BLANCOS DENTRO:\n"f"{points}")
         maskblasj = metrics[:, -7] < 255

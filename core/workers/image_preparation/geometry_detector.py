@@ -115,7 +115,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 poly_id = f"poly_{new_idx:04d}"
                 final_polygons[poly_id] = poly_data
 
-            logger.info(f"FINAL: {len(final_polygons)}")
+          #  logger.info(f"FINAL: {len(final_polygons)}")
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.critical("GeometryDetector: Fallo al estructurar polígonos.")

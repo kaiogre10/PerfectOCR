@@ -476,7 +476,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
 
         if total_cuant == total_text:
             if total_text < 3:
-                # logger.info(f"NUM por único: '{s}'")
+              #  logger.info(f"NUM por único: '{s}'")
                 has_cuants += 1
                 return (5, total_cuant)
 
@@ -486,7 +486,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 return (3, total_cuant)
                 
             if s.isdecimal():
-                # logger.info(f"NUM por decimal: '{s}'")
+              #  logger.info(f"NUM por decimal: '{s}'")
                 has_cuants += 1
                 return (5, total_cuant)
                 
@@ -495,7 +495,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 has_cuants += 1
                 return (4, total_cuant)
 
-            logger.debug(f"NUM por descarte en conteo: '{s}'")
+            #logger.info(f"NUM por descarte en conteo: '{s}'")
             has_cuants += 1
             return (5, total_cuant)
 
@@ -505,7 +505,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             return (4, total_cuant)
 
         if is_umd(s):
-            # logger.info(f"UMD mixto: '{s}'")
+          #  logger.info(f"UMD mixto: '{s}'")
             mixed += 1
             return (2, total_cuant)
 
@@ -529,8 +529,8 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 encoded += 1
                 return (2, total_cuant)
 
-            if (total_cuant / total_text) > 0.687:
-                logger.debug(f"NUM por codificacion: '{s}'")
+            if "/" not in s and (total_cuant / total_text) > 0.687:
+              #  logger.info(f"NUM por codificacion: '{s}'")
                 return (5, total_cuant)
             logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
             encoded += 1

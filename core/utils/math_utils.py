@@ -232,11 +232,11 @@ def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], i
                 # "\n"f"{textual_features}")
 
     all_lines_features = np.column_stack([all_features, textual_features])
-    logger.info("TODAS LAS FEATURES"
+    logger.debug("TODAS LAS FEATURES"
             "\n"f"SHAPE:{all_lines_features.shape}"
         "\n"f"{np.array2string(all_lines_features, precision=3, suppress_small=True)}")
             
-    logger.info(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.7f}s")
+    logger.debug(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.7f}s")
 
     return all_lines_features
 

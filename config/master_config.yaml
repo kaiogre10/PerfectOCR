@@ -2,8 +2,8 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "angle_corrector"
-    # - "ink_enhancement"
+    - "angle_corrector"
+    - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
@@ -17,19 +17,19 @@ pipeline_secuence:
 
   ocr_stage:
     - "paddle_wrapper"
-    # - "text_refiner"
-    # - "data_finder"
+    - "text_refiner"
+    - "data_finder"
     
   vector_stage:
    - "lineal"
-  #  - "cos_sim"
-  #  - "table_structurer"
-  #  - "math_max"
+   - "cos_sim"
+   - "table_structurer"
+   - "math_max"
    
 log_debug:
   text_ocr: False
   key_fields: False
-  lines: True
+  lines: False
   table_lines: False
   table_geo: False
   table_correct: True
@@ -41,7 +41,7 @@ log_debug:
 enabled_outputs:
   image_load_outputs:
     full_img: False
-    bin_full_img: True
+    bin_full_img: False
     angle_corrected: False
     moire_poly: False
     cropped_img: False
