@@ -228,8 +228,8 @@ def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], i
     # "\n"f"SHAPE:{all_features.shape}")
     
     textual_features = calculate_textual_line_features(sorted_lines, polygons_dict)
-    # logger.info(f"Features textuales shape: {textual_features.shape}")
-                # "\n"f"{textual_features}")
+    # logger.info(f"Features textuales shape: {textual_features.shape}"
+    #             "\n"f"{textual_features[:, -2]}")
 
     all_lines_features = np.column_stack([all_features, textual_features])
     logger.debug("TODAS LAS FEATURES"

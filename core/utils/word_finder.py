@@ -125,9 +125,7 @@ class WordFinder:
                 single = True
             else:
                 queue = [self.text_normalize(s) for s in text if self.text_normalize(s)]
-
-            # if not self._is_potential_keyword(str(queue)):
-            #     return []
+                
             results: List[Dict[str, Any]] = []
             
             while queue:
@@ -135,11 +133,7 @@ class WordFinder:
                 if not q:
                     continue
 
-                # if q in self.noise_words:
-                #     # logger.info(f"Ruido temprano 2: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
-                #     continue
-
-                if not self._is_potential_keyword(q):
+                if q in self.noise_words or not self._is_potential_keyword(q):
                     # logger.info(f"Texto no paso filtro global: {q}")
                     continue
 
@@ -151,6 +145,7 @@ class WordFinder:
 
                 found_matches_for_s: List[Dict[str, Any]] = []
                 q_grams = self.build_query_grams(q)
+                # logger.info(f"ULTIMAS INSTNACIAS: '{q}'")
                 
                 # FASE 1: Intersección Matricial Rápida
                 candidate_ids: Set[int] = set()
@@ -189,6 +184,7 @@ class WordFinder:
 
                     # Buscamos dónde coinciden en la consulta q
                     hit_positions: List[int] = []
+                    max_matches: List[Tuple[float, int]] = []
                     for n, sub_arr in grams_cand.items():
                         if n not in q_grams:
                             continue
@@ -198,6 +194,15 @@ class WordFinder:
                         cand_mask = np.sum(sub_arr.astype(np.int64) * weights, axis=1, dtype=np.int64)
                         q_mask = np.sum(q_grams[n].astype(np.int64) * weights, axis=1, dtype=np.int64)
                         
+                        # clean_gram = q_grams[n]
+                        # rows = clean_gram.shape[0]
+                        # windows = np.lib.stride_tricks.sliding_window_view(clean_gram, (rows, n), (0, 1))
+                        # for idx, window in enumerate(windows):
+                        #     windowr = window.reshape(rows, n)
+                        #     mean_match = self.ngram_similarity_vec(sub_arr, windowr)
+                        #     if mean_match > self.threshold:
+                        #         max_matches.append((float(mean_match), idx))
+                        #         logger.info(f"FINAL MATCHES:\n"f"{max_matches}")
                         # Buscamos las posiciones de hit dentro de la consulta 'q'
                         q_hits = np.intersect1d(q_mask, cand_mask, assume_unique=False, return_indices=True)[1]
                         
@@ -389,12 +394,6 @@ class WordFinder:
         except Exception as e:
             logger.error(f"Error construyendo n-gramas: {e}", exc_info=True)
             return []
-        
-    def _ngram_similarity(self, a: str, b: str) -> float:
-        """Calcula la similitud entre dos n-gramas."""
-        if not a or not b: return 0.0
-        matches = sum(1 for x, y in zip(a, b) if x == y)
-        return matches / float(max(len(a), len(b)))
     
     def ngram_similarity_vec(self, a: np.ndarray[Any, np.dtype[np.uint8]], b: np.ndarray[Any, np.dtype[np.uint8]]) -> float:
         ngram_size = a.shape[1]
@@ -412,48 +411,40 @@ class WordFinder:
         total_ngrams_cand = 0.0
         try:
             for n, cand_arrays in grams_cand.items():
-                if cand_arrays.size < 1:
+                if cand_arrays is None or cand_arrays.size < 1:
                     continue
 
                 num_cand = cand_arrays.shape[0]
                 total_ngrams_cand += num_cand
 
-                sub_array = grams_sub[n]
-                if not sub_array:
+                sub_array = grams_sub.get(n)
+                if sub_array is None or sub_array.size < 1:
                     continue
-                # input_mask = np.sum((sub_array * p1).astype(np.int64), axis=1, dtype=np.int64)
-                # global_mask = np.sum((cand_arrays * p1).astype(np.int64), axis=1, dtype=np.int64)
-                # matches_mask = np.intersect1d(input_mask, global_mask, assume_unique=False, return_indices=True)[1]
-                # num_match = matches_mask.shape[0]
-                # 1. Calcular todas las similitudes cruzadas posibles > 0
-                possible_matches: List[Tuple[float, int, int]] = []
-                for i, gc in enumerate(cand_arrays):
-                    for j, gs in enumerate(sub_array):
-                        # gc y gs tienen garantizado tener la misma longitud 'n' aquí
-                        if gc == gs:
-                            sim = 1.0
-                        else:
-                            sim = self._ngram_similarity(gc, gs)
-                        # Penalización simétrica
-                        sim *= self._length_penalty(gc, gs)
 
-                        if sim > 0.0:
-                            possible_matches.append((sim, i, j))
+                # 1. Calcular similitudes cruzadas en bloque [num_cand, num_sub]
+                matches = (cand_arrays[:, np.newaxis, :] == sub_array[np.newaxis, :, :])
+                sim_matrix = matches.sum(axis=2) / float(n)
+                rows, cols = np.where(sim_matrix > 0.0)
+                if rows.size == 0:
+                    continue
 
                 # 2. Ordenar por score descendente (voraz)
-                possible_matches.sort(key=lambda x: x[0], reverse=True)
+                scores = sim_matrix[rows, cols]
+                prio_indices = np.argsort(-scores)
 
                 # 3. Asignar asegurando unicidad de índices
-                used_cand: Set[int] = set()
-                used_sub: Set[int] = set()
+                used_cand = np.zeros(num_cand, dtype=bool)
+                used_sub = np.zeros(sub_array.shape[0], dtype=bool)
                 section_score = 0.0
 
-                for score, i, j in possible_matches:
-                    if i not in used_cand and j not in used_sub:
-                        section_score += score
-                        used_cand.add(i)
-                        used_sub.add(j)
-                        if len(used_cand) == num_cand:
+                for idx in prio_indices:
+                    i = int(rows[idx])
+                    j = int(cols[idx])
+                    if not used_cand[i] and not used_sub[j]:
+                        section_score += float(scores[idx])
+                        used_cand[i] = True
+                        used_sub[j] = True
+                        if np.count_nonzero(used_cand) == num_cand:
                             break
 
                 total_score += section_score

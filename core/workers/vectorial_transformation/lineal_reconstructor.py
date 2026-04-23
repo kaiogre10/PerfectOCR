@@ -150,7 +150,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         current_line_bbox = list(bbox)
                         continue
                     
-                    line_t_cuant = 0 if poly.key_field is not None or 0 in poly.semantic_clasification else sum((p.cuant_chars or 0) for p in current_line_polys) 
+                    line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys) 
                     
                     lines_bbox.append(current_line_bbox)  # Agregar aquí: bbox de la línea completada
                     

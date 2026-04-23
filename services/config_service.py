@@ -165,7 +165,8 @@ class ConfigService:
                 **self.enabled_outputs.get("ocr_outputs", {}),
                 **self.utils_config,
                 "ocr_stage": self.workers_order["ocr_stage"],
-                "create_refiners": create_refiners > 0
+                "create_refiners": create_refiners > 0,
+                "semantic_types_log": self.logs_debug["semantic_types_log"]
             }
        
     @cached_property

@@ -13,8 +13,10 @@ vowels = VOWELS
 _zeros_str = r'00'
 _punt_quant_chars = r'[.,]'
 _zeros_to_sub = r'[OQDo]'
+_semi_zeros = r'[OQDo]{2}'
 _base_date_num_str = r'[0123O][0-9O]'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
+_semi_zeros_pattern = re.compile(_semi_zeros, re.IGNORECASE)
 _zeros_pattern = re.compile(_zeros_to_sub)
 _punt_pattern = re.compile(_punt_quant_chars, re.IGNORECASE)
 
@@ -74,7 +76,8 @@ _umd_patterns_list: List[Pattern[str]] = [
     re.compile(rf'\b\d+\s*l\b', re.IGNORECASE),  # Solo 'l' requiere número entero antes
     re.compile(rf'\b\d+\s*m\b', re.IGNORECASE),  # Solo 'm' requiere número entero antes
     re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b', re.IGNORECASE),
-    re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b', re.IGNORECASE) # Dimensiones (10x20)
+    re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b', re.IGNORECASE), # Dimensiones (10x20)
+    re.compile(r'#\s*\d+')
 ]
 
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
@@ -262,7 +265,7 @@ def is_quantitative(text: str) -> bool:
     """
     Válida rapidamente si un string es cuantitativo.
     """
-    if len(text) < 3 or text.isdecimal():
+    if text.isdecimal() or len(text) < 3:
         return False
     
     return validate_quant_chars(text) or validate_quant_pattern(text)
@@ -314,9 +317,14 @@ def get_cuants(text: str) -> str:
                     result_parts.append(" ".join(chunks))
                     continue
             
-        if word.count("$") == 1 and is_quantitative(word):
-            result_parts.append(word)
-            continue
+        if word.count("$") == 1:
+            if is_quantitative(word):
+                result_parts.append(word)
+                continue
+            elif bool(_semi_zeros_pattern.search(word)):
+                word = _zeros_pattern.sub("0", word)
+                result_parts.append(word)
+                continue
 
         matches = list(_token.finditer(word))
         if not matches:
@@ -466,7 +474,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                     return (2, total_cuant)
                     
                 if total_text > 2:
-                    logger.debug(f"CODE sin vocales: '{s}'")
+                    # logger.info(f"CODE sin vocales: '{s}'")
                     no_cuants += 1
                     return (3, total_cuant)
                 
@@ -481,7 +489,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 return (5, total_cuant)
 
             elif s.startswith("0"):
-                logger.debug(f"CODE por inicio 0: '{s}'")
+                # logger.info(f"CODE por inicio 0: '{s}'")
                 has_cuants += 1
                 return (3, total_cuant)
                 
@@ -503,14 +511,19 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             logger.debug(f"CUANT mixto: '{s}'")
             mixed += 1
             return (4, total_cuant)
-
+            
+        elif s.startswith("$") and any(c.isdecimal() for c in s):
+            logger.debug(f"CUANT por incio '$': '{s}'")
+            has_cuants += 1
+            return (4, total_cuant)
+            
         if is_umd(s):
           #  logger.info(f"UMD mixto: '{s}'")
             mixed += 1
             return (2, total_cuant)
 
         if is_code(s):
-            logger.debug(f"CODE mixto: '{s}'")
+            # logger.info(f"CODE mixto: '{s}'")
             mixed += 1
             return (3, total_cuant)
         
@@ -532,12 +545,12 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             if "/" not in s and (total_cuant / total_text) > 0.687:
               #  logger.info(f"NUM por codificacion: '{s}'")
                 return (5, total_cuant)
-            logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
+            # logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
             encoded += 1
             return (3, total_cuant)
 
         if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
-            logger.debug(f"CODE por codificacion: '{s}'")
+            # logger.info(f"CODE por codificacion: '{s}'")
             encoded += 1
             return (3, total_cuant)
         

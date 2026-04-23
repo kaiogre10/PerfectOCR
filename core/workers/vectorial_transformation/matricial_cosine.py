@@ -65,15 +65,19 @@ class MatricialCusine(VectorizationAbstractWorker):
             sorted_lines = [all_lines_dict[k] for k in line_ids]
             
             tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
+            logger.debug(f"{tabular_lines}")
             analysis = calculate_features(sorted_lines, polygons_dict, img_dims)
+            # has_kf = analysis[:, -2] == 1
+            # rows_delete = np.where(has_kf)[0]
+            # analysis = analysis[rows_delete]
 
-            if self.output_features:
-                all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-                line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
-                features_to_ind = analysis[:, 1:].astype(np.str_)
-                features_id = np.column_stack([line_id, features_to_ind])
-                file_name: str = manager.workflow.metadata.image_name
-                save_table_values(file_name, features_id, "vectorizer", False)
+            # if self.output_features:
+            #     all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+            #     line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
+            #     features_to_ind = analysis[:, 1:].astype(np.str_)
+            #     features_id = np.column_stack([line_id, features_to_ind])
+            #     file_name: str = manager.workflow.metadata.image_name
+            #     save_table_values(file_name, features_id, "vectorizer", False)
             
             if tabular_lines:
                 return self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
@@ -114,7 +118,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         features_all = np.compress(mask, analysis, 0)
         # Ordenamos las filas según el índice original para estar alineados con tabular_indices
         features_all = features_all[features_all[:, 0].argsort()]
-        
+                
         features = np.ascontiguousarray(features_all[:, 1:], np.float32)
         
         timecos0 = time.perf_counter()
@@ -170,11 +174,11 @@ class MatricialCusine(VectorizationAbstractWorker):
             # Devolver TODAS las líneas comprendidas entre start_idx y end_idx de line_ids
             # Garantizando la contigüidad absoluta en base al ID general.
             table_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
-            # logger.info(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
+            logger.info(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
             return table_line_ids
 
         # Si ninguna línea superó el umbral, activar emergencia desde aquí
-        # logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
+        logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
         return self._emergency_fallback(analysis, line_ids)
 
     def _emergency_fallback(self, analysis: np.ndarray[Any, Any], line_ids: List[str]) -> List[str]:
@@ -190,14 +194,16 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         t0 = time.perf_counter()
         dummie_vect = np.row_stack([median_ref_vec, mean_ref_vec])
+        # has_kf = analysis[:, -2] < 1
         analysi = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
+   
         sims_comb = get_cosine_similarity(analysi, dummie_vect, dense_output=False)
         
         sims_final = (sims_comb[:, 0] * median_w) + (sims_comb[:, 1] * mean_w)
 
         logger.debug(f"Tiempo: {time.perf_counter() - t0}")
         
-        logger.debug(f"Promedio de similitud final: {sims_final}")
+        # logger.debug(f"Promedio de similitud final: {sims_final}")
         logger.debug("Todas las líneas ordenadas: %s", ", ".join(str(lid) for lid in line_ids))
         sims_str = "[" + "  ".join(f"{val}" for val in sims_final) + "]"
         logger.debug("Similitudes de emergencia finales:\n%s", sims_str)

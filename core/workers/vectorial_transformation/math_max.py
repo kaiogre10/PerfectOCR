@@ -234,7 +234,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             full_idx_dec = np.where(full_dec_mask == 3)[0]
 
             # logger.info("FULL_ID:\n"f"{np.column_stack([full_idx, elements_array[full_idx]])}")
-            logger.info("FULL_DEC:\n"f"{np.column_stack([full_idx_dec, full_dec[full_idx_dec]])}")
+            # logger.info("FULL_DEC:\n"f"{np.column_stack([full_idx_dec, full_dec[full_idx_dec]])}")
             full_rows_dfs = df.iloc[full_idx_dec]
             logger.info("FULL ROWS:\n"+ full_rows_dfs.to_string(index=True))
             full_n = full_idx.size
@@ -267,17 +267,17 @@ class MatrixSolver(VectorizationAbstractWorker):
                     type_col.append((col, "textual"))
                     
             # logger.info(f"TYPOS: '{type_col}'")
-            full_rows_df = df.iloc[full_idx]
+            # full_rows_df = df.iloc[full_idx]
             aritmetic_df = df.loc[dec_rows, decimal_cols_str]
             if aritmetic_df.empty: 
                 return (df, type_col)
             else:
-                logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=True))
+                # logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=True))
                 logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
                 return (aritmetic_df, type_col)
             
         except Exception as e:
-            logger.info(f"ERROR EN ASIGANCIÓN: '{e}'", exc_info=True)
+            logger.warning(f"ERROR EN ASIGANCIÓN: '{e}'", exc_info=True)
         return (df.iloc[0:0], [])
         
     def _correct_df(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int, dec_cols: List[Tuple[str, str]]) -> pd.DataFrame:
@@ -372,7 +372,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                     
                 df.iat[row_idx, closest_textual_idx] = new_text
 
-        logger.info("CORRECT:\n"+ df.to_string(index=True))
+        # logger.info("CORRECT:\n"+ df.to_string(index=True))
         # logger.info(f"ZEROS: \n"f"{zeros_repl}")
         if np.count_nonzero(zeros_repl) == 0:
             logger.info(f"Tabla completa acomodada correctamente")
