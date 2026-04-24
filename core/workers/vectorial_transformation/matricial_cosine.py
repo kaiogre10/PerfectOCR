@@ -18,7 +18,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         self.project_root = project_root
         worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
-        self.min_cluster = int(worker_config.get("min_cluster", 1))
+        self.min_cluster = worker_config.get("min_cluster", 1)
         self.dummie_weights = worker_config["dummie_weights"]
         self.emergency_threshold = worker_config.get("emergency_threshold")
         self.eps = worker_config.get("eps")
@@ -71,13 +71,13 @@ class MatricialCusine(VectorizationAbstractWorker):
             # rows_delete = np.where(has_kf)[0]
             # analysis = analysis[rows_delete]
 
-            # if self.output_features:
-            #     all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-            #     line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
-            #     features_to_ind = analysis[:, 1:].astype(np.str_)
-            #     features_id = np.column_stack([line_id, features_to_ind])
-            #     file_name: str = manager.workflow.metadata.image_name
-            #     save_table_values(file_name, features_id, "vectorizer", False)
+            if self.output_features:
+                all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+                line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
+                features_to_ind = analysis[:, 1:].astype(np.str_)
+                features_id = np.column_stack([line_id, features_to_ind])
+                file_name: str = manager.workflow.metadata.image_name
+                save_table_values(file_name, features_id, "vectorizer", False)
             
             if tabular_lines:
                 return self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
@@ -359,7 +359,7 @@ class MatricialCusine(VectorizationAbstractWorker):
     def _apply_dbscan_clustering(self, features_array: np.ndarray[Any, Any], manager: DataFormatter) -> List[str]:
         """Aplica DBSCAN para agrupar líneas similares"""
         all_lines = manager.workflow.all_lines if manager.workflow else {}
-        int_line_ids = features_array[:, 0].dtype(np.int8)
+        int_line_ids = features_array[:, 0].astype(np.int8)
         features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
 
         # Crear un diccionario que mapea line_index (int) a line_id (str)

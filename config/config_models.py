@@ -28,7 +28,6 @@ class OCROutputs(ConfigWithNumpy):
     cropp_blobs: bool
     fragmented_polys: bool
     semantic_field: bool
-    seman_clas: bool
     cleanned_text: bool
 
 class VectorizingOutputs(ConfigWithNumpy):
@@ -198,6 +197,7 @@ class PipelineConfig(ConfigWithNumpy):
     
 class DebugOutputs(ConfigWithNumpy):
     text_ocr: bool
+    seman_clas: bool
     key_fields: bool
     lines: bool
     table_lines: bool

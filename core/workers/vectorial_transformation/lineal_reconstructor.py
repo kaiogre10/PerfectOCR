@@ -77,10 +77,9 @@ class LinealReconstructor(VectorizationAbstractWorker):
         headers = set(boundaries[0])
         footers = set(boundaries[1]) if boundaries[0] else None
         bboxes: List[np.ndarray[Any, Any]] = []
-        lines_bbox: List[Any] = []
+        lines_bbox: List[List[float]] = []
         header_idx: int = 0
         footer_idx: int = 0
-        logger.info("Armado de lineas incidado")
         for poly in prepared_sorted:
             bbox = poly.geometry.bounding_box
             if bbox.size == 0:
@@ -120,7 +119,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     header_line = line_counter if (headers and headers.intersection(set(polygons_index)) and header_idx == 0) else None
                     footer_line = line_counter if (footers and footers.intersection(set(polygons_index)) and footer_idx == 0) else None
                      
-                    tabular_line: bool = False
+                    tabular_line = False
 
                     if header_line is not None:
                         header_idx = header_line  # Asignación directa, no suma
@@ -155,10 +154,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     lines_bbox.append(current_line_bbox)  # Agregar aquí: bbox de la línea completada
                     
                     # El centroide de la línea se calcula como el centroide del bounding box de la línea
-                    line_centroid = [           
-                            (current_line_bbox[0] + current_line_bbox[2]) / 2,
-                            (current_line_bbox[1] + current_line_bbox[3]) / 2
-                    ] if current_line_bbox else [0, 0]
+                    line_centroid = [(current_line_bbox[0] + current_line_bbox[2]) / 2, (current_line_bbox[1] + current_line_bbox[3]) / 2] if current_line_bbox else [0, 0]
                     
                     line_id = f"line_{line_counter:04d}"
                     lines_info[line_id] = {
@@ -211,7 +207,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             if joined_text:
                 current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
                 line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys)
-                lines_bbox.append(current_line_bbox)
+                lines_bbox.append(current_line_bbox) # type: ignore
                 
                 line_centroid = [
                     (current_line_bbox[0] + current_line_bbox[2]) / 2,
@@ -264,7 +260,6 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     footer.append(polygon_index)
                     # logger.info(f"Pie de tabla TOTAL MONETARIO encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
                     continue
-
                 else:
                     continue
 

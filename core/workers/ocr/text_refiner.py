@@ -22,7 +22,8 @@ class Refiner(OCRAbstractWorker):
         self.worker_config = config.get("text_refiner", {})
         self.output = config.get("cleanned_text")
         self.seman_clas_log = config.get("seman_clas")
-        self.semantic_types_log = config["semantic_types_log"]
+        semantic_types_log = any(t == -1 for t in config["semantic_types_log"]) 
+        self.semantic_types_log = config["semantic_types_log"] if not semantic_types_log else list(range(5))
         self.num_passes = self.worker_config.get("num_passes")
         self.cleaner = cleaner
         self.fragmenter = fragmenter

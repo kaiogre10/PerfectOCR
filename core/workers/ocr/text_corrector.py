@@ -71,7 +71,6 @@ class TextCorrector(OCRAbstractWorker):
 
             if corrected_text != original_text:
                 correced_count +=1
-            
                 logger.debug(
                     f"Corrección para '{poly_id}':"
                     f"Original: '{original_text}' → Corregido: '{corrected_text}' SC: {sc}"
@@ -132,7 +131,7 @@ class TextCorrector(OCRAbstractWorker):
         if semantic_clasification in (4, 5):
             dec_token =  self._correct_cuants(token)
             if dec_token != token:
-                logger.info(f"CORRECT NUM: '{token}' -> '{dec_token}'")
+                logger.debug(f"CORRECT NUM: '{token}' -> '{dec_token}'")
             return dec_token
 
         elif semantic_clasification == 2:

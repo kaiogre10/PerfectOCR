@@ -97,7 +97,6 @@ class DataFinder(OCRAbstractWorker):
                 else:
                     # if is_acronym(ocr_text):
                     #     ocr_text = ocr_text.replace(".", "")
-                    ocr_text = ocr_text.lower()
                     # logger.info(f"Texto a procesar: '{ocr_text}' | sc: {poly.semantic_clasification}")
                     valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
                     if not valid_results:
@@ -106,6 +105,8 @@ class DataFinder(OCRAbstractWorker):
                     # logger.info(f"Valid Results: {valid_results}")
                     num_keywords = len(valid_results)
                     all_key_fields = [result['key_field'] for result in valid_results]
+                    if not all_key_fields or all_key_fields is None:
+                        continue
 
                     # Verificar si todos son headers (key_field == 6)
                     if all(kf == 6 for kf in all_key_fields):
@@ -136,7 +137,7 @@ class DataFinder(OCRAbstractWorker):
                         
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
-                # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:

@@ -1,19 +1,6 @@
 from typing import Dict, List, Any, FrozenSet
 import numpy as np
 
-field_conversion_map: Dict[str, int] = {
-    'GlobalData': 0,
-    'MontoTotalDocumento': 1,
-    'TotalProductos': 2,
-    'Subtotal': 3,
-    'FolioDocumento': 4,
-    "NombreCliente": 5,
-    "HeaderWords": 6,
-    "RFCProveedor": 7,
-    "MontoIVAGeneral": 8,
-    "FechaDocumento": 9
-}
-
 DENSITY_ENCODER: Dict[str, float] = {
     "0": 0.0,
     "1": 1.0,
@@ -240,12 +227,10 @@ VECTOR_MEAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
     0.99163999,
     0.7981898,
     0.96969697,
-    1.0,
     1.0
 ])
 
 VECTOR_MEDIAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
-    
     1.2091054,
     0.9216525,
     1.0211281,
@@ -281,7 +266,6 @@ VECTOR_MEDIAN_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
     0.76470588,
     1.0,
     1.0,
-    1.0,
 ])
 
 FEATURES_NAME: List[str] = [
@@ -315,13 +299,12 @@ FEATURES_NAME: List[str] = [
     "align_prev",
     "align_next",
     "dig_margin",
-    "has_numeric",
+    "has_quant",
     "numeric_count_norm",
-    "num_above",
+    "digit_above",
     "digit_char_frec",
     "has_digit",
-    "kf_abs",
-    "qunat_above"
+    "quant_above"
 ]
 
 SEMATIC_TYPES_MAP: Dict[str, int] = {

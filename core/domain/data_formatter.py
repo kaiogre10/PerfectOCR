@@ -20,7 +20,7 @@ class DataFormatter:
         
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
-        self.kf_list_log =  list(range(1, 12)) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
+        self.kf_list_log = list(range(1, 12)) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
         self.lines_log = logs_config.get("lines", False)
         self.table_lines_log = logs_config.get("table_lines", False)
         self.table_geo_log = logs_config.get("table_geo", False)
@@ -331,24 +331,23 @@ class DataFormatter:
             if not valid_lines:
                 logger.error("No hay líneas válidas para procesar.")
                 return False
-                
+
             all_lines_dataclasses: Dict[str, AllLines] = {}
             for line_id, line_data in valid_lines.items():
                 line_geometry = LineGeometry(
-                    line_centroid=line_data["line_centroid"] or [0, 0],
-                    line_bbox=line_data["line_bbox"] or [0, 0, 0, 0],
+                    line_centroid=line_data["line_centroid"] or [0.0, 0.0],
+                    line_bbox=line_data["line_bbox"] or [0.0, 0.0, 0.0, 0.0],
                 )
-                
                 all_lines_dataclasses[line_id] = AllLines(
                     lineal_id=line_id,
-                    line_index=line_data.get("line_index", 0),
+                    line_index=line_data.get("line_index"),
                     text=line_data.get("text", ""),
                     polygon_ids=line_data["polygon_ids"],
                     polygons_index=line_data["polygons_index"],
                     line_geometry=line_geometry,
                     tabular_line=line_data["tabular_line"],
-                    header_line=line_data["header_line"],
-                    footer_line=line_data["footer_line"],
+                    header_line=line_data["header_line"] or None,
+                    footer_line=line_data["footer_line"] or None,
                     t_cuant = line_data["t_cuant"]
                 )
             

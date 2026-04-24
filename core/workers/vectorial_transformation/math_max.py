@@ -46,7 +46,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             logger.info("Tabla recibida para corrección matemática:\n" + df.to_string(index=True))
 
-            corrected_df = self.solve(df, table_matrix)
+            corrected_df = self.solve(df, table_matrix, H)
 
             if corrected_df.empty:
                 logger.error("SE DEVOLVIÓ DATA FRAME VACÍO")
@@ -80,14 +80,11 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
         return False
             
-    def solve(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]]) -> pd.DataFrame:
+    def solve(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int) -> pd.DataFrame:
         """
         Fase 1: Identifica roles C, PU, MTL usando clasificación semántica
         de polígonos y votación global con aritmética Decimal.
         """
-        H = df.shape[1]
-
-        # --- PASO 0: Validación de Soledad ---
         aritmetic_df, dec_cols = self.get_full_rows(df, table_matrix, H)
         if aritmetic_df.empty:
             logger.error("SIN COLUMNAS SUFICINETES PARA VALIDACIÓN ARITMETICA")
@@ -149,10 +146,10 @@ class MatrixSolver(VectorizationAbstractWorker):
                     matrix_quantity[row_id, i] = sum(1 for ch in sc_v if ch == 5)
                     
                 if any(s == 1 or s == 2 for s in sc_v):
-                    textual_array[row_id, i] = sum(1 for ch in sc_v if ch in (1, 2))
+                    textual_array[row_id, i] = sum(1 for ch in sc_v if ch == 1)
                     
         table_arrays = np.stack([matrix_decimal, matrix_quantity, elements_array, textual_array], dtype=np.int8)
-        # logger.info(f"ARRAYS TABLE: \n"f"{table_arrays}")
+        logger.info(f"ARRAYS TABLE: \n"f"{table_arrays}")
         return table_arrays
 
     def _find_hypotesis(self, df: pd.DataFrame, aritmetic_df: pd.DataFrame, dec_cols: List[Tuple[str, str]]) ->pd.DataFrame:
@@ -162,7 +159,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         try:
             perm_df = aritmetic_df.map(lambda x: Decimal(x))
         except InvalidOperation as e:
-            logger.error(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
+            logger.debug(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
             return df.iloc[0:0]
         # logger.info("DECIMAL DF:\n" + perm_df.to_string(index=False))
         time_t = time.perf_counter()

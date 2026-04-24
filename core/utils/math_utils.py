@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import time
+import pandas as pd
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 from sklearn.cluster import DBSCAN # type: ignore
@@ -232,9 +233,9 @@ def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], i
     #             "\n"f"{textual_features[:, -2]}")
 
     all_lines_features = np.column_stack([all_features, textual_features])
-    logger.debug("TODAS LAS FEATURES"
-            "\n"f"SHAPE:{all_lines_features.shape}"
-        "\n"f"{np.array2string(all_lines_features, precision=3, suppress_small=True)}")
+    #logger.debug("TODAS LAS FEATURES"
+     #       "\n"f"SHAPE:{all_lines_features.shape}"
+      #  "\n"f"{np.array2string(all_lines_features, precision=3, suppress_small=True)}")
             
     logger.debug(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.7f}s")
 
@@ -442,7 +443,6 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     index_to_id_map = {p.poly_index: p.polygon_id for p in polygons_dict.values()}
     features = np.zeros((len(sorted_lines), 3), np.float32)
     
-    # features_list: List[List[int]] = []
     for i, line_data in enumerate(sorted_lines):
         sc_quant_count = 0
         kf_total = 0
@@ -452,16 +452,14 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
             pid_str = index_to_id_map.get(pid_idx)
             if pid_str and pid_str in polygons_dict:
                 poly = polygons_dict[pid_str]
-                sc: List[int] = polygons_dict[pid_str].semantic_clasification
-                sc_quant_count += count_quantitative_tokens(sc)
                 kf: Optional[List[int]] = poly.key_field
-                if kf is not None:
-                    if isinstance(kf, list):
-                        kf_total += len(kf)
-                    else:
-                        kf_total += 1
+                if kf is None:
+                    sc: List[int] = polygons_dict[pid_str].semantic_clasification
+                    sc_quant_count += count_quantitative_tokens(sc)
+                else:
+                    kf_total += len(kf)
                 
-        features[i, 1] = line_data.t_cuant
+        features[i, 1] = 0 if kf_total != 0 else line_data.t_cuant
         features[i, [0, 2]] = sc_quant_count, kf_total
     
     if features.shape[0] == 0:
@@ -476,11 +474,6 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     num_count_norm = sc_quants / max_sc_quant
     means = np.mean([sc_quants, dec_chars], axis=0)
     sc_quant_mean, dec_mean = means[0], means[1]
-    if max_kf > 0:
-        kf_norm = kfs / max_kf
-        kf_abs = np.clip(1.0 - 2.0 * kf_norm, -1.0, 1.0, dtype=np.float32)
-    else:
-        kf_abs = np.zeros(features.shape[0], dtype=np.float32)
                 
     digit_above = np.where(dec_chars > dec_mean, 1.0, -1.0)
     has_digit = np.where(dec_chars > 1.0, 1.0, -1.0)
@@ -497,7 +490,12 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
         dig_margin = np.zeros_like(dec_chars, np.float32)
     
     # logger.info(f"Features textuales calculadas en: {time.perf_counter() - timef:.6f}'s")
-    return np.column_stack([dig_margin, has_quant, num_count_norm, digit_above, digit_char_frec, has_digit, kf_abs, quant_above])
+    textual_features = np.column_stack([dig_margin, has_quant, num_count_norm, digit_above, digit_char_frec, has_digit, quant_above])
+    #headers = ["dig_margin", "has_quant", "numeric_count_norm", "digit_above", "digit_char_frec", "has_digit", "quant_above"]
+    #textual_df =pd.DataFrame(data=textual_features, columns=headers)
+    #logger.info("Features textuales:"
+     #           "\n"f"{textual_df.to_string(index=True)}")
+    return textual_features
 
 def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
     sc = np.asarray(semantic_clasification, dtype=np.int8)

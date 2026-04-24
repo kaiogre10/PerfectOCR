@@ -23,19 +23,20 @@ pipeline_secuence:
   vector_stage:
    - "lineal"
    - "cos_sim"
-   - "table_structurer"
-   - "math_max"
+   #- "table_structurer"
+   #- "math_max"
    
 log_debug:
   text_ocr: False
+  seman_clas: False
   key_fields: False
   lines: False
-  table_lines: False
+  table_lines: True
   table_geo: False
   table_correct: True
   
   semantic_types_log: [3]
-  kf_list_log: [-1]
+  kf_list_log: [1, 2, 3, 4, 5, 6]
   
 # Configuración de salida
 enabled_outputs:
@@ -62,7 +63,6 @@ enabled_outputs:
     cropp_blobs: False
     fragmented_polys: False
     semantic_field: False
-    seman_clas: False
     cleanned_text: False
   
   vectorization_outputs:

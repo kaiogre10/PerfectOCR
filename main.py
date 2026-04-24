@@ -23,27 +23,24 @@ os.environ.update({
 TEST_MODE = True
 
 DEFAULT_INPUT_PATH = [
-#    "input",
+   "input",
      "input2",
-    #    "input3"
+      "input3"
 #  "C:/Users/USER/Desktop/tickets_nuevo"
 ]
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
-
-LATITUDE_OUTPUT_PATH = "D:/outputs/perfectocr"
-
-env_local = "remote" if os.environ.get("CODESPACES") == "true" else "latitude"
-if env_local == "remote":
-    print("Ejecución remota")
-    output_paths = ["output"]
-    default_output = output_paths
+LATITUDE_OUTPUT_PATH = "D:"
     
-elif os.path.exists(LATITUDE_OUTPUT_PATH):
+if os.path.exists(LATITUDE_OUTPUT_PATH):
     print("Ejecución en LATITUDE")
     output_paths = ["output"]
     default_output = ["output"]
 
+elif os.environ.get("CODESPACES"):
+    print("Ejecución remota")
+    output_paths = ["output"]
+    default_output = output_paths
 else:
     print("Ejecución en Inspiron")
     output_paths = []
