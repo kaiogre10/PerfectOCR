@@ -20,12 +20,6 @@ logger = logging.getLogger(__name__)
 def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], contours1: List[np.ndarray[Any, Any]], contours2: List[np.ndarray[Any, Any]]):
     """Guarda una imagen con los contornos marcados sobre ella"""
     try:
-        # if isinstance(OUTPUT_PATHS, str):
-        #     OUTPUT_PATHS = [OUTPUT_PATHS]
-
-        # for path in OUTPUT_PATHS:
-        #     output_dir = os.path.join(path, image_name)
-
         for path in OUTPUT_PATHS:
             output_dir = path
             file_name = f"{image_name}_{poly_id}.png"            # Dibuja todos los contornos sobre la imagen
@@ -53,9 +47,6 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], cont
 
 def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any], worker_name: str): 
     """Guarda una imagen de depuración si la salida está habilitada."""
-    # if isinstance(OUTPUT_PATHS, str):
-    #     OUTPUT_PATHS = [OUTPUT_PATHS]
-
     for path in OUTPUT_PATHS:
         output_dir = os.path.join(path, image_name)
         file_name = f"{img_id}.png"
@@ -144,7 +135,7 @@ def save_debug_table(corrected_df: pd.DataFrame, file_name: str, worker_name: st
     except Exception as e:
         logger.error(f"Error guardadndo tabla JSON de {worker_name},: {e}", exc_info=True)
 
-def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], worker_name: str, image_features: bool):
+def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], worker_name: str):
     feature_names = FEATURES_NAME
     try:
         if isinstance(all_features, dict):
@@ -162,49 +153,6 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] 
             table_file_name = f"{file_name}_{worker_name}.csv"
             save_table(df, output_dir, table_file_name, header)
 
-        if image_features:
-            import matplotlib.pyplot as plt
-            features_data = df.drop('line_id', axis=1)
-            feature_names: List[str] = list(features_data.columns.tolist()) # type: ignore
-
-            # Crear la figura
-            plt.figure(figsize=(12, 8)) #type: ignore
-
-            # Plotear cada línea del documento con valores originales
-            for idx, row in features_data.iterrows():
-                line_id: str = df.iloc[idx]['line_id'] #type: ignore
-                plt.plot(feature_names, row.values, label=f'Línea {line_id}', alpha=0.7, linewidth=1) #type: ignore
-
-            # Configurar la gráfica
-            plt.xlabel('Features') #type: ignore
-            plt.ylabel('Valores de Features') #type: ignore
-            plt.title(f'Comportamiento de Features por Línea - {os.path.splitext(file_name)[0]}')#type: ignore
-            plt.xticks(rotation=45, ha='right') #type: ignore
-            plt.grid(True, alpha=0.3) #type: ignore
-
-            # Calcular los límites del eje Y y poner los ticks de 1 en 1
-            if not features_data.empty:
-                ymin = features_data.min().min()# type: ignore
-                ymax = features_data.max().max()# type: ignore
-                ymin_tick = int(np.floor(ymin))# type: ignore
-                ymax_tick = int(np.ceil(ymax))# type: ignore
-                plt.yticks(np.arange(ymin_tick, ymax_tick + 1, 1)) #type: ignore
-
-            # Limitar leyenda si hay muchas líneas
-            if len(df) > 20:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8) #type: ignore
-            else:
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left') #type: ignore
-
-            plt.tight_layout()
-
-            # Guardar la gráfica
-            plot_filename = f"{os.path.splitext(file_name)[0]}_features_graph.png"
-            plot_path = os.path.join(output_dir, plot_filename)
-            plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-            plt.close()
-
-            logger.info(f"Gráfica de features guardada en: {plot_path}")
     except Exception as e:
         logger.error(f"Error calculando Features output: {e}", exc_info=True)
         
@@ -226,7 +174,7 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
             _append_table_to_master(
                 corrected_df=corrected_df,
                 output_dir=output_dir,
-                section_title=os.path.splitext(os.path.basename(file_name))[0],
+                # section_title=os.path.splitext(os.path.basename(file_name))[0],
                 header_text=header_text,
                 master_filename="tables_master.csv"
             )
@@ -239,20 +187,17 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
     except Exception as e:
         logger.error(f"Error guardando CSV: {e}", exc_info=True)
         
-def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section_title: str, header_text: List[str], master_filename: str = "tables_master.csv"):
-    """
-    Appendea una tabla a un único CSV maestro con secciones, manteniendo headers por tabla.
-    Formato:
-    """
+def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, header_text: List[str], master_filename: str = "tables_master.csv"):
     os.makedirs(output_dir, exist_ok=True)
     master_path = os.path.join(output_dir, master_filename)
+    write_header = not os.path.exists(master_path) or os.path.getsize(master_path) == 0
+
     with open(master_path, 'a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow([f"# --- {section_title} ---"])
-        writer.writerow(header_text if (header_text and len(header_text) > 0) else list(corrected_df.columns))
+        if write_header:
+            writer.writerow(header_text if (header_text and len(header_text) > 0) else list(corrected_df.columns))
         for row in corrected_df.itertuples(index=False, name=None):
             writer.writerow(row)
-        writer.writerow([])
 
 def to_serializable(obj: Any) -> Any:
     """Convierte numpy arrays y tipos numpy a tipos nativos Python."""

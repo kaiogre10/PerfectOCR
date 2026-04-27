@@ -24,10 +24,9 @@ TEST_MODE = True
 
 DEFAULT_INPUT_PATH = [
 #    "input",
-#      "input2",
-#       "input3"
-#  "C:/Users/USER/Desktop/tickets_nuevo"
-"//DFASD/tickets_nuevo"
+    #  "input2",
+    #   "input3"
+ "D:/data/tickets_nuevo"
 ]
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")

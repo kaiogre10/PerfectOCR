@@ -78,7 +78,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 features_to_ind = analysis[:, 1:].astype(np.str_)
                 features_id = np.column_stack([line_id, features_to_ind])
                 file_name: str = manager.workflow.metadata.image_name
-                save_table_values(file_name, features_id, "vectorizer", False)
+                save_table_values(file_name, features_id, "vectorizer")
             return []
             
             if tabular_lines:
