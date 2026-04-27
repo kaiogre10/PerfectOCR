@@ -31,12 +31,12 @@ log_debug:
   seman_clas: False
   key_fields: False
   lines: False
-  table_lines: True
+  table_lines: False
   table_geo: False
   table_correct: True
   
   semantic_types_log: [3]
-  kf_list_log: [1, 2, 3, 4, 5, 6]
+  kf_list_log: [-1]
   
 # Configuración de salida
 enabled_outputs:
@@ -68,7 +68,7 @@ enabled_outputs:
   vectorization_outputs:
     reconstructed_lines: False
     table_lines: False
-    features: False
+    features: True
     image_features: False
     table_structured: False
     math_max_corrected: False
@@ -91,8 +91,8 @@ models_config:
   
   det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
   rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
-  # wf_model_path: "C:/PerfectOCR/data/models/wf/wf_model.pkl"
-  wf_model_path: "C:/word_finder_model/models/wf_model.pkl"
+  wf_model_path: "C:/PerfectOCR/data/models/wf/wf_model.pkl"
+  # wf_model_path: "C:/word_finder_model/models/wf_model.pkl"
   set_wf_params: False
   
 modules:

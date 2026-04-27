@@ -6,9 +6,11 @@ from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
-from core.utils.data_utils import VECTOR_MEAN_DUMMIE, VECTOR_MEDIAN_DUMMIE
+from core.utils.data_utils import VECTOR_DUMMIE
 from core.utils.math_utils import get_cosine_similarity, density_cluster, calculate_features
 from services.output_service import save_debug_json, save_table_values
+
+dummie_vect = VECTOR_DUMMIE.reshape(1, -1)
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
         self.min_cluster = worker_config.get("min_cluster", 1)
-        self.dummie_weights = worker_config["dummie_weights"]
         self.emergency_threshold = worker_config.get("emergency_threshold")
         self.eps = worker_config.get("eps")
         self.metric = worker_config.get("metric", "")
@@ -78,6 +79,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 features_id = np.column_stack([line_id, features_to_ind])
                 file_name: str = manager.workflow.metadata.image_name
                 save_table_values(file_name, features_id, "vectorizer", False)
+            return []
             
             if tabular_lines:
                 return self._validate_scanner_interval_all_vs_all(analysis, tabular_lines, line_ids)
@@ -187,26 +189,19 @@ class MatricialCusine(VectorizationAbstractWorker):
         usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares.
         """
         # logger.warning(f"INICIANDO MÉTODO DE EMERGENCA")
-        mean_w, median_w = self.dummie_weights
         
-        median_ref_vec = VECTOR_MEDIAN_DUMMIE.reshape(1, -1)
-        mean_ref_vec = VECTOR_MEAN_DUMMIE.reshape(1, -1)
-
         t0 = time.perf_counter()
-        dummie_vect = np.row_stack([median_ref_vec, mean_ref_vec])
         # has_kf = analysis[:, -2] < 1
         analysi = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
    
-        sims_comb = get_cosine_similarity(analysi, dummie_vect, dense_output=False)
-        
-        sims_final = (sims_comb[:, 0] * median_w) + (sims_comb[:, 1] * mean_w)
+        sims_final = get_cosine_similarity(analysi, dummie_vect, dense_output=False)
 
         logger.debug(f"Tiempo: {time.perf_counter() - t0}")
         
         # logger.debug(f"Promedio de similitud final: {sims_final}")
         logger.debug("Todas las líneas ordenadas: %s", ", ".join(str(lid) for lid in line_ids))
         sims_str = "[" + "  ".join(f"{val}" for val in sims_final) + "]"
-        logger.debug("Similitudes de emergencia finales:\n%s", sims_str)
+        logger.info("Similitudes de emergencia finales:\n%s", sims_str)
 
         # Log detallado por línea
         for _, (line_id, sim) in enumerate(zip(line_ids, sims_final)):

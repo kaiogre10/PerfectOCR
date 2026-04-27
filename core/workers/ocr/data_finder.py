@@ -121,7 +121,7 @@ class DataFinder(OCRAbstractWorker):
                         leftovers = orig_text.difference(key_word)
                         if leftovers:
                             add_kf = len(leftovers)
-                            logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> '{leftovers}'")
+                            # logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> '{leftovers}'")
                             # Asigna una lista de 6's: uno por cada palabra (keyword + leftovers)
                             polygon_updates[pid] = [6] * (add_kf + 1)
                             continue
@@ -137,7 +137,7 @@ class DataFinder(OCRAbstractWorker):
                         
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
-                logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
                 return polygon_updates
 
             else:
