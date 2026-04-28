@@ -30,12 +30,12 @@ log_debug:
   text_ocr: False
   seman_clas: False
   key_fields: False
-  lines: False
-  table_lines: False
+  lines: True
+  table_lines: True
   table_geo: False
   table_correct: True
   
-  semantic_types_log: [3]
+  semantic_types_log: [-1]
   kf_list_log: [-1]
   
 # Configuración de salida
@@ -68,7 +68,7 @@ enabled_outputs:
   vectorization_outputs:
     reconstructed_lines: False
     table_lines: False
-    features: True
+    features: False
     image_features: False
     table_structured: False
     math_max_corrected: False

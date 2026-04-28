@@ -23,10 +23,10 @@ os.environ.update({
 TEST_MODE = True
 
 DEFAULT_INPUT_PATH = [
-#    "input",
+    "input",
     #  "input2",
     #   "input3"
- "D:/data/tickets_nuevo"
+#  "D:/data/tickets_nuevo"
 ]
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")

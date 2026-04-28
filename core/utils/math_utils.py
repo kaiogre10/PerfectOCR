@@ -466,21 +466,21 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
         return np.zeros((len(sorted_lines), 3), dtype=np.float32)
     
     maximus = np.max(features, axis=0)
-    max_sc_quant, max_digit, max_kf = maximus[0], maximus[1], maximus[2]
+    max_sc_quant, max_digit, _ = maximus[0], maximus[1], maximus[2]
     
-    sc_quants, dec_chars, kfs = features[:, 0], features[:, 1],features[:, 2]
+    sc_quants, dec_chars, _ = features[:, 0], features[:, 1],features[:, 2]
     
     # Evitar división por cero
     num_count_norm = sc_quants / max_sc_quant
     means = np.mean([sc_quants, dec_chars], axis=0)
-    sc_quant_mean, dec_mean = means[0], means[1]
+    dec_mean = means[1]
                 
     digit_above = np.where(dec_chars > dec_mean, 1.0, -1.0)
     has_digit = np.where(dec_chars > 1.0, 1.0, -1.0)
     
     digit_char_frec = np.divide(np.float32(dec_chars), max_digit, out=np.zeros_like(dec_chars), where=max_digit!=0)
     
-    quant_above = np.where(sc_quants > sc_quant_mean, 1.0, -1.0)
+    # quant_above = np.where(sc_quants > sc_quant_mean, 1.0, -1.0)
     has_quant = np.where(sc_quants > 0, 1.0, -1.0)
     
     if max_digit > 0:
@@ -490,7 +490,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
         dig_margin = np.zeros_like(dec_chars, np.float32)
     
     # logger.info(f"Features textuales calculadas en: {time.perf_counter() - timef:.6f}'s")
-    textual_features = np.column_stack([dig_margin, has_quant, num_count_norm, digit_above, digit_char_frec, has_digit, quant_above])
+    textual_features = np.column_stack([dig_margin, has_quant, num_count_norm, digit_above, digit_char_frec, has_digit])
     #headers = ["dig_margin", "has_quant", "numeric_count_norm", "digit_above", "digit_char_frec", "has_digit", "quant_above"]
     #textual_df =pd.DataFrame(data=textual_features, columns=headers)
     #logger.info("Features textuales:"

@@ -465,7 +465,7 @@ class WordFinder:
             s = s.lower()  # 1. Entra el texto y convertimos a minusuculas
             s = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")  # 2. Convertimos letras con con puntuación a su versión estandar, NO ELIMINAMOS PUNTUACIÓN SOLO TRATAMOS CON ALFABÉTICOS
             s = _nom_pattern.sub("", s)  # 3. Eliminar especiales con el patrón definido internos juntando los caracteres.
-            s = _space_clean_pattern.sub(" ", s)  # 4. Ahora sí eliminamos puntuación y números convirtiendolos en espacios sin juntar aún
+            # s = _space_clean_pattern.sub(" ", s)  # 4. Ahora sí eliminamos puntuación y números convirtiendolos en espacios sin juntar aún
             q = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8')  # 5. Normalizamos ASCII para estandarizar
             return _space_pattern.sub(" ", q).strip()  # 6. Normalizar espacios dobles que se hayan podido generar
         except UnicodeError as e:

@@ -136,6 +136,9 @@ class TextCorrector(OCRAbstractWorker):
 
         elif semantic_clasification == 2:
             return find_umd(token)
+        
+        elif semantic_clasification == 1:
+            return token.replace("0", "O")
 
         else:
             return token
