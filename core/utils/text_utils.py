@@ -455,32 +455,32 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         if total_cuant == 0:
             if not any(c.isalpha() for c in s):
                 no_clas += 1
-                return (-1, total_cuant)
+                return (-1, 0)
 
             elif total_text == 1:
                 logger.debug(f"DESC por tamaño: '{s}'")
                 no_cuants += 1
-                return (1, total_cuant)
+                return (1, 0)
 
             if bool(_semi_c_fraction.fullmatch(s)) or bool(_mesure_patterns.fullmatch(s)):
                 logger.debug(f"UMD por regex: '{s}'")
                 no_cuants += 1
-                return (2, total_cuant)
+                return (2, 0)
 
             if not any(c in vowels for c in s):
                 if is_umd(s):
                     logger.debug(f"UMD sin vocales: '{s}'")
                     no_cuants += 1
-                    return (2, total_cuant)
+                    return (2, 0)
                     
                 if total_text > 2:
                     # logger.info(f"CODE sin vocales: '{s}'")
                     no_cuants += 1
-                    return (3, total_cuant)
+                    return (3, 0)
                 
             logger.debug(f"DESC por sobrante: '{s}'")
             no_cuants += 1
-            return (1, total_cuant)
+            return (1, 0)
 
         if total_cuant == total_text:
             if total_text < 3:

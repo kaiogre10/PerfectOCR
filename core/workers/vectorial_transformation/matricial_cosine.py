@@ -81,7 +81,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 save_table_values(file_name, features_id, "vectorizer")
             
             if tabular_ids:
-                return self.similiraity_all_vs_all(analysis, tabular_lines, tabular_ids)
+                return self.validate_similiraity_all_vs_all(analysis, tabular_lines, tabular_ids)
             else:
                 tabular_lines = self.cosine_dummies(analysis, line_ids)
 
@@ -96,24 +96,19 @@ class MatricialCusine(VectorizationAbstractWorker):
             logger.error(f"Error en matriz de similitud coseno: {e}", exc_info=True)
         return []
 
-    def similiraity_all_vs_all(self, analysis: np.ndarray[Any, Any], lines_id: List[str], line_ids: List[int]) -> List[str]:
+    def validate_similiraity_all_vs_all(self, analysis: np.ndarray[Any, Any], lines_id: List[str], line_ids: List[int]) -> List[str]:
         """
         Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado.
         Poda por los extremos (como "cortar césped") basándose en la media de similitudes, 
         asegurando un intervalo contiguo de salida.
         """
-        # if 2 >= len(tabular_lines):
-        #     return tabular_lines
-        # # Convertir tabular_lines (IDs de línea) a índices numéricos
-        # tabular_indices: List[int] = []
-        # for line_id in tabular_lines:
-        #     if line_id in line_ids:
-        #         tabular_indices.append(line_ids.index(line_id))
+        if 2 >= len(line_ids):
+            return lines_id
                 
         # Asegurarse de que están ordenados secuencialmente para buscar el intervalo
-        tabular_idx = np.array(line_ids, np.uint8)
+        line_idx = np.array(line_ids, np.uint8)
         
-        mask = np.isin(analysis[:, 0], tabular_idx, assume_unique=True)
+        mask = np.isin(analysis[:, 0], line_idx, assume_unique=True)
         features_all = np.compress(mask, analysis, 0)
         # Ordenamos las filas según el índice original para estar alineados con tabular_indices
         features_all = features_all[features_all[:, 0].argsort()]
@@ -123,63 +118,66 @@ class MatricialCusine(VectorizationAbstractWorker):
         timecos0 = time.perf_counter()
         sims_mat_dense = get_cosine_similarity(X=features, dense_output=False)
         logger.debug(f"Coseno realizado en: {time.perf_counter()-timecos0:.10f}'s")
-        logger.debug(f"Promedio matriz: {np.mean(sims_mat_dense)}")
-        sims_ids = np.column_stack([tabular_idx, sims_mat_dense])
-        logger.info("\n"f"{np.array2string(sims_ids, precision=4)}")
-        # logger.debug("Filas/Columnas (en orden):"
-        # "\n%s", ", ".join(lines_id[idx] for idx in line_ids))
-        # matriz_str = "\n".join(
-        #     ["[" + "  ".join(f"{float(val):8.7f}" for val in row) + "]" for row in sims_mat_dense]
-        # )
-        # logger.debug(
-        # "\n%s", matriz_str)
+        # logger.debug(f"Promedio matriz: {np.mean(sims_mat_dense)}")
 
-        # para cada fila, calcular similitud media con las demás (excluir self)
-        mean_sims: List[float] = []
+        # para cada fila, calcular similitud media con las demás
         n = features.shape[0]
-        for i in range(n):
-            if n == 1:
-                mean_sims.append(1.0)
-            else:
-                mean_val = float((np.sum(sims_mat_dense[i]) - 1.0) / (n - 1)) 
-                mean_sims.append(mean_val)
-
-        for mean_sim, orig_idx in zip(mean_sims, line_ids):
-            lid = line_ids[orig_idx]
-            logger.debug(f"Línea {lid} idx={orig_idx}: mean_sim={mean_sim:.6f}")
-
-        # Recorte de intervalo contiguo (Poda por extremos)
-        start_pos: int | None = None
-        last_success_pos: int | None = None
-        consecutive_failures = 0
-
-        for pos, s in enumerate(mean_sims):
-            if s >= self.similarity_threshold:
-                if start_pos is None:
-                    start_pos = pos
-                last_success_pos = pos
-                consecutive_failures = 0
-            else:
-                if start_pos is not None:
-                    consecutive_failures += 1
-                    if consecutive_failures > self.min_cluster:
-                        break
-
-        # Si hay validaciones por coseno y encontramos un intervalo válido, devolvemos el contiguo
-        if start_pos is not None and last_success_pos is not None:
-            # Reconstruir intervalo entre start y last_success usando tabular_indices
-            start_idx = line_ids[start_pos]
-            end_idx = line_ids[last_success_pos]
+        mean_sims = (np.sum(sims_mat_dense, axis=1, dtype=np.float32, keepdims=True) - 1.0) / (n - 1)
+        mean_idx = np.column_stack([line_idx, mean_sims])
+        # logger.info("\n"f"{np.column_stack([np.arange(n), mean_idx])}")
+        consecutive_idx = np.where(mean_sims > self.similarity_threshold)[0]
+        consecutive_idx_size = consecutive_idx.size
+        # logger.info("TAMAÑOS"
+        # "n:\n"f"{n} | consecutive_idx: {consecutive_idx_size}")
+        if consecutive_idx_size == n:
+            return lines_id
             
-            # Devolver TODAS las líneas comprendidas entre start_idx y end_idx de line_ids
-            # Garantizando la contigüidad absoluta en base al ID general.
-            table_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
-            logger.info(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
-            return table_line_ids
+        if consecutive_idx_size < 1:
+            consecutive_idxs = np.where(mean_sims > self.emergency_threshold)[0]
+            d = np.diff(consecutive_idxs)
+            # logger.info("Consecutive:\n"f"{consecutive_idxs}, {consecutive_idxs.size}\n"f"D: {d}, {d.size}")
+            cuts = np.where(d > self.min_cluster)[0]
+            if cuts.size == 0:
+                return lines_id
+            
+            # logger.info(f"CUTS: {cuts}, SHAPE: {cuts.shape}")
+            cutted_idx = np.arange((cuts[0]+1), dtype=np.uint8)
+            mean_idx = mean_idx[cutted_idx]
+            # logger.info("CUTTED:\n"f"{mean_idx}, SHAPE: {mean_idx.shape[0]}")
+            # logger.info(f"{lines_id[0:mean_idx.shape[0]]}")
+            return lines_id[0:mean_idx.shape[0]]
+        
+        # start_pos: int | None = None
+        # last_success_pos: int | None = None
+        # consecutive_failures = 0
 
-        # Si ninguna línea superó el umbral, activar emergencia desde aquí
-        logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
-        return []
+        # for pos, s in enumerate(mean_sims):
+        #     if s >= self.similarity_threshold:
+        #         if start_pos is None:
+        #             start_pos = pos
+        #         last_success_pos = pos
+        #         consecutive_failures = 0
+        #     else:
+        #         if start_pos is not None:
+        #             consecutive_failures += 1
+        #             if consecutive_failures > self.min_cluster:
+        #                 break
+
+        # # Si hay validaciones por coseno y encontramos un intervalo válido, devolvemos el contiguo
+        # if start_pos is not None and last_success_pos is not None:
+        #     # Reconstruir intervalo entre start y last_success usando tabular_indices
+        #     start_idx = line_ids[start_pos]
+        #     end_idx = line_ids[last_success_pos]
+            
+        #     # Devolver TODAS las líneas comprendidas entre start_idx y end_idx de line_ids
+        #     # Garantizando la contigüidad absoluta en base al ID general.
+        #     table_line_ids = [line_ids[i] for i in range(start_idx, end_idx + 1)]
+        #     logger.info(f"Intervalo final podado: {len(table_line_ids)} líneas ({line_ids[start_idx]} a {line_ids[end_idx]}).")
+        #     return table_line_ids
+
+        # # Si ninguna línea superó el umbral, activar emergencia desde aquí
+        # logger.info("Ninguna línea validada por coseno en el intervalo; activando emergencia.")
+        # return []
 
     def cosine_dummies(self, analysis: np.ndarray[Any, Any], line_ids: List[str]) -> List[str]:
         """

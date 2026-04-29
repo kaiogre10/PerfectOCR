@@ -459,14 +459,17 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
                 else:
                     kf_total += len(kf)
                 
-        features[i, 1] = 0 if kf_total != 0 else line_data.t_cuant
-        features[i, [0, 2]] = sc_quant_count, kf_total
+        features[i, 0] = sc_quant_count
+        features[i, 1] = 0 if kf_total > 0 else line_data.t_cuant
+        features[i, 2] = kf_total
     
     if features.shape[0] == 0:
-        return np.zeros((len(sorted_lines), 3), dtype=np.float32)
+        return np.zeros((len(sorted_lines), 6), dtype=np.float32)
     
     maximus = np.max(features, axis=0)
-    max_sc_quant, max_digit, _ = maximus[0], maximus[1], maximus[2]
+    # logger.info("\n"f"{np.column_stack([np.arange(len(sorted_lines)), features])}")
+    # logger.info(f"{maximus}")
+    max_sc_quant, max_digit = maximus[0], maximus[1]
     
     sc_quants, dec_chars, _ = features[:, 0], features[:, 1],features[:, 2]
     
@@ -479,8 +482,6 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     has_digit = np.where(dec_chars > 1.0, 1.0, -1.0)
     
     digit_char_frec = np.divide(np.float32(dec_chars), max_digit, out=np.zeros_like(dec_chars), where=max_digit!=0)
-    
-    # quant_above = np.where(sc_quants > sc_quant_mean, 1.0, -1.0)
     has_quant = np.where(sc_quants > 0, 1.0, -1.0)
     
     if max_digit > 0:
@@ -499,5 +500,5 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
 
 def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
     sc = np.asarray(semantic_clasification, dtype=np.int8)
-    mask = (sc == 2) | (sc == 4)
-    return int(np.count_nonzero(mask))
+    mask = (sc == 2) | (sc > 3)
+    return 0 if 0 in semantic_clasification else int(np.count_nonzero(mask))

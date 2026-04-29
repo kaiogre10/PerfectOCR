@@ -129,7 +129,7 @@ def execute_sequential_processing(builder: ProcessingBuilder, workflow_report: D
                 db_paths[image_name] = db_path
                 logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
             else:
-                logger.error(f"Fallo al procesar imagen: {image_name}")
+                logger.error(f"Fallo al procesar imagen: '{image_name}'")
 
         if db_paths:
             mean_time = total_processing_time / len(db_paths)
