@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    - "angle_corrector"
+    # - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
@@ -22,20 +22,20 @@ pipeline_secuence:
     
   vector_stage:
    - "lineal"
-  #  - "cos_sim"
-   #- "table_structurer"
-   #- "math_max"
+   - "cos_sim"
+   - "table_structurer"
+   - "math_max"
    
 log_debug:
   text_ocr: False
   seman_clas: False
   key_fields: False
-  lines: True
-  table_lines: True
+  lines: False
+  table_lines: False
   table_geo: False
   table_correct: True
   
-  semantic_types_log: [-1]
+  semantic_types_log: [2]
   kf_list_log: [-1]
   
 # Configuración de salida

@@ -32,14 +32,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 logger.warning("No hay workflow disponible")
                 return False
                 
-            # Obtener datos usando data classes modernas
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-            
-            # for line_id, line_data in all_lines.items():
-            #     if line_data.header_line is not None:
-            #         logger.info(f"Texto de {line_id}: '{line_data.text}', polygons: {line_data.polygon_ids}")
-            #     if line_data.polygon_ids:
-            #         logger.info(f"{line_data.text}")
                     
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             tabular_line_ids = [lid for lid, line_obj in all_lines.items() if line_obj.tabular_line]
@@ -54,8 +47,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     logger.error("No hay encabezados disponibles")
                     return False
                 manager.workflow.H = H
-                
-                # logger.info(f"Encabezado detectado: {header_line_id}, H={H} columnas")
 
                 # Pasar target_columns a la función de extracción
                 header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons, H)
@@ -65,37 +56,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
                 # 4. Aplicar algoritmo geométrico de asignación a celdas
                 table_matrix = self._apply_geometric_assignment(selected_lines, all_lines, polygons, header_centroids, H)
-                # logger.info(f"Tabla matrix generada con {table_matrix} filas")
-
-                # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
-                context["table_matrix"] = table_matrix
 
                 # 5. Validar y loggear estructura generada
                 total_time = time.time() - start_time
                 if table_matrix:
                     logger.debug(f"Estructuración de tabla completada en {total_time:.10f}s")
-
-                    # if self.output:
-                    # all_lines = manager.workflow.all_lines if manager.workflow else {}
-                    # polygons = manager.workflow.polygons if manager.workflow else {}
-                    # df = self._create_structured_dataframe(table_matrix, H)
-                    # logger.info("Tabla geometrical:\n" + df.to_string(index=False))
-
-
-                        # header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
-                        # header_line_id = header_line_ids[0] if header_line_ids else None
-
-                        # header_polygons = []
-                        # if header_line_id and header_line_id in all_lines:
-                        #     line_obj = all_lines[header_line_id]
-                        #     polygon_ids = getattr(line_obj, "polygon_ids", [])
-                        #     header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
-
-                        # file_name: str = manager.workflow.metadata.image_name # type: ignore
-                        # worker_name = context.get("worker_name") or "geometrical_structurer"
-                        # output_paths = context["output_paths"]
-                        # save_debug_table(df, file_name, output_paths, worker_name, header_polygons)
-
+                    # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
+                    context["table_matrix"] = table_matrix
                     logger.debug("Table matrix publicada en contexto éxitosamente")
                     return True
 

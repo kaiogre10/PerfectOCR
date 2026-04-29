@@ -356,7 +356,7 @@ class DataFormatter:
             if self.lines_log:
                 all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
                 for lid, l in all_lines.items():
-                    logger.info(f"{lid}: '{l.text}' | {l.tabular_line} | header: {l.header_line} | footer: {l.footer_line}")
+                    logger.info(f"{lid}: '{l.text}'")
             return True
                         
         except ValueError as e:

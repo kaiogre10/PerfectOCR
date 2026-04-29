@@ -95,7 +95,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error("DATAFRAME VACÍO")
             return df.iloc[0:0]
 
-        logger.info("RENAMED:\n" + df.to_string(index=True))
+        # logger.info("RENAMED:\n" + df.to_string(index=True))
         df = self._correct_df(df, table_matrix, H, dec_cols)
         if df.empty:
             return df.iloc[0:0]
@@ -145,17 +145,17 @@ class MatrixSolver(VectorizationAbstractWorker):
                 if any(s == 5 for s in sc_v):
                     matrix_quantity[row_id, i] = sum(1 for ch in sc_v if ch == 5)
                     
-                if any(s == 1 or s == 2 for s in sc_v):
-                    textual_array[row_id, i] = sum(1 for ch in sc_v if ch == 1)
-                    
+                if any(s in (1, 2, 3) for s in sc_v):
+                    textual_array[row_id, i] = sum(1 for ch in sc_v if ch in (1, 2, 3))
+                                   
         table_arrays = np.stack([matrix_decimal, matrix_quantity, elements_array, textual_array], dtype=np.int8)
-        logger.info(f"ARRAYS TABLE: \n"f"{table_arrays}")
+        # logger.info(f"ARRAYS TABLE: \n"f"{table_arrays}")
         return table_arrays
 
     def _find_hypotesis(self, df: pd.DataFrame, aritmetic_df: pd.DataFrame, dec_cols: List[Tuple[str, str]]) ->pd.DataFrame:
         cols_name = [cols[0] for cols in dec_cols if cols[1] == "decimal"]
-        # logger.info(f"COLS NAME: {cols_name}, CANTIDAD DE FILAS: {n_rows}")
-        # logger.info("ARITMETIC:\n" + aritmetic_df.to_string(index=False))
+        # logger.info(f"COLS NAME: {cols_name}")
+        # logger.info("ARITMETIC:\n" + aritmetic_df.to_string(index=True))
         try:
             perm_df = aritmetic_df.map(lambda x: Decimal(x))
         except InvalidOperation as e:
@@ -220,41 +220,48 @@ class MatrixSolver(VectorizationAbstractWorker):
     
     def get_full_rows(self, df: pd.DataFrame, table_matrix: List[List[Dict[str, Any]]], H: int) -> Tuple[pd.DataFrame, List[Tuple[str, str]]]:
         try:
-            matrix_decimal, matrix_quantity, elements_array, textual_array = self.get_arrays_table(table_matrix, H)
-            # Matriz con unicamente las filas completas y al menos 1 un decimal y un numerico
-            # decimal_mask = (np.count_nonzero(matrix_decimal, axis=1) > 0) & (np.count_nonzero(matrix_quantity, axis=1) > 0)
+            arrays_table = self.get_arrays_table(table_matrix, H)
+            matrix_decimal, matrix_quantity, elements_array, textual_array = arrays_table[0], arrays_table[1], arrays_table[2], arrays_table[3]
             full_rows_mask = np.count_nonzero(elements_array, axis=1) >= H
-            full_idx = np.where(full_rows_mask)[0]
+            full_idx = np.where(full_rows_mask)[0]                          # índices originales sin celdas vacías
+            # full_array = elements_array[full_idx]
             
-            full_dec = matrix_decimal + matrix_quantity
-            full_dec_mask = np.count_nonzero(full_dec[full_idx]==1, axis=1)
-            full_idx_dec = np.where(full_dec_mask == 3)[0]
-
+            full_dec = matrix_decimal + matrix_quantity                         # Array fusionado que contiene los numericos y cuantitativos: "DECIMAL"
+            full_dec = full_dec[full_idx]                                       # Array Decimal sin celdas faltantes
+            # logger.info("\n"f"{full_dec}")
+            # logger.info("FULL_DEC:\n"f"{np.column_stack([full_idx, full_dec])}")
+            
+            full_dec_mask = np.count_nonzero(full_dec==1, axis=1, keepdims=True)    # Mascara booleana donde hay unicamente un elemento decimal por celda con el mismo shape que el array decimal reducido
+            full_idx_dec = np.where(full_dec_mask>= 3)[0]                           # índices del array anterior (No del array original) donde hay suficientes elementos decimales
+            full_dec_idx = full_idx[full_idx_dec]                                   # índices originales con filas completas y suficiente numero de decimales
+            # logger.info("\n"f"{full_idx}\n"f"{full_idx_dec}\n"f"{full_dec_idx}")
+            # full_rows_dfs = df.iloc[full_dec_idx]
+            # logger.info("FULL DEC ROWS:\n"+ full_rows_dfs.to_string(index=True))
+            
+            # logger.info("FULL_DEC_RAW:\n"f"{np.column_stack([full_idx, full_dec[full_idx]])}")
             # logger.info("FULL_ID:\n"f"{np.column_stack([full_idx, elements_array[full_idx]])}")
-            # logger.info("FULL_DEC:\n"f"{np.column_stack([full_idx_dec, full_dec[full_idx_dec]])}")
-            full_rows_dfs = df.iloc[full_idx_dec]
-            logger.info("FULL ROWS:\n"+ full_rows_dfs.to_string(index=True))
-            full_n = full_idx.size
-            if full_n > 0:
-                comple_cols_mask = ((np.count_nonzero(full_dec[full_idx]==1, axis=0)) > full_n / 2) | (np.count_nonzero(textual_array[full_idx] > 0, axis=0)==full_n)
+            
+            n_full_rows = full_idx_dec.size
+            if n_full_rows > 0:
+                textual_mask = (np.count_nonzero(textual_array[full_dec_idx] > 0, axis=0) > n_full_rows // 2)
+                textual_cols = np.where(textual_mask==False)[0]                                             # índices originales sin columnas textuales
+                full_dec = full_dec[full_idx_dec]
+                # logger.info(f"{np.column_stack([full_idx_dec, full_dec])}")
+                non_textual_cols = full_dec[:, textual_cols]                                                # Array con columnas textuales/codigo filtradas
+                # logger.info("\n"f"{textual_array[full_dec_idx]}, {textual_cols}")
+                # logger.info("\n"f"{non_textual_cols}")
+                complete_row_idx = np.sum(non_textual_cols, axis=1, keepdims=True)
+                complete_dec_idx = np.where(complete_row_idx==textual_cols.size)[0]                         # Índices filas filtradas decimales
+                non_textual_cols = non_textual_cols[complete_dec_idx]                                       # Array decimal completamente decimal 
+                full_dec_idx = full_dec_idx[complete_dec_idx]                                               # índices originales de filas completas
+                # logger.info("\n"f"{non_textual_cols}, {full_dec_idx}")
             else:
                 return (df, [])
-            
-            decimal_cols = np.where(comple_cols_mask)[0]
-            
-            full_dec = full_dec[:, decimal_cols]
-            
-            # logger.info("FULL_COL:\n"f"{np.column_stack([np.arange(len(table_matrix)), full_dec])}")
-            
-            rows_mask = np.count_nonzero(full_dec, axis=1) >= (decimal_cols.shape[0])
-            dec_rows = np.where(rows_mask)[0]
-            
-            # logger.info(f"DECIMAL_COLS: {decimal_cols} SHAPE: {decimal_cols.shape[0]} | DEC_ROWS: {dec_rows} | ROWS_MASK: {rows_mask}")
             
             type_col: List[Tuple[str, str]] = []
             decimal_cols_str: List[str] = []
             for id in range(H):
-                if id in decimal_cols:
+                if id in textual_cols:
                     col = f"col_{id:01d}"
                     decimal_cols_str.append(col)
                     type_col.append((col, "decimal"))
@@ -264,12 +271,10 @@ class MatrixSolver(VectorizationAbstractWorker):
                     type_col.append((col, "textual"))
                     
             # logger.info(f"TYPOS: '{type_col}'")
-            # full_rows_df = df.iloc[full_idx]
-            aritmetic_df = df.loc[dec_rows, decimal_cols_str]
+            aritmetic_df = df.loc[full_dec_idx, decimal_cols_str]
             if aritmetic_df.empty: 
                 return (df, type_col)
             else:
-                # logger.info("FULL ROWS:\n"+ full_rows_df.to_string(index=True))
                 logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
                 return (aritmetic_df, type_col)
             

@@ -18,7 +18,7 @@ _base_date_num_str = r'[0123O][0-9O]'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
 _semi_zeros_pattern = re.compile(_semi_zeros, re.IGNORECASE)
 _zeros_pattern = re.compile(_zeros_to_sub)
-_punt_pattern = re.compile(_punt_quant_chars, re.IGNORECASE)
+# _punt_pattern = re.compile(_punt_quant_chars, re.IGNORECASE)
 
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, /,)
 _secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECASE)
@@ -72,6 +72,7 @@ _mesure_patterns = re.compile("|".join(p.pattern for p in [_size_pattern, _mass_
 _umd_patterns_list: List[Pattern[str]] = [
     _fraction_pattern,
     _mesure_patterns,
+    re.compile(r'(?<![A-Za-z0-9])\d{1,4}\s*m(?:l|1|\||!)(?=$|[^A-Za-z0-9])', re.IGNORECASE),
     re.compile(rf'\b\d+\s*g\b', re.IGNORECASE), # Solo 'g' requiere número entero antes
     re.compile(rf'\b\d+\s*l\b', re.IGNORECASE),  # Solo 'l' requiere número entero antes
     re.compile(rf'\b\d+\s*m\b', re.IGNORECASE),  # Solo 'm' requiere número entero antes
