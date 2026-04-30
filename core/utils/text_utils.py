@@ -20,6 +20,10 @@ _semi_zeros_pattern = re.compile(_semi_zeros, re.IGNORECASE)
 _zeros_pattern = re.compile(_zeros_to_sub)
 # _punt_pattern = re.compile(_punt_quant_chars, re.IGNORECASE)
 
+# Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)
+_bic_variants = r'^(B(1C|lC|\|C|¡C|!C))$'
+_labels_pattern: Pattern[str] = re.compile(_bic_variants)
+
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, /,)
 _secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECASE)
 _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$/])[^a-zA-Z0-9\s$/]{2,}(?=[a-zA-Z0-9$/])', re.IGNORECASE)
@@ -419,14 +423,18 @@ def space_removal(text: str) -> str:
 
 def remove_special_sequences(text: str) -> str:
     """
-    Elimina secuencias especiales de dos o más caracteres no alfanuméricos.
-    Conserva los caracteres sueltos válidos, pero reemplaza por un espacio lassecuencias internas de símbolos, y luego limpia espacios sobrantes.
+    Elimina secuencias especiales de dos o más caracteres no alfanuméricos. Conserva los caracteres sueltos válidos, pero reemplaza por un espacio lassecuencias internas de símbolos, y luego limpia espacios sobrantes.
     Ejemplo:
         remove_special_sequences("abc@@def!!ghi") -> 'abc def ghi'
     """
     cleaned = _sequence_middle_pattern.sub(" ", text).strip()
     cleaned = _secuence_pattern.sub("", cleaned)
     return space_removal(cleaned) if cleaned else text
+    
+def get_brands(text: str) -> bool:
+    if len(text) != 3:
+        return False
+    return bool(_labels_pattern.fullmatch(text))
         
 def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> Dict[str, Tuple[List[int], int]]:
     density_thr: Tuple[float, float] = worker_config["encode_mean"]
@@ -546,7 +554,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             if "/" not in s and (total_cuant / total_text) > 0.687:
               #  logger.debug(f"NUM por codificacion: '{s}'")
                 return (5, total_cuant)
-            logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
+            # logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
             encoded += 1
             return (3, total_cuant)
 
@@ -554,9 +562,18 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             logger.debug(f"CODE por codificacion: '{s}'")
             encoded += 1
             return (3, total_cuant)
+            
+        elif bool(_labels_pattern.fullmatch(s)):
+            logger.debug(f"DESCR MARCA: '{s}")
+            no_clas += 1
+            return (1, total_cuant)
         
+        if not any(c in vowels for c in s) and total_text > 2:
+            logger.debug(f"CODE por FALLBACK: '{s}'")
+            encoded += 1
+            return (3, total_cuant)
+            
         logger.debug(f"Poligono sin clasificación, será descriptiva: '{s}'")
-        encoded += 1
         no_clas += 1
         return (1, total_cuant)
 
@@ -564,7 +581,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         kf = polygon.key_field or None
         if kf or kf is not None:
             final_results[pid] = ([0], 0)
-            logger.debug(f"KeyField existente, no se clasifica '{polygon.ocr_text or ""}'")
+            # logger.debug(f"KeyField existente, no se clasifica '{polygon.ocr_text or ""}'")
             no_clas += 1
             continue
         

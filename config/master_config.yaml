@@ -162,7 +162,7 @@ modules:
       
     text_refiner:
       num_passes: 1
-      encode_mean: [23.7, 105.7] # Promedio de densidad
+      encode_mean: [23.7, 103.7] # Promedio de densidad
       morph_mean: [-0.297, 0.337] # Promedio morfológico
   
     text_cleaner:

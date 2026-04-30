@@ -71,7 +71,7 @@ def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype
         # # elif enc_type == "frequency":
         # #     frec = encode_text(text, REL_FRECUENCY_CHAR)
         #     encoders.append(frec)
-        elif enc_type == "morphological":
+        if enc_type == "morphological":
            morph = get_morphological_encode(text)
            encoders.append(morph)
     

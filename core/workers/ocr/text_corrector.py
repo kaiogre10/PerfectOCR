@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import  validate_text, find_umd
+from core.utils.text_utils import  validate_text, find_umd, get_brands
 from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
 
 cuant_char = CUANT_CHAR
@@ -136,10 +136,18 @@ class TextCorrector(OCRAbstractWorker):
             
         elif semantic_clasification in (1, 2):
             if token.endswith("m1"):
-                token = token.replace("1", "l")        
+                token = token.replace("1", "l")
+                
+            if get_brands(token):
+                token = token.replace("1", "I")
+                
             if semantic_clasification == 1:
                 return token.replace("0", "O")
+                
             return find_umd(token)
+            
+        # elif semantic_clasification == 3:
+            # return token
         else:
             return token
     

@@ -370,9 +370,11 @@ class MatrixSolver(VectorizationAbstractWorker):
         for i, col_name in enumerate(dec_cols):
             cols_name.append((i, col_name[1]))
         
-        matrix_decimal, matrix_quantity, elements_array, textual_array, code_array = self.get_arrays_table(H, context)
+        tables_array = self.get_arrays_table(H, context)
+        elements_array, textual_array, code_array = tables_array[2], tables_array[3], tables_array[4]
         cols = np.arange(elements_array.shape[1], dtype=np.uint8)
         rows = elements_array.shape[0]
+        rows_ids = np.arange(rows, dtype=np.uint8)
         if cols.size == 4:
             descriptive_idx = np.setdiff1d(cols, idx_map, assume_unique=True)
         else:
@@ -388,6 +390,8 @@ class MatrixSolver(VectorizationAbstractWorker):
             code_rows = np.count_nonzero(pot_code_col)
             if code_rows > (rows // 2):
                 code_col_idx = leftovers_idx                                            # índice real de la única columna code
+                logger.info(f"{code_col_idx}")
+                logger.info("\n"f"{np.column_stack([rows_ids, elements_array[:, code_col_idx], code_array[:, code_col_idx], textual_array[:, code_col_idx]])}")
             else:
                 code_col_idx = None
             
@@ -395,29 +399,9 @@ class MatrixSolver(VectorizationAbstractWorker):
             #     mapped_cols = np.sort(np.concatenate([descriptive_idx, idx_map, code_col_idx]))
             # else:
             #     mapped_cols = np.sort(np.concatenate([descriptive_idx, idx_map]))
-            
         # logger.info("MAPPED\n"f"{mapped_cols}")
         # logger.info("TEXTUAL COLS NEW:\n"+ df.iloc[:, descriptive_idx].to_string(index=True))
-        incomplete_rows_id = np.setdiff1d(np.arange(rows), dec_rows_ids)        # índices originales de filas a corregir/completar
-        
-        full_dec = matrix_decimal + matrix_quantity
-        full_dec = full_dec[incomplete_rows_id]                                 # Array decimal a corregir
-        elements_array = elements_array[incomplete_rows_id]                     # Array Global a corregir
-        
-        semi_mask = np.count_nonzero(full_dec==1, axis=1, keepdims=True)        # cantidad de celdas con valor exactamente 1 por fila
-        unique_mask = (np.all(full_dec <= 1, axis=1, keepdims=True))
-        rows_incomplete = np.where((semi_mask >= 2) & unique_mask)[0]           # índice relativo con filas con un elemento decimal por celda y al menos 2 decimales
-        # logger.info("DEC\n"f"{full_dec[rows_incomplete]}")
-        # logger.info("\n"f"{rows_incomplete}")
-        
-        # correct_rows_df = df.iloc[incomplete_rows_id]
-        # logger.info("TO CORRECT:\n" + correct_rows_df.to_string(index=True))
-        
-        # sum_cells = np.count_nonzero(elements_array, axis=1, keepdims=True)
-        # empty_cells = np.where(sum_cells < cols.size)[0]                        # índices relativos de las filas que presentan celdas vacías
-        # incomplete_dec = full_dec[empty_cells]                                  # Filas con celdas vacías y con al menos 2 decimales para operar
-        # logger.info("\n"f"{incomplete_dec}")
-        
+        incomplete_rows_id = np.setdiff1d(rows_ids, dec_rows_ids)        # índices originales de filas a corregir/completar        
         textual_array = textual_array[incomplete_rows_id]
         # logger.info(f"TEXTUAL ARRAY FILTRADO:\n"f"{idx_map}\n"f"{np.column_stack([incomplete_rows_id, textual_array[:, idx_map]])}")
         
@@ -431,7 +415,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.info("UBICACIONES INFILTRADOS ARRAY:\n"f"{text_in_dec}\n"f"{fil_rows}, {fil_cols}")
         # logger.info("INFLITRADOS DF:\n"f"{df.iloc[fil_rows, fil_cols]}")
         df_copy: pd.DataFrame = context["df_copy"]
-        logger.info("COPY:\n" + df_copy.to_string(index=True))
+        # logger.info("COPY:\n" + df_copy.to_string(index=True))
         
         values = df.values
         copy_values = df_copy.values
@@ -449,16 +433,39 @@ class MatrixSolver(VectorizationAbstractWorker):
             
             if c < descriptive_idx:
                 values[r, descriptive_idx] = val + " " + values[r, descriptive_idx]             # Original
-                copy_values[r, descriptive_idx[0]] = vals + dest_vals        # Valores espejo
+                copy_values[r, descriptive_idx[0]] = vals + dest_vals                           # Valores espejo
             else:
                 values[r, descriptive_idx] = values[r, descriptive_idx] + " " + val             # Original
-                copy_values[r, descriptive_idx[0]] = dest_vals + vals        # Espejo
+                copy_values[r, descriptive_idx[0]] = dest_vals + vals                           # Espejo
                 
             values[r, c] = ""
             copy_values[r, c] = []
             
         logger.info("CORRECTED:\n" + df.to_string(index=True))
-        logger.info("COPY CORR:\n" + df_copy.to_string(index=True))
+        # logger.info("COPY CORR:\n" + df_copy.to_string(index=True))
+        
+        context["df_copy"] = df_copy
+        
+        tables_array = self.get_arrays_table(H, context)
+        matrix_decimal, matrix_quantity = tables_array[0], tables_array[1]
+        full_dec = matrix_decimal + matrix_quantity
+        
+        full_dec = full_dec[incomplete_rows_id]                                 # Array decimal a corregir
+        elements_array = elements_array[incomplete_rows_id]                     # Array Global a corregir
+        
+        semi_mask = np.count_nonzero(full_dec==1, axis=1, keepdims=True)        # cantidad de celdas con valor exactamente 1 por fila
+        unique_mask = (np.all(full_dec <= 1, axis=1, keepdims=True))
+        rows_incomplete = np.where((semi_mask >= 2) & unique_mask)[0]           # índice relativo con filas con un elemento decimal por celda y al menos 2 decimales
+        logger.info("DEC\n"f"{full_dec[rows_incomplete]}")
+        logger.info("\n"f"{rows_incomplete}")
+        
+        correct_rows_df = df.iloc[incomplete_rows_id]
+        logger.info("TO CORRECT:\n" + correct_rows_df.to_string(index=True))
+        
+        sum_cells = np.count_nonzero(elements_array, axis=1, keepdims=True)
+        empty_cells = np.where(sum_cells < cols.size)[0]                        # índices relativos de las filas que presentan celdas vacías
+        incomplete_dec = full_dec[empty_cells]                                  # Filas con celdas vacías y con al menos 2 decimales para operar
+        logger.info("\n"f"{incomplete_dec}")
         
         text_cols = [cols[0] for cols in dec_cols if cols[1] == "textual"]
         textual_indices: List[int] = [df.columns.get_loc(name) for name in text_cols if name in df.columns]
