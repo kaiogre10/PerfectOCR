@@ -2,7 +2,7 @@
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-    # - "angle_corrector"
+    - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"

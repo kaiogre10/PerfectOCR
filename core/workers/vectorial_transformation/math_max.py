@@ -352,7 +352,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             if aritmetic_df.empty: 
                 return (df, type_col)
             else:
-                # logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
+                logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
                 return (aritmetic_df, type_col)
             
         except Exception as e:
@@ -390,15 +390,10 @@ class MatrixSolver(VectorizationAbstractWorker):
             code_rows = np.count_nonzero(pot_code_col)
             if code_rows > (rows // 2):
                 code_col_idx = leftovers_idx                                            # índice real de la única columna code
-                logger.info(f"{code_col_idx}")
-                logger.info("\n"f"{np.column_stack([rows_ids, elements_array[:, code_col_idx], code_array[:, code_col_idx], textual_array[:, code_col_idx]])}")
+                # logger.info(f"{code_col_idx}")
+                # logger.info("\n"f"{np.column_stack([rows_ids, elements_array[:, code_col_idx], code_array[:, code_col_idx], textual_array[:, code_col_idx]])}")
             else:
                 code_col_idx = None
-            
-            # if code_col_idx is not None:
-            #     mapped_cols = np.sort(np.concatenate([descriptive_idx, idx_map, code_col_idx]))
-            # else:
-            #     mapped_cols = np.sort(np.concatenate([descriptive_idx, idx_map]))
         # logger.info("MAPPED\n"f"{mapped_cols}")
         # logger.info("TEXTUAL COLS NEW:\n"+ df.iloc[:, descriptive_idx].to_string(index=True))
         incomplete_rows_id = np.setdiff1d(rows_ids, dec_rows_ids)        # índices originales de filas a corregir/completar        
@@ -441,13 +436,19 @@ class MatrixSolver(VectorizationAbstractWorker):
             values[r, c] = ""
             copy_values[r, c] = []
             
-        logger.info("CORRECTED:\n" + df.to_string(index=True))
+        logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
         # logger.info("COPY CORR:\n" + df_copy.to_string(index=True))
         
         context["df_copy"] = df_copy
         
+        df = self.complete_rows(df, H, context, incomplete_rows_id, idx_map)
+        logger.info("CORRECTED:\n" + df.to_string(index=True))
+        return df
+        
+    def complete_rows(self, df: pd.DataFrame, H: int, context: Dict[str, Any], incomplete_rows_id: np.ndarray[Any, np.dtype[np.uint8]], idx_map: np.ndarray[Any, np.dtype[np.uint8]]) -> pd.DataFrame:
+        
         tables_array = self.get_arrays_table(H, context)
-        matrix_decimal, matrix_quantity = tables_array[0], tables_array[1]
+        matrix_decimal, matrix_quantity, elements_array = tables_array[0], tables_array[1], tables_array[2]
         full_dec = matrix_decimal + matrix_quantity
         
         full_dec = full_dec[incomplete_rows_id]                                 # Array decimal a corregir
@@ -456,119 +457,46 @@ class MatrixSolver(VectorizationAbstractWorker):
         semi_mask = np.count_nonzero(full_dec==1, axis=1, keepdims=True)        # cantidad de celdas con valor exactamente 1 por fila
         unique_mask = (np.all(full_dec <= 1, axis=1, keepdims=True))
         rows_incomplete = np.where((semi_mask >= 2) & unique_mask)[0]           # índice relativo con filas con un elemento decimal por celda y al menos 2 decimales
-        logger.info("DEC\n"f"{full_dec[rows_incomplete]}")
-        logger.info("\n"f"{rows_incomplete}")
-        
-        correct_rows_df = df.iloc[incomplete_rows_id]
-        logger.info("TO CORRECT:\n" + correct_rows_df.to_string(index=True))
+        # logger.info("DEC\n"f"{full_dec[rows_incomplete]}")
+        # logger.info("\n"f"{rows_incomplete}")
         
         sum_cells = np.count_nonzero(elements_array, axis=1, keepdims=True)
-        empty_cells = np.where(sum_cells < cols.size)[0]                        # índices relativos de las filas que presentan celdas vacías
+        empty_cells = np.where(sum_cells < H)[0]                        # índices relativos de las filas que presentan celdas vacías
         incomplete_dec = full_dec[empty_cells]                                  # Filas con celdas vacías y con al menos 2 decimales para operar
-        logger.info("\n"f"{incomplete_dec}")
+        # logger.info("\n"f"{incomplete_dec[:, idx_map]}")
         
-        text_cols = [cols[0] for cols in dec_cols if cols[1] == "textual"]
-        textual_indices: List[int] = [df.columns.get_loc(name) for name in text_cols if name in df.columns]
-        
-        non_mask = incomplete_rows_id[rows_incomplete]
-        zeros_repl = np.zeros((matrix_decimal.shape), np.uint8)
-        for row_idx in non_mask:
-            for target_col_idx in idx_map:
-                if target_col_idx is None:
-                    continue
-                
-                # Leemos la matriz semántica directamente en la misma coordenada
-                # Si es > 0 en decimal o en quantity, el array nos dice que es un número.
-                if matrix_decimal[row_idx, target_col_idx] > 0 or matrix_quantity[row_idx, target_col_idx] > 0:
-                    continue  # El array dice que está bien, no lo movemos.
-                    
-                cell_text = df.iat[row_idx, target_col_idx]
-                if pd.isna(cell_text) or not str(cell_text).strip() or str(cell_text).strip() == str(ZERO):
-                    continue
-                    
-                extracted_text = str(cell_text).strip()
-                
-                # 1. Limpiar la celda original (poner zero)
-                df.iat[row_idx, target_col_idx] = ZERO
-                zeros_repl[row_idx, target_col_idx] = 1
-                
-                # 2. Encontrar la columna textual más cercana
-                closest_textual_idx = textual_indices[0]
-                min_distance = abs(closest_textual_idx - target_col_idx)
-                
-                for txt_idx in textual_indices[1:]:
-                    dist = abs(txt_idx - target_col_idx)
-                    if dist < min_distance:
-                        min_distance = dist
-                        closest_textual_idx = txt_idx
-                
-                # 3. Concatenar todo el texto a la columna textual
-                current_text_target = df.iat[row_idx, closest_textual_idx]
-                if pd.isna(current_text_target):
-                    current_text_target = ""
-                else:
-                    current_text_target = str(current_text_target).strip()
-                    
-                # Respetar el orden original izquierda-derecha al concatenar
-                if target_col_idx < closest_textual_idx:
-                    new_text = f"{extracted_text} {current_text_target}".strip()
-                else:
-                    new_text = f"{current_text_target} {extracted_text}".strip()
-                    
-                df.iat[row_idx, closest_textual_idx] = new_text
-
-        # logger.info("CORRECT:\n"+ df.to_string(index=True))
-        # logger.info(f"ZEROS: \n"f"{zeros_repl}")
-        if np.count_nonzero(zeros_repl) == 0:
-            # logger.info(f"Tabla completa acomodada correctamente")
-            return df
-        df = self._complete_decimal_vals(df, zeros_repl)
-        if df.empty:
-            return df.iloc[0:0]
-        return df
-        
-    def _complete_decimal_vals(self, df: pd.DataFrame, zeros_repl: np.ndarray[Any, np.dtype[np.uint8]]) -> pd.DataFrame:
-        rows_id, cols_id = np.nonzero(zeros_repl)
-        coords = np.column_stack((rows_id, cols_id))
-        
-        # logger.info("TO COMPLETE:\n"+ df.to_string(index=True))
-      #  logger.info("ZEROS: \n"f"{zeros_repl} \n"f"CCORDS: \n"f"{coords}")
+        correct_rows_df = df.iloc[incomplete_rows_id, idx_map]
+        # logger.info("TO CORRECT:\n" + correct_rows_df.to_string(index=True))
         
         c_idx = df.columns.get_loc("c_col") if "c_col" in df.columns else None
         pu_idx = df.columns.get_loc("pu_col") if "pu_col" in df.columns else None
         mtl_idx = df.columns.get_loc("mtl_col") if "mtl_col" in df.columns else None
-        
-        if c_idx is None or pu_idx is None or mtl_idx is None:
-            logger.error("No se encontraron las columnas c_col, pu_col o mtl_col para calcular los valores.")
-            return df
-            
-        for coord in coords:
-            r = coord[0]
-            c = coord[1]
-            
-            try:
-                val_c = Decimal(str(df.iat[r, c_idx])) if c != c_idx else ZERO
-                val_pu = Decimal(str(df.iat[r, pu_idx])) if c != pu_idx else ZERO
-                val_mtl = Decimal(str(df.iat[r, mtl_idx])) if c != mtl_idx else ZERO
-                
-                result = ZERO
-                
-                if c == c_idx:
-                    if val_pu != ZERO and val_mtl != ZERO:
-                        result = val_mtl / val_pu
-                elif c == pu_idx:
-                    if val_c != ZERO and val_mtl != ZERO:
-                        result = val_mtl / val_c
-                elif c == mtl_idx:
-                    if val_c != ZERO and val_pu != ZERO:
-                        result = val_c * val_pu
-                else:
-                    continue  # El cero no está en las columnas objetivo
-                    
-                df.iat[r, c] = f"{result.quantize(Decimal('0.01'))}"
-                
-            except (InvalidOperation, ZeroDivisionError, ValueError) as err:
-                logger.error(f"Fallo cálculo aritmético en fila {r}, col {c}: {err}")
+
+        for r in incomplete_rows_id:
+            raw_c = df.iat[r, c_idx].strip()
+            raw_pu = df.iat[r, pu_idx].strip()
+            raw_mtl = df.iat[r, mtl_idx].strip()
+
+            missing_c = (raw_c == "")
+            missing_pu = (raw_pu == "")
+            missing_mtl = (raw_mtl == "")
+
+            # Debe haber exactamente una vacía por fila
+            if (missing_c + missing_pu + missing_mtl) != 1:
                 continue
-        # logger.info("CORRECTED:\n"+ df.to_string(index=True))
+
+            val_c = Decimal(raw_c) if not missing_c else ZERO
+            val_pu = Decimal(raw_pu) if not missing_pu else ZERO
+            val_mtl = Decimal(raw_mtl) if not missing_mtl else ZERO
+
+            if missing_c:
+                result = val_mtl / val_pu
+                df.iat[r, c_idx] = str(result)
+            elif missing_pu:
+                result = val_mtl / val_c
+                df.iat[r, pu_idx] = str(result)
+            else:  # missing_mtl
+                result = val_c * val_pu
+                df.iat[r, mtl_idx] = str(result)
+        
         return df
