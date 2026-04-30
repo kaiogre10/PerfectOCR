@@ -374,7 +374,7 @@ def punct_strip(text: str) -> str:
         return ""
         
     if all(char.isalnum() for char in text) or is_acronym(text):
-        # logger.info(f"Acromimo: {text}")
+        # logger.debug(f"Acromimo: {text}")
         return text.strip()
     
     return _edge_punt_pattern.sub("", text).strip()
@@ -385,7 +385,7 @@ def separate_punt(text: str) -> str:
         return ""
     
     if is_acronym(text):
-        # logger.info(f"Acromimo: {text}")
+        # logger.debug(f"Acromimo: {text}")
         return text
    
     processed_tokens: List[str] = []
@@ -441,13 +441,13 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
     def classify_token(s: str) -> Tuple[int, int]:
         nonlocal no_cuants, has_cuants, encoded, mixed, no_clas
         if not s:
-            # logger.info(f"No existente: '{s}'")
+            # logger.debug(f"No existente: '{s}'")
             no_clas += 1
             return (-1, 0)
 
         if not any(c.isalnum() for c in s):
             no_clas += 1
-            # logger.info(f"No alfanumérico: '{s}¿")
+            # logger.debug(f"No alfanumérico: '{s}")
             return (-1, 0)
 
         total_text = len(s)
@@ -474,8 +474,8 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                     no_cuants += 1
                     return (2, 0)
                     
-                if total_text > 2:
-                    # logger.info(f"CODE sin vocales: '{s}'")
+                if total_text > 1:
+                    logger.debug(f"CODE sin vocales: '{s}'")
                     no_cuants += 1
                     return (3, 0)
                 
@@ -485,46 +485,46 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
 
         if total_cuant == total_text:
             if total_text < 3:
-              #  logger.info(f"NUM por único: '{s}'")
+              #  logger.debug(f"NUM por único: '{s}'")
                 has_cuants += 1
                 return (5, total_cuant)
 
             elif s.startswith("0"):
-                # logger.info(f"CODE por inicio 0: '{s}'")
+                logger.debug(f"CODE por inicio 0: '{s}'")
                 has_cuants += 1
                 return (3, total_cuant)
                 
             if s.isdecimal():
-              #  logger.info(f"NUM por decimal: '{s}'")
+              #  logger.debug(f"NUM por decimal: '{s}'")
                 has_cuants += 1
                 return (5, total_cuant)
                 
             if contains_quantitative(s):
-                logger.debug(f"CUANT por validación: '{s}'")
+                # logger.debug(f"CUANT por validación: '{s}'")
                 has_cuants += 1
                 return (4, total_cuant)
 
-            #logger.info(f"NUM por descarte en conteo: '{s}'")
+            #logger.debug(f"NUM por descarte en conteo: '{s}'")
             has_cuants += 1
             return (5, total_cuant)
 
         if contains_quantitative(s):
-            logger.debug(f"CUANT mixto: '{s}'")
+            # logger.debug(f"CUANT mixto: '{s}'")
             mixed += 1
             return (4, total_cuant)
             
         elif s.startswith("$") and any(c.isdecimal() for c in s):
-            logger.debug(f"CUANT por incio '$': '{s}'")
+            # logger.debug(f"CUANT por incio '$': '{s}'")
             has_cuants += 1
             return (4, total_cuant)
             
         if is_umd(s):
-          #  logger.info(f"UMD mixto: '{s}'")
+          #  logger.debug(f"UMD mixto: '{s}'")
             mixed += 1
             return (2, total_cuant)
 
         if is_code(s):
-            # logger.info(f"CODE mixto: '{s}'")
+            logger.debug(f"CODE mixto: '{s}'")
             mixed += 1
             return (3, total_cuant)
         
@@ -539,19 +539,19 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
 
         if dense_mean < density_thr[0]:
             if _fraction_pattern.search(s):
-                # logger.info(f"UMD por codificacion: '{s}'")
+                # logger.debug(f"UMD por codificacion: '{s}'")
                 encoded += 1
                 return (2, total_cuant)
 
             if "/" not in s and (total_cuant / total_text) > 0.687:
-              #  logger.info(f"NUM por codificacion: '{s}'")
+              #  logger.debug(f"NUM por codificacion: '{s}'")
                 return (5, total_cuant)
-            # logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
+            logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
             encoded += 1
             return (3, total_cuant)
 
         if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
-            # logger.info(f"CODE por codificacion: '{s}'")
+            logger.debug(f"CODE por codificacion: '{s}'")
             encoded += 1
             return (3, total_cuant)
         
@@ -573,7 +573,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         if not s:
             final_results[pid] = ([-1], 0)
             no_clas += 1
-            # logger.info(f"No existente: {s}")
+            # logger.debug(f"No existente: {s}")
             continue
 
         tokens = s.split(" ")
@@ -582,7 +582,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         if not tokens or 0 >= total_tokens:
             final_results[pid] = ([-1], 0)
             no_clas += 1
-            # logger.info(f"No valido: {s}")
+            # logger.debug(f"No valido: {s}")
             continue            
                 
         token_classes: List[int] = []
@@ -593,5 +593,5 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             poly_total_cuant += t_cuant
         final_results[pid] = (token_classes, poly_total_cuant)
     
-    # logger.info(f"TOTAL CLASIFICADOS SIN CUANTITATIVOS: '{no_cuants}', SIN CUANTS: {has_cuants}, CODIFICADOS: {encoded}, MIXTOS: {mixed}")
+    # logger.debug(f"TOTAL CLASIFICADOS SIN CUANTITATIVOS: '{no_cuants}', SIN CUANTS: {has_cuants}, CODIFICADOS: {encoded}, MIXTOS: {mixed}")
     return final_results

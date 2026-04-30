@@ -61,9 +61,9 @@ class WordFinder:
             if not text:
                 return []
             
-            if text in self.noise_words:
-                logger.info(f"Ruido inmediato: {text}")
-                return []
+            # if text in self.noise_words:
+            #     logger.info(f"Ruido inmediato: {text}")
+            #     return []
 
             single = False
             if isinstance(text, str):
@@ -81,7 +81,7 @@ class WordFinder:
                     continue
                 
                 if s in self.noise_words:
-                    logger.info(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(s))}'")
+                    # logger.info(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(s))}'")
                     continue
                 
                 q = self._normalize(s)
@@ -90,11 +90,11 @@ class WordFinder:
                     continue
 
                 if q in self.noise_words:
-                    logger.info(f"Ruido temprano 2: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
+                    # logger.info(f"Ruido temprano 2: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
                     continue
 
                 if not self._is_potential_keyword(q):
-                    logger.debug(f"Texto no paso filtro global: {q}")
+                    # logger.debug(f"Texto no paso filtro global: {q}")
                     continue
 
                 # ELIMINACIÓN DE RUIDO: No usa assigned_fields
@@ -103,7 +103,7 @@ class WordFinder:
                     q = q_cleaned
 
                 if q in self.noise_words:
-                    logger.info(f"Ruido temprano 3: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
+                    # logger.info(f"Ruido temprano 3: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
                     continue
 
                 found_matches_for_s: List[Dict[str, Any]] = []
@@ -219,7 +219,7 @@ class WordFinder:
                             if right_part:
                                 queue.append(right_part)
 
-                            logger.debug(f"Extracted '{best_match['key_word']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
+                            # logger.debug(f"Extracted '{best_match['key_word']}' from '{q}'. Remaining: '{left_part}', '{right_part}'")
             if single:
                 if results:
                     logger.debug(f"RESULTS: {results}")
