@@ -121,7 +121,7 @@ class TextCorrector(OCRAbstractWorker):
 
         elif len(token) == 1:
             return token
-
+            
         if token.isalpha():
             return token
 
@@ -129,19 +129,17 @@ class TextCorrector(OCRAbstractWorker):
             return token
         
         if semantic_clasification in (4, 5):
-            dec_token =  self._correct_cuants(token)
-            if dec_token != token:
-                logger.debug(f"CORRECT NUM: '{token}' -> '{dec_token}'")
-            return dec_token
-
-        elif semantic_clasification == 2:
+            return self._correct_cuants(token)
+            # if dec_token != token:
+            #     logger.debug(f"CORRECT NUM: '{token}' -> '{dec_token}'")
+            # return dec_token
+            
+        elif semantic_clasification in (1, 2):
             if token.endswith("m1"):
-                token = token.replace("1", "l")
+                token = token.replace("1", "l")        
+            if semantic_clasification == 1:
+                return token.replace("0", "O")
             return find_umd(token)
-        
-        elif semantic_clasification == 1:
-            return token.replace("0", "O")
-
         else:
             return token
     

@@ -61,10 +61,10 @@ _vol_pattern = re.compile(rf'\b(lt|ltr|ltrs|lts|ml|cc|gal)\b', re.IGNORECASE)  #
 _len_pattern = re.compile(r'\b(cm|mm|km|in|ft|mts?|m2|m\^2|m²|cm2|cm\^2|cm²|km2|km\^2|km²)\b', re.IGNORECASE) # Más de una letra pueden ir solas
 _size_pattern = re.compile(r'\b(gde|med|ch|paq)\b', re.IGNORECASE)
 
-_cuantity_str = r'\b[Cc]\s*/\b'
-_full_fraction_pattern =  re.compile(r'(?<=\d)[Cc]\s*/\s*\d+', re.IGNORECASE)
+_cuantity_str = r'[Cc]\s*/\s*'
+_full_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\b', re.IGNORECASE)
 _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b', re.IGNORECASE)
-_semi_c_fraction = re.compile(rf'{_cuantity_str}\d*', re.IGNORECASE) # Cantidad: C/ o C/ con número, o solo C/
+_semi_c_fraction = re.compile(r'(?<!\d)[Cc]\s*/(?:\s*\d+)?\b', re.IGNORECASE)
 
 _fraction_pattern = re.compile("|".join(p.pattern for p in [_full_fraction_pattern, _semi_c_fraction, _semifraction_pattern]), re.IGNORECASE)
 _mesure_patterns = re.compile("|".join(p.pattern for p in [_size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
