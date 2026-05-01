@@ -29,7 +29,7 @@ _secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNOREC
 _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$/])[^a-zA-Z0-9\s$/]{2,}(?=[a-zA-Z0-9$/])', re.IGNORECASE)
 
 _hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
-_punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&-]", re.IGNORECASE)
+_punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
 _edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
 
 # Espacios múltiples
@@ -66,11 +66,12 @@ _len_pattern = re.compile(r'\b(cm|mm|km|in|ft|mts?|m2|m\^2|m²|cm2|cm\^2|cm²|km
 _size_pattern = re.compile(r'\b(gde|med|ch|paq)\b', re.IGNORECASE)
 
 _cuantity_str = r'[Cc]\s*/\s*'
+_extended_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]\s*/\s*\d+\+\d+(?![A-Za-z0-9])', re.IGNORECASE)
 _full_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\b', re.IGNORECASE)
 _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b', re.IGNORECASE)
 _semi_c_fraction = re.compile(r'(?<!\d)[Cc]\s*/(?:\s*\d+)?\b', re.IGNORECASE)
 
-_fraction_pattern = re.compile("|".join(p.pattern for p in [_full_fraction_pattern, _semi_c_fraction, _semifraction_pattern]), re.IGNORECASE)
+_fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, _semi_c_fraction, _semifraction_pattern]), re.IGNORECASE)
 _mesure_patterns = re.compile("|".join(p.pattern for p in [_size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
 
 _umd_patterns_list: List[Pattern[str]] = [
@@ -82,7 +83,7 @@ _umd_patterns_list: List[Pattern[str]] = [
     re.compile(rf'\b\d+\s*m\b', re.IGNORECASE),  # Solo 'm' requiere número entero antes
     re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b', re.IGNORECASE),
     re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b', re.IGNORECASE), # Dimensiones (10x20)
-    re.compile(r'#\s*\d+')
+    re.compile(r'#\s*\d+'),
 ]
 
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
@@ -154,7 +155,7 @@ def validate_text(text: str) -> bool :
         return False
     # Si es un solo carácter, debe ser válido (número o en ALONE_CHARS)
     if len(text) == 1:
-        return text in alone_chars
+        return text.isalnum()
     else:
         # Si tiene más de un carácter, debe tener al menos un alfanumérico
         return any(char.isalnum() for char in text)
