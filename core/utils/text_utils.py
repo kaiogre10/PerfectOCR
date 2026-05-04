@@ -483,7 +483,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                     no_cuants += 1
                     return (2, 0)
                     
-                if total_text > 1:
+                if total_text > 2:
                     logger.debug(f"CODE sin vocales: '{s}'")
                     no_cuants += 1
                     return (3, 0)

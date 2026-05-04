@@ -1,4 +1,5 @@
 # PerfectOCR/core/workers/vectorial_transformation/math_max.py
+from pickle import EMPTY_TUPLE
 import pandas as pd # type: ignore
 import logging
 import numpy as np
@@ -287,11 +288,18 @@ class MatrixSolver(VectorizationAbstractWorker):
             else:
                 continue
             
-        if df.shape[1] == 4 and all(name in df.columns for name in DEC_COLS_NAME):
-            for col in df.columns:
-                if col not in DEC_COLS_NAME:
-                    df.rename(columns={col: "text_col"}, inplace=True)
-                    break
+        if all(name in df.columns for name in DEC_COLS_NAME):
+            if df.shape[1] == 4:
+                for col in df.columns:
+                    if col not in DEC_COLS_NAME:
+                        df.rename(columns={col: "text_col"}, inplace=True)
+                        break
+            elif len(cols_name) == 4:
+                used_idx = {c_column, pu_column, mtl_column}
+                for idx, orig in enumerate(cols_name):
+                    if idx not in used_idx:
+                        df.rename(columns={orig: "noise_um_col"}, inplace=True)
+                        break
         return df
     
     def get_decimal_df(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
@@ -347,7 +355,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         if aritmetic_df.empty: 
             return df
         else:
-            logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
+            # logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
             return aritmetic_df
         
     def correct_df(self, df: pd.DataFrame, dec_rows_ids: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> pd.DataFrame:
@@ -384,9 +392,10 @@ class MatrixSolver(VectorizationAbstractWorker):
                 code_col_idx = None
         # logger.info("MAPPED\n"f"{mapped_cols}")
         # logger.info("TEXTUAL COLS NEW:\n"+ df.iloc[:, descriptive_idx].to_string(index=True))
-        incomplete_rows_id = np.setdiff1d(rows_ids, dec_rows_ids)        # índices originales de filas a corregir/completar        
+        incomplete_rows_id = np.setdiff1d(rows_ids, dec_rows_ids)        # índices originales de filas a corregir/completar
         textual_array = textual_array[incomplete_rows_id]
         # logger.info(f"TEXTUAL ARRAY FILTRADO:\n"f"{idx_map}\n"f"{np.column_stack([incomplete_rows_id, textual_array[:, idx_map]])}")
+        df = self.separate_decimals(df, incomplete_rows_id, descriptive_idx, context)
         
         text_in_dec = np.nonzero(textual_array[:, idx_map])
         fil_cols = text_in_dec[1]
@@ -429,7 +438,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         context["df_copy"] = df_copy
         
         df = self.complete_rows(df, context, incomplete_rows_id, idx_map)
-        # logger.info("CORRECTED:\n" + df.to_string(index=True))
+        logger.info("CORRECTED:\n" + df.to_string(index=True))
         return df
         
     def complete_rows(self, df: pd.DataFrame, context: Dict[str, Any], incomplete_rows_id: np.ndarray[Any, np.dtype[np.uint8]], idx_map: np.ndarray[Any, np.dtype[np.uint8]]) -> pd.DataFrame:
@@ -485,5 +494,64 @@ class MatrixSolver(VectorizationAbstractWorker):
             else:  # missing_mtl
                 result = val_c * val_pu
                 df.iat[r, mtl_idx] = str(result)
+        return df
         
+    def separate_decimals(self, df: pd.DataFrame, incomplete_rows_id: np.ndarray[Any, np.dtype[np.uint8]], descriptive_idx: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]):
+        tables_array = self.get_arrays_table(context)
+        matrix_decimal, matrix_quantity, elements_array = tables_array[0], tables_array[1], tables_array[2]
+        full_dec = matrix_decimal + matrix_quantity
+        cols_idx = np.arange(df.shape[1])
+        # rows_idx = np.arange(df.shape[0])
+        # total_decimals = np.count_nonzero(full_dec, axis=1)
+        
+        descript_num = full_dec[:, descriptive_idx]          # Array decimal con las columnas textuales
+        rows_to_com = np.where(descript_num)[0]              # índices absolutos de Filas con decimales en donde van textuales
+        relative_idx = np.arange(rows_to_com.size)
+        
+        two_decimals = full_dec[rows_to_com]
+        two_cols_ids = np.count_nonzero(two_decimals, axis=0) == two_decimals.shape[0]
+        idx = cols_idx[two_cols_ids]
+        
+        invaded_df = df.iloc[rows_to_com, idx]
+        # logger.info("\n"f"{invaded_df.to_string(index=True)}")
+        
+        invaded_df2 = df.iloc[rows_to_com]
+        logger.info("INVADED2:\n"f"{invaded_df2.to_string(index=True)}")
+        
+        incomplete_rows = elements_array[rows_to_com]
+        
+        double_mask = np.count_nonzero(two_decimals, axis=1) == 2   # índices con Filas con exactamente2 decimales
+        
+        incomplete_rows = incomplete_rows[double_mask]              # Elements array filtrado con las filas con 2 decimales
+        # logger.info(f"MASK2: {rows_to_com}, {relative_idx}")
+        invaded_df = invaded_df.map(lambda x: Decimal(x))
+        for r in relative_idx:
+            real_idx = rows_to_com[r]
+            vals = df.iloc[real_idx]                                # Valores del DF original
+            # logger.info(f"VALS: {vals}")
+            val_n = invaded_df.iat[r, 0]
+            val_m = invaded_df.iat[r, 1]
+            src_a = invaded_df.columns[0]
+            src_b = invaded_df.columns[1]
+            # logger.info(f"{src_a}, {src_b}")
+            # empty_col = invaded_df2.iloc[r].index[invaded_df2.iloc[r].eq("")][0]
+            val_a = max(val_m, val_n)
+            val_b = min(val_m, val_n)
+            quotient = (val_a / val_b)
+            # logger.info(f"A: {val_a}, B: {val_b}, COCIENTE: {quotient}")
+            if quotient.to_integral_value():
+                if val_a > quotient and val_b >= quotient and val_a != quotient:
+                    df.at[real_idx, src_a] = "" 
+                    df.at[real_idx, src_b] = ""
+                    df.at[real_idx, "mtl_col"] = str(val_a)
+                    df.at[real_idx, "pu_col"] = str(val_b)
+                    # logger.info(f"VALOR FALTANTE ES C_COL")    
+                else:
+                    continue
+                    # logger.info(f"VALOR FALTANTE ES: '{empty_col}'")
+            else:
+                continue
+                # logger.info(f"NO ENCONTRADO: {quotient}")
+                
+        logger.info("CLEAN:\n" + df.to_string(index=True))
         return df

@@ -77,9 +77,9 @@ class MatricialCusine(VectorizationAbstractWorker):
                     return tabular_lines
                 else:
                     tabular_array = self.cosine_dummies(analysis, line_idx)
-                    if tabular_array[:, 0].size == len(tabular_lines):
+                    if tabular_array.size == len(tabular_lines):
                         return tabular_lines
-                    new_tabular_idx = tabular_array[:, 0].tolist()
+                    new_tabular_idx = tabular_array.tolist()
                     new_tabular_lines: List[str] = [tabular_lines[i] for i in new_tabular_idx]
                     return new_tabular_lines
             else:
@@ -128,8 +128,6 @@ class MatricialCusine(VectorizationAbstractWorker):
         Fallback de emergencia optimizado. Compara todas las líneas del documento contra vectores DUMMIE
         usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares.
         """
-        # logger.warning(f"INICIANDO MÉTODO DE EMERGENCA")
-        
         t0 = time.perf_counter()
         # has_kf = analysis[:, -2] < 1
         analysis = analysis[line_ids]
@@ -160,11 +158,11 @@ class MatricialCusine(VectorizationAbstractWorker):
         # logger.info(f"CUTS: {cuts}, SHAPE: {cuts.shape}")
         cutted_idx = np.arange((cuts[0]+1), dtype=np.uint8)
         mean_idx = sims_final[cutted_idx]
-        lines_ids = line_ids[cutted_idx]
+        # lines_ids = line_ids[cutted_idx]
         # logger.info("CUTTED:\n"f"{np.column_stack([lines_ids, mean_idx])}, SHAPE: {mean_idx.shape[0]}")
-        # tabular_ids = line_ids[0:mean_idx.shape[0]]
-        # logger.info(f"{tabular_ids}")
-        return np.column_stack([cutted_idx, lines_ids]).astype(np.uint8)
+        tabular_ids = line_ids[0:mean_idx.shape[0]]
+        logger.info(f"Table Range: {tabular_ids[0]} - {tabular_ids[-1]}")
+        return cutted_idx.astype(np.uint8)
         
     def _find_best_cluster(self, sorted_candidates: List[str], line_ids: List[str]) -> List[str]:
         """Encuentra el mejor cluster respetando min_cluster e interval y devuelve todas las líneas del intervalo."""

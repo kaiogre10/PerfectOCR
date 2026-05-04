@@ -23,15 +23,15 @@ pipeline_secuence:
   vector_stage:
    - "lineal"
    - "cos_sim"
-  #  - "table_structurer"
-  #  - "math_max"
+   - "table_structurer"
+   - "math_max"
    
 log_debug:
   text_ocr: False
   seman_clas: False
   key_fields: False
-  lines: True
-  table_lines: True
+  lines: False
+  table_lines: False
   table_geo: False
   table_correct: False
   
