@@ -121,7 +121,7 @@ class DataFinder(OCRAbstractWorker):
                         leftovers = orig_text.replace(key_word, "")
                         if leftovers and leftovers.isalpha():
                             add_kf = len(leftovers)
-                            logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> '{leftovers}'")
+                            # logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> '{leftovers}'")
                             # Asigna una lista de 6's: uno por cada palabra (keyword + leftovers)
                             polygon_updates[pid] = [6] * (add_kf + 1)
                             continue

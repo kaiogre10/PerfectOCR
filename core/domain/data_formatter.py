@@ -291,22 +291,20 @@ class DataFormatter:
 
                     updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[0], cuant_chars=0)
                     self.workflow.polygons[poly_id] = updated_polygon
+                    updated_count += 1
                     
             if self.key_fields_log:
                 for pid, poly_data in self.workflow.polygons.items():
                     kf = poly_data.key_field or None
                     if kf is not None:
-                        updated_count += 1
                         if any(k in self.kf_list_log for k in kf):
                             logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
                 
-                if updated_count > 0:
-                    logger.info(f"Actualizados {updated_count} polígonos con key_fields")
-            
-            
-                else:
-                    logger.warning("No hubo poligonos con key_field")
-                    return True
+            if updated_count > 0:
+                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
+            else:
+                logger.warning("No hubo poligonos con key_field")
+                return True
             return True
             
         except Exception as e:

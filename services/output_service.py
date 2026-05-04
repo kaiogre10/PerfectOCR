@@ -174,7 +174,7 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
             _append_table_to_master(
                 corrected_df=corrected_df,
                 output_dir=output_dir,
-                # section_title=os.path.splitext(os.path.basename(file_name))[0],
+                section_title=os.path.splitext(os.path.basename(file_name))[0],
                 header_text=header_text,
                 master_filename="tables_master.csv"
             )
@@ -187,13 +187,14 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
     except Exception as e:
         logger.error(f"Error guardando CSV: {e}", exc_info=True)
         
-def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, header_text: List[str], master_filename: str = "tables_master.csv"):
+def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section_title: str, header_text: List[str], master_filename: str = "tables_master.csv"):
     os.makedirs(output_dir, exist_ok=True)
     master_path = os.path.join(output_dir, master_filename)
     write_header = not os.path.exists(master_path) or os.path.getsize(master_path) == 0
 
     with open(master_path, 'a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
+        writer.writerow([f"# --- {section_title} ---"])
         if write_header:
             writer.writerow(header_text if (header_text and len(header_text) > 0) else list(corrected_df.columns))
         for row in corrected_df.itertuples(index=False, name=None):

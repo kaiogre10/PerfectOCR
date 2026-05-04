@@ -225,6 +225,7 @@ VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
     1.0,
     0.836353079,
     1.0,
+    1.0
 ])
 
 FEATURES_NAME: List[str] = [
@@ -261,6 +262,7 @@ FEATURES_NAME: List[str] = [
     "digit_above",
     "digit_char_frec",
     "has_digit",
+    "has_kf"
 ]
 
 SEMATIC_TYPES_MAP: Dict[str, int] = {

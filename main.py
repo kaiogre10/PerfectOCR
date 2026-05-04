@@ -43,8 +43,8 @@ elif os.environ.get("CODESPACES"):
     default_output = output_paths
 else:
     print("Ejecución en Inspiron")
-    output_paths = []
-    default_output = []
+    output_paths = ["output"]
+    default_output = ["output"]
     
 DEFAULT_OUTPUT_PATH = default_output
 OUTPUT_PATH = output_paths

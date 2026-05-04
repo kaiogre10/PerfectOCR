@@ -39,16 +39,15 @@ class LinealReconstructor(VectorizationAbstractWorker):
             logger.debug(f"'{len(lines_info)}' líneas amadas en {time.perf_counter() - start_time:.10f}")
             
             head, foot = table_range
-            if foot is None:
+            if foot is None or head is None:
                 for line_data in lines_info.values():
                     line_data["tabular_line"] = False
             if manager.create_text_lines(lines_info):
-                logger.debug("Lineas guardads correctamente en el manager")
             
-                if all(l is not None for l in table_range):
+                if head is not None and foot is not None:
                     # Hay tabla detectada → vectorizar solo si get_vectors está activo
                     table_lines = list(range(head + 1, foot))
-                    logger.debug(f"Table range: {table_range}")
+                    logger.info(f"Table range: {table_range}")
                     context["vectorice"] = self.get_vectors
                     context["table_range"] = table_lines
                 else:

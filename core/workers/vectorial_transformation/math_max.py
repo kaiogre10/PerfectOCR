@@ -57,7 +57,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             context["cut_polygons"] = cut_polygons
             context["df_copy"] = df_copy
        
-            corrected_df = self.solve(df, H, context)
+            corrected_df = self.solve(df, context)
 
             if corrected_df.empty:
                 logger.error("SE DEVOLVIÓ DATA FRAME VACÍO")
@@ -90,12 +90,12 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
         return False
             
-    def solve(self, df: pd.DataFrame, H: int, context: Dict[str, Any]) -> pd.DataFrame:
+    def solve(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
         """
         Fase 1: Identifica roles C, PU, MTL usando clasificación semántica
         de polígonos y votación global con aritmética Decimal.
         """
-        aritmetic_df= self.get_decimal_df(df, H, context)
+        aritmetic_df= self.get_decimal_df(df, context)
         dec_rows_ids = aritmetic_df.index.to_numpy()
    
         # logger.info("ARITHMETIC IDS:\n"f"{dec_rows_ids}")
@@ -109,7 +109,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             return df.iloc[0:0]
 
         logger.info("RENAMED:\n" + df.to_string(index=True))
-        df = self.correct_df(df, H, dec_rows_ids, context)
+        df = self.correct_df(df, dec_rows_ids, context)
         if df.empty:
             return df.iloc[0:0]
         return df
@@ -159,11 +159,12 @@ class MatrixSolver(VectorizationAbstractWorker):
                 
         return cut_polygons
         
-    def get_arrays_table(self, H: int, context: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        """"Devuelve [matrix_decimal, matrix_quantity, elements_array, textual_arrays]"""
+    def get_arrays_table(self, context: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+        """"Devuelve [matrix_decimal, matrix_quantity, elements_array, textual_array, code_array]"""
         df_copy: pd.DataFrame = context["df_copy"]
         cut_polygons: Dict[str, Dict[str, Any]] = context["cut_polygons"]
         R = df_copy.shape[0]
+        H = df_copy.shape[1]
         
         matrix_array = np.zeros((R, H), np.uint8)
         matrix_decimal = matrix_array.copy()
@@ -231,7 +232,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.debug(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
             return df.iloc[0:0]
         # logger.info("DECIMAL DF:\n" + perm_df.to_string(index=False))
-        time_t = time.perf_counter()
+        # time_t = time.perf_counter()
         try:
             all_hypotesis = []
             array_votes = np.zeros(perm_df.shape, np.int8)
@@ -293,8 +294,9 @@ class MatrixSolver(VectorizationAbstractWorker):
                     break
         return df
     
-    def get_decimal_df(self, df: pd.DataFrame, H: int, context: Dict[str, Any]) -> pd.DataFrame:
-        arrays_table = self.get_arrays_table(H, context)
+    def get_decimal_df(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
+        H = df.shape[1]
+        arrays_table = self.get_arrays_table(context)
         matrix_decimal, matrix_quantity, elements_array = arrays_table[0], arrays_table[1], arrays_table[2]
         textual_array = arrays_table[3] + arrays_table[4]
         full_rows_mask = np.count_nonzero(elements_array, axis=1) >= H
@@ -348,15 +350,16 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.info("FULL DECIMAL COLS:\n" + aritmetic_df.to_string(index=True))
             return aritmetic_df
         
-    def correct_df(self, df: pd.DataFrame, H: int, dec_rows_ids: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> pd.DataFrame:
+    def correct_df(self, df: pd.DataFrame, dec_rows_ids: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> pd.DataFrame:
         idx_map = np.sort(np.array([(df.columns.get_loc(name) if name in df.columns else None) for name in DEC_COLS_NAME], np.uint8))
         # logger.info(f"{idx_map}")
         if idx_map.size==0:
             return df.iloc[0:0]
         
-        cols_idx = np.arange(df.shape[1], dtype=np.uint8)
+        h = df.shape[1]
+        cols_idx = np.arange(h, dtype=np.uint8)
         rows = df.shape[0]
-        tables_array = self.get_arrays_table(H, context)
+        tables_array = self.get_arrays_table(context)
         textual_array, code_array = tables_array[3], tables_array[4]
         rows_ids = np.arange(rows, dtype=np.uint8)
         if df.shape[1] == 4 and idx_map.size == 3:
@@ -395,44 +398,43 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.info("UBICACIONES INFILTRADOS ARRAY:\n"f"{text_in_dec}\n"f"{fil_rows}, {fil_cols}")
         # logger.info("INFLITRADOS DF:\n"f"{df.iloc[fil_rows, fil_cols]}")
         df_copy: pd.DataFrame = context["df_copy"]
-        # logger.info("COPY:\n" + df_copy.to_string(index=True))
-        
-        values = df.values
-        copy_values = df_copy.values
-      
+
+        dest_idx = int(descriptive_idx[0]) if hasattr(descriptive_idx, "__len__") else int(descriptive_idx)
+
         for r, c in zip(fil_rows, fil_cols):
-            if c == descriptive_idx:
+            r = int(r); c = int(c)
+            if c == dest_idx:
                 continue
-            val = values[r, c]
-            
-            vals = copy_values[r, c]
-            dest_vals = copy_values[r, descriptive_idx[0]]
-            
-            if val == "":
+
+            val = df.iat[r, c]
+            vals = df_copy.iat[r, c]
+            dest_vals = df_copy.iat[r, dest_idx]
+
+            if val == "" or val is None:
                 continue
-            
-            if c < descriptive_idx:
-                values[r, descriptive_idx] = val + " " + values[r, descriptive_idx]             # Original
-                copy_values[r, descriptive_idx[0]] = vals + dest_vals                           # Valores espejo
+
+            if c < dest_idx:
+                df.iat[r, dest_idx] = str(val) + " " + str(df.iat[r, dest_idx])
+                df_copy.iat[r, dest_idx] = vals + dest_vals
             else:
-                values[r, descriptive_idx] = values[r, descriptive_idx] + " " + val             # Original
-                copy_values[r, descriptive_idx[0]] = dest_vals + vals                           # Espejo
-                
-            values[r, c] = ""
-            copy_values[r, c] = []
+                df.iat[r, dest_idx] = str(df.iat[r, dest_idx]) + " " + str(val)
+                df_copy.iat[r, dest_idx] = dest_vals + vals
+
+            df.iat[r, c] = ""
+            df_copy.iat[r, c] = []
             
-        logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
+        # logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
         # logger.info("COPY CORR:\n" + df_copy.to_string(index=True))
         
         context["df_copy"] = df_copy
         
-        df = self.complete_rows(df, H, context, incomplete_rows_id, idx_map)
-        logger.info("CORRECTED:\n" + df.to_string(index=True))
+        df = self.complete_rows(df, context, incomplete_rows_id, idx_map)
+        # logger.info("CORRECTED:\n" + df.to_string(index=True))
         return df
         
-    def complete_rows(self, df: pd.DataFrame, H: int, context: Dict[str, Any], incomplete_rows_id: np.ndarray[Any, np.dtype[np.uint8]], idx_map: np.ndarray[Any, np.dtype[np.uint8]]) -> pd.DataFrame:
-        
-        tables_array = self.get_arrays_table(H, context)
+    def complete_rows(self, df: pd.DataFrame, context: Dict[str, Any], incomplete_rows_id: np.ndarray[Any, np.dtype[np.uint8]], idx_map: np.ndarray[Any, np.dtype[np.uint8]]) -> pd.DataFrame:
+        H = df.shape[1]
+        tables_array = self.get_arrays_table(context)
         matrix_decimal, matrix_quantity, elements_array = tables_array[0], tables_array[1], tables_array[2]
         full_dec = matrix_decimal + matrix_quantity
         
