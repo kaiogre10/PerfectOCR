@@ -3,9 +3,6 @@ from core.domain.data_models import WorkflowDict, StructuredTable, Geometry, Met
 import numpy as np
 import dataclasses
 import logging
-# import json
-# from datetime import datetime
-# import time
 from typing import Dict, Any, Optional, List, Tuple
 from core.utils.image_utils import normalice_image
 import pandas as pd #type: ignore
@@ -293,15 +290,15 @@ class DataFormatter:
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
                     
-            if self.key_fields_log:
-                for pid, poly_data in self.workflow.polygons.items():
-                    kf = poly_data.key_field or None
-                    if kf is not None:
-                        if any(k in self.kf_list_log for k in kf):
-                            logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
-                
             if updated_count > 0:
-                logger.debug(f"Actualizados {updated_count} polígonos con key_fields")
+                if self.key_fields_log:
+                    for pid, poly_data in self.workflow.polygons.items():
+                        kf = poly_data.key_field or None
+                        if kf is not None:
+                            if any(k in self.kf_list_log for k in kf):
+                                logger.info(f"UPDATED: {pid}, key_field: {kf}, text: '{poly_data.ocr_text}'")
+                                
+                    logger.info(f"Actualizados {updated_count} polígonos con key_fields")
             else:
                 logger.warning("No hubo poligonos con key_field")
                 return True
@@ -421,143 +418,3 @@ class DataFormatter:
         except TypeError as e:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
         return False
-
-    # def _parse_number(self, s: Any):
-    #     try:
-    #         if s is None:
-    #             return None
-    #         if isinstance(s, (int, float)):
-    #             return s
-    #         sstr = str(s).replace(",", "").strip()
-    #         if sstr == "":
-    #             return None
-    #         if "." in sstr:
-    #             return float(sstr)
-    #         return int(sstr)
-    #     except Exception:
-    #         try:
-    #             return float(str(s).replace(",", ""))
-    #         except Exception:
-    #             return None
-
-    # def _row_to_detalle(self, row: Dict[str, Any]) -> Dict[str, Any]:
-    #     # Mapea columnas esperadas al esquema de DetallesCompra
-    #     return {
-    #         "IDDetalle": None,  
-    #         "IDRegistro": None,
-    #         "Cantidad": self._parse_number(row.get("c")),
-    #         "SKU": row.get("sku"),
-    #         "ProductoEstandarizado": None,
-    #         "PrecioUnitario": self._parse_number(row.get("pu")),
-    #         "ImporteRaw": self._parse_number(row.get("mtl")),
-    #     }
-    
-    # def to_db_payload(self, data_base_path: str) -> str:
-    #     """
-    #     Construye un payload JSON-serializable:
-    #     { registro: {...}, detalles: [...], provenance: {...}, raw_table: [...] }
-    #     """
-    #     try:
-    #         logger.debug("Estructuración de datos iniciada")
-    #         try:
-    #             if not self.workflow:
-    #                 return ""
-
-    #             wf: WorkflowDict = self.workflow
-    #             md: Metadata = wf.metadata
-    #             polygons: Dict[str, Polygons] = wf.polygons or {}
-    #             dict_id: str = wf.IDRegistro
-    #             folio: Optional[str] = None
-    #             fecha: Optional[str] = None
-    #             rfc: Optional[str] = None
-    #             monto: Optional[Any] = None
-    #             tipo: Optional[str] = None
-    #             nombre_cliente: Optional[str] = None
-
-    #             for pid, pdata in polygons.items():
-    #                 try:
-    #                     key = getattr(pdata, "key_field", None)
-    #                     text = getattr(pdata, "ocr_text", None)
-    #                     if not key or not text:
-    #                         continue
-    #                     key = str(key).strip()
-    #                     txt = str(text).strip()
-    #                     if key == "FolioDocumento" and not folio:
-    #                         folio = txt
-    #                     elif key == "FechaDocumento" and not fecha:
-    #                         try:
-    #                             parsed = datetime.fromisoformat(txt)
-    #                             fecha = parsed.isoformat()
-    #                         except Exception:
-    #                             fecha = txt
-    #                     elif key == "RFCProveedor" and not rfc:
-    #                         rfc = txt
-    #                     elif key == "MontoTotalDocumento" and monto is None:
-    #                         monto = self._parse_number(txt)
-    #                     elif key == "TipoDocumento" and not tipo:
-    #                         tipo = txt
-    #                     elif key == "NombreCliente" and not nombre_cliente:
-    #                         nombre_cliente = txt
-    #                 except Exception as e:
-    #                     # No bloquear la construcción del payload por un polígonos con problemas
-    #                     logger.debug(f"Ignorando polígono {pid} al construir registro {e}", exc_info=True)
-
-    #             registro: Optional[Dict[str, Any]] = {
-    #                 "IDRegistro": dict_id,
-    #                 "FolioDocumento": folio,
-    #                 "FechaDocumento": fecha,
-    #                 "RFCProveedor": rfc,
-    #                 "MontoTotalDocumento": monto,
-    #                 "TipoDocumento": tipo,
-    #                 "NombreCliente": nombre_cliente,
-    #             }
-
-    #         except Exception as e:
-    #             logger.debug(f"fallo en dbpayload{e}", exc_info=True)
-    #         try:
-                
-    #             detalles: List[List[int]] = []
-    #             if self.structured_table and hasattr(self.structured_table, "df"):
-    #                 df = self.structured_table.df
-    #                 cols = self.structured_table.columns if self.structured_table.columns else list(df.columns)
-    #                 for _, r in df.iterrows():
-    #                     row: Dict[str, Any] = {}
-    #                     # mapear por índice de columnas a col_0..col_n para _row_to_detalle
-    #                     for i, c in enumerate(cols):
-    #                         row[f"col_{i}"] = r.get(c) if c in df.columns else r[i]
-    #                     detalles.append(self._row_to_detalle(row))
-
-    #         except Exception as e:
-    #             logger.debug(f"No hay tabla estructurada{e}", exc_info=True)
-                            
-    #         provenance: Dict[str, Any] = {
-    #             "IDRegistro": dict_id,
-    #             "IDProveedor": md.get("image_name") if isinstance(md, dict) else getattr(md, "image_name", None)
-    #         }
-
-    #         payload: Dict[str, Any] = {"registro": registro, "detalles": detalles, "provenance": provenance}
-    #         # opcional: raw_table para auditoría
-    #         if self.structured_table and hasattr(self.structured_table, "df"):
-    #             payload["raw_table"] = {"columns": list(self.structured_table.df.columns), "rows": self.structured_table.df.fillna("").astype(str).values.tolist()}
-
-    #         success: bool = self.export_payload_json(payload, data_base_path)
-    #         if success is not False:
-    #             logger.debug(f"Resultados: {payload}")
-    #             db_path = data_base_path
-    #             return db_path
-
-    #     except Exception as e:
-    #         logger.error(f"Error exportando payload json: {e}", exc_info=True)
-
-    # def export_payload_json(self, payload: Dict[str, Any], data_base_path: str) -> bool:
-    #     """Escribe el payload en disco para auditoría/revisión manual"""
-    #     try:
-    #         if not payload:
-    #             return False
-    #         with open(data_base_path, "w", encoding="utf-8") as fh:
-    #             json.dump(payload, fh, ensure_ascii=False, indent=2)
-                
-    #         return True
-    #     except Exception as e:
-    #         logger.debug(f"Error exportando payload json: {e}", exc_info=True)
-    #         return False

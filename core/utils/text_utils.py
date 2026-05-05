@@ -249,9 +249,9 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
             activate_func[4] = True
             return 11
         
-        if not activate_func[5] and bool(_cp_pattern.search(s)):
-            activate_func[5] = True
-            return 12
+        # if not activate_func[5] and bool(_cp_pattern.search(s)):
+        #     activate_func[5] = True
+        #     return 12
             
         return None
 

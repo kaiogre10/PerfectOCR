@@ -153,40 +153,52 @@ class DataFinder(OCRAbstractWorker):
         return {}
         
     def get_key_fields_values(self, manager: DataFormatter, polygon_updates: Dict[str, List[int]]) -> Dict[str, List[int]]:
+        # logger.info(f"UPDATES: {polygon_updates}")
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-        monetary_vals = [1, 2, 3]
-        monetary_polygons: Dict[int, List[int]] = {}
+        kf_vals = [1, 2, 3, 4, 8]
+        
+        real_vals_polygons: Dict[int, List[int]] = {}
         polyid_by_index = {p.poly_index: pid for pid, p in polygons.items()}  # Mapeo inverso
 
         for poly_id, poly_data in list(polygon_updates.items()):
-            if any(val in monetary_vals for val in poly_data):
+            if any(val in kf_vals for val in poly_data):
                 poly_obj = polygons.get(poly_id)
                 if poly_obj:
-                    monetary_polygons[poly_obj.poly_index] = poly_data
+                    real_vals_polygons[poly_obj.poly_index] = poly_data
             else:
                 continue
-        if not monetary_polygons:
+            
+        if not real_vals_polygons:
             return polygon_updates
-
+        # logger.info(f"{real_vals_polygons}")
         for _, poly_info in polygons.items():
             poly_idx = poly_info.poly_index
-            for poly_idx_monetary, poly_data_monetary in monetary_polygons.items():
-                if poly_idx == poly_idx_monetary:
+            for poly_idx_vals, kf_founded in real_vals_polygons.items():
+                if poly_idx == poly_idx_vals:
                     # Obtener el polígono con poly_index == poly_idx_monetary + 1
-                    next_poly = next((p for p in polygons.values() if p.poly_index == poly_idx_monetary + 1), None)
+                    next_poly = next((p for p in polygons.values() if p.poly_index == poly_idx_vals + 1), None)
                     if next_poly:
                         polygon_id = next_poly.polygon_id
-                        text = next_poly.ocr_text or ""
+                        # text = next_poly.ocr_text or ""
                         sc = next_poly.semantic_clasification
-                        kf = next_poly.key_field
-                        if any(s for s in sc if s in (4, 5)) and kf is None and text:
-                            # logger.info(f"VALOR REAL: {polygon_id}, text: {text}, SC: {sc}")
-                            # Eliminar el polígono original
-                            original_poly_id = polyid_by_index.get(poly_idx_monetary)
-                            if original_poly_id in polygon_updates:
-                                del polygon_updates[original_poly_id]
-                            # Añadir el nuevo polígono
-                            polygon_updates[polygon_id] = poly_data_monetary
-                        else:
-                            continue
+                        # kf = next_poly.key_field
+                        
+                        if any(v for v in kf_founded if v in (1, 2, 3, 8)):
+                            if any(s for s in sc if s in (4, 5)):
+                                # Eliminar el polígono original
+                                original_poly_id = polyid_by_index.get(poly_idx_vals)
+                                if original_poly_id in polygon_updates:
+                                    del polygon_updates[original_poly_id]
+                                # Añadir el nuevo polígono
+                                polygon_updates[polygon_id] = kf_founded
+                                
+                        if 4 in kf_founded:
+                            if any(s for s in sc if s in (3, 5)):
+                                original_poly_id = polyid_by_index.get(poly_idx_vals)
+                                if original_poly_id in polygon_updates:
+                                    del polygon_updates[original_poly_id]
+                                # Añadir el nuevo polígono
+                                polygon_updates[polygon_id] = kf_founded
+                        
+        # logger.info(f"NEW UPDATES: {polygon_updates}")
         return polygon_updates

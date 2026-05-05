@@ -123,7 +123,7 @@ class Refiner(OCRAbstractWorker):
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons
             # [fecha, rfc, iva] — ya satisfechos en el documento
-            state: List[bool] = [False, False, False, False, False, False]
+            state: List[bool] = [False, False, False, False, False]
 
             for _, pd in polygons.items():
                 kf = pd.key_field
@@ -139,8 +139,8 @@ class Refiner(OCRAbstractWorker):
                     state[3] = True
                 if 11 in kf:
                     state[4] = True
-                if 12 in kf:
-                    state[5] = True
+                # if 12 in kf:
+                #     state[5] = True
 
             polygon_updates: Dict[str, List[int]] = {}
 

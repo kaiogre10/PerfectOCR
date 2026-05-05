@@ -26,7 +26,6 @@ class Polygons:
     cropped_img: Optional[CroppedImage]
     ocr_text: Optional[str]
     key_field: Optional[List[int]]
-#    'GlobalData': 0
 #    'MontoTotalDocumento': 1
 #    'TotalProductos': 2
 #    'Subtotal': 3
