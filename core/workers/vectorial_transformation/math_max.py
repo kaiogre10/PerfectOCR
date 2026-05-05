@@ -50,7 +50,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             # logger.debug(
             #     "Tablas recibidas para corrección matemática:\n"
-            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
             #     f"DataFrame copia:\n{df_copy.to_string(index=True)}"
             # )
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}

@@ -23,7 +23,7 @@ os.environ.update({
 TEST_MODE = True
 
 DEFAULT_INPUT_PATH = [
-    "input",
+    # "input",
      "input2",
     #   "input3"
 #  "D:/data/tickets_nuevo"
@@ -52,7 +52,7 @@ OUTPUT_PATH = output_paths
 CONSOLE_LEVEL = "INFO"
 FILE_LEVEL = "INFO"
 CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
-FILE_FORMAT = "%(asctime)s - %(filename)s:%(module)s:%(lineno)d - %(message)s"
+FILE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%H:%M:%S"  # Solo horas:minutos:segundos en formato 00:00:00
 
 logger_root = logging.getLogger()

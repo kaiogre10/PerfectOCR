@@ -84,11 +84,12 @@ class MatricialCusine(VectorizationAbstractWorker):
                     return new_tabular_lines
             else:
                 line_idx = np.array(line_ids, np.uint8)
-                tabular_lines = self.cosine_dummies(analysis, line_ids)
-
-                if tabular_lines:
-                    # tabular_lines = self.similiraity_all_vs_all(analysis, tabular_lines, line_ids)
-                    return tabular_lines
+                tabular_array = self.cosine_dummies(analysis, line_idx)
+                new_tabular_idx = tabular_array.tolist()
+                new_tabular_lines: List[str] = [tabular_lines[i] for i in new_tabular_idx]
+                if new_tabular_lines:
+                    return new_tabular_lines
+                    
                 else:
                     logger.info("Sin lineas tabulares, DBSCAN como soporte")
                     return self.scanner_clustering(analysis, manager)

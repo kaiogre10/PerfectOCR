@@ -1,7 +1,7 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
 import cv2
-import time
+# import time
 import numpy as np
 from typing import Dict, Any, Optional, List
 from core.domain.models_manager import ModelsManager
@@ -40,7 +40,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         return self._engine
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        start_time = time.perf_counter()
+        # start_time = time.perf_counter()
         worker_name = context.get("worker_name") or "geometry_detector"
         try:
             engine = self.engine

@@ -1,6 +1,6 @@
 import numpy as np
 import logging
-import pandas as pd
+# import pandas as pd
 import time
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore

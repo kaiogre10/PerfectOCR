@@ -95,9 +95,6 @@ class DataFinder(OCRAbstractWorker):
                     continue
             
                 else:
-                    # if is_acronym(ocr_text):
-                    #     ocr_text = ocr_text.replace(".", "")
-                    # logger.info(f"Texto a procesar: '{ocr_text}' | sc: {poly.semantic_clasification}")
                     valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
                     if not valid_results:
                         continue
@@ -105,7 +102,7 @@ class DataFinder(OCRAbstractWorker):
                     # logger.info(f"Valid Results: {valid_results}")
                     num_keywords = len(valid_results)
                     all_key_fields = [result['key_field'] for result in valid_results]
-                    if not all_key_fields or all_key_fields is None:
+                    if not all_key_fields:
                         continue
 
                     # Verificar si todos son headers (key_field == 6)

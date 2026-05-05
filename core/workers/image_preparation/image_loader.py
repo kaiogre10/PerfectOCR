@@ -35,7 +35,7 @@ class ImageLoader(ImagePrepAbstractWorker):
                 # cv2.imread ya retorna uint8, no necesita .astype()
                 time0 = time.perf_counter()
                 full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
-                logger.debug(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.4f}'s")
+                logger.info(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.6f}'s")
             else:
                 logger.error(f"Formato de imagen no válida: {image_name}")
                 return False
@@ -53,7 +53,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:04d}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
-                logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
+                # logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
             
                 if self.output:
                     worker_name = context.get("worker_name") or "loader"
