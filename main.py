@@ -24,7 +24,7 @@ TEST_MODE = True
 
 DEFAULT_INPUT_PATH = [
     "input",
-    #  "input2",
+     "input2",
     #   "input3"
 #  "D:/data/tickets_nuevo"
 ]

@@ -120,6 +120,8 @@ class TextCorrector(OCRAbstractWorker):
             return ""
 
         elif len(token) == 1:
+            if semantic_clasification == 1 and "0" in token:
+                return token.replace("0", "O")
             return token
             
         if token.isalpha():
@@ -130,9 +132,6 @@ class TextCorrector(OCRAbstractWorker):
         
         if semantic_clasification in (4, 5):
             return self._correct_cuants(token)
-            # if dec_token != token:
-            #     logger.debug(f"CORRECT NUM: '{token}' -> '{dec_token}'")
-            # return dec_token
             
         elif semantic_clasification in (1, 2):
             if token.endswith("m1"):
@@ -153,146 +152,4 @@ class TextCorrector(OCRAbstractWorker):
     
     def _correct_cuants(self, token: str) -> str:
         corrected_chars = [numeric_corrections.get(ch, ch) for ch in token]
-        return ''.join(corrected_chars)    
-    
-        # """Aplica correcciones a un único token basado en su clasificación semántica."""
-
-        # # corrections_map = self._get_corrections_map(semantic_clasification)
-        # if not corrections_map:
-        #     return token
-        
-        # # token = token.strip(self.not_valid_chars)
-        # corrected_chars = list(token)
-
-        # for i, char in enumerate(token):
-        #     if char not in corrections_map:
-        #         continue
-            
-        #     if char.isalnum() and not self._is_isolated(token, i):
-        #         continue
-        #     if char == "0" and self.termination_correct(token, semantic_clasification):
-        #         replacement = "o"
-        #     elif char == "S" and self._should_use_five_instead_of_dollar(token, i, semantic_clasification):
-        #         replacement = "5"
-        #     else:
-        #         replacement = corrections_map[char]
-        #     corrected_chars[i] = replacement
-
-        # # numeric_separator ya NO se aplica aquí para sc==2
-        # return ''.join(corrected_chars)
-
-    # def _is_solated2(self, text: str):
-    #     return (sum(1 for char in text if char.isdecimal()) == 1 or sum(1 for char in text if char.isalpha()) == 1) if text.isalnum() else False
-
-
-    # def _is_isolated(self, text: str, index: int) -> bool:
-    #     """
-    #     Verifica si un carácter está AISLADO (sin vecinos del mismo tipo).
-    #     Ignora espacios al buscar vecinos.
-    #     """
-    #     if index < 0 or index > len(text):
-    #         return False
-
-    #     current_char = text[index]
-    #     current_is_digit = current_char in cuant_char
-    #     current_is_alpha = current_char.isalpha()
-        
-    #     # Si no es letra ni número, no aplicar corrección
-    #     if not current_is_digit and not current_is_alpha:
-    #         return False
-        
-    #     # Buscar vecino izquierdo (ignorando espacios)
-    #     left_neighbor = None
-    #     for i in range(index - 1, -1, -1):
-    #         if text[i] != ' ':
-    #             left_neighbor = text[i]
-    #             break
-        
-    #     # Buscar vecino derecho (ignorando espacios)
-    #     right_neighbor = None
-    #     for i in range(index + 1, len(text)):
-    #         if text[i] != ' ':
-    #             right_neighbor = text[i]
-    #             break
-        
-    #     # Verificar si NINGÚN vecino es del mismo tipo (está aislado)
-    #     has_left_match = False
-    #     has_right_match = False
-        
-    #     if left_neighbor:
-    #         if current_is_digit and left_neighbor in cuant_char:
-    #             has_left_match = True
-    #         elif current_is_alpha and left_neighbor.isalpha():
-    #             has_left_match = True
-        
-    #     if right_neighbor:
-    #         if current_is_digit and right_neighbor in cuant_char:
-    #             has_right_match = True
-    #         elif current_is_alpha and right_neighbor.isalpha():
-    #             has_right_match = True
-        
-    #     # Está aislado si NO tiene ningún vecino del mismo tipo
-    #     return not (has_left_match or has_right_match)
-        
-    # def _get_corrections_map(self, semantic_clasification:  int) -> Dict[str, str]:
-    #     """Devuelve el mapa de correcciones para un tipo semántico dado."""
-    #     if not NUMERIC_CORRECTIONS:
-    #         logger.error("Sin mapa de correcciones")
-    #         return {}
-
-    #     if semantic_clasification == 1:
-    #         return NUMERIC_CORRECTIONS
-    #     elif semantic_clasification == 2:
-    #         return NUMERIC_CORRECTIONS
-    #     elif semantic_clasification == 0:
-    #         return DESCRIPTIVE_CORRECTIONS
-    #     elif semantic_clasification == -2:
-    #         return UMD_CORRECTIONS
-    #     else:
-    #         return {}
-        
-    # def _should_use_five_instead_of_dollar(self, text: str, index: int, semantic_clasification:  int) -> bool:
-    #     if semantic_clasification not in (1, 2):
-    #         return False
-
-    #     if index < 0 or index >= len(text):
-    #         return False
-            
-    #     if text[index] != 'S':
-    #         return False
-
-    #     # Delimitar token por espacios
-    #     l = index
-    #     while l > 0 and text[l-1] != ' ':
-    #         l -= 1
-    #     r = index
-    #     while r + 1 < len(text) and text[r+1] != ' ':
-    #         r += 1
-    #     token = text[l:r+1]
-
-    #     # Debe ser cuantitativo real (contener dígitos)
-    #     if not any(ch in cuant_char for ch in token):
-    #         return False
-
-    #     # Si 'S' está al inicio del token: NO forzar '5' (permitir '$')
-    #     if index == l:
-    #         return False
-
-    #     # Contexto numérico local (vecinos)
-    #     left = text[index-1] if index-1 >= l else ' '
-    #     right = text[index+1] if index+1 <= r else ' '
-    #     left_numish = left.isdecimal() or left in '.,'
-    #     right_numish = right.isdecimal() or right in '.,'
-
-    #     # Si hay '$' antes en el token o está en contexto numérico → usar '5'
-    #     has_currency_before = '$' in token[:index - l]
-    #     return has_currency_before or left_numish or right_numish
-
-    # # def termination_correct(self, text: str, semantic_clasification: int) -> bool:
-    # #     if semantic_clasification != 0:
-    # #         return False
-
-    # #     if termination_detect(text):
-    # #         return True
-    # #     else:
-    # #         return False
+        return ''.join(corrected_chars)

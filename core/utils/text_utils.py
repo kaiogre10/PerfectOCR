@@ -494,9 +494,13 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
 
         if total_cuant == total_text:
             if total_text < 3:
-              #  logger.debug(f"NUM por único: '{s}'")
-                has_cuants += 1
-                return (5, total_cuant)
+                if s == "0":
+                    # logger.info(f"DESC UNICO 0: '{s}'")
+                    return (1, 0)
+                else:
+                #  logger.debug(f"NUM por único: '{s}'")
+                    has_cuants += 1
+                    return (5, total_cuant)
 
             elif s.startswith("0"):
                 logger.debug(f"CODE por inicio 0: '{s}'")
