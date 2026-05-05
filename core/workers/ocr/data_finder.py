@@ -38,7 +38,7 @@ class DataFinder(OCRAbstractWorker):
                 logger.error("No hay polygons para procesar")
                 return False
 
-            polygon_updates = self._find_data(polygons)
+            polygon_updates = self._find_data(manager, polygons)
             if manager.update_key_field(polygon_updates):
                 return True
                 
@@ -46,7 +46,7 @@ class DataFinder(OCRAbstractWorker):
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
         return True
 
-    def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, List[int]]:
+    def _find_data(self, manager:DataFormatter, polygons: Dict[str, Polygons]) -> Dict[str, List[int]]:
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede buscar Key FIelds")
             return {}
@@ -118,7 +118,11 @@ class DataFinder(OCRAbstractWorker):
                     
                         key_word: str = valid_results[0]['key_word']
                         orig_text: str = valid_results[0]['norm_ocr_text']
-                        leftovers = orig_text.replace(key_word, "")
+                        if len(key_word) == len(orig_text):
+                            leftovers = ""
+                        else:
+                            leftovers = orig_text.replace(key_word, "")
+                        # logger.info(f"key_word = {key_word}, orig = {orig_text}, lefovers={leftovers}")
                         if leftovers and leftovers.isalpha():
                             add_kf = len(leftovers)
                             # logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> '{leftovers}'")
@@ -138,7 +142,7 @@ class DataFinder(OCRAbstractWorker):
             if polygon_updates:
                 # logger.info(f"KEY_FIELDS: {polygon_updates}")
                 # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
-                return polygon_updates
+                return self.get_key_fields_values(manager, polygon_updates)
 
             else:
                 logger.warning(f"No se hallaron Keywords, tiempo de ejecución: {time.perf_counter() - time0:.6}'s")
@@ -147,3 +151,42 @@ class DataFinder(OCRAbstractWorker):
         except ValueError as e:
             logger.warning(f"Error encontrando keyfields: {e}")
         return {}
+        
+    def get_key_fields_values(self, manager: DataFormatter, polygon_updates: Dict[str, List[int]]) -> Dict[str, List[int]]:
+        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+        monetary_vals = [1, 2, 3]
+        monetary_polygons: Dict[int, List[int]] = {}
+        polyid_by_index = {p.poly_index: pid for pid, p in polygons.items()}  # Mapeo inverso
+
+        for poly_id, poly_data in list(polygon_updates.items()):
+            if any(val in monetary_vals for val in poly_data):
+                poly_obj = polygons.get(poly_id)
+                if poly_obj:
+                    monetary_polygons[poly_obj.poly_index] = poly_data
+            else:
+                continue
+        if not monetary_polygons:
+            return polygon_updates
+
+        for _, poly_info in polygons.items():
+            poly_idx = poly_info.poly_index
+            for poly_idx_monetary, poly_data_monetary in monetary_polygons.items():
+                if poly_idx == poly_idx_monetary:
+                    # Obtener el polígono con poly_index == poly_idx_monetary + 1
+                    next_poly = next((p for p in polygons.values() if p.poly_index == poly_idx_monetary + 1), None)
+                    if next_poly:
+                        polygon_id = next_poly.polygon_id
+                        text = next_poly.ocr_text or ""
+                        sc = next_poly.semantic_clasification
+                        kf = next_poly.key_field
+                        if any(s for s in sc if s in (4, 5)) and kf is None and text:
+                            # logger.info(f"VALOR REAL: {polygon_id}, text: {text}, SC: {sc}")
+                            # Eliminar el polígono original
+                            original_poly_id = polyid_by_index.get(poly_idx_monetary)
+                            if original_poly_id in polygon_updates:
+                                del polygon_updates[original_poly_id]
+                            # Añadir el nuevo polígono
+                            polygon_updates[polygon_id] = poly_data_monetary
+                        else:
+                            continue
+        return polygon_updates
