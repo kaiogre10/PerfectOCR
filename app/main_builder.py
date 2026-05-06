@@ -125,11 +125,11 @@ def execute_sequential_processing(builder: ProcessingBuilder, workflow_report: D
             image_processing_time = time.perf_counter() - start_time
             total_processing_time += image_processing_time
             
-            if manager_result:
-                db_paths[image_name] = db_path
+            if manager_result and manager_result is not None:
                 logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
             else:
                 logger.error(f"Fallo al procesar imagen: '{image_name}'")
+            db_paths[image_name] = db_path
 
         if db_paths:
             mean_time = total_processing_time / len(db_paths)

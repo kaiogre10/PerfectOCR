@@ -125,8 +125,7 @@ class ContrastConfig(ConfigWithNumpy):
     grid_sizes_map: List[Tuple[int, int]]
         
 class MathMaxConfig(ConfigWithNumpy):
-    total_mtl_abs_tolerance: float
-    row_relative_tolerance: float
+    row_relative_tolerance: str
 
 class RestoreConfig(ConfigWithNumpy):
     area_threshold: int

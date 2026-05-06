@@ -503,7 +503,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                     return (5, total_cuant)
 
             elif s.startswith("0"):
-                logger.debug(f"CODE por inicio 0: '{s}'")
+                # logger.debug(f"CODE por inicio 0: '{s}'")
                 has_cuants += 1
                 return (3, total_cuant)
                 
@@ -517,7 +517,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 has_cuants += 1
                 return (4, total_cuant)
 
-            #logger.debug(f"NUM por descarte en conteo: '{s}'")
+            # logger.info(f"NUM por descarte en conteo: '{s}'")
             has_cuants += 1
             return (5, total_cuant)
 
@@ -537,7 +537,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             return (2, total_cuant)
 
         if is_code(s):
-            logger.debug(f"CODE mixto: '{s}'")
+            # logger.debug(f"CODE mixto: '{s}'")
             mixed += 1
             return (3, total_cuant)
         
@@ -556,8 +556,8 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 encoded += 1
                 return (2, total_cuant)
 
-            if "/" not in s and (total_cuant / total_text) > 0.687:
-              #  logger.debug(f"NUM por codificacion: '{s}'")
+            if not any(c in ("/", ":") for c in s) and (total_cuant / total_text) > 0.687:
+                # logger.info(f"NUM por codificacion: '{s}'")
                 return (5, total_cuant)
             # logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
             encoded += 1

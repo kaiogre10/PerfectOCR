@@ -36,7 +36,7 @@ class TextCorrector(OCRAbstractWorker):
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
 
         logger.debug(f"Cantidad de polígonos recibidos:{len(polygons_in)}")
-        corrected_polygons: Dict[str, Polygons] = {}
+        list_of_correct_polygons: List[Polygons] = []
         correced_count = 0
 
         for poly_id, polygon in polygons_in.items():
@@ -48,13 +48,13 @@ class TextCorrector(OCRAbstractWorker):
             if kf or kf is not None:
                 # logger.info(f"'{poly_id}' con KEYFIELD ya no se CORRIJE: '{original_text}'")
                 updated_polygon = dataclasses.replace(polygon)
-                corrected_polygons[poly_id] = updated_polygon
+                list_of_correct_polygons.append(updated_polygon)
                 continue
 
             if any(c in (0, 5) for c in sc):
                 # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
                 updated_polygon = dataclasses.replace(polygon)
-                corrected_polygons[poly_id] = updated_polygon
+                list_of_correct_polygons.append(updated_polygon)
                 continue
                 
             # Si el texto está vacío, no hay nada que corregir
@@ -77,9 +77,17 @@ class TextCorrector(OCRAbstractWorker):
                 )
                 
             updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
-            corrected_polygons[poly_id] = updated_polygon
-                
-        manager.workflow.polygons = corrected_polygons
+            list_of_correct_polygons.append(updated_polygon)
+
+        final_polygons_dict: Dict[str, Polygons] = {}
+        for idx, poly_obj in enumerate(list_of_correct_polygons):
+            new_id = f"poly_{idx:04d}"
+            poly_index = idx
+            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=poly_index)
+            final_polygons_dict[new_id] = final_poly_obj
+            
+            # 5. Reemplazo directo en el manager
+        manager.workflow.polygons = final_polygons_dict
         return True
 
     def _apply_corrections(self, text: str, semantic_clasification: List[int]) -> str:
