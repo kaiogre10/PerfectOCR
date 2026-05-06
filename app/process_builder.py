@@ -1,6 +1,7 @@
 # PerfectOCR/app/process_builder.py
 import logging
-from typing import Optional, Dict, Any
+import pandas as pd
+from typing import Optional, Dict, Any, Tuple
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
@@ -18,7 +19,7 @@ class ProcessingBuilder:
         self.vectorization_stager = vectorization_stager
         self.logs_config = logs_config
         
-    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[DataFormatter]:
+    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[pd.DataFrame, Dict[str, Any]]]:
         """
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
         Recibe image_data para configurar el contexto de esta ejecución específica.
@@ -67,7 +68,10 @@ class ProcessingBuilder:
                     return None
                 logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
 
-            return manager
+            df_results = manager.get_final_data()
+            df = df_results[0]
+            logger.info("\n" + df.to_string(index=True))
+            return df_results
             
         except Exception as e:
             logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)

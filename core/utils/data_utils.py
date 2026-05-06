@@ -345,3 +345,19 @@ CUANT_CHAR: FrozenSet[str] = frozenset(CHAR_NUM.union(VALID_CUANT_CHARS))
 
 alone_chars: FrozenSet[str] = frozenset({"a", "e", "y", "o", "A", "E", "Y", "O"})
 VALID_ALONE_CHARS: FrozenSet[str] = frozenset(CHAR_NUM.union(alone_chars))
+
+def conversion_kf() -> Dict[str, int]:
+    return {
+        'MontoTotalDocumento': 1,
+        'TotalProductos': 2,
+        'Subtotal': 3,
+        'FolioDocumento': 4,
+        "NombreCliente": 5,
+        "HeaderWords": 6,
+        "RFCProveedor": 7,
+        "MontoIVAGeneral": 8,
+        "FechaDocumento": 9,
+        "TelefonoP": 10,
+        "CorreoP": 11,
+        "DirecciónP": 12
+    }

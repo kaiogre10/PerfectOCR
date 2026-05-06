@@ -24,6 +24,9 @@ _zeros_pattern = re.compile(_zeros_to_sub)
 _bic_variants = r'^(B(1C|lC|\|C|¡C|!C))$'
 _labels_pattern: Pattern[str] = re.compile(_bic_variants)
 
+# Patrón que extrae los IDS del documento
+_id_prov_pattern = re.compile(r'^[A-Z]{4}')
+
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, /,)
 _secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECASE)
 _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$/])[^a-zA-Z0-9\s$/]{2,}(?=[a-zA-Z0-9$/])', re.IGNORECASE)
@@ -142,7 +145,7 @@ _split_pattern = rf"{_currency_pattern}\s*{_amount_body_pattern}"
 _split = re.compile(_split_pattern, re.IGNORECASE)
 
 _rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
-_rfc_key_pattern: Pattern[str] = re.compile(r'^([A-ZÑ]{3,4})\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3}$', re.IGNORECASE)
+_rfc_key_pattern: Pattern[str] = re.compile(r'([A-ZÑ]{3,4}\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3})', re.IGNORECASE)
 
 _rfc_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_rfc_key_pattern, _rfc_acronyms]), re.IGNORECASE)
 
@@ -159,6 +162,12 @@ def validate_text(text: str) -> bool :
     else:
         # Si tiene más de un carácter, debe tener al menos un alfanumérico
         return any(char.isalnum() for char in text)
+    
+def get_rfc(s: str) -> str:
+    if not s:
+        return ""
+    match = _rfc_key_pattern.search(s.strip())
+    return match.group(0) if match else ""
 
 def is_code(s: str) -> bool:
     if not s or len(s) < 2:
@@ -617,3 +626,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
     
     # logger.debug(f"TOTAL CLASIFICADOS SIN CUANTITATIVOS: '{no_cuants}', SIN CUANTS: {has_cuants}, CODIFICADOS: {encoded}, MIXTOS: {mixed}")
     return final_results
+
+def get_ids(img_name: str) -> str:
+    match = _id_prov_pattern.search(img_name.strip())
+    return match.group(0) if match else ""

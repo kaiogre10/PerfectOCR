@@ -3,19 +3,15 @@ import sqlite3
 import logging
 import os
 from typing import Dict, Any, Optional, List
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 class DatabaseService:
-    """Servicio para manejar la base de datos SQLite del sistema PerfectOCR"""
+    """Servicio para manejar la base de datos PostgreSQL del sistema PerfectOCR"""
     
     def __init__(self, db_path: str = "base_datos/perfectocr.db"):
         """
         Inicializa el servicio de base de datos
-        
-        Args:
-            db_path: Ruta al archivo de base de datos SQLite
         """
         self.db_path = db_path
         self.ensure_database_exists()

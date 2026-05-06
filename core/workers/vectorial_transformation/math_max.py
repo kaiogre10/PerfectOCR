@@ -64,15 +64,15 @@ class MatrixSolver(VectorizationAbstractWorker):
                 return False
                 
             if not self.validate_vals(corrected_df, polygons):
-                logger.info("No pasó validación global")
+                # logger.info("No pasó validación global")
                 return False
                 
-            logger.info("Validación global pasada")
+            # logger.info("Validación global pasada")
             if not manager.save_structured_table(corrected_df):
                 logger.error("No se pudo guardar data frame")
                 return False
 
-            logger.info(f"Corrección matemática completada en {time.perf_counter() -start_time:.6f}'s")
+            logger.debug(f"Corrección matemática completada en {time.perf_counter() -start_time:.6f}'s")
             
             if self.output:
                 all_lines = manager.workflow.all_lines if manager.workflow else {}
@@ -106,7 +106,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         context["cols_idx"] = cols_idx
         aritmetic_df = self.get_decimal_df(df, context)
         if aritmetic_df.equals(df):
-            logger.info("SE DEVOLVIÓ DF ORIGINAL")
+            # logger.info("SE DEVOLVIÓ DF ORIGINAL")
             return df.iloc[0:0]
         dec_rows_ids = aritmetic_df.index.to_numpy()
    
@@ -124,7 +124,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error("DATAFRAME VACÍO")
             return df.iloc[0:0]
 
-        logger.info("RENAMED:\n" + df.to_string(index=True))
+        # logger.info("RENAMED:\n" + df.to_string(index=True))
         df = self.correct_df(df, dec_rows_ids, context)
         if df.empty:
             return df.iloc[0:0]
@@ -459,7 +459,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             df.iat[r, c] = ""
             df_copy.iat[r, c] = []
             
-        logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
+        #logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
         # logger.info("COPY CORR:\n" + df_copy.to_string(index=True))
         context["df_copy"] = df_copy
         
@@ -567,7 +567,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             else:
                 continue
 
-        logger.info("ISOLATED:\n" + df.to_string(index=True))    
+        #logger.info("ISOLATED:\n" + df.to_string(index=True))
         return (df, df_copy)
         
     def unmix_cells(self, df: pd.DataFrame, context: Dict[str, Any]):
@@ -625,7 +625,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                             df.iat[mr, mc] = " ".join(mixed_vals_list).strip()
                             df_copy.iat[mr, mc] = poly_val
                             
-        logger.info("UNMIXED:\n" + df.to_string(index=True))
+        # logger.info("UNMIXED:\n" + df.to_string(index=True))
         return (df, df_copy)
         
     def separate_decimals(self, df: pd.DataFrame, text_idx: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -740,7 +740,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                         df_copy.iat[dr, closest_idx] = dest_polys + [poly_vals[1]]
                         df_copy.iat[dr, dc] = [poly_vals[0]] + dest_polys
 
-        logger.info("SEPARATED:\n" + df.to_string(index=True))
+        #logger.info("SEPARATED:\n" + df.to_string(index=True))
         return (df, df_copy)
     
     def simplify_rows(self, df: pd.DataFrame, context: Dict[str, Any]):

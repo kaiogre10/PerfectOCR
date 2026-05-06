@@ -5,6 +5,8 @@ import dataclasses
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from core.utils.image_utils import normalice_image
+from core.utils.text_utils import get_rfc, get_ids
+from core.utils.data_utils import conversion_kf
 import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -34,20 +36,22 @@ class DataFormatter:
             full_image = FullImage(
                 full_img=(gray_img)
             )
-            
+            image_name=str(metadata.get("image_name", ""))
+            id_prov = get_ids(image_name)
             metadata_obj = Metadata(
-                image_name=str(metadata.get("image_name", "")),
+                image_name=image_name,
                 date_creation=str(metadata.get("date_creation", "")),
                 dpi=int(metadata.get("dpi", 0)),
                 img_dims = (0 , 0)
             )
-
+            
             self.workflow = WorkflowDict(
                 IDRegistro=IDRegistro,
                 full_img=full_image,
                 metadata=metadata_obj,
                 polygons={},
                 all_lines={},
+                id_prov=id_prov,
                 H=0
             )
             logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{IDRegistro}'")
@@ -418,3 +422,42 @@ class DataFormatter:
         except TypeError as e:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
         return False
+    
+    def get_final_data(self) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+        if self.structured_table is None:
+            return (pd.DataFrame(), {})
+        
+        df: pd.DataFrame = self.structured_table.df
+        if df.empty:
+            return (df.iloc[0:0], {})
+
+        kf_map = conversion_kf()
+        kf_map_inv = {v: k for k, v in kf_map.items()}  # {1: 'MontoTotalDocumento', 7: 'RFCProveedor', ...}
+        
+        polygons: Dict[str, Polygons] = self.workflow.polygons if self.workflow else {}
+        db_values: Dict[str, Any] = {}
+        
+        for poly_data in polygons.values():
+            kf_list = poly_data.key_field
+            value = poly_data.ocr_text or ""
+            
+            if kf_list is not None and value:
+                kf = kf_list[0]
+                if kf != 6:  # Excluir HeaderWords
+                    if kf == 7:  # RFCProveedor
+                        value = get_rfc(value)
+                    
+                    # Mapear el código numérico al nombre del campo
+                    field_name = kf_map_inv.get(kf)
+                    if field_name:
+                        db_values[field_name] = value  # 'MontoTotalDocumento': '1024.12'
+                        
+        id = self.workflow.IDRegistro if self.workflow else ""
+        id_prov = self.workflow.id_prov if self.workflow else ""
+        db_values["id_registro"] = id
+        db_values["id_proveedor"] = id_prov
+        db_values["id_cliente"] = 1
+
+        logger.info(f"{db_values}")
+        return (df, db_values)
+        

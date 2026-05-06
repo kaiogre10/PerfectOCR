@@ -1,13 +1,15 @@
 # PerfectOCR/main_builder.py
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from app.process_builder import ProcessingBuilder
 from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
 from core.domain.models_manager import ModelsManager
+from services.postgres_service import PostgresService
 from services.cache_service import cleanup_project_cache
 from datetime import datetime
 import time
+import pandas as pd
 import logging
 
 PROJECT_ROOT = ""
@@ -62,11 +64,16 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         
             # 7. Main ejecuta procesamiento secuencial usando el builder único
             # t4 = time.perf_counter()
-            results = execute_sequential_processing(processing_builder, workflow_report)
+            final_df_list = transform_image_to_df(processing_builder, workflow_report)
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
+            db_service = PostgresService(dsn=None)
+            if not insert_data(db_service, final_df_list):
+                logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")        
+
             cleanup_project_cache()
-            return results if results is not None else []
-            
+            logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")        
+            return []
+
         logger.debug(f"Proceso debugger completo en {time.perf_counter()-t0:.6f}s")
         cleanup_project_cache()
         return []
@@ -100,13 +107,13 @@ def create_single_builder(stagers_factory: StagersFactory, logs_config: Dict[str
         logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
         return None
 
-def execute_sequential_processing(builder: ProcessingBuilder, workflow_report: Dict[str, Any]) -> Optional[List[str]]:
+def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str, Any]) -> List[Tuple[pd.DataFrame, Dict[str, Any]]]:
     """Ejecuta el procesamiento secuencial reutilizando el builder."""
-    db_paths: Dict[str, Any] = {}
     image_info_list = workflow_report['image_info']
     total_processing_time = 0.0
     total_images = len(image_info_list)
     processed_count = 0
+    final_df_list: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
     
     logger.debug(f"Iniciando procesamiento secuencial para {total_images} imágenes.")
 
@@ -116,27 +123,26 @@ def execute_sequential_processing(builder: ProcessingBuilder, workflow_report: D
             image_name = image_data.get('name', f'imagen_{i}')
             
             # Procesar imagen individualmente
-            manager_result = builder.process_single_image(image_data)
-            
-            # Simulación de extracción de resultados
-            db_path = "db_path" 
+            final_df = builder.process_single_image(image_data)
             
             processed_count += 1
             image_processing_time = time.perf_counter() - start_time
             total_processing_time += image_processing_time
             
-            if manager_result and manager_result is not None:
+            if final_df is not None:
                 logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
+                final_df_list.append(final_df)
             else:
                 logger.error(f"Fallo al procesar imagen: '{image_name}'")
-            db_paths[image_name] = db_path
 
-        if db_paths:
-            mean_time = total_processing_time / len(db_paths)
-            logger.warning(f"'{len(db_paths)}' Archivos Digitalizados el '{datetime.now().strftime('%m/%d %H:%M:%S')}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
-
-        return ["db_path"]
+            mean_time = total_processing_time / total_images
+            logger.warning(f"'{total_images}' Archivos Digitalizados el '{datetime.now().strftime('%m/%d %H:%M:%S')}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
+        return final_df_list
 
     except Exception as e:
         logger.error(f"Error en el procesamiento secuencial: {e}", exc_info=True)
         return []
+
+def insert_data(db_service: PostgresService, final_df_list: List[Tuple[pd.DataFrame, Dict[str, Any]]]):
+    return db_service.insert_payload(final_df_list)
+    

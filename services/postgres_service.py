@@ -1,9 +1,12 @@
-import os
-from typing import Optional, Dict, Any
-from dotenv import load_dotenv
 import psycopg2
 import logging
+import os
+import pandas as pd
+from typing import Optional, Dict, Tuple, List
+from dotenv import load_dotenv
 from contextlib import contextmanager
+from datetime import datetime
+from psycopg2.extras import execute_values # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -36,23 +39,87 @@ class PostgresService:
             if conn:
                 conn.close()
 
-    def insert_payload(self, payload: Dict[str, Any]) -> bool:
+    def _parse_date(self, val: str):
+        if not val:
+            return None
+        for fmt in ("%d/%m/%Y %I:%M %p", "%d/%m/%Y", "%Y-%m-%d", "%d %b %y"):
+            try:
+                return datetime.strptime(val, fmt).date()
+            except Exception:
+                continue
+        # fallback: return raw string (DB can accept TEXT or you can refine parser)
+        return val
+
+    def insert_payload(self, payload: List[Tuple[pd.DataFrame, Dict[str, str]]]) -> bool:
         """
-        Ejemplo genérico: insertar en tabla 'registros' (ajustar según esquema).
-        Se recomienda serializar payload a JSON y guardarlo.
+        Inserta solo las filas de DetallesCompra para cada (df, metadata).
+        Usa IDRegistro e IDProveedor tal cual vienen en metadata.
+        Omite headers/fechas.
+        Ajusta los nombres de columnas SQL si tu esquema difiere.
         """
         try:
-            import json
             with self.get_connection() as conn:
                 cur = conn.cursor()
-                cur.execute(
-                    "INSERT INTO registros(payload_json, created_at) VALUES (%s, NOW()) RETURNING id",
-                    (json.dumps(payload, ensure_ascii=False),)
-                )
-                inserted = cur.fetchone()
+
+                for df, metadata in payload:
+                    id_registro = metadata.get("id_registro")
+                    id_proveedor = metadata.get("id_proveedor")
+
+                    if id_registro is None:
+                        logger.warning("Skipping payload item without IDRegistro")
+                        continue
+
+                    if df.empty:
+                        logger.debug("No detalles para IDRegistro=%s", id_registro)
+                        continue
+
+                    # Detectar si existe columna opcional 'code_col'
+                    has_code = "code_col" in df.columns
+
+                    # Preparar tuples para bulk insert
+                    if has_code:
+                        records = [
+                            (
+                                id_registro,
+                                id_proveedor,
+                                row.get("c_col"),
+                                row.get("text_col"),
+                                row.get("pu_col"),
+                                row.get("mtl_col"),
+                                row.get("code_col"),
+                            )
+                            for _, row in df.iterrows()
+                        ]
+                        sql = (
+                            "INSERT INTO detallescompra "
+                            "(id_registro,cantidad, descripcion_original, precio_unitario, importe) "
+                            "VALUES %s"
+                        )
+                    else:
+                        records = [
+                            (
+                                id_registro,
+                                # id_proveedor,
+                                row.get("c_col"),
+                                row.get("text_col"),
+                                row.get("pu_col"),
+                                row.get("mtl_col"),
+                            )
+                            for _, row in df.iterrows()
+                        ]
+                        sql = (
+                            "INSERT INTO detallescompra "
+                            "(id_registro, cantidad, descripcion_original, precio_unitario, importe)"
+                            "VALUES %s"
+                        )
+
+                    # Ejecutar bulk insert
+                    if records:
+                        execute_values(cur, sql, records)
+
                 conn.commit()
-                logger.info("Payload insertado en Postgres id=%s", inserted and inserted[0])
+                logger.info("insert_payload: insertados %d documentos", len(payload))
             return True
         except Exception as e:
-            logger.error("Error insertando payload en Postgres: %s", e, exc_info=True)
-            return False
+            logger.error("Error en insert_payload: %s", e, exc_info=True)
+        return False
