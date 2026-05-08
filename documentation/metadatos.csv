@@ -1,7 +1,6 @@
 ﻿Hoja/Tabla: registros_compra,,,
 "Propósito: Almacena la información general (encabezado) por cada documento original de compra (ticket, nota, factura) procesado para un cliente de consultoría. Una fila representa un documento único.",,,
 ,,,
-,,,
 Nombre Columna,Tipo de Dato (Excel / SQL),Restricciones / Notas,Explicación del Contenido
 id_registro,Texto / VARCHAR(60-80),"Llave Primaria (PK), No Nulo.","Identificador único del registro, generado por script. Formato: [IDProv]-[IDCliente]-[Numero de imagen procesada en ese lote]-[fecha_captura]. DetallesCompra y TransaccionesCompra."
 id_cliente,Texto / VARCHAR(10),No Nulo.,ID (00001-99999) asignado manualmente a su cliente de consultoría. Proporcionado al script.
@@ -10,7 +9,8 @@ date_doc,Fecha / DATE,Puede ser Nulo.,Fecha principal extraída del documento (f
 id_proveedor,Texto / VARCHAR(4),Llave Foránea (FK) a Proveedores. Puede ser Nulo temporalmente.,"ID (AAAA-ZZZZ) del proveedor obtenido de Proveedores. Si es nuevo, el script genera el siguiente ID y marca para revisión. Usado para generar IDRegistro."
 proveedor_norm,Texto / VARCHAR(255),Puede ser Nulo.,"Nombre del proveedor limpio, completo y estandarizado, conexión con Proveedores."
 rfc_prov,Texto / VARCHAR(13),Puede ser Nulo.,RFC del proveedor limpio y normalizado
-total_doc,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo.,Importe total original que figura en el documento. Siempre positivo.
+total_art,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,Suma de las cantidades del documento. Siempre positivo.
+total_doc,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,Suma de los costos de las transacciones (costo_tran) del documento. Siempre positivo.
 uuid,Texto / VARCHAR(36),Puede ser Nulo.,Folio Fiscal (UUID) de 36 caracteres si es una factura CFDI formal.
 auditate,Booleano / BIT,No Nulo.,"Indicador (VERDADERO/FALSO ó 1/0) si el registro requiere validación humana (nuevo proveedor, posible coincidencia producto, etc.)."
 notes,Texto / TEXT,Puede ser Nulo.,"Campo libre para comentarios automáticos o manuales sobre el registro (detección de anomalías, errores, etc.)."
@@ -19,22 +19,20 @@ tasa_iva,"Número (Porcentaje) / DECIMAL(4, 2)",Puede ser Nulo.,Tasa de IVA gene
 monto_iva,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo.,Monto de IVA total del documento original. Opcional.
 total_subtotal,"Número (Moneda) / DECIMAL(12, 2)",Puede ser Nulo.,Subtotal (antes de IVA) del documento original. Opcional.
 ,,,
-,,,
 Hoja/tabla: detalles_compra,,,
-Propósito: Almacena cada línea de producto/servicio del documento de compra original. Una fila por línea de detalle.,,,
+"Propósito: Almacena y conglomera todos los tickets de todos los clientes apilandolos uno sobre otro, es la tabla global de transacciones almacenadas de forma atómica. Cada fila del data frame es una fila aquí",,,
 idd_detalle,Número Entero / INTEGER,"Llave Primaria (PK), No Nulo.",ID único secuencial para esta línea de detalle específica.
 id_registro,Texto / VARCHAR(60-80),Llave Foránea (FK) a RegistrosCompra. No Nulo.,El id_registro del documento al que pertenece esta línea.
-cantidad,"Número / DECIMAL(10, 3)",No Nulo.,Cantidad total de articulos comprados en esa transacción
 id_producto,Número Entero / INTEGER,Llave Foránea (FK) a Productos. Puede ser Nulo temporalmente ('PENDIENTE_SKU').,"ID numérico secuencial del producto normalizado obtenido de Productos. Se ajusta automaticamente con el id_producto de ""productos"""
+cantidad_art,"Número / DECIMAL(10, 3)",No Nulo.,Cantidad total de articulos en esa micro transacción
 producto_norm,Texto / VARCHAR(255),Puede ser Nulo.,"Nombre limpio, completo, único y descriptivo del producto, extraído de Productos."
-precio_unitario,"Número (Moneda) / DECIMAL(12, 4)",Puede ser Nulo.,Precio original por unidad del producto (siempre positivo). Ajustar precisión decimal si es necesario.
-importe_doc,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,"Cantidad total extraída como aparece en el OCR, sin limpiar."
-importe_cal,"Número (Moneda) / DECIMAL(12, 2)",No Nulo. Calculado por Fórmula en Excel o por script.,Importe total calculado con python (=Cantidad * PrecioUnitario). Siempre positivo para corroboración y validación de discrepancias en datos
+precio_unitario,"Número (Moneda) / DECIMAL(12, 4)",Puede ser Nulo.,Precio original por unidad del producto (siempre positivo). Varia según el proveedor
+costo_tran,"Número (Moneda) / DECIMAL(12, 2)",No Nulo.,Costo total de esa micro transacción(aritmeticamente cantidad * precio_uniario)
 sku_prov,Texto / TEXT,Puede ser Nulo.,Codigo de identificación del producto impreso en el documento
 ,,,
 Hoja/Tabla: productos,,,
 "Propósito: Catálogo maestro, normalizado y único de los productos/servicios comprados. Una fila por producto/SKU. Gestionado manualmente.",,,
-id_producto,Número Entero / INTEGER,"Llave Primaria (PK), No Nulo, Único.",ID único numérico secuencial asignado manualmente a cada producto conceptual en sistema hexadécimal de 6 digitos.
+id_producto,Número Entero / INTEGER,"Llave Primaria (PK), No Nulo, Único.",ID único numérico secuencial asignado manualmente a cada producto conceptual.
 producto_norm,Texto / VARCHAR(255),"No Nulo, Único.","Nombre limpio, completo, único y descriptivo del producto, definido manualmente"
 producto_raw,Texto / VARCHAR(255),No Nulo,Nombre o descripción del producto tal y como aparece en el documento.
 marca,Texto / VARCHAR(255),Puede ser Nulo.,Marca Comercial del Fabricante

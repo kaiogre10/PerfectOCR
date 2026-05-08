@@ -192,6 +192,7 @@ class PipelineConfig(ConfigWithNumpy):
     preprocessing_stage: Optional[List[str]] = None
     ocr_stage: Optional[List[str]] = None
     vector_stage: Optional[List[str]] = None
+    db_stage: Optional[List[str]] = None
     
 class DebugOutputs(ConfigWithNumpy):
     text_ocr: bool

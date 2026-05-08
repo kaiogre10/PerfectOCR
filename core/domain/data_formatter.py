@@ -5,7 +5,7 @@ import dataclasses
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from core.utils.image_utils import normalice_image
-from core.utils.text_utils import get_rfc, get_ids
+from core.utils.text_utils import get_rfc, get_ids, format_cuant
 from core.utils.data_utils import conversion_kf
 import pandas as pd #type: ignore
 
@@ -446,7 +446,9 @@ class DataFormatter:
                 if kf != 6:  # Excluir HeaderWords
                     if kf == 7:  # RFCProveedor
                         value = get_rfc(value)
-                    
+
+                    if kf in (1, 2):
+                        value = format_cuant(value)
                     # Mapear el código numérico al nombre del campo
                     field_name = kf_map_inv.get(kf)
                     if field_name:

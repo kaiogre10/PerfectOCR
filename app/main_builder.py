@@ -9,7 +9,7 @@ from services.postgres_service import PostgresService
 from services.cache_service import cleanup_project_cache
 from datetime import datetime
 import time
-import pandas as pd
+import pandas as pd # type: ignore
 import logging
 
 PROJECT_ROOT = ""
@@ -66,9 +66,10 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             # t4 = time.perf_counter()
             final_df_list = transform_image_to_df(processing_builder, workflow_report)
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
-            db_service = PostgresService(dsn=None)
-            if not insert_data(db_service, final_df_list):
-                logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")        
+            if config_services.db_config:
+                db_service = PostgresService(dsn=None)
+                if not insert_data(db_service, final_df_list):
+                    logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")
 
             cleanup_project_cache()
             logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")        

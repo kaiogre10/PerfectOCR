@@ -21,10 +21,13 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-   - "lineal"
-   - "cos_sim"
-   - "table_structurer"
-   - "math_max"
+    - "lineal"
+    - "cos_sim"
+    - "table_structurer"
+    - "math_max"
+
+  db_stage:
+    - "postgre_service"
    
 log_debug:
   text_ocr: False

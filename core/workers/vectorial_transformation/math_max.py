@@ -47,11 +47,8 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            # logger.debug(
-            #     "Tablas recibidas para corrección matemática:\n"
-            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
-            #     f"DataFrame copia:\n{df_copy.to_string(index=True)}"
-            # )
+            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             cut_polygons = self.map_polygons_ids(polygons, df_copy)
             context["cut_polygons"] = cut_polygons

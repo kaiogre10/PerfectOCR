@@ -69,7 +69,9 @@ class ConfigService:
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
-        return self.config.get("pipeline_secuence", {})
+        order= self.config.get("pipeline_secuence", {})
+        logger.info(f"{order}")
+        return order
         
     @cached_property
     def logs_debug(self) -> Dict[str, Any]:
@@ -184,13 +186,20 @@ class ConfigService:
             }
         
     @cached_property
+    def db_config(self) ->  Dict[str, Any]:
+        return {
+            # "db_stage": self.workers_order["db_stage"]
+        }
+
+    @cached_property
     def manager_config(self) -> Dict[str, Dict[str, Any]]:
         """Devuelve el paquete estándar de configuraciones de los managers"""
         return {
             "image_preparation": self.img_prep_config,
             "preprocessing": self.preprocessing_config,
             "ocr": self.ocr_config,
-            "vectorization": self.vectorization_config
+            "vectorization": self.vectorization_config,
+            "data_base": self.db_config
         }
 
     def _validate_min_workers(self) -> bool:

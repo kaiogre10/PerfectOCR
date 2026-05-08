@@ -6,6 +6,7 @@ from typing import Optional, Dict, Tuple, List
 from dotenv import load_dotenv
 from contextlib import contextmanager
 from datetime import datetime
+from core.domain.models_manager import ModelsManager
 from psycopg2.extras import execute_values # type: ignore
 
 logger = logging.getLogger(__name__)
