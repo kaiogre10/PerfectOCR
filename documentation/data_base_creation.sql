@@ -26,8 +26,7 @@ CREATE TABLE detalles_compra (
     precio_unitario DECIMAL(12, 4) NOT NULL,
     costo_tran DECIMAL(12, 2) NOT NULL,
     auditate BOOLEAN DEFAULT FALSE,
-    reason VARCHAR(20),
-    sku_prov TEXT
+    reason VARCHAR(20)
 );
 -- 1. MAESTRO DE CLIENTES
 CREATE TABLE clientes (

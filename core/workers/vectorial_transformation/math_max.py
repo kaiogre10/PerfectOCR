@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 ONE = Decimal('1.00')
 ZERO = Decimal('0.00')
 DEC_COLS_NAME: FrozenSet[str] = frozenset({"cantidad_art", "precio_unitario", "costo_tran"})
-ALL_COLS_NAME = DEC_COLS_NAME.union("producto_norm", "code_col")
+ALL_COLS_NAME = DEC_COLS_NAME.union("producto_norm")
 
 class MatrixSolver(VectorizationAbstractWorker):
     """
@@ -47,7 +47,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             cut_polygons = self.map_polygons_ids(polygons, df_copy)
@@ -765,5 +765,8 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         id = manager.workflow.IDRegistro if manager.workflow else ""
         totals = {"art_cal": str(total_prod), "total_cal": str(total)}
-        corrected_df["id_registro"] = id
-        return corrected_df, totals
+        pu_col = corrected_df["precio_unitario"]
+        prodcut_col = corrected_df["producto_norm"]
+        df: pd.DataFrame = pd.concat([c_col, prodcut_col, pu_col, mtl_col], axis=1)
+        df.insert(0, "id_registro", id) # type: ignore
+        return df, totals

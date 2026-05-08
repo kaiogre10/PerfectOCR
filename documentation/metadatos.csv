@@ -30,7 +30,6 @@ cantidad_art,"Decimal(10, 3)",No Nulo.,Cantidad total de articulos en esa micro 
 producto_norm,TEXT,No Nulo.,Nombre limpio completo único y descriptivo del producto extraído de Productos.
 precio_unitario,"decimal(12, 4)",No Nulo.,Precio original por unidad del producto (siempre positivo). Varia según el proveedor
 costo_tran,"decimal(12, 2)",No Nulo.,Costo total de esa micro transacción(aritmeticamente cantidad * precio_uniario)
-sku_prov,TEXT,Puede ser Nulo.,Codigo de identificación del producto impreso en el documento
 ,,,
 Hoja/Tabla: productos,,,
 Propósito,Catálogo maestro normalizado y único de los productos/servicios recolectados.,

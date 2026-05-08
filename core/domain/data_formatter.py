@@ -426,10 +426,10 @@ class DataFormatter:
             return (pd.DataFrame(), {})
 
         kf_map = conversion_kf()
-        kf_map_inv = {v: k for k, v in kf_map.items()}  # {1: 'MontoTotalDocumento', 7: 'RFCProveedor', ...}
+        kf_map_inv = {v: k for k, v in kf_map.items()}
         
         polygons: Dict[str, Polygons] = self.workflow.polygons if self.workflow else {}
-        db_values: Dict[str, Any] = {}
+        db_values = self.structured_data.global_data
         
         for poly_data in polygons.values():
             kf_list = poly_data.key_field
@@ -437,11 +437,11 @@ class DataFormatter:
             
             if kf_list is not None and value:
                 kf = kf_list[0]
-                if kf != 6:  # Excluir HeaderWords
+                if kf not in (5, 6):  # Excluir KeyFields innecesarios
                     if kf == 7:  # RFCProveedor
                         value = get_rfc(value)
 
-                    if kf in (1, 2):
+                    elif kf in (1, 2):
                         value = format_cuant(value)
                     # Mapear el código numérico al nombre del campo
                     field_name = kf_map_inv.get(kf)
@@ -450,10 +450,11 @@ class DataFormatter:
                         
         id = self.workflow.IDRegistro if self.workflow else ""
         id_prov = self.workflow.id_prov if self.workflow else ""
+        
         db_values["id_registro"] = id
         db_values["id_proveedor"] = id_prov
         db_values["id_cliente"] = 1
 
-        logger.info(f"{db_values}")
+        # logger.info(f"{db_values}")
         return (df, db_values)
         

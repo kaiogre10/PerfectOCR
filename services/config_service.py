@@ -69,9 +69,7 @@ class ConfigService:
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
-        order= self.config.get("pipeline_secuence", {})
-        logger.info(f"{order}")
-        return order
+        return self.config.get("pipeline_secuence", {})
         
     @cached_property
     def logs_debug(self) -> Dict[str, Any]:
@@ -186,10 +184,13 @@ class ConfigService:
             }
         
     @cached_property
-    def db_config(self) ->  Dict[str, Any]:
-        return {
-            # "db_stage": self.workers_order["db_stage"]
-        }
+    def db_config(self) -> Dict[str, Any]:
+        if not self.create_stager[4][1]:
+            return {}
+        else:
+            return {
+                "db_stage": self.workers_order["db_stage"]
+            }
 
     @cached_property
     def manager_config(self) -> Dict[str, Dict[str, Any]]:

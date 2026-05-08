@@ -68,10 +68,13 @@ class ProcessingBuilder:
                     return None
                 logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
 
-            df_results = manager.get_final_data()
-            # df = df_results[0]
-            # logger.info("\n" + df.to_string(index=True))
-            return df_results
+            img_results = manager.get_final_data()
+            # df = img_results[0]
+            # global_data = img_results[1]
+            # logger.info("TABLA FINAL:\n"f"{df.to_string(index=True)}"
+            #     "\n"f"GLOBAL_DATA:\n"f"{global_data}")
+                
+            return img_results
             
         except Exception as e:
             logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)
