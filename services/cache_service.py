@@ -3,12 +3,14 @@ import shutil
 import os
 import logging
 from typing import List, Set, Tuple
+from services.db_service import DataBaseService
+from psycopg2 import sql
 
 PROJECT_ROOT: str = ""
 
 def set_project_root(project_root: str):
     global PROJECT_ROOT
-    PROJECT_ROOT = project_root
+    PROJECT_ROOT = project_root # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -146,3 +148,35 @@ def cleanup_project_cache():
     except Exception as e:
         logger.error(f"Error al eliminar {file_path}: {e}") # type: ignore
         return
+
+def clean_db(db_service: DataBaseService) -> bool:
+    try:
+        with db_service.get_connection() as conn:
+            with conn.cursor() as cur:
+                # Trae todas las tablas reales del esquema public
+                cur.execute("""
+                    SELECT tablename
+                    FROM pg_tables
+                    WHERE schemaname = 'public'
+                    ORDER BY tablename;
+                """)
+                tables = [row[0] for row in cur.fetchall()]
+
+                if not tables:
+                    logger.warning("No hay tablas para truncar en schema public")
+                    conn.commit()
+                    return True
+
+                # TRUNCATE TABLE t1, t2, ... RESTART IDENTITY CASCADE
+                truncate_query = sql.SQL("TRUNCATE TABLE {} RESTART IDENTITY CASCADE").format(
+                    sql.SQL(", ").join(sql.Identifier(t) for t in tables)
+                )
+                cur.execute(truncate_query)
+            conn.commit()
+
+        logger.info("DB vaciada correctamente. Tablas truncadas: %s", ", ".join(tables))
+        return True
+
+    except Exception as e:
+        logger.error("Error limpiando la DB: %s", e, exc_info=True)
+        return False

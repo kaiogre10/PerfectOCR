@@ -450,11 +450,16 @@ class DataFormatter:
                         
         id = self.workflow.IDRegistro if self.workflow else ""
         id_prov = self.workflow.id_prov if self.workflow else ""
+        date_creation = self.workflow.metadata.date_creation if self.workflow else ""
         
         db_values["id_registro"] = id
         db_values["id_proveedor"] = id_prov
         db_values["id_cliente"] = 1
+        db_values["nombre_cliente"] = "cliente_demo"
+        db_values["giro"] = "giro_demo"
+        db_values["proveedor_norm"] = f"proveedor_demo_{id_prov}"
+        db_values["fecha_captura"] = date_creation
 
-        # logger.info(f"{db_values}")
+        logger.info(f"{db_values}")
         return (df, db_values)
         

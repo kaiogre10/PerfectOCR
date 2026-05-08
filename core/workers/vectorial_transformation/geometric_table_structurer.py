@@ -649,6 +649,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                             if poly.key_field != 6:
                                 poly.key_field = [poly.key_field, 6]
                             
-                logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
+                # logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
                 return h, header_line_id
         return (0, "")

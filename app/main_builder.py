@@ -6,7 +6,7 @@ from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
 from core.domain.models_manager import ModelsManager
 from services.db_service import DataBaseService
-from services.cache_service import cleanup_project_cache
+import services.cache_service as cache_service
 from datetime import datetime
 import time
 import pandas as pd # type: ignore
@@ -24,7 +24,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
     t0 = time.perf_counter()
     try:
         if not input_paths or not config_path or not PROJECT_ROOT:
-            cleanup_project_cache()
+            cache_service.cleanup_project_cache()
             logger.error("NO HAY RUTAS PRINCIPALES PARA PIPELINE, REVISAR MAIN"
                          "\n"f"PROCESO DETENIDO: {time.perf_counter() - t0}s")
             return  []
@@ -41,7 +41,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         workflow_report = workflow_manager.count_and_plan()
         if not workflow_report:
             logger.error(f"Error en rutas para imágenes, abortando proceso:", exc_info=True)
-            cleanup_project_cache()
+            cache_service.cleanup_project_cache()
             return []
         
         # 4. Iniciar modelos Singleton
@@ -59,7 +59,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             processing_builder = create_single_builder(stagers_factory=stagers_factory, logs_config=logs_config)
             if not processing_builder:
                 logger.error("No se pudo crear el ProcessingBuilder")
-                cleanup_project_cache()
+                cache_service.cleanup_project_cache()
                 return []
         
             # 7. Main ejecuta procesamiento secuencial usando el builder único
@@ -68,15 +68,17 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
             if config_services.db_config:
                 db_service = DataBaseService(dsn=None)
-                if not insert_data(db_service, final_df_list):
-                    logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")
+                if db_service.test_connection():
+                    cache_service.clean_db(db_service)
+                    if not insert_data(db_service, final_df_list):
+                        logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")
 
-            cleanup_project_cache()
+            cache_service.cleanup_project_cache()
             logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")        
             return []
 
         logger.debug(f"Proceso debugger completo en {time.perf_counter()-t0:.6f}s")
-        cleanup_project_cache()
+        cache_service.cleanup_project_cache()
         return []
         
     except NameError as e:
@@ -108,32 +110,28 @@ def create_single_builder(stagers_factory: StagersFactory, logs_config: Dict[str
         logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
         return None
 
-def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str, Any]) -> List[Tuple[pd.DataFrame, Dict[str, Any]]]:
     """Ejecuta el procesamiento secuencial reutilizando el builder."""
     image_info_list = workflow_report['image_info']
     total_processing_time = 0.0
     total_images = len(image_info_list)
     processed_count = 0
-    df_con = pd.DataFrame()
-    all_data: Dict[str, Any] = {}
+    final_results: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
     
     logger.debug(f"Iniciando procesamiento secuencial para {total_images} imágenes.")
 
     for i, image_data in enumerate(image_info_list):
-        start_time = time.perf_counter()
         # Procesar imagen individualmente
+        start_time = time.perf_counter()
         final_df = builder.process_single_image(image_data)
         image_processing_time = time.perf_counter() - start_time
+
         processed_count += 1
         total_processing_time += image_processing_time
         image_name = image_data.get('name', f'imagen_{i}')
+
         if final_df is not None:
-            df = final_df[0]
-            global_data = final_df[1]
-            id_registro = global_data.get("id_registro")
-            
-            df_con = pd.concat([df_con, df], ignore_index=True)
-            all_data[id_registro] = global_data
+            final_results.append(final_df)
             logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
         else:
             logger.error(f"Fallo al procesar imagen: '{image_name}'")
@@ -141,15 +139,7 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
         mean_time = total_processing_time / total_images
         logger.warning(f"'{total_images}' Archivos Digitalizados el '{datetime.now().strftime('%m/%d %H:%M:%S')}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
         
-    logger.info("TABLA FINAL:\n"f"{df_con.to_string(index=True)}"
-        "\n"f"GLOBAL_DATA:\n"f"{all_data}")
-    return (df_con, all_data)
+    return final_results
     
-def insert_data(db_service: DataBaseService, final_df_list: Tuple[pd.DataFrame, Dict[str, Any]]):
-    df = final_df_list[0]
-    global_data = final_df_list[1]
-    logger.info("TABLA FINAL:\n"f"{df.to_string(index=True)}"
-        "\n"f"GLOBAL_DATA:\n"f"{global_data}")
-
+def insert_data(db_service: DataBaseService, final_df_list: List[Tuple[pd.DataFrame, Dict[str, Any]]]):
     return db_service.insert_payload(final_df_list)
-    

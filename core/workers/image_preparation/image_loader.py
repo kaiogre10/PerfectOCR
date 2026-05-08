@@ -44,13 +44,14 @@ class ImageLoader(ImagePrepAbstractWorker):
 
             # Metadata: una sola llamada a datetime
             now = datetime.now()
+            date_creation = f"{now.strftime('%Y%m%d')}"
             metadata: Dict[str, Any] = {
                 "image_name": image_name,
                 "extension": extension,
-                "date_creation": now.isoformat()
+                "date_creation": date_creation
             }
             
-            IDRegistro = f"{image_name}_{now.strftime('%Y%m%d')}{now.microsecond:04d}"
+            IDRegistro = f"{image_name}_{date_creation}{now.microsecond:06d}"
 
             if manager.create_workflow(IDRegistro, full_img, metadata):
                 # logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")

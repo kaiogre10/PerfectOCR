@@ -27,7 +27,7 @@ pipeline_secuence:
     - "math_max"
 
   db_stage:
-    # - "db_service"
+    - "db_service"
    
 log_debug:
   text_ocr: False

@@ -11,6 +11,7 @@
 *.iml
 *.cursorignore
 *.yaml
+*.sql
 
 # Ignorar carpetas
 .__pycache__/
@@ -25,7 +26,7 @@
 #.typings/
 
 # Ignorar carpeta
-# documentation/
+documentation/
 test/
 tools/
 C:/PerfectOCR/data/models/
