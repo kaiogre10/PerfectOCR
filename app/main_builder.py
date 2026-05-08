@@ -5,7 +5,7 @@ from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
 from core.domain.models_manager import ModelsManager
-from services.postgres_service import PostgresService
+from services.db_service import DataBaseService
 from services.cache_service import cleanup_project_cache
 from datetime import datetime
 import time
@@ -67,7 +67,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             final_df_list = transform_image_to_df(processing_builder, workflow_report)
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
             if config_services.db_config:
-                db_service = PostgresService(dsn=None)
+                db_service = DataBaseService(dsn=None)
                 if not insert_data(db_service, final_df_list):
                     logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")
 
@@ -144,6 +144,6 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
         logger.error(f"Error en el procesamiento secuencial: {e}", exc_info=True)
         return []
 
-def insert_data(db_service: PostgresService, final_df_list: List[Tuple[pd.DataFrame, Dict[str, Any]]]):
+def insert_data(db_service: DataBaseService, final_df_list: List[Tuple[pd.DataFrame, Dict[str, Any]]]):
     return db_service.insert_payload(final_df_list)
     

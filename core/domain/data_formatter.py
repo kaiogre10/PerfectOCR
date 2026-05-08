@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowDict, StructuredTable, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage
+from core.domain.data_models import WorkflowDict, StructuredData, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage
 import numpy as np
 import dataclasses
 import logging
@@ -15,7 +15,7 @@ class DataFormatter:
     """Válvula de entrada/salida para todas las operaciones del workflow."""
     def __init__(self, logs_config: Dict[str, Any]):
         self.workflow: Optional[WorkflowDict] = None
-        self.structured_table: Optional[StructuredTable] = None
+        self.structured_data: Optional[StructuredData] = None
         
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
@@ -24,11 +24,6 @@ class DataFormatter:
         self.table_lines_log = logs_config.get("table_lines", False)
         self.table_geo_log = logs_config.get("table_geo", False)
         self.table_correct_log = logs_config.get("table_correct", False)
-        
-    def reset(self):
-        """Reinicia el estado del DataFormatter para una nueva tarea."""
-        self.workflow = None
-        self.structured_table = None
         
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
@@ -110,9 +105,6 @@ class DataFormatter:
             
     def get_full_img(self) -> Optional[FullImage]:
         return self.workflow.full_img if self.workflow else None
-            
-    def get_structured_table(self) -> Optional[pd.DataFrame]:
-        return self.structured_table.df if self.structured_table else None
         
     def delete_cropped_images(self) -> bool:
         """Libera todas las imágenes recortadas de los polígonos para ahorrar memoria."""
@@ -412,24 +404,26 @@ class DataFormatter:
             logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)
         return False
                 
-    def save_structured_table(self, df: pd.DataFrame) -> bool:
+    def save_final_output(self, df: pd.DataFrame, totals: Dict[str, str]) -> bool:
         try:
-            self.structured_table = StructuredTable(df=df)
-            table_f = self.structured_table.df
+            self.structured_data = StructuredData(df=df, global_data=totals)
             if self.table_correct_log:
-                logger.info("Tabla recibida:\n" + table_f.to_string(index=True))
+                table_f = self.structured_data.df
+                global_data = self.structured_data.global_data
+                logger.info("Tabla recibida:\n"f"{table_f.to_string(index=True)}"
+                "\n"f"GLOBAL_DATA:\n"f"{global_data}")
             return True
         except TypeError as e:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
         return False
     
     def get_final_data(self) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-        if self.structured_table is None:
+        if self.structured_data is None:
             return (pd.DataFrame(), {})
         
-        df: pd.DataFrame = self.structured_table.df
+        df: pd.DataFrame = self.structured_data.df
         if df.empty:
-            return (df.iloc[0:0], {})
+            return (pd.DataFrame(), {})
 
         kf_map = conversion_kf()
         kf_map_inv = {v: k for k, v in kf_map.items()}  # {1: 'MontoTotalDocumento', 7: 'RFCProveedor', ...}

@@ -1,6 +1,6 @@
 # PerfectOCR/app/process_builder.py
 import logging
-import pandas as pd
+import pandas as pd # type: ignore
 from typing import Optional, Dict, Any, Tuple
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
@@ -69,8 +69,8 @@ class ProcessingBuilder:
                 logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
 
             df_results = manager.get_final_data()
-            df = df_results[0]
-            logger.info("\n" + df.to_string(index=True))
+            # df = df_results[0]
+            # logger.info("\n" + df.to_string(index=True))
             return df_results
             
         except Exception as e:

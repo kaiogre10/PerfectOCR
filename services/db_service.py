@@ -5,15 +5,13 @@ import pandas as pd
 from typing import Optional, Dict, Tuple, List
 from dotenv import load_dotenv
 from contextlib import contextmanager
-from datetime import datetime
-from core.domain.models_manager import ModelsManager
 from psycopg2.extras import execute_values # type: ignore
 
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-class PostgresService:
+class DataBaseService:
     def __init__(self, dsn: Optional[str] = None):
         """
         dsn opcional; si no, toma de env: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
@@ -39,17 +37,6 @@ class PostgresService:
         finally:
             if conn:
                 conn.close()
-
-    def _parse_date(self, val: str):
-        if not val:
-            return None
-        for fmt in ("%d/%m/%Y %I:%M %p", "%d/%m/%Y", "%Y-%m-%d", "%d %b %y"):
-            try:
-                return datetime.strptime(val, fmt).date()
-            except Exception:
-                continue
-        # fallback: return raw string (DB can accept TEXT or you can refine parser)
-        return val
 
     def insert_payload(self, payload: List[Tuple[pd.DataFrame, Dict[str, str]]]) -> bool:
         """

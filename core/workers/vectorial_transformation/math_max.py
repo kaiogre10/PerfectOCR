@@ -8,15 +8,15 @@ from typing import Dict, Any, List, Tuple, cast, FrozenSet
 from decimal import Decimal, InvalidOperation
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.text_utils import validate_quant_chars, format_cuant
+from core.utils.text_utils import validate_quant_chars
 from core.domain.data_models import Polygons
-from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
 
 ONE = Decimal('1.00')
 ZERO = Decimal('0.00')
-DEC_COLS_NAME: FrozenSet[str] = frozenset({"c_col", "pu_col", "mtl_col"})
+DEC_COLS_NAME: FrozenSet[str] = frozenset({"cantidad_art", "precio_unitario", "costo_tran"})
+ALL_COLS_NAME = DEC_COLS_NAME.union("producto_norm", "code_col")
 
 class MatrixSolver(VectorizationAbstractWorker):
     """
@@ -31,7 +31,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         self.arithmetic_tolerance = Decimal(tol) if tol else Decimal('0.15')
         self.output = config.get("math_max_corrected", False)
         
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         start_time = time.perf_counter()
         try:
             if not manager.workflow:
@@ -60,33 +60,14 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("SE DEVOLVIÓ DATA FRAME VACÍO")
                 return False
                 
-            if not self.validate_vals(corrected_df, polygons):
-                # logger.info("No pasó validación global")
-                return False
+            corrected_df, totals = self.structure_output(corrected_df, manager)
                 
             # logger.info("Validación global pasada")
-            if not manager.save_structured_table(corrected_df):
+            if not manager.save_final_output(corrected_df, totals):
                 logger.error("No se pudo guardar data frame")
                 return False
 
             logger.debug(f"Corrección matemática completada en {time.perf_counter() -start_time:.6f}'s")
-            
-            if self.output:
-                all_lines = manager.workflow.all_lines if manager.workflow else {}
-                polygons = manager.workflow.polygons if manager.workflow else {}
-
-                header_line_ids = [lid for lid, l in all_lines.items() if getattr(l, "header_line", False)]
-                header_line_id = header_line_ids[0] if header_line_ids else None
-
-                header_polygons = []
-                if header_line_id and header_line_id in all_lines:
-                    line_obj = all_lines[header_line_id]
-                    polygon_ids = getattr(line_obj, "polygon_ids", [])
-                    header_polygons = [polygons[pid] for pid in polygon_ids if pid in polygons]
-
-                file_name: str = manager.workflow.metadata.image_name # type: ignore
-                worker_name = context.get("worker_name") or "math_max"
-                save_debug_table(corrected_df, file_name, worker_name, header_polygons)
             return True
         except Exception as e:
             logger.error(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
@@ -238,7 +219,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         return table_arrays
 
     def find_hypotesis(self, df: pd.DataFrame, aritmetic_df: pd.DataFrame) ->pd.DataFrame:
-        cols_name = list(aritmetic_df.columns)
+        cols_name: List[str] = list(aritmetic_df.columns)
         # logger.info(f"COLS NAME: {cols_name}")
         try:
             perm_df = aritmetic_df.map(lambda x: Decimal(x))
@@ -303,11 +284,11 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.info(f"INDICES DE COLUMNA: C-PU-MTL: {c_column, pu_column, mtl_column}")
         for i, col in enumerate(cols_name):
             if i == c_column:
-                df.rename(columns={col: "c_col"}, inplace=True)
+                df.rename(columns={col: "cantidad_art"}, inplace=True)
             elif i == pu_column:
-                df.rename(columns={col: "pu_col"}, inplace=True)
+                df.rename(columns={col: "precio_unitario"}, inplace=True)
             elif i == mtl_column:
-                df.rename(columns={col: "mtl_col"}, inplace=True)
+                df.rename(columns={col: "costo_tran"}, inplace=True)
             else:
                 continue
             
@@ -315,7 +296,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             if df.shape[1] == 4:
                 for col in df.columns:
                     if col not in DEC_COLS_NAME:
-                        df.rename(columns={col: "text_col"}, inplace=True)
+                        df.rename(columns={col: "producto_norm"}, inplace=True)
                         break
             elif len(cols_name) == 4:
                 used_idx = {c_column, pu_column, mtl_column}
@@ -401,7 +382,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             textual_cols_id = np.argmax(np.sum(textual_array_temp, axis=0, dtype=np.uint8))  # índice relativo de columna descriptiva
             descriptive_idx = np.atleast_1d(non_dec_cols_idx[textual_cols_id])         # índice real de columna descriptiva principal
             orig_col_name = df.columns[int(descriptive_idx[0])]
-            df.rename(columns={orig_col_name: "text_col"}, inplace=True)
+            df.rename(columns={orig_col_name: "producto_norm"}, inplace=True)
             
             # leftovers_idx = np.delete(non_dec_cols_idx, textual_cols_id)                # índices de columnas restantes después de extraer la columna descriptiva principal y las decimales
             # pot_code_col = code_array[:, leftovers_idx]
@@ -474,9 +455,9 @@ class MatrixSolver(VectorizationAbstractWorker):
         full_dec = full_dec[incomplete_rows_id]                                 # Array decimal a corregir
         elements_array = elements_array[incomplete_rows_id]                     # Array Global a corregir
         
-        c_idx = df.columns.get_loc("c_col") if "c_col" in df.columns else None
-        pu_idx = df.columns.get_loc("pu_col") if "pu_col" in df.columns else None
-        mtl_idx = df.columns.get_loc("mtl_col") if "mtl_col" in df.columns else None
+        c_idx = df.columns.get_loc("cantidad_art") if "cantidad_art" in df.columns else None
+        pu_idx = df.columns.get_loc("precio_unitario") if "precio_unitario" in df.columns else None
+        mtl_idx = df.columns.get_loc("costo_tran") if "costo_tran" in df.columns else None
 
         for r in incomplete_rows_id:
             raw_c: str = df.iat[r, c_idx].strip()
@@ -554,11 +535,11 @@ class MatrixSolver(VectorizationAbstractWorker):
                     df_copy.at[real_idx, src_a] = []
                     df_copy.at[real_idx, src_b] = []
                     
-                    df.at[real_idx, "mtl_col"] = str(val_a)
-                    df.at[real_idx, "pu_col"] = str(val_b)
+                    df.at[real_idx, "costo_tran"] = str(val_a)
+                    df.at[real_idx, "precio_unitario"] = str(val_b)
                     
-                    df_copy.at[real_idx, "mtl_col"] = poly_a_mtl
-                    df_copy.at[real_idx, "pu_col"] = poly_b_pu
+                    df_copy.at[real_idx, "costo_tran"] = poly_a_mtl
+                    df_copy.at[real_idx, "precio_unitario"] = poly_b_pu
                 else:
                     continue
             else:
@@ -772,55 +753,17 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.info("REINDEX:\n" + df.to_string(index=True))
         return df
         
-    def validate_vals(self, corrected_df: pd.DataFrame, polygons: Dict[str, Polygons]) -> bool:
-        mtl_col = corrected_df["mtl_col"]
-        c_col = corrected_df["c_col"]
+    def structure_output(self, corrected_df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
+        mtl_col = corrected_df["costo_tran"]
+        c_col = corrected_df["cantidad_art"]
         
         mtl_col_dec = mtl_col.map(lambda x: Decimal(x.strip()))
         c_col_dec = c_col.map(lambda x: Decimal(x.strip()))
         
-        total = sum(mtl_col_dec)
-        total_prod = sum(c_col_dec)
+        total = Decimal(str(sum(mtl_col_dec)))
+        total_prod = Decimal(str(sum(c_col_dec)))
 
-        logger.debug(f"{total}, {total_prod}")
-
-        monetary_vals: List[Decimal] = []
-        for _, poly_data in polygons.items():
-            
-            kf = poly_data.key_field or None
-            if kf is None:
-                continue
-            
-            text = poly_data.ocr_text or ""
-            if 1 in kf and validate_quant_chars(text):
-                formated_total = format_cuant(text)
-                # logger.info(f"{poly_id}: {text}, {formated_total}")
-                total_dec = Decimal(formated_total)
-                monetary_vals.append(total_dec)
-                continue
-                
-            if 2 in kf and validate_quant_chars(text):
-                formated_products = format_cuant(text)
-                # logger.info(f"{poly_id}: {text}, {formated_products}")
-                total_produc = Decimal(formated_products)
-                monetary_vals.append(total_produc)
-            else:
-                continue
-        
-        logger.debug(f"{monetary_vals}")
-        if not monetary_vals:
-            return True
-            
-        elif len(monetary_vals) == 2:
-            if monetary_vals[0] == total and monetary_vals[1] == total_prod:
-                return True
-            elif monetary_vals[1] == total and monetary_vals[0] == total_prod:
-                return True
-            else:
-                return False  
-                
-        elif len(monetary_vals) == 1:
-            if monetary_vals[0] == total or monetary_vals[0] == total_prod:
-                return True
-        else:
-            return False
+        id = manager.workflow.IDRegistro if manager.workflow else ""
+        totals = {"art_cal": str(total_prod), "total_cal": str(total)}
+        corrected_df["id_registro"] = id
+        return corrected_df, totals

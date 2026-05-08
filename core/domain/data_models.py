@@ -1,12 +1,8 @@
 # core/domain/workflow_models.py
 import numpy as np
-import pandas as pd 
+import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
-
-@dataclass
-class StructuredTable:
-    df: pd.DataFrame
     
 @dataclass
 class CroppedImage:
@@ -90,3 +86,8 @@ class WorkflowDict:
     all_lines: Dict[str, AllLines]
     id_prov: str
     H: int
+    
+@dataclass
+class StructuredData:
+    df: pd.DataFrame
+    global_data: Dict[str, Any]

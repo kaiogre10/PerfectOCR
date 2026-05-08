@@ -27,7 +27,7 @@ pipeline_secuence:
     - "math_max"
 
   db_stage:
-    - "postgre_service"
+    # - "db_service"
    
 log_debug:
   text_ocr: False
@@ -36,7 +36,7 @@ log_debug:
   lines: False
   table_lines: False
   table_geo: False
-  table_correct: False
+  table_correct: True
   
   semantic_types_log: [-1]
   kf_list_log: [-1]

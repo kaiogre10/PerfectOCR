@@ -7,7 +7,7 @@ input3/
 data/
 tools/
 idea/
-documentation/
+# documentation/
 data_base/
 __pycache__/
 
