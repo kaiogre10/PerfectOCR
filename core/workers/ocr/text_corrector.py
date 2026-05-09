@@ -51,7 +51,7 @@ class TextCorrector(OCRAbstractWorker):
                 list_of_correct_polygons.append(updated_polygon)
                 continue
 
-            if any(c in (0, 5) for c in sc):
+            if sc == [5] or original_text.isdigit():
                 # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
                 updated_polygon = dataclasses.replace(polygon)
                 list_of_correct_polygons.append(updated_polygon)
@@ -71,10 +71,9 @@ class TextCorrector(OCRAbstractWorker):
 
             if corrected_text != original_text:
                 correced_count +=1
-                logger.debug(
-                    f"Corrección para '{poly_id}':"
-                    f"Original: '{original_text}' → Corregido: '{corrected_text}' SC: {sc}"
-                )
+                # original_textl = set(original_text.split(" "))
+                # corrected_textl = set(corrected_text.split(" "))
+                # logger.info(f"Corrección de '{poly_id}' | Original: '{original_textl.difference(corrected_textl)}' → '{corrected_text}'  SC: {sc}")
                 
             updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
             list_of_correct_polygons.append(updated_polygon)
@@ -86,7 +85,7 @@ class TextCorrector(OCRAbstractWorker):
             final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=poly_index)
             final_polygons_dict[new_id] = final_poly_obj
             
-            # 5. Reemplazo directo en el manager
+        # 5. Reemplazo directo en el manager
         manager.workflow.polygons = final_polygons_dict
         return True
 
@@ -141,20 +140,18 @@ class TextCorrector(OCRAbstractWorker):
         if semantic_clasification in (4, 5):
             return self._correct_cuants(token)
             
-        elif semantic_clasification in (1, 2):
+        if semantic_clasification in (1, 2):
             if token.endswith("m1"):
                 token = token.replace("1", "l")
                 
             if get_brands(token):
                 token = token.replace("1", "I")
                 
-            if semantic_clasification == 1:
-                return token.replace("0", "O")
-                
+            if semantic_clasification == 1 and "0" in token:
+                token = token.replace("0", "O")
+
             return find_umd(token)
-            
-        # elif semantic_clasification == 3:
-            # return token
+
         else:
             return token
     

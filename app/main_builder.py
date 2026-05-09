@@ -66,7 +66,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
             # t4 = time.perf_counter()
             final_df_list = transform_image_to_df(processing_builder, workflow_report)
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
-            if config_services.db_config:
+            if final_df_list and config_services.db_config:
                 db_service = DataBaseService(dsn=None)
                 if db_service.test_connection():
                     cache_service.clean_db(db_service)
@@ -130,11 +130,12 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
         total_processing_time += image_processing_time
         image_name = image_data.get('name', f'imagen_{i}')
 
-        if final_df is not None:
+        if final_df is None:
+            logger.error(f"Fallo al procesar imagen: '{image_name}'")
+            continue
+        else:
             final_results.append(final_df)
             logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
-        else:
-            logger.error(f"Fallo al procesar imagen: '{image_name}'")
 
         mean_time = total_processing_time / total_images
         logger.warning(f"'{total_images}' Archivos Digitalizados el '{datetime.now().strftime('%m/%d %H:%M:%S')}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")

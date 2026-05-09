@@ -460,6 +460,6 @@ class DataFormatter:
         db_values["proveedor_norm"] = f"proveedor_demo_{id_prov}"
         db_values["fecha_captura"] = date_creation
 
-        logger.info(f"{db_values}")
+        # logger.info(f"{db_values}")
         return (df, db_values)
         

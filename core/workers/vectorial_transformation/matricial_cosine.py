@@ -83,10 +83,10 @@ class MatricialCusine(VectorizationAbstractWorker):
                     new_tabular_lines: List[str] = [tabular_lines[i] for i in new_tabular_idx]
                     return new_tabular_lines
             else:
-                line_idx = np.array(line_ids, np.uint8)
+                line_idx = np.array(np.arange(len(line_ids), np.uint8), np.uint8)
                 tabular_array = self.cosine_dummies(analysis, line_idx)
                 new_tabular_idx = tabular_array.tolist()
-                new_tabular_lines: List[str] = [tabular_lines[i] for i in new_tabular_idx]
+                new_tabular_lines: List[str] = [line_ids[i] for i in new_tabular_idx]
                 if new_tabular_lines:
                     return new_tabular_lines
                     

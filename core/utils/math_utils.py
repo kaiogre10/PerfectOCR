@@ -449,6 +449,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
                 if kf is None:
                     sc: List[int] = polygons_dict[pid_str].semantic_clasification
                     sc_quant_count += count_quantitative_tokens(sc)
+                    kf_total += 0
                 else:
                     kf_total += len(kf)
                 

@@ -23,9 +23,9 @@ os.environ.update({
 TEST_MODE = True
 
 DEFAULT_INPUT_PATH = [
-    # "input",
+    "input",
      "input2",
-    #   "input3"
+      "input3"
 #  "D:/data/tickets_nuevo"
 ]
 

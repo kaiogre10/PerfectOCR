@@ -15,11 +15,12 @@ class ConfigService:
         elemental_worker: Set[str] = {"image_loader"}
         elemental_params = elemental_worker.issubset(self.create_stager[0][1])
         self.det = {"geometry_detector"}
-        self.ocr_workers: Set[str] = {"polygon_extractor", "paddle_wrapper"}
-        self.ocr_workers.update(self.det)
+        ocr_workers: Set[str] = {"polygon_extractor", "paddle_wrapper"}
+        self.ocr_workers = ocr_workers.union(self.det)
         self.min_workers: Set[str] = self.ocr_workers.union(elemental_worker) #"lineal", "vectorizer", "cos_sim", "table_structurer"
         self.no_modules = (elemental_params is False) and (TEST_MODE is True)
         self.enable_outputs = True if output_paths else False
+        self.active_full_ocr = self.ocr_workers.issubset(self.all_workers)
         
         if not TEST_MODE and not elemental_params:
             logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
@@ -36,7 +37,6 @@ class ConfigService:
         elif not self.no_modules and self._validate_min_workers():
             logger.warning(f"MODO PRODUCCIÓN ACTIVADO, se realizarán validaciones robustas. Stages activas: '{self.log_active_areas()}'")
             self.config = self.config
-
         else:
             logger.error(f"Error de configuración")
             self.config = {}
@@ -86,18 +86,17 @@ class ConfigService:
             }
             
         if not self.all_workers:
-            logger.debug("Sin all workers")
             return {}
 
         finder: Set[str] = {"data_finder"}
         full_ocr = self.ocr_workers.union(finder)
 
         if not self.det.issubset(self.all_workers):
-            logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
+            # logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
             return {}
 
         if full_ocr.issubset(self.all_workers):
-            logger.debug("Configuración: OCR completo + Word Finder")
+            # logger.debug("Configuración: OCR completo + Word Finder")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": True,
@@ -105,8 +104,8 @@ class ConfigService:
                 "activate_det": True
             }
 
-        if self.ocr_workers.issubset(self.all_workers):
-            logger.debug("Configuración: OCR completo sin Word Finder")
+        if self.active_full_ocr:
+            # logger.debug("Configuración: OCR completo sin Word Finder")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": False,
@@ -114,7 +113,7 @@ class ConfigService:
                 "activate_det": True
             }
 
-        logger.debug("Configuración: Solo modelo de detección")
+        # logger.debug("Configuración: Solo modelo de detección")
         return {
             "models_config": self.config.get("models_config", {}),
             "activate_wf": False,
@@ -156,7 +155,7 @@ class ConfigService:
 
     @cached_property
     def ocr_config(self) -> Dict[str, Any]:
-        if self.no_modules or not self.create_stager[2][1] or not self.ocr_workers.issubset(self.all_workers):
+        if self.no_modules or not self.create_stager[2][1] or not self.active_full_ocr:
             return {}
         else:
             create_refiners = self.modules_config.get("ocr", {}).get("text_refiner", {}).get("num_passes")
@@ -173,7 +172,7 @@ class ConfigService:
     @cached_property
     def vectorization_config(self) -> Dict[str, Any]:
         vect_stage = self.create_stager[3][1]
-        if self.no_modules or not vect_stage or not "lineal" in vect_stage or not self.ocr_workers.issubset(self.all_workers):
+        if self.no_modules or not vect_stage or not "lineal" in vect_stage or not self.active_full_ocr:
             return {}
         else:
             return {
@@ -185,7 +184,7 @@ class ConfigService:
         
     @cached_property
     def db_config(self) -> Dict[str, Any]:
-        if not self.create_stager[4][1]:
+        if not self.vectorization_config or self.no_modules or not self.create_stager[4][1] or not self.active_full_ocr:
             return {}
         else:
             return {
@@ -199,8 +198,7 @@ class ConfigService:
             "image_preparation": self.img_prep_config,
             "preprocessing": self.preprocessing_config,
             "ocr": self.ocr_config,
-            "vectorization": self.vectorization_config,
-            "data_base": self.db_config
+            "vectorization": self.vectorization_config
         }
 
     def _validate_min_workers(self) -> bool:

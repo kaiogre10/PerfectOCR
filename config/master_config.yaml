@@ -27,7 +27,7 @@ pipeline_secuence:
     - "math_max"
 
   db_stage:
-    - "db_service"
+    # - "db_service"
    
 log_debug:
   text_ocr: False
@@ -38,7 +38,7 @@ log_debug:
   table_geo: False
   table_correct: False
   
-  semantic_types_log: [-1]
+  semantic_types_log: [3 , 4, 5]
   kf_list_log: [-1]
   
 # Configuración de salida
@@ -173,7 +173,7 @@ modules:
     
   vectorization:
     lineal:
-      get_vectors: True
+      get_vectors: False
       overlap_threshold: 0.596
       
     cos_sim:

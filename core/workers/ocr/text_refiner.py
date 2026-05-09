@@ -9,6 +9,7 @@ from core.workers.ocr.text_corrector import TextCorrector
 from services.output_service import save_raw_json
 from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
 import logging
+import time
 import dataclasses
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ class Refiner(OCRAbstractWorker):
         """
         Ejecuta el ciclo de refinamiento con clasificación selectiva.
         """
-        # t0 = time.perf_counter()
+        t0 = time.perf_counter()
         self.preprocess_text(manager)
         self.get_early_data(manager)
         

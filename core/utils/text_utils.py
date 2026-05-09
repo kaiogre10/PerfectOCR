@@ -22,6 +22,7 @@ _zeros_pattern = re.compile(_zeros_to_sub)
 
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)
 _bic_variants = r'^(B(1C|lC|\|C|¡C|!C))$'
+# _dixon_variants = rf'(D(1X|LX{_zeros_to_sub}N'
 _labels_pattern: Pattern[str] = re.compile(_bic_variants)
 
 # Patrón que extrae los IDS del documento
@@ -89,6 +90,7 @@ _umd_patterns_list: List[Pattern[str]] = [
     re.compile(r'#\s*\d+'),
 ]
 
+_umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)')
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
 # Define los patrones como strings
@@ -182,7 +184,7 @@ def is_acronym(text: str) -> bool:
     return bool(_acronym_pattern.search(text)) if text else False
 
 def is_umd(s: str) -> bool:
-    if not s or not any(c.isalnum() for c in s):
+    if not s or s.isdecimal() or not any(c.isalnum() for c in s):
         return False 
     return bool(_umd_patterns.search(s))
 
@@ -194,6 +196,16 @@ def find_umd(s: str) -> str:
     """
     if not s:
         return ""
+
+    if s.isdecimal():
+        return s
+
+    if _umd_cor.search(s) and not s.endswith("0"):
+        new_s = s[:-1] + "0"
+        if _umd_patterns.fullmatch(new_s):
+            logger.info(f"CORRECIÓN: {s} -> {new_s}")
+            return new_s
+
     intervals: List[Tuple[int, int]] = [(m.start(), m.end()) for m in _umd_patterns.finditer(s)]
     if not intervals:
         return s
@@ -462,13 +474,22 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             # logger.debug(f"No existente: '{s}'")
             no_clas += 1
             return (-1, 0)
-
+        
         if not any(c.isalnum() for c in s):
             no_clas += 1
             # logger.debug(f"No alfanumérico: '{s}")
             return (-1, 0)
 
+        if s.isalpha():
+            no_cuants += 1
+            return (1, 0)
+
         total_text = len(s)
+
+        # if s.isdecimal():
+        #     has_cuants += 1
+        #     return (5, total_text)
+
         total_cuant = sum(1 for ch in s if ch in cuant_chars) if any(c.isdigit() for c in s) else 0
         
         if total_cuant == 0:
@@ -482,13 +503,13 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 return (1, 0)
 
             if bool(_semi_c_fraction.fullmatch(s)) or bool(_mesure_patterns.fullmatch(s)):
-                logger.debug(f"UMD por regex: '{s}'")
+                # logger.debug(f"UMD por regex: '{s}'")
                 no_cuants += 1
                 return (2, 0)
 
             if not any(c in vowels for c in s):
                 if is_umd(s):
-                    logger.debug(f"UMD sin vocales: '{s}'")
+                    # logger.debug(f"UMD sin vocales: '{s}'")
                     no_cuants += 1
                     return (2, 0)
                     
@@ -504,7 +525,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         if total_cuant == total_text:
             if total_text < 3:
                 if s == "0":
-                    # logger.info(f"DESC UNICO 0: '{s}'")
+                    # # logger.debug(f"DESC UNICO 0: '{s}'")
                     return (1, 0)
                 else:
                 #  logger.debug(f"NUM por único: '{s}'")
@@ -526,7 +547,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 has_cuants += 1
                 return (4, total_cuant)
 
-            # logger.info(f"NUM por descarte en conteo: '{s}'")
+            # # logger.debug(f"NUM por descarte en conteo: '{s}'")
             has_cuants += 1
             return (5, total_cuant)
 
@@ -541,7 +562,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             return (4, total_cuant)
             
         if is_umd(s):
-          #  logger.debug(f"UMD mixto: '{s}'")
+            # logger.debug(f"UMD mixto: '{s}'")
             mixed += 1
             return (2, total_cuant)
 
@@ -566,7 +587,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                 return (2, total_cuant)
 
             if not any(c in ("/", ":") for c in s) and (total_cuant / total_text) > 0.687:
-                # logger.info(f"NUM por codificacion: '{s}'")
+                # # logger.debug(f"NUM por codificacion: '{s}'")
                 return (5, total_cuant)
             # logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
             encoded += 1
