@@ -173,7 +173,7 @@ modules:
     
   vectorization:
     lineal:
-      get_vectors: False
+      get_vectors: True
       overlap_threshold: 0.596
       
     cos_sim:

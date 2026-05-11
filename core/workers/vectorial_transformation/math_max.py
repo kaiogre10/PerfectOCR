@@ -47,7 +47,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             cut_polygons = self.map_polygons_ids(polygons, df_copy)
@@ -319,15 +319,18 @@ class MatrixSolver(VectorizationAbstractWorker):
         full_dec_mask = np.count_nonzero(full_dec==1, axis=1)                   # Mascara booleana donde hay unicamente un elemento decimal por celda con el mismo shape que el array decimal reducido
         full_idx_dec = np.where(full_dec_mask>= 3)[0]                           # índices del array anterior (No del array original) donde hay suficientes elementos decimales
         full_dec_idx = full_idx[full_idx_dec]                                   # índices originales con filas completas y suficiente numero de decimales
+        
+        logger.info("full_dec:\n"f"{full_dec},\n"f"{full_dec_idx},\n"f"{full_idx_dec}")
 
         textual_mask = np.count_nonzero(textual_array[full_dec_idx], axis=1, keepdims=True)
-        unique_mask = np.count_nonzero(elements_array[full_dec_idx], axis=1, keepdims=True)
-        dec_mask = np.count_nonzero(full_dec[full_dec_idx], axis=1, keepdims=True)
+        # unique_mask = np.count_nonzero(elements_array[full_dec_idx], axis=1, keepdims=True)
+        dec_mask = np.count_nonzero(full_dec_com[full_dec_idx], axis=1, keepdims=True)
         sums = textual_mask + dec_mask
-        full_dec_idx_rel = np.where(unique_mask==sums)[0]                                       # índices relativos donde hay elementos decimales de sobra
+        logger.info("SUMS:\n"f"{sums}")
+        # full_dec_idx_rel = np.where(unique_mask==sums)[0]                                       # índices relativos donde hay elementos decimales de sobra
         # logger.info("IDX:\n"f"{full_dec_idx_rel}, {full_dec_idx}")
-        full_dec_idx = full_dec_idx[full_dec_idx_rel]                                           # índices absolutos filtrados con elementos decimales únicos
-        # logger.info("\n" + df.iloc[full_dec_idx].to_string(index=True))
+        # full_dec_idx = full_dec_idx[full_dec_idx_rel]                                           # índices absolutos filtrados con elementos decimales únicos
+        logger.info("\n" + df.iloc[full_dec_idx].to_string(index=True))
 
         n_full_rows = full_dec_idx.size
         if n_full_rows > 0:
