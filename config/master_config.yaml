@@ -22,7 +22,7 @@ pipeline_secuence:
     
   vector_stage:
     - "lineal"
-    # - "cos_sim"
+    - "cos_sim"
     - "table_structurer"
     - "math_max"
 

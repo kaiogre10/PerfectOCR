@@ -441,7 +441,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             df.iat[r, c] = ""
             df_copy.iat[r, c] = []
 
-        logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
+        # logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
 
         context["df_copy"] = df_copy
 
@@ -641,7 +641,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         la celda descriptiva más probable preservando mapeo de polígonos
         """
         cols_idx = context["cols_idx"]
-        rows_idx = context["rows_idx"]
         df, df_copy = self.clean_cells(df, context)
         context["df_copy"] = df_copy
         tables_array = self.get_arrays_table(context)
@@ -654,7 +653,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.info("\n"f"{dec_cells}")
         mask = diff_array[dec_cells[:, 0], dec_cells[:, 1]] > 0
         dec_cells = dec_cells[mask]
-        logger.info(f"{dec_cells[:, 0]}")
+        # logger.info(f"{dec_cells[:, 0]}")
 
         rows_double = np.where(cuantiative_array>=2)[0]
         double_cuant = cuantiative_array[rows_double]
@@ -664,7 +663,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         rows_double = rows_double[alone_doubles_rel]
         mixed_sc_ids = np.concatenate((rows_double, dec_cells[:, 0]))
         # logger.info("\n"f"{rows_double}, {alone_doubles_rel}, {mixed_sc_ids}")
-        # logger.info("DOU:\n" + df.iloc[rows_double].to_string(index=True))
+        # logger.info("DOU:\n" + df.iloc[mixed_sc_ids].to_string(index=True))
         for row in mixed_sc_ids:
             mr = int(row)
 
@@ -685,35 +684,48 @@ class MatrixSolver(VectorizationAbstractWorker):
                 mc = int(col)
                 poly_val: List[str] = df_copy.iat[mr, mc]
                 dest_vals = df_copy.iat[mr, dest_id]
-                
+
                 mixed_vals: str = str(df.iat[mr, mc])
                 if mc == cur_mixed_col:
                     mixed_vals_list = mixed_vals.split(" ")
-                    logger.info(f"'{mixed_vals_list}': {len(mixed_vals_list)}")
-                    for i, va in enumerate(mixed_vals_list):
-                        if va.isalpha() or not validate_quant_chars(va):
-                            v = va
-                            mixed_vals_list.remove(va)
-                            poly_to_move = poly_val.pop(i)
+                    new_text: List[str] = []
+                    new_polys_ids: List[str] = []
+
+                    current_text: List[str] = []
+                    current_polys: List[str] = []
+
+                    for i, v in enumerate(mixed_vals_list):
+                        poly_id = poly_val[i] if i < len(poly_val) else None
+
+                        if v.isalpha() or not validate_quant_chars(v):
+                            new_text.append(v)
+                            if poly_id is not None:
+                                new_polys_ids.append(poly_id)
+
                             if mc == dest_id:
                                 continue
                             elif mc < dest_id:
-                                df.iat[mr, dest_id] = (str(v) + " " + str(df.iat[mr, dest_id])).strip()
-                                df_copy.iat[mr, dest_id] = [poly_to_move] + dest_vals
+                                df.iat[mr, dest_id] = (" ".join(new_text).strip() + " " + str(df.iat[mr, dest_id])).strip()
+                                df_copy.iat[mr, dest_id] = dest_vals + new_polys_ids
+                                continue
                             else:
-                                df.iat[mr, dest_id] = (str(df.iat[mr, dest_id]) + " " + str(v)).strip()
-                                df_copy.iat[mr, dest_id] = dest_vals + [poly_to_move]
+                                df.iat[mr, dest_id] = (str(df.iat[mr, dest_id]) + " " + " ".join(new_text).strip()).strip()
+                                df_copy.iat[mr, dest_id] = new_polys_ids + dest_vals
+                        else:
+                            current_text.append(v)
+                            if poly_id is not None:
+                                current_polys.append(poly_id)
 
-                            df.iat[mr, mc] = " ".join(mixed_vals_list).strip()
-                            df_copy.iat[mr, mc] = poly_val
+                            df.iat[mr, mc] = " ".join(current_text).strip()
+                            df_copy.iat[mr, mc] = current_polys
 
-        logger.info("UNMIXED:\n" + df.to_string(index=True))
+        # logger.info("UNMIXED:\n" + df.to_string(index=True))
         return (df, df_copy)
         
     def separate_decimals(self, df: pd.DataFrame, text_idx: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Redistribuye cuantitativos dobles y texto para preparar completado final.
-        Primero desmezcla celdas ambiguas (`unmix_cells`) y luego, en filas con
+        Primero desmezcla celdas ambiguas y luego, en filas con
         doble cuantitativo, mueve fragmentos textuales hacia la columna
         descriptiva y divide pares numéricos en columnas decimales vecinas.
         """
@@ -816,7 +828,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                         df_copy.iat[dr, closest_idx] = dest_polys + [poly_vals[1]]
                         df_copy.iat[dr, dc] = [poly_vals[0]] + dest_polys
 
-        logger.info("SEPARATED:\n" + df.to_string(index=True))
+        # logger.info("SEPARATED:\n" + df.to_string(index=True))
         return (df, df_copy)
     
     def simplify_rows(self, df: pd.DataFrame, context: Dict[str, Any]):
@@ -846,7 +858,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         
         df = df.drop(empty_rows_idx, axis=0)
         df = df.reset_index(drop=True)
-        # logger.info("REINDEX:\n" + df.to_string(index=True))
+        logger.info("REINDEX:\n" + df.to_string(index=True))
         return df
         
     def structure_output(self, corrected_df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:

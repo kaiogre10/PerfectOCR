@@ -476,64 +476,48 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
     density_thr: Tuple[float, float] = worker_config["encode_mean"]
     morph_thr: Tuple[float, float] = worker_config["morph_mean"]
     final_results: Dict[str, Tuple[List[int], int]] = {}
-    no_cuants = 0
-    has_cuants = 0
-    encoded = 0
-    mixed = 0
-    no_clas = 0
 
     def classify_token(s: str) -> Tuple[int, int]:
-        nonlocal no_cuants, has_cuants, encoded, mixed, no_clas
         if not s:
             # logger.debug(f"No existente: '{s}'")
-            no_clas += 1
             return (-1, 0)
         
         if not any(c.isalnum() for c in s):
-            no_clas += 1
             # logger.debug(f"No alfanumérico: '{s}")
             return (-1, 0)
 
         if s.isalpha():
-            no_cuants += 1
             return (1, 0)
 
         total_text = len(s)
 
         # if s.isdecimal():
-        #     has_cuants += 1
         #     return (5, total_text)
 
         total_cuant = sum(1 for ch in s if ch in cuant_chars) if any(c.isdigit() for c in s) else 0
         
         if total_cuant == 0:
             if not any(c.isalpha() for c in s):
-                no_clas += 1
                 return (-1, 0)
 
             elif total_text == 1:
-                logger.debug(f"DESC por tamaño: '{s}'")
-                no_cuants += 1
+                # logger.debug(f"DESC por tamaño: '{s}'")
                 return (1, 0)
 
             if bool(_semi_c_fraction.fullmatch(s)) or bool(_mesure_patterns.fullmatch(s)):
                 # logger.debug(f"UMD por regex: '{s}'")
-                no_cuants += 1
                 return (2, 0)
 
             if not any(c in vowels for c in s):
                 if is_umd(s):
                     # logger.debug(f"UMD sin vocales: '{s}'")
-                    no_cuants += 1
                     return (2, 0)
                     
                 if total_text > 2:
                     logger.debug(f"CODE sin vocales: '{s}'")
-                    no_cuants += 1
                     return (3, 0)
                 
             logger.debug(f"DESC por sobrante: '{s}'")
-            no_cuants += 1
             return (1, 0)
 
         if total_cuant == total_text:
@@ -543,46 +527,37 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
                     return (1, 0)
                 else:
                 #  logger.debug(f"NUM por único: '{s}'")
-                    has_cuants += 1
                     return (5, total_cuant)
 
             elif s.startswith("0"):
                 # logger.debug(f"CODE por inicio 0: '{s}'")
-                has_cuants += 1
                 return (3, total_cuant)
                 
             if s.isdecimal():
               #  logger.debug(f"NUM por decimal: '{s}'")
-                has_cuants += 1
                 return (5, total_cuant)
                 
             if contains_quantitative(s):
                 # logger.debug(f"CUANT por validación: '{s}'")
-                has_cuants += 1
                 return (4, total_cuant)
 
             # # logger.debug(f"NUM por descarte en conteo: '{s}'")
-            has_cuants += 1
             return (5, total_cuant)
 
         if contains_quantitative(s):
             # logger.debug(f"CUANT mixto: '{s}'")
-            mixed += 1
             return (4, total_cuant)
             
         elif s.startswith("$") and any(c.isdecimal() for c in s):
             # logger.debug(f"CUANT por incio '$': '{s}'")
-            has_cuants += 1
             return (4, total_cuant)
             
         if is_umd(s):
             # logger.debug(f"UMD mixto: '{s}'")
-            mixed += 1
             return (2, total_cuant)
 
         if is_code(s):
             # logger.debug(f"CODE mixto: '{s}'")
-            mixed += 1
             return (3, total_cuant)
         
         encoders = text_encode(s.lower(), ["all"])
@@ -591,39 +566,32 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
 
         if dense_mean > density_thr[1]:
             logger.debug(f"DESC por codificacion: '{s}'")
-            encoded += 1
             return (1, total_cuant)
 
         if dense_mean < density_thr[0]:
             if _fraction_pattern.search(s):
                 # logger.debug(f"UMD por codificacion: '{s}'")
-                encoded += 1
                 return (2, total_cuant)
 
             if not any(c in ("/", ":") for c in s) and (total_cuant / total_text) > 0.687:
                 # # logger.debug(f"NUM por codificacion: '{s}'")
                 return (5, total_cuant)
             # logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
-            encoded += 1
             return (3, total_cuant)
 
         if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
             logger.debug(f"CODE por codificacion: '{s}'")
-            encoded += 1
             return (3, total_cuant)
             
         elif bool(_labels_pattern.fullmatch(s)):
             logger.debug(f"DESCR MARCA: '{s}")
-            no_clas += 1
             return (1, total_cuant)
         
         if not any(c in vowels for c in s) and total_text > 2:
             logger.debug(f"CODE por FALLBACK: '{s}'")
-            encoded += 1
             return (3, total_cuant)
             
         logger.debug(f"Poligono sin clasificación, será descriptiva: '{s}'")
-        no_clas += 1
         return (1, total_cuant)
 
     for pid, polygon in polygons.items():
@@ -631,14 +599,12 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         if kf or kf is not None:
             final_results[pid] = ([0], 0)
             # logger.debug(f"KeyField existente, no se clasifica '{polygon.ocr_text or ""}'")
-            no_clas += 1
             continue
         
         s = polygon.ocr_text or ""
         s = s.strip()
         if not s:
             final_results[pid] = ([-1], 0)
-            no_clas += 1
             # logger.debug(f"No existente: {s}")
             continue
 
@@ -647,7 +613,6 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
         
         if not tokens or 0 >= total_tokens:
             final_results[pid] = ([-1], 0)
-            no_clas += 1
             # logger.debug(f"No valido: {s}")
             continue            
                 
@@ -659,7 +624,6 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
             poly_total_cuant += t_cuant
         final_results[pid] = (token_classes, poly_total_cuant)
     
-    # logger.debug(f"TOTAL CLASIFICADOS SIN CUANTITATIVOS: '{no_cuants}', SIN CUANTS: {has_cuants}, CODIFICADOS: {encoded}, MIXTOS: {mixed}")
     return final_results
 
 def get_ids(img_name: str) -> str:
