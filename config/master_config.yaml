@@ -38,7 +38,7 @@ log_debug:
   table_geo: False
   table_correct: False
   
-  semantic_types_log: [3 , 4, 5]
+  semantic_types_log: [-1]
   kf_list_log: [-1]
   
 # Configuración de salida

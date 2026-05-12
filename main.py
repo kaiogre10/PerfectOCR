@@ -23,7 +23,7 @@ os.environ.update({
 TEST_MODE = True
 
 DEFAULT_INPUT_PATH = [
-    "input/AAAA0079.png",
+    "input/AAAA0038.png",
     #  "input2",
       # "input3"
 #  "D:/data/tickets_nuevo"

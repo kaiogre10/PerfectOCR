@@ -162,7 +162,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         # lines_ids = line_ids[cutted_idx]
         # logger.info("CUTTED:\n"f"{np.column_stack([lines_ids, mean_idx])}, SHAPE: {mean_idx.shape[0]}")
         tabular_ids = line_ids[0:mean_idx.shape[0]]
-        logger.info(f"Table Range: {tabular_ids[0]} - {tabular_ids[-1]}")
+        # logger.info(f"Table Range: {tabular_ids[0]} - {tabular_ids[-1]}")
         return cutted_idx.astype(np.uint8)
         
     def _find_best_cluster(self, sorted_candidates: List[str], line_ids: List[str]) -> List[str]:

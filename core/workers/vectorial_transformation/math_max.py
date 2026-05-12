@@ -310,27 +310,32 @@ class MatrixSolver(VectorizationAbstractWorker):
         full_dec_com = matrix_decimal + matrix_quantity                             # Array fusionado que contiene los numericos y cuantitativos: "DECIMAL"
         full_dec = full_dec_com[full_idx]                                           # Array Decimal sin celdas faltantes
 
-        full_dec_mask = np.count_nonzero(full_dec==1, axis=1)                   # Mascara booleana donde hay unicamente un elemento decimal por celda con el mismo shape que el array decimal reducido
-        full_idx_dec = np.where(full_dec_mask>= 3)[0]                           # índices del array anterior (No del array original) donde hay suficientes elementos decimales
+        full_dec_mask = np.count_nonzero(full_dec==1, axis=1) >= 3                   # Mascara booleana donde hay unicamente un elemento decimal por celda con el mismo shape que el array decimal reducido
+        full_idx_dec = np.where(full_dec_mask)[0]                           # índices del array anterior (No del array original) donde hay suficientes elementos decimales
         full_dec_idx = full_idx[full_idx_dec]                                   # índices originales con filas completas y suficiente numero de decimales
-
+        # logger.info(f"{full_dec_idx}")
         textual_mask = np.count_nonzero(textual_array[full_dec_idx], axis=1, keepdims=True)
         unique_mask = np.count_nonzero(elements_array[full_dec_idx], axis=1, keepdims=True)
         dec_mask = np.count_nonzero(full_dec_com[full_dec_idx], axis=1, keepdims=True)
         sums = textual_mask + dec_mask
         # logger.info("SUMS:\n"f"{sums}")
         full_dec_idx_rel = np.where(unique_mask==sums)[0]                                       # índices relativos donde hay elementos decimales de sobra
-        # logger.info("IDX:\n"f"{full_dec_idx_rel}, {full_dec_idx}")
-        full_dec_idx = full_dec_idx[full_dec_idx_rel]                                           # índices absolutos filtrados con elementos decimales únicos
-        # logger.info("\n" + df.iloc[full_dec_idx].to_string(index=True))
+        if full_dec_idx_rel.size < 1:
+            full_dec_idx = full_dec_idx
+        else:
+            logger.info("IDX:\n"f"{full_dec_idx_rel}, {full_dec_idx}")
+            full_dec_idx = full_dec_idx[full_dec_idx_rel]                                           # índices absolutos filtrados con elementos decimales únicos
+            
+        logger.info(f"{full_dec_idx}")
+        logger.info("\n" + df.iloc[full_dec_idx].to_string(index=True))
 
         n_full_rows = full_dec_idx.size
         if n_full_rows > 0:
             decimal_counts = np.count_nonzero(full_dec_com[full_dec_idx], axis=0)
-            # logger.info("Counts:\n"f"{decimal_counts}")
             decimal_mask = (decimal_counts > n_full_rows // 2) | (decimal_counts == n_full_rows)
             decimal_cols = np.where(decimal_mask)[0]
             textual_cols = np.setdiff1d(cols_idx, decimal_cols, assume_unique=True)                                             # índices originales sin columnas textuales
+            logger.info("Counts:\n"f"{textual_cols}")
             temp_dec = full_dec_com[full_dec_idx]
             temp_dec = temp_dec[:, decimal_cols]                                                # Array temporal decimal con los índices completos filtrados
             complete_rows_mask = np.count_nonzero(temp_dec, axis=1) == decimal_cols.size
@@ -355,7 +360,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             return df
         else:
             # logger.info(f"ROWS FULL: {full_dec_idx}")
-            # logger.info("ARTIMETIC:\n" + aritmetic_df.to_string(index=True))
+            logger.info("ARTIMETIC:\n" + aritmetic_df.to_string(index=True))
             return aritmetic_df
 
     def correct_df(self, df: pd.DataFrame, dec_rows_ids: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> pd.DataFrame:
