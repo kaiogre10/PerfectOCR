@@ -7,7 +7,7 @@ from services.config_service import ConfigService
 from core.domain.models_manager import ModelsManager
 from services.db_service import DataBaseService
 import services.cache_service as cache_service
-from datetime import datetime
+# from datetime import datetime
 import time
 import pandas as pd # type: ignore
 import logging
@@ -135,10 +135,10 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
             continue
         else:
             final_results.append(final_df)
-            logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
+            # logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
 
-    mean_time = total_processing_time / total_images
-    logger.warning(f"'{total_images}' Archivos Digitalizados el '{datetime.now().strftime('%m/%d %H:%M:%S')}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
+    # mean_time = total_processing_time / total_images
+    # logger.warning(f"'{total_images}' Archivos Digitalizados el '{datetime.now().strftime('%m/%d %H:%M:%S')}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
         
     return final_results
     

@@ -17,7 +17,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('polygon_extractor', {})
-        self.bin_interval: Tuple[int, int] = config["bin_interval"]
+        self.bin_interval: Tuple[float, float] = config["bin_interval"]
         self.padding = worker_config.get("cropping_padding", 0.0)
         self.output = config.get("cropped_img", False)
         self.filtered_ouputs = config.get("final_polys", False)
@@ -65,7 +65,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             for idx, old_poly_id in enumerate(poly_ids_order):
                 # Filtrar por dimensiones válidas
-                if not ((px2[idx] > px1[idx]) and (py2[idx] > py1[idx])):
+                if not ((px2[idx] > px1[idx]) or (py2[idx] > py1[idx])):
                     logger.info(f"POLÍGONO INVÁLIDO: {old_poly_id}")
                     # if self.disoutput:
                     #     pid = f"{old_poly_id}"
@@ -74,14 +74,14 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 # Recortar la imagen
                 crop_x1, crop_y1, crop_x2, crop_y2 = int(px1[idx]), int(py1[idx]), int(px2[idx]), int(py2[idx])
-                cropped = make_contiguous(full_img[crop_y1:crop_y2, crop_x1:crop_x2])
+                cropped = np.ascontiguousarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2], dtype=np.uint8)
 
                 # Filtrar por intervalo de color
-                poly_mean = int(np.mean(cropped))
+                poly_mean = np.mean(cropped)
                 if not (self.bin_interval[0] < poly_mean < self.bin_interval[1]):
-                    if self.disoutput:
-                        pid = f"{old_poly_id}_{poly_mean}"
-                        self.save_debug(cropped, context, manager, "bn_discarded", pid)
+                    # if self.disoutput:
+                    #     pid = f"{old_poly_id}_{poly_mean}"
+                    #     self.save_debug(cropped, context, manager, "bn_discarded", pid)
                     continue
 
                 # Si el polígono es válido, se crea el nuevo objeto completo

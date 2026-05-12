@@ -22,7 +22,7 @@ pipeline_secuence:
     
   vector_stage:
     - "lineal"
-    - "cos_sim"
+    # - "cos_sim"
     - "table_structurer"
     - "math_max"
 
@@ -192,6 +192,6 @@ modules:
 utils:
   valid_image_extensions: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
   dpi_range: [100, 200, 300, 400, 600, 1200]
-  bin_interval: [10, 245]
+  bin_interval: [10.0, 245.0]
   percentile: [0.10, 0.99]
   

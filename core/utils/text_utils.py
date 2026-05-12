@@ -11,13 +11,19 @@ cuant_chars = CUANT_CHAR
 vowels = VOWELS
 
 _zeros_str = r'00'
+_currency_pattern = r"[$]"
 _punt_quant_chars = r'[.,]'
+_monetary_to_sub =  r'^[Ss]\d'
 _zeros_to_sub = r'[OQDo]'
 _semi_zeros = r'[OQDo]{2}'
+_digit_pattern = r"[0-9oOQ]"
 _base_date_num_str = r'[0123O][0-9O]'
+_valid_cuant_str = r'(?<=\$)\$|(?<=\$\d)\$|(?<=\$\d\d)\$'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
 _semi_zeros_pattern = re.compile(_semi_zeros, re.IGNORECASE)
 _zeros_pattern = re.compile(_zeros_to_sub)
+_monetary_pattern = re.compile(_monetary_to_sub)
+_valid_cuant_pattern = re.compile(_valid_cuant_str)
 # _punt_pattern = re.compile(_punt_quant_chars, re.IGNORECASE)
 
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)
@@ -36,9 +42,6 @@ _hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](
 _punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
 _edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
 
-# Espacios múltiples
-# _spaces_pattern: Pattern[str] = re.compile(r'\s+', re.IGNORECASE)
-
 # Siglas/Acrónimos
 _acronim = rf'^(?:[A-Za-z]\.)+[A-Za-z]?\.?$'
 _acronym_pattern: Pattern[str] = re.compile(rf'^(?:{_acronim[1:-1]}|sa|cv|mn)(?:[:;,.])?$', re.IGNORECASE)
@@ -51,7 +54,7 @@ _cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
 _phone_number = re.compile("|".join(p for p in [_kind_phon, _phone_str]), re.IGNORECASE)
 
 _mail_pattern: Pattern[str] = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b', re.IGNORECASE)
-_cp_pattern: Pattern[str] = re.compile(rf'\b(?:{_cp_letters}(?:\s*\d{{5}})?|\d{{5}})\b', re.IGNORECASE)
+# _cp_pattern: Pattern[str] = re.compile(rf'\b(?:{_cp_letters}(?:\s*\d{{5}})?|\d{{5}})\b', re.IGNORECASE)
 _numeric_code: Pattern[str] = re.compile(rf'^{_zeros_str}[0-9]+$', re.IGNORECASE)
 
 # Fecha
@@ -69,11 +72,12 @@ _vol_pattern = re.compile(rf'\b(lt|ltr|ltrs|lts|ml|cc|gal)\b', re.IGNORECASE)  #
 _len_pattern = re.compile(r'\b(cm|mm|km|in|ft|mts?|m2|m\^2|m²|cm2|cm\^2|cm²|km2|km\^2|km²)\b', re.IGNORECASE) # Más de una letra pueden ir solas
 _size_pattern = re.compile(r'\b(gde|med|ch|paq)\b', re.IGNORECASE)
 
-_cuantity_str = r'[Cc]\s*/\s*'
+# _cuantity_str = r'[Cc]\s*/\s*'
 _extended_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]\s*/\s*\d+\+\d+(?![A-Za-z0-9])', re.IGNORECASE)
 _full_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\b', re.IGNORECASE)
 _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b', re.IGNORECASE)
 _semi_c_fraction = re.compile(r'(?<!\d)[Cc]\s*/(?:\s*\d+)?\b', re.IGNORECASE)
+_c_dash_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]-\d+\b', re.IGNORECASE)
 
 _fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, _semi_c_fraction, _semifraction_pattern]), re.IGNORECASE)
 _mesure_patterns = re.compile("|".join(p.pattern for p in [_size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
@@ -81,6 +85,7 @@ _mesure_patterns = re.compile("|".join(p.pattern for p in [_size_pattern, _mass_
 _umd_patterns_list: List[Pattern[str]] = [
     _fraction_pattern,
     _mesure_patterns,
+    _c_dash_fraction_pattern,
     re.compile(r'(?<![A-Za-z0-9])\d{1,4}\s*m(?:l|1|\||!)(?=$|[^A-Za-z0-9])', re.IGNORECASE),
     re.compile(rf'\b\d+\s*g\b', re.IGNORECASE), # Solo 'g' requiere número entero antes
     re.compile(rf'\b\d+\s*l\b', re.IGNORECASE),  # Solo 'l' requiere número entero antes
@@ -94,8 +99,6 @@ _umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)')
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
 # Define los patrones como strings
-_digit_pattern = r"[0-9oOQ]"
-_currency_pattern = r"[$]"
 _clean_currency_pattern = r"^(?:\$)|,"
 _clean_currency = re.compile(_clean_currency_pattern)
 # Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
@@ -316,14 +319,22 @@ def get_cuants(text: str) -> str:
     if not text:
         return ""
         
-    if text.isalpha() or len(text) < 3:
+    if len(text) < 4 or text.isdecimal() or text.isalpha():
         return text
 
     words = text.split(" ")
     result_parts: List[str] = []
-    
+
     for word in words:
-        if word.count("$") >= 2 and contains_quantitative(word):  # $10.50.$31.50 | $10.50$31.50
+
+        monetary_count = word.count("$")
+        if word.startswith('$') and monetary_count > 1:
+            word = word[0] + word[1:].replace('$', '5')
+
+        if bool(_valid_cuant_pattern.search(word)):
+            word = word.replace("$", "5")
+
+        if monetary_count >= 2 and contains_quantitative(word):  # $10.50.$31.50 | $10.50$31.50
             compact = word.replace(" ", "")                 # $10.50.$31.50 | $10.50$31.50
             chunks = [m.group(0).replace(" ", "") for m in _split.finditer(compact)] # $10.50.$31.50 | $10.50 $31.50
             
@@ -344,7 +355,7 @@ def get_cuants(text: str) -> str:
                     result_parts.append(" ".join(chunks))
                     continue
             
-        if word.count("$") == 1:
+        if monetary_count == 1:
             if is_quantitative(word):
                 result_parts.append(word)
                 continue
@@ -352,6 +363,9 @@ def get_cuants(text: str) -> str:
                 word = _zeros_pattern.sub("0", word)
                 result_parts.append(word)
                 continue
+
+        if bool(_monetary_pattern.match(word)):
+            word = "$" + word[1:]
 
         matches = list(_token.finditer(word))
         if not matches:

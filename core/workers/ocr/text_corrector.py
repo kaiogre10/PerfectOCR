@@ -132,6 +132,8 @@ class TextCorrector(OCRAbstractWorker):
             return token
             
         if token.isalpha():
+            if token.endswith("Q"):
+                token = token.replace("Q", "O")
             return token
 
         if token.isdecimal():
@@ -152,6 +154,10 @@ class TextCorrector(OCRAbstractWorker):
 
             return find_umd(token)
 
+        if semantic_clasification == 3:
+            if token.startswith("1") and token.endswith("O"):
+                token = token.replace("O", "0")
+            return token
         else:
             return token
     
