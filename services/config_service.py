@@ -31,7 +31,7 @@ class ConfigService:
             self.config = self.config
             
         elif TEST_MODE:
-            logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. Modulos '{self.log_active_areas()}'")
+            logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. Modulos: '{self.log_active_areas()}'")
             self.config = self.config
 
         elif not self.no_modules and self._validate_min_workers():

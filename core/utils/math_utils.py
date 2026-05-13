@@ -22,7 +22,7 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
         return 1.0
     ref_point = np.array([ref_c[0], 0.0])
     vec_to_other = np.array([other_c[0] - ref_point[0], other_c[1] - ref_point[1]], np.float32)
-    ref_vec = np.array([1, 0]).astype(np.float32)  # eje X positivo
+    ref_vec = np.array([1, 0], np.float32)  # eje X positivo
     if np.linalg.norm(vec_to_other) == 0.0:
         return 1.0
     cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec), np.float32)
@@ -385,7 +385,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         result = 1.0 - np.abs(cosine)
         
         # Donde other_c es NaN (no existe línea), devolver 1.0
-        return np.where(np.isnan(other_c[:, 0]), 1.0, result.astype(np.float32))
+        return np.where(np.isnan(other_c[:, 0]), 1.0, result)
 
     # Aplicar corrección a centroides
     align_prev = _compute_centroid_align(centroids, prev_centroids)

@@ -229,7 +229,7 @@ class DataFormatter:
             if self.text_ocr_log:
                 polys: Dict[str, Polygons] = self.workflow.polygons if self.workflow.polygons else {}
                 for pid, poly, in polys.items():
-                    logger.info(f"{pid}: TEXT: '{poly.ocr_text}'")
+                    logger.info(f"'{poly.ocr_text}'")
                     
             return True
         except Exception as e:

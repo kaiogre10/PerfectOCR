@@ -206,7 +206,6 @@ def find_umd(s: str) -> str:
     if _umd_cor.search(s) and not s.endswith("0"):
         new_s = s[:-1] + "0"
         if _umd_patterns.fullmatch(new_s):
-            logger.info(f"CORRECIÓN: {s} -> {new_s}")
             return new_s
 
     intervals: List[Tuple[int, int]] = [(m.start(), m.end()) for m in _umd_patterns.finditer(s)]
