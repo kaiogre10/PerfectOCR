@@ -39,8 +39,12 @@ _secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNOREC
 _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$/])[^a-zA-Z0-9\s$/]{2,}(?=[a-zA-Z0-9$/])', re.IGNORECASE)
 
 _hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
+# _punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
+# _edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
+
 _punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
-_edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
+_edge_chars = _punt_split_pattern.pattern[:-1] + r"\-]"
+_edge_punt_pattern = re.compile(rf'^({_edge_chars}+)|({_edge_chars}+)$', re.IGNORECASE)
 
 # Siglas/Acrónimos
 _acronim = rf'^(?:[A-Za-z]\.)+[A-Za-z]?\.?$'
@@ -406,8 +410,7 @@ def format_cuant(text: str) -> str:
             
 def punct_strip(text: str) -> str:
     """
-    Elimina los caracteres de puntuación definidos en _punt_split_pattern
-    que se encuentran al inicio y al final de cada token en el texto.
+    Elimina los caracteres de puntuación que se encuentran al inicio y al final de cada token en el texto.
     """
     if not text:
         return ""

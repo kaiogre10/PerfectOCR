@@ -48,7 +48,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            # logger.debug(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             cut_polygons = self.map_polygons_ids(polygons, df_copy)
@@ -79,22 +79,16 @@ class MatrixSolver(VectorizationAbstractWorker):
         context["rows_idx"] = rows_idx
         context["cols_idx"] = cols_idx
 
-        aritmetic_df = self.get_decimal_df(df, context)
+        aritmetic_df, context = self.get_decimal_df(df, context)
+
         if aritmetic_df.equals(df):
-            # logger.debug("SE DEVOLVIÓ DF ORIGINAL")
+            
             df, context = self.solve_incomplete(df, context)
             if df.empty:
                 return df.iloc[0:0]
-            else:
-
-                aritmetic_df = self.get_decimal_df(df, context)
-        dec_rows_ids = aritmetic_df.index.to_numpy()
-        context["dec_rows_ids"] = dec_rows_ids
-
-        # logger.debug("ARITHMETIC IDS:\n"f"{dec_rows_ids}")
-        if aritmetic_df.empty:
-            logger.error("SIN COLUMNAS SUFICINETES PARA VALIDACIÓN ARITMETICA")
-            return df.iloc[0:0]
+            dec_rows_ids = context["dec_rows_ids"]
+            dec_cols = context["dec_cols"]
+            aritmetic_df = df.iloc[dec_rows_ids, dec_cols]
 
         df = self.find_hypotesis(df, aritmetic_df)
 
@@ -106,7 +100,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             return df.iloc[0:0]
 
         # logger.debug("RENAMED:\n" + df.to_string(index=True))
-        df = self.correct_df(df, dec_rows_ids, context)
+        df = self.correct_df(df, context)
         if df.empty:
             return df.iloc[0:0]
         return df
@@ -144,12 +138,16 @@ class MatrixSolver(VectorizationAbstractWorker):
             poly_ids.extend(cell)
 
         cut_polygons: Dict[str, Any] = {}
+        polys_index: List[int] = []
         for poly_id in poly_ids:
             if poly_id in polygons:
                 cut_polygons[poly_id] = {
                     "text": polygons[poly_id].ocr_text or "",
                     "semantic_clasification": polygons[poly_id].semantic_clasification,
                 }
+                polys_index.append(polygons[poly_id].poly_index)
+        
+        cut_polygons["max_idx"] = max(polys_index)
         return cut_polygons
 
     def get_arrays_table(self, context: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
@@ -300,7 +298,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                         break
         return df
 
-    def get_decimal_df(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
+    def get_decimal_df(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
         Selecciona filas/columnas con densidad decimal suficiente para inferencia.
         """
@@ -348,7 +346,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             full_dec_idx = full_dec_idx[complete_idx]                                           # índices absolutos de filas con non_zero
         else:
             # logger.debug("No hay filas completas en array, devolviendo df original")
-            return df
+            return (df, context)
 
         decimal_cols_str: List[str] = []
         for id in cols_idx:
@@ -362,13 +360,14 @@ class MatrixSolver(VectorizationAbstractWorker):
         aritmetic_df: pd.DataFrame = df.iloc[full_dec_idx, decimal_cols]
         if aritmetic_df.empty:
             logger.debug("No hay filas completas para aritmetich, devolviendo df original")
-            return df
+            return (df, {})
         else:
             # logger.debug(f"ROWS FULL: {full_dec_idx}")
             # logger.debug("ARTIMETIC:\n" + aritmetic_df.to_string(index=True))
-            return aritmetic_df
+            context["dec_rows_ids"] = aritmetic_df.index.to_numpy()
+            return (aritmetic_df, context)
 
-    def correct_df(self, df: pd.DataFrame, dec_rows_ids: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> pd.DataFrame:
+    def correct_df(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
         """
         Corrige la tabla tras detectar columnas decimales y descriptivas.
         Estima la columna descriptiva principal, aísla contenido decimal/textual
@@ -381,6 +380,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             return df.iloc[0:0]
 
         context["dec_cols"] = idx_map
+        dec_rows_ids = context["dec_rows_ids"]
         rows_ids = context["rows_idx"]
         cols_idx = context["cols_idx"]
         tables_array = self.get_arrays_table(context)
@@ -846,30 +846,33 @@ class MatrixSolver(VectorizationAbstractWorker):
         arrays_table = self.get_arrays_table(context)
         elements_array = arrays_table[2]
         unique_cells = np.count_nonzero(elements_array, axis=1) == 1
+
+        c_target = df.columns.get_loc("producto_norm")
         empty_rows_idx = np.where(unique_cells)[0]
+
         for r in empty_rows_idx:
             c_idx = np.nonzero(elements_array[r])[0]
             if len(c_idx) == 0:
                 continue
             c = int(c_idx[0])
-            
+            c_target = int(c_target)
             r_target = int(r) - 1
             if r_target < 0:
                 continue
                 
-            val: str = df.iat[r, c]        
+            val: str = df.iat[r, c]
             if val != "" and val:
-                target_val: str = df.iat[r_target, c]
+                target_val: str = df.iat[r_target, c_target]
                 if target_val != "" and target_val:
-                    df.iat[r_target, c] = str(target_val).strip() + str(val).strip()
+                    df.iat[r_target, c_target] = str(target_val).strip() + str(val).strip()
                 else:
-                    df.iat[r_target, c] = str(val).strip()
+                    df.iat[r_target, c_target] = str(val).strip()
                     
                 df.iat[r, c] = ""
         
         df = df.drop(empty_rows_idx, axis=0)
         df = df.reset_index(drop=True)
-        logger.info("REINDEX:\n" + df.to_string(index=False))
+        logger.info("REINDEX:\n" + df.to_string(index=True))
         return df
         
     def structure_output(self, corrected_df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
@@ -892,7 +895,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
     def solve_incomplete(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         cols_idx = context["cols_idx"]
-        rows_idx = context["rows_idx"]
+        # rows_idx = context["rows_idx"]
         arrays_table = self.get_arrays_table(context)
         # decimal_array, numeric_array, elements_array, textual_array = arrays_table[0], arrays_table[1], arrays_table[2], arrays_table[3]
         decimal_array = arrays_table[0]
@@ -950,7 +953,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 potencial_val[r, 0] = int(quotient2)
             continue                                                                        # Momentaneamente, después agregaré los casos para pu y mtl
 
-        logger.info("SEMI_COMP:\n" + df.iloc[non_empty_rows_idx].to_string(index=True))
+        # logger.info("SEMI_COMP:\n" + df.iloc[non_empty_rows_idx].to_string(index=True))
         # logger.debug("SEMI_ARRAY:\n"f"{np.column_stack([non_empty_rows_idx, max_decimal_array])}")
         # logger.debug("\n"f"{np.column_stack([non_empty_rows_idx, potencial_val[non_empty_rows_idx]])}")
 
@@ -959,21 +962,68 @@ class MatrixSolver(VectorizationAbstractWorker):
         major_shadow = shadows_dec[major_shadow_idx]                                            # Patrón decimal más frecuente
         major_rows_idx = np.where(np.all(major_shadow == max_decimal_array, axis=1))[0]         # índices donde hay match con el shadow
         major_rows_idx = non_empty_rows_idx[major_rows_idx]
+
+        total_inserts = major_rows_idx.size
+        if total_inserts < 1:
+            logger.info("SIN DATOS SUFICIENTES")
+            return (df.iloc[0:0], {})
         # logger.debug(f"MAJOR SHADOW: {major_shadow}")
         dec_cols_idx = np.where(major_shadow)[1]
         non_dec_idx = np.setdiff1d(cols_idx, dec_cols_idx, assume_unique=True)
         text_col = np.argmax(non_dec_idx, keepdims=True)
         text_col = non_dec_idx[text_col]
-        logger.info(f"DEC IDX: {dec_cols_idx}, {non_dec_idx}, {text_col}")
-        logger.info("SHAWDOW_DF:\n" + df.iloc[major_rows_idx].to_string(index=True))
+        
+        dest_idx = int(text_col[0])
+        # logger.info(f"DEC IDX: {non_dec_idx}, {dec_cols_idx}, {dest_idx}, ROWS: {major_rows_idx}")
+        # logger.info("SHAWDOW_DF:\n" + df.iloc[major_rows_idx].to_string(index=True))
 
-        for r in rows_idx:
+        cut_polygons = context["cut_polygons"]
+        max_idx = (cut_polygons["max_idx"] + 1) 
+        new_inserts = max_idx + total_inserts
+
+        artificial_polys: List[str] = []
+        for idx in range(max_idx, new_inserts):
+            new_poly_id = f"poly_{idx:04d}"
+            cut_polygons[new_poly_id] = {}
+            artificial_polys.append(new_poly_id)
+        
+        df_copy = context["df_copy"]
+
+        for i, r in enumerate(major_rows_idx):
             r = int(r)
-            for c in cols_idx:
+            for c in non_dec_idx:
                 c = int(c)
-                if c in dec_cols_idx:
-                    continue
                 
+                if c == dest_idx:
+                    continue
 
-        # logger.debug("SEMI_ARRAY:\n"f"{np.column_stack([major_rows_idx, temp_max_array])}")
-        return (df.iloc[0:0], {})
+                val = df.iat[r, c]
+                vals: List[str] = df_copy.iat[r, c]
+                dest_vals = df_copy.iat[r, dest_idx]
+
+                if val == "" or not val:
+                    continue
+
+                if c < dest_idx:
+                    df.iat[r, dest_idx] = str(val) + " " + str(df.iat[r, dest_idx])
+                    df_copy.iat[r, dest_idx] = vals + dest_vals
+                else:
+                    df.iat[r, dest_idx] = str(df.iat[r, dest_idx]) + " " + str(val)
+                    df_copy.iat[r, dest_idx] = dest_vals + vals
+
+                artifial_data = str(potencial_val[r, c])
+                df.iat[r, c] = artifial_data
+                current_poly = artificial_polys[i]
+
+                cut_polygons[current_poly] = {
+                    "text": artifial_data,
+                    "semantic_clasification": [5]
+                }
+                df_copy.iat[r, c] = [current_poly]
+
+        context["df_copy"] = df_copy
+        context["cut_polygons"] = cut_polygons
+        context["dec_rows_ids"] = major_rows_idx
+        context["dec_cols"] = np.setdiff1d(cols_idx, text_col)
+        # logger.info("COPY_ATI:\n" + df.to_string(index=True))
+        return (df, context)
