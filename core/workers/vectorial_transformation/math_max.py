@@ -286,13 +286,14 @@ class MatrixSolver(VectorizationAbstractWorker):
         if num_cols == 4:
             text_col = context["text_col_temp"]
             col_name_to_rename = df.columns[text_col][0]
-            text_cols = df.columns.get_loc(col_name_to_rename)
+            # text_cols = df.columns.get_loc(col_name_to_rename)
 
             df.rename(columns={col_name_to_rename: "producto_norm"}, inplace=True)
             context["text_col"] = text_col
             dec_cols = arithmetical_cols
         else:
             dec_cols = np.sort(np.array([(df.columns.get_loc(name) if name in df.columns else None) for name in DEC_COLS_NAME], np.uint8))
+            context["text_col"] = np.empty(0, dtype=np.uint8)
         
         context["dec_cols"] = dec_cols
         df_copy: pd.DataFrame = context["df_copy"]
@@ -319,6 +320,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         Selecciona filas/columnas con densidad decimal suficiente para inferencia.
         """
         cols_idx = context["cols_idx"]
+        rows_idx = context["rows_idx"]
         arrays_table = self.get_arrays_table(context)
         matrix_decimal, matrix_quantity, elements_array, textual_array = arrays_table[0], arrays_table[1], arrays_table[2], arrays_table[3]
         full_rows_mask = np.count_nonzero(elements_array, axis=1)
@@ -366,6 +368,9 @@ class MatrixSolver(VectorizationAbstractWorker):
             complete_idx = np.where(complete_rows_mask)[0]                                      # índices relativos de filas con non_zero
             full_dec_idx = full_dec_idx[complete_idx]                                           # índices absolutos de filas con non_zero
         else:
+            # context["text_col_temp"] = df.shape[0]
+            context["arith_cols_ids"] = cols_idx
+            context["dec_rows_ids"] = rows_idx
             logger.warning("No hay filas con suficientes datos, devolviendo df original")
             return (df, context)
 
