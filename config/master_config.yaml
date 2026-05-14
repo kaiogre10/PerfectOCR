@@ -25,9 +25,10 @@ pipeline_secuence:
     - "cos_sim"
     - "table_structurer"
     - "math_max"
+    - "collector"
 
   db_stage:
-    # - "db_service"
+    - "db_service"
    
 log_debug:
   text_ocr: False

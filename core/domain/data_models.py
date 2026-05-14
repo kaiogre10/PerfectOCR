@@ -78,16 +78,16 @@ class FullImage:
     full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
 
 @dataclass
-class WorkflowDict:
+class StructuredData:
+    df_table: pd.DataFrame
+    global_data: Dict[str, Any]
+
+@dataclass
+class WorkflowData:
     IDRegistro: str
     full_img: Optional[FullImage]
-    metadata: Metadata
+    metadata: Optional[Metadata]
     polygons: Dict[str, Polygons]
     all_lines: Dict[str, AllLines]
-    id_prov: str
+    table_data: Optional[StructuredData]
     H: int
-    
-@dataclass
-class StructuredData:
-    df: pd.DataFrame
-    global_data: Dict[str, Any]

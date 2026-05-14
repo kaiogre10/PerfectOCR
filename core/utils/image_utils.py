@@ -1,3 +1,4 @@
+# PerfectOCR/core/utils/image_utils.py
 import cv2
 import numpy as np
 from typing import Any, Optional, List, Dict, Tuple

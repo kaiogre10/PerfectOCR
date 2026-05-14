@@ -8,6 +8,7 @@ from core.domain.models_manager import ModelsManager
 from services.db_service import DataBaseService
 import services.cache_service as cache_service
 from datetime import datetime
+from core.utils.text_utils import format_elapsed_time
 import time
 import pandas as pd # type: ignore
 import logging
@@ -71,13 +72,13 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
                 if db_service.test_connection():
                     cache_service.clean_db(db_service)
                     if not insert_data(db_service, final_df_list):
-                        logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")
+                        logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
 
             cache_service.cleanup_project_cache()
-            logger.info(f"Tiempo en completar pipeline: {time.perf_counter()-t0:.6f}s")        
+            logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
             return []
 
-        logger.debug(f"Proceso debugger completo en {time.perf_counter()-t0:.6f}s")
+        logger.debug(f"Proceso debugger completo en {format_elapsed_time(time.perf_counter()-t0)}")
         cache_service.cleanup_project_cache()
         return []
         

@@ -24,7 +24,6 @@ class MatrixSolver(VectorizationAbstractWorker):
     clasificación semántica de polígonos, aritmética Decimal y votación global.
     """
     def __init__(self, config: Dict[str, Any], project_root: str):
-    
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('math_max', {})
@@ -48,7 +47,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             cut_polygons = self.map_polygons_ids(polygons, df_copy)
@@ -61,9 +60,9 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error(f"SE DEVOLVIÓ DATA FRAME VACÍO, TIEMPO: {time.perf_counter() -start_time:.6f}'s")
                 return False
 
-            corrected_df, totals = self.structure_output(corrected_df, manager)
+            # corrected_df, totals = self.structure_output(corrected_df, manager)
 
-            if not manager.save_final_output(corrected_df, totals):
+            if not manager.save_final_output(corrected_df, {}):
                 logger.error("No se pudo guardar data frame")
                 return False
 
@@ -208,7 +207,7 @@ class MatrixSolver(VectorizationAbstractWorker):
     def find_hypotesis(self, df: pd.DataFrame, aritmetic_df: pd.DataFrame) ->pd.DataFrame:
         """
         Determina qué columnas cumplen roles C, PU y MTL por votación global.
-        Evalúa permutaciones de tríos por fila usando operaciones con `Decimal`,
+        Evalúa permutaciones de tríos por fila de manera aritmética,
         valida igualdades exactas o dentro de tolerancia relativa configurada y
         acumula votos por posición de columna para etiquetar los roles finales.
         """
@@ -872,26 +871,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         
         df = df.drop(empty_rows_idx, axis=0)
         df = df.reset_index(drop=True)
-        logger.info("REINDEX:\n" + df.to_string(index=True))
+        # logger.info("REINDEX:\n" + df.to_string(index=True))
         return df
-        
-    def structure_output(self, corrected_df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
-        mtl_col = corrected_df["costo_tran"]
-        c_col = corrected_df["cantidad_art"]
-        
-        mtl_col_dec = mtl_col.map(lambda x: Decimal(x.strip()))
-        c_col_dec = c_col.map(lambda x: Decimal(x.strip()))
-        
-        total = Decimal(str(sum(mtl_col_dec)))
-        total_prod = Decimal(str(sum(c_col_dec)))
-
-        totals = {"art_cal": str(total_prod), "total_cal": str(total)}
-        pu_col = corrected_df["precio_unitario"]
-        prodcut_col = corrected_df["producto_norm"]
-        df: pd.DataFrame = pd.concat([c_col, prodcut_col, pu_col, mtl_col], axis=1)
-        idx = manager.workflow.IDRegistro if manager.workflow else ""
-        df.insert(0, "id_registro", idx)
-        return df, totals
 
     def solve_incomplete(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         cols_idx = context["cols_idx"]

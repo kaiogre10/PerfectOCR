@@ -1,12 +1,10 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowDict, StructuredData, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage
+from core.domain.data_models import WorkflowData, StructuredData, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage
 import numpy as np
 import dataclasses
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from core.utils.image_utils import normalice_image
-from core.utils.text_utils import get_rfc, get_ids, format_cuant
-from core.utils.data_utils import conversion_kf
 import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -14,9 +12,7 @@ logger = logging.getLogger(__name__)
 class DataFormatter:
     """Válvula de entrada/salida para todas las operaciones del workflow."""
     def __init__(self, logs_config: Dict[str, Any]):
-        self.workflow: Optional[WorkflowDict] = None
-        self.structured_data: Optional[StructuredData] = None
-        
+        self.workflow: Optional[WorkflowData] = None
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
         self.kf_list_log = list(range(1, 12)) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
@@ -32,21 +28,26 @@ class DataFormatter:
                 full_img=(gray_img)
             )
             image_name=str(metadata.get("image_name", ""))
-            id_prov = get_ids(image_name)
+
             metadata_obj = Metadata(
                 image_name=image_name,
                 date_creation=str(metadata.get("date_creation", "")),
                 dpi=int(metadata.get("dpi", 0)),
                 img_dims = (0 , 0)
             )
-            
-            self.workflow = WorkflowDict(
+
+            table_data_obj = StructuredData(
+                df_table=pd.DataFrame(),
+                global_data={}
+            )
+
+            self.workflow = WorkflowData(
                 IDRegistro=IDRegistro,
                 full_img=full_image,
                 metadata=metadata_obj,
                 polygons={},
                 all_lines={},
-                id_prov=id_prov,
+                table_data=table_data_obj,
                 H=0
             )
             logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{IDRegistro}'")
@@ -133,7 +134,7 @@ class DataFormatter:
             if full_img is None and not corrected:
                 # Medir dims de la imagen real almacenada antes de liberar memoria
                 logger.debug("Full image liberada")
-                self.workflow = dataclasses.replace(self.workflow,full_img=None)
+                self.workflow = dataclasses.replace(self.workflow, full_img=None)
                 return True
             
             if corrected or full_img is not None:
@@ -150,13 +151,13 @@ class DataFormatter:
                 full_image_obj = FullImage(img_arr)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
                 
-                up_img = self.workflow.full_img.full_img if self.workflow else None
+                up_img = self.workflow.full_img.full_img if self.workflow else None # type: ignore
                 if up_img is None:
                     return True
                 h = up_img.shape[0]
                 w = up_img.shape[1]
                 dims = (h, w)
-                self.workflow.metadata.img_dims = dims
+                self.workflow.metadata.img_dims = dims # type: ignore
 
                 logger.debug("Imagen actualizada con éxito.")
                 return True
@@ -229,7 +230,7 @@ class DataFormatter:
             if self.text_ocr_log:
                 polys: Dict[str, Polygons] = self.workflow.polygons if self.workflow.polygons else {}
                 for pid, poly, in polys.items():
-                    logger.info(f"'{poly.ocr_text}'")
+                    logger.info(f"{pid}: '{poly.ocr_text}'")
                     
             return True
         except Exception as e:
@@ -404,62 +405,59 @@ class DataFormatter:
             logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)
         return False
                 
-    def save_final_output(self, df: pd.DataFrame, totals: Dict[str, str]) -> bool:
+    def save_final_output(self, df: pd.DataFrame, key_data: Dict[str, str]) -> bool:
+        """
+        Actualiza los datos finales
+        """
         try:
-            self.structured_data = StructuredData(df=df, global_data=totals)
-            if self.table_correct_log:
-                table_f = self.structured_data.df
-                global_data = self.structured_data.global_data
-                logger.info("Tabla recibida:\n"f"{table_f.to_string(index=True)}"
-                "\n"f"GLOBAL_DATA:\n"f"{global_data}")
-            return True
-        except TypeError as e:
+            if not self.workflow:
+                return False
+            <
+            if df.empty and not key_data:
+                updated_data = StructuredData(df_table=pd.DataFrame(), global_data={})
+                self.workflow.table_data = dataclasses.replace(updated_data)
+                logger.error("Sin DATA FRAME NI DATOS")
+                return False
+            
+            if not df.empty and key_data:
+                data_obj = StructuredData(df_table=df, global_data=key_data)
+                self.workflow.table_data = dataclasses.replace(data_obj)
+                logger.info("ACTUALIZADOS AMBOS CAMPOS")
+
+                if self.table_correct_log:
+                    table_f = self.workflow.table_data.df_table
+                    global_data = self.workflow.table_data.global_data
+                    logger.info("Tabla recibida:\n"f"{table_f.to_string(index=True)}"
+                    "\n"f"GLOBAL_DATA:\n"f"{global_data}")
+                return True
+            
+            df_tab = self.workflow.table_data.df_table if self.workflow.table_data else df.iloc[0:0]
+            glob_data = self.workflow.table_data.global_data if self.workflow.table_data else {}
+
+            if key_data and df.empty:
+                updated_data = StructuredData(df_tab, key_data)
+                self.workflow.table_data = dataclasses.replace(updated_data)
+                # logger.info("ACTUALIZADA INFORMACIÓN GLOBAL")
+                return True
+
+            if not df.empty and not key_data:
+                updated_data = StructuredData(df, glob_data)
+                self.workflow.table_data = dataclasses.replace(updated_data)
+                # logger.info("ACTUALIZADO DF")
+                return True
+            
+        except Exception as e:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
         return False
-    
+        
     def get_final_data(self) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-        if self.structured_data is None:
+        structured_data = self.workflow.table_data if self.workflow else None
+        if structured_data is None:
             return (pd.DataFrame(), {})
         
-        df: pd.DataFrame = self.structured_data.df
-        if df.empty:
+        df: pd.DataFrame = structured_data.df_table
+        db_values = structured_data.global_data
+        if df.empty or not db_values:
             return (pd.DataFrame(), {})
-
-        kf_map = conversion_kf()
-        kf_map_inv = {v: k for k, v in kf_map.items()}
         
-        polygons: Dict[str, Polygons] = self.workflow.polygons if self.workflow else {}
-        db_values = self.structured_data.global_data
-        
-        for poly_data in polygons.values():
-            kf_list = poly_data.key_field
-            value = poly_data.ocr_text or ""
-            
-            if kf_list is not None and value:
-                kf = kf_list[0]
-                if kf not in (5, 6):  # Excluir KeyFields innecesarios
-                    if kf == 7:  # RFCProveedor
-                        value = get_rfc(value)
-
-                    elif kf in (1, 2):
-                        value = format_cuant(value)
-                    # Mapear el código numérico al nombre del campo
-                    field_name = kf_map_inv.get(kf)
-                    if field_name:
-                        db_values[field_name] = value  # 'MontoTotalDocumento': '1024.12'
-                        
-        id = self.workflow.IDRegistro if self.workflow else ""
-        id_prov = self.workflow.id_prov if self.workflow else ""
-        date_creation = self.workflow.metadata.date_creation if self.workflow else ""
-        
-        db_values["id_registro"] = id
-        db_values["id_proveedor"] = id_prov
-        db_values["id_cliente"] = 1
-        db_values["nombre_cliente"] = "cliente_demo"
-        db_values["giro"] = "giro_demo"
-        db_values["proveedor_norm"] = f"proveedor_demo_{id_prov}"
-        db_values["fecha_captura"] = date_creation
-
-        # logger.info(f"{db_values}")
         return (df, db_values)
-        

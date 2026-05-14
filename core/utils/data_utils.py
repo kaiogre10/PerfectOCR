@@ -1,4 +1,5 @@
 from typing import Dict, List, Any, FrozenSet
+from types import MappingProxyType
 import numpy as np
 
 DENSITY_ENCODER: Dict[str, float] = {
@@ -346,8 +347,7 @@ CUANT_CHAR: FrozenSet[str] = frozenset(CHAR_NUM.union(VALID_CUANT_CHARS))
 alone_chars: FrozenSet[str] = frozenset({"a", "e", "y", "o", "A", "E", "Y", "O"})
 VALID_ALONE_CHARS: FrozenSet[str] = frozenset(CHAR_NUM.union(alone_chars))
 
-def conversion_kf() -> Dict[str, int]:
-    return {
+_conversion_kf: Dict[str, int] = {
         "total_doc": 1, # 'MontoTotalDocumento'
         'total_art': 2, # TotalProductos
         'subtotal': 3,
@@ -361,3 +361,4 @@ def conversion_kf() -> Dict[str, int]:
         "CorreoP": 11,
         "DirecciónP": 12
     }
+CONVERSION_KF = MappingProxyType(_conversion_kf)

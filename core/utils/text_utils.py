@@ -1,3 +1,4 @@
+# PerfectOCR/core/utils/text_utils.py
 import re
 import logging
 from typing import List, Tuple, Dict, Pattern, Any, Optional
@@ -631,3 +632,10 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any] ) -> D
 def get_ids(img_name: str) -> str:
     match = _id_prov_pattern.search(img_name.strip())
     return match.group(0) if match else ""
+
+def format_elapsed_time(seconds: float) -> str:
+    """Convierte segundos a formato HH:MM:SS.ms"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = seconds % 60
+    return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
