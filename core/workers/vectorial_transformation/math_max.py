@@ -57,16 +57,14 @@ class MatrixSolver(VectorizationAbstractWorker):
             corrected_df = self.solve(df, context)
 
             if corrected_df.empty:
-                logger.error(f"SE DEVOLVIÓ DATA FRAME VACÍO, TIEMPO: {time.perf_counter() -start_time:.6f}'s")
+                logger.error(f"SE DEVOLVIÓ DATA FRAME VACÍO, TIEMPO: {time.perf_counter() - start_time:.6f}'s")
                 return False
-
-            # corrected_df, totals = self.structure_output(corrected_df, manager)
 
             if not manager.save_final_output(corrected_df, {}):
                 logger.error("No se pudo guardar data frame")
                 return False
 
-            logger.debug(f"Corrección matemática completada en {time.perf_counter() -start_time:.6f}'s")
+            logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
             return True
         except Exception as e:
             logger.error(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
@@ -78,30 +76,29 @@ class MatrixSolver(VectorizationAbstractWorker):
         context["rows_idx"] = rows_idx
         context["cols_idx"] = cols_idx
 
-        aritmetic_df, context = self.get_decimal_df(df, context)
+        df, context = self.get_decimal_df(df, context)
+        arithmetical_cols = context["arith_cols_ids"]
+        arithmetical_rows = context["dec_rows_ids"]
+        
+        if df.shape == (arithmetical_rows.size, arithmetical_cols.size):
+            df_art, context_art = self.solve_incomplete(df, context)
+            if df_art.empty:
+                return pd.DataFrame()
+            else:
+                df = df_art
+                context = context_art
 
-        if aritmetic_df.equals(df):
-            
-            df, context = self.solve_incomplete(df, context)
-            if df.empty:
-                return df.iloc[0:0]
-            dec_rows_ids = context["dec_rows_ids"]
-            dec_cols = context["dec_cols"]
-            aritmetic_df = df.iloc[dec_rows_ids, dec_cols]
+        # logger.info("ARITMETHIC:\n" + aritmetic_df.to_string(index=True))
+        df, context = self.find_hypotesis(df, context)
 
-        df = self.find_hypotesis(df, aritmetic_df)
-
-        df_copy: pd.DataFrame = context["df_copy"]
-        df_copy.columns = df.columns
-        context["df_copy"] = df_copy
         if df.empty:
             logger.error("DATAFRAME VACÍO")
-            return df.iloc[0:0]
+            return pd.DataFrame()
 
-        # logger.debug("RENAMED:\n" + df.to_string(index=True))
+        # logger.info("RENAMED:\n" + df.to_string(index=True))
         df = self.correct_df(df, context)
         if df.empty:
-            return df.iloc[0:0]
+            return pd.DataFrame()
         return df
 
     def _table_matrix_to_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -204,21 +201,22 @@ class MatrixSolver(VectorizationAbstractWorker):
         # logger.debug(f"ARRAYS TABLE: \n"f"{table_arrays}")
         return table_arrays
 
-    def find_hypotesis(self, df: pd.DataFrame, aritmetic_df: pd.DataFrame) ->pd.DataFrame:
+    def find_hypotesis(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
         Determina qué columnas cumplen roles C, PU y MTL por votación global.
         Evalúa permutaciones de tríos por fila de manera aritmética,
         valida igualdades exactas o dentro de tolerancia relativa configurada y
         acumula votos por posición de columna para etiquetar los roles finales.
         """
-        cols_name: List[str] = list(aritmetic_df.columns)
+        arithmetical_cols = context["arith_cols_ids"]
+        arithmetical_rows = context["dec_rows_ids"]
+
+        aritmetic_df: pd.DataFrame = df.iloc[arithmetical_rows, arithmetical_cols]
         try:
             perm_df = aritmetic_df.map(lambda x: Decimal(x))
         except InvalidOperation as e:
             logger.error(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
-            return df.iloc[0:0]
-        # logger.debug("DECIMAL DF:\n" + perm_df.to_string(index=False))
-        # time_t = time.perf_counter()
+            return pd.DataFrame()
         try:
             all_hypotesis = []
             array_votes = np.zeros(perm_df.shape, np.int8)
@@ -268,11 +266,11 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         except ValueError as e:
             logger.error(f"ERROR PERMUTANDO: '{e}'", exc_info=True)
-            return df.iloc[0:0]
+            return (pd.DataFrame(), {})
 
-        # logger.debug(f"TIempo Permutando: {time.perf_counter() - time_t:.6f}'s")
         c_column, pu_column, mtl_column = [np.argmax(np.count_nonzero(array_votes==i, axis=0)) for i in (1, 2, 3)]
-        # logger.debug(f"INDICES DE COLUMNA: C-PU-MTL: {c_column, pu_column, mtl_column}")
+
+        cols_name: List[str] = list(aritmetic_df.columns)
         for i, col in enumerate(cols_name):
             if i == c_column:
                 df.rename(columns={col: "cantidad_art"}, inplace=True)
@@ -282,20 +280,39 @@ class MatrixSolver(VectorizationAbstractWorker):
                 df.rename(columns={col: "costo_tran"}, inplace=True)
             else:
                 continue
+        
+        cols_idx = context["cols_idx"]
+        num_cols = cols_idx.size
+        if num_cols == 4:
+            text_col = context["text_col_temp"]
+            col_name_to_rename = df.columns[text_col][0]
+            text_cols = df.columns.get_loc(col_name_to_rename)
 
-        if all(name in df.columns for name in DEC_COLS_NAME):
-            if df.shape[1] == 4:
-                for col in df.columns:
-                    if col not in DEC_COLS_NAME:
-                        df.rename(columns={col: "producto_norm"}, inplace=True)
-                        break
-            elif len(cols_name) == 4:
-                used_idx = {c_column, pu_column, mtl_column}
-                for idx, orig in enumerate(cols_name):
-                    if idx not in used_idx:
-                        df.rename(columns={orig: "noise_um_col"}, inplace=True)
-                        break
-        return df
+            df.rename(columns={col_name_to_rename: "producto_norm"}, inplace=True)
+            context["text_col"] = text_col
+            dec_cols = arithmetical_cols
+        else:
+            dec_cols = np.sort(np.array([(df.columns.get_loc(name) if name in df.columns else None) for name in DEC_COLS_NAME], np.uint8))
+        
+        context["dec_cols"] = dec_cols
+        df_copy: pd.DataFrame = context["df_copy"]
+        df_copy.columns = df.columns
+        context["df_copy"] = df_copy
+
+        # if all(name in df.columns for name in DEC_COLS_NAME):
+        #     if num_cols == 4:
+        #         for col in df.columns:
+        #             if col not in DEC_COLS_NAME:
+        #                 df.rename(columns={col: "producto_norm"}, inplace=True)
+        #                 break
+        #     elif len(cols_name) == 4:
+        #         used_idx = {c_column, pu_column, mtl_column}
+        #         for idx, orig in enumerate(cols_name):
+        #             if idx not in used_idx:
+        #                 df.rename(columns={orig: "noise_um_col"}, inplace=True)
+        #                 break
+
+        return (df, context)
 
     def get_decimal_df(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
@@ -327,24 +344,29 @@ class MatrixSolver(VectorizationAbstractWorker):
             full_dec_idx = full_dec_idx[full_dec_idx_rel]                                           # índices absolutos filtrados con elementos decimales únicos
             
         # logger.debug(f"{full_dec_idx}")
-        # logger.debug("\n" + df.iloc[full_dec_idx].to_string(index=True))
+        # logger.info("ROWS DEC DF:\n" + df.iloc[full_dec_idx].to_string(index=True))
 
         n_full_rows = full_dec_idx.size
         if n_full_rows > 0:
-            temp_dec = full_dec_com[full_dec_idx]
-            decimal_counts = np.count_nonzero(temp_dec, axis=0)
             textual_counts = np.sum(textual_array[full_dec_idx], axis=0, dtype=np.uint8)
             textual_cols = np.argmax(textual_counts, keepdims=True)
-            decimal_mask = (decimal_counts > n_full_rows // 2) | (decimal_counts == n_full_rows)
-            decimal_idx = np.where(decimal_mask)[0]
-            decimal_cols = np.setdiff1d(decimal_idx, textual_cols, assume_unique=True)                                             # índices originales sin columnas textuales
+            temp_dec = full_dec_com[full_dec_idx]
+
+            if cols_idx.size == 4:
+                decimal_cols = np.setdiff1d(cols_idx, textual_cols, assume_unique=True)
+                # logger.info("COLS DEC DF:\n" + df.iloc[full_dec_idx, decimal_cols].to_string(index=True))            
+            else:    
+                decimal_counts = np.count_nonzero(temp_dec, axis=0)
+                decimal_mask = (decimal_counts > n_full_rows // 2) | (decimal_counts == n_full_rows)
+                decimal_idx = np.where(decimal_mask)[0]
+                decimal_cols = np.setdiff1d(decimal_idx, textual_cols, assume_unique=True)          # índices originales sin columnas textuales
             
             temp_dec = temp_dec[:, decimal_cols]                                                # Array temporal decimal con los índices completos filtrados
             complete_rows_mask = np.count_nonzero(temp_dec, axis=1) == decimal_cols.size
-            complete_idx = np.where(complete_rows_mask)[0]                                           # índices relativos de filas con non_zero
+            complete_idx = np.where(complete_rows_mask)[0]                                      # índices relativos de filas con non_zero
             full_dec_idx = full_dec_idx[complete_idx]                                           # índices absolutos de filas con non_zero
         else:
-            # logger.debug("No hay filas completas en array, devolviendo df original")
+            logger.warning("No hay filas con suficientes datos, devolviendo df original")
             return (df, context)
 
         decimal_cols_str: List[str] = []
@@ -358,13 +380,15 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         aritmetic_df: pd.DataFrame = df.iloc[full_dec_idx, decimal_cols]
         if aritmetic_df.empty:
-            logger.debug("No hay filas completas para aritmetich, devolviendo df original")
-            return (df, {})
+            logger.info("No hay filas completas para aritmetic, devolviendo df original")
+            return (df, context)
         else:
             # logger.debug(f"ROWS FULL: {full_dec_idx}")
-            # logger.debug("ARTIMETIC:\n" + aritmetic_df.to_string(index=True))
-            context["dec_rows_ids"] = aritmetic_df.index.to_numpy()
-            return (aritmetic_df, context)
+            # logger.info("DECIMALDF:\n" + aritmetic_df.to_string(index=True))
+            context["text_col_temp"] = textual_cols
+            context["arith_cols_ids"] = decimal_cols
+            context["dec_rows_ids"] = full_dec_idx
+            return (df, context)
 
     def correct_df(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
         """
@@ -373,29 +397,26 @@ class MatrixSolver(VectorizationAbstractWorker):
         mezclado, redistribuye valores entre celdas, completa filas incompletas
         con reglas aritméticas y elimina filas residuales de ruido.
         """
-        idx_map = np.sort(np.array([(df.columns.get_loc(name) if name in df.columns else None) for name in DEC_COLS_NAME], np.uint8))
-        # logger.debug(f"{idx_map}")
-        if idx_map.size==0:
-            return df.iloc[0:0]
-
-        context["dec_cols"] = idx_map
-        dec_rows_ids = context["dec_rows_ids"]
+        idx_map = context["dec_cols"]                       # índices de columnas decimales
+        dec_rows_ids = context["dec_rows_ids"]              # Filas completas con suficientes elementos para operar
         rows_ids = context["rows_idx"]
         cols_idx = context["cols_idx"]
+        desc_idx = context["text_col"]
+
         tables_array = self.get_arrays_table(context)
         textual_array = tables_array[3]#, tables_array[4]
 
-        if df.shape[1] == 4 and idx_map.size == 3:
-            descriptive_idx = np.setdiff1d(cols_idx, idx_map, assume_unique=True)
-
-        else:
+        if desc_idx.size < 1 or not desc_idx:
             non_dec_cols_idx = np.setdiff1d(cols_idx, idx_map, assume_unique=True)          # índices de columnas que no son decimales ni válidas para la validación
             textual_array_temp = textual_array[:, non_dec_cols_idx]
 
             textual_cols_id = np.argmax(np.sum(textual_array_temp, axis=0, dtype=np.uint8))  # índice relativo de columna descriptiva
             descriptive_idx = np.atleast_1d(non_dec_cols_idx[textual_cols_id])         # índice real de columna descriptiva principal
+            
             orig_col_name = df.columns[int(descriptive_idx[0])]
             df.rename(columns={orig_col_name: "producto_norm"}, inplace=True)
+        else:
+            descriptive_idx = desc_idx
 
             # leftovers_idx = np.delete(non_dec_cols_idx, textual_cols_id)                # índices de columnas restantes después de extraer la columna descriptiva principal y las decimales
             # pot_code_col = code_array[:, leftovers_idx]
@@ -406,11 +427,11 @@ class MatrixSolver(VectorizationAbstractWorker):
             #     # logger.debug("\n"f"{np.column_stack([rows_ids, elements_array[:, code_col_idx], code_array[:, code_col_idx], textual_array[:, code_col_idx]])}")
             # else:
             #     code_col_idx = None
-
-        df, df_copy = self.isolate_decimals(df, descriptive_idx, context)
+        context["text_col"] = descriptive_idx
+        df, df_copy = self.isolate_decimals(df, context)
         context["df_copy"] = df_copy
 
-        df, df_copy = self.separate_decimals(df, descriptive_idx, context)
+        df, df_copy = self.separate_decimals(df, context)
         context["df_copy"] = df_copy
         tables_array = self.get_arrays_table(context)
         textual_array = tables_array[3]
@@ -441,16 +462,16 @@ class MatrixSolver(VectorizationAbstractWorker):
                 continue
 
             if c < dest_idx:
-                df.iat[r, dest_idx] = str(val) + " " + str(df.iat[r, dest_idx])
+                df.iat[r, dest_idx] = str(val) + " " + str(df.iat[r, dest_idx]).strip()
                 df_copy.iat[r, dest_idx] = vals + dest_vals
             else:
-                df.iat[r, dest_idx] = str(df.iat[r, dest_idx]) + " " + str(val)
+                df.iat[r, dest_idx] = str(df.iat[r, dest_idx]) + " " + str(val).strip()
                 df_copy.iat[r, dest_idx] = dest_vals + vals
 
             df.iat[r, c] = ""
             df_copy.iat[r, c] = []
 
-        # logger.debug("CORRECT TEXT:\n" + df.to_string(index=True))
+        logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
 
         context["df_copy"] = df_copy
 
@@ -499,18 +520,18 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             if missing_c:
                 result = val_mtl / val_pu
-                df.iat[r, c_idx] = str(result.to_integral_value(rounding=ROUND_HALF_UP))
+                df.iat[r, c_idx] = str(result.to_integral_value(rounding=ROUND_HALF_UP)).strip()
             elif missing_pu:
                 result = val_mtl / val_c
-                df.iat[r, pu_idx] = str(result)
+                df.iat[r, pu_idx] = str(result).strip()
             else:
                 result = val_c * val_pu
-                df.iat[r, mtl_idx] = str(result)
+                df.iat[r, mtl_idx] = str(result).strip()
 
-        # logger.debug("COMPLETED:\n" + df.to_string(index=True))
+        logger.info("COMPLETED:\n" + df.to_string(index=True))
         return df
 
-    def isolate_decimals(self, df: pd.DataFrame, descriptive_idx: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def isolate_decimals(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Aísla los valores decimales que invaden las columnas descriptivas (y viceversa)
         y determina a qué columna matemática corresponden utilizando comparaciones aritméticas.
@@ -521,6 +542,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         """
         tables_array = self.get_arrays_table(context)
         full_dec = tables_array[0]
+        descriptive_idx = context["text_col"]
         cols_idx = context["cols_idx"]
 
         descript_num = full_dec[:, descriptive_idx]          # Array decimal con las columnas textuales
@@ -534,6 +556,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         invaded_df: pd.DataFrame = df.iloc[rows_to_com, idx]
         invaded_df = invaded_df.map(lambda x: Decimal(x))
         df_copy: pd.DataFrame = context["df_copy"]
+
+        logger.info("INVDED:\n" + df.iloc[:, idx].to_string(index=True))
 
         for r in relative_idx:
             real_idx = rows_to_com[r]
@@ -558,8 +582,8 @@ class MatrixSolver(VectorizationAbstractWorker):
                     df_copy.at[real_idx, src_a] = []
                     df_copy.at[real_idx, src_b] = []
 
-                    df.at[real_idx, "costo_tran"] = str(val_a)
-                    df.at[real_idx, "precio_unitario"] = str(val_b)
+                    df.at[real_idx, "costo_tran"] = str(val_a).strip()
+                    df.at[real_idx, "precio_unitario"] = str(val_b).strip()
 
                     df_copy.at[real_idx, "costo_tran"] = poly_a_mtl
                     df_copy.at[real_idx, "precio_unitario"] = poly_b_pu
@@ -568,7 +592,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             else:
                 continue
 
-        # logger.debug("ISOLATED:\n" + df.to_string(index=True))
+        logger.info("ISOLATED:\n" + df.to_string(index=True))
         return (df, df_copy)
 
     def clean_cells(self, df: pd.DataFrame, context: Dict[str, Any]):
@@ -673,7 +697,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         rows_double = rows_double[alone_doubles_rel]
         mixed_sc_ids = np.concatenate((rows_double, dec_cells[:, 0]))
         # logger.debug("\n"f"{rows_double}, {alone_doubles_rel}, {mixed_sc_ids}")
-        # logger.debug("DOU:\n" + df.iloc[mixed_sc_ids].to_string(index=True))
+        logger.info("DOU:\n" + df.iloc[mixed_sc_ids].to_string(index=True))
         for row in mixed_sc_ids:
             mr = int(row)
 
@@ -729,16 +753,17 @@ class MatrixSolver(VectorizationAbstractWorker):
                             df.iat[mr, mc] = " ".join(current_text).strip()
                             df_copy.iat[mr, mc] = current_polys
 
-        # logger.debug("UNMIXED:\n" + df.to_string(index=True))
+        logger.info("UNMIXED:\n" + df.to_string(index=True))
         return (df, df_copy)
         
-    def separate_decimals(self, df: pd.DataFrame, text_idx: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def separate_decimals(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Redistribuye cuantitativos dobles y texto para preparar completado final.
         Primero desmezcla celdas ambiguas y luego, en filas con
         doble cuantitativo, mueve fragmentos textuales hacia la columna
         descriptiva y divide pares numéricos en columnas decimales vecinas.
         """
+        text_idx = context["text_col"]
         df, df_copy = self.unmix_cells(df, context)
         context["df_copy"] = df_copy
         tables_array = self.get_arrays_table(context)
@@ -838,7 +863,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                         df_copy.iat[dr, closest_idx] = dest_polys + [poly_vals[1]]
                         df_copy.iat[dr, dc] = [poly_vals[0]] + dest_polys
 
-        # logger.debug("SEPARATED:\n" + df.to_string(index=True))
+        logger.info("SEPARATED:\n" + df.to_string(index=True))
         return (df, df_copy)
     
     def simplify_rows(self, df: pd.DataFrame, context: Dict[str, Any]):
@@ -871,7 +896,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         
         df = df.drop(empty_rows_idx, axis=0)
         df = df.reset_index(drop=True)
-        # logger.info("REINDEX:\n" + df.to_string(index=True))
+        logger.info("REINDEX:\n" + df.to_string(index=True))
         return df
 
     def solve_incomplete(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
@@ -883,9 +908,10 @@ class MatrixSolver(VectorizationAbstractWorker):
         semi_decimal_rows = np.count_nonzero(decimal_array, axis=1, keepdims=True)
         top_dec_counts = np.max(semi_decimal_rows)
         non_empty_rows_idx = np.where(semi_decimal_rows==top_dec_counts)[0]
+
         if non_empty_rows_idx.size < 1:
-            logger.error("DF SIN DATOS SUFICIENTES")
-            return (df.iloc[0:0], {})
+            logger.error("DF SIN DATOS SUFICIENTES, IMPOSIBLE PROCESAR")
+            return (pd.DataFrame(), {})
         
         max_decimal_array = decimal_array[non_empty_rows_idx]
         decimal_coords = np.transpose(np.nonzero(max_decimal_array))
@@ -898,7 +924,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         decimal_rows = decimal_u[decimal_i]                                 # Mapeo de índices asbolutos
 
         decimal_coords_abs = np.column_stack([decimal_rows, decimal_cols])
-        # logger.debug("ABS_CORRDS:\n"f"{decimal_coords_abs}")
+        # logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
+
         # logger.debug("\n"f"ROWS ABS: {decimal_rows_abs}\n"f"COLS ABS: {decimal_cols_abs}")
         potencial_val = np.zeros(df.shape, np.uint8)
         for r in non_empty_rows_idx:
@@ -946,8 +973,8 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         total_inserts = major_rows_idx.size
         if total_inserts < 1:
-            logger.info("SIN DATOS SUFICIENTES")
-            return (df.iloc[0:0], {})
+            logger.error("NO SE HALLARON FILAS APTAS, IMPOSIBLE PROCESAR")
+            return (pd.DataFrame(), {})
         # logger.debug(f"MAJOR SHADOW: {major_shadow}")
         dec_cols_idx = np.where(major_shadow)[1]
         non_dec_idx = np.setdiff1d(cols_idx, dec_cols_idx, assume_unique=True)
@@ -968,7 +995,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             cut_polygons[new_poly_id] = {}
             artificial_polys.append(new_poly_id)
         
-        df_copy = context["df_copy"]
+        df_copy: pd.DataFrame = context["df_copy"]
 
         for i, r in enumerate(major_rows_idx):
             r = int(r)
@@ -978,7 +1005,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 if c == dest_idx:
                     continue
 
-                val = df.iat[r, c]
+                val = str(df.iat[r, c])
                 vals: List[str] = df_copy.iat[r, c]
                 dest_vals = df_copy.iat[r, dest_idx]
 
@@ -1005,6 +1032,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         context["df_copy"] = df_copy
         context["cut_polygons"] = cut_polygons
         context["dec_rows_ids"] = major_rows_idx
-        context["dec_cols"] = np.setdiff1d(cols_idx, text_col)
+        context["dec_cols"] = np.array(np.setdiff1d(cols_idx, text_col, assume_unique=True), np.int_)
         # logger.info("COPY_ATI:\n" + df.to_string(index=True))
         return (df, context)

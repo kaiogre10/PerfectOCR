@@ -14,7 +14,7 @@ class ImageLoader(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.valid_extensions: Set[str] = set(config["valid_image_extensions"])
+        # self.valid_extensions: Set[str] = set(config["valid_image_extensions"])
         self.output = config.get("full_img")
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -24,22 +24,16 @@ class ImageLoader(ImagePrepAbstractWorker):
         # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
         image_name = image_info.get('name', "")
         input_path = image_info.get('full_path', image_info.get('path', ""))
-        extension = image_info.get('extension', "").lower()
         
         try:
             if not input_path:
                 logger.error(f"No se proporcionó una ruta de entrada válida para la imagen '{image_name}'")
                 return False
-            # Carga condicional según formato (extension ya viene del builder)
-            if extension in self.valid_extensions:
-                # cv2.imread ya retorna uint8, no necesita .astype()
-                time0 = time.perf_counter()
-                full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
-                logger.info(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.6f}'s")
-            else:
-                logger.error(f"Formato de imagen no válida: {image_name}")
-                return False
-                
+
+            time0 = time.perf_counter()
+            full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
+            logger.info(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.6f}'s")
+
             full_img = decolorate(full_image)
 
             # Metadata: una sola llamada a datetime
@@ -47,13 +41,12 @@ class ImageLoader(ImagePrepAbstractWorker):
             date_creation = f"{now.strftime('%Y%m%d')}"
             metadata: Dict[str, Any] = {
                 "image_name": image_name,
-                "extension": extension,
                 "date_creation": date_creation
             }
             
-            IDRegistro = f"{image_name}_{date_creation}{now.microsecond:06d}"
+            id_registro = f"{image_name}_{date_creation}{now.microsecond:06d}"
 
-            if manager.create_workflow(IDRegistro, full_img, metadata):
+            if manager.create_workflow(id_registro, full_img, metadata):
                 # logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
             
                 if self.output:

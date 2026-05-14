@@ -21,10 +21,10 @@ def set_project_root(project_root: str):
 
 logger = logging.getLogger(__name__)
 
-def activate_main(input_paths: List[str], output_paths: List[str], config_path: str, TEST_MODE: bool) -> List[str]:
+def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) -> List[str]:
     t0 = time.perf_counter()
     try:
-        if not input_paths or not config_path or not PROJECT_ROOT:
+        if not config_path or not PROJECT_ROOT:
             cache_service.cleanup_project_cache()
             logger.error("NO HAY RUTAS PRINCIPALES PARA PIPELINE, REVISAR MAIN"
                          "\n"f"PROCESO DETENIDO: {time.perf_counter() - t0}s")
@@ -36,7 +36,7 @@ def activate_main(input_paths: List[str], output_paths: List[str], config_path: 
         # logger.info(f"Config service completo en {time.perf_counter()-t1:.6f}s")
         
         # 2. Main crea WorkFlowBuilder con configuración centralizada
-        workflow_manager = WorkFlowBuilder(builder_config=config_services.utils_config, project_root=PROJECT_ROOT, input_paths=input_paths)
+        workflow_manager = WorkFlowBuilder(builder_config=config_services.system_config, project_root=PROJECT_ROOT)
         
         # 3. WorkflowManager analiza y reporta
         workflow_report = workflow_manager.count_and_plan()

@@ -179,7 +179,6 @@ class UtilsConfig(ConfigWithNumpy):
     dpi_range: List[int]
     bin_interval: Tuple[float, float]
     percentile: Tuple[float, float]
-    valid_image_extensions: Tuple[str, ...]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation
@@ -205,7 +204,13 @@ class DebugOutputs(ConfigWithNumpy):
     kf_list_log: List[int]
     semantic_types_log: List[int]
 
+class SystemConfig(ConfigWithNumpy):
+    input_dirs: List[str]
+    images_names: List[str]
+    valid_extensions: Tuple[str, ...]
+
 class MasterConfig(ConfigWithNumpy):
+    system_config: SystemConfig
     pipeline_secuence: PipelineConfig
     enabled_outputs: OutputFlags
     models_config: ModelsConfig

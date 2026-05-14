@@ -10,41 +10,32 @@ class WorkFlowBuilder:
     Director de Logística: Planifica, cuenta y reporta a Main.
     HIPER-ESPECIALIZADO en: contar imágenes, decidir modo, generar reporte. N procesa imágenes - solo planifica.
     """
-    def __init__(self, builder_config: Dict[str, Any], project_root: str, input_paths: List[str] | str):
+    def __init__(self, builder_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
-        self.valid_extensions = builder_config['valid_image_extensions']
-        self.input_paths = input_paths
+        self.valid_extensions = builder_config['valid_extensions']
+        self.input_paths = builder_config['input_dirs']
+        self.images_names = set(builder_config['images_names'])
         
-    def _extract_valid_image_paths(self, input_folder: str, valid_extensions: Tuple[str, ...]) -> List[Dict[str, Any]]:
+    def _extract_valid_image_paths(self, input_folder: str) -> List[Dict[str, Any]]:
         """Extrae lista de rutas y nombres de imágenes válidas de forma recursiva."""
-        image_info: List[Dict[str, str]] = []
         try:
+            image_info: List[Dict[str, str]] = []
             for root, _, files in os.walk(input_folder):
                 for filename in files:
-                    if filename.lower().endswith(valid_extensions):
+                    if filename.lower().endswith(self.valid_extensions):
                         full_path = os.path.join(root, filename)
-                        image_name, image_extension = os.path.splitext(filename)
+                        image_name, _ = os.path.splitext(filename)
 
-                        # Obtener ruta relativa desde input_folder para mejor organización
-                        relative_path = os.path.relpath(root, input_folder)
-                        if relative_path == ".":
-                            relative_path = ""
-                        
+                        if self.images_names and image_name not in self.images_names:
+                            continue
+
                         image_info.append({
                             "full_path": full_path,
-                            "name": image_name,
-                            "extension": image_extension,
-                            "relative_folder": relative_path,
+                            "name": image_name
                         })
 
-            if image_info:
-                logger.debug(f"Encontradas {len(image_info)} imágenes en {input_folder} y subcarpetas")
-                # Mostrar estructura de carpetas encontradas
-                folders_found = set(img["relative_folder"] for img in image_info if img["relative_folder"])
-                if folders_found:
-                    logger.debug(f"Subcarpetas con imágenes: {sorted(folders_found)}")
-            else:
-                logger.warning(f"No se encontraron imágenes con extensiones {valid_extensions} en {input_folder}")
+            if not image_info:
+                logger.warning(f"No se encontraron imágenes con extensiones válidas en {input_folder}")
                 return []
                 
             return image_info
@@ -60,34 +51,27 @@ class WorkFlowBuilder:
         """
         image_info: List[Dict[str, Any]] = []
         seen_names: Set[str] = set()
-        try:
-            if self.input_paths:
-                for path in self.input_paths:
-                    if os.path.isdir(path):
-                        imgs = self._extract_valid_image_paths(path, self.valid_extensions)
-                        for img in imgs:
-                            if img["name"] not in seen_names:
-                                image_info.append(img)
-                                seen_names.add(img["name"])
-                    elif os.path.isfile(path) and path.lower().endswith(self.valid_extensions):
-                        base = os.path.basename(path)
-                        name = os.path.splitext(base)[0]
-                        if name not in seen_names:
-                            image_info.append({
-                                "path": path,
-                                "name": name,
-                                "extension": os.path.splitext(base)[1],
-                            })
-                            seen_names.add(name)
+        if not self.input_paths:
+            return {}
 
-            num_images = len(image_info)
-            logger.info(f"Número de imágenes: {num_images}")
+        for path in self.input_paths:
+            if os.path.isdir(path):
+                imgs = self._extract_valid_image_paths(path)
+                for img in imgs:
+                    if img["name"] not in seen_names:
+                        image_info.append(img)
+                        seen_names.add(img["name"])
 
-            return {
-                "total_images": num_images,
-                "image_info": image_info,
-            }
+            elif os.path.isfile(path) and path.lower().endswith(self.valid_extensions):
+                base = os.path.basename(path)
+                name = os.path.splitext(base)[0]
+                if name not in seen_names:
+                    image_info.append({
+                        "full_path": path,
+                        "name": name
+                    })
+                    seen_names.add(name)
+        return {
+            "image_info": image_info,
+        }
         
-        except Exception as e:
-            logger.error(f"Error contando: {e}", exc_info=True)
-        return {}

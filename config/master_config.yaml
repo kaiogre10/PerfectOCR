@@ -1,4 +1,16 @@
 # config/master_config.yaml
+system_config:
+  input_dirs:
+    # - "input"
+#    - "input2"
+#    - "input3"
+   - "E:/data/tickets_nuevo"
+  images_names : [
+     AAAA0017
+#    AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039
+  ]
+  valid_extensions: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
+
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
@@ -18,17 +30,17 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
-    - "lineal"
-    - "cos_sim"
+    # - "lineal"
+    # - "cos_sim"
     - "table_structurer"
     - "math_max"
-    - "collector"
+    # - "collector"
 
   db_stage:
-    - "db_service"
+    # - "db_service"
    
 log_debug:
   text_ocr: False
@@ -191,7 +203,6 @@ modules:
       row_relative_tolerance: "0.10"
 
 utils:
-  valid_image_extensions: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
   dpi_range: [100, 200, 300, 400, 600, 1200]
   bin_interval: [10.0, 245.0]
   percentile: [0.10, 0.99]

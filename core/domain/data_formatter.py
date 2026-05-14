@@ -210,7 +210,7 @@ class DataFormatter:
                 logger.error(f"No hay Texto OCR")
                 return False
                 
-            logger.debug(f"Recibe: {len(final_results)} resultados IDs")
+            # logger.debug(f"Recibe: {len(final_results)} resultados IDs")
 
             new_index = 0
             for poly_id, res in final_results.items():
@@ -222,13 +222,13 @@ class DataFormatter:
                         poly_index = new_index,
                         ocr_text=res.get("text", "")
                     )
-
                     self.workflow.polygons[poly_id] = updated_polygon
                 else:
-                    logger.warning(f"Polígono {poly_id} no encontrado en workflow.polygons")
+                    logger.warning(f"Polígono {poly_id} no encontrado en workflow polygons")
+                    continue
                     
             if self.text_ocr_log:
-                polys: Dict[str, Polygons] = self.workflow.polygons if self.workflow.polygons else {}
+                polys: Dict[str, Polygons] = self.workflow.polygons
                 for pid, poly, in polys.items():
                     logger.info(f"{pid}: '{poly.ocr_text}'")
                     
@@ -412,7 +412,7 @@ class DataFormatter:
         try:
             if not self.workflow:
                 return False
-            <
+
             if df.empty and not key_data:
                 updated_data = StructuredData(df_table=pd.DataFrame(), global_data={})
                 self.workflow.table_data = dataclasses.replace(updated_data)

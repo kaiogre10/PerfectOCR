@@ -12,6 +12,8 @@ class ConfigService:
     def __init__(self, config_path: str, TEST_MODE: bool, output_paths: List[str]):
         validated_config = self._load_and_validate_yaml(config_path)
         self.config = validated_config.model_dump()
+        if not self.system_config:
+            self.config = {}
         elemental_worker: Set[str] = {"image_loader"}
         elemental_params = elemental_worker.issubset(self.create_stager[0][1])
         self.det = {"geometry_detector"}
@@ -58,6 +60,12 @@ class ConfigService:
     @cached_property
     def activate_modules(self) -> bool:
         return self.no_modules
+
+    @cached_property
+    def system_config(self) -> Dict[str, List[str]]:
+        sys_config =  self.config.get("system_config", {})
+        input_dirs = sys_config["input_dirs"]
+        return {} if not input_dirs else sys_config
     
     @cached_property
     def enabled_outputs(self) -> Dict[str, Any]:

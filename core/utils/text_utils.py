@@ -40,9 +40,6 @@ _secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNOREC
 _sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$/])[^a-zA-Z0-9\s$/]{2,}(?=[a-zA-Z0-9$/])', re.IGNORECASE)
 
 _hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
-# _punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
-# _edge_punt_pattern = re.compile(rf'^({_punt_split_pattern.pattern}+)|({_punt_split_pattern.pattern}+)$', re.IGNORECASE)
-
 _punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
 _edge_chars = _punt_split_pattern.pattern[:-1] + r"\-]"
 _edge_punt_pattern = re.compile(rf'^({_edge_chars}+)|({_edge_chars}+)$', re.IGNORECASE)
@@ -104,8 +101,9 @@ _umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)')
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
 # Define los patrones como strings
-_clean_currency_pattern = r"^(?:\$)|,"
-_clean_currency = re.compile(_clean_currency_pattern)
+_clean_currency_str = r"^(?:\$)|,"
+_final_clean_currency = re.compile(r"[^0-9.]", re.IGNORECASE)
+_clean_currency = re.compile(_clean_currency_str, re.IGNORECASE)
 # Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
 # _s_correct_pattern = re.compile(r'^S\d{3,}[.,]', re.IGNORECASE)
 
@@ -316,13 +314,9 @@ def contains_quantitative(text: str) -> bool:
 
 def get_cuants(text: str) -> str:
     """
-    3. EXTRACTOR / SEPARADOR:
     Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto).
     Si ya están separados por espacios, no modifica el texto.
-    """
-    if not text:
-        return ""
-        
+    """    
     if len(text) < 4 or text.isdecimal() or text.isalpha():
         return text
 
@@ -330,7 +324,6 @@ def get_cuants(text: str) -> str:
     result_parts: List[str] = []
 
     for word in words:
-
         monetary_count = word.count("$")
         if word.startswith('$') and monetary_count > 1:
             word = word[0] + word[1:].replace('$', '5')
@@ -383,8 +376,8 @@ def get_cuants(text: str) -> str:
 
             # Caso clave: cuantitativo válido pegado a letras (ej. "93v", "v93")
             if is_quantitative(tok):
-                needs_left_space = start > 0 and result[start - 1].isalpha()
-                needs_right_space = end < len(result) and result[end].isalpha()
+                needs_left_space = start > 0 and (result[start - 1].isalpha() or not result[start - 1].isdecimal())
+                needs_right_space = end < len(result) and (result[end].isalpha() or not result[end].isdecimal())
 
                 if needs_left_space or needs_right_space:
                     left_part = result[:start]
@@ -635,7 +628,11 @@ def get_ids(img_name: str) -> str:
 
 def format_elapsed_time(seconds: float) -> str:
     """Convierte segundos a formato HH:MM:SS.ms"""
-    hours = int(seconds // 3600)
+    if seconds < 60.0:
+        return f"{seconds:.6f}'S"
     minutes = int((seconds % 3600) // 60)
-    secs = seconds % 60
-    return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
+    if minutes < 60:
+        return f"{minutes:02d}M:{seconds % 60:06.3f}'S"
+    else:
+        return f"{int(seconds // 3600):02d}H:{minutes:02d}M:{seconds % 60:06.3f}'S"
+

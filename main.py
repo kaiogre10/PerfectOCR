@@ -22,13 +22,6 @@ os.environ.update({
 
 TEST_MODE = True
 
-DEFAULT_INPUT_PATH = [
-    "input",
-    #  "input2",
-      # "input3"
-#  "D:/data/tickets_nuevo"
-]
-
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 LATITUDE_OUTPUT_PATH = "D:"
     
@@ -84,16 +77,15 @@ console_handler.setFormatter(console_formatter)
 console_handler.setLevel(CONSOLE_LEVEL.upper())
 logger_root.addHandler(console_handler)
 
-input_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_INPUT_PATH]
 output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
 config_path = DEFAULT_CONFIG_FILE
 output_service.set_output_paths(output_paths)
 def main():
     """Función main para compatibilidad con ejecución directa."""
-    if len(sys.argv) == 1:        
+    if len(sys.argv) == 1:
         default_output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
         cache_service.clear_output_folders(default_output_paths)
-        return main_builder.activate_main(input_paths, output_paths, config_path, TEST_MODE)
+        return main_builder.activate_main(output_paths, config_path, TEST_MODE)
 
     return main_builder.activate_main([], [], "", False)
 
