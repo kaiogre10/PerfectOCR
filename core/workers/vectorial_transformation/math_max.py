@@ -216,7 +216,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             perm_df = aritmetic_df.map(lambda x: Decimal(x))
         except InvalidOperation as e:
             logger.error(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
-            return pd.DataFrame()
+            return (pd.DataFrame(), {})
         try:
             all_hypotesis = []
             array_votes = np.zeros(perm_df.shape, np.int8)

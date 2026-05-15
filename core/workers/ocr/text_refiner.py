@@ -7,7 +7,7 @@ from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
 from services.output_service import save_raw_json
-from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
+from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, vectorice_classification
 import logging
 import time
 import dataclasses
@@ -101,11 +101,10 @@ class Refiner(OCRAbstractWorker):
                                         
             # Clasificar solo los polígonos seleccionados
             # t0 = time.perf_counter()
-            final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify, self.worker_config)
+            vectorice_classification(polygons_to_classify)
+            final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify)
             # logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
-
             manager.update_semantic_clasification(final_results)
-
             return True
 
         except Exception as e:

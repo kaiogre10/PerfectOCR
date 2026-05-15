@@ -1,11 +1,17 @@
 # PerfectOCR/core/utils/text_utils.py
 import re
 import logging
+import numpy as np
+import unicodedata
 from typing import List, Tuple, Dict, Pattern, Any, Optional
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import CUANT_CHAR, VALID_ALONE_CHARS, VOWELS
 
 logger = logging.getLogger(__name__)
+
+decimal_limits = (48, 57)
+alpha_limit_upp = (65, 90)
+alpha_limit_low = (97, 122)
 
 density_thr = (23.7, 103.7)
 morph_thr = (-0.297, 0.337)
@@ -163,6 +169,9 @@ _rfc_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_rfc_key_p
 _iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
 _date_patterns = re.compile("|".join(p.pattern for p in _date_patterns_list), re.IGNORECASE)
 
+def normalice_text(s: str) -> str:
+    return "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
+
 def validate_text(text: str) -> bool :
     """valida que un string contenga caracteres válidos y que no esté vacío"""
     if not text:
@@ -199,14 +208,13 @@ def is_umd(s: str) -> bool:
 
 def find_umd(s: str) -> str:
     """
-    En un string completo inserta espacios en los bordes de cada
-    UMD (_umd_patterns, incluye fracciones y medidas) para separar
-    subcadenas al hacer split. Si no hay UMD, devuelve el mismo texto de entrada.
+    En un string completo inserta espacios en los bordes de cada UMD para separar subcadenas al hacer split.
+    Si no hay UMD, devuelve el mismo texto de entrada.
     """
     if not s:
         return ""
 
-    if s.isdecimal():
+    elif s.isdecimal():
         return s
 
     if _umd_cor.search(s) and not s.endswith("0"):
@@ -225,6 +233,7 @@ def find_umd(s: str) -> str:
             merged[-1] = (merged[-1][0], max(merged[-1][1], end))
         else:
             merged.append((start, end))
+
     parts: List[str] = []
     pos = 0
     for start, end in merged:
@@ -297,21 +306,15 @@ def validate_quant_pattern(text: str) -> bool:
     return bool(_quant_runs_patterns.fullmatch(text))
     
 def is_quantitative(text: str) -> bool:
-    """
-    Válida rapidamente si un string es cuantitativo.
-    """
+    """Válida rapidamente si un string es cuantitativo."""
     if text.isdecimal() or len(text) < 3:
         return False
-    
     return validate_quant_chars(text) or validate_quant_pattern(text)
 
 def contains_quantitative(text: str) -> bool:
-    """
-    Devuelve True si encuentra algún sub-string cuantitativo en el texto.
-    """
+    """Devuelve True si encuentra algún sub-string cuantitativo en el texto."""
     if not text or text.isalpha():
         return False
-
     match = _token.search(text)
     return bool(match and is_quantitative(match.group(0)))
 
@@ -406,9 +409,7 @@ def format_cuant(text: str) -> str:
         return cuant_txt.strip()
             
 def punct_strip(text: str) -> str:
-    """
-    Elimina los caracteres de puntuación que se encuentran al inicio y al final de cada token en el texto.
-    """
+    """Elimina los caracteres de puntuación que se encuentran al inicio y al final de cada token en el texto."""
     if not text:
         return ""
         
@@ -437,17 +438,11 @@ def separate_punt(text: str) -> str:
         else:
             # Si es una hora, se mantiene intacta
             processed_tokens.append(t)
-
     # Une los tokens y usa space_removal para normalizar todos los espacios
     return space_removal(" ".join(processed_tokens))
 
 def space_removal(text: str) -> str:
-    """
-    - Normaliza espacios múltiples y limpia bordes.
-    - Si no hay espacios, devuelve el texto tal cual.
-    - Si hay espacios pero nunca dos seguidos, devuelve text.strip().
-    - Si hay dos o más espacios seguidos, normaliza.
-    """
+    """Normaliza espacios múltiples y limpia bordes."""
     if not text:
         return ""
     if " " not in text:
@@ -470,10 +465,31 @@ def get_brands(text: str) -> bool:
     if len(text) != 3:
         return False
     return bool(_labels_pattern.fullmatch(text))
-        
-def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
-    # density_thr: Tuple[float, float] = worker_config["encode_mean"]
-    # morph_thr: Tuple[float, float] = worker_config["morph_mean"]
+
+def vectorice_classification(polygons: Dict[str, Any]):
+    plain_text: List[str] = []
+    inv_idx: List[int] = []
+    total_tokens = [(p.ocr_text or "").split(" ") for p in polygons.values()]
+    logger.info(f"TOTAL tokens: {total_tokens}")
+    # np.
+    for polygon in polygons.values():
+        text = polygon.ocr_text or ""
+        idx = polygon.poly_index
+        if not text:
+            continue
+        tokens = text.split(" ")
+        for token in tokens:
+            plain_text.append(token)
+            inv_idx.append(idx)
+
+    logger.info("PLAIN TEXT:\n"f"{plain_text}")
+    inv_idx_arr = np.asarray(inv_idx, np.uint8)
+    # token_idx = np.arange(total_tokens, dtype=np.uint8)
+    # mapped_idx = np.column_stack([token_idx, inv_idx_arr])
+
+    # logger.info("IDX ARR:\n"f"{mapped_idx}")
+
+def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
     final_results: Dict[str, Tuple[List[int], int]] = {}
     for pid, polygon in polygons.items():
         token_classes: List[int] = []
@@ -483,7 +499,7 @@ def clasify_words(polygons: Dict[str, Any], worker_config: Dict[str, Any]) -> Di
             final_results[pid] = ([0], 0)
             # logger.debug(f"KeyField existente, no se clasifica '{polygon.ocr_text or ""}'")
             continue
-        
+
         s = polygon.ocr_text or ""
         s = s.strip()
         if not s:

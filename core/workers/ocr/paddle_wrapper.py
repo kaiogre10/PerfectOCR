@@ -1,12 +1,12 @@
 # PerfectOCR/core/workflow/ocr/paddle_wrapper.py
 import logging
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import validate_text
+from core.utils.text_utils import validate_text, normalice_text
 from core.utils.image_utils import elevate_dims, make_contiguous
 from services.output_service import save_raw_json
 
@@ -81,22 +81,23 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
             # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
             image_list = None
-            deleted: List[List[str]] = []
+            # deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
             for idx, (text, confidence) in enumerate(batch_result[0]):
                 if not text or not validate_text(text):
-                    deleted.append([polygon_ids[idx], text])
-                    logger.debug(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
+                    # deleted.append([polygon_ids[idx], text])
+                    # logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
                     continue
                 
                 elif confidence < self.min_confidence:
-                    deleted.append([polygon_ids[idx], text])
-                    logger.debug(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0}% | '{text}'")
+                    # deleted.append([polygon_ids[idx], text])
+                    # logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0} % | '{text}'")
                     continue
-
-                raw_map[polygon_ids[idx]] = {"text": text}
-            logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")
+                else:
+                    text = normalice_text(text)
+                    raw_map[polygon_ids[idx]] = {"text": text}
+            # logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")
             return raw_map
             
         except TypeError as e:

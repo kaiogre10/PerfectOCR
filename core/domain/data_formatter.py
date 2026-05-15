@@ -28,19 +28,16 @@ class DataFormatter:
                 full_img=(gray_img)
             )
             image_name=str(metadata.get("image_name", ""))
-
             metadata_obj = Metadata(
                 image_name=image_name,
                 date_creation=str(metadata.get("date_creation", "")),
                 dpi=int(metadata.get("dpi", 0)),
                 img_dims = (0 , 0)
             )
-
             table_data_obj = StructuredData(
                 df_table=pd.DataFrame(),
                 global_data={}
             )
-
             self.workflow = WorkflowData(
                 IDRegistro=IDRegistro,
                 full_img=full_image,
@@ -198,9 +195,7 @@ class DataFormatter:
             return False
                     
     def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]]) -> bool:
-        """
-        Actualiza los resultados de OCR en las dataclasses de polígonos.
-        """
+        """Actualiza los resultados de OCR en las dataclasses de polígonos."""
         try:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
@@ -211,36 +206,39 @@ class DataFormatter:
                 return False
                 
             # logger.debug(f"Recibe: {len(final_results)} resultados IDs")
-
-            new_index = 0
+            valid_polys: List[str] = []
             for poly_id, res in final_results.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
-                    new_index += 1
-                    updated_polygon = dataclasses.replace(
+                    text = res.get("text", "")
+                    if text:
+                        valid_polys.append(poly_id)
+                    poly_obj = dataclasses.replace(
                         polygon,
-                        poly_index = new_index,
-                        ocr_text=res.get("text", "")
+                        ocr_text = text
                     )
-                    self.workflow.polygons[poly_id] = updated_polygon
+                    self.workflow.polygons[poly_id] = poly_obj
                 else:
                     logger.warning(f"Polígono {poly_id} no encontrado en workflow polygons")
-                    continue
-                    
+
+            for i, pid in enumerate(valid_polys):
+                if pid in self.workflow.polygons:
+                    poly = self.workflow.polygons[pid]
+                    new_id = f"poly_{i:04d}"
+                    updated_polygon = dataclasses.replace(poly, polygon_id=new_id, poly_index=i)
+                    self.workflow.polygons[new_id] = updated_polygon
+
             if self.text_ocr_log:
                 polys: Dict[str, Polygons] = self.workflow.polygons
                 for pid, poly, in polys.items():
                     logger.info(f"{pid}: '{poly.ocr_text}'")
-                    
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
-            return False
-                        
+        return False
+
     def update_semantic_clasification(self, final_results: Dict[str, Tuple[List[int], int]]) -> bool:
-        """
-        Actualiza el semantic_clasification de los polígonos.
-        """
+        """Actualiza el semantic_clasification de los polígonos."""
         try:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
@@ -265,9 +263,7 @@ class DataFormatter:
             return False
                 
     def update_key_field(self, polygon_updates: Optional[Dict[str, List[int]]]) -> bool:
-        """
-        Actualiza los datos de los polígonos en las dataclasses de polígonos.
-        """
+        """Actualiza los datos de los polígonos en las dataclasses de polígonos."""
         try:
             if not self.workflow:
                 logger.error("No hay workflow inicializado para actualizar polígonos.")
