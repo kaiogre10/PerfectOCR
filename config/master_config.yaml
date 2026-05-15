@@ -1,12 +1,12 @@
 # config/master_config.yaml
 system_config:
   input_dirs:
-    - "input"
+    # - "input"
     - "input2"
-    - "input3"
+    # - "input3"
 #   - "E:/data/tickets_nuevo"
   images_names : [
-                  #  AAAC0037
+                  #  AAAA_0006
 #     AAAA0017
 #    AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039
   ]
@@ -34,11 +34,11 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-    - "lineal"
+    # - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-    # - "collector"
+    - "collector"
 
   db_stage:
     # - "db_service"
@@ -46,7 +46,7 @@ pipeline_secuence:
 log_debug:
   text_ocr: False
   seman_clas: False
-  key_fields: False
+  key_fields: True
   lines: False
   table_lines: False
   table_geo: False

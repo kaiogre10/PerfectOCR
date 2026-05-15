@@ -482,11 +482,10 @@ def clasify_words(polygons: Dict[str, Any], steps: int) -> Dict[str, Tuple[List[
     
     final_results: Dict[str, Tuple[List[int], int]] = {}
     for pid, polygon in polygons.items():
-
-        kf = polygon.key_field or None
-        if kf is not None:
+        
+        if polygon.key_field is not None and 0 in polygon.semantic_clasification:
             special_token += 1.0
-            # #  logger.info(f"Poligono {pid} con {kf} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
+            #  logger.info(f"Poligono {pid} con {kf} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
             final_results[pid] = ([0], 0)
             continue
         

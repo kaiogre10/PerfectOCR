@@ -45,11 +45,15 @@ class TextCorrector(OCRAbstractWorker):
             kf = polygon.key_field
             sc =  polygon.semantic_clasification
             
-            if kf or kf is not None:
+            if 0 in sc and kf is not None:
                 # logger.info(f"'{poly_id}' con KEYFIELD ya no se CORRIJE: '{original_text}'")
                 updated_polygon = dataclasses.replace(polygon)
                 list_of_correct_polygons.append(updated_polygon)
                 continue
+            
+            if len(original_text.split(" ")) != len(sc):
+                logger.critical(f"ERROR CRÍTICO DISPARIDAD EN {poly_id} ENTRE SC Y TEXTO: '{original_text}' -> {sc} ABORTANDO PROCESO")
+                return False
 
             if original_text.isdecimal():
                 # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")

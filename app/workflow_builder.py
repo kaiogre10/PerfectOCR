@@ -1,7 +1,7 @@
 # PerfectOCR/management/workflow_manager.py
 import os
 import logging
-from typing import List, Dict, Any, Tuple, Set
+from typing import List, Dict, Any, Set
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ class WorkFlowBuilder:
     def __init__(self, builder_config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.valid_extensions = builder_config['valid_extensions']
-        self.input_paths = builder_config['input_dirs']
+        self.input_paths: List[str] = builder_config['input_dirs']
         self.images_names = set(builder_config['images_names'])
         
     def _extract_valid_image_paths(self, input_folder: str) -> List[Dict[str, Any]]:
@@ -35,9 +35,9 @@ class WorkFlowBuilder:
                         })
 
             if not image_info:
-                logger.warning(f"No se encontraron imágenes con extensiones válidas en {input_folder}")
+                logger.error(f"No se encontraron imágenes con extensiones válidas en {os.path.join(self.project_root, input_folder)}")
                 return []
-                
+
             return image_info
             
         except Exception as e:
@@ -66,12 +66,15 @@ class WorkFlowBuilder:
                 base = os.path.basename(path)
                 name = os.path.splitext(base)[0]
                 if name not in seen_names:
-                    image_info.append({
-                        "full_path": path,
-                        "name": name
-                    })
+                    image_info.append({"full_path": path,"name": name})
                     seen_names.add(name)
-        return {
+            else:
+                logger.error("SIN RUTAS VÁLIDAS, VERIFICAR NOMBRE Y EXTENSIONES DE LAS IMÁGENES REQUERIDAS")        
+                return {}
+                
+        if not image_info:
+            return {}
+            
+        return  {
             "image_info": image_info,
         }
-        

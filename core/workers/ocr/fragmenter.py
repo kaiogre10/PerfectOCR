@@ -28,9 +28,10 @@ class Fragmenter(OCRAbstractWorker):
             fragmented_count = 0
             final_polygons: List[Polygons] = []
             for poly_id, polygon in polygons_in.items():
+                
                 kf = polygon.key_field or None
                 sc: List[int]= polygon.semantic_clasification
-                if kf is not None or 0 in sc:
+                if kf is not None and 0 in sc:
                     # logger.info(f"'{poly_id}' con KEYFIELD '{kf}' no se fragmenta: '{polygon.ocr_text}'")
                     final_polygons.append(polygon)
                     continue

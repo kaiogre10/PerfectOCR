@@ -61,9 +61,9 @@ class WordFinder:
             if not text:
                 return []
             
-            # if text in self.noise_words:
-            #     logger.info(f"Ruido inmediato: {text}")
-            #     return []
+            if text in self.noise_words:
+                logger.info(f"Ruido inmediato: {text}")
+                return []
 
             single = False
             if isinstance(text, str):
@@ -117,6 +117,8 @@ class WordFinder:
                 # BÚSQUEDA DE KEYWORDS: Aquí SÍ se usa assigned_fields
                 for cand, (key_field, grams_cand) in self.all_ngrams.items():
                     if key_field != 6 and key_field in assigned_fields:
+                        continue
+                    if key_field == 5:
                         continue
 
                     cand_len = len(cand)

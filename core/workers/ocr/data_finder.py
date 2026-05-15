@@ -7,7 +7,11 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.models_manager import ModelsManager
-from core.utils.text_utils import validate_text
+from core.utils.text_utils import validate_text, contains_quantitative, get_rfc
+
+kf_decimals = {1, 2, 3, 4, 8}
+kf_relocatables = set(kf_decimals.union({7}))
+kf_ignored = {6, 9}
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +99,7 @@ class DataFinder(OCRAbstractWorker):
                     continue
             
                 else:
-                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
+                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text.lower())
                     if not valid_results:
                         continue
 
@@ -137,8 +141,7 @@ class DataFinder(OCRAbstractWorker):
                         # logger.info(f"'{pid}': Key_Field: '{key_field}', Text: '{ocr_text}'")
                         
             if polygon_updates:
-                # logger.info(f"KEY_FIELDS: {polygon_updates}")
-                # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
                 return self.get_key_fields_values(manager, polygon_updates)
 
             else:
@@ -150,52 +153,130 @@ class DataFinder(OCRAbstractWorker):
         return {}
         
     def get_key_fields_values(self, manager: DataFormatter, polygon_updates: Dict[str, List[int]]) -> Dict[str, List[int]]:
-        # logger.info(f"UPDATES: {polygon_updates}")
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-        kf_vals = [1, 2, 3, 4, 8]
+        if not polygon_updates:
+            return {}
         
-        real_vals_polygons: Dict[int, List[int]] = {}
-        polyid_by_index = {p.poly_index: pid for pid, p in polygons.items()}  # Mapeo inverso
-
-        for poly_id, poly_data in list(polygon_updates.items()):
-            if any(val in kf_vals for val in poly_data):
-                poly_obj = polygons.get(poly_id)
-                if poly_obj:
-                    real_vals_polygons[poly_obj.poly_index] = poly_data
-            else:
+        updates_to_validate: Dict[str, List[int]] = dict(polygon_updates)
+        for pid, poly in polygons.items():
+            poly_kf = poly.key_field or []
+            if not poly_kf:
                 continue
-            
-        if not real_vals_polygons:
+            if any(kf in kf_ignored for kf in poly_kf):
+                continue
+            if any(kf in kf_relocatables for kf in poly_kf):
+                if pid not in updates_to_validate:
+                    updates_to_validate[pid] = poly_kf
+
+        source_texts: Dict[str, Any] = {}
+        for pid, key_fields in updates_to_validate.items():
+            source_poly = polygons.get(pid)
+            source_texts[pid] = {source_poly.ocr_text or "": key_fields} if source_poly else ""
+        logger.info(f"KF UPDATES ANTES DE REUBICACIÓN: {source_texts}")
+        
+        if not polygons:
             return polygon_updates
-        # logger.info(f"{real_vals_polygons}")
-        for _, poly_info in polygons.items():
-            poly_idx = poly_info.poly_index
-            for poly_idx_vals, kf_founded in real_vals_polygons.items():
-                if poly_idx == poly_idx_vals:
-                    # Obtener el polígono con poly_index == poly_idx_monetary + 1
-                    next_poly = next((p for p in polygons.values() if p.poly_index == poly_idx_vals + 1), None)
-                    if next_poly:
-                        polygon_id = next_poly.polygon_id
-                        # text = next_poly.ocr_text or ""
-                        sc = next_poly.semantic_clasification
-                        # kf = next_poly.key_field
-                        
-                        if any(v for v in kf_founded if v in (1, 2, 3, 8)):
-                            if any(s for s in sc if s in (4, 5)):
-                                # Eliminar el polígono original
-                                original_poly_id = polyid_by_index.get(poly_idx_vals)
-                                if original_poly_id in polygon_updates:
-                                    del polygon_updates[original_poly_id]
-                                # Añadir el nuevo polígono
-                                polygon_updates[polygon_id] = kf_founded
-                                
-                        if 4 in kf_founded:
-                            if any(s for s in sc if s in (3, 5)):
-                                original_poly_id = polyid_by_index.get(poly_idx_vals)
-                                if original_poly_id in polygon_updates:
-                                    del polygon_updates[original_poly_id]
-                                # Añadir el nuevo polígono
-                                polygon_updates[polygon_id] = kf_founded
-                        
-        # logger.info(f"NEW UPDATES: {polygon_updates}")
+
+        polyid_by_index = {p.poly_index: pid for pid, p in polygons.items()}
+        new_updates: Dict[str, List[int]] = {}
+
+        def _is_decimal_kf_value(text: str) -> bool:
+            candidate = (text or "").strip()
+            if not validate_text(candidate):
+                return False
+            if candidate.replace(" ", "").isdecimal():
+                return True
+            return contains_quantitative(candidate)
+
+        def _is_rfc_kf_value(text: str) -> bool:
+            candidate = (text or "").strip()
+            if not validate_text(candidate):
+                return False
+            real_rfc = get_rfc(candidate)
+            return bool(real_rfc and len(real_rfc) in (12, 13))
+        
+        def _is_iva_kf_value(text: str) -> bool:
+            candidate = (text or "").strip()
+            if not validate_text(candidate):
+                return False
+            if not contains_quantitative(candidate):
+                return False
+            # Para IVA exigimos señal monetaria explícita para evitar arrastre de totales genéricos.
+            return any(ch in candidate for ch in ("$", ","))
+
+        def _find_neighbor(poly_idx: int, kf_value: int) -> str:
+            if kf_value == 7:
+                validator = _is_rfc_kf_value
+            elif kf_value == 8:
+                validator = _is_iva_kf_value
+            else:
+                validator = _is_decimal_kf_value
+            for neighbor_idx in (poly_idx + 1, poly_idx - 1):
+                neighbor_id = polyid_by_index.get(neighbor_idx)
+                if not neighbor_id:
+                    continue
+                neighbor_poly = polygons.get(neighbor_id)
+                if not neighbor_poly or neighbor_poly.key_field is not None:
+                    continue
+                if validator(neighbor_poly.ocr_text or ""):
+                    return neighbor_id
+            return ""
+
+        for poly_id, kf_list in updates_to_validate.items():
+            if not kf_list:
+                continue
+
+            if any(kf in kf_ignored for kf in kf_list):
+                new_updates[poly_id] = kf_list
+                continue
+
+            poly_obj = polygons.get(poly_id)
+            if not poly_obj:
+                neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in kf_list]
+                new_updates[poly_id] = neg_kf
+                logger.info(f"KF SIN POLÍGONO ORIGEN, REASIGNADO A NEGATIVO: {poly_id} -> {neg_kf}")
+                continue
+
+            poly_idx = poly_obj.poly_index
+            should_relocate = any(kf in kf_relocatables for kf in kf_list)
+
+            if not should_relocate:
+                new_updates[poly_id] = kf_list
+                logger.info(f"KF SIN REUBICACIÓN REQUERIDA: {poly_id} -> {kf_list}")
+                continue
+
+            target_id = ""
+            for kf_value in kf_list:
+                if kf_value in kf_relocatables:
+                    target_id = _find_neighbor(poly_idx, kf_value)
+                    if target_id:
+                        break
+
+            if target_id:
+                new_updates[target_id] = kf_list
+                source_text = (poly_obj.ocr_text or "").strip()
+                target_poly = polygons.get(target_id)
+                target_text = ((target_poly.ocr_text or "") if target_poly else "").strip()
+                source_existing_kf = poly_obj.key_field or []
+                if any(kf in kf_relocatables for kf in source_existing_kf):
+                    source_neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in source_existing_kf]
+                    new_updates[poly_id] = source_neg_kf
+                logger.info(
+                    f"KF REUBICADO: {poly_id} -> {target_id} | {kf_list} | "
+                    f"TEXTO ORIGEN: '{source_text}' | TEXTO DESTINO: '{target_text}'"
+                )
+                if any(kf in kf_relocatables for kf in source_existing_kf):
+                    logger.info(f"KF ORIGEN MARCADO NEGATIVO TRAS REUBICACIÓN: {poly_id} -> {new_updates[poly_id]}")
+            else:
+                neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in kf_list]
+                new_updates[poly_id] = neg_kf
+                source_text = (poly_obj.ocr_text or "").strip()
+                logger.info(
+                    f"KF SIN VECINO VÁLIDO, REASIGNADO A NEGATIVO: {poly_id} -> {neg_kf} | ORIG: {kf_list} | "
+                    f"TEXTO ORIGEN: '{source_text}'"
+                )
+
+        polygon_updates.clear()
+        polygon_updates.update(new_updates)
+        logger.info(f"KF UPDATES DESPUÉS DE REUBICACIÓN: {polygon_updates}")
         return polygon_updates

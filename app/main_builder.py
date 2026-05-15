@@ -26,8 +26,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
     try:
         if not config_path or not PROJECT_ROOT:
             cache_service.cleanup_project_cache()
-            logger.error("NO HAY RUTAS PRINCIPALES PARA PIPELINE, REVISAR MAIN"
-                         "\n"f"PROCESO DETENIDO: {time.perf_counter() - t0}s")
+            logger.error("NO HAY RUTAS PRINCIPALES PARA PIPELINE, REVISAR MAIN\n"f"PROCESO DETENIDO: {time.perf_counter() - t0}s")
             return  []
         
         # 1. Main activa al Configurador y valida parametros mínimos
@@ -41,7 +40,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
         # 3. WorkflowManager analiza y reporta
         workflow_report = workflow_manager.count_and_plan()
         if not workflow_report:
-            logger.error(f"Error en rutas para imágenes, abortando proceso:", exc_info=True)
+            logger.error(f"Error en rutas para imágenes, abortando proceso: {time.perf_counter() - t0:.6f}'s de ejecucusión", exc_info=True)
             cache_service.cleanup_project_cache()
             return []
         
@@ -119,8 +118,6 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
     processed_count = 0
     final_results: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
     
-    logger.debug(f"Iniciando procesamiento secuencial para {total_images} imágenes.")
-
     for i, image_data in enumerate(image_info_list):
         # Procesar imagen individualmente
         start_time = time.perf_counter()
@@ -139,7 +136,7 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
             logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
 
     mean_time = total_processing_time / total_images
-    logger.debug(f"'{total_images}' Archivos Digitalizados el '{datetime.now().strftime('%m/%d %H:%M:%S')}' en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s")
+    logger.info(f"'{total_images}' Archivos Digitalizados en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s / documento")
         
     return final_results
     
