@@ -47,7 +47,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("La table_matrix no contiene filas/columnas válidas")
                 return False
 
-            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             cut_polygons = self.map_polygons_ids(polygons, df_copy)
@@ -67,7 +67,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
             return True
         except Exception as e:
-            logger.error(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
+            logger.debug(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
         return False
 
     def solve(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
@@ -88,14 +88,14 @@ class MatrixSolver(VectorizationAbstractWorker):
                 df = df_art
                 context = context_art
 
-        # logger.info("ARITMETHIC:\n" + aritmetic_df.to_string(index=True))
+        # #  logger.info("ARITMETHIC:\n" + aritmetic_df.to_string(index=True))
         df, context = self.find_hypotesis(df, context)
 
         if df.empty:
             logger.error("DATAFRAME VACÍO")
             return pd.DataFrame()
 
-        # logger.info("RENAMED:\n" + df.to_string(index=True))
+        # #  logger.info("RENAMED:\n" + df.to_string(index=True))
         df = self.correct_df(df, context)
         if df.empty:
             return pd.DataFrame()
@@ -346,7 +346,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             full_dec_idx = full_dec_idx[full_dec_idx_rel]                                           # índices absolutos filtrados con elementos decimales únicos
             
         # logger.debug(f"{full_dec_idx}")
-        # logger.info("ROWS DEC DF:\n" + df.iloc[full_dec_idx].to_string(index=True))
+        # #  logger.info("ROWS DEC DF:\n" + df.iloc[full_dec_idx].to_string(index=True))
 
         n_full_rows = full_dec_idx.size
         if n_full_rows > 0:
@@ -356,7 +356,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             if cols_idx.size == 4:
                 decimal_cols = np.setdiff1d(cols_idx, textual_cols, assume_unique=True)
-                # logger.info("COLS DEC DF:\n" + df.iloc[full_dec_idx, decimal_cols].to_string(index=True))            
+                # #  logger.info("COLS DEC DF:\n" + df.iloc[full_dec_idx, decimal_cols].to_string(index=True))            
             else:    
                 decimal_counts = np.count_nonzero(temp_dec, axis=0)
                 decimal_mask = (decimal_counts > n_full_rows // 2) | (decimal_counts == n_full_rows)
@@ -385,11 +385,11 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         aritmetic_df: pd.DataFrame = df.iloc[full_dec_idx, decimal_cols]
         if aritmetic_df.empty:
-            logger.info("No hay filas completas para aritmetic, devolviendo df original")
+            #  logger.info("No hay filas completas para aritmetic, devolviendo df original")
             return (df, context)
         else:
             # logger.debug(f"ROWS FULL: {full_dec_idx}")
-            # logger.info("DECIMALDF:\n" + aritmetic_df.to_string(index=True))
+            # #  logger.info("DECIMALDF:\n" + aritmetic_df.to_string(index=True))
             context["text_col_temp"] = textual_cols
             context["arith_cols_ids"] = decimal_cols
             context["dec_rows_ids"] = full_dec_idx
@@ -476,7 +476,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             df.iat[r, c] = ""
             df_copy.iat[r, c] = []
 
-        logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
+        #  logger.info("CORRECT TEXT:\n" + df.to_string(index=True))
 
         context["df_copy"] = df_copy
 
@@ -533,7 +533,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 result = val_c * val_pu
                 df.iat[r, mtl_idx] = str(result).strip()
 
-        logger.info("COMPLETED:\n" + df.to_string(index=True))
+        #  logger.info("COMPLETED:\n" + df.to_string(index=True))
         return df
 
     def isolate_decimals(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -562,7 +562,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         invaded_df = invaded_df.map(lambda x: Decimal(x))
         df_copy: pd.DataFrame = context["df_copy"]
 
-        logger.info("INVDED:\n" + df.iloc[:, idx].to_string(index=True))
+        #  logger.info("INVDED:\n" + df.iloc[:, idx].to_string(index=True))
 
         for r in relative_idx:
             real_idx = rows_to_com[r]
@@ -597,7 +597,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             else:
                 continue
 
-        logger.info("ISOLATED:\n" + df.to_string(index=True))
+        #  logger.info("ISOLATED:\n" + df.to_string(index=True))
         return (df, df_copy)
 
     def clean_cells(self, df: pd.DataFrame, context: Dict[str, Any]):
@@ -702,7 +702,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         rows_double = rows_double[alone_doubles_rel]
         mixed_sc_ids = np.concatenate((rows_double, dec_cells[:, 0]))
         # logger.debug("\n"f"{rows_double}, {alone_doubles_rel}, {mixed_sc_ids}")
-        logger.info("DOU:\n" + df.iloc[mixed_sc_ids].to_string(index=True))
+        #  logger.info("DOU:\n" + df.iloc[mixed_sc_ids].to_string(index=True))
         for row in mixed_sc_ids:
             mr = int(row)
 
@@ -758,7 +758,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                             df.iat[mr, mc] = " ".join(current_text).strip()
                             df_copy.iat[mr, mc] = current_polys
 
-        logger.info("UNMIXED:\n" + df.to_string(index=True))
+        #  logger.info("UNMIXED:\n" + df.to_string(index=True))
         return (df, df_copy)
         
     def separate_decimals(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -868,7 +868,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                         df_copy.iat[dr, closest_idx] = dest_polys + [poly_vals[1]]
                         df_copy.iat[dr, dc] = [poly_vals[0]] + dest_polys
 
-        logger.info("SEPARATED:\n" + df.to_string(index=True))
+        #  logger.info("SEPARATED:\n" + df.to_string(index=True))
         return (df, df_copy)
     
     def simplify_rows(self, df: pd.DataFrame, context: Dict[str, Any]):
@@ -929,7 +929,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         decimal_rows = decimal_u[decimal_i]                                 # Mapeo de índices asbolutos
 
         decimal_coords_abs = np.column_stack([decimal_rows, decimal_cols])
-        # logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
+        # #  logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
 
         # logger.debug("\n"f"ROWS ABS: {decimal_rows_abs}\n"f"COLS ABS: {decimal_cols_abs}")
         potencial_val = np.zeros(df.shape, np.uint8)
@@ -966,7 +966,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 potencial_val[r, 0] = int(quotient2)
             continue                                                                        # Momentaneamente, después agregaré los casos para pu y mtl
 
-        # logger.info("SEMI_COMP:\n" + df.iloc[non_empty_rows_idx].to_string(index=True))
+        # #  logger.info("SEMI_COMP:\n" + df.iloc[non_empty_rows_idx].to_string(index=True))
         # logger.debug("SEMI_ARRAY:\n"f"{np.column_stack([non_empty_rows_idx, max_decimal_array])}")
         # logger.debug("\n"f"{np.column_stack([non_empty_rows_idx, potencial_val[non_empty_rows_idx]])}")
 
@@ -987,8 +987,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         text_col = non_dec_idx[text_col]
         
         dest_idx = int(text_col[0])
-        # logger.info(f"DEC IDX: {non_dec_idx}, {dec_cols_idx}, {dest_idx}, ROWS: {major_rows_idx}")
-        # logger.info("SHAWDOW_DF:\n" + df.iloc[major_rows_idx].to_string(index=True))
+        # #  logger.info(f"DEC IDX: {non_dec_idx}, {dec_cols_idx}, {dest_idx}, ROWS: {major_rows_idx}")
+        # #  logger.info("SHAWDOW_DF:\n" + df.iloc[major_rows_idx].to_string(index=True))
 
         cut_polygons = context["cut_polygons"]
         max_idx = (cut_polygons["max_idx"] + 1) 
@@ -1038,5 +1038,5 @@ class MatrixSolver(VectorizationAbstractWorker):
         context["cut_polygons"] = cut_polygons
         context["dec_rows_ids"] = major_rows_idx
         context["dec_cols"] = np.array(np.setdiff1d(cols_idx, text_col, assume_unique=True), np.int_)
-        # logger.info("COPY_ATI:\n" + df.to_string(index=True))
+        # #  logger.info("COPY_ATI:\n" + df.to_string(index=True))
         return (df, context)

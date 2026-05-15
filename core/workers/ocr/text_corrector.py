@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import  validate_text, find_umd, get_brands
+from core.utils.text_utils import validate_text, find_umd, get_brands, fast_classfier
 from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
 
 cuant_char = CUANT_CHAR
@@ -28,14 +28,14 @@ class TextCorrector(OCRAbstractWorker):
         self.project_root = project_root
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        logger.debug(f"Inicia text_corrector")
+        # logger.debug(f"Inicia text_corrector")
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCorrector: No hay polígonos para procesar.")
             return False
             
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
 
-        logger.debug(f"Cantidad de polígonos recibidos:{len(polygons_in)}")
+        # logger.debug(f"Cantidad de polígonos recibidos:{len(polygons_in)}")
         list_of_correct_polygons: List[Polygons] = []
         correced_count = 0
 
@@ -51,7 +51,7 @@ class TextCorrector(OCRAbstractWorker):
                 list_of_correct_polygons.append(updated_polygon)
                 continue
 
-            if sc == [5] or original_text.isdigit():
+            if original_text.isdecimal():
                 # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
                 updated_polygon = dataclasses.replace(polygon)
                 list_of_correct_polygons.append(updated_polygon)
@@ -71,11 +71,14 @@ class TextCorrector(OCRAbstractWorker):
 
             if corrected_text != original_text:
                 correced_count +=1
+                
+                s_class, t_cuan = fast_classfier(corrected_text)
                 # original_textl = set(original_text.split(" "))
                 # corrected_textl = set(corrected_text.split(" "))
-                # logger.info(f"Corrección de '{poly_id}' | Original: '{original_textl.difference(corrected_textl)}' → '{corrected_text}'  SC: {sc}")
-                
-            updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
+                # logger.info(f"Corrección de '{poly_id}' | Original: '{original_textl.difference(corrected_textl)}' → '{corrected_text}' | SC original: {sc} -> {s_class}")
+                updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text, semantic_clasification=s_class, cuant_chars=t_cuan)
+            else:    
+                updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
             list_of_correct_polygons.append(updated_polygon)
 
         final_polygons_dict: Dict[str, Polygons] = {}
@@ -126,16 +129,11 @@ class TextCorrector(OCRAbstractWorker):
         if not any(c.isalnum() for c in token):
             return ""
 
-        elif len(token) == 1:
+        if len(token) == 1:
             if semantic_clasification == 1 and "0" in token:
                 return token.replace("0", "O")
             return token
             
-        if token.isalpha():
-            if token.endswith("Q"):
-                token = token.replace("Q", "O")
-            return token
-
         if token.isdecimal():
             return token
         
@@ -153,7 +151,11 @@ class TextCorrector(OCRAbstractWorker):
                 token = token.replace("0", "O")
 
             return find_umd(token)
-
+            
+        if token.isalpha():
+            if token.endswith("Q"):
+                token = token.replace("Q", "O")
+            return token
         if semantic_clasification == 3:
             if token.startswith("1") and token.endswith("O"):
                 token = token.replace("O", "0")

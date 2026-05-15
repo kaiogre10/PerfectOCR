@@ -7,7 +7,7 @@ from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
 from services.output_service import save_raw_json
-from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, vectorice_classification
+from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
 import logging
 import time
 import dataclasses
@@ -39,29 +39,24 @@ class Refiner(OCRAbstractWorker):
         self.get_early_data(manager)
         
         if self.num_passes == 0:
-            self.classify_strings(manager)
+            self.classify_strings(manager, 3)
         else:
+            steps = 0
             for _ in range(self.num_passes):
-                # pass_num = i + 1
-                # logger.debug(f"Iniciando Bucle de Refinamiento de Texto #{pass_num}")
-
-                # logger.debug(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica")
-                # step_t0 = time.perf_counter()
-                # self.classify_strings(manager)
-                # self._log_worker_time(pass_num, "SemanticClassifier", step_t0, "Clasificación Semántica")
-                
                 if self.cleaner:
                     self.cleaner.transcribe(context, manager)
-                    # logger.info(f"Pasada 1, bucle #{pass_num}: Clasificación Semántica (solo limpios)")
-                    self.classify_strings(manager)
+                    steps += 1
+                    self.classify_strings(manager, steps)
 
                 if self.corrector:
                     self.corrector.transcribe(context, manager)
-                    self.classify_strings(manager)
+                    steps += 1
+                    self.classify_strings(manager, steps)
                 
                 if self.fragmenter:
                     self.fragmenter.transcribe(context, manager)
-                    self.classify_strings(manager)
+                    steps += 1
+                    self.classify_strings(manager, steps)
 
         # logger.info(f"Pasada final: Clasificación Semántica completa")
         # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
@@ -86,8 +81,7 @@ class Refiner(OCRAbstractWorker):
 
         return True
         
-    def classify_strings(self, manager: DataFormatter) -> bool:
-        """Clasifica polígonos semánticamente"""
+    def classify_strings(self, manager: DataFormatter, steps: int) -> bool:
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para procesar")
@@ -98,11 +92,10 @@ class Refiner(OCRAbstractWorker):
             if not polygons_to_classify:
                 logger.warning("No hay polígonos que clasificar")
                 return False
-                                        
+            
             # Clasificar solo los polígonos seleccionados
             # t0 = time.perf_counter()
-            vectorice_classification(polygons_to_classify)
-            final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify)
+            final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify, steps)
             # logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
             manager.update_semantic_clasification(final_results)
             return True
@@ -116,61 +109,59 @@ class Refiner(OCRAbstractWorker):
         Asigna key_field (fecha, RFC, IVA) sobre texto OCR crudo antes de fragmentar/clasificar.
         Cada tipo de dato se marca como mucho una vez por documento (orden lectura: poly_index).
         """
-        try:
-            if not manager.workflow or not manager.workflow.polygons:
-                logger.warning("Semantic Clasificator no tiene polígonos para procesar")
-                return False
-
-            polygons: Dict[str, Polygons] = manager.workflow.polygons
-            # [fecha, rfc, iva] — ya satisfechos en el documento
-            state: List[bool] = [False, False, False, False, False]
-
-            for _, pd in polygons.items():
-                kf = pd.key_field
-                if kf is None:
-                    continue
-                if 9 in kf:
-                    state[0] = True
-                if 7 in kf:
-                    state[1] = True
-                if 8 in kf:
-                    state[2] = True
-                if 10 in kf:
-                    state[3] = True
-                if 11 in kf:
-                    state[4] = True
-                # if 12 in kf:
-                #     state[5] = True
-
-            polygon_updates: Dict[str, List[int]] = {}
-
-            for poly_id, poly_data in polygons.items():
-                if poly_data.key_field is not None:
-                    continue
-
-                text = poly_data.ocr_text or ""
-                key_field = find_key_data(text, state)
-
-                if key_field is None:
-                    continue
-                
-                polygon_updates[poly_id] = [key_field]
-
-            if polygon_updates:
-                manager.update_key_field(polygon_updates)
-                
-                return True
+        if not manager.workflow or not manager.workflow.polygons:
+            logger.warning("Semantic Clasificator no tiene polígonos para procesar")
             return False
-        except Exception as e:
-            logger.warning(f"Error encontrando keydata: '{e}", exc_info=True)
+
+        polygons: Dict[str, Polygons] = manager.workflow.polygons
+        # [fecha, rfc, iva] — ya satisfechos en el documento
+        state: List[bool] = [False, False, False, False, False]
+
+        for _, pd in polygons.items():
+            kf = pd.key_field
+            if kf is None:
+                continue
+            if 9 in kf:
+                state[0] = True
+            if 7 in kf:
+                state[1] = True
+            if 8 in kf:
+                state[2] = True
+            if 10 in kf:
+                state[3] = True
+            if 11 in kf:
+                state[4] = True
+            # if 12 in kf:
+            #     state[5] = True
+
+        polygon_updates: Dict[str, List[int]] = {}
+
+        for poly_id, poly_data in polygons.items():
+            if poly_data.key_field is not None:
+                continue
+
+            text = poly_data.ocr_text or ""
+            key_field = find_key_data(text, state)
+
+            if key_field is None:
+                continue
+            
+            polygon_updates[poly_id] = [key_field]
+
+        if polygon_updates:
+            manager.update_key_field(polygon_updates)    
+            return True
+            
         return False
             
     def preprocess_text(self, manager: DataFormatter) -> bool:
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("Semantic Clasificator no tiene polígonos para procesar")
             return False
+            
         polygons: Dict[str, Polygons] = manager.workflow.polygons
         updated_polygons: Dict[str, Polygons] = {}
+        
         for poly, poly_data in polygons.items():
             text = poly_data.ocr_text or ""
             if contains_quantitative(text):

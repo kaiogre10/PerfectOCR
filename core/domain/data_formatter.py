@@ -15,7 +15,7 @@ class DataFormatter:
         self.workflow: Optional[WorkflowData] = None
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
-        self.kf_list_log = list(range(1, 12)) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
+        self.kf_list_log = list(range(1, 13)) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
         self.lines_log = logs_config.get("lines", False)
         self.table_lines_log = logs_config.get("table_lines", False)
         self.table_geo_log = logs_config.get("table_geo", False)
@@ -86,8 +86,7 @@ class DataFormatter:
                     ocr_text=None,
                     key_field=None,
                     semantic_clasification=[1],
-                    cuant_chars=0,
-                    contours=0,
+                    cuant_chars=0
                 )
                 polygons_dataclass[poly_id] = polygon_obj
                                 
@@ -247,13 +246,8 @@ class DataFormatter:
             for poly_id, semantic_type in final_results.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
-
                     # Actualizar semantic_clasification
-                    updated_polygon = dataclasses.replace(
-                        polygon,
-                        semantic_clasification=semantic_type[0],
-                        cuant_chars=semantic_type[1]
-                    )                    
+                    updated_polygon = dataclasses.replace(polygon, semantic_clasification=semantic_type[0], cuant_chars=semantic_type[1])
                     self.workflow.polygons[poly_id] = updated_polygon
                     
             return True
@@ -278,7 +272,6 @@ class DataFormatter:
             for poly_id, key_field in polygon_updates.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
-
                     updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[0], cuant_chars=0)
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1

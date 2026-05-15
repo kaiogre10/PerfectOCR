@@ -1,17 +1,14 @@
 # PerfectOCR/core/utils/text_utils.py
 import re
+# import regex
+import time
 import logging
-import numpy as np
 import unicodedata
 from typing import List, Tuple, Dict, Pattern, Any, Optional
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import CUANT_CHAR, VALID_ALONE_CHARS, VOWELS
 
 logger = logging.getLogger(__name__)
-
-decimal_limits = (48, 57)
-alpha_limit_upp = (65, 90)
-alpha_limit_low = (97, 122)
 
 density_thr = (23.7, 103.7)
 morph_thr = (-0.297, 0.337)
@@ -169,10 +166,16 @@ _rfc_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_rfc_key_p
 _iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
 _date_patterns = re.compile("|".join(p.pattern for p in _date_patterns_list), re.IGNORECASE)
 
-def normalice_text(s: str) -> str:
-    return "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
+def normalice_text(s: str, type_norm: str) -> str:
+    """"Normaliza texto eliminando apóstrofes, tildes, diéresis. NO ELIMINA CARACTERES DE NINGÚN TIPO, MISMO LEN() EN INPUT Y OUTPUT"""
+    if "soft" == type_norm:
+        return "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
+    elif "hard" == type_norm:
+        return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8')
+    else:
+        return s
 
-def validate_text(text: str) -> bool :
+def validate_text(text: str) -> bool:
     """valida que un string contenga caracteres válidos y que no esté vacío"""
     if not text:
         return False
@@ -466,185 +469,215 @@ def get_brands(text: str) -> bool:
         return False
     return bool(_labels_pattern.fullmatch(text))
 
-def vectorice_classification(polygons: Dict[str, Any]):
-    plain_text: List[str] = []
-    inv_idx: List[int] = []
-    total_tokens = [(p.ocr_text or "").split(" ") for p in polygons.values()]
-    logger.info(f"TOTAL tokens: {total_tokens}")
-    # np.
-    for polygon in polygons.values():
-        text = polygon.ocr_text or ""
-        idx = polygon.poly_index
-        if not text:
-            continue
-        tokens = text.split(" ")
-        for token in tokens:
-            plain_text.append(token)
-            inv_idx.append(idx)
-
-    logger.info("PLAIN TEXT:\n"f"{plain_text}")
-    inv_idx_arr = np.asarray(inv_idx, np.uint8)
-    # token_idx = np.arange(total_tokens, dtype=np.uint8)
-    # mapped_idx = np.column_stack([token_idx, inv_idx_arr])
-
-    # logger.info("IDX ARR:\n"f"{mapped_idx}")
-
-def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
+def clasify_words(polygons: Dict[str, Any], steps: int) -> Dict[str, Tuple[List[int], int]]:
+    time_clas = time.perf_counter()
+    global_tokens = 0.0
+    alpha = 0.0
+    decimal = 0.0
+    code = 0.0
+    cuantitative = 0.0
+    umd = 0.0
+    non_valid = 0.0
+    special_token = 0.0
+    
     final_results: Dict[str, Tuple[List[int], int]] = {}
     for pid, polygon in polygons.items():
-        token_classes: List[int] = []
-        poly_total_cuant = 0
-        kf = polygon.key_field or None
-        if kf or kf is not None:
-            final_results[pid] = ([0], 0)
-            # logger.debug(f"KeyField existente, no se clasifica '{polygon.ocr_text or ""}'")
-            continue
 
+        kf = polygon.key_field or None
+        if kf is not None:
+            special_token += 1.0
+            # #  logger.info(f"Poligono {pid} con {kf} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
+            final_results[pid] = ([0], 0)
+            continue
+        
         s = polygon.ocr_text or ""
         s = s.strip()
         if not s:
+            non_valid += 1.0
             final_results[pid] = ([-1], 0)
-            # logger.debug(f"No existente: {s}")
+            # #  logger.info(f"VACIO 1ro: '{s}'")
             continue
 
         tokens = s.split(" ")
-        total_tokens = len(tokens) # Cantidad de palabras
-        
-        if total_tokens < 1:
-            final_results[pid] = ([-1], 0)
-            # logger.debug(f"No valido: {s}")
-            continue
+        total_tokens = len(tokens) # Cantidad de tokens
 
-        elif total_tokens == 1:
+        if total_tokens == 1:
             t_class, t_cuant = classify_token(tokens[0])
-            token_classes.append(t_class)
-            poly_total_cuant += t_cuant
-            final_results[pid] = (token_classes, poly_total_cuant)
+            final_results[pid] = ([t_class], t_cuant)
+            
+            if t_class == 1:
+                alpha += 1.0
+            elif t_class == 2:
+                umd += 1.0
+            elif t_class == 3:
+                code += 1.0
+            elif t_class == 4:
+                cuantitative += 1.0
+            elif t_class == 5:
+                decimal += 1.0
+            elif t_class == -1:
+                non_valid += 1.0
+            global_tokens += 1.0
             continue
-
+        
         else:
+            token_classes: List[int] = []
+            poly_total_cuant = 0
             for t in tokens:
+
                 t_class, t_cuant = classify_token(t)
                 token_classes.append(t_class)
                 poly_total_cuant += t_cuant
+                
+                if t_class == 1:
+                    alpha += 1.0
+                elif t_class == 2:
+                    umd += 1.0
+                elif t_class == 3:
+                    code += 1.0
+                elif t_class == 4:
+                    cuantitative += 1.0
+                elif t_class == 5:
+                    decimal += 1.0
+                elif t_class == -1:
+                    non_valid += 1.0
 
             final_results[pid] = (token_classes, poly_total_cuant)
+            global_tokens += total_tokens
+            continue
 
+    if steps == 3:
+        total_time = time.perf_counter() - time_clas
+        logger.debug(
+            "\n"f" | TIEMPO DE CLASIFICACIÓN: {total_time:.6f}'s para {int(global_tokens)} tokens, {(total_time / global_tokens):.8f}'s/token"
+            "\n"f" | ALPHA: '{int(alpha)}' tokens = {(alpha / global_tokens) * 100.0:.4f}% del total |"
+            "\n"f" | CUANTITATIVOS: '{int(cuantitative)}' tokens = {(cuantitative / global_tokens) * 100.0:.4f}% del total |"
+            "\n"f" | DECIMALES: '{int(decimal)}' tokens = {(decimal / global_tokens) * 100.0:.4f}% del total |"
+            "\n"f" | UMD: '{int(umd)}' tokens = {(umd / global_tokens) * 100.0:.4f}% del total |"
+            "\n"f" | CÓDIGO: '{int(code)}' tokens = {(code / global_tokens) * 100.0:.4f}% del total |"
+            "\n"f" | ESPECIALES: '{int(special_token)}' tokens = {(special_token / global_tokens) * 100.0:.4f}% del total |"
+            "\n"f" | NO VÁLIDOS: '{int(non_valid)}' tokens = {(non_valid / global_tokens) * 100.0:.4f}% del total |"
+        )
     return final_results
 
 def classify_token(s: str) -> Tuple[int, int]:
     total_text = len(s)
-    if not s:
-        return (-1, 0)
-    
-    if not any(c.isalnum() for c in s):
-        # logger.debug(f"No alfanumérico: '{s}")
-        return (-1, 0)
-
-    elif s.isalpha():
-        return (1, 0)
-
-    elif s.isdecimal():
-        return (5, total_text)
-
     total_cuant = sum(1 for ch in s if ch in cuant_chars) if any(c.isdigit() for c in s) else 0
+    if not s:
+        # #  logger.info(f"VACIO 3RO: {s}")
+        return (-1, 0)
+        
+    elif not any(c.isalnum() for c in s):
+        # #  logger.info(f"INVÁLIDO 1: '{s}'")
+        return (-1, 0)
+        
+    elif s.isalpha():
+        # #  logger.info(f"ALPHA 1ro: '{s}'")
+        return (1, 0)
     
-    if total_cuant == 0:
+    elif s.isdecimal():
+        # #  logger.info(f"DECIMAL 1ro: '{s}'")
+        return (5, total_text)
+    
+    elif total_cuant == 0:
         if not any(c.isalpha() for c in s):
             return (-1, 0)
-
-        elif total_text == 1:
+        
+        elif total_text < 2:
             # logger.debug(f"DESC por tamaño: '{s}'")
             return (1, 0)
+            
+        elif is_acronym(s):
+            # #  logger.info(f"ACRONIMO: '{s}'")
+            return (1, 0)
 
-        if bool(_semi_c_fraction.fullmatch(s)) or bool(_mesure_patterns.fullmatch(s)):
-            # logger.debug(f"UMD por regex: '{s}'")
+        elif bool(_semi_c_fraction.search(s)) or bool(_mesure_patterns.search(s)):
+            # #  logger.info(f"UMD por regex: '{s}'")
             return (2, 0)
 
         if not any(c in vowels for c in s):
             if is_umd(s):
-                # logger.debug(f"UMD sin vocales: '{s}'")
+                # #  logger.info(f"UMD sin vocales: '{s}'")
                 return (2, 0)
                 
-            if total_text > 2:
-                logger.debug(f"CODE sin vocales: '{s}'")
+            elif total_text > 2:
+                # #  logger.info(f"CODE sin vocales: '{s}'")
                 return (3, 0)
             
-        logger.debug(f"DESC por sobrante: '{s}'")
+        # logger.debug(f"DESC por sobrante: '{s}'")
         return (1, 0)
 
-    if total_cuant == total_text:
+    elif total_cuant == total_text:
         if total_text < 3:
             if s == "0":
-                # # logger.debug(f"DESC UNICO 0: '{s}'")
-                return (1, 0)
-            else:
-            #  logger.debug(f"NUM por único: '{s}'")
+                # #  logger.info(f"NUMERIC 0: '{s}'")
                 return (5, total_cuant)
+            else:
+                #  logger.info(f"CODE CONSOLACIÓN: '{s}'")
+                return (3, total_cuant)
 
         elif s.startswith("0"):
-            # logger.debug(f"CODE por inicio 0: '{s}'")
-            return (3, total_cuant)
-            
-        if s.isdecimal():
-            #  logger.debug(f"NUM por decimal: '{s}'")
-            return (5, total_cuant)
+            if s.isalnum():
+                # #  logger.info(f"CODE por inicio 0: '{s}'")
+                return (3, total_cuant)
+                
+            elif validate_quant_pattern(s):
+                # #  logger.info(f"CUANT por inicio 0: '{s}'")
+                return (4, total_cuant)
+            else:
+                # #  logger.info(f"UMD por inicio 0: '{s}'")
+                return (2, total_cuant)
             
         if contains_quantitative(s):
-            # logger.debug(f"CUANT por validación: '{s}'")
+            # #  logger.info(f"CUANT por validación: '{s}'")
             return (4, total_cuant)
 
-        # # logger.debug(f"NUM por descarte en conteo: '{s}'")
+        # #  logger.info(f"NUM por descarte en conteo: '{s}'")
         return (5, total_cuant)
-
+    
     if contains_quantitative(s):
-        # logger.debug(f"CUANT mixto: '{s}'")
+        #  logger.info(f"CUANT CONTENIDO: '{s}'")
         return (4, total_cuant)
         
-    elif s.startswith("$") and any(c.isdecimal() for c in s):
-        # logger.debug(f"CUANT por incio '$': '{s}'")
-        return (4, total_cuant)
-        
-    if is_umd(s):
+    elif is_umd(s):
         # logger.debug(f"UMD mixto: '{s}'")
         return (2, total_cuant)
 
-    if is_code(s):
+    elif is_code(s):
         # logger.debug(f"CODE mixto: '{s}'")
         return (3, total_cuant)
     
-    encoders = text_encode(s.lower(), ["all"])
-    dense_mean = float(sum(encoders[0]) / total_text)
-    morphology_mean = float(sum(encoders[1]) / total_text)
-
+    # #  logger.info(fr"REBELDES: '{s}'")
+    dense_mean, morphology_mean = text_encode(s.lower())
+    
+    if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
+        #  logger.info(f"CODE por codificacion: '{s}'")
+        return (3, total_cuant)
+    
     if dense_mean > density_thr[1]:
-        logger.debug(f"DESC por codificacion: '{s}'")
+        #  logger.info(f"DESC por codificacion: '{s}'")
         return (1, total_cuant)
 
     if dense_mean < density_thr[0]:
         if _fraction_pattern.search(s):
-            # logger.debug(f"UMD por codificacion: '{s}'")
+            #  logger.info(f"UMD por codificacion: '{s}'")
             return (2, total_cuant)
 
         if not any(c in ("/", ":") for c in s) and (total_cuant / total_text) > 0.687:
-            # # logger.debug(f"NUM por codificacion: '{s}'")
+            #  logger.info(f"NUM por codificacion: '{s}'")
             return (5, total_cuant)
-        # logger.debug(f"CODE por descarte de codificacion NUM: '{s}'")
-        return (3, total_cuant)
-
-    if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
-        # logger.debug(f"CODE por codificacion: '{s}'")
+        #  logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
         return (3, total_cuant)
         
     elif bool(_labels_pattern.fullmatch(s)):
-        # logger.debug(f"DESCR MARCA: '{s}")
+        #  logger.info(f"DESCR MARCA: '{s}")
         return (1, total_cuant)
     
     if not any(c in vowels for c in s) and total_text > 2:
-        # logger.debug(f"CODE por FALLBACK: '{s}'")
+        #  logger.info(f"CODE por FALLBACK: '{s}'")
         return (3, total_cuant)
         
-    # logger.debug(f"Poligono sin clasificación, será descriptiva: '{s}'")
+    #  logger.info(f"Poligono sin clasificación, será descriptiva: '{s}'")
     return (1, total_cuant)
 
 def get_ids(img_name: str) -> str:
@@ -660,3 +693,17 @@ def format_elapsed_time(seconds: float) -> str:
         return f"{minutes:02d}M:{seconds % 60:06.3f}'S"
     else:
         return f"{int(seconds // 3600):02d}H:{minutes:02d}M:{seconds % 60:06.3f}'S"
+
+def fast_classfier(polygon: str) -> Tuple[List[int], int]:
+    """"
+    Recibe un string completo para clasificación express, asume que el texto ya viene listo para procesar.
+    No verifica, procesa strings de cualquier longitud
+    """
+    tokens = polygon.split(" ")
+    semantic_classes: List[int] = []
+    total_cuants = 0
+    for t in tokens:
+        t_class, t_cuant = classify_token(t)
+        semantic_classes.append(t_class)
+        total_cuants += t_cuant
+    return (semantic_classes, total_cuants)

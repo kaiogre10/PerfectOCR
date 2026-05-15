@@ -1,5 +1,5 @@
 # PerfectOCR/core/workers/vectorial_transformation/output_structurer.py
-import pandas as pd
+import pandas as pd # type: ignore
 import logging
 from decimal import Decimal
 from typing import Dict, Any, Tuple

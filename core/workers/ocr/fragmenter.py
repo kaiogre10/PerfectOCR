@@ -28,10 +28,10 @@ class Fragmenter(OCRAbstractWorker):
             fragmented_count = 0
             final_polygons: List[Polygons] = []
             for poly_id, polygon in polygons_in.items():
-                kf = polygon.key_field
+                kf = polygon.key_field or None
                 sc: List[int]= polygon.semantic_clasification
-                if sc == [0] or kf or kf is not None:
-                    logger.debug(f"'{poly_id}' con KEYFIELD no se fragmenta: '{polygon.ocr_text}'")
+                if kf is not None or 0 in sc:
+                    # logger.info(f"'{poly_id}' con KEYFIELD '{kf}' no se fragmenta: '{polygon.ocr_text}'")
                     final_polygons.append(polygon)
                     continue
                 
@@ -72,9 +72,20 @@ class Fragmenter(OCRAbstractWorker):
             manager.workflow.polygons = final_polygons_dict
             if fragmented_count > 0:
                 logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
-                return True
-                
-        except ValueError as e:
+            
+            poly_debug: Dict[str, Polygons] = manager.workflow.polygons
+            for pid, pd in poly_debug.items():
+                text = pd.ocr_text or ""
+                sc = pd.semantic_clasification
+                kf = pd.key_field or None
+                congruency = len(text.split(" ")) == len(sc)
+                if not congruency:
+                    if 0 in sc and kf is not None:
+                        continue
+                    logger.warning(f"{pid} INCONGRUENTE CON SC: TEXTO: '{text}' -> SC {sc}")
+                    
+            return True
+        except Exception as e:
             logger.warning(f"Error fragmentando: {e}", exc_info=True)
         return False
 
@@ -94,7 +105,7 @@ class Fragmenter(OCRAbstractWorker):
         
         # Usar split() sin argumentos ayuda a lidiar con cualquier formato de espacios en blanco
         parts = [p for p in text.split(' ') if p]
-        logger.debug(f"TEXTO: '{text}' | PARTS: '{parts}'")
+        # logger.debug(f"TEXTO: '{text}' | PARTS: '{parts}'")
         
         # Verificar alineación
         total_tokens = len(parts)
@@ -103,10 +114,6 @@ class Fragmenter(OCRAbstractWorker):
             logger.warning(f"Desalineación en '{text}': {total_tokens} tokens vs {total_sc} clasificaciones. Texto: {parts}, Clas: {sc}")
             return [polygon]
         
-        # Construir fragmentos según la regla:
-        # - Agrupa tokens consecutivos con cls=1
-        # - Agrupa tokens consecutivos con cls=-2
-        # - Cada otro valor va en su propio fragmento
         fragments: List[Tuple[List[str], List[int]]] = []
         current_tokens: List[str] = []
         current_scs: List[int] = []

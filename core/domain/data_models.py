@@ -44,9 +44,7 @@ class Polygons:
         # code: 3
         # quantitative: 4
         # numeric: 5
-        
     cuant_chars: int
-    contours: int
 
 @dataclass
 class LineGeometry:

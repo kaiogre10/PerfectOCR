@@ -1,12 +1,12 @@
 # config/master_config.yaml
 system_config:
   input_dirs:
-#     - "input"
+    - "input"
     - "input2"
-#    - "input3"
+    - "input3"
 #   - "E:/data/tickets_nuevo"
   images_names : [
-                   AAAC0030
+                  #  AAAC0037
 #     AAAA0017
 #    AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039
   ]
@@ -15,7 +15,7 @@ system_config:
 pipeline_secuence:
   imagepre_stage:
     - "image_loader"
-#    - "angle_corrector"
+    - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
@@ -31,11 +31,11 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-#    - "data_finder"
+    - "data_finder"
     
   vector_stage:
-#    - "lineal"
-#    - "cos_sim"
+    - "lineal"
+    - "cos_sim"
     - "table_structurer"
     - "math_max"
     # - "collector"
@@ -52,7 +52,7 @@ log_debug:
   table_geo: False
   table_correct: False
   
-  semantic_types_log: [-1]
+  semantic_types_log: [0]
   kf_list_log: [-1]
   
 # Configuración de salida
@@ -178,7 +178,7 @@ modules:
       min_confidence: 0.5307
       
     text_refiner:
-      num_passes: 0
+      num_passes: 1
       encode_mean: [23.7, 103.7] # Promedio de densidad
       morph_mean: [-0.297, 0.337] # Promedio morfológico
   

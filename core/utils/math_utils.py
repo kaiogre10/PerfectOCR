@@ -3,7 +3,7 @@ import numpy as np
 import logging
 # import pandas as pd
 import time
-from typing import List, Any, Optional, Tuple, Dict, Sequence
+from typing import List, Any, Optional, Tuple, Dict, Sequence, Set
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 from sklearn.cluster import DBSCAN # type: ignore
 from core.utils.data_utils import DENSITY_ENCODER, CUANT_CHAR
@@ -29,54 +29,18 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
     cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec), np.float32)
     return 1.0 - abs(float(cosine))
 
-def get_morphological_encode(text: str) -> List[float]:
-    try:
-        result: List[float] = []
-        for ch in text:
-            if ch in cuant_char:
-                result.append(1.0)
-            elif ch.isalpha():
-                result.append(-1.0)
-            else:
-                result.append(0.0)
-        return result
+def get_morphological_encode(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
+    return np.array(list(map(lambda ch: 1.0 if ch in cuant_char else -1.0 if ch.isalpha() else 0.0, text)), np.float32)
 
-    except Exception as e:
-        logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
-    return []
-
-def encode_text(text: str, encoder: Dict[str, float]) -> List[float]:
-    try:
-        if not text:
-            return []
-
-        compact_text = ''.join(text.split())
-        encoded_poly = [encoder.get(char, 0) for char in compact_text]
-
-        return encoded_poly
-
-    except Exception as e:
-        logger.warning(f"Error codificando polígonos: {e}", exc_info=True)
-    return []
+def encode_text(text: str, encoder: Dict[str, float]) -> np.ndarray[Any, np.dtype[np.float32]]:
+    return np.array([encoder.get(char, " ") for char in text], np.float32)
     
-def text_encode(text: str, encoding_type: List[str]) -> np.ndarray[Any, np.dtype[np.float32]]:
-    if "all" in encoding_type and len(encoding_type) == 1:
-        encoding_type = ["density", "morphological", "frequency"]
-
-    encoders: List[List[float]]= []
-    for enc_type in encoding_type:
-
-        if enc_type == "density":
-            dense = encode_text(text, density_encoder)
-            encoders.append(dense)
-        # # elif enc_type == "frequency":
-        # #     frec = encode_text(text, REL_FRECUENCY_CHAR)
-        #     encoders.append(frec)
-        if enc_type == "morphological":
-           morph = get_morphological_encode(text)
-           encoders.append(morph)
-    
-    return np.array(encoders, np.float32)
+def text_encode(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
+    dense = encode_text(text, density_encoder)
+    morph = get_morphological_encode(text)
+    # frec = encode_text(text, REL_FRECUENCY_CHAR)
+    encoders = np.column_stack([dense, morph])
+    return np.mean(encoders, axis=0)
 
 def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]], ref_vec: Optional[np.ndarray[Any, np.dtype[np.float32]]] = None, dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
     """
