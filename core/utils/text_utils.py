@@ -1,7 +1,6 @@
 # PerfectOCR/core/utils/text_utils.py
 import re
 # import regex
-import time
 import logging
 import unicodedata
 from typing import List, Tuple, Dict, Pattern, Any, Optional
@@ -58,7 +57,7 @@ _acronym_pattern: Pattern[str] = re.compile(rf'^(?:{_acronim[1:-1]}|sa|cv|mn)(?:
 # Datos Globales
 _phone_str = r'^\d{10}$'
 _kind_phon= r'\b(cel|tel)\b'
-_cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
+# _cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
 _phone_number = re.compile("|".join(p for p in [_kind_phon, _phone_str]), re.IGNORECASE)
 
 _mail_pattern: Pattern[str] = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b', re.IGNORECASE)
@@ -469,22 +468,11 @@ def get_brands(text: str) -> bool:
         return False
     return bool(_labels_pattern.fullmatch(text))
 
-def clasify_words(polygons: Dict[str, Any], steps: int) -> Dict[str, Tuple[List[int], int]]:
-    time_clas = time.perf_counter()
-    global_tokens = 0.0
-    alpha = 0.0
-    decimal = 0.0
-    code = 0.0
-    cuantitative = 0.0
-    umd = 0.0
-    non_valid = 0.0
-    special_token = 0.0
-    
+def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
     final_results: Dict[str, Tuple[List[int], int]] = {}
     for pid, polygon in polygons.items():
         
         if polygon.key_field is not None and 0 in polygon.semantic_clasification:
-            special_token += 1.0
             #  logger.info(f"Poligono {pid} con {kf} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
             final_results[pid] = ([0], 0)
             continue
@@ -492,7 +480,6 @@ def clasify_words(polygons: Dict[str, Any], steps: int) -> Dict[str, Tuple[List[
         s = polygon.ocr_text or ""
         s = s.strip()
         if not s:
-            non_valid += 1.0
             final_results[pid] = ([-1], 0)
             # #  logger.info(f"VACIO 1ro: '{s}'")
             continue
@@ -503,22 +490,7 @@ def clasify_words(polygons: Dict[str, Any], steps: int) -> Dict[str, Tuple[List[
         if total_tokens == 1:
             t_class, t_cuant = classify_token(tokens[0])
             final_results[pid] = ([t_class], t_cuant)
-            
-            if t_class == 1:
-                alpha += 1.0
-            elif t_class == 2:
-                umd += 1.0
-            elif t_class == 3:
-                code += 1.0
-            elif t_class == 4:
-                cuantitative += 1.0
-            elif t_class == 5:
-                decimal += 1.0
-            elif t_class == -1:
-                non_valid += 1.0
-            global_tokens += 1.0
-            continue
-        
+    
         else:
             token_classes: List[int] = []
             poly_total_cuant = 0
@@ -528,35 +500,9 @@ def clasify_words(polygons: Dict[str, Any], steps: int) -> Dict[str, Tuple[List[
                 token_classes.append(t_class)
                 poly_total_cuant += t_cuant
                 
-                if t_class == 1:
-                    alpha += 1.0
-                elif t_class == 2:
-                    umd += 1.0
-                elif t_class == 3:
-                    code += 1.0
-                elif t_class == 4:
-                    cuantitative += 1.0
-                elif t_class == 5:
-                    decimal += 1.0
-                elif t_class == -1:
-                    non_valid += 1.0
-
             final_results[pid] = (token_classes, poly_total_cuant)
-            global_tokens += total_tokens
             continue
 
-    if steps == 3:
-        total_time = time.perf_counter() - time_clas
-        logger.debug(
-            "\n"f" | TIEMPO DE CLASIFICACIÓN: {total_time:.6f}'s para {int(global_tokens)} tokens, {(total_time / global_tokens):.8f}'s/token"
-            "\n"f" | ALPHA: '{int(alpha)}' tokens = {(alpha / global_tokens) * 100.0:.4f}% del total |"
-            "\n"f" | CUANTITATIVOS: '{int(cuantitative)}' tokens = {(cuantitative / global_tokens) * 100.0:.4f}% del total |"
-            "\n"f" | DECIMALES: '{int(decimal)}' tokens = {(decimal / global_tokens) * 100.0:.4f}% del total |"
-            "\n"f" | UMD: '{int(umd)}' tokens = {(umd / global_tokens) * 100.0:.4f}% del total |"
-            "\n"f" | CÓDIGO: '{int(code)}' tokens = {(code / global_tokens) * 100.0:.4f}% del total |"
-            "\n"f" | ESPECIALES: '{int(special_token)}' tokens = {(special_token / global_tokens) * 100.0:.4f}% del total |"
-            "\n"f" | NO VÁLIDOS: '{int(non_valid)}' tokens = {(non_valid / global_tokens) * 100.0:.4f}% del total |"
-        )
     return final_results
 
 def classify_token(s: str) -> Tuple[int, int]:

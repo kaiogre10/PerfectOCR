@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import make_contiguous, get_contours_values
-from core.utils.math_utils import soft_histogram
+from core.utils.math_utils import soft_histogram, density_cluster
 from services.output_service import save_shapes, save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -100,6 +100,8 @@ class InkCorrector(ImagePrepAbstractWorker):
         black_pixels = metrics[:, 11]
         total_pixels = metrics[:, 12]
         has_childs = metrics[:, -1]
+
+        # density_cluster
         _, relat = soft_histogram(cont_area)
         
         min_areas_mask = np.percentile(cont_area, relat) 

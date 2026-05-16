@@ -39,35 +39,31 @@ class Refiner(OCRAbstractWorker):
         self.get_early_data(manager)
         
         if self.num_passes == 0:
-            self.classify_strings(manager, 3)
+            self.classify_strings(manager)
         else:
-            steps = 0
             for _ in range(self.num_passes):
                 if self.cleaner:
                     self.cleaner.transcribe(context, manager)
-                    steps += 1
-                    self.classify_strings(manager, steps)
+                    self.classify_strings(manager)
 
                 if self.corrector:
                     self.corrector.transcribe(context, manager)
-                    steps += 1
-                    self.classify_strings(manager, steps)
+                    self.classify_strings(manager)
                 
                 if self.fragmenter:
                     self.fragmenter.transcribe(context, manager)
-                    steps += 1
-                    self.classify_strings(manager, steps)
+                    self.classify_strings(manager)
 
-        # logger.info(f"Pasada final: Clasificación Semántica completa")
-        # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
         if self.seman_clas_log:
+            logger.info(f"Pasada final: Clasificación Semántica completa")
+            logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
                 if any(sc in self.semantic_types_log for sc in  poly_data.semantic_clasification):
                     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
         
         if self.output:
-            file_name: str = manager.workflow.metadata.image_name  # type: ignore    
+            file_name: str = manager.workflow.metadata.image_name  # type: ignore
             name = "cleanned_text"
             worker_name = f"{name}" or "refiner"
             polygons = manager.workflow.polygons if manager.workflow else {}
@@ -81,7 +77,7 @@ class Refiner(OCRAbstractWorker):
 
         return True
         
-    def classify_strings(self, manager: DataFormatter, steps: int) -> bool:
+    def classify_strings(self, manager: DataFormatter) -> bool:
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Semantic Clasificator no tiene polígonos para procesar")
@@ -95,7 +91,7 @@ class Refiner(OCRAbstractWorker):
             
             # Clasificar solo los polígonos seleccionados
             # t0 = time.perf_counter()
-            final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify, steps)
+            final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify)
             # logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
             manager.update_semantic_clasification(final_results)
             return True

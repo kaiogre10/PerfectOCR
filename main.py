@@ -23,7 +23,7 @@ os.environ.update({
 TEST_MODE = True
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
-LATITUDE_OUTPUT_PATH = "D:"
+LATITUDE_OUTPUT_PATH = "E:"
     
 if os.path.exists(LATITUDE_OUTPUT_PATH):
     print("Ejecución en LATITUDE")
@@ -80,14 +80,10 @@ logger_root.addHandler(console_handler)
 output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
 config_path = DEFAULT_CONFIG_FILE
 output_service.set_output_paths(output_paths)
+
 def main():
-    """Función main para compatibilidad con ejecución directa."""
-    if len(sys.argv) == 1:
-        default_output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
-        cache_service.clear_output_folders(default_output_paths)
-        return main_builder.activate_main(output_paths, config_path, TEST_MODE)
-
-    return main_builder.activate_main([], [], "", False)
-
+    default_output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
+    cache_service.clear_output_folders(default_output_paths)
+    return main_builder.activate_main(output_paths, config_path, TEST_MODE)
 if __name__ == "__main__":
     main()
