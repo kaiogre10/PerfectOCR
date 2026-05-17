@@ -102,12 +102,12 @@ _umd_patterns_list: List[Pattern[str]] = [
     re.compile(r'#\s*\d+'),
 ]
 
-_umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)')
+_umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)', re.IGNORECASE)
 _umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
 
 # Define los patrones como strings
 _clean_currency_str = r"^(?:\$)|,"
-_final_clean_currency = re.compile(r"[^0-9.]", re.IGNORECASE)
+# _final_clean_currency = re.compile(r"[^0-9.]", re.IGNORECASE)
 _clean_currency = re.compile(_clean_currency_str, re.IGNORECASE)
 # Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
 # _s_correct_pattern = re.compile(r'^S\d{3,}[.,]', re.IGNORECASE)
@@ -179,7 +179,7 @@ def validate_text(text: str) -> bool:
     if not text:
         return False
     # Si es un solo carácter, debe ser válido (número o en ALONE_CHARS)
-    if len(text) == 1:
+    elif len(text) == 1:
         return text.isalnum()
     else:
         # Si tiene más de un carácter, debe tener al menos un alfanumérico
@@ -218,10 +218,14 @@ def find_umd(s: str) -> str:
 
     elif s.isdecimal():
         return s
+    
+    elif bool(_date_patterns.search(s)):
+        return s
 
     if _umd_cor.search(s) and not s.endswith("0"):
         new_s = s[:-1] + "0"
-        if _umd_patterns.fullmatch(new_s):
+        logger.info(f"POT_ UMD: '{s}' -> '{new_s}'")
+        if not is_quantitative(new_s) and not new_s.isdecimal():
             return new_s
 
     intervals: List[Tuple[int, int]] = [(m.start(), m.end()) for m in _umd_patterns.finditer(s)]
@@ -259,12 +263,6 @@ def find_umd(s: str) -> str:
     return "".join(parts)
 
 def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
-    """
-    Busca fecha (9), RFC (7) o IVA (8) en el texto crudo del polígono.
-    activate_func: [fecha_ya_encontrada, rfc_ya_encontrado, iva_ya_encontrado];
-    se pone True en el índice correspondiente al devolver un key_field distinto de 0.
-    Prioridad: fecha > RFC > IVA (solo un tipo por llamada).
-    """
     try:
         if not any(c.isalnum() for c in s):
             return None
@@ -321,10 +319,7 @@ def contains_quantitative(text: str) -> bool:
     return bool(match and is_quantitative(match.group(0)))
 
 def get_cuants(text: str) -> str:
-    """
-    Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto).
-    Si ya están separados por espacios, no modifica el texto.
-    """    
+    """Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto). Si ya están separados por espacios, no modifica el texto."""
     if len(text) < 4 or text.isdecimal() or text.isalpha():
         return text
 
@@ -455,15 +450,16 @@ def space_removal(text: str) -> str:
 
 def remove_special_sequences(text: str) -> str:
     """
-    Elimina secuencias especiales de dos o más caracteres no alfanuméricos. Conserva los caracteres sueltos válidos, pero reemplaza por un espacio lassecuencias internas de símbolos, y luego limpia espacios sobrantes.
-    Ejemplo:
-        remove_special_sequences("abc@@def!!ghi") -> 'abc def ghi'
+    Elimina secuencias especiales de dos o más caracteres no alfanuméricos.
+    Conserva los caracteres sueltos válidos, pero reemplaza por un espacio las secuencias internas de símbolos, y luego limpia espacios sobrantes.
+    remove_special_sequences("abc@@def!!ghi") -> 'abc def ghi'
     """
     cleaned = _sequence_middle_pattern.sub(" ", text).strip()
     cleaned = _secuence_pattern.sub("", cleaned)
     return space_removal(cleaned) if cleaned else text
     
 def get_brands(text: str) -> bool:
+    """Experimental: LOCALIZA SI UN STRING ES UNA MARCA COMERCIAL"""
     if len(text) != 3:
         return False
     return bool(_labels_pattern.fullmatch(text))
@@ -594,7 +590,6 @@ def classify_token(s: str) -> Tuple[int, int]:
     
     # #  logger.info(fr"REBELDES: '{s}'")
     dense_mean, morphology_mean = text_encode(s.lower())
-    
     if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
         #  logger.info(f"CODE por codificacion: '{s}'")
         return (3, total_cuant)
@@ -639,12 +634,11 @@ def format_elapsed_time(seconds: float) -> str:
     else:
         return f"{int(seconds // 3600):02d}H:{minutes:02d}M:{seconds % 60:06.3f}'S"
 
-def fast_classfier(polygon: str) -> Tuple[List[int], int]:
-    """"
-    Recibe un string completo para clasificación express, asume que el texto ya viene listo para procesar.
-    No verifica, procesa strings de cualquier longitud
-    """
-    tokens = polygon.split(" ")
+def fast_classfier(text: str) -> Tuple[List[int], int]:
+    """Clasifica un string rapidamente, no seleccionar los strings antes de llamar a la función impactará de manera negativa el output del pipeline"""
+    if not text:
+        return ([], 0)
+    tokens = text.split(" ")
     semantic_classes: List[int] = []
     total_cuants = 0
     for t in tokens:

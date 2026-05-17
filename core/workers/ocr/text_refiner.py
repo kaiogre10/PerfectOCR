@@ -7,7 +7,7 @@ from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
 from services.output_service import save_raw_json
-from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data
+from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, is_umd
 import logging
 import time
 import dataclasses
@@ -163,8 +163,15 @@ class Refiner(OCRAbstractWorker):
             if contains_quantitative(text):
                 qtext = get_cuants(text)
                 if qtext != text:
-                    # logger.info(f"CUANTS: '{text}' -> '{qtext}'")
+                    logger.info(f"CUANTS: '{text}' -> '{qtext}'")
                     updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
+                else:
+                    updated_polygons[poly] = poly_data
+            elif is_umd(text):
+                umd_text = find_umd(text)
+                if umd_text != text:
+                    logger.info(f"UMDS: '{text}' -> '{umd_text}'")
+                    updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=umd_text)
                 else:
                     updated_polygons[poly] = poly_data
             else:
