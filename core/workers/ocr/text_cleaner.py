@@ -39,8 +39,10 @@ class TextCleaner(OCRAbstractWorker):
         eliminated_count = 0
 
         for poly_id, polygon in polygons_in.items():
-            kf = polygon.key_field
-            if kf or kf is not None or polygon.semantic_clasification == [0]:
+            kf = polygon.key_field or None
+            sc = polygon.semantic_clasification
+            
+            if 0 in sc and kf is not None:
                 logger.debug(f"'{poly_id}' con KEYFIELD ya no se limpia: '{polygon.ocr_text}'")
                 updated_polygon = dataclasses.replace(polygon)
                 list_of_final_polygons.append(updated_polygon)
@@ -54,9 +56,13 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
             
+            # elif text.isdecimal():
+            #     # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
+            #     updated_polygon = dataclasses.replace(polygon)
+            #     list_of_final_polygons.append(updated_polygon)
+            #     continue
+            
             text_sec = remove_special_sequences(text)
-            if text_sec != text:
-               logger.debug(f"{poly_id} Secuencia especial eliminada: '{text}' -> '{text_sec}'")
                
             if not text_sec or not validate_text(text_sec):
                 # logger.info(f"{poly_id} sin texto valido después de secuencias especiales: '{text}'")
@@ -64,8 +70,6 @@ class TextCleaner(OCRAbstractWorker):
                 continue
 
             sep_text = separate_punt(text_sec)
-            if sep_text != text_sec:
-                logger.debug(f"{poly_id} Texto separado: '{text_sec}' -> '{sep_text}'")
 
             if not sep_text or not validate_text(sep_text):
                 # logger.info(f"{poly_id} sin texto válido después de eliminar puntuaciones '{text_sec}'")
@@ -79,7 +83,7 @@ class TextCleaner(OCRAbstractWorker):
                 continue
             
             if txt != text:
-                logger.debug(f"Texto limpiado: '{text}' -> '{txt}'")
+                logger.debug(f"Texto limpio: '{text}' -> '{txt}'")
             
             updated_polygon = dataclasses.replace(polygon, ocr_text=txt)
             list_of_final_polygons.append(updated_polygon)

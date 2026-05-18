@@ -118,8 +118,8 @@ class WordFinder:
                 for cand, (key_field, grams_cand) in self.all_ngrams.items():
                     if key_field != 6 and key_field in assigned_fields:
                         continue
-                    if key_field == 5:
-                        continue
+                    # if key_field == 5:
+                    #     continue
 
                     cand_len = len(cand)
                     # Encontrar posiciones donde coinciden n-gramas del candidato

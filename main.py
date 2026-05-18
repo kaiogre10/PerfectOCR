@@ -37,7 +37,7 @@ elif os.environ.get("CODESPACES"):
 else:
     print("Ejecución en Inspiron")
     output_paths = ["output"]
-    default_output = ["output"]
+    default_output = output_paths
     
 DEFAULT_OUTPUT_PATH = default_output
 OUTPUT_PATH = output_paths
@@ -53,6 +53,7 @@ logger_root.setLevel(logging.DEBUG)
 
 if logger_root.hasHandlers():
     logger_root.handlers.clear()
+    
 file_formatter = logging.Formatter(
     fmt=FILE_FORMAT,
     datefmt=DATE_FORMAT
@@ -61,16 +62,16 @@ console_formatter = logging.Formatter(
     fmt=CONSOLE_FORMAT,
     datefmt=DATE_FORMAT
 )
-try:
-    LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
-    if os.path.exists(LOG_FILE_PATH):    
-        file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
-        file_handler.setFormatter(file_formatter)
-        file_handler.setLevel(FILE_LEVEL.upper())
-        logger_root.addHandler(file_handler)
-        
-except FileNotFoundError as e:
-    logger.warning(f"Error generando archivo log: '{e}'", exc_info=True)
+LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
+if not os.path.exists(LOG_FILE_PATH):
+    os.mknod(LOG_FILE_PATH)
+    with open(LOG_FILE_PATH, mode = "r", encoding="utf-8"):
+        pass
+
+file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
+file_handler.setFormatter(file_formatter)
+file_handler.setLevel(FILE_LEVEL.upper())
+logger_root.addHandler(file_handler)
 
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setFormatter(console_formatter)

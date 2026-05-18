@@ -66,7 +66,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
                 features_to_ind = analysis[:, 1:].astype(np.str_)
                 features_id = np.column_stack([line_id, features_to_ind])
-                file_name = manager.workflow.metadata.image_name
+                file_name = manager.workflow.metadata.image_name or ""
                 save_table_values(file_name, features_id, "vectorizer")
                 
             tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
@@ -79,11 +79,10 @@ class MatricialCusine(VectorizationAbstractWorker):
                     tabular_array = self.cosine_dummies(analysis, line_idx)
                     if tabular_array.size == len(tabular_lines):
                         return tabular_lines
-                    new_tabular_idx = tabular_array.tolist()
-                    new_tabular_lines: List[str] = [tabular_lines[i] for i in new_tabular_idx]
-                    return new_tabular_lines
+                    new_tabular_idx: List[int] = tabular_array.tolist()
+                    return [line_ids[i] for i in new_tabular_idx]
             else:
-                line_idx = np.array(np.arange(len(line_ids), np.uint8), np.uint8)
+                line_idx = np.array(np.arange(len(line_ids)), np.uint8)
                 tabular_array = self.cosine_dummies(analysis, line_idx)
                 new_tabular_idx = tabular_array.tolist()
                 new_tabular_lines: List[str] = [line_ids[i] for i in new_tabular_idx]
@@ -129,41 +128,40 @@ class MatricialCusine(VectorizationAbstractWorker):
         Fallback de emergencia optimizado. Compara todas las líneas del documento contra vectores DUMMIE
         usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares.
         """
+        # logger.info("COSENO DUMMIES")
         t0 = time.perf_counter()
         # has_kf = analysis[:, -2] < 1
         analysis = analysis[line_ids]
         analysi = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
-   
         sims_final = get_cosine_similarity(analysi, dummie_vect, dense_output=False)
-
         logger.debug(f"Tiempo: {time.perf_counter() - t0}")
         # logger.info("SIMILITUDES:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
         
         n = line_ids.size
-        sims_idx = np.where(sims_final > self.emergency_threshold)[0]
+        sims_idx = np.where(sims_final > self.similarity_threshold)[0]
         consecutive_idx_size = sims_idx.size
-        
-        # logger.info("TAMAÑOS"
-        # "n:\n"f"{n} | consecutive_idx: {consecutive_idx_size}")
-        if consecutive_idx_size == n:
+        similarity_lines = line_ids[sims_idx]
+        # logger.info("TAMAÑOS\n"f"{n} | consecutive_idx: {consecutive_idx_size}, {similarity_lines}")
+        if consecutive_idx_size == n or similarity_lines.size == self.min_cluster:
             # logger.info("LINEAS SUPERARON UMBRAL DE SIMILITUD")
-            return line_ids
+            return similarity_lines
             
         d = np.diff(sims_idx)
         # logger.info("Consecutive:\n"f"{sims_idx}, {sims_idx.size}\n"f"D: {d}, {d.size}")
+        
         cuts = np.where(d > self.min_cluster)[0]
         if cuts.size == 0:
+            # logger.info("CUTS:\n"f"{cuts}, SHAPE: {cuts.shape}")
             # logger.info("LINEAS SUPERARON UMBRAL REDUCIDO")
             return line_ids
         
-        # logger.info(f"CUTS: {cuts}, SHAPE: {cuts.shape}")
         cutted_idx = np.arange((cuts[0]+1), dtype=np.uint8)
-        mean_idx = sims_final[cutted_idx]
+        # mean_idx = sims_final[cutted_idx]
         # lines_ids = line_ids[cutted_idx]
         # logger.info("CUTTED:\n"f"{np.column_stack([lines_ids, mean_idx])}, SHAPE: {mean_idx.shape[0]}")
-        tabular_ids = line_ids[0:mean_idx.shape[0]]
+        # tabular_ids = line_ids[0:mean_idx.shape[0]]
         # logger.info(f"Table Range: {tabular_ids[0]} - {tabular_ids[-1]}")
-        return cutted_idx.astype(np.uint8)
+        return cutted_idx
         
     def _find_best_cluster(self, sorted_candidates: List[str], line_ids: List[str]) -> List[str]:
         """Encuentra el mejor cluster respetando min_cluster e interval y devuelve todas las líneas del intervalo."""

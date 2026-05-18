@@ -7,7 +7,7 @@ from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
 from services.output_service import save_raw_json
-from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, is_umd
+from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, contains_umd, is_quantitative
 import logging
 import time
 import dataclasses
@@ -160,22 +160,38 @@ class Refiner(OCRAbstractWorker):
         
         for poly, poly_data in polygons.items():
             text = poly_data.ocr_text or ""
-            if contains_quantitative(text):
+            if len(text) < 3:
+                updated_polygons[poly] = poly_data
+                continue
+            
+            if text.isalpha() or text.isdecimal():
+                updated_polygons[poly] = poly_data
+                continue
+                
+            elif contains_quantitative(text) and not is_quantitative(text):
                 qtext = get_cuants(text)
+                # logger.info(f"POTENCIAL CUANTS: '{text}' -> '{qtext}'")
                 if qtext != text:
-                    logger.info(f"CUANTS: '{text}' -> '{qtext}'")
+                    # logger.info(f"CUANT ENCONTRADO: '{poly}' | Original: '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
                     updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
+                    continue
                 else:
                     updated_polygons[poly] = poly_data
-            elif is_umd(text):
+                    continue
+                    
+            if contains_umd(text):
                 umd_text = find_umd(text)
+                # logger.info(f"POTENCIAL UMDS: '{text}' -> '{umd_text}'")
                 if umd_text != text:
-                    logger.info(f"UMDS: '{text}' -> '{umd_text}'")
+                    # logger.info(f"UMD ENCONTRADA:'{poly}' | Original: '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
                     updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=umd_text)
-                else:
-                    updated_polygons[poly] = poly_data
+                    continue
+                
+                updated_polygons[poly] = poly_data
+                continue
             else:
                 updated_polygons[poly] = poly_data
+                continue
 
         manager.workflow.polygons = updated_polygons
         return True

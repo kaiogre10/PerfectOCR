@@ -67,10 +67,9 @@ def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float])
         
 def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     """
-    Calcula histograma de feature de contornos de forma recursiva.
+    Suaviza histograma.
     Elimina outliers hasta que no queden más gaps en el histograma.
-    Retorna:
-        deleted: Número total de outliers eliminados
+    deleted: Número total de outliers eliminados
     """
     # time_h = time.perf_counter()
     min_feat = np.min(metrics) if np.min(metrics) == 0 else (np.min(metrics) - 0.1)

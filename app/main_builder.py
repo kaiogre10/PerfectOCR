@@ -117,6 +117,7 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
     total_images = len(image_info_list)
     processed_count = 0
     final_results: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
+    logger.info(f"{total_images} IMAGENES PARA PROCESAR")
     
     for i, image_data in enumerate(image_info_list):
         # Procesar imagen individualmente

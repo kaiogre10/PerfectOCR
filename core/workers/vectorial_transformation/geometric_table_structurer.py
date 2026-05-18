@@ -635,19 +635,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         if poly.key_field is None:
                             poly.key_field = [6]
                             h += 1
-                            header_line_text.append(poly_text)
-                        elif isinstance(poly.key_field, list):
+                        else:
                             h += len(poly.key_field)
-                            header_line_text.append(poly_text)
                             if 6 not in poly.key_field:
                                 poly.key_field.append(6)
-                                header_line_text.append(poly_text)
-                        else:
-                            h += 1
-                            header_line_text.append(poly_text)
-                            if poly.key_field != 6:
-                                poly.key_field = [poly.key_field, 6]
+                                h += 1
+                        header_line_text.append(poly_text)
                             
-                # logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
+                logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
                 return h, header_line_id
         return (0, "")

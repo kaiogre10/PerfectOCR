@@ -1,16 +1,17 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-    input,
-    #  input2
-    #  input3
-    E:/data/tickets_nuevo
+    # input,
+    #  input2,
+    input3,
+    # E:/data/tickets_nuevo
   ]
   images_names: [
     AAAA0006,
-    AAAA0053,
-    # AAAA0017
-    AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039
+    AAAC0052,
+    AAAA0017,
+    # AAAB0002,
+    AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039,
   ]
   valid_extensions: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
 
@@ -33,21 +34,21 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    # - "data_finder"
+    - "data_finder"
     
   vector_stage:
-    # - "lineal"
+    - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-    - "collector"
+    # - "collector"
 
   db_stage:
     # - "db_service"
    
 log_debug:
   text_ocr: False
-  seman_clas: True
+  seman_clas: False
   key_fields: False
   lines: False
   table_lines: False
@@ -55,7 +56,7 @@ log_debug:
   table_correct: False
   
   semantic_types_log: [2]
-  kf_list_log: [-1]
+  kf_list_log: [6]
   
 # Configuración de salida
 enabled_outputs:

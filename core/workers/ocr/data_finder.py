@@ -104,45 +104,54 @@ class DataFinder(OCRAbstractWorker):
                         continue
 
                     # logger.info(f"Valid Results: {valid_results}")
-                    num_keywords = len(valid_results)
+                    # num_keywords = len(valid_results)
                     all_key_fields = [result['key_field'] for result in valid_results]
                     if not all_key_fields:
                         continue
 
                     # Verificar si todos son headers (key_field == 6)
                     if all(kf == 6 for kf in all_key_fields):
-                    
-                        if num_keywords > 1:
-                            polygon_updates[pid] = all_key_fields
-                            # logger.info(f"'{len(all_key_fields)}': {all_key_fields} headers en {pid}")
-                            continue
-                    
                         key_word: str = valid_results[0]['key_word']
                         orig_text: str = valid_results[0]['norm_ocr_text']
-                        if len(key_word) == len(orig_text):
-                            leftovers = ""
-                        else:
-                            leftovers = orig_text.replace(key_word, "")
-                        # logger.info(f"key_word = {key_word}, orig = {orig_text}, lefovers={leftovers}")
-                        if leftovers and leftovers.isalpha():
-                            add_kf = len(leftovers)
-                            # logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> '{leftovers}'")
-                            # Asigna una lista de 6's: uno por cada palabra (keyword + leftovers)
-                            polygon_updates[pid] = [6] * (add_kf + 1)
-                            continue
+                        key_text: str = valid_results[0]['text']
+                        start = valid_results[0]['start']
+                        end = valid_results[0]['end']
                         
-                        key_field = valid_results[0]['key_field']
-                        polygon_updates[pid] = [key_field]
+                        if len(key_word) == len(orig_text):
+                            leftovers = [""]
+                            
+                        elif len(key_word) != len(orig_text):
+                            leftovers = orig_text.replace(key_word, "").split(" ")
+                            
+                        else:
+                            leftovers = (key_text[:start] + key_text[end:]).split(" ")
+                            
+                            # logger.info(f"{leftovers}")
+                            
+                        # logger.info(f"key_word: '{key_word}', orig: '{orig_text}', lefovers: {leftovers}")
+                        add_kf = 0
+                        for lefties in leftovers:
+                            if lefties and lefties.isalpha():
+                                # logger.info(f"{lefties}")
+                                add_kf += 1
+                        # logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> {leftovers}")
+                        # Asigna una lista de 6's: uno por cada palabra (keyword + leftovers)
+                        polygon_updates[pid] = [6] * (add_kf + 1)
+                        # logger.info(f"{polygon_updates}")
                         continue
+                        
+                        # key_field = valid_results[0]['key_field']
+                        # polygon_updates[pid] = [key_field]
+                        # continue
                     
                     else:
                         key_field = valid_results[0]['key_field']
                         polygon_updates[pid] = [key_field]
-                        # logger.info(f"'{pid}': Key_Field: '{key_field}', Text: '{ocr_text}'")
                         
             if polygon_updates:
-                logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
-                return self.get_key_fields_values(manager, polygon_updates)
+                # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                return polygon_updates
+                # return self.get_key_fields_values(manager, polygon_updates)
 
             else:
                 logger.warning(f"No se hallaron Keywords, tiempo de ejecución: {time.perf_counter() - time0:.6}'s")
@@ -172,7 +181,7 @@ class DataFinder(OCRAbstractWorker):
         for pid, key_fields in updates_to_validate.items():
             source_poly = polygons.get(pid)
             source_texts[pid] = {source_poly.ocr_text or "": key_fields} if source_poly else ""
-        logger.info(f"KF UPDATES ANTES DE REUBICACIÓN: {source_texts}")
+        # logger.info(f"KF UPDATES ANTES DE REUBICACIÓN: {source_texts}")
         
         if not polygons:
             return polygon_updates
@@ -234,7 +243,7 @@ class DataFinder(OCRAbstractWorker):
             if not poly_obj:
                 neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in kf_list]
                 new_updates[poly_id] = neg_kf
-                logger.info(f"KF SIN POLÍGONO ORIGEN, REASIGNADO A NEGATIVO: {poly_id} -> {neg_kf}")
+                # logger.info(f"KF SIN POLÍGONO ORIGEN, REASIGNADO A NEGATIVO: {poly_id} -> {neg_kf}")
                 continue
 
             poly_idx = poly_obj.poly_index
@@ -242,7 +251,7 @@ class DataFinder(OCRAbstractWorker):
 
             if not should_relocate:
                 new_updates[poly_id] = kf_list
-                logger.info(f"KF SIN REUBICACIÓN REQUERIDA: {poly_id} -> {kf_list}")
+                # logger.info(f"KF SIN REUBICACIÓN REQUERIDA: {poly_id} -> {kf_list}")
                 continue
 
             target_id = ""
@@ -261,7 +270,7 @@ class DataFinder(OCRAbstractWorker):
                 if any(kf in kf_relocatables for kf in source_existing_kf):
                     source_neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in source_existing_kf]
                     new_updates[poly_id] = source_neg_kf
-                logger.info(
+                logger.debug(
                     f"KF REUBICADO: {poly_id} -> {target_id} | {kf_list} | "
                     f"TEXTO ORIGEN: '{source_text}' | TEXTO DESTINO: '{target_text}'"
                 )
@@ -271,12 +280,12 @@ class DataFinder(OCRAbstractWorker):
                 neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in kf_list]
                 new_updates[poly_id] = neg_kf
                 source_text = (poly_obj.ocr_text or "").strip()
-                logger.info(
+                logger.debug(
                     f"KF SIN VECINO VÁLIDO, REASIGNADO A NEGATIVO: {poly_id} -> {neg_kf} | ORIG: {kf_list} | "
                     f"TEXTO ORIGEN: '{source_text}'"
                 )
 
         polygon_updates.clear()
         polygon_updates.update(new_updates)
-        logger.info(f"KF UPDATES DESPUÉS DE REUBICACIÓN: {polygon_updates}")
+        # logger.info(f"KF UPDATES DESPUÉS DE REUBICACIÓN: {polygon_updates}")
         return polygon_updates

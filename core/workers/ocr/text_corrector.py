@@ -76,10 +76,8 @@ class TextCorrector(OCRAbstractWorker):
             if corrected_text != original_text:
                 correced_count +=1
                 
-                s_class, t_cuan = fast_classfier(corrected_text)
-                original_textl = set(original_text.split(" "))
-                corrected_textl = set(corrected_text.split(" "))
-                logger.info(f"Corrección de '{poly_id}' | Original: '{original_textl.difference(corrected_textl)}' → '{corrected_text}' | SC original: {sc} -> {s_class}")
+                s_class, t_cuan = fast_classfier(corrected_text) 
+                # logger.info(f"Corrección de '{poly_id}' | Original: '{set(original_text.split(" ")).difference(set(corrected_text.split(" ")))}' → '{corrected_text}' | SC original: {sc} -> {s_class}")
                 updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text, semantic_clasification=s_class, cuant_chars=t_cuan)
             else:    
                 updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)

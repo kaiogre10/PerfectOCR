@@ -203,7 +203,8 @@ def is_code(s: str) -> bool:
 def is_acronym(text: str) -> bool:
     return bool(_acronym_pattern.search(text)) if text else False
 
-def is_umd(s: str) -> bool:
+def contains_umd(s: str) -> bool:
+    """Valida si un string contiene UMD"""
     if not s or s.isdecimal() or not any(c.isalnum() for c in s):
         return False 
     return bool(_umd_patterns.search(s))
@@ -224,7 +225,6 @@ def find_umd(s: str) -> str:
 
     if _umd_cor.search(s) and not s.endswith("0"):
         new_s = s[:-1] + "0"
-        logger.info(f"POT_ UMD: '{s}' -> '{new_s}'")
         if not is_quantitative(new_s) and not new_s.isdecimal():
             return new_s
 
@@ -325,17 +325,18 @@ def get_cuants(text: str) -> str:
 
     words = text.split(" ")
     result_parts: List[str] = []
-
     for word in words:
         monetary_count = word.count("$")
-        if word.startswith('$') and monetary_count > 1:
-            word = word[0] + word[1:].replace('$', '5')
+        
+        # if word.startswith('$') and monetary_count > 1:
+        #     word = word[0] + word[1:].replace('$', '5')
+        #     logger.info(f"CORRECT 1: {word}")
 
         if bool(_valid_cuant_pattern.search(word)):
             word = word.replace("$", "5")
 
-        if monetary_count >= 2 and contains_quantitative(word):  # $10.50.$31.50 | $10.50$31.50
-            compact = word.replace(" ", "")                 # $10.50.$31.50 | $10.50$31.50
+        if monetary_count >= 2 and contains_quantitative(word): 
+            compact = word.replace(" ", "")                     # $10.50.$31.50 | $10.50$31.50
             chunks = [m.group(0).replace(" ", "") for m in _split.finditer(compact)] # $10.50.$31.50 | $10.50 $31.50
             
             total_chunks = len(chunks)
@@ -537,7 +538,7 @@ def classify_token(s: str) -> Tuple[int, int]:
             return (2, 0)
 
         if not any(c in vowels for c in s):
-            if is_umd(s):
+            if contains_umd(s):
                 # #  logger.info(f"UMD sin vocales: '{s}'")
                 return (2, 0)
                 
@@ -580,7 +581,7 @@ def classify_token(s: str) -> Tuple[int, int]:
         #  logger.info(f"CUANT CONTENIDO: '{s}'")
         return (4, total_cuant)
         
-    elif is_umd(s):
+    elif contains_umd(s):
         # logger.debug(f"UMD mixto: '{s}'")
         return (2, total_cuant)
 

@@ -5,6 +5,7 @@ import dataclasses
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from core.utils.image_utils import normalice_image
+from core.utils.text_utils import fast_classfier
 import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -204,7 +205,6 @@ class DataFormatter:
                 logger.error(f"No hay Texto OCR")
                 return False
                 
-            # logger.debug(f"Recibe: {len(final_results)} resultados IDs")
             valid_polys: List[str] = []
             for poly_id, res in final_results.items():
                 if poly_id in self.workflow.polygons:
@@ -337,7 +337,9 @@ class DataFormatter:
             if self.lines_log:
                 all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
                 for lid, l in all_lines.items():
-                    logger.info(f"{lid}: '{l.text}'")
+                    line_text= l.text
+                    # line_semantic = fast_classfier(line_text)
+                    # logger.info(f"{lid}: '{line_text}' -> SC: {line_semantic[0]} ")
             return True
                         
         except ValueError as e:
@@ -420,7 +422,7 @@ class DataFormatter:
                     "\n"f"GLOBAL_DATA:\n"f"{global_data}")
                 return True
             
-            df_tab = self.workflow.table_data.df_table if self.workflow.table_data else df.iloc[0:0]
+            df_tab = self.workflow.table_data.df_table if self.workflow.table_data else pd.DataFrame()
             glob_data = self.workflow.table_data.global_data if self.workflow.table_data else {}
 
             if key_data and df.empty:
