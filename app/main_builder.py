@@ -1,13 +1,12 @@
 # PerfectOCR/main_builder.py
 from typing import Optional, List, Dict, Any, Tuple
 from app.process_builder import ProcessingBuilder
-from app.workflow_builder import WorkFlowBuilder
 from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
-from core.domain.models_manager import ModelsManager
+from app.models_manager import ModelsManager
 from services.db_service import DataBaseService
-import services.cache_service as cache_service
-from datetime import datetime
+import services.system_service as system_service
+# from datetime import datetime
 from core.utils.text_utils import format_elapsed_time
 import time
 import pandas as pd # type: ignore
@@ -25,7 +24,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
     t0 = time.perf_counter()
     try:
         if not config_path or not PROJECT_ROOT:
-            cache_service.cleanup_project_cache()
+            system_service.cleanup_project_cache()
             logger.error("NO HAY RUTAS PRINCIPALES PARA PIPELINE, REVISAR MAIN\n"f"PROCESO DETENIDO: {time.perf_counter() - t0}s")
             return  []
         
@@ -34,14 +33,11 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
         config_services = ConfigService(config_path, TEST_MODE, output_paths)
         # logger.info(f"Config service completo en {time.perf_counter()-t1:.6f}s")
         
-        # 2. Main crea WorkFlowBuilder con configuración centralizada
-        workflow_manager = WorkFlowBuilder(builder_config=config_services.system_config, project_root=PROJECT_ROOT)
-        
-        # 3. WorkflowManager analiza y reporta
-        workflow_report = workflow_manager.count_and_plan()
+        # 3. Service analiza y reporta
+        workflow_report = system_service.count_and_plan(config=config_services.system_config)
         if not workflow_report:
             logger.error(f"Error en rutas para imágenes, abortando proceso: {time.perf_counter() - t0:.6f}'s de ejecucusión", exc_info=True)
-            cache_service.cleanup_project_cache()
+            system_service.cleanup_project_cache()
             return []
         
         # 4. Iniciar modelos Singleton
@@ -59,7 +55,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
             processing_builder = create_single_builder(stagers_factory=stagers_factory, logs_config=logs_config)
             if not processing_builder:
                 logger.error("No se pudo crear el ProcessingBuilder")
-                cache_service.cleanup_project_cache()
+                system_service.cleanup_project_cache()
                 return []
         
             # 7. Main ejecuta procesamiento secuencial usando el builder único
@@ -69,16 +65,16 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
             if final_df_list and config_services.db_config:
                 db_service = DataBaseService(dsn=None)
                 if db_service.test_connection():
-                    cache_service.clean_db(db_service)
+                    system_service.clean_db(db_service)
                     if not insert_data(db_service, final_df_list):
                         logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
 
-            cache_service.cleanup_project_cache()
+            system_service.cleanup_project_cache()
             logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
             return []
 
         logger.debug(f"Proceso debugger completo en {format_elapsed_time(time.perf_counter()-t0)}")
-        cache_service.cleanup_project_cache()
+        system_service.cleanup_project_cache()
         return []
         
     except NameError as e:

@@ -45,7 +45,7 @@ class Fragmenter(OCRAbstractWorker):
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
                 if is_acronym(ocr_text):
-                    logger.debug(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
+                    logger.info(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
                     final_polygons.append(polygon)
                     continue
                 

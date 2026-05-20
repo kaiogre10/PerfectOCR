@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional
 from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.domain.models_manager import ModelsManager
+from app.models_manager import ModelsManager
 from core.utils.text_utils import validate_text, normalice_text
 from core.utils.image_utils import elevate_dims, make_contiguous
 from services.output_service import save_raw_json
@@ -95,7 +95,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     # logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0} % | '{text}'")
                     continue
                 else:
-                    text = normalice_text(text, "soft")
+                    text = normalice_text(text)
                     raw_map[polygon_ids[idx]] = {"text": text}
             # logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")
             return raw_map

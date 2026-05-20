@@ -6,7 +6,7 @@ import numpy as np
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.domain.models_manager import ModelsManager
+from app.models_manager import ModelsManager
 from core.utils.text_utils import validate_text, contains_quantitative, get_rfc
 
 kf_decimals = {1, 2, 3, 4, 8}
@@ -86,7 +86,7 @@ class DataFinder(OCRAbstractWorker):
 
                 processed_count += 1
                 kf = poly.key_field or None
-                if kf is not None or kf:
+                if kf is not None:
                     skipped_semantic += 1
                     # logger.info(f"KeyField redundante en WODR FINDER {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     continue
@@ -99,54 +99,39 @@ class DataFinder(OCRAbstractWorker):
                     continue
             
                 else:
-                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text.lower())
+                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
                     if not valid_results:
                         continue
-
-                    # logger.info(f"Valid Results: {valid_results}")
-                    # num_keywords = len(valid_results)
-                    all_key_fields = [result['key_field'] for result in valid_results]
-                    if not all_key_fields:
-                        continue
-
-                    # Verificar si todos son headers (key_field == 6)
-                    if all(kf == 6 for kf in all_key_fields):
-                        key_word: str = valid_results[0]['key_word']
-                        orig_text: str = valid_results[0]['norm_ocr_text']
-                        key_text: str = valid_results[0]['text']
-                        start = valid_results[0]['start']
-                        end = valid_results[0]['end']
-                        
-                        if len(key_word) == len(orig_text):
-                            leftovers = [""]
-                            
-                        elif len(key_word) != len(orig_text):
-                            leftovers = orig_text.replace(key_word, "").split(" ")
-                            
-                        else:
-                            leftovers = (key_text[:start] + key_text[end:]).split(" ")
-                            
-                            # logger.info(f"{leftovers}")
-                            
-                        # logger.info(f"key_word: '{key_word}', orig: '{orig_text}', lefovers: {leftovers}")
-                        add_kf = 0
-                        for lefties in leftovers:
-                            if lefties and lefties.isalpha():
-                                # logger.info(f"{lefties}")
-                                add_kf += 1
-                        # logger.info(f"KW: '{key_word}' | ORIG: '{orig_text}' -> {leftovers}")
-                        # Asigna una lista de 6's: uno por cada palabra (keyword + leftovers)
-                        polygon_updates[pid] = [6] * (add_kf + 1)
-                        # logger.info(f"{polygon_updates}")
-                        continue
-                        
-                        # key_field = valid_results[0]['key_field']
-                        # polygon_updates[pid] = [key_field]
-                        # continue
                     
+                    num_keywords = len(valid_results)
+                    left_overs: List[str] = []
+                    # logger.info(f"RESULTS {pid} '{ocr_text}': {valid_results}")
+                    if num_keywords > 2 and any(k['key_field'] == 6 for k in valid_results):
+                        key_text = [results['norm_ocr_text'] for results in valid_results]
+                        key_field = [results['key_field'] for results in valid_results]
+                        key_word = [results['key_word'] for results in valid_results]
+                        orig_text = [results['text'] for results in valid_results]
+                        
+                        if [orig_text] == key_text:
+                            polygon_updates[pid] = key_field
+                            continue
+                        
+                        # logger.info(f"ORIGINAL: '{orig_text}', NORM OCR: '{key_text}'")
+
+                        for result in key_word:
+                            if result not in key_word:
+                                left_overs.append(orig_text[0])
+                        
+                        if not left_overs:
+                            polygon_updates[pid] = key_field
+                            continue
+                        
+                        logger.info(f"{len(left_overs)} LEFOVERS: '{left_overs}'")
+
                     else:
                         key_field = valid_results[0]['key_field']
                         polygon_updates[pid] = [key_field]
+                        continue
                         
             if polygon_updates:
                 # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
@@ -167,7 +152,7 @@ class DataFinder(OCRAbstractWorker):
             return {}
         
         updates_to_validate: Dict[str, List[int]] = dict(polygon_updates)
-        for pid, poly in polygons.items():
+        for i, (pid, poly) in enumerate(polygons.items()):
             poly_kf = poly.key_field or []
             if not poly_kf:
                 continue

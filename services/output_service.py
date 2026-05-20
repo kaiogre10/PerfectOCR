@@ -21,8 +21,8 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], cont
     """Guarda una imagen con los contornos marcados sobre ella"""
     try:
         for path in OUTPUT_PATHS:
-            output_dir = path
-            file_name = f"{image_name}_{poly_id}.png"            # Dibuja todos los contornos sobre la imagen
+            output_dir = os.path.join(path, image_name)
+            file_name = f"{poly_id}.png"            # Dibuja todos los contornos sobre la imagen
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)      # type: ignore
             if contours1 and contours2:
                 logger.info("Todos los contornos, contornos 1: Rojo, Contornos 2: Azul")
@@ -52,6 +52,7 @@ def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any],
         file_name = f"{img_id}.png"
         save_image(image, output_dir, file_name)
         output_dir = os.path.join(path, worker_name, image_name)
+        # save_image(image, output_dir, file_name)
 
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
 
@@ -61,7 +62,6 @@ def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file
         os.makedirs(output_dir, exist_ok=True)
         img_path = os.path.join(output_dir, file_name)
         cv2.imwrite(img_path, image)
-        
         return img_path
     except Exception as e:
         logger.error(f"Error guardando '{file_name}' imagen: {e}")

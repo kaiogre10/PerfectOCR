@@ -8,7 +8,7 @@ if PROJECT_ROOT not in sys.path:
 import logging
 import app.main_builder as main_builder
 main_builder.set_project_root(PROJECT_ROOT)
-import services.cache_service as cache_service
+import services.system_service as cache_service
 cache_service.set_project_root(PROJECT_ROOT)
 import services.output_service as output_service
 

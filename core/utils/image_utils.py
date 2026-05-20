@@ -291,51 +291,51 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     
     total_conts = len(contours)
     contours = [np.array(cont.reshape(-1, 2), np.int32) for cont in contours]
+    logger.info(f"{total_conts} Contornos encontrados")
 
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
-    metrics_array_new = np.zeros((total_conts, 12), np.float32)
+    cols = 16
+    metrics_array_new = np.zeros((total_conts, cols), np.float32)
     # single_mask = bin_img.copy()
     # single_mask[:] = 0
 
     for i, cont_coords in enumerate(contours):
-        if len(cont_coords) < 3:
-            continue
-        
-        area = cv2.contourArea(cont_coords)
-        if area < 2:
-            continue
-        
-        _, dims, angle = cv2.minAreaRect(cont_coords)
-        rect_area = dims[0] * dims[1]
+        for c in range(cols):
+            if len(cont_coords) < 3:
+                continue
+            area = cv2.contourArea(cont_coords)
+            if area < 2:
+                continue
+            metrics_array_new[i, c] = area
+            centroids, dims, angle = cv2.minAreaRect(cont_coords)
+            metrics_array_new[i, [1, 2]] = centroids
+            metrics_array_new[i, [3, 4]] = dims
+            metrics_array_new[i, 5] = angle
+            
+            conv_hull = cv2.convexHull(cont_coords)
+            metrics_array_new[i, 5] = cv2.arcLength(cont_coords, True)  # Perimetro contorno
+            metrics_array_new[i, 6] = cv2.contourArea(conv_hull)        # Area de convexo
+            metrics_array_new[i, 7] = cv2.arcLength(conv_hull, True)    # Permietro del convex
 
-        metrics_array_new[i, 0] = area
-        metrics_array_new[i, 1] = dims[0]
-        metrics_array_new[i, 2] = dims[1]
-        metrics_array_new[i, 3] = angle
-        metrics_array_new[i, 4] = rect_area                         # Area del Rect
-        
-        conv_hull = cv2.convexHull(cont_coords)
-        metrics_array_new[i, 5] = cv2.arcLength(cont_coords, True)  # Perimetro contorno
-        metrics_array_new[i, 6] = cv2.contourArea(conv_hull)        # Area de convexo
-        metrics_array_new[i, 7] = cv2.arcLength(conv_hull, True)    # Permietro del convex
+            x, y, w, h = cv2.boundingRect(cont_coords)
+            metrics_array_new[i, 8] = x                                 # Ancho del bbox de contorno
+            metrics_array_new[i, 9] = y                                # Alto del bbox contorno
+            metrics_array_new[i, 10] = w
+            metrics_array_new[i, 11] = h
 
-        x, y, w, h = cv2.boundingRect(cont_coords)
-        metrics_array_new[i, 8] = w                                 # Ancho del bbox de contorno
-        metrics_array_new[i, 9] = h                                 # Alto del bbox contorno
+            roi_mask = np.zeros((h, w), dtype=np.uint8)
+            cv2.drawContours(roi_mask, [cont_coords], -1, [255], cv2.FILLED, offset=(-x, -y))
+            roi_img = bin_img[y:y+h, x:x+w]
+            black_pixels = cv2.countNonZero(cv2.bitwise_and(roi_img, roi_mask))     # Total píxeles negros dentro contorno
+            inside = roi_img[roi_mask == 255]                                       # pixeles dentro del contorno
+            total_inside = inside.size                                              # total píxeles del contorno
+            
+            metrics_array_new[i, -2] = black_pixels
+            metrics_array_new[i, -1] = total_inside
+            
+            # logger.info(f"{internal_pixels}, {density}")
 
-        roi_mask = np.zeros((h, w), dtype=np.uint8)
-        cv2.drawContours(roi_mask, [cont_coords], -1, [255], cv2.FILLED, offset=(-x, -y))
-        roi_img = bin_img[y:y+h, x:x+w]
-        black_pixels = cv2.countNonZero(cv2.bitwise_and(roi_img, roi_mask))  # Total píxeles negros dentro contorno
-        inside = roi_img[roi_mask == 255]               # pixeles dentro del contorno
-        total_inside = inside.size                      # total píxeles del contorno
-        
-        metrics_array_new[i, 10] = black_pixels
-        metrics_array_new[i, 11] = total_inside
-        
-        # logger.info(f"{internal_pixels}, {density}")
-
-        cont_coords_list.append((i, cont_coords))
+            cont_coords_list.append((i, cont_coords))
 
     if not cont_coords_list or metrics_array_new.size == 0:
         return [], np.empty((0, 5))
@@ -343,14 +343,12 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     hierarchy = contours_hierarchy[1]
     childs = np.array((hierarchy[0, :, 2] != -1))
     idx = np.arange(total_conts, dtype=np.int16)
-    # childs = childs[idx]
     
-    contours_features_array = np.column_stack([idx, metrics_array_new, childs])
+    contours_features_array = np.column_stack([idx, metrics_array_new, childs[idx]])
     contours_features_array = contours_features_array[[c[0] for c in cont_coords_list]]
     
     # logger.info(f"contours_features_array SHAPE: {contours_features_array.shape} ARRAY:\n"f"{np.array2string(contours_features_array, suppress_small=True)}")
     valid_coords = cont_coords_list
-
     valid_contours = len(valid_coords)
     matrix_size = contours_features_array.shape[0]
     if valid_contours != matrix_size:
@@ -360,53 +358,53 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     # logger.info(f"Tiempo calculando features de {valid_contours} contornos: {time.perf_counter()-time0:.6f}'s")
     return cont_coords_list, contours_features_array
 
-def calculate_complementary_feats(metrics_array_new: np.ndarray[Any, Any]):
-    rec_widith = metrics_array_new[:, 1]
-    rec_height = metrics_array_new[:, 2]
-    rect_area = rec_widith * rec_height
-    angles = metrics_array_new[:, 3]
-    convex_area = metrics_array_new[:, 6]
-    # Para cada rectángulo, tomamos como min_side el lado (ancho/alto) más perpendicular/vertical al eje Y, es decir, el que corresponde al ángulo más cercano a 90°
-    min_side = np.where(metrics_array_new[:, 3] > 45, rec_widith, rec_height)
-
-    angle_norm = np.where(rec_widith < rec_height, angles + 90, angles)
-    angle_norm = angle_norm % 180.0
-    angles = angle_norm
-
-    ratio_areas = convex_area / rect_area
-    aspect_ratio = (np.maximum(rec_widith, rec_height) / np.minimum(rec_widith, rec_height))
-
-    irregular_ratio = utils_array[:, 0] / utils_array[:, 1] # COLUMNA 16
-    
-    metrics_array = np.column_stack([
-        idx,                        # COLUMNA 0: Índice original del contorno
-        metrics_array_new[:, 0],    # COLUMNA 1: Área contorno
-        rec_widith,                 # COLUMNA 2: Ancho del rectángulo mínimo
-        rec_height,                 # COLUMNA 3: Alto del rectángulo mínimo
-        angles,                     # COLUMNA 4: Ángulo del rectángulo mínimo
-        metrics_array_new[:, 4],    # COLUMNA 5: Centroide X (contorno)
-        metrics_array_new[:, 5],    # COLUMNA 6: Centroide Y (contorno)
-        convex_area,                # COLUMNA 7: Área del polígono convexo
-        aspect_ratio,               # COLUMNA 8: Relación de aspecto (mayor/menor lado)
-        childs,                     # COLUMNA 9: Tiene hijos (bool)
-        ratio_areas,                # COLUMNA 10: Área convexa / Área min Rect
-        rect_area,                  # COLUMNA 11: Área del Min Rect
-        irregular_ratio,            # COLUMNA 12: Relación perímetro convexo/contorno
-        min_side                    # COLUMNA 13: Lado mínimo respecto al eje Y
-    ])
-
-    metrics_array = metrics_array[[c[0] for c in cont_coords_list]]
-    valid_coords = cont_coords_list
-
-    valid_contours = len(valid_coords)
-    matrix_size = metrics_array.shape[0]
-    if valid_contours != matrix_size:
-        logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
-        return [], np.empty((0, 5))
-
-    # logger.info(f"METRICS LIST: {metrics_array.shape}")
-    logger.info(f"Tiempo extrayendo métricas VECTOROIZADAS: {time.perf_counter()-time0:.6f}'s")
-    return valid_coords, metrics_array
+# def calculate_complementary_feats(metrics_array_new: np.ndarray[Any, Any]):
+#     rec_widith = metrics_array_new[:, 1]
+#     rec_height = metrics_array_new[:, 2]
+#     rect_area = rec_widith * rec_height
+#     angles = metrics_array_new[:, 3]
+#     convex_area = metrics_array_new[:, 6]
+#     # Para cada rectángulo, tomamos como min_side el lado (ancho/alto) más perpendicular/vertical al eje Y, es decir, el que corresponde al ángulo más cercano a 90°
+#     min_side = np.where(metrics_array_new[:, 3] > 45, rec_widith, rec_height)
+#
+#     angle_norm = np.where(rec_widith < rec_height, angles + 90, angles)
+#     angle_norm = angle_norm % 180.0
+#     angles = angle_norm
+#
+#     ratio_areas = convex_area / rect_area
+#     aspect_ratio = (np.maximum(rec_widith, rec_height) / np.minimum(rec_widith, rec_height))
+#
+#     irregular_ratio = utils_array[:, 0] / utils_array[:, 1] # COLUMNA 16
+#
+#     metrics_array = np.column_stack([
+#         idx,                        # COLUMNA 0: Índice original del contorno
+#         metrics_array_new[:, 0],    # COLUMNA 1: Área contorno
+#         rec_widith,                 # COLUMNA 2: Ancho del rectángulo mínimo
+#         rec_height,                 # COLUMNA 3: Alto del rectángulo mínimo
+#         angles,                     # COLUMNA 4: Ángulo del rectángulo mínimo
+#         metrics_array_new[:, 4],    # COLUMNA 5: Centroide X (contorno)
+#         metrics_array_new[:, 5],    # COLUMNA 6: Centroide Y (contorno)
+#         convex_area,                # COLUMNA 7: Área del polígono convexo
+#         aspect_ratio,               # COLUMNA 8: Relación de aspecto (mayor/menor lado)
+#         childs,                     # COLUMNA 9: Tiene hijos (bool)
+#         ratio_areas,                # COLUMNA 10: Área convexa / Área min Rect
+#         rect_area,                  # COLUMNA 11: Área del Min Rect
+#         irregular_ratio,            # COLUMNA 12: Relación perímetro convexo/contorno
+#         min_side                    # COLUMNA 13: Lado mínimo respecto al eje Y
+#     ])
+#
+#     metrics_array = metrics_array[[c[0] for c in cont_coords_list]]
+#     valid_coords = cont_coords_list
+#
+#     valid_contours = len(valid_coords)
+#     matrix_size = metrics_array.shape[0]
+#     if valid_contours != matrix_size:
+#         logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
+#         return [], np.empty((0, 5))
+#
+#     # logger.info(f"METRICS LIST: {metrics_array.shape}")
+#     logger.info(f"Tiempo extrayendo métricas VECTOROIZADAS: {time.perf_counter()-time0:.6f}'s")
+#     return valid_coords, metrics_array
 
 def _is_binarized(img: np.ndarray[Any, Any]) -> bool:
     """True si es una imagen binarizada"""

@@ -4,7 +4,7 @@ import cv2
 # import time
 import numpy as np
 from typing import Dict, Any, Optional, List
-from core.domain.models_manager import ModelsManager
+from app.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import binarice_img, make_contiguous # get_contours_values

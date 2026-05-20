@@ -1,17 +1,18 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-    # input,
-    #  input2,
+    input,
+     input2,
     input3,
     # E:/data/tickets_nuevo
   ]
   images_names: [
-    AAAA0006,
-    AAAC0052,
-    AAAA0017,
-    # AAAB0002,
-    AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039,
+    # AAAA0061,
+    AAAC0053,
+    AAAA0040,
+    # AAAC0037,
+    AAAB0002,
+    # AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039,
   ]
   valid_extensions: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
 
@@ -34,10 +35,10 @@ pipeline_secuence:
   ocr_stage:
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+    # - "data_finder"
     
   vector_stage:
-    - "lineal"
+    # - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
@@ -53,9 +54,8 @@ log_debug:
   lines: False
   table_lines: False
   table_geo: False
-  table_correct: False
-  
-  semantic_types_log: [2]
+  table_correct: False  
+  semantic_types_log: [2, 4]
   kf_list_log: [6]
   
 # Configuración de salida
@@ -197,7 +197,7 @@ modules:
       metric: "euclidean"
       eps: 0.91
       min_cluster: 2
-      similarity_threshold: 0.931
+      similarity_threshold: 0.913
       emergency_threshold: 0.837
     
     table_structurer:

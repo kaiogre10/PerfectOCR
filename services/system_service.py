@@ -5,6 +5,7 @@ import logging
 from typing import List, Set, Tuple
 from services.db_service import DataBaseService
 from psycopg2 import sql
+from typing import List, Dict, Any
 
 PROJECT_ROOT: str = ""
 
@@ -18,6 +19,8 @@ DEFAULT_ALLOWED_EXTENSIONS: Set[str] = {
     ".json", ".txt",
     ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"
 }
+
+valid_extensions: Tuple[str, ...] = tuple(['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2'])
 
 def _can_delete_entry(path: str) -> bool:
     """
@@ -180,3 +183,66 @@ def clean_db(db_service: DataBaseService) -> bool:
     except Exception as e:
         logger.error("Error limpiando la DB: %s", e, exc_info=True)
         return False
+
+def count_and_plan(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    PLANIFICA el procesamiento: cuenta imágenes y decide estrategia según las reglas:
+    1. Si se especifican `images_names`, se buscan prioritariamente.
+    2. Si no, se procesan todas las imágenes en `input_dirs`.
+    3. Si se encuentran todos los `images_names` y quedan directorios, se procesan completos.
+    """
+    input_paths: List[str] = config['input_dirs']
+    images_names = config['images_names']
+    if not input_paths:
+        logger.warning("No se proporcionaron rutas de entrada (input_dirs).")
+        return {}
+
+    image_info: List[Dict[str, Any]] = []
+    names_to_find = set(images_names)
+    total_paths = len(input_paths)
+    
+    for i, path in enumerate(input_paths):
+        if names_to_find:
+            files_in_dir = get_images_in_dir(path, list(names_to_find))
+            if files_in_dir:
+                files_to_remove = set(files_in_dir)
+                if not names_to_find.isdisjoint(files_to_remove):
+                    names_to_find.discard(files_to_remove)
+                
+                for file in files_in_dir:
+                    full_path = os.path.join(PROJECT_ROOT, path, file)
+                    image_info.append({"full_path": full_path, "name": file})
+                    continue
+                
+            elif names_to_find:
+                continue
+            
+        elif total_paths >= i:
+            all_files_dir = get_images_in_dir(path, [])
+            if not all_files_dir:
+                continue
+
+            for file in all_files_dir:
+                full_path = os.path.join(PROJECT_ROOT, path, file)
+                image_info.append({"full_path": full_path, "name": file})
+                continue
+        else:
+            break
+
+    if not image_info:
+        logger.error("No se encontraron imágenes válidas en las rutas especificadas.")
+        return {}
+        
+    return {"image_info": image_info}
+    
+def get_images_in_dir(input_path: str, files_list: List[str]) -> List[str]:
+    files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_extensions)]
+    if not files_name_dir:
+        return []
+    if not files_list:
+        return files_name_dir
+
+    split_names = [os.path.splitext(file) for file in files_name_dir]        
+    files_in_dir = ["".join(name) for name in split_names if name[0] in files_list]
+    # logger.info(f"INTER IDX: {files_in_dir}")
+    return files_name_dir if not files_in_dir else files_in_dir

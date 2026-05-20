@@ -1,6 +1,5 @@
 # PerfectOCR/core/utils/text_utils.py
 import re
-# import regex
 import logging
 import unicodedata
 from typing import List, Tuple, Dict, Pattern, Any, Optional
@@ -19,6 +18,7 @@ vowels = VOWELS
 _zeros_str = r'00'
 _currency_pattern = r"[$]"
 _punt_quant_chars = r'[.,]'
+_amount_fract_str = r'[Cc]'
 _monetary_to_sub =  r'^[Ss]\d'
 _zeros_to_sub = r'[OQDo]'
 _semi_zeros = r'[OQDo]{2}'
@@ -26,10 +26,10 @@ _digit_pattern = r"[0-9oOQ]"
 _base_date_num_str = r'[0123O][0-9O]'
 _valid_cuant_str = r'(?<=\$)\$|(?<=\$\d)\$|(?<=\$\d\d)\$'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
-_semi_zeros_pattern = re.compile(_semi_zeros, re.IGNORECASE)
+_semi_zeros_pattern = re.compile(_semi_zeros)
 _zeros_pattern = re.compile(_zeros_to_sub)
 _monetary_pattern = re.compile(_monetary_to_sub)
-_valid_cuant_pattern = re.compile(_valid_cuant_str)
+_valid_cuant_pattern = re.compile(_valid_cuant_str, re.IGNORECASE)
 # _punt_pattern = re.compile(_punt_quant_chars, re.IGNORECASE)
 
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)
@@ -50,8 +50,10 @@ _edge_chars = _punt_split_pattern.pattern[:-1] + r"\-]"
 _edge_punt_pattern = re.compile(rf'^({_edge_chars}+)|({_edge_chars}+)$', re.IGNORECASE)
 
 # Siglas/Acrónimos
-_acronim = rf'^(?:[A-Za-z]\.)+[A-Za-z]?\.?$'
-_acronym_pattern: Pattern[str] = re.compile(rf'^(?:{_acronim[1:-1]}|sa|cv|mn)(?:[:;,.])?$', re.IGNORECASE)
+# Ahora el patrón fuerza secuencias de letra.punto repetidas (ej: P.U.C.D. etc). El último . es opcional solo después de la última letra.
+_acronim = r'(?:[A-Za-z]\.)+[A-Za-z]\.?'
+_acronym_pattern: Pattern[str] = re.compile(rf'^({_acronim}|sa|cv|mn)[:;,.]?$', re.IGNORECASE)
+# _fiscal_entityes_pattern = re.compile("|".join(p.pattern for p in [_acronim, _acronym_pattern]))
 # _bad_title: Pattern[str] = re.compile(r'^([A-Za-z0-9])(?: [A-Za-z0-9])+$', re.IGNORECASE)
 
 # Datos Globales
@@ -71,16 +73,16 @@ _date_patterns_list: List[Pattern[str]] = [
     # Fechas completas y día/mes: Usa el bloque base para evitar confundirse con fracciones/cuantitativos
     re.compile(rf'\b{_base_date_num_str}[\s\/\-]{_base_date_num_str}(?:[\s\/\-](?:\d{{2,4}}))?\b', re.IGNORECASE),
     # Años
-    re.compile(r'\b(199\d|20\d{2})\b', re.IGNORECASE)
+    re.compile(r'\b(199\d|20\d{2})\b', re.IGNORECASE),
+    re.compile(rf'\b(?:199[0-9{_zeros_to_sub[1:-1]}]|2[0{_zeros_to_sub[1:-1]}][0-9{_zeros_to_sub[1:-1]}]{{2}})\b',re.IGNORECASE)
 ]
 
 _mass_pattern = re.compile(rf'\b(kg|gr|grs|mg|lb|lbs|oz|ton)\b', re.IGNORECASE) # Unidades de más de una letra pueden ir solas
-_vol_pattern = re.compile(rf'\b(lt|ltr|ltrs|lts|ml|cc|gal)\b', re.IGNORECASE)  # Unidades de más de una letra pueden ir solas
+_vol_pattern = re.compile(rf'\b(lt|ltr|ltrs|lts|ml|gal)\b', re.IGNORECASE)  # Unidades de más de una letra pueden ir solas
 _len_pattern = re.compile(r'\b(cm|mm|km|in|ft|mts?|m2|m\^2|m²|cm2|cm\^2|cm²|km2|km\^2|km²)\b', re.IGNORECASE) # Más de una letra pueden ir solas
 _size_pattern = re.compile(r'\b(gde|med|ch|paq)\b', re.IGNORECASE)
 
-# _cuantity_str = r'[Cc]\s*/\s*'
-_extended_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]\s*/\s*\d+\+\d+(?![A-Za-z0-9])', re.IGNORECASE)
+_extended_fraction_pattern = re.compile(r'(?<![A-Za-z0-9]){{{\s*/\s*\d+\+\d+(?![A-Za-z0-9])', re.IGNORECASE)
 _full_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\b', re.IGNORECASE)
 _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b', re.IGNORECASE)
 _semi_c_fraction = re.compile(r'(?<!\d)[Cc]\s*/(?:\s*\d+)?\b', re.IGNORECASE)
@@ -116,8 +118,8 @@ _clean_currency = re.compile(_clean_currency_str, re.IGNORECASE)
 
 # Usa los strings en las interpolaciones
 _amount_body_pattern = (
-    rf"(?:{_digit_pattern}+(?:[.,]{_digit_pattern}+)?|" # Caso simple: 10.50
-    rf"{_digit_pattern}{{1,3}}(?:[.,]{_digit_pattern}{{3}})*)(?:[.,]{_digit_pattern}{{2}})" # Caso miles: 1,000.00
+    rf"(?:{_digit_pattern}+(?:{_punt_quant_chars}{_digit_pattern}+)?|" # Caso simple: 10.50
+    rf"{_digit_pattern}{{1,3}}(?:{_punt_quant_chars}{_digit_pattern}{{3}})*)(?:{_punt_quant_chars}{_digit_pattern}{{2}})" # Caso miles: 1,000.00
 )
 
 _token_pattern = (
@@ -141,7 +143,7 @@ _multi_pattern = rf"^(?:\s*{_currency_pattern}\s*{_amount_body_pattern}\s*){{2,}
 _multi = re.compile(_multi_pattern, re.IGNORECASE)
 
 # Patrón: Decimales grandes tipo 1,230.50 (sin $)
-_decimal = re.compile(r"^\d{1,3}(?:[.,]\d{3})*[.,]\d{2,}$")
+_decimal = re.compile(rf"^\d{1,3}(?:{_punt_quant_chars}\d{3})*{_punt_quant_chars}\d{2,}$")
 
 _quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start, _middle, _multi]), re.IGNORECASE)
 
@@ -162,17 +164,18 @@ _rfc_key_pattern: Pattern[str] = re.compile(r'([A-ZÑ]{3,4}\d{2}(?:0[1-9]|1[0-2]
 
 _rfc_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [_rfc_key_pattern, _rfc_acronyms]), re.IGNORECASE)
 
-_iva_pattern: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
+_iva_patterns: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
 _date_patterns = re.compile("|".join(p.pattern for p in _date_patterns_list), re.IGNORECASE)
 
-def normalice_text(s: str, type_norm: str) -> str:
+def normalice_text(s: str, hard_norm: Optional[bool] = False) -> str:
     """"Normaliza texto eliminando apóstrofes, tildes, diéresis. NO ELIMINA CARACTERES DE NINGÚN TIPO, MISMO LEN() EN INPUT Y OUTPUT"""
-    if "soft" == type_norm:
-        return "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
-    elif "hard" == type_norm:
-        return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8')
-    else:
-        return s
+    if not s:
+        return ""
+    norm_text = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
+    if norm_text and hard_norm:
+        hard_text =  unicodedata.normalize('NFKD', norm_text).encode('ascii', 'ignore').decode('utf-8')
+        return "" if not hard_text else hard_text
+    return norm_text if norm_text else ""
 
 def validate_text(text: str) -> bool:
     """valida que un string contenga caracteres válidos y que no esté vacío"""
@@ -192,7 +195,7 @@ def get_rfc(s: str) -> str:
     return match.group(0) if match else ""
 
 def is_code(s: str) -> bool:
-    if not s or len(s) < 2:
+    if not s or len(s) < 3:
         return False
     if not any(c.isalnum() for c in s):
         return False
@@ -275,7 +278,7 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
             activate_func[1] = True
             return 7
 
-        if not activate_func[2] and bool(_iva_pattern.search(s)):
+        if not activate_func[2] and bool(_iva_patterns.search(s)):
             activate_func[2] = True
             return 8
             
@@ -327,13 +330,12 @@ def get_cuants(text: str) -> str:
     result_parts: List[str] = []
     for word in words:
         monetary_count = word.count("$")
-        
-        # if word.startswith('$') and monetary_count > 1:
-        #     word = word[0] + word[1:].replace('$', '5')
-        #     logger.info(f"CORRECT 1: {word}")
-
+    
         if bool(_valid_cuant_pattern.search(word)):
-            word = word.replace("$", "5")
+            word = word[0] + word[1:].replace('$', '5')
+
+        elif word.startswith('$') and monetary_count > 1 and validate_quant_chars(word):
+            word = word[0] + word[1:].replace('$', '5')
 
         if monetary_count >= 2 and contains_quantitative(word): 
             compact = word.replace(" ", "")                     # $10.50.$31.50 | $10.50$31.50

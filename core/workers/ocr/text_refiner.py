@@ -164,15 +164,15 @@ class Refiner(OCRAbstractWorker):
                 updated_polygons[poly] = poly_data
                 continue
             
-            if text.isalpha() or text.isdecimal():
+            elif text.isalpha() or text.isdecimal():
                 updated_polygons[poly] = poly_data
                 continue
                 
             elif contains_quantitative(text) and not is_quantitative(text):
                 qtext = get_cuants(text)
-                # logger.info(f"POTENCIAL CUANTS: '{text}' -> '{qtext}'")
+                # logger.info(f"POTENCIAL CUANTS: '{text}'")
                 if qtext != text:
-                    # logger.info(f"CUANT ENCONTRADO: '{poly}' | Original: '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
+                    logger.info(f"CUANT ENCONTRADO: '{poly}' | Original: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
                     updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
                     continue
                 else:
@@ -181,9 +181,9 @@ class Refiner(OCRAbstractWorker):
                     
             if contains_umd(text):
                 umd_text = find_umd(text)
-                # logger.info(f"POTENCIAL UMDS: '{text}' -> '{umd_text}'")
+                # logger.info(f"POTENCIAL UMDS: '{text}'")
                 if umd_text != text:
-                    # logger.info(f"UMD ENCONTRADA:'{poly}' | Original: '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
+                    logger.info(f"UMD ENCONTRADA:'{poly}' | Original: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
                     updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=umd_text)
                     continue
                 

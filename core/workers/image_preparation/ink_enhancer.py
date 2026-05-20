@@ -2,7 +2,7 @@
 import cv2
 import numpy as np
 import logging
-# import time
+import time
 from typing import Dict, Any, List, Set
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -18,6 +18,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('ink_enhancement', {})
+        self.metric = worker_config.get("manhattan", "manhattan")
         self.white = worker_config["white"]
         self.black = worker_config["black"]
         self.aspect_ratio_range = worker_config["aspect_ratio_range"]
@@ -28,15 +29,12 @@ class InkCorrector(ImagePrepAbstractWorker):
         self.shape_thr = worker_config.get("shape_thr")
         self.output = config.get("bin_full_img")
 
-    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def process(self, context: Dict[str, Any], manager: DataFormatter):
         """Detecta y restaura texto con tinta gastada."""
         # start_time = time.perf_counter()
         try:
-            logger.debug("Mejoramiento de tinta empezado con éxito")
-            
             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
             context["image_name"]= image_name
-
             img_obj = manager.get_full_img()
             full_img = img_obj.full_img if img_obj is not None else None
             
@@ -44,27 +42,17 @@ class InkCorrector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
 
-            correct, out_conts = self.enhance_ink(full_img)
-
-            # gap_img, white_gaps, black_gaps = self.fill_gaps(full_img)
-            # all_gaps = white_gaps.copy()
-            # all_gaps.extend(black_gaps.copy())
-            # bin_gap = binarice_img(gap_img.copy(), {})
+            # correct, out_conts, out_conts2 = self.enhance_ink(full_img)
+            correct, out_conts, out_conts2 = self.fill_gaps(full_img)
             # correct, out_conts, out_conts2 = self.delete_outliersvec(full_img)
-            # all_outliers = out_conts.copy()
-            # all_outliers.extend(out_conts2.copy())
-            # bin_correct = binarice_img(correct.copy(), {})
-            # corrected = cv2.morphologyEx(correct, cv2.MORPH_CLOSE, self.kernelr, iterations=2, borderType=cv2.BORDER_REFLECT)
-
-            #self.refine_text_quality(grey_img.copy(), context, image_name)
-                
-            if manager.update_full_img(True, correct):
+            if manager.update_full_img(True, full_img):
                 # logger.info(f"Corrección de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 if self.output:
+
                     worker_name = context.get("worker_name") or "inker"
                     
-                    imag_id = f"corrected_blobs_{image_name}_{worker_name}"
-                    # image_id = f"outliers_{image_name}_{worker_name}"
+                    imag_id = f"corrected_blobs_{worker_name}"
+                    image_id = f"outliers_{worker_name}"
                     # id = f"bin_gap_{image_name}_{worker_name}"
                     # gaps_id = f"gaps_{image_name}_{worker_name}"
                     # img_id = f"vec_correct_{image_name}_{worker_name}"
@@ -75,7 +63,7 @@ class InkCorrector(ImagePrepAbstractWorker):
                     # save_croped_image(image_name, img_id, correctvect, worker_name)
                     
                     # save_shapes(image_name, gaps_id, full_img,  scan_cont, scan_cont2)
-                    # save_shapes(image_name, image_id, full_img, out_conts, [])
+                    save_shapes(image_name, image_id, full_img, out_conts, out_conts2)
 
                     # save_shapes(image_name, all_cont_id, full_img, output_paths, all_gaps, all_outliers)
                             
@@ -86,7 +74,7 @@ class InkCorrector(ImagePrepAbstractWorker):
     def enhance_ink(self, full_img: np.ndarray[Any, Any]):
         grey_img = make_contiguous(full_img)
         cont_coords_list, metrics = get_contours_values(grey_img)
-        
+        idx = metrics[:, 0]
         cont_area = metrics[:, 1]
         rect_height = metrics[:, 3]
         rect_area = metrics[:, 5]
@@ -101,11 +89,10 @@ class InkCorrector(ImagePrepAbstractWorker):
         total_pixels = metrics[:, 12]
         has_childs = metrics[:, -1]
 
-        # density_cluster
-        _, relat = soft_histogram(cont_area)
-        
-        min_areas_mask = np.percentile(cont_area, relat) 
-        # top_areas = np.argsort(metrics[:, 1])[::-1]
+        hist_values = soft_histogram(metrics[: ,1])
+        perc_val = hist_values[1]
+        min_areas_mask = np.percentile(cont_area, perc_val)
+        top_areas = np.argsort(metrics[:, 1])[::-1]
         
         min_areas = np.where(min_areas_mask >= cont_area)[0]
         
@@ -119,24 +106,8 @@ class InkCorrector(ImagePrepAbstractWorker):
         # half_boox = area_bbox / 2
         # color_mask = (white_pixels > half_boox) | (black_pixels < white_pixels) | (black_pixels < 2)
         idx_black = metrics[total_black, 0]
-        idx_areas = metrics[min_areas]
+        # logger.info(f"RUIDO: {lines_correct}")
 
-        outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-        lines_correct = 0
-        for idx, cont_coords in cont_coords_list:
-            if idx in idx_black:
-                # cont = cont_coords[idx]
-                cv2.drawContours(grey_img, [cont_coords], -1, self.black, thickness=cv2.FILLED)
-                outlier_cont.append(cont_coords)
-                lines_correct += 1
-            elif idx in idx_areas:
-                # cont = cont_coords[idx]
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                outlier_cont.append(cont_coords)
-                lines_correct += 1
-                outlier_cont.append(cont_coords)
-      #  logger.info(f"RUIDO: {lines_correct}")
-        return make_contiguous(grey_img), outlier_cont
         points = metrics[:, [-5, -6, -7, -8]]
         # logger.info("BLANCOS DENTRO:\n"f"{points}")
         maskblasj = metrics[:, -7] < 255
@@ -156,7 +127,6 @@ class InkCorrector(ImagePrepAbstractWorker):
                 continue
         return grey_img, outlier_cont, []
 
-        
     def delete_outliersvec(self, full_img: np.ndarray[Any, Any]):
         grey_img = make_contiguous(full_img)
         cont_coords_list, metrics = get_contours_values(grey_img)
@@ -229,13 +199,13 @@ class InkCorrector(ImagePrepAbstractWorker):
         try:
             for idx, cont_coords in cont_coords_list:
                 if idx in out_index:
-                    cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                    cv2.drawContours(grey_img, cont_coords, -1, self.white, thickness=cv2.FILLED)
                     outlier_cont.append(cont_coords)
                     lines_correct += 1
                     continue
                 elif idx in group_outliers:
-                    # cont = cont_coords[idx]
-                    cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                    cont = cont_coords[idx]
+                    cv2.drawContours(grey_img, cont, -1, self.white, thickness=cv2.FILLED)
                     outlier_cont.append(cont_coords)
                     lines_correct += 1
                 outlier_cont2.append(cont_coords)
@@ -244,41 +214,61 @@ class InkCorrector(ImagePrepAbstractWorker):
         logger.info(f"Outliers: {lines_correct}")
         return make_contiguous(grey_img), outlier_cont, outlier_cont2
         
-    def fill_gaps(self,  full_img: np.ndarray[Any, Any]):
+    def fill_gaps(self, full_img: np.ndarray[Any, Any]):
+        time_0 = time.perf_counter()
         grey_img = make_contiguous(full_img)
         cont_coords_list, metrics = get_contours_values(grey_img)
-        # logger.info(f"Total de contornos gaps: {metrics.shape[0]}")
-        hist_values = extract_contours_histogram(metrics[: ,1])
-        perc_val = hist_values[1]
+        logger.info(f"SHAPE: {metrics.shape}")
+        has_childs = metrics[:, -1]
+        x, y, w, h = metrics[:, [9, 10, 11, 12]]  # cuando existan col_x, col_y
 
-        max_area = np.percentile(metrics[:, 1], perc_val)
-        # logger.info(f"HIS{hist_values}, PERCENTIL: {max_area}")
-        metrics = np.compress(max_area > metrics[:, 1], metrics, 0)
+        width = (w - x)
+        height = (h - y)
         
-        mask_lon = (metrics[:, 9] == 0)
-        cont_array = np.compress(mask_lon, metrics, 0)
-        lone_ind: Set[int] = set(cont_array[:, 0].astype(np.int32)) if len(cont_array[:, 0]) > 0 else set()
+        black_pixels = metrics[:, -2]
+        total_inside = metrics[:, -1]
 
-        metrics = np.compress(1==metrics[:, 8], metrics, 0)
-        all_ind: Set[int] = set(metrics[:, 0].astype(np.int32)) if len(metrics[:, 0]) > 0 else set()
-        white = 0
-        black = 0
+        non_child_mask = (has_childs < 1)
+        white_pixels = total_inside - black_pixels
 
-        white_gaps: List[np.ndarray[Any, np.dtype[np.int32]]] = []
-        black_gaps: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+        ink = (black_pixels == total_inside)
+        background = (white_pixels == total_inside)
+
+        density = np.zeros_like(total_inside, dtype=np.float32)
+        nonzero_mask = total_inside > 0
+        density[nonzero_mask] = black_pixels[nonzero_mask] / total_inside[nonzero_mask]
+
+        to_dbsca = metrics[:, 1:-3]
+        labels = density_cluster(to_dbsca, metric=self.metric)
+        # idx = metrics[:, 0]
+        # mapped = np.column_stack([idx, labels])
+        noise_mask = (labels < 0) & non_child_mask & (ink==False)
+        noise_idx = np.where(noise_mask)[0]
+
+        unique_labels, counts = np.unique(labels, return_counts=True)
+        # logger.info("\n"f"UNIQUE:\n"f"{unique_labels}\n"f"COUNTS:\n"f"{counts}")
+
+        cluster_id = np.argmax(counts)
+        mask_cluster = (labels == unique_labels[cluster_id]) & non_child_mask & (ink==False)
+
+        noise_idx1 = np.where(mask_cluster)[0]
+
+        # logger.info(f"Clusters detectados: {unique_labels.size} | TOP CLUSTER: {np.amax(counts)}")  # | Distribución:\n"f"{noise_idx1}")
+
+        outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+        outlier_cont2: List[np.ndarray[Any, np.dtype[np.int32]]] = []
+        lines_correct = 0
 
         for idx, cont_coords in cont_coords_list:
-            if idx in lone_ind:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.black, thickness=cv2.FILLED)
-                white_gaps.append(cont_coords)
-                white += 1
-            
-            elif idx in all_ind:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
-                black_gaps.append(cont_coords)
-                black += 1
-            else:
-                continue
-                    
-        logger.info(f"Contornos pintado de Ngero: {black}, solitarios: {white}")
-        return grey_img, white_gaps, black_gaps
+            if idx in noise_idx1:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.black, thickness=cv2.FILLED)  # Rojo
+                outlier_cont.append(cont_coords)
+                lines_correct += 1
+
+            elif idx in noise_idx:
+                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)   # Azul
+                outlier_cont2.append(cont_coords)
+                lines_correct += 1
+        
+        logger.info(f"Se filtraron {lines_correct} objetos en: {time.perf_counter() - time_0}'s")
+        return make_contiguous(grey_img), outlier_cont, outlier_cont2

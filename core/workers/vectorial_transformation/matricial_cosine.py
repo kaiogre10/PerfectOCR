@@ -38,7 +38,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             table_line_ids: List[str] = self._compare_vectors(manager)
             if table_line_ids:
                 logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
-                    "\n"f"{table_line_ids}")
+                            "\n"f"{table_line_ids}")
                 if manager.save_tabular_lines(table_line_ids):
                     logger.debug("Tablas guaradas en el manager desde coseno")
                     return True
@@ -73,25 +73,27 @@ class MatricialCusine(VectorizationAbstractWorker):
             
             if tabular_lines:
                 line_idx = np.array([line.line_index for line in sorted_lines if line.lineal_id in tabular_lines], np.uint8)
+                # logger.info(f"TABLES IDX: {line_idx}")
                 if self.validate_similiraity_all_vs_all(analysis, line_idx):
+                    # logger.info("VALIDACIÓN GLOBAL PASADA")
                     return tabular_lines
                 else:
                     tabular_array = self.cosine_dummies(analysis, line_idx)
+                    # logger.info(f"DUMMIES IDX: {tabular_array}")
                     if tabular_array.size == len(tabular_lines):
                         return tabular_lines
-                    new_tabular_idx: List[int] = tabular_array.tolist()
+                    new_tabular_idx: List[int] = line_idx[tabular_array].tolist()
+                    # logger.info(f"NEW DUMMIES IDX: {new_tabular_idx}")
                     return [line_ids[i] for i in new_tabular_idx]
             else:
                 line_idx = np.array(np.arange(len(line_ids)), np.uint8)
                 tabular_array = self.cosine_dummies(analysis, line_idx)
-                new_tabular_idx = tabular_array.tolist()
-                new_tabular_lines: List[str] = [line_ids[i] for i in new_tabular_idx]
-                if new_tabular_lines:
-                    return new_tabular_lines
-                    
-                else:
-                    logger.info("Sin lineas tabulares, DBSCAN como soporte")
+                if tabular_array.size < 1:
+                    # logger.info("Sin lineas tabulares, DBSCAN como soporte")
                     return self.scanner_clustering(analysis, manager)
+
+                new_tabular_idx = tabular_array.tolist()
+                return [line_ids[i] for i in new_tabular_idx]
                                     
         except Exception as e:
             logger.error(f"Error en matriz de similitud coseno: {e}", exc_info=True)

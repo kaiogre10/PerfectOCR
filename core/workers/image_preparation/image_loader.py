@@ -2,7 +2,7 @@ import cv2
 import logging
 import time
 from datetime import datetime
-from typing import Dict, Any, Set
+from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import decolorate
@@ -14,7 +14,6 @@ class ImageLoader(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        # self.valid_extensions: Set[str] = set(config["valid_image_extensions"])
         self.output = config.get("full_img")
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -32,9 +31,12 @@ class ImageLoader(ImagePrepAbstractWorker):
 
             time0 = time.perf_counter()
             full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
-            logger.info(f"IMAGEN: '{image_name}' cargada en {time.perf_counter() - time0:.6f}'s")
+            logger.info(f"IMAGEN: '{image_name}', cargada en {time.perf_counter() - time0:.6f}'s")
 
             full_img = decolorate(full_image)
+            
+            if full_img is None:
+                return False
 
             # Metadata: una sola llamada a datetime
             now = datetime.now()

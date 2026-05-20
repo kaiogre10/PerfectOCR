@@ -1,11 +1,10 @@
 # PerfectOCR/core/utils/math_utils.py
 import numpy as np
 import logging
-# import pandas as pd
 import time
-from typing import List, Any, Optional, Tuple, Dict, Sequence, Set
+from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
-from sklearn.cluster import DBSCAN # type: ignore
+from sklearn.cluster import HDBSCAN, DBSCAN # type: ignore
 from core.utils.data_utils import DENSITY_ENCODER, CUANT_CHAR
 
 density_encoder = DENSITY_ENCODER
@@ -118,17 +117,19 @@ def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     
     # Inicia la recursión
     return recursive_cleanup(metrics, 0, 1)
-   
-def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int, metric: str) ->  np.ndarray[Any, Any]:
+
+def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int, metric: str) -> np.ndarray[Any, np.dtype[np.int16]]:
     clustering = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
-    labels: np.ndarray[Any, Any] = clustering.fit_predict(features) # type: ignore
-    return labels
+    return np.asarray(clustering.fit_predict(features), np.int16)
+
+def h_density_cluster(h_features: np.ndarray[Any, np.dtype[np.float32]], h_min_samples: int, h_metric: str) -> np.ndarray[Any, np.dtype[np.int16]]:
+    h_clustering = HDBSCAN(min_samples=h_min_samples, metric=h_metric)
+    return np.asarray(h_clustering.fit_predict(h_features), np.int16)
     
 def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions: Optional[Sequence[float]] = None) -> List[Dict[str, np.ndarray[Any, Any]]]:
     """
     Fragmenta una geometría en segmentos horizontales (eje X) y devuelve nuevas geometrías
     ordenadas de izquierda a derecha.
-
     - **No** modifica dataclasses ni accede a manager/workflow.
     - Si `proportions` es None, divide uniforme.
     - Si se provee `proportions`, debe tener longitud `num_fragments` y su suma debe ser > 0.

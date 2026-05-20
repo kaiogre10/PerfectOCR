@@ -5,7 +5,6 @@ import dataclasses
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from core.utils.image_utils import normalice_image
-from core.utils.text_utils import fast_classfier
 import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)
@@ -339,7 +338,7 @@ class DataFormatter:
                 for lid, l in all_lines.items():
                     line_text= l.text
                     # line_semantic = fast_classfier(line_text)
-                    # logger.info(f"{lid}: '{line_text}' -> SC: {line_semantic[0]} ")
+                    logger.info(f"{lid}: '{line_text}")
             return True
                         
         except ValueError as e:

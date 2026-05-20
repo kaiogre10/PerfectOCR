@@ -60,34 +60,32 @@ class WordFinder:
         try:
             if not text:
                 return []
-            
-            if text in self.noise_words:
-                logger.info(f"Ruido inmediato: {text}")
-                return []
 
             single = False
             if isinstance(text, str):
-                queue = [text]
+                s = self._normalize(text)
+                queue = [s]
                 single = True
             else:
-                queue = list(text)
+                s = [self._normalize(t) for t in text if self._normalize(t)]
+                queue = s
 
             results: List[Dict[str, Any]] = []
             assigned_fields: Set[int] = set()
 
             while queue:
-                s = queue.pop(0)
-                if not s:
+                q = queue.pop(0)
+                if not q:
                     continue
                 
-                if s in self.noise_words:
+                if q in self.noise_words:
                     # logger.info(f"Ruido temprano: '{list(self.noise_words).pop(list(self.noise_words).index(s))}'")
                     continue
                 
-                q = self._normalize(s)
-                # logger.debug(f"TEXTO NORMALIZADO: '{s}' -> '{q}'")
-                if not q:
-                    continue
+                # q = self._normalize(s)
+                # # logger.debug(f"TEXTO NORMALIZADO: '{s}' -> '{q}'")
+                # if not q:
+                #     continue
 
                 if q in self.noise_words:
                     # logger.info(f"Ruido temprano 2: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")

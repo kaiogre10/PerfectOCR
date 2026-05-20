@@ -42,12 +42,13 @@ class LinealReconstructor(VectorizationAbstractWorker):
             if foot is None or head is None:
                 for line_data in lines_info.values():
                     line_data["tabular_line"] = False
+
             if manager.create_text_lines(lines_info):
             
                 if head is not None and foot is not None:
                     # Hay tabla detectada → vectorizar solo si get_vectors está activo
                     table_lines = list(range(head + 1, foot))
-                    # logger.info(f"Table range: {table_range}")
+                    logger.info(f"Table range: {table_range}")
                     context["vectorice"] = self.get_vectors
                     context["table_range"] = table_lines
                 else:
@@ -192,7 +193,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             current_line_polys = [poly]
             current_line_bbox = list(bbox)
 
-        return lines_info, (header_idx if headers else None, footer_idx if footer_idx > header_idx and footers else None)
+        return (lines_info, (header_idx if headers else None, footer_idx if footer_idx > header_idx and footers else None))
 
     def find_tabular_lines(self, polygons: Dict[str, Polygons]) -> Tuple[List[int], List[int]]:
         """
