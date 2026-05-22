@@ -1,7 +1,6 @@
 # PerfectOCR/core/workers/ocr/text_cleaner.py
 import logging
 import time
-import dataclasses
 from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -26,6 +25,7 @@ class TextCleaner(OCRAbstractWorker):
         self.min_probability = float(worker_config.get("min_probability"))
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        worker_name = context.get("worker_name") or "paddle_wrapper"
         logger.debug(f"Inicia cleanner")
         t0 = time.perf_counter()
         if not manager.workflow or not manager.workflow.polygons:
@@ -35,21 +35,18 @@ class TextCleaner(OCRAbstractWorker):
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
 
         logger.debug(f"Cantidad de polígonos recibidos:{len(polygons_in)}")
-        list_of_final_polygons: List[Polygons] = []
+        final_polygons: Dict[str, Dict[str, Any]] = {}
         eliminated_count = 0
 
         for poly_id, polygon in polygons_in.items():
             kf = polygon.key_field or None
             sc = polygon.semantic_clasification
-            
-            if 0 in sc and kf is not None:
-                logger.debug(f"'{poly_id}' con KEYFIELD ya no se limpia: '{polygon.ocr_text}'")
-                updated_polygon = dataclasses.replace(polygon)
-                list_of_final_polygons.append(updated_polygon)
-                continue
-            
             text = polygon.ocr_text or ""
-            text = text.strip()
+
+            if 0 in sc and kf is not None:
+                # logger.debug(f"'{poly_id}' con KEYFIELD ya no se limpia: '{polygon.ocr_text}'")
+                final_polygons[poly_id] = {"text": text}
+                continue
                 
             if not text or not validate_text(text):
                 # logger.info(f"Eliminado {poly_id} sin texto valido incial: '{text}'")
@@ -82,27 +79,17 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
             
-            if txt != text:
-                logger.debug(f"Texto limpio: '{text}' -> '{txt}'")
-            
-            updated_polygon = dataclasses.replace(polygon, ocr_text=txt)
-            list_of_final_polygons.append(updated_polygon)
-            continue
-                
-        # 4. Reconstrucción y reindexación final
-        final_polygons_dict: Dict[str, Polygons] = {}
-        for idx, poly_obj in enumerate(list_of_final_polygons):
-            new_id = f"poly_{idx:04d}"
-            poly_index = idx
-            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=poly_index)
-            final_polygons_dict[new_id] = final_poly_obj
-            
-            # 5. Reemplazo directo en el manager
-        manager.workflow.polygons = final_polygons_dict
+            else:
+                final_polygons[poly_id] = {"text": txt}
+                # if txt != text:
+                    # logger.info(f"Corrección de '{poly_id}' | Original: '{text}' | Ruido:'{set(text.split(" ")).difference(set(txt.split(" ")))}' → '{txt}'")
 
-        logger.debug(f"Polígonos limpios en {time.perf_counter() - t0:.6f}'s")
-            
-        return True
+        if manager.update_ocr_results(final_polygons, worker_name):
+            # logger.info(f"Limpieza textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - eliminated_count}, eliminados: {eliminated_count}")
+            return True
+        else:
+            logger.info("Fallo en limpieza textual")
+            return False
 
     def process_single_text(self, text: str, polygon: Polygons) -> str:
         """

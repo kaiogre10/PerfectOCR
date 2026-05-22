@@ -70,6 +70,7 @@ class Metadata:
     date_creation: str
     dpi: Optional[int]
     img_dims: Tuple[int, int]
+    binary: bool
 
 @dataclass
 class FullImage:

@@ -63,12 +63,12 @@ class WordFinder:
 
             single = False
             if isinstance(text, str):
-                s = self._normalize(text)
-                queue = [s]
+                # s = self._normalize(text)
+                queue = [text]
                 single = True
             else:
-                s = [self._normalize(t) for t in text if self._normalize(t)]
-                queue = s
+                # s = [self._normalize(t) for t in text if self._normalize(t)]
+                queue = text
 
             results: List[Dict[str, Any]] = []
             assigned_fields: Set[int] = set()
@@ -177,7 +177,7 @@ class WordFinder:
                             "key_field": key_field,
                             "key_word": cand,
                             "similarity": best_score_for_cand,
-                            "text": s,
+                            "text": text,
                             "norm_ocr_text": q,
                             "start": best_sub_details["start"],
                             "end": best_sub_details["end"]

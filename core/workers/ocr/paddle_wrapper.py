@@ -1,7 +1,7 @@
 # PerfectOCR/core/workflow/ocr/paddle_wrapper.py
 import logging
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
@@ -49,12 +49,12 @@ class PaddleOCRWrapper(OCRAbstractWorker):
 
             processed_count = 0
             if final_results:
-                success = manager.update_ocr_results(final_results)
+                worker_name = context.get("worker_name") or "paddle_wrapper"
+                success = manager.update_ocr_results(final_results, worker_name)
                 processed_count = len(final_results) if success else 0
                 
                 if self.output:
                     file_name: str = manager.workflow.metadata.image_name #type: ignore
-                    worker_name = context.get("worker_name") or "paddle_wrapper"
                     save_raw_json(worker_name, final_results, file_name)
             
             logger.debug(f"Batch OCR completado. {processed_count} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
@@ -65,9 +65,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         return False
         
     def recognize_text_from_batch(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, Dict[str, Any]]:
-        """
-        Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead.
-        """
+        """Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead."""
         if self.engine is None:
             return {}
         time0 = time.perf_counter()
@@ -81,22 +79,28 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
             # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
             image_list = None
-            # deleted: List[List[str]] = []
+            deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
             for idx, (text, confidence) in enumerate(batch_result[0]):
                 if not text or not validate_text(text):
-                    # deleted.append([polygon_ids[idx], text])
+                    deleted.append([polygon_ids[idx], text])
                     # logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
                     continue
                 
                 elif confidence < self.min_confidence:
-                    # deleted.append([polygon_ids[idx], text])
+                    deleted.append([polygon_ids[idx], text])
                     # logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0} % | '{text}'")
                     continue
                 else:
-                    text = normalice_text(text)
-                    raw_map[polygon_ids[idx]] = {"text": text}
+                    norm_text = normalice_text(text)
+                    raw_map[polygon_ids[idx]] = {"text": norm_text}
+                    # logger.info(f"OCR FILTRO: {polygon_ids[idx]}: '{text}' -> '{norm_text}'")
+                    continue
+
+            # for id, data in raw_map.items():
+            #     logger.info(f"OCR FILTRO: {id} {data.get("text", "")}")
+                
             # logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")
             return raw_map
             

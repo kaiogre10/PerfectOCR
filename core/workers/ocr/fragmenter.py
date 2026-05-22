@@ -45,7 +45,7 @@ class Fragmenter(OCRAbstractWorker):
 
                 # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
                 if is_acronym(ocr_text):
-                    logger.info(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
+                    # logger.info(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
                     final_polygons.append(polygon)
                     continue
                 
@@ -177,5 +177,5 @@ class Fragmenter(OCRAbstractWorker):
             )
             new_polys.append(new_poly)
         
-        # logger.info(f"Fragmentación semántica de '{polygon.polygon_id}' = Original: '{text}' -> '{fragments}'")
+        # logger.info(f"'{polygon.polygon_id}' Fragmentado en '{len([p.ocr_text for p in new_polys])}':\n"f"Text: '{text}' -> {[p.ocr_text for p in new_polys]} |\n"f" SC: {sc} -> {[p.semantic_clasification for p in new_polys]}")
         return new_polys

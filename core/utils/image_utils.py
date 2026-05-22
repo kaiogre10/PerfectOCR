@@ -29,7 +29,7 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
             logger.debug("Imagen blanca/negra completamente")
             return None
             
-        if _is_binarized(img):
+        if is_binarized(img):
             return make_contiguous(img)
 
         try:
@@ -139,7 +139,7 @@ def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
     return float(np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float32))
 
 def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    if _is_binarized(cropped_img):
+    if is_binarized(cropped_img):
         return make_contiguous(cropped_img)
         
     c_value: int = worker_config.get('c_value', 7)
@@ -216,8 +216,9 @@ def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.ui
     """
     Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro.
     """
-    if _is_binarized(full_img):
-        return make_contiguous(full_img)
+    if is_binarized(full_img):
+        logger.error(f"IMAGEN BINARIA EN EL INICIO")
+        return make_contiguous(full_img) 
         
     full_img = make_contiguous(full_img)
     # Máscara para píxeles negros (todos los canales <= threshold_black)
@@ -273,12 +274,12 @@ def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.ui
 #     cv2.waitKey(0)
 #     cv2.destroyAllWindows()
 
-def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
+def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Optional[bool] = False) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
     """
     Calcula UNICAMENTE los features de OPEN CV
     """
     time0 = time.perf_counter()
-    if _is_binarized(img):
+    if binary or is_binarized(img):
         logger.info("Imagen ya binaria")
         bin_img = img
     else:
@@ -406,6 +407,6 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
 #     logger.info(f"Tiempo extrayendo métricas VECTOROIZADAS: {time.perf_counter()-time0:.6f}'s")
 #     return valid_coords, metrics_array
 
-def _is_binarized(img: np.ndarray[Any, Any]) -> bool:
+def is_binarized(img: np.ndarray[Any, Any]) -> bool:
     """True si es una imagen binarizada"""
     return bool(np.all((img == 0) | (img == 255)))

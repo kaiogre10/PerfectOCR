@@ -32,7 +32,8 @@ class DataFormatter:
                 image_name=image_name,
                 date_creation=str(metadata.get("date_creation", "")),
                 dpi=int(metadata.get("dpi", 0)),
-                img_dims = (0 , 0)
+                img_dims = (0 , 0),
+                binary=metadata.get("binary", False)
             )
             table_data_obj = StructuredData(
                 df_table=pd.DataFrame(),
@@ -193,7 +194,7 @@ class DataFormatter:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
             return False
                     
-    def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]]) -> bool:
+    def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]], worker: str) -> bool:
         """Actualiza los resultados de OCR en las dataclasses de polígonos."""
         try:
             if not self.workflow:
@@ -204,32 +205,37 @@ class DataFormatter:
                 logger.error(f"No hay Texto OCR")
                 return False
                 
-            valid_polys: List[str] = []
-            for poly_id, res in final_results.items():
+            reindexed_polygons: Dict[str, Polygons] = {}
+            new_id = 0
+            for poly_id, res, in final_results.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
-                    text = res.get("text", "")
-                    if text:
-                        valid_polys.append(poly_id)
-                    poly_obj = dataclasses.replace(
+                    text=res.get("text", "")
+                    if not text or text is None:
+                        continue
+                    cuant_c=polygon.cuant_chars if not res.get("cuant_chars") else res.get("cuant_chars")
+                    sc = polygon.semantic_clasification if not res.get("sc") else res.get("sc")
+                    new_id += 1
+                    new_idx = f"poly_{new_id:04d}"
+                    updated_polygon = dataclasses.replace(
                         polygon,
-                        ocr_text = text
+                        polygon_id=new_idx,
+                        poly_index=new_id,
+                        ocr_text=text,
+                        semantic_clasification=sc,
+                        cuant_chars=cuant_c    
                     )
-                    self.workflow.polygons[poly_id] = poly_obj
+                    reindexed_polygons[new_idx] = updated_polygon
                 else:
                     logger.warning(f"Polígono {poly_id} no encontrado en workflow polygons")
+            self.workflow.polygons = reindexed_polygons
 
-            for i, pid in enumerate(valid_polys):
-                if pid in self.workflow.polygons:
-                    poly = self.workflow.polygons[pid]
-                    new_id = f"poly_{i:04d}"
-                    updated_polygon = dataclasses.replace(poly, polygon_id=new_id, poly_index=i)
-                    self.workflow.polygons[new_id] = updated_polygon
-
-            if self.text_ocr_log:
+            if self.text_ocr_log and (worker == "PaddleOCRWrapper" or worker == "paddle_wrapper"):
                 polys: Dict[str, Polygons] = self.workflow.polygons
+                logger.info("------TEXTO OCR RAW------")
                 for pid, poly, in polys.items():
                     logger.info(f"{pid}: '{poly.ocr_text}'")
+                logger.info("------FIN DEL TEXTO OCR RAW------")
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)

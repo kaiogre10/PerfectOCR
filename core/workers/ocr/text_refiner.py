@@ -6,11 +6,9 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
-from services.output_service import save_raw_json
 from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, contains_umd, is_quantitative
 import logging
 import time
-import dataclasses
 
 logger = logging.getLogger(__name__)
 
@@ -61,20 +59,6 @@ class Refiner(OCRAbstractWorker):
             for poly, poly_data in polygons.items():
                 if any(sc in self.semantic_types_log for sc in  poly_data.semantic_clasification):
                     logger.info(f"{poly}: '{poly_data.ocr_text}', clas: {poly_data.semantic_clasification}")
-        
-        if self.output:
-            file_name: str = manager.workflow.metadata.image_name  # type: ignore
-            name = "cleanned_text"
-            worker_name = f"{name}" or "refiner"
-            polygons = manager.workflow.polygons if manager.workflow else {}
-            results: Dict[str, Any] = {}
-            for poly_id, polygon in polygons.items():
-                text = getattr(polygon, "ocr_text", None)
-                results[poly_id] = {
-                    "text": text,
-                }
-            save_raw_json(worker_name, results, file_name)
-
         return True
         
     def classify_strings(self, manager: DataFormatter) -> bool:
@@ -156,42 +140,41 @@ class Refiner(OCRAbstractWorker):
             return False
             
         polygons: Dict[str, Polygons] = manager.workflow.polygons
-        updated_polygons: Dict[str, Polygons] = {}
+        final_polygons: Dict[str, Dict[str, Any]] = {}
         
         for poly, poly_data in polygons.items():
             text = poly_data.ocr_text or ""
-            if len(text) < 3:
-                updated_polygons[poly] = poly_data
+            if len(text) < 2:
+                final_polygons[poly] = {"text": text}
                 continue
             
             elif text.isalpha() or text.isdecimal():
-                updated_polygons[poly] = poly_data
+                final_polygons[poly] = {"text": text}
                 continue
                 
             elif contains_quantitative(text) and not is_quantitative(text):
                 qtext = get_cuants(text)
                 # logger.info(f"POTENCIAL CUANTS: '{text}'")
                 if qtext != text:
-                    logger.info(f"CUANT ENCONTRADO: '{poly}' | Original: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
-                    updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=qtext)
+                    logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
+                    final_polygons[poly] = {"text": qtext}
                     continue
-                else:
-                    updated_polygons[poly] = poly_data
-                    continue
+
+                final_polygons[poly] = {"text": qtext}
+                continue
                     
             if contains_umd(text):
                 umd_text = find_umd(text)
                 # logger.info(f"POTENCIAL UMDS: '{text}'")
                 if umd_text != text:
-                    logger.info(f"UMD ENCONTRADA:'{poly}' | Original: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
-                    updated_polygons[poly] = dataclasses.replace(poly_data, ocr_text=umd_text)
+                    logger.info(f"UMD ENCONTRADA:'{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
+                    final_polygons[poly] = {"text": umd_text}
                     continue
                 
-                updated_polygons[poly] = poly_data
+                final_polygons[poly] = {"text": umd_text}
                 continue
             else:
-                updated_polygons[poly] = poly_data
+                final_polygons[poly] = {"text": text}
                 continue
 
-        manager.workflow.polygons = updated_polygons
-        return True
+        return manager.update_ocr_results(final_polygons, "refiner")

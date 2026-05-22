@@ -305,6 +305,7 @@ NUMERIC_CORRECTIONS: Dict[str, str] = {
     "z": "2",
     "j": "9",
     "/": "7",
+    "?": "2"
 }
 
 DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {

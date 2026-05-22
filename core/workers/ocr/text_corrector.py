@@ -1,6 +1,6 @@
 # PerfectOCR/core/workers/ocr/text_corrector.py
 import logging
-import dataclasses
+import time
 from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -28,7 +28,7 @@ class TextCorrector(OCRAbstractWorker):
         self.project_root = project_root
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        # logger.debug(f"Inicia text_corrector")
+        t0 = time.perf_counter()
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCorrector: No hay polígonos para procesar.")
             return False
@@ -36,7 +36,7 @@ class TextCorrector(OCRAbstractWorker):
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
 
         # logger.debug(f"Cantidad de polígonos recibidos:{len(polygons_in)}")
-        list_of_correct_polygons: List[Polygons] = []
+        final_polygons: Dict[str, Dict[str, Any]] = {}
         correced_count = 0
 
         for poly_id, polygon in polygons_in.items():
@@ -47,83 +47,72 @@ class TextCorrector(OCRAbstractWorker):
             
             if 0 in sc and kf is not None:
                 # logger.info(f"'{poly_id}' con KEYFIELD ya no se CORRIJE: '{original_text}'")
-                updated_polygon = dataclasses.replace(polygon)
-                list_of_correct_polygons.append(updated_polygon)
+                final_polygons[poly_id] = {"text": original_text, "sc": sc, "cuant_chars": polygon.cuant_chars}
                 continue
-            
+
             if len(original_text.split(" ")) != len(sc):
                 logger.critical(f"ERROR CRÍTICO DISPARIDAD EN {poly_id} ENTRE SC Y TEXTO: '{original_text}' -> {sc} ABORTANDO PROCESO")
                 return False
 
-            if original_text.isdecimal():
-                # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
-                updated_polygon = dataclasses.replace(polygon)
-                list_of_correct_polygons.append(updated_polygon)
-                continue
+            # if original_text.isdecimal():
+            #     # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
+            #     final_polygons[poly_id] = {"text": original_text}
+            #     continue
                 
             # Si el texto está vacío, no hay nada que corregir
-            if not original_text or not validate_text(original_text):
+            elif not original_text or not validate_text(original_text):
                 # logger.info(f"Sin Texto válido: {poly_id}: '{original_text}'")
+                correced_count +=1
                 continue
             
             # Aplicar corrección según tipo semántico
             corrected_text = self._apply_corrections(original_text, sc)
-            # Si hubo cambios, actualizar el polígono
             if not corrected_text or not validate_text(corrected_text):
                 # logger.info(f"Sin Texto válido: {poly_id}: '{original_text}'")
+                correced_count +=1
                 continue
 
-            if corrected_text != original_text:
-                correced_count +=1
-                
-                s_class, t_cuan = fast_classfier(corrected_text) 
-                # logger.info(f"Corrección de '{poly_id}' | Original: '{set(original_text.split(" ")).difference(set(corrected_text.split(" ")))}' → '{corrected_text}' | SC original: {sc} -> {s_class}")
-                updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text, semantic_clasification=s_class, cuant_chars=t_cuan)
-            else:    
-                updated_polygon = dataclasses.replace(polygon, ocr_text=corrected_text)
-            list_of_correct_polygons.append(updated_polygon)
+            else:
+                if corrected_text != original_text:
+                    s_class, t_cuan = fast_classfier(corrected_text)
+                    # logger.info(f"Corrección de '{poly_id}' | Original: '{set(original_text.split(" ")).difference(set(corrected_text.split(" ")))}' → '{corrected_text}' | SC original: {sc} -> {s_class}")
+                    final_polygons[poly_id] = {"text": corrected_text, "sc": s_class, "cuant_chars": t_cuan}
 
-        final_polygons_dict: Dict[str, Polygons] = {}
-        for idx, poly_obj in enumerate(list_of_correct_polygons):
-            new_id = f"poly_{idx:04d}"
-            poly_index = idx
-            final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=poly_index)
-            final_polygons_dict[new_id] = final_poly_obj
-            
-        # 5. Reemplazo directo en el manager
-        manager.workflow.polygons = final_polygons_dict
-        return True
+                final_polygons[poly_id] = {"text": corrected_text, "sc": sc, "cuant_chars": polygon.cuant_chars}
 
+        worker_name = context.get("worker_name") or "text_corrector"
+        if manager.update_ocr_results(final_polygons, worker_name):
+            # logger.info(f"Corrección textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - correced_count}, eliminados: {correced_count}")
+            return True
+        else:
+            logger.warning("Fallo en corrección textual textual")
+            return False
+        
     def _apply_corrections(self, text: str, semantic_clasification: List[int]) -> str:
         text = text.strip()
         tokens = text.split(' ')
         total_tokens = len(tokens)
+        corrected_tokens: List[str] = []
 
         if not tokens or not total_tokens:
             return ""
-        
-        if total_tokens != len(semantic_clasification):
-            logger.warning(f"Desalineación en '{text}': {total_tokens} tokens vs {len(semantic_clasification)} clasificaciones. SC: {semantic_clasification}")
-            return text
-        
-        if total_tokens == 1:
+
+        elif total_tokens == 1:
             return self._correct_token(text, semantic_clasification[0])
-        
-        corrected_tokens: List[str] = []
-
-        for i, token in enumerate(tokens):
-            token_sc = semantic_clasification[i]
-            corrected_token = self._correct_token(token, token_sc)
-            if not any(c.isalnum() for c in corrected_token):
-                continue
-
-            elif bool(i == 0 or (i + 1) == total_tokens):
-                if validate_text(corrected_token):
-                    corrected_tokens.append(corrected_token)
+        else:
+            for i, token in enumerate(tokens):
+                token_sc = semantic_clasification[i]
+                corrected_token = self._correct_token(token, token_sc)
+                if not any(c.isalnum() for c in corrected_token):
                     continue
-                continue
-            else:
-                corrected_tokens.append(corrected_token)
+
+                elif bool(i == 0 or (i + 1) == total_tokens):
+                    if validate_text(corrected_token):
+                        corrected_tokens.append(corrected_token)
+                        continue
+                    continue
+                else:
+                    corrected_tokens.append(corrected_token)
 
         return ' '.join(corrected_tokens)
 
@@ -161,7 +150,12 @@ class TextCorrector(OCRAbstractWorker):
         if semantic_clasification == 3:
             if token.startswith("1") and token.endswith("O"):
                 token = token.replace("O", "0")
+                
+            elif token.startswith("C7") and token.endswith("O"):
+                token = token.replace("7", "/")
+                token = token.replace("O", "0")
             return token
+            
         else:
             return token
     

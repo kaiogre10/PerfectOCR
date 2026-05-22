@@ -1,11 +1,12 @@
 import cv2
 import logging
 import time
+import numpy as np
 from datetime import datetime
 from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import decolorate
+from core.utils.image_utils import decolorate, is_binarized
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -32,18 +33,26 @@ class ImageLoader(ImagePrepAbstractWorker):
             time0 = time.perf_counter()
             full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
             logger.info(f"IMAGEN: '{image_name}', cargada en {time.perf_counter() - time0:.6f}'s")
-
-            full_img = decolorate(full_image)
             
-            if full_img is None:
+            if is_binarized(full_image):
+                binary = True
+                full_img = full_image
+            else:
+                full_img = decolorate(full_image)
+                binary = False
+            
+            if full_img.size < 1 or full_img is None:
                 return False
+            
+            full_img = np.require(full_img, dtype=np.uint8, requirements=['C', 'A', 'W', 'O', 'E'])
 
             # Metadata: una sola llamada a datetime
             now = datetime.now()
             date_creation = f"{now.strftime('%Y%m%d')}"
             metadata: Dict[str, Any] = {
                 "image_name": image_name,
-                "date_creation": date_creation
+                "date_creation": date_creation,
+                "binary": binary
             }
             
             id_registro = f"{image_name}_{date_creation}{now.microsecond:06d}"

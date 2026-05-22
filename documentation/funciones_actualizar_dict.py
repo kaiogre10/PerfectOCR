@@ -70,7 +70,6 @@ def update_image_color(self, new_color: str) -> bool:
 
 
 # En tu worker
-formatter = context["formatter"]  # Recibido del pipeline
 success = formatter.update_image_color("RGB")
 if not success:
     logger.error("No se pudo actualizar el color")
@@ -79,8 +78,7 @@ if not success:
 ---
 
 ### **CASO 2: Actualizar Campo con Dataclass**
-def update_polygon_geometry(self, poly_id: str, polygon_coords: List[List[float]], 
-                          bounding_box: List[float], centroid: List[float]) -> bool:
+def update_polygon_geometry(self, poly_id: str, polygon_coords: List[List[float]], bounding_box: List[float], centroid: List[float]) -> bool:
     """Actualiza solo la geometría básica de un polígono específico"""
     try:
         # 1. VALIDAR ENTRADA

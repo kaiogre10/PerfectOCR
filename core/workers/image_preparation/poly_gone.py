@@ -42,7 +42,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 return False
 
             # 2. Calcular Coordenadas de Recorte con Padding (Vectorizado)
-            img_h, img_w = manager.workflow.metadata.img_dims
+            img_h, img_w = manager.workflow.metadata.img_dims if manager.workflow.metadata else (0, 0)
             x1, y1, x2, y2 = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
             px1 = np.maximum(0, x1 - self.padding)
             py1 = np.maximum(0, y1 - self.padding)
@@ -55,7 +55,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             if full_img is None:
                 logger.error("No se pudo obtener full_img del Formatter.")
                 return False
-            manager.update_full_img(corrected=False, full_img=None)
+                
             full_img = make_contiguous(full_img)
 
             # 4. Bucle Único de Filtrado, Actualización y Re-indexado
@@ -74,7 +74,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 # Recortar la imagen
                 crop_x1, crop_y1, crop_x2, crop_y2 = int(px1[idx]), int(py1[idx]), int(px2[idx]), int(py2[idx])
-                cropped = np.ascontiguousarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2], dtype=np.uint8)
+                cropped = np.ascontiguousarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy(), dtype=np.uint8)
 
                 # Filtrar por intervalo de color
                 poly_mean = np.mean(cropped)
@@ -105,6 +105,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 if self.output:
                     self.save_debug(cropped, context, manager, "all_valid", new_id)
 
+            manager.update_full_img(corrected=False, full_img=None)
             # 5. Actualización Final y Limpia en el Manager
             if not new_polygons:
                 logger.warning("PolygonExtractor: Ningún polígono superó los filtros.")

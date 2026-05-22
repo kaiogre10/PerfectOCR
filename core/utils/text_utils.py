@@ -18,14 +18,15 @@ vowels = VOWELS
 _zeros_str = r'00'
 _currency_pattern = r"[$]"
 _punt_quant_chars = r'[.,]'
-_amount_fract_str = r'[Cc]'
-_monetary_to_sub =  r'^[Ss]\d'
 _zeros_to_sub = r'[OQDo]'
+_monetary_to_sub =  r'^[Ss]\d'
 _semi_zeros = r'[OQDo]{2}'
 _digit_pattern = r"[0-9oOQ]"
+_clean_currency_str = r"^(?:\$)|,"
 _base_date_num_str = r'[0123O][0-9O]'
 _valid_cuant_str = r'(?<=\$)\$|(?<=\$\d)\$|(?<=\$\d\d)\$'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
+
 _semi_zeros_pattern = re.compile(_semi_zeros)
 _zeros_pattern = re.compile(_zeros_to_sub)
 _monetary_pattern = re.compile(_monetary_to_sub)
@@ -53,14 +54,11 @@ _edge_punt_pattern = re.compile(rf'^({_edge_chars}+)|({_edge_chars}+)$', re.IGNO
 # Ahora el patrón fuerza secuencias de letra.punto repetidas (ej: P.U.C.D. etc). El último . es opcional solo después de la última letra.
 _acronim = r'(?:[A-Za-z]\.)+[A-Za-z]\.?'
 _acronym_pattern: Pattern[str] = re.compile(rf'^({_acronim}|sa|cv|mn)[:;,.]?$', re.IGNORECASE)
-# _fiscal_entityes_pattern = re.compile("|".join(p.pattern for p in [_acronim, _acronym_pattern]))
 # _bad_title: Pattern[str] = re.compile(r'^([A-Za-z0-9])(?: [A-Za-z0-9])+$', re.IGNORECASE)
 
 # Datos Globales
-_phone_str = r'^\d{10}$'
-_kind_phon= r'\b(cel|tel)\b'
 # _cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
-_phone_number = re.compile("|".join(p for p in [_kind_phon, _phone_str]), re.IGNORECASE)
+_phone_number = re.compile(r'(?:\b(?:cel|tel)\b[\s:,-]*)?(?:\d[\s\-]*){10}\b', re.IGNORECASE)
 
 _mail_pattern: Pattern[str] = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b', re.IGNORECASE)
 # _cp_pattern: Pattern[str] = re.compile(rf'\b(?:{_cp_letters}(?:\s*\d{{5}})?|\d{{5}})\b', re.IGNORECASE)
@@ -77,38 +75,36 @@ _date_patterns_list: List[Pattern[str]] = [
     re.compile(rf'\b(?:199[0-9{_zeros_to_sub[1:-1]}]|2[0{_zeros_to_sub[1:-1]}][0-9{_zeros_to_sub[1:-1]}]{{2}})\b',re.IGNORECASE)
 ]
 
-_mass_pattern = re.compile(rf'\b(kg|gr|grs|mg|lb|lbs|oz|ton)\b', re.IGNORECASE) # Unidades de más de una letra pueden ir solas
-_vol_pattern = re.compile(rf'\b(lt|ltr|ltrs|lts|ml|gal)\b', re.IGNORECASE)  # Unidades de más de una letra pueden ir solas
-_len_pattern = re.compile(r'\b(cm|mm|km|in|ft|mts?|m2|m\^2|m²|cm2|cm\^2|cm²|km2|km\^2|km²)\b', re.IGNORECASE) # Más de una letra pueden ir solas
-_size_pattern = re.compile(r'\b(gde|med|ch|paq)\b', re.IGNORECASE)
+_unities = re.compile(r'(g|l|m)', re.IGNORECASE)
+_mass_pattern = re.compile(r'(kg|gr|grs|mg|lb|lbs|oz|ton)', re.IGNORECASE)
+_vol_pattern = re.compile(r'(lt|ltr|ltrs|lts|ml|gal)', re.IGNORECASE)
+_len_pattern = re.compile(r'(cm|mm|km|in|ft|mts?|m2|m\^2|m²|cm2|cm\^2|cm²|km2|km\^2|km²)', re.IGNORECASE)
+_size_pattern = re.compile(r'(gde|med|ch|paq)', re.IGNORECASE)
+_measure_unities = re.compile("|".join(p.pattern for p in [_size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
 
-_extended_fraction_pattern = re.compile(r'(?<![A-Za-z0-9]){{{\s*/\s*\d+\+\d+(?![A-Za-z0-9])', re.IGNORECASE)
+_extended_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\s*\+\s*\d+(?![A-Za-z0-9])', re.IGNORECASE)
 _full_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\b', re.IGNORECASE)
 _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b', re.IGNORECASE)
 _semi_c_fraction = re.compile(r'(?<!\d)[Cc]\s*/(?:\s*\d+)?\b', re.IGNORECASE)
 _c_dash_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]-\d+\b', re.IGNORECASE)
 
-_fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, _semi_c_fraction, _semifraction_pattern]), re.IGNORECASE)
-_mesure_patterns = re.compile("|".join(p.pattern for p in [_size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
+_fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, _semi_c_fraction, _semifraction_pattern, _c_dash_fraction_pattern]), re.IGNORECASE)
 
-_umd_patterns_list: List[Pattern[str]] = [
-    _fraction_pattern,
-    _mesure_patterns,
-    _c_dash_fraction_pattern,
+_umd_paterns_list: List[Pattern[str]] = [
     re.compile(r'(?<![A-Za-z0-9])\d{1,4}\s*m(?:l|1|\||!)(?=$|[^A-Za-z0-9])', re.IGNORECASE),
-    re.compile(rf'\b\d+\s*g\b', re.IGNORECASE), # Solo 'g' requiere número entero antes
-    re.compile(rf'\b\d+\s*l\b', re.IGNORECASE),  # Solo 'l' requiere número entero antes
-    re.compile(rf'\b\d+\s*m\b', re.IGNORECASE),  # Solo 'm' requiere número entero antes
+    re.compile(rf'\b\d+\s*(?:{_unities.pattern})\b', re.IGNORECASE),
+    re.compile(rf'((?<!\w)(?:\d+s*)?(?:{_measure_unities.pattern}))\b', re.IGNORECASE),
     re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b', re.IGNORECASE),
     re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b', re.IGNORECASE), # Dimensiones (10x20)
-    re.compile(r'#\s*\d+'),
+    re.compile(r'#\s*\d+')
 ]
 
-_umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)', re.IGNORECASE)
-_umd_patterns = re.compile("|".join(p.pattern for p in _umd_patterns_list), re.IGNORECASE)
+_umd_generals = re.compile("|".join(p.pattern for p in _umd_paterns_list), re.IGNORECASE)
+_umd_patterns = re.compile("|".join(p.pattern for p in [_fraction_pattern, _umd_generals]), re.IGNORECASE)
 
-# Define los patrones como strings
-_clean_currency_str = r"^(?:\$)|,"
+_amount_fract = re.compile(fr"[Cc](?:[7/])\d{_zeros_to_sub}+", re.IGNORECASE)
+_umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)', re.IGNORECASE)
+
 # _final_clean_currency = re.compile(r"[^0-9.]", re.IGNORECASE)
 _clean_currency = re.compile(_clean_currency_str, re.IGNORECASE)
 # Patrón: S al inicio, al menos 3 dígitos entre la S y un punto o coma
@@ -226,16 +222,26 @@ def find_umd(s: str) -> str:
     elif bool(_date_patterns.search(s)):
         return s
 
-    if _umd_cor.search(s) and not s.endswith("0"):
+    if not s.endswith("0") and not s[-1].isdecimal() and _umd_cor.search(s):
         new_s = s[:-1] + "0"
-        if not is_quantitative(new_s) and not new_s.isdecimal():
+        if not new_s.isdecimal() and not is_quantitative(new_s):
+            # logger.info(f"NEW S: '{s}' -> '{new_s}'")
             return new_s
+        s = new_s
+
+    if _amount_fract.fullmatch(s):
+        if "7" in s:
+            s = s.replace("7", "/")
+        s = _zeros_pattern.sub("0", s)
+    
+    if _fraction_pattern.fullmatch(s):
+        return s
 
     intervals: List[Tuple[int, int]] = [(m.start(), m.end()) for m in _umd_patterns.finditer(s)]
     if not intervals:
         return s
-    # Solo fusionar solapamientos reales (start < fin_anterior). Si start == fin_anterior
-    # son dos UMD pegados; no fusionar para poder insertar espacio entre ellos.
+
+    # Solo fusionar solapamientos reales (start < fin_anterior). Si start == fin_anterior son dos UMD pegados; no fusionar para poder insertar espacio entre ellos.
     merged: List[Tuple[int, int]] = []
     for start, end in sorted(intervals, key=lambda t: t[0]):
         if merged and start < merged[-1][1]:
@@ -508,22 +514,24 @@ def classify_token(s: str) -> Tuple[int, int]:
     total_text = len(s)
     total_cuant = sum(1 for ch in s if ch in cuant_chars) if any(c.isdigit() for c in s) else 0
     if not s:
-        # #  logger.info(f"VACIO 3RO: {s}")
+        #  logger.info(f"VACIO 3RO: {s}")
         return (-1, 0)
         
     elif not any(c.isalnum() for c in s):
-        # #  logger.info(f"INVÁLIDO 1: '{s}'")
+        #  logger.info(f"INVÁLIDO 1: '{s}'")
         return (-1, 0)
         
     elif s.isalpha():
-        # #  logger.info(f"ALPHA 1ro: '{s}'")
+        if _size_pattern.search(s):
+            return (2, 0)
+        #  logger.info(f"ALPHA 1ro: '{s}'")
         return (1, 0)
     
     elif s.isdecimal():
-        # #  logger.info(f"DECIMAL 1ro: '{s}'")
+        #  logger.info(f"DECIMAL 1ro: '{s}'")
         return (5, total_text)
     
-    elif total_cuant == 0:
+    if total_cuant == 0:
         if not any(c.isalpha() for c in s):
             return (-1, 0)
         
@@ -535,7 +543,7 @@ def classify_token(s: str) -> Tuple[int, int]:
             # #  logger.info(f"ACRONIMO: '{s}'")
             return (1, 0)
 
-        elif bool(_semi_c_fraction.search(s)) or bool(_mesure_patterns.search(s)):
+        elif bool(_semi_c_fraction.search(s)) or bool(_measure_unities.search(s)):
             # #  logger.info(f"UMD por regex: '{s}'")
             return (2, 0)
 
@@ -562,21 +570,21 @@ def classify_token(s: str) -> Tuple[int, int]:
 
         elif s.startswith("0"):
             if s.isalnum():
-                # #  logger.info(f"CODE por inicio 0: '{s}'")
+                #  logger.info(f"CODE por inicio 0: '{s}'")
                 return (3, total_cuant)
                 
             elif validate_quant_pattern(s):
                 # #  logger.info(f"CUANT por inicio 0: '{s}'")
                 return (4, total_cuant)
             else:
-                # #  logger.info(f"UMD por inicio 0: '{s}'")
+                #  logger.info(f"UMD por inicio 0: '{s}'")
                 return (2, total_cuant)
             
-        if contains_quantitative(s):
-            # #  logger.info(f"CUANT por validación: '{s}'")
+        if is_quantitative(s):
+            #  logger.info(f"CUANT por validacion: '{s}'")
             return (4, total_cuant)
 
-        # #  logger.info(f"NUM por descarte en conteo: '{s}'")
+        #  logger.info(f"NUM por descarte en conteo: '{s}'")
         return (5, total_cuant)
     
     if contains_quantitative(s):
@@ -584,20 +592,20 @@ def classify_token(s: str) -> Tuple[int, int]:
         return (4, total_cuant)
         
     elif contains_umd(s):
-        # logger.debug(f"UMD mixto: '{s}'")
+        #  logger.info(f"UMD mixto: '{s}'")
         return (2, total_cuant)
 
     elif is_code(s):
-        # logger.debug(f"CODE mixto: '{s}'")
+        #  logger.info(f"CODE mixto: '{s}'")
         return (3, total_cuant)
     
-    # #  logger.info(fr"REBELDES: '{s}'")
+    #  logger.info(fr"REBELDES: '{s}'")
     dense_mean, morphology_mean = text_encode(s.lower())
     if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
         #  logger.info(f"CODE por codificacion: '{s}'")
         return (3, total_cuant)
     
-    if dense_mean > density_thr[1]:
+    elif dense_mean > density_thr[1]:
         #  logger.info(f"DESC por codificacion: '{s}'")
         return (1, total_cuant)
 
@@ -630,12 +638,12 @@ def get_ids(img_name: str) -> str:
 def format_elapsed_time(seconds: float) -> str:
     """Convierte segundos a formato HH:MM:SS.ms"""
     if seconds < 60.0:
-        return f"{seconds:.6f}'S"
+        return f"{seconds:.8f}'S"
     minutes = int((seconds % 3600) // 60)
     if minutes < 60:
-        return f"{minutes:02d}M:{seconds % 60:06.3f}'S"
+        return f"{minutes:02d}:M {seconds % 60:06.3f}'S"
     else:
-        return f"{int(seconds // 3600):02d}H:{minutes:02d}M:{seconds % 60:06.3f}'S"
+        return f"{int(seconds // 3600):02d}:H {minutes:02d}:M {seconds % 60:06.3f}'S"
 
 def fast_classfier(text: str) -> Tuple[List[int], int]:
     """Clasifica un string rapidamente, no seleccionar los strings antes de llamar a la función impactará de manera negativa el output del pipeline"""

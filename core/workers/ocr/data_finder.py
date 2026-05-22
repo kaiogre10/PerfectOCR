@@ -42,7 +42,7 @@ class DataFinder(OCRAbstractWorker):
                 logger.error("No hay polygons para procesar")
                 return False
 
-            polygon_updates = self._find_data(manager, polygons)
+            polygon_updates = self._find_data(polygons)
             if manager.update_key_field(polygon_updates):
                 return True
                 
@@ -50,7 +50,7 @@ class DataFinder(OCRAbstractWorker):
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
         return True
 
-    def _find_data(self, manager:DataFormatter, polygons: Dict[str, Polygons]) -> Dict[str, List[int]]:
+    def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, List[int]]:
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede buscar Key FIelds")
             return {}
@@ -99,20 +99,20 @@ class DataFinder(OCRAbstractWorker):
                     continue
             
                 else:
-                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text)
+                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text.lower())
                     if not valid_results:
                         continue
                     
                     num_keywords = len(valid_results)
                     left_overs: List[str] = []
                     # logger.info(f"RESULTS {pid} '{ocr_text}': {valid_results}")
-                    if num_keywords > 2 and any(k['key_field'] == 6 for k in valid_results):
+                    if any(k['key_field'] == 6 for k in valid_results):
                         key_text = [results['norm_ocr_text'] for results in valid_results]
                         key_field = [results['key_field'] for results in valid_results]
                         key_word = [results['key_word'] for results in valid_results]
                         orig_text = [results['text'] for results in valid_results]
                         
-                        if [orig_text] == key_text:
+                        if orig_text == key_text:
                             polygon_updates[pid] = key_field
                             continue
                         
@@ -121,20 +121,23 @@ class DataFinder(OCRAbstractWorker):
                         for result in key_word:
                             if result not in key_word:
                                 left_overs.append(orig_text[0])
-                        
+
                         if not left_overs:
                             polygon_updates[pid] = key_field
                             continue
-                        
-                        logger.info(f"{len(left_overs)} LEFOVERS: '{left_overs}'")
+
+                        else:
+                            polygon_updates[pid] = key_field * (len(left_overs) - 1)
+                            # logger.info(f"{len(left_overs)} LEFOVERS: '{left_overs}'")
 
                     else:
                         key_field = valid_results[0]['key_field']
+                        # logger.info(f"KEY FIELD DE: '{ocr_text}': {key_field}")
                         polygon_updates[pid] = [key_field]
                         continue
                         
             if polygon_updates:
-                # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                # logger.info(f"KEY FIELDS ENCONTRADOS: '{polygon_updates}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
                 return polygon_updates
                 # return self.get_key_fields_values(manager, polygon_updates)
 
