@@ -168,6 +168,7 @@ class CosineSimilarity(ConfigWithNumpy):
     min_cluster: int
     similarity_threshold: float
     emergency_threshold: float
+    min_internal_sim: float
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal

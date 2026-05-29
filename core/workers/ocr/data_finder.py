@@ -103,7 +103,7 @@ class DataFinder(OCRAbstractWorker):
                     if not valid_results:
                         continue
                     
-                    num_keywords = len(valid_results)
+                    # num_keywords = len(valid_results)
                     left_overs: List[str] = []
                     # logger.info(f"RESULTS {pid} '{ocr_text}': {valid_results}")
                     if any(k['key_field'] == 6 for k in valid_results):

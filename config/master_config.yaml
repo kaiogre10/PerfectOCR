@@ -7,7 +7,7 @@ system_config:
     # E:/data/tickets_nuevo
   ]
   images_names: [
-    AAAA0061,
+#    AAAA0061,
     # AAAA0058,
     # AAAA0059,
     AAAC0010,
@@ -38,7 +38,7 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-    - "lineal"
+#    - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
@@ -50,13 +50,13 @@ pipeline_secuence:
 log_debug:
   text_ocr: False
   seman_clas: False
-  key_fields: False
+  key_fields: True
   lines: False
   table_lines: False
   table_geo: False
   table_correct: False  
   semantic_types_log: [-1]
-  kf_list_log: [-1]
+  kf_list_log: [6]
   
 # Configuración de salida
 enabled_outputs:
@@ -199,6 +199,7 @@ modules:
       min_cluster: 2
       similarity_threshold: 0.913
       emergency_threshold: 0.837
+      min_internal_sim: 0.45
     
     table_structurer:
       min_h: 3

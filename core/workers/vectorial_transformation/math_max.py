@@ -4,12 +4,11 @@ import logging
 import numpy as np
 import time
 from itertools import permutations
-from typing import Dict, Any, List, Tuple, cast, FrozenSet
+from typing import Dict, Any, List, Tuple, FrozenSet
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.text_utils import validate_quant_chars
-from core.domain.data_models import Polygons
 
 logger = logging.getLogger(__name__)
 
@@ -36,23 +35,12 @@ class MatrixSolver(VectorizationAbstractWorker):
         try:
             if not manager.workflow:
                 return False
-            H = manager.workflow.H
-            table_matrix = cast(List[List[Dict[str, Any]]], context["table_matrix"])
-            if not table_matrix:
+            df = manager.workflow.table_data.df_table if manager.workflow.table_data is not None else pd.DataFrame()
+            if df.empty:
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            df, df_copy = self._table_matrix_to_dataframe(table_matrix, H)
-            if df.empty:
-                logger.error("La table_matrix no contiene filas/columnas válidas")
-                return False
-
             logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
-
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            cut_polygons = self.map_polygons_ids(polygons, df_copy)
-            context["cut_polygons"] = cut_polygons
-            context["df_copy"] = df_copy
 
             corrected_df = self.solve(df, context)
 
@@ -100,51 +88,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         if df.empty:
             return pd.DataFrame()
         return df
-
-    def _table_matrix_to_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        columns = [f"col_{i}" for i in range(H)]
-        width = len(table_matrix[0])
-
-        rows: List[List[str]] = []
-        rows_copy: List[List[List[str]]] = []
-
-        for row in table_matrix:
-            row_values: List[str] = []
-            row_copy_values: List[List[str]] = []
-
-            for col_idx in range(width):
-                text_val = ""
-                poly_ids: List[str] = []
-                if col_idx < len(row):
-                    text_val = str(row[col_idx].get("text", "") or "")
-                    poly_ids = row[col_idx]["polygon_ids"]
-
-                row_values.append(text_val)
-                row_copy_values.append(poly_ids)
-
-            rows.append(row_values)
-            rows_copy.append(row_copy_values)
-        df_main = pd.DataFrame(rows, columns=columns)
-        df_copy = pd.DataFrame(rows_copy, columns=columns)
-        return (df_main, df_copy)
-
-    def map_polygons_ids(self, polygons: Dict[str, Polygons], df_copy: pd.DataFrame) -> Dict[str, Any]:
-        poly_ids: List[str] = []
-        for cell in df_copy.to_numpy().ravel():
-            poly_ids.extend(cell)
-
-        cut_polygons: Dict[str, Any] = {}
-        polys_index: List[int] = []
-        for poly_id in poly_ids:
-            if poly_id in polygons:
-                cut_polygons[poly_id] = {
-                    "text": polygons[poly_id].ocr_text or "",
-                    "semantic_clasification": polygons[poly_id].semantic_clasification,
-                }
-                polys_index.append(polygons[poly_id].poly_index)
-        
-        cut_polygons["max_idx"] = max(polys_index)
-        return cut_polygons
 
     def get_arrays_table(self, context: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """"Devuelve 'cuantiative_array[0], numeric_array[1], elements_array[2], textual_array[3], code_array[4]'"""

@@ -24,6 +24,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         self.emergency_threshold = worker_config.get("emergency_threshold")
         self.eps = worker_config.get("eps")
         self.metric = worker_config.get("metric", "")
+        self.min_internal_sim = worker_config.get("min_internal_sim")
         self.output = config.get("table_lines", False)
         self.output_features = config.get("features")
                 
@@ -37,10 +38,8 @@ class MatricialCusine(VectorizationAbstractWorker):
 
             table_line_ids: List[str] = self._compare_vectors(manager)
             if table_line_ids:
-                logger.debug(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares"
-                            "\n"f"{table_line_ids}")
                 if manager.save_tabular_lines(table_line_ids):
-                    logger.debug("Tablas guaradas en el manager desde coseno")
+                    # logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares\n"f"{table_line_ids}")
                     return True
                 return False
         except Exception as e:
@@ -60,10 +59,9 @@ class MatricialCusine(VectorizationAbstractWorker):
             sorted_lines = [all_lines_dict[k] for k in line_ids]
 
             analysis = calculate_features(sorted_lines, polygons_dict, img_dims)
-
+            all_idxs = np.array(np.arange(len(line_ids)), np.uint8)
             if self.output_features:
-                all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
-                line_id = np.array([id.lineal_id for id in all_lines.values()], np.str_)
+                line_id = np.array([id.lineal_id for id in all_lines_dict.values()], np.str_)
                 features_to_ind = analysis[:, 1:].astype(np.str_)
                 features_id = np.column_stack([line_id, features_to_ind])
                 file_name = manager.workflow.metadata.image_name or ""
@@ -80,14 +78,16 @@ class MatricialCusine(VectorizationAbstractWorker):
                 else:
                     tabular_array = self.cosine_dummies(analysis, line_idx)
                     # logger.info(f"DUMMIES IDX: {tabular_array}")
-                    if tabular_array.size == len(tabular_lines):
+                    if tabular_array.size > 0 and tabular_array.size == len(tabular_lines):
+                        # logger.info(f"DUMMIES TABULAREXACTO: {tabular_lines}")
                         return tabular_lines
-                    new_tabular_idx: List[int] = line_idx[tabular_array].tolist()
-                    # logger.info(f"NEW DUMMIES IDX: {new_tabular_idx}")
-                    return [line_ids[i] for i in new_tabular_idx]
+                    else:
+                        new_tabular_idx: List[int] = all_idxs[tabular_array].tolist()
+                        new_tabular_lines = [line_ids[i] for i in new_tabular_idx]
+                        # logger.info(f"NEW DUMMIES tab: {new_tabular_lines}, {new_tabular_idx}")
+                        return new_tabular_lines
             else:
-                line_idx = np.array(np.arange(len(line_ids)), np.uint8)
-                tabular_array = self.cosine_dummies(analysis, line_idx)
+                tabular_array = self.cosine_dummies(analysis, all_idxs)
                 if tabular_array.size < 1:
                     # logger.info("Sin lineas tabulares, DBSCAN como soporte")
                     return self.scanner_clustering(analysis, manager)
@@ -100,16 +100,11 @@ class MatricialCusine(VectorizationAbstractWorker):
         return []
 
     def validate_similiraity_all_vs_all(self, analysis: np.ndarray[Any, Any], line_idx: np.ndarray[Any, np.dtype[np.uint8]]) -> bool:
-        """
-        Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado.
-        Poda por los extremos (como "cortar césped") basándose en la media de similitudes, 
-        asegurando un intervalo contiguo de salida.
-        """
-        if line_idx.size < 2:
+        """Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado. Si todos son válidos, la validaciónes corrtecta"""
+        if line_idx.size < self.min_cluster:
             return True
-        
-        mask = np.isin(analysis[:, 0], line_idx, assume_unique=True)
-        features_all = np.compress(mask, analysis, 0)
+
+        features_all = analysis[line_idx]
         # Ordenamos las filas según el índice original para estar alineados con tabular_indices
         features_all = features_all[features_all[:, 0].argsort()]
                 
@@ -121,38 +116,44 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         # para cada fila, calcular similitud media con las demás
         mean_sims = mean_cosine_per_row(sims_mat_dense)
-        # mean_idx = np.column_stack([line_idx, mean_sims])
-        # logger.info("PROMEDIO:\n"f"{np.column_stack([np.arange(n), mean_idx])}")
+        # logger.info("PROMEDIO ALL X ALL:\n"f"{np.column_stack([line_idx, mean_sims])}")
         return bool(np.all(mean_sims > self.similarity_threshold, keepdims=False))
 
     def cosine_dummies(self, analysis: np.ndarray[Any, Any], line_ids: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        """
-        Fallback de emergencia optimizado. Compara todas las líneas del documento contra vectores DUMMIE
-        usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares.
-        """
+        """Compara todas las líneas del documento contra vectores DUMMIE, usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares."""
         # logger.info("COSENO DUMMIES")
         t0 = time.perf_counter()
-        # has_kf = analysis[:, -2] < 1
         analysis = analysis[line_ids]
         analysi = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
-        sims_final = get_cosine_similarity(analysi, dummie_vect, dense_output=False)
+        sims_final = get_cosine_similarity(analysi, dummie_vect, False)
         logger.debug(f"Tiempo: {time.perf_counter() - t0}")
-        # logger.info("SIMILITUDES:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
-        
+        # logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
+
+        sim_idx = np.where(sims_final > self.similarity_threshold)[0]
+        if sim_idx.size < 1:
+            logger.warning(f"SE USARÁ EL UMBRAL DE SEGURIDAD: {self.emergency_threshold}")
+            sims_idx = np.where(sims_final > self.emergency_threshold)[0]
+            if sims_final[0] < self.min_internal_sim:
+                logger.info(f"PRIMRA LINEA RUIDOSA: {sims_final[0]}")
+                line_ids = line_ids[1:]
+        else:
+            sims_idx = sim_idx
+
         n = line_ids.size
-        sims_idx = np.where(sims_final > self.similarity_threshold)[0]
         consecutive_idx_size = sims_idx.size
         similarity_lines = line_ids[sims_idx]
-        # logger.info("TAMAÑOS\n"f"{n} | consecutive_idx: {consecutive_idx_size}, {similarity_lines}")
+        # logger.info(f"sims_idx: {sims_idx}\n"f"ABS IDX: {similarity_lines}")
         if consecutive_idx_size == n or similarity_lines.size == self.min_cluster:
             # logger.info("LINEAS SUPERARON UMBRAL DE SIMILITUD")
             return similarity_lines
-            
-        d = np.diff(sims_idx)
-        # logger.info("Consecutive:\n"f"{sims_idx}, {sims_idx.size}\n"f"D: {d}, {d.size}")
+
+        idx_lower = np.setdiff1d(similarity_lines, line_ids)
+        deltas = np.ediff1d(idx_lower, to_begin=0)
+        mask = np.where(deltas > self.min_cluster)
+        # logger.info("\n"f"DELTAS: {deltas}\n"f"MAKS: {mask}")
         
-        cuts = np.where(d > self.min_cluster)[0]
-        if cuts.size == 0:
+        cuts = np.where(deltas >= self.min_cluster)[0]
+        if cuts.size < 1:
             # logger.info("CUTS:\n"f"{cuts}, SHAPE: {cuts.shape}")
             # logger.info("LINEAS SUPERARON UMBRAL REDUCIDO")
             return line_ids

@@ -156,7 +156,7 @@ class Refiner(OCRAbstractWorker):
                 qtext = get_cuants(text)
                 # logger.info(f"POTENCIAL CUANTS: '{text}'")
                 if qtext != text:
-                    logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
+                    # logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
                     final_polygons[poly] = {"text": qtext}
                     continue
 
@@ -167,7 +167,7 @@ class Refiner(OCRAbstractWorker):
                 umd_text = find_umd(text)
                 # logger.info(f"POTENCIAL UMDS: '{text}'")
                 if umd_text != text:
-                    logger.info(f"UMD ENCONTRADA:'{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
+                    # logger.info(f"UMD ENCONTRADA:'{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
                     final_polygons[poly] = {"text": umd_text}
                     continue
                 

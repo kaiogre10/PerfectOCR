@@ -23,8 +23,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Implementa el algoritmo geométrico de estructuración tabular en ℝ²
         basado en el modelo matemático riguroso de distancias horizontales y similitud coseno.
         """
+        start_time = time.perf_counter()
         try:
-            start_time = time.time()
             logger.debug("GeometricTableStructurer iniciado")
             
             if not manager.workflow:
@@ -38,42 +38,40 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 
             if not tabular_line_ids or not all_lines or not polygons:
                 logger.error("Faltan datos necesarios para estructuración tabular")
+                return False                
+        
+            H, header_line_id = self.get_headers(all_lines, polygons)
+            if not header_line_id or H==0:
+                logger.error("No hay encabezados disponibles")
                 return False
-                
-            try:
-                H, header_line_id = self.get_headers(all_lines, polygons)
-                if not header_line_id or H==0:
-                    logger.error("No hay encabezados disponibles")
-                    return False
-                manager.workflow.H = H
+            manager.workflow.H = H
 
-                # Pasar target_columns a la función de extracción
-                header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons, H)
+            # Pasar target_columns a la función de extracción
+            header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons, H)
 
-                # 3. Seleccionar filas tabulares para procesamiento
-                selected_lines = self._select_table_rows(tabular_line_ids, all_lines)
-                
-                # 4. Aplicar algoritmo geométrico de asignación a celdas
-                table_matrix = self._apply_geometric_assignment(selected_lines, all_lines, polygons, header_centroids, H)
-
-                # 5. Validar y loggear estructura generada
-                total_time = time.time() - start_time
-                if table_matrix:
-                    logger.debug(f"Estructuración de tabla completada en {total_time:.10f}s")
-                    # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
-                    context["table_matrix"] = table_matrix
-                    logger.debug("Table matrix publicada en contexto éxitosamente")
-                    return True
-
-                return False
+            # 3. Seleccionar filas tabulares para procesamiento
+            selected_lines = self._select_table_rows(tabular_line_ids, all_lines)
             
-            except Exception as e:
-                logger.error(f"Error en línea de encabezado: {e}", exc_info=True)
+            # 4. Aplicar algoritmo geométrico de asignación a celdas
+            table_matrix = self._apply_geometric_assignment(selected_lines, all_lines, polygons, header_centroids, H)
+
+            # 5. Validar y loggear estructura generada
+            if table_matrix:
+                df, df_copy = self._table_matrix_to_dataframe(table_matrix, H)
+                # logger.info(f"DataFrame generado:\n{df.to_string(index=True)}")
+                if manager.save_final_output(df, {}):
+                    # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
+                    polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+                    cut_polygons = self.map_polygons_ids(polygons, df_copy)
+                    context["cut_polygons"] = cut_polygons
+                    context["df_copy"] = df_copy
+                    logger.debug(f"Estructuración de tabla completada en {time.perf_counter() - start_time:.6f}'s")
+                    return True
                 return False
 
         except Exception as e:
             logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
-            return False
+        return False
 
     def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], target_columns: int) -> List[List[float]]:
         """
@@ -596,28 +594,32 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error verificando disponibilidad semántica: {e}", exc_info=True)
             return True  # En caso de error, permitir asignación
         
-    def _create_structured_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> pd.DataFrame:
-        """
-        Genera DataFrame estructurado a partir de la matriz de celdas T[k][j].
-        """
-        try:
-            columns = [f"col_{i}" for i in range(H)]
-            if not table_matrix:
-                return pd.DataFrame(columns=columns)
+    def _table_matrix_to_dataframe(self, table_matrix: List[List[Dict[str, Any]]], H: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        columns = [f"col_{i}" for i in range(H)]
+        width = len(table_matrix[0])
 
-            df_data: List[List[str]] = []
-            for row in table_matrix:
-                row_data = [cell.get('text', '') for cell in row[:H]]
-                df_data.append(row_data)
-                
-            df = pd.DataFrame(df_data, columns=columns)
-        
-            logger.debug(f"Columnas: {len(columns)} y filas: {len(df_data)}")
-            
-            return df
-        except Exception as e:
-            logger.error(f"Error creando datadrame: {e}", exc_info=True)
-            return pd.DataFrame()
+        rows: List[List[str]] = []
+        rows_copy: List[List[List[str]]] = []
+
+        for row in table_matrix:
+            row_values: List[str] = []
+            row_copy_values: List[List[str]] = []
+
+            for col_idx in range(width):
+                text_val = ""
+                poly_ids: List[str] = []
+                if col_idx < len(row):
+                    text_val = str(row[col_idx].get("text", "") or "")
+                    poly_ids = row[col_idx]["polygon_ids"]
+
+                row_values.append(text_val)
+                row_copy_values.append(poly_ids)
+
+            rows.append(row_values)
+            rows_copy.append(row_copy_values)
+        df_main = pd.DataFrame(rows, columns=columns)
+        df_copy = pd.DataFrame(rows_copy, columns=columns)
+        return (df_main, df_copy)
 
     def get_headers(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> Tuple[int, str]:
         """Asignar key_field = 6 a todos los polígonos de la línea de encabezadoy calcular la cantidad de columnas (H) basado en los key_fields"""
@@ -645,3 +647,21 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
                 return h, header_line_id
         return (0, "")
+
+    def map_polygons_ids(self, polygons: Dict[str, Polygons], df_copy: pd.DataFrame) -> Dict[str, Any]:
+        poly_ids: List[str] = []
+        for cell in df_copy.to_numpy().ravel():
+            poly_ids.extend(cell)
+
+        cut_polygons: Dict[str, Any] = {}
+        polys_index: List[int] = []
+        for poly_id in poly_ids:
+            if poly_id in polygons:
+                cut_polygons[poly_id] = {
+                    "text": polygons[poly_id].ocr_text or "",
+                    "semantic_clasification": polygons[poly_id].semantic_clasification,
+                }
+                polys_index.append(polygons[poly_id].poly_index)
+        
+        cut_polygons["max_idx"] = max(polys_index)
+        return cut_polygons
