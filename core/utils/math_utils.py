@@ -55,9 +55,7 @@ def mean_cosine_per_row(s: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarray[
     return (np.sum(s, axis=1, dtype=np.float32) - 1.0) / (s.shape[0] - 1)
 
 def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
-    """
-    Calcula la distancia euclidiana entre dos puntos en ℝ².
-    """
+    """Calcula la distancia euclidiana entre dos puntos en ℝ²."""
     if point1 != point2:
         return 0.0
     
@@ -65,15 +63,13 @@ def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float])
         
 def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     """
-    Suaviza histograma.
-    Elimina outliers hasta que no queden más gaps en el histograma.
+    Detecta outliers hasta que no queden más gaps en el histograma.
     deleted: Número total de outliers eliminados
     """
     # time_h = time.perf_counter()
     min_feat = np.min(metrics) if np.min(metrics) == 0 else (np.min(metrics) - 0.1)
     
-    def recursive_cleanup(current_metrics: np.ndarray[Any, Any], total_deleted: int, iteration: int) -> Tuple[int, int]:
-        """Función recursiva que elimina outliers iterativamente."""
+    def _recursive_cleanup(current_metrics: np.ndarray[Any, Any], total_deleted: int, iteration: int) -> Tuple[int, int]:
         current_count = current_metrics.shape[0]
         max_feat = (np.max(current_metrics) + 0.1)
         
@@ -110,10 +106,10 @@ def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
         # logger.info(f"Eliminados en iteración {iteration}: {deleted_this_iter}, Total acumulado: {total_deleted}")
 
         # Llamada recursiva con las métricas filtradas
-        return recursive_cleanup(filtered_metrics, total_deleted, iteration + 1)
+        return _recursive_cleanup(filtered_metrics, total_deleted, iteration + 1)
     
     # Inicia la recursión
-    return recursive_cleanup(metrics, 0, 1)
+    return _recursive_cleanup(metrics, 0, 1)
 
 def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int, metric: str) -> np.ndarray[Any, np.dtype[np.int16]]:
     clustering = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)

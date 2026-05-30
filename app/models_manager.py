@@ -1,4 +1,4 @@
-# core/domain/ocr_motor_manager.py
+# app/models_manager.py
 import logging
 import threading
 import time
@@ -19,9 +19,7 @@ class ModelsManager:
             self._detection_engine = None
             self._recognition_engine = None
             self._shared_engine = None
-            self._initialized = False
             self._word_finder = None
-            self._active = False
         except Exception as e:
             logger.error(f"Error Manager: '{e}'", exc_info=True)
     
@@ -36,14 +34,42 @@ class ModelsManager:
     def initialize_models(self, config: Dict[str, Any]) -> bool:
         init_time = time.perf_counter()
         try:
-            models_config = config.get("models_config", {})
+            # 1. Inicialización SELECTIVA de motores de Paddle
+            if not self._activate_paddle(config):
+                return False
+
+            # 2. Inicialización de WordFinder
+            elif config.get("activate_wf") and self._activate_wf(config):
+                logger.debug(f"STACK COMPLETO DE MODELOS CARGADOS EN: {time.perf_counter() - init_time:.6f}'s")
+                return True
+            else:
+                logger.debug("SOLO SE CARGÓ OCR")
+                self._word_finder = None
+                return True
+
+        except Exception as e:
+            logger.error(f"Error crítico inicializando modelos: {e}", exc_info=True)
+        return False
+            
+    @property
+    def detection_engine(self) -> Optional[PaddleOCR]:
+        return self._detection_engine
+    
+    @property  
+    def recognition_engine(self) -> Optional[PaddleOCR]:
+        return self._recognition_engine
+        
+    @property    
+    def word_finder(self) -> Optional[WordFinder]:
+        return self._word_finder
+
+    def _activate_paddle(self, config: Dict[str, Any]) -> bool:
+        try:
+        # PaddleOCR solo cargará en RAM/VRAM los modelos marcados como True
             activate_rec = config.get("activate_rec")
             activate_det = config.get("activate_det")
-            activate_wf = config.get("activate_wf")
-
-            # 1. Inicialización SELECTIVA de motores de Paddle
+            models_config = config.get("models_config", {})
             if activate_det or activate_rec:
-                # PaddleOCR solo cargará en RAM/VRAM los modelos marcados como True
                 self._shared_engine = PaddleOCR(
                     det=activate_det, 
                     rec=activate_rec,
@@ -67,41 +93,28 @@ class ModelsManager:
                 # Asignamos al puntero solo si el modelo está realmente activo
                 self._detection_engine = self._shared_engine if activate_det else None
                 self._recognition_engine = self._shared_engine if activate_rec else None
-                self._initialized = True
                 logger.debug(f"Motores Paddle listos (det={activate_det}, rec={activate_rec})")
+                return True
             else:
                 logger.debug("Ningún modelo de Paddle requerido. Saltando inicialización.")
                 self._shared_engine = None
                 self._detection_engine = None
                 self._recognition_engine = None
+                return False
 
-            # 2. Inicialización de WordFinder
-            if activate_wf:
-                self._word_finder = WordFinder(
-                    model_path=models_config.get("wf_model_path"),
-                    set_params=models_config.get("set_wf_params", False)
-                )
-                self._active = True
-                logger.debug(f"WordFinder cargado en {time.perf_counter() - init_time:.4f}s")
-            else:
-                self._word_finder = None
-                self._active = False
+        except ImportError as e:
+            logger.error(f"NO SE CARGO MODULO OCR: {e}", exc_info=True)
+        return False
 
+    def _activate_wf(self, config: Dict[str, Any]) -> bool:
+        models_config = config.get("models_config", {})
+        try:
+            self._word_finder = WordFinder(
+                model_path=models_config.get("wf_model_path"),
+                set_params=models_config.get("set_wf_params", False)
+            )
             return True
-
-        except Exception as e:
-            logger.error(f"Error crítico inicializando modelos: {e}", exc_info=True)
-            self._initialized = False
-            return False
-            
-    @property
-    def detection_engine(self) -> Optional[PaddleOCR]:
-        return self._detection_engine
-    
-    @property  
-    def recognition_engine(self) -> Optional[PaddleOCR]:
-        return self._recognition_engine
-        
-    @property    
-    def word_finder(self) -> Optional[WordFinder]:
-        return self._word_finder
+        except ImportError as e:
+            logger.error(f"NO SE CARGO MODULO OCR: {e}", exc_info=True)
+        self._word_finder = None
+        return False

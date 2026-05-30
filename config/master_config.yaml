@@ -1,8 +1,8 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-  #  input,
-    #  input2,
+   input,
+     input2,
    input3,
     # E:/data/tickets_nuevo
   ]
@@ -14,7 +14,7 @@ system_config:
     # AAAA0058,
     # AAAC0037,
 #     AAAA0059,
-    # AAAB0002,
+#     AAAB0002,
     # AAAC0010,
     # AAAB0002,
     # AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039,
@@ -32,15 +32,15 @@ pipeline_secuence:
   preprocessing_stage:
     # - restorer
 #     - "moire"
-#     - "sp"
-#     - "gauss"
-#     - "clahe"
-#     - "sharp"
+#    - "sp"
+#    - "gauss"
+#    - "clahe"
+#    - "sharp"
 
   ocr_stage:
-    - "paddle_wrapper"
-    - "text_refiner"
-    - "data_finder"
+     - "paddle_wrapper"
+     - "text_refiner"
+     - "data_finder"
     
   vector_stage:
     - "lineal"
@@ -56,8 +56,8 @@ log_debug:
   text_ocr: False
   seman_clas: False
   key_fields: False
-  lines: False
-  table_lines: False
+  lines: True
+  table_lines: True
   table_geo: False
   table_correct: False  
   semantic_types_log: [-1]
@@ -114,17 +114,15 @@ models_config:
   max_text_length: 20
   rec_image_inverse: False
   
-  det_model_dir: "C:/PerfectOCR/data/models/paddle/det/es"
-  rec_model_dir: "C:/PerfectOCR/data/models/paddle/rec/es"
-  wf_model_path: "C:/PerfectOCR/data/models/wf/wf_model.pkl"
+  det_model_dir: "C:/PerfectOCR/models/paddle/det/es"
+  rec_model_dir: "C:/PerfectOCR/models/paddle/rec/es"
+  wf_model_path: "C:/PerfectOCR/models/wf/wf_model.pkl"
   # wf_model_path: "C:/word_finder_model/models/wf_model.pkl"
   set_wf_params: False
   
 modules:
   image_preparation:
     ink_enhancement:
-      white: [255, 255, 255]
-      black: [0, 0, 0]
       aspect_ratio_range: [2.5, 13.8]
       angle_threshold: 41.25
       thr: 0.23
@@ -140,7 +138,6 @@ modules:
       hough_max_line_gap_px: 20
       hough_angle_filter_range_degrees: [-22.5, 22.5]
       border_cutt: 100
-      border_color: [255, 255, 255]
       
     geometry_detect:
       morph_kernel: [2, 2]
@@ -217,4 +214,6 @@ utils:
   dpi_range: [100, 200, 300, 400, 600, 1200]
   bin_interval: [10.0, 245.0]
   percentile: [0.10, 0.99]
+  white: [255, 255, 255]
+  black: [0, 0, 0]
   

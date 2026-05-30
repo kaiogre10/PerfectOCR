@@ -44,7 +44,10 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
         models_config = config_services.models_config
         if models_config:
             models_manager = ModelsManager.get_instance()
-            models_manager.initialize_models(models_config)
+            if not models_manager.initialize_models(models_config):
+                logger.info("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
+                system_service.cleanup_project_cache()
+                return []
         
         if not config_services.no_modules:
         # 5. CREAR STAGERS FACTORY UNA SOLA VEZ

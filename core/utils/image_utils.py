@@ -213,9 +213,7 @@ def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], blo
     return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)))
 
 def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    """
-    Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro.
-    """
+    """Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro."""
     if is_binarized(full_img):
         logger.error(f"IMAGEN BINARIA EN EL INICIO")
         return make_contiguous(full_img) 
@@ -288,11 +286,11 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Option
     contours_hierarchy = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = contours_hierarchy[0]
     if not contours:
-        return [], np.empty((0, 5))
+        return [], np.empty(0)
     
     total_conts = len(contours)
     contours = [np.array(cont.reshape(-1, 2), np.int32) for cont in contours]
-    logger.info(f"{total_conts} Contornos encontrados")
+    # logger.info(f"{total_conts} Contornos encontrados")
 
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
     cols = 16
@@ -301,51 +299,57 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Option
     # single_mask[:] = 0
 
     for i, cont_coords in enumerate(contours):
-        for c in range(cols):
-            if len(cont_coords) < 3:
-                continue
-            area = cv2.contourArea(cont_coords)
-            if area < 2:
-                continue
-            metrics_array_new[i, c] = area
-            centroids, dims, angle = cv2.minAreaRect(cont_coords)
-            metrics_array_new[i, [1, 2]] = centroids
-            metrics_array_new[i, [3, 4]] = dims
-            metrics_array_new[i, 5] = angle
-            
-            conv_hull = cv2.convexHull(cont_coords)
-            metrics_array_new[i, 5] = cv2.arcLength(cont_coords, True)  # Perimetro contorno
-            metrics_array_new[i, 6] = cv2.contourArea(conv_hull)        # Area de convexo
-            metrics_array_new[i, 7] = cv2.arcLength(conv_hull, True)    # Permietro del convex
+        # for c in range(cols):
+        if len(cont_coords) < 3:
+            continue
+        area = cv2.contourArea(cont_coords)
+        if area < 2:
+            continue
 
-            x, y, w, h = cv2.boundingRect(cont_coords)
-            metrics_array_new[i, 8] = x                                 # Ancho del bbox de contorno
-            metrics_array_new[i, 9] = y                                # Alto del bbox contorno
-            metrics_array_new[i, 10] = w
-            metrics_array_new[i, 11] = h
+        metrics_array_new[i, 0] = area
+        centroids, dims, angle = cv2.minAreaRect(cont_coords)
+        metrics_array_new[i, [1, 2]] = centroids
+        metrics_array_new[i, [3, 4]] = dims
+        metrics_array_new[i, 5] = angle
+        
+        conv_hull = cv2.convexHull(cont_coords)
+        metrics_array_new[i, 6] = cv2.arcLength(cont_coords, True)  # Perimetro contorno
+        metrics_array_new[i, 7] = cv2.contourArea(conv_hull)        # Area de convexo
+        metrics_array_new[i, 8] = cv2.arcLength(conv_hull, True)    # Permietro del convex
 
-            roi_mask = np.zeros((h, w), dtype=np.uint8)
-            cv2.drawContours(roi_mask, [cont_coords], -1, [255], cv2.FILLED, offset=(-x, -y))
-            roi_img = bin_img[y:y+h, x:x+w]
-            black_pixels = cv2.countNonZero(cv2.bitwise_and(roi_img, roi_mask))     # Total píxeles negros dentro contorno
-            inside = roi_img[roi_mask == 255]                                       # pixeles dentro del contorno
-            total_inside = inside.size                                              # total píxeles del contorno
-            
-            metrics_array_new[i, -2] = black_pixels
-            metrics_array_new[i, -1] = total_inside
-            
-            # logger.info(f"{internal_pixels}, {density}")
+        x, y, w, h = cv2.boundingRect(cont_coords)
+        metrics_array_new[i, 9] = x                                 # Ancho del bbox de contorno
+        metrics_array_new[i, 10] = y                                # Alto del bbox contorno
+        metrics_array_new[i, 11] = w
+        metrics_array_new[i, 12] = h
 
-            cont_coords_list.append((i, cont_coords))
+        roi_mask = np.zeros((h, w), dtype=np.uint8)
+        cv2.drawContours(roi_mask, [cont_coords], -1, [255], cv2.FILLED, offset=(-x, -y))
+        roi_img = bin_img[y:y+h, x:x+w]
+        black_pixels = cv2.countNonZero(cv2.bitwise_and(roi_img, roi_mask))     # Total píxeles negros dentro contorno
+        inside = roi_img[roi_mask == 255]                                       # pixeles dentro del contorno
+        total_inside = inside.size                                              # total píxeles del contorno
+        
+        metrics_array_new[i, -2] = black_pixels
+        metrics_array_new[i, -1] = total_inside
+        
+        # logger.info(f"{internal_pixels}, {density}")
+
+        cont_coords_list.append((i, cont_coords))
 
     if not cont_coords_list or metrics_array_new.size == 0:
-        return [], np.empty((0, 5))
-    
+        return [], np.empty(0)
+
     hierarchy = contours_hierarchy[1]
-    childs = np.array((hierarchy[0, :, 2] != -1))
+    h = hierarchy[0]  # shape: (N, 4) => [next, prev, first_child, parent]
+
+    childs = (h[:, 2] != -1)  # tiene hijo directo
+    is_outer = (h[:, 3] == -1)  # es contorno exterior
+    is_hollow_outer = childs & is_outer  # letra/figura exterior con hueco
+    is_solid_outer = (~childs) & is_outer  # letra/figura exterior sólida
     idx = np.arange(total_conts, dtype=np.int16)
-    
-    contours_features_array = np.column_stack([idx, metrics_array_new, childs[idx]])
+
+    contours_features_array = np.column_stack([idx, metrics_array_new, is_outer[idx], is_hollow_outer[idx], is_solid_outer[idx]])
     contours_features_array = contours_features_array[[c[0] for c in cont_coords_list]]
     
     # logger.info(f"contours_features_array SHAPE: {contours_features_array.shape} ARRAY:\n"f"{np.array2string(contours_features_array, suppress_small=True)}")

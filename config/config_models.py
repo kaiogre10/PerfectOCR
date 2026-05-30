@@ -65,8 +65,6 @@ class ModelsConfig(ConfigWithNumpy):
     rec_image_inverse: bool
     
 class InkConfig(ConfigWithNumpy):
-    white: List[int]
-    black: List[int]
     aspect_ratio_range: Tuple[float, float]
     angle_threshold: float
     thr: float
@@ -107,7 +105,6 @@ class DeskewConfig(ConfigWithNumpy):
     hough_max_line_gap_px: int
     hough_angle_filter_range_degrees: Tuple[float, float]
     border_cutt: int
-    border_color: List[int]
 
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: float
@@ -181,6 +178,8 @@ class UtilsConfig(ConfigWithNumpy):
     dpi_range: List[int]
     bin_interval: Tuple[float, float]
     percentile: Tuple[float, float]
+    white: List[int]
+    black: List[int]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation

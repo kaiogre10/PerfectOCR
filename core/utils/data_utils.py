@@ -266,9 +266,9 @@ NUMERIC_CORRECTIONS: Dict[str, str] = {
 
 DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
     "$": "S",
-    "è": "é",
-    "ý": "y",
     "\\": "/",
+    "]": "j",
+    "(": "C",
 }
 
 VALID_NUM_PUNT_CHARS: FrozenSet[str] = frozenset({

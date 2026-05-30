@@ -644,12 +644,12 @@ def get_ids(img_name: str) -> str:
 def format_elapsed_time(seconds: float) -> str:
     """Convierte segundos a formato HH:MM:SS.ms"""
     if seconds < 60.0:
-        return f"{seconds:.8f}'S"
+        return f"{seconds:.8f}'s"
     minutes = int((seconds % 3600) // 60)
     if minutes < 60:
-        return f"{minutes:02d}:M {seconds % 60:06.3f}'S"
+        return f"{minutes:02d}:M {seconds % 60:06.3f}'s"
     else:
-        return f"{int(seconds // 3600):02d}:H {minutes:02d}:M {seconds % 60:06.3f}'S"
+        return f"{int(seconds // 3600):02d}:H {minutes:02d}:M {seconds % 60:06.3f}'s"
 
 def fast_classfier(text: str) -> Tuple[List[int], int]:
     """Clasifica un string rapidamente, no seleccionar los strings antes de llamar a la función impactará de manera negativa el output del pipeline"""

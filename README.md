@@ -133,13 +133,10 @@ PerfectOCR/
 │           ├── geometric_table_structurer.py# Asigna celdas a columnas por geometría
 │           ├── math_max.py                  # Valida/reconstruye el dataframe
 │           └── data_collector.py            # Encuentra la metadata global
-├── data/
-│   ├── __init__.py
-│   ├── ladas_mexico.csv                     # Catálogo auxiliar de claves lada
-│   └── models/
+├── models/
 │       ├── paddle/
 │       │   └── det/es/                      # Modelo PaddleOCR de detección
-│       └── wf/                              # Modelos pickle de WordFinder
+│       └── wf/                              # Modelos pickle de WordFinder 
 ├── documentation/
 │   ├── algoritmo_estructuración_tabular.sty # Estilo/documento auxiliar LaTeX
 │   ├── algoritmo_matricial.py               # Prototipo/documentación del algoritmo matricial

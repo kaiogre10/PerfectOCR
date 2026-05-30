@@ -32,7 +32,7 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], cont
 
             elif not contours1:
                 logger.info(f" {len(contours2)} contornos principales 2")
-                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 69, 240), thickness=cv2.FILLED) # rojo
+                cv2.drawContours(image, [np.array(cont, dtype=np.int32) for cont in contours2], -1, (0, 69, 240), thickness=-1) # rojo
                 save_image(image, output_dir, file_name)
             
             elif not contours2:

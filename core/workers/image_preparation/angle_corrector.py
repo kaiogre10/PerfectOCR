@@ -4,7 +4,7 @@ import time
 import numpy as np
 import logging
 import math
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import make_contiguous
@@ -20,7 +20,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get("angle_corrector", {})
-        self.color: List[int] = list(worker_config["border_color"]) or [255, 255, 255]
+        self.color = config["white"]
         self.min_angle_for_correction = worker_config.get('min_angle_for_correction')
         self.canny_thresholds = worker_config['canny_thresholds']
         self.hough_threshold = worker_config.get('hough_threshold')
@@ -102,7 +102,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 rotation_matrix[1, 2] += (new_h / 2) - center[1]
                 
                 logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
-                return make_contiguous(cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.color)), True            
+                return make_contiguous(cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.color)), True
             else:             
                 logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
                 return full_img, False

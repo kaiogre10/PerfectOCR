@@ -136,10 +136,6 @@ class DataFormatter:
             
             if corrected or full_img is not None:
                 # Normalizar si se recibe la dataclass FullImage corregida
-                if isinstance(full_img, FullImage):
-                    img_arr = getattr(full_img, "full_img", None)
-                else:
-                    img_arr = full_img
                 img_arr = normalice_image(full_img)
                 if img_arr is None:
                     logger.critical(f"Error normalizando")

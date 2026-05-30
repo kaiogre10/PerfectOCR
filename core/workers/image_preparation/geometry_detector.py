@@ -20,7 +20,8 @@ class GeometryDetector(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get("geometry_detect", {})
-        self.kernel_threshold = worker_config["morph_kernel"]
+        kernel_threshold = worker_config["morph_kernel"]
+        self.kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_threshold[0], kernel_threshold[1]))
         self.iterations = worker_config.get("iterations")
         self.output = config.get("deleted_polys")
         self.output2 = config.get("opened")
@@ -54,15 +55,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
             if full_imag is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-            full_img = full_imag.copy()
-            if not manager.update_full_img(False, full_imag):
-                logger.error("No full IMG DE GEOMETRY")
-                return False
 
-            bin_img = binarice_img(full_img.copy(), {})
+            bin_img = binarice_img(full_imag, {})
 
-            kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (self.kernel_threshold[0], self.kernel_threshold[1]))
-            img= make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=self.iterations))
+            img = make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, self.kernel, iterations=self.iterations))
 
             if self.output2:
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
