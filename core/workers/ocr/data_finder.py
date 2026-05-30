@@ -1,6 +1,6 @@
 # core/workers/ocr/data_finder.py
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 import logging
 import numpy as np
 from core.domain.data_models import Polygons
@@ -105,34 +105,32 @@ class DataFinder(OCRAbstractWorker):
                     
                     # num_keywords = len(valid_results)
                     left_overs: List[str] = []
-                    # logger.info(f"RESULTS {pid} '{ocr_text}': {valid_results}")
                     if any(k['key_field'] == 6 for k in valid_results):
-                        key_text = [results['norm_ocr_text'] for results in valid_results]
                         key_field = [results['key_field'] for results in valid_results]
-                        key_word = [results['key_word'] for results in valid_results]
-                        orig_text = [results['text'] for results in valid_results]
-                        
-                        if orig_text == key_text:
-                            polygon_updates[pid] = key_field
-                            continue
-                        
-                        # logger.info(f"ORIGINAL: '{orig_text}', NORM OCR: '{key_text}'")
 
-                        for result in key_word:
-                            if result not in key_word:
-                                left_overs.append(orig_text[0])
+                        full_text = valid_results[0]['norm_ocr_text']
+                        covered: List[Tuple[int, int]] = []
+                        for results in valid_results:
+                            piece = results['norm_ocr_text'][results['start']:results['end']]
+                            pos = full_text.find(piece)
+                            if pos != -1:
+                                covered.append((pos, pos + len(piece)))
 
-                        if not left_overs:
-                            polygon_updates[pid] = key_field
-                            continue
+                        covered.sort()
+                        cursor = 0
+                        for start, end in covered:
+                            gap = full_text[cursor:start].strip()
+                            if gap:
+                                left_overs.append(gap)
+                            cursor = max(cursor, end)
+                        tail = full_text[cursor:].strip()
+                        if tail:
+                            left_overs.append(tail)
 
-                        else:
-                            polygon_updates[pid] = key_field * (len(left_overs) - 1)
-                            # logger.info(f"{len(left_overs)} LEFOVERS: '{left_overs}'")
-
+                        polygon_updates[pid] = key_field + [6] * len(left_overs)
+                        continue
                     else:
                         key_field = valid_results[0]['key_field']
-                        # logger.info(f"KEY FIELD DE: '{ocr_text}': {key_field}")
                         polygon_updates[pid] = [key_field]
                         continue
                         
@@ -155,7 +153,7 @@ class DataFinder(OCRAbstractWorker):
             return {}
         
         updates_to_validate: Dict[str, List[int]] = dict(polygon_updates)
-        for i, (pid, poly) in enumerate(polygons.items()):
+        for _, (pid, poly) in enumerate(polygons.items()):
             poly_kf = poly.key_field or []
             if not poly_kf:
                 continue

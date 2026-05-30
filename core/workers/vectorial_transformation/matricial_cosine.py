@@ -124,7 +124,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         analysi = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
         sims_final = get_cosine_similarity(analysi, False)
         # logger.debug(f"Tiempo: {time.perf_counter() - t0}")
-        logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
+        # logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
 
         if sims_final[0] < self.min_internal_sim:
             logger.info(f"PRIMRA LINEA RUIDOSA: {sims_final[0]}")
@@ -139,20 +139,20 @@ class MatricialCusine(VectorizationAbstractWorker):
             sims_idx = sim_idx
 
         abs_idx = line_ids[sims_idx]
-        logger.info("\n"f"sims_idx: {sims_idx}\n"f"ABS IDX: {abs_idx}")
+        # logger.info("\n"f"sims_idx: {sims_idx}\n"f"ABS IDX: {abs_idx}")
 
         deltas = np.ediff1d(sims_idx, to_begin=0)
         cuts_mask = np.where((deltas - 1) > self.tolerance_sim)[0]
-        logger.info("\n"f"DELTAS: {deltas}\n"f"MAKS: {cuts_mask}")
+        # logger.info("\n"f"DELTAS: {deltas}\n"f"MAKS: {cuts_mask}")
         if cuts_mask.size < 1:
             end_idx = abs_idx[-1] + 1
             start_idx = abs_idx[0]
             cutted_idx = np.arange(start=start_idx, stop=end_idx, dtype=np.uint8)
-            logger.info(f"early cutted_idx: {cutted_idx}, start: {start_idx} end: {end_idx}")
+            # logger.info(f"early cutted_idx: {cutted_idx}, start: {start_idx} end: {end_idx}")
             return cutted_idx
 
         cutted_idx = np.arange(cuts_mask[-1], dtype=np.uint8)
-        logger.info(f"cutted_idx: {cutted_idx}")
+        # logger.info(f"cutted_idx: {cutted_idx}")
         return line_ids[cutted_idx]
         
     def _find_best_cluster(self, sorted_candidates: List[str], line_ids: List[str]) -> List[str]:

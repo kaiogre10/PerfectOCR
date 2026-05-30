@@ -849,7 +849,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         non_empty_rows_idx = np.where(semi_decimal_rows==top_dec_counts)[0]
 
         if non_empty_rows_idx.size < 1:
-            logger.error("DF SIN DATOS SUFICIENTES, IMPOSIBLE PROCESAR")
+            logger.warning("DF SIN DATOS SUFICIENTES, IMPOSIBLE PROCESAR")
             return (pd.DataFrame(), {})
         
         max_decimal_array = decimal_array[non_empty_rows_idx]
@@ -863,9 +863,9 @@ class MatrixSolver(VectorizationAbstractWorker):
         decimal_rows = decimal_u[decimal_i]                                 # Mapeo de índices asbolutos
 
         decimal_coords_abs = np.column_stack([decimal_rows, decimal_cols])
-        # logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
+        logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
 
-        # logger.debug("\n"f"ROWS ABS: {decimal_rows_abs}\n"f"COLS ABS: {decimal_cols_abs}")
+        logger.info("\n"f"ROWS ABS: {decimal_rows_abs}\n"f"COLS ABS: {decimal_cols_abs}")
         potencial_val = np.zeros(df.shape, np.uint8)
         for r in non_empty_rows_idx:
             r = int(r)

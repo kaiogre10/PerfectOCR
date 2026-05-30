@@ -51,7 +51,6 @@ class Refiner(OCRAbstractWorker):
                     self.classify_strings(manager)
 
         if self.seman_clas_log:
-            logger.info(f"Pasada final: Clasificación Semántica completa")
             logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():

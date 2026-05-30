@@ -337,7 +337,6 @@ def get_cuants(text: str) -> str:
         monetary_count = word.count("$")
     
         if bool(_valid_cuant_pattern.search(word)):
-            logger.info(f"VALID CUANT PATTERN: '{word}'")
             word = word[0] + word[1:].replace('$', '5')
 
         elif word.startswith('$') and monetary_count > 1 and validate_quant_chars(word):

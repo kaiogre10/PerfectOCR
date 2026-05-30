@@ -248,7 +248,7 @@ class ConfigService:
             all_workers.update(vect)
 
         if self.create_stager[4][1]:
-            vect = set(self.create_stager[3][1])
+            vect = set(self.create_stager[4][1])
             all_workers.update(vect)
         return all_workers
         
