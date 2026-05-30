@@ -158,7 +158,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         try:
             perm_df = aritmetic_df.map(lambda x: Decimal(x))
         except InvalidOperation as e:
-            logger.error(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
+            logger.debug(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
             return (pd.DataFrame(), {})
         try:
             all_hypotesis = []
@@ -208,7 +208,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 all_hypotesis.append(row_validated)
 
         except ValueError as e:
-            logger.error(f"ERROR PERMUTANDO: '{e}'", exc_info=True)
+            logger.debug(f"ERROR PERMUTANDO: '{e}'", exc_info=True)
             return (pd.DataFrame(), {})
 
         c_column, pu_column, mtl_column = [np.argmax(np.count_nonzero(array_votes==i, axis=0)) for i in (1, 2, 3)]
@@ -259,9 +259,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         return (df, context)
 
     def get_decimal_df(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-        """
-        Selecciona filas/columnas con densidad decimal suficiente para inferencia.
-        """
+        """Selecciona filas/columnas con densidad decimal suficiente para inferencia."""
         cols_idx = context["cols_idx"]
         rows_idx = context["rows_idx"]
         arrays_table = self.get_arrays_table(context)
@@ -457,7 +455,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 val_pu = Decimal(raw_pu) if not missing_pu else ZERO
                 val_mtl = Decimal(raw_mtl) if not missing_mtl else ZERO
             except InvalidOperation as e:
-                logger.warning(f"ERROR COMPLETANDO: '{e}'", exc_info=True)
+                logger.debug(f"ERROR COMPLETANDO: '{e}'", exc_info=True)
 
             if missing_c:
                 result = val_mtl / val_pu
@@ -813,7 +811,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         c_target = df.columns.get_loc("producto_norm")
         empty_rows_idx = np.where(unique_cells)[0]
 
-        for r in empty_rows_idx:
+        for r in empty_rows_idx[::-1]:
             c_idx = np.nonzero(elements_array[r])[0]
             if len(c_idx) == 0:
                 continue
@@ -840,6 +838,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         return df
 
     def solve_incomplete(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+        logger.info("INCOMPLETO RECIBIDO:\n" + df.to_string(index=True))
         cols_idx = context["cols_idx"]
         # rows_idx = context["rows_idx"]
         arrays_table = self.get_arrays_table(context)
@@ -864,7 +863,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         decimal_rows = decimal_u[decimal_i]                                 # Mapeo de índices asbolutos
 
         decimal_coords_abs = np.column_stack([decimal_rows, decimal_cols])
-        # #  #logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
+        # logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
 
         # logger.debug("\n"f"ROWS ABS: {decimal_rows_abs}\n"f"COLS ABS: {decimal_cols_abs}")
         potencial_val = np.zeros(df.shape, np.uint8)
@@ -901,7 +900,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 potencial_val[r, 0] = int(quotient2)
             continue                                                                        # Momentaneamente, después agregaré los casos para pu y mtl
 
-        # #  #logger.info("SEMI_COMP:\n" + df.iloc[non_empty_rows_idx].to_string(index=True))
+         # logger.info("SEMI_COMP:\n" + df.iloc[non_empty_rows_idx].to_string(index=True))
         # logger.debug("SEMI_ARRAY:\n"f"{np.column_stack([non_empty_rows_idx, max_decimal_array])}")
         # logger.debug("\n"f"{np.column_stack([non_empty_rows_idx, potencial_val[non_empty_rows_idx]])}")
 

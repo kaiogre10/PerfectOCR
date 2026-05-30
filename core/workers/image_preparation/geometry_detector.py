@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 from app.models_manager import ModelsManager
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import binarice_img, make_contiguous # get_contours_values
+from core.utils.image_utils import binarice_img, make_contiguous, cropp_img # get_contours_values
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -87,16 +87,15 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 poly_id = f"poly_{idx:04d}"
                 coords = np.array([[p[0], p[1]] for p in poly_pts], np.float32)
                 bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()], np.float32)
-                centroid = np.mean(coords, axis=0)
+                centroid = np.mean(coords, axis=0, dtype=np.float32)
 
                 # geometry_array[idx, [0, 1, 2, 3, 4, 5]] = bbox[0], bbox[1], bbox[2], bbox[3], centroid[0], centroid[1]
-                    # if self.output:
-                    #     cropped = cropp_img(img, bbox)
-                    #     worker_name = context.get("worker_name") or "geometry_detector"
-                    #     output_paths = context["output_paths"]
-                    #     pid = f"{poly_id}_{worker_name}"
-                    #     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    #     save_croped_image(image_name, pid, cropped, output_paths, worker_name)
+                if self.output:
+                    cropped = cropp_img(img, bbox)
+                    worker_name = context.get("worker_name") or "geometry_detector"
+                    pid = f"{poly_id}_{worker_name}"
+                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                    save_croped_image(image_name, pid, cropped, worker_name)
             
                 polygons_list.append({
                     "poly_index": idx,

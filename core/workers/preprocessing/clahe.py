@@ -26,11 +26,7 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         Analiza el contraste de todos los polígonos, decide la corrección con CLAHE de forma
         vectorizada y la aplica in-place.
         """
-        try:            
-            if not manager.validate_cropped_img():
-                logger.info(f"Sin cropped_img en el formatter")
-                return False
-            
+        try:
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False

@@ -12,6 +12,7 @@
 *.cursorignore
 *.yaml
 *.sql
+*.aiignore
 
 # Ignorar carpetas
 .__pycache__/
@@ -23,7 +24,7 @@
 .cursor/
 .github/
 .github/chatmodes/
-#.typings/
+.aiassistant/
 
 # Ignorar carpeta
 documentation/

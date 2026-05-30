@@ -300,10 +300,6 @@ class DataFormatter:
         return True
 
     def create_text_lines(self, lines_info: Dict[str, Any]) -> bool:
-        """
-        Guarda las líneas reconstruidas en el workflow_dict y, más importante,
-        crea las dataclasses AllLines y las guarda en el workflow (la fuente de verdad).
-        """
         try:
             if not self.workflow:
                 logger.error("No hay workflow_dict o workflow inicializado para guardar líneas de texto.")
@@ -352,10 +348,7 @@ class DataFormatter:
         return False
 
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
-        """
-        Identifica las líneas tabulares y las guarda como dataclasses TabularLines
-        en el workflow. También actualiza el flag en AllLines.
-        """
+        """Identifica las líneas tabulares y las guarda como dataclasses TabularLines"""
         try:
             if not self.workflow:
                 return False
@@ -402,9 +395,7 @@ class DataFormatter:
         return False
                 
     def save_final_output(self, df: pd.DataFrame, key_data: Dict[str, str]) -> bool:
-        """
-        Actualiza los datos finales
-        """
+        """Actualiza los datos finales"""
         try:
             if not self.workflow:
                 return False

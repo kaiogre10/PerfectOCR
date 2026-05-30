@@ -31,12 +31,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         """
         try:
             start_time = time.time()
-            
-            if not manager.validate_cropped_img():
-                logger.info(f"Sin cropped_img en el formatter")
-                return False
-                
-            logger.debug("Polygonos revisados")
+
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
@@ -67,7 +62,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             min_dims = np.array([min(m['h'], m['w']) for m in metrics], dtype=np.uint32)
 
             cond_small = areas < 1500  # Reducido de 2000
-            cond_medium = (areas >= 1500) & (areas < 5000)  # Ajustado de 2000-10000
+            cond_medium = (areas > 1500) & (areas < 5000)  # Ajustado de 2000-10000
             
             # Ajuste de umbrales y ksizes para tamaños más realistas
             ratio_thrs = np.select([cond_small, cond_medium], [0.05, 0.025], default=self.salt_pepper_threshold)
@@ -103,8 +98,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                 if self.output:
                     worker_name = context.get("worker_name") or "sp"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    output_paths = context["output_paths"]
-                    save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
+                    save_croped_image(image_name, poly_id, corrected_img, worker_name)
 
             total_time = time.time() - start_time
             logger.info(f"Corregidos: {corrected_poly}/{len(poly_ids_order)} polígonos en: {total_time:.6f}s")

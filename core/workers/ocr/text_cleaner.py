@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import validate_text, remove_special_sequences, punct_strip, separate_punt
+from core.utils.text_utils import validate_text, remove_special_sequences, punct_strip, separate_punt, is_acronym
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,11 @@ class TextCleaner(OCRAbstractWorker):
             #     updated_polygon = dataclasses.replace(polygon)
             #     list_of_final_polygons.append(updated_polygon)
             #     continue
-            
+
+            if is_acronym(text):
+                final_polygons[poly_id] = {"text": text}
+                continue
+
             text_sec = remove_special_sequences(text)
                
             if not text_sec or not validate_text(text_sec):
@@ -82,7 +86,7 @@ class TextCleaner(OCRAbstractWorker):
             else:
                 final_polygons[poly_id] = {"text": txt}
                 # if txt != text:
-                    # logger.info(f"Corrección de '{poly_id}' | Original: '{text}' | Ruido:'{set(text.split(" ")).difference(set(txt.split(" ")))}' → '{txt}'")
+                #     logger.info(f"Corrección de '{poly_id}' | Original: '{text}' | Ruido:'{set(text.split(" ")).difference(set(txt.split(" ")))}' → '{txt}'")
 
         if manager.update_ocr_results(final_polygons, worker_name):
             # logger.info(f"Limpieza textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - eliminated_count}, eliminados: {eliminated_count}")

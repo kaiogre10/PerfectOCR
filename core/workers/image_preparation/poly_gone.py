@@ -7,7 +7,7 @@ from typing import Dict, Any, Tuple
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.image_utils import  make_contiguous
+from core.utils.image_utils import  make_contiguous, validate_image
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         self.project_root = project_root
         worker_config = config.get('polygon_extractor', {})
         self.bin_interval: Tuple[float, float] = config["bin_interval"]
-        self.padding = worker_config.get("cropping_padding", 0.0)
+        self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
         self.filtered_ouputs = config.get("final_polys", False)
         self.disoutput = config.get("discarded_polys", False)
@@ -37,7 +37,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             poly_ids_order = list(polygons.keys())
             all_bboxes = np.array([polygons[pid].geometry.bounding_box for pid in poly_ids_order], dtype=np.int16)
 
-            if not all_bboxes.size:
+            if all_bboxes.size < 1:
                 logger.warning("PolygonExtractor: No hay bboxes válidos para procesar.")
                 return False
 
@@ -65,11 +65,8 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             for idx, old_poly_id in enumerate(poly_ids_order):
                 # Filtrar por dimensiones válidas
-                if not ((px2[idx] > px1[idx]) or (py2[idx] > py1[idx])):
-                    logger.info(f"POLÍGONO INVÁLIDO: {old_poly_id}")
-                    # if self.disoutput:
-                    #     pid = f"{old_poly_id}"
-                    #     self.save_debug(cropped, context, manager, "invalid_dims", pid)
+                if not ((px2[idx] > px1[idx]) and (py2[idx] > py1[idx])):
+                    # logger.info(f"POLÍGONO INVÁLIDO: {old_poly_id}")
                     continue
 
                 # Recortar la imagen
@@ -77,11 +74,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 cropped = np.ascontiguousarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy(), dtype=np.uint8)
 
                 # Filtrar por intervalo de color
-                poly_mean = np.mean(cropped)
-                if not (self.bin_interval[0] < poly_mean < self.bin_interval[1]):
-                    # if self.disoutput:
-                    #     pid = f"{old_poly_id}_{poly_mean}"
-                    #     self.save_debug(cropped, context, manager, "bn_discarded", pid)
+                if not validate_image(cropped):
+                    # logger.info(f"FILTRADO POR MEDIA DE COLOR: {old_poly_id}")
+                    if self.disoutput:
+                        pid = f"{old_poly_id}_B/N"
+                        self.save_debug(cropped, context, manager, "bn_discarded", pid)
                     continue
 
                 # Si el polígono es válido, se crea el nuevo objeto completo

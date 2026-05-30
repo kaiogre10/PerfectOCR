@@ -6,11 +6,8 @@ from typing import Dict, Any, List, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import AllLines, Polygons
-from core.utils.data_utils import VECTOR_DUMMIE
 from core.utils.math_utils import get_cosine_similarity, density_cluster, calculate_features, cosine_similarity_matrix, mean_cosine_per_row
 from services.output_service import save_table_values
-
-dummie_vect = VECTOR_DUMMIE.reshape(1, -1)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +18,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
         self.min_cluster = worker_config.get("min_cluster", 1)
+        self.tolerance_sim = worker_config.get("tolerance_sim")
         self.emergency_threshold = worker_config.get("emergency_threshold")
         self.eps = worker_config.get("eps")
         self.metric = worker_config.get("metric", "")
@@ -121,50 +119,41 @@ class MatricialCusine(VectorizationAbstractWorker):
 
     def cosine_dummies(self, analysis: np.ndarray[Any, Any], line_ids: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """Compara todas las líneas del documento contra vectores DUMMIE, usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares."""
-        # logger.info("COSENO DUMMIES")
-        t0 = time.perf_counter()
+        # t0 = time.perf_counter()
         analysis = analysis[line_ids]
         analysi = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
-        sims_final = get_cosine_similarity(analysi, dummie_vect, False)
-        logger.debug(f"Tiempo: {time.perf_counter() - t0}")
-        # logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
+        sims_final = get_cosine_similarity(analysi, False)
+        # logger.debug(f"Tiempo: {time.perf_counter() - t0}")
+        logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
+
+        if sims_final[0] < self.min_internal_sim:
+            logger.info(f"PRIMRA LINEA RUIDOSA: {sims_final[0]}")
+            line_ids = line_ids[1:]
+            sims_final = sims_final[1:]
 
         sim_idx = np.where(sims_final > self.similarity_threshold)[0]
         if sim_idx.size < 1:
-            logger.warning(f"SE USARÁ EL UMBRAL DE SEGURIDAD: {self.emergency_threshold}")
+            logger.warning(f"SE USARÁ EL UMBRAL DE SEGURIDAD: '{self.emergency_threshold}'")
             sims_idx = np.where(sims_final > self.emergency_threshold)[0]
-            if sims_final[0] < self.min_internal_sim:
-                logger.info(f"PRIMRA LINEA RUIDOSA: {sims_final[0]}")
-                line_ids = line_ids[1:]
         else:
             sims_idx = sim_idx
 
-        n = line_ids.size
-        consecutive_idx_size = sims_idx.size
-        similarity_lines = line_ids[sims_idx]
-        # logger.info(f"sims_idx: {sims_idx}\n"f"ABS IDX: {similarity_lines}")
-        if consecutive_idx_size == n or similarity_lines.size == self.min_cluster:
-            # logger.info("LINEAS SUPERARON UMBRAL DE SIMILITUD")
-            return similarity_lines
+        abs_idx = line_ids[sims_idx]
+        logger.info("\n"f"sims_idx: {sims_idx}\n"f"ABS IDX: {abs_idx}")
 
-        idx_lower = np.setdiff1d(similarity_lines, line_ids)
-        deltas = np.ediff1d(idx_lower, to_begin=0)
-        mask = np.where(deltas > self.min_cluster)
-        # logger.info("\n"f"DELTAS: {deltas}\n"f"MAKS: {mask}")
-        
-        cuts = np.where(deltas >= self.min_cluster)[0]
-        if cuts.size < 1:
-            # logger.info("CUTS:\n"f"{cuts}, SHAPE: {cuts.shape}")
-            # logger.info("LINEAS SUPERARON UMBRAL REDUCIDO")
-            return line_ids
-        
-        cutted_idx = np.arange((cuts[0]+1), dtype=np.uint8)
-        # mean_idx = sims_final[cutted_idx]
-        # lines_ids = line_ids[cutted_idx]
-        # logger.info("CUTTED:\n"f"{np.column_stack([lines_ids, mean_idx])}, SHAPE: {mean_idx.shape[0]}")
-        # tabular_ids = line_ids[0:mean_idx.shape[0]]
-        # logger.info(f"Table Range: {tabular_ids[0]} - {tabular_ids[-1]}")
-        return cutted_idx
+        deltas = np.ediff1d(sims_idx, to_begin=0)
+        cuts_mask = np.where((deltas - 1) > self.tolerance_sim)[0]
+        logger.info("\n"f"DELTAS: {deltas}\n"f"MAKS: {cuts_mask}")
+        if cuts_mask.size < 1:
+            end_idx = abs_idx[-1] + 1
+            start_idx = abs_idx[0]
+            cutted_idx = np.arange(start=start_idx, stop=end_idx, dtype=np.uint8)
+            logger.info(f"early cutted_idx: {cutted_idx}, start: {start_idx} end: {end_idx}")
+            return cutted_idx
+
+        cutted_idx = np.arange(cuts_mask[-1], dtype=np.uint8)
+        logger.info(f"cutted_idx: {cutted_idx}")
+        return line_ids[cutted_idx]
         
     def _find_best_cluster(self, sorted_candidates: List[str], line_ids: List[str]) -> List[str]:
         """Encuentra el mejor cluster respetando min_cluster e interval y devuelve todas las líneas del intervalo."""
@@ -202,6 +191,7 @@ class MatricialCusine(VectorizationAbstractWorker):
          
     def scanner_clustering(self, features_array: np.ndarray[Any, Any], manager: DataFormatter) -> List[str]:
         """Aplica DBSCAN para agrupar líneas similares"""
+        logger.warning("DBSCAN PARA FALLBACK")
         all_lines = manager.workflow.all_lines if manager.workflow else {}
         int_line_ids = features_array[:, 0].astype(np.int8)
         features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)

@@ -1,17 +1,21 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-  #  input,
-  #    input2,
+   input,
+     input2,
    input3,
     # E:/data/tickets_nuevo
   ]
   images_names: [
 #    AAAA0061,
+#    AAAA0038,
+#    AAAA0040,
+#    AAAC0043,
     # AAAA0058,
-    # AAAA0059,
-    AAAC0010,
-    AAAB0002,
+#     AAAA0059,
+#    AAAB0002,
+#     AAAC0010,
+    # AAAB0002,
     # AAAA0014, AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039,
   ]
   valid_extensions: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
@@ -20,17 +24,17 @@ pipeline_secuence:
   imagepre_stage:
     - "image_loader"
     - "angle_corrector"
-    # - "ink_enhancement"
+#    - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stage:
     # - restorer
-    # - "moire"
-    # - "sp"
-    # - "gauss"
-    # - "clahe"
-    # - "sharp"
+#     - "moire"
+#     - "sp"
+#     - "gauss"
+#     - "clahe"
+#     - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
@@ -38,20 +42,20 @@ pipeline_secuence:
     - "data_finder"
     
   vector_stage:
-#    - "lineal"
+    - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-    # - "collector"
+    - "collector"
 
   db_stage:
-    # - "db_service"
+    - "db_service"
    
 log_debug:
   text_ocr: False
   seman_clas: False
-  key_fields: True
-  lines: False
+  key_fields: False
+  lines: True
   table_lines: False
   table_geo: False
   table_correct: False  
@@ -197,9 +201,10 @@ modules:
       metric: "euclidean"
       eps: 0.91
       min_cluster: 2
-      similarity_threshold: 0.913
-      emergency_threshold: 0.837
-      min_internal_sim: 0.45
+      tolerance_sim: 2
+      similarity_threshold: 0.915
+      emergency_threshold: 0.817
+      min_internal_sim: 0.439
     
     table_structurer:
       min_h: 3

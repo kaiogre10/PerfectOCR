@@ -53,8 +53,10 @@ _edge_punt_pattern = re.compile(rf'^({_edge_chars}+)|({_edge_chars}+)$', re.IGNO
 # Siglas/Acrónimos
 # Ahora el patrón fuerza secuencias de letra.punto repetidas (ej: P.U.C.D. etc). El último . es opcional solo después de la última letra.
 _acronim = r'(?:[A-Za-z]\.)+[A-Za-z]\.?'
+_acromin_currency_pattern = re.compile(r"(?:\d[\d,.]*)?\s*m\s*\.?\s*n\.?", re.IGNORECASE)
+
 _acronym_pattern: Pattern[str] = re.compile(rf'^({_acronim}|sa|cv|mn)[:;,.]?$', re.IGNORECASE)
-# _bad_title: Pattern[str] = re.compile(r'^([A-Za-z0-9])(?: [A-Za-z0-9])+$', re.IGNORECASE)
+_bad_title: Pattern[str] = re.compile(r'^([A-Za-z0-9])(?: [A-Za-z0-9])+$', re.IGNORECASE)
 
 # Datos Globales
 # _cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
@@ -200,7 +202,12 @@ def is_code(s: str) -> bool:
     return bool(_numeric_code.search(s))
 
 def is_acronym(text: str) -> bool:
-    return bool(_acronym_pattern.search(text)) if text else False
+    if not text or text.isnumeric() or text.isalpha():
+        return False
+    elif bool(_acronym_pattern.search(text)) or bool(_acromin_currency_pattern.search(text)):
+        return True
+    else:
+        return False
 
 def contains_umd(s: str) -> bool:
     """Valida si un string contiene UMD"""
@@ -209,10 +216,7 @@ def contains_umd(s: str) -> bool:
     return bool(_umd_patterns.search(s))
 
 def find_umd(s: str) -> str:
-    """
-    En un string completo inserta espacios en los bordes de cada UMD para separar subcadenas al hacer split.
-    Si no hay UMD, devuelve el mismo texto de entrada.
-    """
+    """En un string completo inserta espacios en los bordes de cada UMD para separar subcadenas con split solo si hay UMD."""
     if not s:
         return ""
 
@@ -272,38 +276,33 @@ def find_umd(s: str) -> str:
     return "".join(parts)
 
 def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
-    try:
-        if not any(c.isalnum() for c in s):
-            return None
-
-        if not activate_func[0] and bool(_date_patterns.search(s)):
-            activate_func[0] = True
-            return 9
-
-        if not activate_func[1] and bool(_rfc_patterns.search(s)):
-            activate_func[1] = True
-            return 7
-
-        if not activate_func[2] and bool(_iva_patterns.search(s)):
-            activate_func[2] = True
-            return 8
-            
-        if not activate_func[3] and bool(_phone_number.search(s)):
-            activate_func[3] = True
-            return 10
-            
-        if not activate_func[4] and bool(_mail_pattern.search(s)):
-            activate_func[4] = True
-            return 11
-        
-        # if not activate_func[5] and bool(_cp_pattern.search(s)):
-        #     activate_func[5] = True
-        #     return 12
-            
+    if not any(c.isalnum() for c in s):
         return None
 
-    except ValueError as e:
-        logger.warning(f"Error buscando datos globales: {e}", exc_info=True)
+    if not activate_func[0] and bool(_date_patterns.search(s)):
+        activate_func[0] = True
+        return 9
+
+    if not activate_func[1] and bool(_rfc_patterns.search(s)):
+        activate_func[1] = True
+        return 7
+
+    if not activate_func[2] and bool(_iva_patterns.search(s)):
+        activate_func[2] = True
+        return 8
+
+    if not activate_func[3] and bool(_phone_number.search(s)):
+        activate_func[3] = True
+        return 10
+
+    if not activate_func[4] and bool(_mail_pattern.search(s)):
+        activate_func[4] = True
+        return 11
+
+    if not activate_func[5] and bool(_acromin_currency_pattern.search(s)):
+        activate_func[5] = True
+        return 0
+
     return None
 
 def validate_quant_chars(text: str) -> bool:
@@ -338,6 +337,7 @@ def get_cuants(text: str) -> str:
         monetary_count = word.count("$")
     
         if bool(_valid_cuant_pattern.search(word)):
+            logger.info(f"VALID CUANT PATTERN: '{word}'")
             word = word[0] + word[1:].replace('$', '5')
 
         elif word.startswith('$') and monetary_count > 1 and validate_quant_chars(word):
@@ -407,6 +407,7 @@ def format_cuant(text: str) -> str:
         return (text + _end_cuant_str).strip()
     text_0 = _zeros_pattern.sub("0", text)
     cuant_txt = _clean_currency.sub('', text_0).strip()
+    cuant_txt = cuant_txt.replace("$", "5")
     temp_txt = cuant_txt.replace(".", "")
     if not temp_txt.isdecimal():
         logger.warning(f"CARACTER INTRUSO EN '{text}' NO SE PUDO FORMATEAR")
@@ -478,7 +479,7 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
     for pid, polygon in polygons.items():
         
         if polygon.key_field is not None and 0 in polygon.semantic_clasification:
-            #  logger.info(f"Poligono {pid} con {kf} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
+            # logger.info(f"Poligono {pid} con {polygon.key_field} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
             final_results[pid] = ([0], 0)
             continue
         
@@ -540,8 +541,11 @@ def classify_token(s: str) -> Tuple[int, int]:
             return (1, 0)
             
         elif is_acronym(s):
+            if bool(_acromin_currency_pattern.search(s)):
+                return (0, 0)
             # #  logger.info(f"ACRONIMO: '{s}'")
-            return (1, 0)
+            else:
+                return (1, 0)
 
         elif bool(_semi_c_fraction.search(s)) or bool(_measure_unities.search(s)):
             # #  logger.info(f"UMD por regex: '{s}'")
@@ -590,7 +594,10 @@ def classify_token(s: str) -> Tuple[int, int]:
     if contains_quantitative(s):
         #  logger.info(f"CUANT CONTENIDO: '{s}'")
         return (4, total_cuant)
-        
+
+    elif bool(_acromin_currency_pattern.search(s)):
+        return (0, 0)
+
     elif contains_umd(s):
         #  logger.info(f"UMD mixto: '{s}'")
         return (2, total_cuant)

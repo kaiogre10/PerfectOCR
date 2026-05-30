@@ -25,11 +25,7 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
         Analiza todos los polígonos en un lote para detectar ruido Gaussiano, determina la corrección
         necesaria mediante operaciones vectorizadas y la aplica in-place.
         """
-        try:            
-            if not manager.validate_cropped_img():
-                logger.error(f"Sin cropped_img en el formatter")
-                return False
-            
+        try:
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False

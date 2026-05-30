@@ -5,8 +5,9 @@ import time
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 from sklearn.cluster import HDBSCAN, DBSCAN # type: ignore
-from core.utils.data_utils import DENSITY_ENCODER, CUANT_CHAR
+from core.utils.data_utils import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE
 
+dummie_vect = VECTOR_DUMMIE.reshape(1, -1)
 density_encoder = DENSITY_ENCODER
 cuant_char = CUANT_CHAR
 
@@ -41,11 +42,9 @@ def text_encode(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     encoders = np.column_stack([dense, morph])
     return np.mean(encoders, axis=0)
 
-def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]], ref_vec: Optional[np.ndarray[Any, np.dtype[np.float32]]] = None, dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
-    """
-    Calcula la matriz de similitudes coseno entre los vectores de X y ref_vec.
-    """
-    return cosine_similarity(X, ref_vec, dense_output=dense_output) # type: ignore
+def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
+    """Calcula la matriz de similitudes coseno entre los vectores de X y el Dummie Vector"""
+    return cosine_similarity(X, dummie_vect, dense_output=dense_output) # type: ignore
     
 def cosine_similarity_matrix(x: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarray[Any, np.dtype[np.float32]]:
     norms = np.linalg.norm(x, axis=1, keepdims=True)
@@ -74,9 +73,7 @@ def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     min_feat = np.min(metrics) if np.min(metrics) == 0 else (np.min(metrics) - 0.1)
     
     def recursive_cleanup(current_metrics: np.ndarray[Any, Any], total_deleted: int, iteration: int) -> Tuple[int, int]:
-        """
-        Función recursiva que elimina outliers iterativamente.
-        """
+        """Función recursiva que elimina outliers iterativamente."""
         current_count = current_metrics.shape[0]
         max_feat = (np.max(current_metrics) + 0.1)
         
@@ -188,9 +185,7 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
     return geoms
 
 def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], img_dims: Tuple[int, int]) -> np.ndarray[Any, Any]:
-    """
-    Calcula features geométricos + alineación tabular por cada línea.
-    """    
+    """Calcula features geométricos + alineación tabular por cada línea."""    
     t0 = time.perf_counter()
     
     all_features = calculate_math_features(sorted_lines, img_dims)
@@ -394,9 +389,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     return all_features
 
 def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
-    """
-    Devuelve features textuales ajustadas a la lógica de vectorize.py (-1.0/1.0 y conteos correctos).
-    """
+    """Devuelve features textuales ajustadas a la lógica de vectorize.py (-1.0/1.0 y conteos correctos)."""
     # timef = time.perf_counter()
     index_to_id_map = {p.poly_index: p.polygon_id for p in polygons_dict.values()}
     features = np.zeros((len(sorted_lines), 3), np.float32)
@@ -418,7 +411,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
                 else:
                     kf_total += len(kf)
                 
-        features[i, 0] = sc_quant_count
+        features[i, 0] = sc_quant_count if kf_total < 1 else 0
         features[i, 1] = 0 if kf_total > 0 else line_data.t_cuant
         features[i, 2] = kf_total
     
@@ -471,5 +464,5 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
 
 def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
     sc = np.asarray(semantic_clasification, dtype=np.int8)
-    mask = (sc == 2) | (sc > 3)
+    mask = (sc == 2) | (sc == 4)
     return 0 if 0 in semantic_clasification else np.count_nonzero(mask)

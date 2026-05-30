@@ -166,6 +166,7 @@ class CosineSimilarity(ConfigWithNumpy):
     eps: float
     metric: str
     min_cluster: int
+    tolerance_sim: int
     similarity_threshold: float
     emergency_threshold: float
     min_internal_sim: float
