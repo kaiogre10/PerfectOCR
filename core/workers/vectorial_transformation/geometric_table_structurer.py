@@ -1,8 +1,8 @@
 # core/workers/vectorial_transformation/geometric_table_structurer.py
 import logging
 import time
-from typing import List, Dict, Any, Tuple, cast
 import pandas as pd #type: ignore
+from typing import List, Dict, Any, Tuple, cast
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
@@ -15,7 +15,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        # worker_config = config.get('table_structurer', {})
         self.output = config.get("table_structured", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -34,26 +33,30 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
                     
             polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            tabular_line_ids = [lid for lid, line_obj in all_lines.items() if line_obj.tabular_line]
+            tabular_line_ids = sorted([lid for lid, line_obj in all_lines.items() if line_obj.tabular_line])
                 
             if not tabular_line_ids or not all_lines or not polygons:
-                logger.error("Faltan datos necesarios para estructuración tabular")
-                return False                
-        
-            H, header_line_id = self.get_headers(all_lines, polygons)
-            if not header_line_id or H==0:
-                logger.error("No hay encabezados disponibles")
+                logger.error("Faltan datos necesarios para estructuracion tabular")
                 return False
-            manager.workflow.H = H
+        
+            header_line_idx = [lid for lid, line_obj in all_lines.items() if line_obj.header_line is not None][0]
+            if not header_line_idx:
+                line_ids = sorted(all_lines.keys())
+                first_tab = line_ids.index(tabular_line_ids[0])
+                header_line_id_int = first_tab - 1
+                header_line_id = line_ids[header_line_id_int]
+                polygons_line = [lid.polygon_ids for lid in all_lines.values() if lid.lineal_id == header_line_id]
+                h = len(polygons_line)
+            else:
+                h = self.calculate_h(all_lines, polygons)
+                header_line_id = header_line_idx
+            H = h
 
             # Pasar target_columns a la función de extracción
             header_centroids = self._extract_header_centroids(header_line_id, all_lines, polygons, H)
-
-            # 3. Seleccionar filas tabulares para procesamiento
-            selected_lines = self._select_table_rows(tabular_line_ids, all_lines)
             
             # 4. Aplicar algoritmo geométrico de asignación a celdas
-            table_matrix = self._apply_geometric_assignment(selected_lines, all_lines, polygons, header_centroids, H)
+            table_matrix = self._apply_geometric_assignment(tabular_line_ids, all_lines, polygons, header_centroids, H)
 
             # 5. Validar y loggear estructura generada
             if table_matrix:
@@ -65,7 +68,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     cut_polygons = self.map_polygons_ids(polygons, df_copy)
                     context["cut_polygons"] = cut_polygons
                     context["df_copy"] = df_copy
-                    logger.debug(f"Estructuración de tabla completada en {time.perf_counter() - start_time:.6f}'s")
+                    logger.info(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     return True
                 return False
 
@@ -130,22 +133,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             return header_centroids
         
         except Exception as e:
-            logger.error(f"Error extrayendo encabezado: {e}", exc_info=True)
-            return []
-
-    def _select_table_rows(self, tabular_line_ids: List[str], all_lines: Dict[str, AllLines]) -> List[str]:
-        """
-        Selecciona solo filas marcadas como tabulares, preservando el orden de lectura.
-        """
-        try:
-            all_line_ids = list(all_lines.keys())
-            tabular_set = set(tabular_line_ids)
-            selected_lines = [line_id for line_id in all_line_ids if line_id in tabular_set]
-
-            return selected_lines
-        
-        except Exception as e:
-            logger.error(f"Error en geometric: {e}", exc_info=True)
+            logger.error(f"Error extrayendo centroides: {e}", exc_info=True)
             return []
 
     def _apply_geometric_assignment(self, selected_lines: List[str], all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], header_centroids: List[List[float]], H: int) -> List[List[Dict[str, Any]]]:
@@ -239,9 +227,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             return []
 
     def _case_exact_assignment(self, row_elements: List[Dict[str, Any]], H: int) -> List[Dict[str, Any]]:
-        """
-        CASO 0: L_k == H - Asignación secuencial 1 a 1 por orden horizontal.
-        """
+        """CASO 0: L_k == H - Asignación secuencial 1 a 1 por orden horizontal."""
         try:
             row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
             for col_idx, element in enumerate(row_elements[:H]):
@@ -254,9 +240,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             return []
 
     def _case_exact_assignment_by_blocks(self, semantic_blocks: List[List[Dict[str, Any]]], H: int) -> List[Dict[str, Any]]:
-        """
-        CASO 0 por bloques: B_k == H - Asignación secuencial 1 bloque por columna.
-        """
+        """CASO 0 por bloques: B_k == H - Asignación secuencial 1 bloque por columna."""
         try:
             row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
             for col_idx, block in enumerate(semantic_blocks[:H]):
@@ -279,7 +263,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             for i in range(L_k - 1):
                 x_i_max = float(row_elements[i].get('xmax', 0))
                 x_i1_min = float(row_elements[i + 1].get('xmin', 0))
-                delta_i = max(0.001, x_i1_min - x_i_max) 
+                delta_i = max(0.001, x_i1_min - x_i_max)
                 horizontal_distances.append((delta_i, i))
             
             # 2. Seleccionar H-1 mayores Δ_i como puntos de corte J
@@ -511,7 +495,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         final_row: List[Dict[str, Any]] = []
 
         for cell in row_cells[:H]:
-            cell_words = cell.get('words', [])
+            cell_words = cell['words']
             text = " ".join(
                 [str(elem.get('ocr_text', '')).strip() for elem in cell_words if elem.get('ocr_text')]
             ).strip()
@@ -621,33 +605,35 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         df_copy = pd.DataFrame(rows_copy, columns=columns)
         return (df_main, df_copy)
 
-    def get_headers(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> Tuple[int, str]:
+    def calculate_h(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> int:
         """Asignar key_field = 6 a todos los polígonos de la línea de encabezadoy calcular la cantidad de columnas (H) basado en los key_fields"""
-        for line_id, line_data in all_lines.items():
-            if line_data.header_line is not None:
-                line_text = line_data.text
-                header_line_id = line_id
-                h = 0
-                header_line_text: List[str] = []
-                
-                for poly_id in line_data.polygon_ids:
-                    poly = polygons.get(poly_id)
-                    if poly:
-                        poly_text = poly.ocr_text or ""
-                        if poly.key_field is None:
-                            poly.key_field = [6]
-                            h += 1
-                        else:
-                            h += len(poly.key_field)
-                            if 6 not in poly.key_field:
-                                poly.key_field.append(6)
+        try:
+            for line_id, line_data in all_lines.items():
+                if line_data.header_line is not None:
+                    line_text = line_data.text
+                    h = 0
+                    header_line_text: List[str] = []
+                    
+                    for poly_id in line_data.polygon_ids:
+                        poly = polygons.get(poly_id)
+                        if poly:
+                            poly_text = poly.ocr_text or ""
+                            if poly.key_field is None:
+                                poly.key_field = [6]
                                 h += 1
-                        header_line_text.append(poly_text)
-                            
-                logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
-                return h, header_line_id
-        return (0, "")
+                            else:
+                                h += len(poly.key_field)
+                                if 6 not in poly.key_field:
+                                    poly.key_field.append(6)
+                                    h += 1
+                            header_line_text.append(poly_text)
+                                
+                    logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
+                    return h
 
+        except Exception as e:
+            logger.error(f"ERROR CALCULANDO H: {e}", exc_info=True)
+        return 0
     def map_polygons_ids(self, polygons: Dict[str, Polygons], df_copy: pd.DataFrame) -> Dict[str, Any]:
         poly_ids: List[str] = []
         for cell in df_copy.to_numpy().ravel():

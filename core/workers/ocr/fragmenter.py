@@ -177,5 +177,5 @@ class Fragmenter(OCRAbstractWorker):
             )
             new_polys.append(new_poly)
         
-        # logger.info(f"'{polygon.polygon_id}' Fragmentado en '{len([p.ocr_text for p in new_polys])}':\n"f"Text: '{text}' -> {[p.ocr_text for p in new_polys]} |\n"f" SC: {sc} -> {[p.semantic_clasification for p in new_polys]}")
+        # logger.info(f"'{polygon.polygon_id}' Fragmentado en '{len([p.ocr_text for p in new_polys])}':\n"f"Text: {[text]} -> {[[p.ocr_text] for p in new_polys]} |\n"f" SC: {sc} -> {[p.semantic_clasification for p in new_polys]}")
         return new_polys

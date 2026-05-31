@@ -6,7 +6,6 @@ from services.config_service import ConfigService
 from app.models_manager import ModelsManager
 from services.db_service import DataBaseService
 import services.system_service as system_service
-# from datetime import datetime
 from core.utils.text_utils import format_elapsed_time
 import time
 import pandas as pd # type: ignore
@@ -115,28 +114,32 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
     total_processing_time = 0.0
     total_images = len(image_info_list)
     processed_count = 0
+    succcess_image = 0
     final_results: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
     logger.info(f"{total_images} IMAGENES PARA PROCESAR")
+    failed_images: List[str] = []
     
     for i, image_data in enumerate(image_info_list):
         # Procesar imagen individualmente
         start_time = time.perf_counter()
         final_df = builder.process_single_image(image_data)
         image_processing_time = time.perf_counter() - start_time
-
-        processed_count += 1
         total_processing_time += image_processing_time
+        processed_count += 1
+        
         image_name = image_data.get('name', f'imagen_{i}')
 
         if final_df is None:
             logger.error(f"Fallo al procesar imagen: '{image_name}'")
+            failed_images.append(image_name)
             continue
         else:
+            succcess_image += 1
             final_results.append(final_df)
-            logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}s")
+            logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}")
 
-    mean_time = total_processing_time / total_images
-    logger.info(f"'{total_images}' Archivos Digitalizados en: {total_processing_time:.6f}s, promedio: {mean_time:.6f}s / documento")
+    logger.info(f"'{succcess_image} / {total_images}' Archivos Digitalizados en: {total_processing_time:.6f}, promedio: {(total_processing_time / total_images):.6f}'s / documento")
+    logger.info(f"IMAGENES FALLADAS: {failed_images}")
         
     return final_results
     

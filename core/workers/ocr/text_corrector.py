@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import validate_text, find_umd, get_brands, fast_classfier
+from core.utils.text_utils import validate_text, find_umd, get_brands, fast_classfier, correct_subfix
 from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
 
 cuant_char = CUANT_CHAR
@@ -43,7 +43,7 @@ class TextCorrector(OCRAbstractWorker):
             original_text = polygon.ocr_text or ""
             original_text = original_text.strip()
             kf = polygon.key_field
-            sc =  polygon.semantic_clasification
+            sc = polygon.semantic_clasification
             
             if 0 in sc and kf is not None:
                 # logger.info(f"'{poly_id}' con KEYFIELD ya no se CORRIJE: '{original_text}'")
@@ -138,15 +138,19 @@ class TextCorrector(OCRAbstractWorker):
             if get_brands(token):
                 token = token.replace("1", "I")
                 
+            token = correct_subfix(token)
+            
             if semantic_clasification == 1 and "0" in token:
                 token = token.replace("0", "O")
+                
+            if token.isalpha() and token.endswith("Q"):
+                token = token.replace("Q", "O")
 
             return find_umd(token)
             
-        if token.isalpha():
-            if token.endswith("Q"):
-                token = token.replace("Q", "O")
-            return token
+        # if token.isalpha():
+        #     token = correct_subfix(token)
+        #     return token
         if semantic_clasification == 3:
             if token.startswith("1") and token.endswith("O"):
                 token = token.replace("O", "0")

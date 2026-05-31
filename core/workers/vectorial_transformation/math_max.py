@@ -863,9 +863,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         decimal_rows = decimal_u[decimal_i]                                 # Mapeo de índices asbolutos
 
         decimal_coords_abs = np.column_stack([decimal_rows, decimal_cols])
-        logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
+        # logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
 
-        logger.info("\n"f"ROWS ABS: {decimal_rows_abs}\n"f"COLS ABS: {decimal_cols_abs}")
         potencial_val = np.zeros(df.shape, np.uint8)
         for r in non_empty_rows_idx:
             r = int(r)

@@ -45,8 +45,8 @@ pipeline_secuence:
   vector_stage:
     - "lineal"
     - "cos_sim"
-    - "table_structurer"
-    - "math_max"
+    # - "table_structurer"
+    # - "math_max"
     # - "collector"
 
   db_stage:
@@ -56,12 +56,12 @@ log_debug:
   text_ocr: False
   seman_clas: False
   key_fields: False
-  lines: True
+  lines: False
   table_lines: True
   table_geo: False
   table_correct: False  
   semantic_types_log: [-1]
-  kf_list_log: [6]
+  kf_list_log: [12]
   
 # Configuración de salida
 enabled_outputs:

@@ -127,13 +127,13 @@ class MatricialCusine(VectorizationAbstractWorker):
         # logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
 
         if sims_final[0] < self.min_internal_sim:
-            logger.info(f"PRIMRA LINEA RUIDOSA: {sims_final[0]}")
+            logger.info(f"PRIMERA LINEA RUIDOSA: {sims_final[0]}")
             line_ids = line_ids[1:]
             sims_final = sims_final[1:]
 
         sim_idx = np.where(sims_final > self.similarity_threshold)[0]
         if sim_idx.size < 1:
-            logger.warning(f"SE USARÁ EL UMBRAL DE SEGURIDAD: '{self.emergency_threshold}'")
+            logger.warning(f"SE USARA EL UMBRAL DE SEGURIDAD: '{self.emergency_threshold}'")
             sims_idx = np.where(sims_final > self.emergency_threshold)[0]
         else:
             sims_idx = sim_idx
@@ -161,7 +161,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             logger.warning(f"No hay suficientes candidatos '{len(sorted_candidates)}' para min_cluster: '{self.min_cluster}'")
             return []
         
-        candidate_indices = [line_ids.index(lid) for lid in sorted_candidates]    
+        candidate_indices = [line_ids.index(lid) for lid in sorted_candidates]
         best_start = None
         best_end = None
         best_size = 0
@@ -211,7 +211,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         
         unique_labels: List[int] = [l for l in set(labels) if l != -1]
         if not unique_labels:
-            logger.warning("DBSCAN: No se encontraron clusters válidos.")
+            logger.warning("DBSCAN: No se encontraron clusters validos.")
             return []
                 
         cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
@@ -234,11 +234,11 @@ class MatricialCusine(VectorizationAbstractWorker):
         main_cluster = best_label
 
         table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
-        logger.debug(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
+        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
         selected_indices = [all_lines[line_id].line_index for line_id in table_line_ids if line_id in all_lines]
 
         if not selected_indices:
-            logger.warning("No se encontraron índices para table_line_ids.")
+            logger.warning("No se encontraron indices para table_line_ids.")
             return table_line_ids
 
         # Paso 2: Calcular el rango
