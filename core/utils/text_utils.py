@@ -64,17 +64,6 @@ def normalice_text(s: str, hard_norm: Optional[bool] = False) -> str:
         hard_text =  unicodedata.normalize('NFKD', norm_text).encode('ascii', 'ignore').decode('utf-8')
         return "" if not hard_text else hard_text
     return norm_text if norm_text else ""
-
-def validate_text(text: str) -> bool:
-    """valida que un string contenga caracteres válidos y que no esté vacío"""
-    if not text:
-        return False
-    # Si es un solo carácter, debe ser válido (número o en ALONE_CHARS)
-    elif len(text) == 1:
-        return text.isalnum()
-    else:
-        # Si tiene más de un carácter, debe tener al menos un alfanumérico
-        return any(char.isalnum() for char in text)
     
 def get_rfc(s: str) -> str:
     if not s:

@@ -51,12 +51,14 @@ class Refiner(OCRAbstractWorker):
                     self.classify_strings(manager)
 
         if self.seman_clas_log:
-            logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
+            # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
                 if any(sc in self.semantic_types_log for sc in  poly_data.semantic_clasification):
                     text = poly_data.ocr_text
                     logger.info(f"{poly}: '{text}', clas: {poly_data.semantic_clasification} | t_cuant: {poly_data.cuant_chars} / len: {len("".join(text))}")
+
+        logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
         return True
         
     def classify_strings(self, manager: DataFormatter) -> bool:

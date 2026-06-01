@@ -2,7 +2,7 @@
 import shutil
 import os
 import logging
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Optional
 from services.db_service import DataBaseService
 from psycopg2 import sql
 from typing import List, Dict, Any
@@ -20,7 +20,9 @@ DEFAULT_ALLOWED_EXTENSIONS: Set[str] = {
     ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"
 }
 
-valid_extensions: Tuple[str, ...] = tuple(['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2'])
+trash_ext: Tuple[str, ...] = ('.pyc', '.pyo', ".c")
+
+valid_extensions: Tuple[str, ...] = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2')
 
 def _can_delete_entry(path: str) -> bool:
     """
@@ -115,21 +117,17 @@ def clear_output_folders(output_paths: List[str]) -> None:
             except Exception as e:
                 # Defensa adicional
                 logger.error(f"Error al eliminar {item_path}: {e}", exc_info=True)
-                logger.error("Se detiene la limpieza por seguridad.")
                 return
 
     logger.debug(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
 
-def cleanup_project_cache():
-    """Elimina la caché del proyecto (__pycache__ y .pyc)."""
-    logger.debug(" Limpieza Final: Eliminando caché del proyecto")
+def cleanup_project_cache(aditional_files: Optional[str] = None):
+    """Elimina la caché y residuos del proyecto """
     cache_path: str
-    
     try:
         for dirpath, dirnames, filenames in os.walk(PROJECT_ROOT):
             for d in list(dirnames):
-                if d == "__pycache__":
-                    
+                if d in ("__pycache__", "build", "dist"):
                     try:
                         cache_path = os.path.join(dirpath, d)
                         shutil.rmtree(cache_path)
@@ -139,11 +137,15 @@ def cleanup_project_cache():
                         logger.error(f"Error al eliminar {cache_path}: {e}") # type: ignore
                         return
             
-            # Eliminar archivos .pyc y .pyo
             filename: str
             file_path: str
+            if aditional_files is not None:
+                trash_extensions: Tuple[str, ...] = trash_ext + tuple(aditional_files.split(','))
+            else:
+                trash_extensions = trash_ext
+                
             for filename in filenames:
-                if filename.endswith(('.pyc', '.pyo')):
+                if filename.endswith(trash_extensions):
                     file_path = os.path.join(dirpath, filename)
                     os.remove(file_path)
                     logger.debug(f"Eliminado archivo de caché: {file_path}")

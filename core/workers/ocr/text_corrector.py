@@ -5,8 +5,9 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import validate_text, find_umd, get_brands, fast_classfier, correct_subfix
+from core.utils.text_utils import find_umd, get_brands, fast_classfier, correct_subfix
 from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
+from core.utils.compiled_utils import validate_text
 
 cuant_char = CUANT_CHAR
 numeric_corrections = NUMERIC_CORRECTIONS

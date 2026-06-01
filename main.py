@@ -85,6 +85,8 @@ output_service.set_output_paths(output_paths)
 def main():
     default_output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
     cache_service.clear_output_folders(default_output_paths)
-    return main_builder.activate_main(output_paths, config_path, TEST_MODE)
+    result = main_builder.activate_main(output_paths, config_path, TEST_MODE)
+    if not result:
+        cache_service.cleanup_project_cache()
 if __name__ == "__main__":
     main()

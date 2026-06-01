@@ -139,7 +139,8 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
             logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}")
 
     logger.info(f"'{succcess_image} / {total_images}' Archivos Digitalizados en: {total_processing_time:.6f}, promedio: {(total_processing_time / total_images):.6f}'s / documento")
-    logger.info(f"IMAGENES FALLADAS: {failed_images}")
+    if len(failed_images) > 0:
+        logger.info(f"IMAGENES FALLADAS: {failed_images}")
         
     return final_results
     

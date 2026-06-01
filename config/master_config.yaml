@@ -8,7 +8,7 @@ system_config:
   ]
   images_names: [
 #    AAAA0061,
-#    AAAA0038,
+  #  AAAC0030,
 #    AAAA0040,
 #    AAAC0043,
     # AAAA0058,
@@ -40,10 +40,10 @@ pipeline_secuence:
   ocr_stage:
      - "paddle_wrapper"
      - "text_refiner"
-     - "data_finder"
+    #  - "data_finder"
     
   vector_stage:
-    - "lineal"
+    # - "lineal"
     - "cos_sim"
     # - "table_structurer"
     # - "math_max"
