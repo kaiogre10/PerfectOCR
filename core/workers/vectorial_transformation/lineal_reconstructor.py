@@ -48,7 +48,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 if head is not None and foot is not None:
                     # Hay tabla detectada → vectorizar solo si get_vectors está activo
                     table_lines = list(range(head + 1, foot))
-                    # logger.info(f"Table range: {table_range}")
+                    logger.info(f"Table range: {table_range}")
                     context["vectorice"] = self.get_vectors
                     context["table_range"] = table_lines
                 else:

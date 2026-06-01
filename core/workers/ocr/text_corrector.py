@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import find_umd, get_brands, fast_classfier, correct_subfix
+from core.utils.text_utils import find_umd, fast_classfier, correct_subfix
 from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
 from core.utils.compiled_utils import validate_text
 
@@ -36,7 +36,6 @@ class TextCorrector(OCRAbstractWorker):
             
         polygons_in: Dict[str, Polygons] = manager.workflow.polygons
 
-        # logger.debug(f"Cantidad de polígonos recibidos:{len(polygons_in)}")
         final_polygons: Dict[str, Dict[str, Any]] = {}
         correced_count = 0
 
@@ -83,7 +82,7 @@ class TextCorrector(OCRAbstractWorker):
 
         worker_name = context.get("worker_name") or "text_corrector"
         if manager.update_ocr_results(final_polygons, worker_name):
-            # logger.info(f"Corrección textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - correced_count}, eliminados: {correced_count}")
+            logger.debug(f"Corrección textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - correced_count}, eliminados: {correced_count}")
             return True
         else:
             logger.warning("Fallo en corrección textual textual")
@@ -136,15 +135,12 @@ class TextCorrector(OCRAbstractWorker):
             if token.endswith("m1"):
                 token = token.replace("1", "l")
                 
-            if get_brands(token):
-                token = token.replace("1", "I")
-                
             token = correct_subfix(token)
             
             if semantic_clasification == 1 and "0" in token:
                 token = token.replace("0", "O")
                 
-            if token.isalpha() and token.endswith("Q"):
+            if len(token) > 3 and token.isalpha() and token.endswith("Q"):
                 token = token.replace("Q", "O")
 
             return find_umd(token)
@@ -153,12 +149,13 @@ class TextCorrector(OCRAbstractWorker):
         #     token = correct_subfix(token)
         #     return token
         if semantic_clasification == 3:
-            if token.startswith("1") and token.endswith("O"):
-                token = token.replace("O", "0")
-                
-            elif token.startswith("C7") and token.endswith("O"):
-                token = token.replace("7", "/")
-                token = token.replace("O", "0")
+            if token.endswith("O"):
+                if token.startswith("1") :
+                    token = token.replace("O", "0")
+
+                elif token.startswith("C7"):
+                    token = token.replace("7", "/")
+                    token = token.replace("O", "0")
             return token
             
         else:

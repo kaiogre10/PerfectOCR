@@ -13,14 +13,23 @@ _clean_currency_str = r"^(?:\$)|,"
 _base_date_num_str = r'[0123O][0-9O]'
 _valid_cuant_str = r'(?<=\$)\$|(?<=\$\d)\$|(?<=\$\d\d)\$'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
+
+_stick_chars = r'[|!1¡]'
+_stick_set = _stick_chars[1:-1]
+
+_l_variants = rf"[Ll{_stick_set}]"
 _c_variants = r"[C(c]"
-_i_variants = r"[iI|!1¡]"
-_n_variants = r"[nN]"
-_o_variants = r"[Oo0Q]"
+_i_variants = rf"[Ii{_stick_set}]"
+_o_variants = r"[Oo0QD]"
+_n_variants = r"[Nn]"
+_s_variants = r'[Ss$5]'
+
 cion_str = r"CION"
 con_str = r"CON"
+los_str = r'LOS'
 cion_search_patt = re.compile(rf"(?<=[A-Za-z]){cion_str}(?:\b|$|\s)", re.IGNORECASE)
 con_search_patt = re.compile(rf"(?:^{con_str}$|(?<=[A-Za-z]){con_str}(?:\b|$|\s))", re.IGNORECASE)
+los_search_patt = re.compile(rf"(?:^{los_str}$|(?<=[A-Za-z]){los_str}(?:\b|$|\s))", re.IGNORECASE)
 # Solo puede aparecer después de algún otro caracter
 _cion_typos_regex = (
     rf"(?<=[A-Za-z])"                   # Debe aparecer después de caracteres alfabéticos
@@ -38,6 +47,14 @@ _con_typos_regex = (
     rf")"
 )
 con_suffix_pattern = re.compile(_con_typos_regex)
+
+_los_typos_regex = (
+    rf"(?:"
+    rf"^{_l_variants}\s*{_o_variants}\s*{_s_variants}$"
+    rf"|(?<=[A-Za-z]){_l_variants}\s*{_o_variants}\s*{_s_variants}(?:\b|$|\s)"
+    rf")"
+)
+los_suffix_pattern = re.compile(_los_typos_regex)
 
 semi_zeros_pattern = re.compile(_semi_zeros)
 zeros_pattern = re.compile(_zeros_to_sub)
@@ -73,8 +90,7 @@ acronym_pattern: Pattern[str] = re.compile(rf'^({_acronim}|sa|cv|mn)[:;,.]?$', r
 # Datos Globales
 _cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
 phone_number = re.compile(r'(?:\b(?:cel|tel)\b[\s:,-]*)?(?:\d[\s\-]*){10}\b', re.IGNORECASE)
-
-mail_pattern: Pattern[str] = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b', re.IGNORECASE)
+mail_pattern = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.?(?:com|[a-zA-Z0-9-.]+)\b', re.IGNORECASE)
 cp_pattern: Pattern[str] = re.compile(rf'\b{_cp_letters}\s*{_digit_pattern}{{5}}\b', re.IGNORECASE)
 numeric_code: Pattern[str] = re.compile(rf'^{_zeros_str}[0-9]+$', re.IGNORECASE)
 

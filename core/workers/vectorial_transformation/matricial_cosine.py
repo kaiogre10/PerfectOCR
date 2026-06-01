@@ -1,4 +1,4 @@
-# PerfectOCR/core/workflow/vectorial_transformation/matricial_cosine.py
+# core/workers/vectorial_transformation/matricial_cosine.py
 import numpy as np
 import time
 import logging
@@ -37,7 +37,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             table_line_ids: List[str] = self._compare_vectors(manager)
             if table_line_ids:
                 if manager.save_tabular_lines(table_line_ids):
-                    # logger.info(f"RESULTADOS COSENO: {time.perf_counter() - timw9:.6f}s {len(table_line_ids)} líneas tabulares\n"f"{table_line_ids}")
+                    logger.debug(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s")
                     return True
                 return False
         except Exception as e:
@@ -50,8 +50,9 @@ class MatricialCusine(VectorizationAbstractWorker):
             all_lines_dict: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
             if not polygons_dict or not all_lines_dict:
                 return []
-                
-            img_dims: Tuple[int, int] = manager.workflow.metadata.img_dims if manager.workflow else (0, 0)
+            
+            metadata = manager.workflow.metadata if manager.workflow else None
+            img_dims: Tuple[int, int] = metadata.img_dims if metadata is not None else (0, 0)
             
             line_ids = sorted(all_lines_dict.keys())
             sorted_lines = [all_lines_dict[k] for k in line_ids]
@@ -62,7 +63,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 line_id = np.array([id.lineal_id for id in all_lines_dict.values()], np.str_)
                 features_to_ind = analysis[:, 1:].astype(np.str_)
                 features_id = np.column_stack([line_id, features_to_ind])
-                file_name = manager.workflow.metadata.image_name or ""
+                file_name = metadata.image_name if metadata is not None else ""
                 save_table_values(file_name, features_id, "vectorizer")
                 
             tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
@@ -99,7 +100,7 @@ class MatricialCusine(VectorizationAbstractWorker):
 
     def validate_similiraity_all_vs_all(self, analysis: np.ndarray[Any, Any], line_idx: np.ndarray[Any, np.dtype[np.uint8]]) -> bool:
         """Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado. Si todos son válidos, la validaciónes corrtecta"""
-        if line_idx.size < self.min_cluster:
+        if self.min_cluster >= line_idx.size:
             return True
 
         features_all = analysis[line_idx]
@@ -131,7 +132,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             line_ids = line_ids[1:]
             sims_final = sims_final[1:]
 
-        sim_idx = np.where(sims_final > self.similarity_threshold)[0]
+        sim_idx = np.where(sims_final > self.similarity_threshold)[0]                       # Índices donde se superó el umbral de similitud
         if sim_idx.size < 1:
             logger.warning(f"SE USARA EL UMBRAL DE SEGURIDAD: '{self.emergency_threshold}'")
             sims_idx = np.where(sims_final > self.emergency_threshold)[0]
@@ -145,9 +146,9 @@ class MatricialCusine(VectorizationAbstractWorker):
         cuts_mask = np.where((deltas - 1) > self.tolerance_sim)[0]
         # logger.info("\n"f"DELTAS: {deltas}\n"f"MAKS: {cuts_mask}")
         if cuts_mask.size < 1:
-            end_idx = abs_idx[-1] + 1
+            end_idx = line_ids[-1] if self.tolerance_sim > (line_ids[-1] - abs_idx[-1]) else abs_idx[-1]
             start_idx = abs_idx[0]
-            cutted_idx = np.arange(start=start_idx, stop=end_idx, dtype=np.uint8)
+            cutted_idx = np.arange(start=start_idx, stop=(end_idx + 1), dtype=np.uint8)
             # logger.info(f"early cutted_idx: {cutted_idx}, start: {start_idx} end: {end_idx}")
             return cutted_idx
 

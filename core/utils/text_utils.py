@@ -4,7 +4,7 @@ import unicodedata
 from typing import List, Tuple, Dict, Any, Optional
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import CUANT_CHAR, VALID_ALONE_CHARS, VOWELS
-from core.utils.patterns import (rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, umd_cor, amount_fract, zeros_pattern, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, token, valid_cuant_pattern, split, semi_zeros_pattern, monetary_pattern, end_cuant_str, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, measure_unities, id_prov_pattern)
+from core.utils.patterns import (rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, umd_cor, amount_fract, zeros_pattern, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, token, valid_cuant_pattern, split, semi_zeros_pattern, monetary_pattern, end_cuant_str, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, measure_unities, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,9 @@ _cion_str = cion_str
 _con_suffix_pattern = con_suffix_pattern
 _con_search_patt = con_search_patt
 _con_str = con_str
+_los_str = los_str
+_los_search_patt = los_search_patt
+_los_suffix_pattern = los_suffix_pattern
 _umd_patterns = umd_patterns
 _date_patterns = date_patterns
 _umd_cor = umd_cor
@@ -95,15 +98,14 @@ def correct_subfix(text: str) -> str:
     elif len(text) < 3 or text.isnumeric():
         return text
     
-    elif len(text) >= 4 and not bool(_cion_search_patt.search(text)) and bool(_suffix_pattern.search(text)):
-        text_sub = _suffix_pattern.sub(_cion_str, text)
-        # logger.info(f"CORRECIÓN TERMINACION: '{text}' -> '{text_sub}'")
-        return text_sub
+    elif not bool(_cion_search_patt.search(text)) and bool(_suffix_pattern.search(text)):
+        return _suffix_pattern.sub(_cion_str, text)
 
     elif not bool(_con_search_patt.search(text)) and bool(_con_suffix_pattern.search(text)):
-        text_sub = _con_suffix_pattern.sub(_con_str, text)
-        # logger.info(f"CORRECIÓN TERMINACION: '{text}' -> '{text_sub}'")
-        return text_sub
+        return _con_suffix_pattern.sub(_con_str, text)
+
+    elif not bool(_los_search_patt.search(text)) and bool(_los_suffix_pattern.search(text)):
+        return _los_suffix_pattern.sub(_los_str, text)
     else:
         return text
 
@@ -536,7 +538,7 @@ def classify_token(s: str) -> Tuple[int, int]:
         #  logger.info(f"CODE por FALLBACK: '{s}'")
         return (3, total_cuant)
         
-    #  logger.info(f"Poligono sin clasificación, será descriptiva: '{s}'")
+    # logger.info(f"Poligono sin clasificación, será descriptiva: '{s}'")
     return (1, total_cuant)
 
 def get_ids(img_name: str) -> str:

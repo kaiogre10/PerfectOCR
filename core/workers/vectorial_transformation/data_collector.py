@@ -1,4 +1,4 @@
-# PerfectOCR/core/workers/vectorial_transformation/output_structurer.py
+# PerfectOCR/core/workers/vectorial_transformation/data_collector.py
 import pandas as pd # type: ignore
 import logging
 from decimal import Decimal
@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 conversion_kf = CONVERSION_KF
 
 class FinalStructurer(VectorizationAbstractWorker):
-    """"
-    Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db.
-    """
+    """"Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root

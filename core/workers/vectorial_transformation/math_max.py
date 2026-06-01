@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.text_utils import validate_quant_chars
+from core.utils.compiled_utils import validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -741,12 +742,12 @@ class MatrixSolver(VectorizationAbstractWorker):
                     continue
 
                 val: str = str(df.iat[r, c]).strip()
-                poly_val: List[str] = df_copy.iat[r, c]
-                dest_vals = df_copy.iat[r, dest_idx]
-                
                 if val == "" or not val:
                     continue
-                
+
+                poly_val: List[str] = df_copy.iat[r, c]
+                dest_vals = df_copy.iat[r, dest_idx]
+
                 if cur_double_col == cols_idx[-1]:
                     closest_idx = cur_double_col - 1
                 else:
@@ -834,6 +835,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         
         df = df.drop(empty_rows_idx, axis=0)
         df = df.reset_index(drop=True)
+        df = self.post_clean_df(df)
         logger.info("REINDEX:\n" + df.to_string(index=True))
         return df
 
@@ -973,3 +975,21 @@ class MatrixSolver(VectorizationAbstractWorker):
         context["dec_cols"] = np.array(np.setdiff1d(cols_idx, text_col, assume_unique=True), np.int_)
         # #  #logger.info("COPY_ATI:\n" + df.to_string(index=True))
         return (df, context)
+
+    def post_clean_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        df_sav: pd.DataFrame = df.copy
+        try:
+            pro_col = df["producto_norm"]
+            c_col = df["cantidad_art"]
+
+            mask = [pro.startswith(cant) for pro, cant in zip(pro_col, c_col)]
+
+            df.loc[mask, "producto_norm"] = [
+                pro[len(cant):].strip()
+                for pro, cant in zip(pro_col[mask], c_col[mask])
+            ]
+            logger.info("CLEAN:\n" + df.to_string(index=True))
+            return df
+        except Exception as e:
+            logger.info(f"ERROR: {e}", exc_info=True)
+        return df_sav
