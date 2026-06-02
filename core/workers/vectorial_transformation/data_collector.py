@@ -96,3 +96,21 @@ class FinalStructurer(VectorizationAbstractWorker):
         df.insert(loc=0, column="id_registro", value=idx, allow_duplicates=True)
 
         return df, totals
+    
+    def post_clean_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        df_sav: pd.DataFrame = df.copy
+        try:
+            pro_col = df["producto_norm"]
+            c_col = df["cantidad_art"]
+
+            mask = [pro.startswith(cant) for pro, cant in zip(pro_col, c_col)]
+
+            df.loc[mask, "producto_norm"] = [
+                pro[len(cant):].strip()
+                for pro, cant in zip(pro_col[mask], c_col[mask])
+            ]
+            # logger.info("CLEAN:\n" + df.to_string(index=True))
+            return df
+        except Exception as e:
+            logger.info(f"ERROR: {e}", exc_info=True)
+        return df_sav

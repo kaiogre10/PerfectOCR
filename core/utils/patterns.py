@@ -5,6 +5,7 @@ from typing import List, Pattern
 _zeros_str = r'00'
 _currency_pattern = r"[$]"
 _punt_quant_chars = r'[.,]'
+_dash_variants = r'[7/]'
 _zeros_to_sub = r'[OQDo]'
 _monetary_to_sub =  r'^[Ss]\d'
 _semi_zeros = r'[OQDo]{2}'
@@ -112,13 +113,24 @@ _len_pattern = re.compile(r'(cm|mm|km|in|ft|mts?|m2|m\^2|m²|cm2|cm\^2|cm²|km2|
 size_pattern = re.compile(r'(gde|med|ch|paq)', re.IGNORECASE)
 measure_unities = re.compile("|".join(p.pattern for p in [size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
 
+# Detecta expresiones como "C / 3 + 2" o variantes OCR para fracciones extendidas con suma: letra C, barra, número, signo más, número.
 _extended_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\s*\+\s*\d+(?![A-Za-z0-9])', re.IGNORECASE)
+
+# Detecta fracciones estándar como "C / 3" o variantes OCR: letra C seguida de barra y número (sin suma).
 _full_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\b', re.IGNORECASE)
+
+# Detecta expresiones de tipo fracción incompleta como "/3", es decir, solo una barra y número, sin prefijo.
 _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b', re.IGNORECASE)
+
+# Detecta fracciones de tipo "C /", "C / 3", permitiendo que el número sea opcional (ej. "C / " o "C / 5").
 semi_c_fraction = re.compile(r'(?<!\d)[Cc]\s*/(?:\s*\d+)?\b', re.IGNORECASE)
+
+# Detecta fracciones con guión como "C-3", es decir, letra C, guión y número, sin prefijo.
 _c_dash_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]-\d+\b', re.IGNORECASE)
 
-fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, semi_c_fraction, _semifraction_pattern, _c_dash_fraction_pattern]), re.IGNORECASE)
+measure_fractions = re.compile(rf'\b[1-9]\d{{0,2}}\s*{_dash_variants}\s*[1-9]\d{{0,2}}\b', re.IGNORECASE)
+
+fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, semi_c_fraction, _semifraction_pattern, _c_dash_fraction_pattern, measure_fractions]), re.IGNORECASE)
 
 _umd_paterns_list: List[Pattern[str]] = [
     re.compile(r'(?<![A-Za-z0-9])\d{1,4}\s*m(?:l|1|\||!)(?=$|[^A-Za-z0-9])', re.IGNORECASE),
@@ -126,13 +138,14 @@ _umd_paterns_list: List[Pattern[str]] = [
     re.compile(rf'((?<!\w)(?:\d+s*)?(?:{measure_unities.pattern}))\b', re.IGNORECASE),
     re.compile(r'\b[1-9]\d{0,2}\s*/\s*[1-9]\d{0,2}\b', re.IGNORECASE),
     re.compile(r'\b\d+(?:\s*[xX]\s*\d+)+\b', re.IGNORECASE), # Dimensiones (10x20)
-    re.compile(r'#\s*\d+')
+    re.compile(r'#\s*\d+'),
+    re.compile(r'\b\d{2,3}H(?=\s|$)', re.IGNORECASE)
 ]
 
 _umd_generals = re.compile("|".join(p.pattern for p in _umd_paterns_list), re.IGNORECASE)
 umd_patterns = re.compile("|".join(p.pattern for p in [fraction_pattern, _umd_generals]), re.IGNORECASE)
 
-amount_fract = re.compile(fr"[Cc](?:[7/])\d{_zeros_to_sub}+", re.IGNORECASE)
+amount_fract = re.compile(fr"{_c_variants}(?:{_dash_variants})\d{_zeros_to_sub}+", re.IGNORECASE)
 umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)', re.IGNORECASE)
 
 # _final_clean_currency = re.compile(r"[^0-9.]", re.IGNORECASE)

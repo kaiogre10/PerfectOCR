@@ -266,7 +266,6 @@ NUMERIC_CORRECTIONS: Dict[str, str] = {
 
 DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
     "$": "S",
-    "\\": "/",
     "]": "j",
     "(": "C",
 }

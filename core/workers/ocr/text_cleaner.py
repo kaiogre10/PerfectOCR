@@ -22,6 +22,7 @@ class TextCleaner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
+        self.output_log = config.get("text_clean")
         worker_config = config.get("text_cleaner", {})
         self.min_probability = float(worker_config.get("min_probability"))
                     
@@ -86,8 +87,8 @@ class TextCleaner(OCRAbstractWorker):
             
             else:
                 final_polygons[poly_id] = {"text": txt}
-                # if txt != text:
-                #     logger.info(f"Corrección de '{poly_id}' | Original: '{text}' | Ruido:'{set(text.split(" ")).difference(set(txt.split(" ")))}' → '{txt}'")
+                if self.output_log and txt != text:
+                    logger.info(f"Limpieza de '{poly_id}' | Original: '{text}' | Ruido:'{set(text.split(" ")).difference(set(txt.split(" ")))}' → '{txt}'")
 
         if manager.update_ocr_results(final_polygons, worker_name):
             # logger.info(f"Limpieza textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - eliminated_count}, eliminados: {eliminated_count}")

@@ -6,12 +6,12 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import find_umd, fast_classfier, correct_subfix
-from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, DESCRIPTIVE_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
+from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
 from core.utils.compiled_utils import validate_text
 
 cuant_char = CUANT_CHAR
 numeric_corrections = NUMERIC_CORRECTIONS
-des_corrects = DESCRIPTIVE_CORRECTIONS
+# des_corrects = DESCRIPTIVE_CORRECTIONS
 umd_corrects = UMD_CORRECTIONS
 not_valid = NOT_VALID_CHARS
 
@@ -27,6 +27,7 @@ class TextCorrector(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
+        self.output_log = config.get(f"text_correct")
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         t0 = time.perf_counter()
@@ -40,8 +41,7 @@ class TextCorrector(OCRAbstractWorker):
         correced_count = 0
 
         for poly_id, polygon in polygons_in.items():
-            original_text = polygon.ocr_text or ""
-            original_text = original_text.strip()
+            original_text = polygon.ocr_text.strip() or ""
             kf = polygon.key_field
             sc = polygon.semantic_clasification
             
@@ -55,7 +55,7 @@ class TextCorrector(OCRAbstractWorker):
                 return False
 
             # if original_text.isdecimal():
-            #     # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
+                  # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
             #     final_polygons[poly_id] = {"text": original_text}
             #     continue
                 
@@ -75,7 +75,8 @@ class TextCorrector(OCRAbstractWorker):
             else:
                 if corrected_text != original_text:
                     s_class, t_cuan = fast_classfier(corrected_text)
-                    # logger.info(f"Corrección de '{poly_id}' | Original: '{set(original_text.split(" ")).difference(set(corrected_text.split(" ")))}' → '{corrected_text}' | SC original: {sc} -> {s_class}")
+                    if self.output_log:
+                        logger.info(f"Corrección de '{poly_id}' | Original: '{set(original_text.split(" ")).difference(set(corrected_text.split(" ")))}' → '{corrected_text}' | SC original: {sc} -> {s_class}")
                     final_polygons[poly_id] = {"text": corrected_text, "sc": s_class, "cuant_chars": t_cuan}
 
                 final_polygons[poly_id] = {"text": corrected_text, "sc": sc, "cuant_chars": polygon.cuant_chars}

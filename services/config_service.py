@@ -171,10 +171,9 @@ class ConfigService:
                 **self.modules_config.get("ocr", {}),
                 **self.enabled_outputs.get("ocr_outputs", {}),
                 **self.utils_config,
+                **self.logs_debug,
                 "ocr_stage": self.workers_order["ocr_stage"],
-                "create_refiners": create_refiners > 0,
-                "semantic_types_log": self.logs_debug["semantic_types_log"],
-                "seman_clas": self.logs_debug.get("seman_clas")
+                "create_refiners": create_refiners > 0
             }
        
     @cached_property

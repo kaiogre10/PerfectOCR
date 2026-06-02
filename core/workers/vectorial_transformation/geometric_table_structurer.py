@@ -68,7 +68,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     cut_polygons = self.map_polygons_ids(polygons, df_copy)
                     context["cut_polygons"] = cut_polygons
                     context["df_copy"] = df_copy
-                    logger.info(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
+                    logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     return True
                 return False
 
@@ -146,21 +146,29 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             for line_id in selected_lines:
                 line_obj = all_lines[line_id]
-                
+                row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
                 # Extraer elementos P_i de la fila S_k usando data classes
                 row_elements = self._extract_row_elements(line_obj, polygons)
                 L_k = len(row_elements)  # Cardinalidad |S_k|
-                semantic_blocks = self._build_semantic_blocks(row_elements)
-                B_k = len(semantic_blocks)
-                
-                # Inicializar fila de celdas vacías
-                row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+
+                # CASO A por polígonos: L_k > H
+                if L_k > H:
+                    row_cells = self._case_a_assignment(row_elements, H, L_k)
+
+                # CASO 0 por polígonos: L_k == H (fallback)
+                elif L_k == H:
+                    row_cells = self._case_exact_assignment(row_elements, H)
+
+                elif L_k < H:
+                    row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids)
                 
                 if L_k == 0:
                     table_matrix.append(self._finalize_row_cells(row_cells, H))
                     continue
 
                 # CASO 0 por bloques: B_k == H (mismo número de bloques que columnas)
+                semantic_blocks = self._build_semantic_blocks(row_elements)
+                B_k = len(semantic_blocks)
                 if B_k == H:
                     row_cells = self._case_exact_assignment_by_blocks(semantic_blocks, H)
                     table_matrix.append(self._finalize_row_cells(row_cells, H))
@@ -170,19 +178,10 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if B_k > H:
                     row_cells = self._case_a_assignment_by_blocks(semantic_blocks, H, B_k)
 
-                # CASO 0 por polígonos: L_k == H (fallback)
-                elif L_k == H:
-                    row_cells = self._case_exact_assignment(row_elements, H)
-
-                # CASO A por polígonos: L_k > H (fallback)
-                elif L_k > H:
-                    row_cells = self._case_a_assignment(row_elements, H, L_k)
-
                 # CASO B: L_k < H (menos palabras que columnas)
-                else:
+                # else:
                     # logger.info(f"Asignación B para {line_id}, elementos: {L_k}")
-                    row_cells = self._case_b_assignment(row_elements, H, L_k, header_centroids)
-                
+                    
                 table_matrix.append(self._finalize_row_cells(row_cells, H))
                 
             return table_matrix
@@ -628,12 +627,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                                     h += 1
                             header_line_text.append(poly_text)
                                 
-                    logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
+                    # logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
                     return h
 
         except Exception as e:
             logger.error(f"ERROR CALCULANDO H: {e}", exc_info=True)
         return 0
+    
     def map_polygons_ids(self, polygons: Dict[str, Polygons], df_copy: pd.DataFrame) -> Dict[str, Any]:
         poly_ids: List[str] = []
         for cell in df_copy.to_numpy().ravel():

@@ -96,7 +96,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     continue
                 else:
                     norm_text = normalice_text(text)
-                    raw_map[polygon_ids[idx]] = {"text": norm_text}
+                    raw_map[polygon_ids[idx]] = {"text": norm_text.strip()}
                     # logger.info(f"OCR FILTRO: {polygon_ids[idx]}: '{text}' -> '{norm_text}', CONF: {confidence*100.0} %")
                     continue
 

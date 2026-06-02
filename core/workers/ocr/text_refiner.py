@@ -18,15 +18,14 @@ class Refiner(OCRAbstractWorker):
     """
     def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, corrector: Optional[TextCorrector] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
-        self.worker_config = config.get("text_refiner", {})
-        self.output = config.get("cleanned_text")
-        self.seman_clas_log = config.get("seman_clas")
-        semantic_types_log = any(t == -1 for t in config["semantic_types_log"])
-        self.semantic_types_log = config["semantic_types_log"] if not semantic_types_log else list(range(6))
-        self.num_passes = self.worker_config.get("num_passes")
         self.cleaner = cleaner
         self.fragmenter = fragmenter
         self.corrector = corrector
+        worker_config = config.get("text_refiner", {})
+        self.seman_clas_log = config.get("seman_clas")
+        semantic_types_log = any(t == -1 for t in config["semantic_types_log"])
+        self.semantic_types_log = config["semantic_types_log"] if not semantic_types_log else list(range(6))
+        self.num_passes = worker_config.get("num_passes")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Ejecuta el ciclo de refinamiento con clasificación selectiva."""
@@ -58,7 +57,7 @@ class Refiner(OCRAbstractWorker):
                     text = poly_data.ocr_text
                     logger.info(f"{poly}: '{text}', clas: {poly_data.semantic_clasification} | t_cuant: {poly_data.cuant_chars} / len: {len("".join(text))}")
 
-        logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
+        # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
         return True
         
     def classify_strings(self, manager: DataFormatter) -> bool:
@@ -147,13 +146,13 @@ class Refiner(OCRAbstractWorker):
                 final_polygons[poly] = {"text": text}
                 continue
             
-            elif text.isalpha() or text.isdecimal():
+            elif text.isalpha():
                 final_polygons[poly] = {"text": text}
                 continue
                 
             elif contains_quantitative(text) and not is_quantitative(text):
                 qtext = get_cuants(text)
-                # logger.info(f"POTENCIAL CUANTS: '{text}'")
+                # logger.info(f"POTENCIAL CUANTS: '{text}' -> '{qtext}'")
                 if qtext != text:
                     # logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
                     final_polygons[poly] = {"text": qtext}

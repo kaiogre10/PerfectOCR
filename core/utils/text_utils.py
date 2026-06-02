@@ -4,13 +4,14 @@ import unicodedata
 from typing import List, Tuple, Dict, Any, Optional
 from core.utils.math_utils import text_encode
 from core.utils.data_utils import CUANT_CHAR, VALID_ALONE_CHARS, VOWELS
-from core.utils.patterns import (rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, umd_cor, amount_fract, zeros_pattern, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, token, valid_cuant_pattern, split, semi_zeros_pattern, monetary_pattern, end_cuant_str, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, measure_unities, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern)
+from core.utils.patterns import (rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, umd_cor, amount_fract, zeros_pattern, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, token, valid_cuant_pattern, split, semi_zeros_pattern, monetary_pattern, end_cuant_str, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, measure_unities, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, measure_fractions)
 
 logger = logging.getLogger(__name__)
 
 density_thr = (23.7, 103.7)
 morph_thr = (-0.297, 0.337)
 
+_measure_fractions = measure_fractions
 _rfc_key_pattern = rfc_key_pattern
 _numeric_code = numeric_code
 _acronym_pattern = acronym_pattern
@@ -111,7 +112,7 @@ def correct_subfix(text: str) -> str:
 
 def contains_umd(s: str) -> bool:
     """Valida si un string contiene UMD"""
-    if not s or s.isdecimal() or not any(c.isalnum() for c in s):
+    if not s or s.isdecimal():
         return False 
     return bool(_umd_patterns.search(s))
 
@@ -119,11 +120,9 @@ def find_umd(s: str) -> str:
     """En un string completo inserta espacios en los bordes de cada UMD para separar subcadenas con split solo si hay UMD."""
     if not s:
         return ""
-
-    elif s.isdecimal():
-        return s
     
     elif bool(_date_patterns.search(s)):
+        logger.info(f"FECHAS: ´{s}'")
         return s
 
     if not s.endswith("0") and not s[-1].isdecimal() and _umd_cor.search(s):
@@ -133,7 +132,7 @@ def find_umd(s: str) -> str:
             return new_s
         s = new_s
 
-    if _amount_fract.fullmatch(s):
+    if bool(_measure_fractions.search(s)) or bool(_amount_fract.search(s)):
         if "7" in s:
             s = s.replace("7", "/")
         s = _zeros_pattern.sub("0", s)
@@ -225,7 +224,7 @@ def is_quantitative(text: str) -> bool:
 
 def contains_quantitative(text: str) -> bool:
     """Devuelve True si encuentra algún sub-string cuantitativo en el texto."""
-    if not text or text.isalpha():
+    if not text or text.isalpha() or text.isdecimal():
         return False
     match = _token.search(text)
     return bool(match and is_quantitative(match.group(0)))
@@ -502,17 +501,17 @@ def classify_token(s: str) -> Tuple[int, int]:
         return (0, 0)
 
     elif contains_umd(s):
-        #  logger.info(f"UMD mixto: '{s}'")
+        # logger.info(f"UMD mixto: '{s}'")
         return (2, total_cuant)
 
     elif is_code(s):
-        #  logger.info(f"CODE mixto: '{s}'")
+        # logger.info(f"CODE mixto: '{s}'")
         return (3, total_cuant)
     
     #  logger.info(fr"REBELDES: '{s}'")
     dense_mean, morphology_mean = text_encode(s.lower())
     if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
-        #  logger.info(f"CODE por codificacion: '{s}'")
+        # logger.info(f"CODE por codificacion: '{s}'")
         return (3, total_cuant)
     
     elif dense_mean > density_thr[1]:
@@ -527,7 +526,7 @@ def classify_token(s: str) -> Tuple[int, int]:
         if not any(c in ("/", ":") for c in s) and (total_cuant / total_text) > 0.687:
             #  logger.info(f"NUM por codificacion: '{s}'")
             return (5, total_cuant)
-        #  logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
+        logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
         return (3, total_cuant)
         
     elif bool(_labels_pattern.fullmatch(s)):
