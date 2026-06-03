@@ -6,7 +6,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
-from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, contains_umd, is_quantitative
+from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, contains_umd
 import logging
 import time
 
@@ -57,7 +57,7 @@ class Refiner(OCRAbstractWorker):
                 if any(sc in self.semantic_types_log for sc in  poly_data.semantic_clasification):
                     text = poly_data.ocr_text or ""
                     sc = poly_data.semantic_clasification
-                    logger.info(f"{poly}: '{text}', clas: {sc} | t_cuant: {poly_data.cuant_chars} | {len(text.split(" "))} / {len(sc)}")
+                    logger.info(f"{poly}: '{text}', clas: {sc} | t_cuant: {poly_data.cuant_chars}")
 
         return True
         

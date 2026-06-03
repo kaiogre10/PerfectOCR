@@ -113,8 +113,6 @@ def correct_subfix(text: str) -> str:
 
 def contains_umd(s: str) -> bool:
     """Valida si un string contiene UMD"""
-    if not s or s.isdecimal():
-        return False 
     return bool(_umd_patterns.search(s))
 
 def find_umd(s: str) -> str:
@@ -134,6 +132,7 @@ def find_umd(s: str) -> str:
     if bool(_measure_fractions.search(s)) or bool(_amount_fract.search(s)):
         if "7" in s and not bool(_c_dash_fraction_pattern.search(s)):
             s = s.replace("7", "/")
+            s = _zeros_pattern.sub("0", s)
     
     if _fraction_pattern.fullmatch(s):
         return s
@@ -203,7 +202,6 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
     if not activate_func[6] and bool(_cp_pattern.search(s)):
         activate_func[6] = True
         return 12
-
     return None
 
 def validate_quant_chars(text: str) -> bool:
@@ -251,7 +249,7 @@ def get_cuants(text: str) -> str:
             word = word[0] + word[1:].replace('$', '5')
 
         if monetary_count >= 2 and contains_quantitative(word): 
-            compact = word.replace(" ", "")                     # $10.50.$31.50 | $10.50$31.50
+            compact = word.replace(" ", "")                                          # $10.50.$31.50 | $10.50$31.50
             chunks = [m.group(0).replace(" ", "") for m in _split.finditer(compact)] # $10.50.$31.50 | $10.50 $31.50
             
             total_chunks = len(chunks)
@@ -272,7 +270,12 @@ def get_cuants(text: str) -> str:
                     continue
             
         elif monetary_count == 1:
-            if validate_quant_pattern(word):
+            if is_quantitative(word):
+                result_parts.append(word)
+                continue
+
+            elif validate_quant_pattern(word):
+                word = _zeros_pattern.sub("0", word)
                 result_parts.append(word)
                 continue
 
@@ -312,22 +315,25 @@ def get_cuants(text: str) -> str:
 
     clean_quants =  " ".join(result_parts).strip()
     cuant_cheks = clean_quants.split(" ")
-    if len(cuant_cheks) > 1:
+    cheks = len(cuant_cheks)
+    if cheks == 1:
+        return clean_quants
+    elif cheks > 1:
         potencial_noise = cuant_cheks[-1]
         if len(potencial_noise) < 3 and not is_quantitative(potencial_noise):
             cuant_cheks.pop(-1)
             clean_quants =  " ".join(cuant_cheks).strip()
-        return clean_quants
+        return clean_quants.strip()
     else:
-        return clean_quants
+        return ""
 
 def format_cuant(text: str) -> str:
     """Convierte strings numericos a cuantitativos y limpia los que ya son cuantitativos para usar Decimal"""
     if text.isdecimal():
         return (text + ".00").strip()
     text_0 = _zeros_pattern.sub("0", text)
-    cuant_txt = _clean_currency.sub('', text_0).strip()
-    cuant_txt = cuant_txt.replace("$", "5").strip()
+    cuant_txt = _clean_currency.sub("", text_0).strip()
+    # cuant_txt = cuant_txt.replace("$", "5").strip()
     temp_txt = cuant_txt.replace(".", "")
     if not temp_txt.isdecimal() or len(cuant_txt) > len(text):
         logger.warning(f"CARACTER INTRUSO EN '{text}' NO SE PUDO FORMATEAR")
@@ -446,43 +452,41 @@ def classify_token(s: str) -> Tuple[int, int]:
         if _size_pattern.search(s):
             return (2, 0)
         #  logger.info(f"ALPHA 1ro: '{s}'")
-        return (1, 0)
+        else:
+            return (1, 0)
     
     elif s.isdecimal():
         if "0" in s and bool(_numeric_code.fullmatch(s)):
             return (3, total_cuant)
-        #  logger.info(f"DECIMAL 1ro: '{s}'")
-        return (5, total_text)
+        else:
+            return (5, total_text)
     
     if total_cuant == 0:
         if not any(c.isalpha() for c in s):
             return (-1, 0)
         
-        elif total_text < 2:
-            # logger.debug(f"DESC por tamaño: '{s}'")
-            return (1, 0)
-            
+        elif bool(_semi_c_fraction.search(s)) or bool(_amount_fract.search(s)):
+            # logger.info(f"UMD por regex: '{s}'")
+            return (2, 0)
+
         elif is_acronym(s):
             if bool(_acromin_currency_pattern.search(s)):
+                # logger.info(f"ACRONIMO DEC: '{s}'")
                 return (0, 0)
-            # #  logger.info(f"ACRONIMO: '{s}'")
             else:
                 return (1, 0)
 
-        elif bool(_semi_c_fraction.search(s)) or bool(_measure_unities.search(s)):
-            # #  logger.info(f"UMD por regex: '{s}'")
-            return (2, 0)
-
         if not any(c in vowels for c in s):
-            if contains_umd(s):
-                # #  logger.info(f"UMD sin vocales: '{s}'")
+            # logger.info(f"NO DETECCIÓN: {s}")
+            if _fraction_pattern.search(s):
+                # logger.info(f"UMD sin vocales: '{s}'")
                 return (2, 0)
                 
             elif total_text > 2:
-                # #  logger.info(f"CODE sin vocales: '{s}'")
+                # logger.info(f"CODE sin vocales: '{s}'")
                 return (3, 0)
             
-        # logger.debug(f"DESC por sobrante: '{s}'")
+        # logger.info(f"DESC por sobrante: '{s}'")
         return (1, 0)
 
     elif total_cuant == total_text:
@@ -535,26 +539,26 @@ def classify_token(s: str) -> Tuple[int, int]:
         return (3, total_cuant)
     
     elif dense_mean > density_thr[1]:
-        #  logger.info(f"DESC por codificacion: '{s}'")
+        logger.info(f"DESC por codificacion: '{s}'")
         return (1, total_cuant)
 
     if dense_mean < density_thr[0]:
-        if _fraction_pattern.search(s):
-            #  logger.info(f"UMD por codificacion: '{s}'")
+        if bool(_fraction_pattern.search(s)):
+            # logger.info(f"UMD por codificacion: '{s}'")
             return (2, total_cuant)
 
         if not any(c in ("/", ":") for c in s) and (total_cuant / total_text) > 0.687:
             #  logger.info(f"NUM por codificacion: '{s}'")
             return (5, total_cuant)
-        logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
+        # logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
         return (3, total_cuant)
         
     elif bool(_labels_pattern.fullmatch(s)):
-        #  logger.info(f"DESCR MARCA: '{s}")
+        # logger.info(f"DESCR MARCA: '{s}")
         return (1, total_cuant)
     
     if not any(c in vowels for c in s) and total_text > 2:
-        #  logger.info(f"CODE por FALLBACK: '{s}'")
+        # logger.info(f"CODE por FALLBACK: '{s}'")
         return (3, total_cuant)
         
     # logger.info(f"Poligono sin clasificación, será descriptiva: '{s}'")

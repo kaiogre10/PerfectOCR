@@ -1,9 +1,9 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-    # input,
-    input2,
-    # input3,
+     input,
+#    input2,
+#     input3,
     # E:/data/tickets_nuevo
   ]
   images_names: [
@@ -12,12 +12,12 @@ system_config:
   #  AAAA0040,
   #  AAAC0043,
   #   # AAAA0058,
-    AAAC0037,
+#    AAAC0037,
     # AAAA0059,
     # AAAB0002,
     #  AAAC0010,
     # AAAA0003,
-    AAAA0015, 
+#    AAAA0015,
     # AAAA0016, AAAA0017, AAAA0018, AAAA0025, AAAA0029, AAAA0035, AAAA0036, AAAA0039,
   ]
   valid_extensions: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
@@ -55,8 +55,8 @@ pipeline_secuence:
    
 log_debug:
   text_ocr: False
-  text_clean: False
-  text_correct: False
+  text_clean: True
+  text_correct: True
   frag_polys: False
   refined_text: True
   seman_clas: False
@@ -65,7 +65,7 @@ log_debug:
   table_lines: False
   table_geo: False
   table_correct: False
-  semantic_types_log: [2, 3]
+  semantic_types_log: [-1]
   kf_list_log: [12]
   
 # Configuración de salida

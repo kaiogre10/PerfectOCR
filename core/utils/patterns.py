@@ -6,8 +6,8 @@ _currency_pattern = r"[$]"
 _currency_variants = r"[$Ss]" 
 _punt_quant_chars = r'[.,]'
 _diagonal_variants = r'[7/]'
-_zeros_to_sub = r'[OQDo]'
-_monetary_to_sub =  r'^[Ss]\d'
+_zeros_to_sub = r'[OQDo0]'
+_monetary_to_sub = r'^[Ss]\d'
 _clean_currency_str = r"^(?:\$)|,"
 _digit_pattern = r"[0-9OQDo]"
 _base_date_num_str = r'[0123OQo][0-9OQo]'
@@ -18,7 +18,7 @@ _stick_chars = r'[|!1¡]'
 _stick_set = _stick_chars[1:-1]
 
 _l_variants = rf"[Ll{_stick_set}]"
-_c_variants = r"[Cc(]"
+_c_variants = r"[Cc]"
 _i_variants = rf"[Ii{_stick_set}]"
 _o_variants = r"[Oo0Q]"
 _n_variants = r"[Nn]"
@@ -59,7 +59,6 @@ los_suffix_pattern = re.compile(_los_typos_regex)
 zeros_pattern = re.compile(_zeros_to_sub)
 monetary_pattern = re.compile(_monetary_to_sub)
 valid_cuant_pattern = re.compile(_valid_cuant_str, re.IGNORECASE)
-# _punt_pattern = re.compile(_punt_quant_chars, re.IGNORECASE)
 
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)
 _bic_variants = r'^(B(1C|lC|\|C|¡C|!C))$'
@@ -107,36 +106,38 @@ _date_patterns_list: List[Pattern[str]] = [
 _unities = re.compile(r'(g|l|m)', re.IGNORECASE)
 _mass_pattern = re.compile(r'(kg|gr|grs|mg|lb|lbs|oz|ton)', re.IGNORECASE)
 _vol_pattern = re.compile(r'(lt|ltr|ltrs|lts|ml|gal)', re.IGNORECASE)
-_len_pattern = re.compile(r'(cm|mm|km|in|ft|mts?|m2|m\^2|m²|cm2|cm\^2|cm²|km2|km\^2|km²)', re.IGNORECASE)
+_len_pattern = re.compile(r'(cm|mm|km|in|ft|mts?|m2|m\^2|cm\^2|km\^2)', re.IGNORECASE)
 size_pattern = re.compile(r'(gde|med|ch|paq)', re.IGNORECASE)
 measure_unities = re.compile("|".join(p.pattern for p in [size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
 
 # Detecta expresiones como "C / 3 + 2" o variantes OCR para fracciones extendidas con suma: letra C, barra, número, signo más, número.
 _extended_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\s*\+\s*\d+(?![A-Za-z0-9])', re.IGNORECASE)
 
-# Detecta fracciones estándar como "C / 3" o variantes OCR: letra C seguida de barra y número (sin suma).
+# Detecta fracciones estándar como "C / 3" o variantes OCR: letra C seguida de barra y número (sin suma)
 _full_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\b', re.IGNORECASE)
 
-# Detecta expresiones de tipo fracción incompleta como "/3", es decir, solo una barra y número, sin prefijo.
+# Detecta expresiones de tipo fracción incompleta como "/3", es decir, solo una barra y número, sin prefijo
 _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b', re.IGNORECASE)
 
-# Detecta fracciones de tipo "C /", "C / 3", permitiendo que el número sea opcional (ej. "C / " o "C / 5").
-semi_c_fraction = re.compile(r'(?<!\d)[Cc]\s*/(?:\s*\d+)?\b', re.IGNORECASE)
+# Detecta fracciones de tipo "C /", "C / 3", permitiendo que el número sea opcional (ej. "C / " o "C / 5")
+semi_c_fraction = re.compile(rf'[Cc]\s*{_diagonal_variants}(?:\s*\d+)?(?:$|(?=\s))', re.IGNORECASE)
 
 # Detecta fracciones con guión como "C-3", es decir, letra C, guión y número, sin prefijo.
 c_dash_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]-\d+\b', re.IGNORECASE)
 
-# measure_fractions: Detecta fracciones "naturales" tipo "1/2", "10/25", donde ambos lados (numerador y denominador) pueden tener de 1 a 3 dígitos.
+# Detecta fracciones "naturales" tipo "1/2", "10/25", donde ambos lados (numerador y denominador) pueden tener de 1 a 3 dígitos.
 measure_fractions = re.compile(rf'\b[1-9]\d{{0,2}}\s*{_diagonal_variants}\s*[1-9]\d{{0,2}}\b', re.IGNORECASE)
 
-# amount_fract: Detecta cantidades con fracción que usan variantes de "C/" para unidades ("C/10", permitiendo variantes OCR en el carácter de barra y ceros sustituidos.
-amount_fract = re.compile(rf"{_c_variants}(?:{_diagonal_variants})(?:\d|{_zeros_to_sub})+")
+# Detecta cantidades con fracción que usan variantes de "C/" para unidades ("C/10", permitiendo variantes OCR en el carácter de barra y ceros sustituidos
+amount_fract = re.compile(
+    rf"(?<!\b){_c_variants}\s*{_diagonal_variants}\s*{_digit_pattern}+(?=\b|$)|"
+    rf"{_c_variants}{_diagonal_variants}\s*{_digit_pattern}+\b"
+)
 
-# umd_cor: Detecta números seguidos de ceros sustitutos (error OCR) al final de palabra o antes de espacio, útil para limpiar "7100" incorrectos detectados como "C/100".
-# Ejemplo: "71OOO" (donde O = letra O) será detectado; útil para detectar casos donde los ceros están sustituidos.
-umd_cor = re.compile(rf'\d{_zeros_to_sub}(?=\s|$)')
+# Detecta números seguidos de ceros sustitutos (error OCR) al final de palabra o antes de espacio, útil para limpiar "7100" incorrectos detectados como "C/100"
+umd_cor = re.compile(rf'\b{_zeros_to_sub}(?=\s|$)')
 
-fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, semi_c_fraction, _semifraction_pattern, c_dash_fraction_pattern]), re.IGNORECASE)
+fraction_pattern = re.compile("|".join(p.pattern for p in [semi_c_fraction, c_dash_fraction_pattern, _extended_fraction_pattern, _full_fraction_pattern, _semifraction_pattern, amount_fract, measure_fractions]), re.IGNORECASE)
 
 _umd_paterns_list: List[Pattern[str]] = [
     re.compile(r'(?<![A-Za-z0-9])\d{1,4}\s*m(?:l|1|\||!)(?=$|[^A-Za-z0-9])', re.IGNORECASE),
@@ -151,10 +152,8 @@ _umd_paterns_list: List[Pattern[str]] = [
 _umd_generals = re.compile("|".join(p.pattern for p in _umd_paterns_list), re.IGNORECASE)
 umd_patterns = re.compile("|".join(p.pattern for p in [fraction_pattern, _umd_generals]), re.IGNORECASE)
 
-# _final_clean_currency = re.compile(r"[^0-9.]", re.IGNORECASE)
 clean_currency = re.compile(_clean_currency_str, re.IGNORECASE)
 
-# Usa los strings en las interpolaciones
 # Detecta el "cuerpo" de un monto numérico, es decir la parte de los dígitos principales de una cantidad monetaria o cuantitativa.
 _amount_body_pattern = (
     rf"(?:{_digit_pattern}+(?:{_punt_quant_chars}{_digit_pattern}+)?|"
@@ -162,23 +161,23 @@ _amount_body_pattern = (
 )
 
 _token_pattern = (
-    rf"{_currency_variants}\s*{_amount_body_pattern}|"
-    rf"{_amount_body_pattern}\s*{_currency_variants}|"
+    rf"{_currency_pattern}\s*{_amount_body_pattern}|"
+    rf"{_amount_body_pattern}\s*{_currency_pattern}|"
     rf"{_amount_body_pattern}"
 )
 # Detecta patrones cuantitativos en texto:
 token = re.compile(_token_pattern, re.IGNORECASE)
 
 # Patrón: Montos con símbolo al inicio ($ 80.50)
-_start_pattern = rf"^{_currency_variants}\s*{_amount_body_pattern}$"
+_start_pattern = rf"^{_currency_pattern}\s*{_amount_body_pattern}$"
 _start = re.compile(_start_pattern, re.IGNORECASE)
 
 # Patrón: Monto con símbolo en medio (80 $ 50)
-_middle_pattern = rf"^{_amount_body_pattern}\s*{_currency_variants}\s*{_amount_body_pattern}$"
+_middle_pattern = rf"^{_amount_body_pattern}\s*{_currency_pattern}\s*{_amount_body_pattern}$"
 _middle = re.compile(_middle_pattern, re.IGNORECASE)
 
 # Patrón: Múltiples montos seguidos de símbolo ($100 $200)
-_multi_pattern = rf"^(?:\s*{_currency_variants}\s*{_amount_body_pattern}\s*){{2,}}$"
+_multi_pattern = rf"^(?:\s*{_currency_pattern}\s*{_amount_body_pattern}\s*){{2,}}$"
 _multi = re.compile(_multi_pattern, re.IGNORECASE)
 
 # Patrón: Decimales grandes tipo 1,230.50 (sin $)

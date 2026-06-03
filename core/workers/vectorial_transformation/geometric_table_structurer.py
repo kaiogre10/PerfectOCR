@@ -628,7 +628,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                                     h += 1
                             header_line_text.append(poly_text)
                                 
-                    logger.debug(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
+                    logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
                     return h
 
         except Exception as e:
