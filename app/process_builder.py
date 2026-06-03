@@ -40,7 +40,6 @@ class ProcessingBuilder:
             # Pasamos contexto que incluye image_data para que el ImageLoader sepa qué cargar
             manager, time_poly = self.input_stager.execute(manager, context)
             if manager is None:
-                logger.error("Fallo en fase de preparación")
                 return None
             logger.debug(f"Fase de preparación completada en: {time_poly:.6f}s")
 
@@ -48,7 +47,6 @@ class ProcessingBuilder:
             if self.preprocessing_stager is not None:
                 manager, elapsed = self.preprocessing_stager.execute(manager, context)
                 if manager is None:
-                    logger.error("Fallo en preprocesamiento")
                     return None
                 logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
@@ -56,7 +54,6 @@ class ProcessingBuilder:
             if self.ocr_stager is not None:
                 manager, ocr_time = self.ocr_stager.execute(manager, context)
                 if manager is None:
-                    logger.error("Fallo en OCR")
                     return None
                 logger.debug(f"OCR completado en: {ocr_time:.6f}s")
                     
@@ -64,15 +61,10 @@ class ProcessingBuilder:
             if self.vectorization_stager is not None:
                 manager, vect_time = self.vectorization_stager.execute(manager, context)
                 if manager is None:
-                    logger.error("Fallo en vectorización")
                     return None
                 logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
 
             img_results = manager.get_final_data()
-            # df = img_results[0]
-            # global_data = img_results[1]
-            # logger.info("TABLA FINAL:\n"f"{df.to_string(index=True)}"
-            #     "\n"f"GLOBAL_DATA:\n"f"{global_data}")
                 
             return img_results
             

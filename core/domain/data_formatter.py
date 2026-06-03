@@ -378,14 +378,15 @@ class DataFormatter:
                     logger.warning(f"line_id '{line_id}' no encontrado en all_lines")
 
             if marked_ids:
-                logger.debug(f"Marcadas {marked_count} líneas como tabulares: {marked_ids}")
                 if self.table_lines_log:
                     for log_debug in tabular_lines_debug:
                         logger.info(f"{log_debug['line_id']} tabular: '{log_debug['text']}'")
+                    logger.info(f"Marcadas {marked_count} líneas como tabulares")
+                return True
             else:
-                logger.warning("No se marcaron líneas como tabulares en esta llamada a save_tabular_lines.")
-
-            return True
+                logger.warning("No se marcaron líneas como tabulares.")
+                return False
+                
         except Exception as e:
             logger.error(f"Error marcando líneas como tabulares: {e}", exc_info=True)
         return False

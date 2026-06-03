@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
+from core.utils.text_utils import fast_classfier
 from services.output_service import save_raw_json
 
 logger = logging.getLogger(__name__)
@@ -165,7 +166,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 current_line_bbox = list(bbox)
                 continue
             
-            line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys) 
+            line_t_cuant = sum((p.cuant_chars or 0) for p in current_line_polys)
             
             lines_bbox.append(current_line_bbox)  # Agregar aquí: bbox de la línea completada
             
@@ -173,6 +174,10 @@ class LinealReconstructor(VectorizationAbstractWorker):
             line_centroid = [(current_line_bbox[0] + current_line_bbox[2]) / 2, (current_line_bbox[1] + current_line_bbox[3]) / 2] if current_line_bbox else [0, 0]
             
             line_id = f"line_{line_counter:04d}"
+            # classified = fast_classfier(joined_text)
+            # scl = [p.semantic_clasification for p in current_line_polys]
+            # logger.info("\n"f"{line_id}: {polygon_ids} '{texts}' | POLYS SC: {scl} | LINE SC: {classified[0]}")
+
             lines_info[line_id] = {
                 "text": joined_text,
                 "line_index": line_counter,

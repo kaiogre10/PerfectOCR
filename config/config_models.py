@@ -198,7 +198,8 @@ class DebugOutputs(ConfigWithNumpy):
     text_ocr: bool
     text_clean: bool
     text_correct: bool
-    fragmented_polygons: bool
+    frag_polys: bool
+    refined_text: bool
     seman_clas: bool
     key_fields: bool
     lines: bool

@@ -2,6 +2,7 @@
 import numpy as np
 import logging
 import time
+from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 from sklearn.cluster import HDBSCAN, DBSCAN # type: ignore
@@ -462,3 +463,15 @@ def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
     sc = np.asarray(semantic_clasification, dtype=np.int8)
     mask = (sc == 2) | (sc == 4)
     return 0 if 0 in semantic_clasification else np.count_nonzero(mask)
+
+def round_2_decimal_vals(amount_str: str) -> str:
+    if not amount_str:
+        return ""
+    try:
+        dec = Decimal(amount_str)
+        # Redondear con HALF_UP a dos decimales
+        rounded = dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return str(rounded)
+    except ConversionSyntax:
+        logger.info(f"ERROR CONVIRTIENDO: '{amount_str}'")
+        return amount_str

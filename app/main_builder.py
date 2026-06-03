@@ -114,10 +114,11 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
     total_processing_time = 0.0
     total_images = len(image_info_list)
     processed_count = 0
-    succcess_image = 0
+    succcess_image: List[str] = []
     final_results: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
     logger.info(f"{total_images} IMAGENES PARA PROCESAR")
     failed_images: List[str] = []
+
     
     for i, image_data in enumerate(image_info_list):
         # Procesar imagen individualmente
@@ -134,12 +135,13 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
             failed_images.append(image_name)
             continue
         else:
-            succcess_image += 1
+            succcess_image.append(image_name)
             final_results.append(final_df)
             logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}")
 
-    logger.info(f"'{succcess_image} / {total_images}' Archivos Digitalizados en: {total_processing_time:.6f}, promedio: {(total_processing_time / total_images):.6f}'s / documento")
-    if len(failed_images) > 0:
+    logger.info(f"'{len(succcess_image)} / {total_images}' Archivos Digitalizados en: {total_processing_time:.6f}, promedio: {(total_processing_time / total_images):.6f}'s / documento")
+    if len(failed_images) > 0 and len(succcess_image) > 0:
+        logger.info(f"IMAGENES EXITOSAS: {succcess_image}")
         logger.info(f"IMAGENES FALLADAS: {failed_images}")
         
     return final_results

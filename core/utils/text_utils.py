@@ -2,15 +2,17 @@
 import logging
 import unicodedata
 from typing import List, Tuple, Dict, Any, Optional
-from core.utils.math_utils import text_encode
-from core.utils.data_utils import CUANT_CHAR, VALID_ALONE_CHARS, VOWELS
-from core.utils.patterns import (rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, umd_cor, amount_fract, zeros_pattern, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, token, valid_cuant_pattern, split, semi_zeros_pattern, monetary_pattern, end_cuant_str, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, measure_unities, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, measure_fractions)
+from core.utils.math_utils import text_encode, round_2_decimal_vals
+from core.utils.data_utils import VALID_ALONE_CHARS, VOWELS, VALID_CUANT_CHARS, CHAR_NUM
+from core.utils.patterns import rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, umd_cor, amount_fract, zeros_pattern, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, token, valid_cuant_pattern, split, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, measure_unities, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, measure_fractions, c_dash_fraction_pattern, end_cuants
 
 logger = logging.getLogger(__name__)
 
 density_thr = (23.7, 103.7)
 morph_thr = (-0.297, 0.337)
 
+_end_cuants = end_cuants
+_c_dash_fraction_pattern = c_dash_fraction_pattern
 _measure_fractions = measure_fractions
 _rfc_key_pattern = rfc_key_pattern
 _numeric_code = numeric_code
@@ -40,9 +42,7 @@ _quant_runs_patterns = quant_runs_patterns
 _token = token
 _valid_cuant_pattern = valid_cuant_pattern
 _split = split
-_semi_zeros_pattern = semi_zeros_pattern
 _monetary_pattern = monetary_pattern
-_end_cuant_str = end_cuant_str
 _clean_currency = clean_currency
 _edge_punt_pattern = edge_punt_pattern
 _hour_pattern = hour_pattern
@@ -56,7 +56,8 @@ _measure_unities = measure_unities
 _id_prov_pattern = id_prov_pattern
 
 alone_chars = VALID_ALONE_CHARS
-cuant_chars = CUANT_CHAR
+char_num = CHAR_NUM
+cuant_chars = frozenset(char_num.union(VALID_CUANT_CHARS))
 vowels = VOWELS
 
 def normalice_text(s: str, hard_norm: Optional[bool] = False) -> str:
@@ -122,20 +123,17 @@ def find_umd(s: str) -> str:
         return ""
     
     elif bool(_date_patterns.search(s)):
-        logger.info(f"FECHAS: ´{s}'")
         return s
 
     if not s.endswith("0") and not s[-1].isdecimal() and _umd_cor.search(s):
         new_s = s[:-1] + "0"
         if not new_s.isdecimal() and not is_quantitative(new_s):
-            # logger.info(f"NEW S: '{s}' -> '{new_s}'")
             return new_s
         s = new_s
 
     if bool(_measure_fractions.search(s)) or bool(_amount_fract.search(s)):
-        if "7" in s:
+        if "7" in s and not bool(_c_dash_fraction_pattern.search(s)):
             s = s.replace("7", "/")
-        s = _zeros_pattern.sub("0", s)
     
     if _fraction_pattern.fullmatch(s):
         return s
@@ -209,8 +207,14 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
     return None
 
 def validate_quant_chars(text: str) -> bool:
-    """Valida todos si todos los caracteres de un string son cuantitativos"""
-    return all(c in cuant_chars for c in text) if any(c.isdecimal() for c in text) else False
+    """Valida todos si todos los caracteres de un string pertenecen a 'cuant_chars' cuantitativos"""
+    valid = False
+    for c in text:
+        if c not in cuant_chars:
+            return False
+        if c in char_num:
+            valid = True
+    return valid
 
 def validate_quant_pattern(text: str) -> bool:
     """Verifica con regex si un string completo es cuantitativo"""
@@ -218,20 +222,20 @@ def validate_quant_pattern(text: str) -> bool:
     
 def is_quantitative(text: str) -> bool:
     """Válida rapidamente si un string es cuantitativo."""
-    if text.isdecimal() or len(text) < 3:
+    if len(text) < 3 or text.isdecimal():
         return False
-    return validate_quant_chars(text) or validate_quant_pattern(text)
+    return validate_quant_chars(text) and validate_quant_pattern(text)
 
 def contains_quantitative(text: str) -> bool:
     """Devuelve True si encuentra algún sub-string cuantitativo en el texto."""
     if not text or text.isalpha() or text.isdecimal():
         return False
     match = _token.search(text)
-    return bool(match and is_quantitative(match.group(0)))
+    return bool(match and validate_quant_pattern(match.group(0)))
 
 def get_cuants(text: str) -> str:
     """Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto). Si ya están separados por espacios, no modifica el texto."""
-    if len(text) < 4 or text.isdecimal() or text.isalpha():
+    if len(text) < 3 or text.isdecimal() or text.isalpha():
         return text
 
     words = text.split(" ")
@@ -240,7 +244,8 @@ def get_cuants(text: str) -> str:
         monetary_count = word.count("$")
     
         if bool(_valid_cuant_pattern.search(word)):
-            word = word[0] + word[1:].replace('$', '5')
+            word = format_cuant(word)
+            word = ("$" + word)
 
         elif word.startswith('$') and monetary_count > 1 and validate_quant_chars(word):
             word = word[0] + word[1:].replace('$', '5')
@@ -266,16 +271,20 @@ def get_cuants(text: str) -> str:
                     result_parts.append(" ".join(chunks))
                     continue
             
-        if monetary_count == 1:
-            if is_quantitative(word):
-                result_parts.append(word)
-                continue
-            elif bool(_semi_zeros_pattern.search(word)):
-                word = _zeros_pattern.sub("0", word)
+        elif monetary_count == 1:
+            if validate_quant_pattern(word):
                 result_parts.append(word)
                 continue
 
-        if bool(_monetary_pattern.match(word)):
+            elif validate_quant_chars(word):
+                if bool(_end_cuants.search(word)):
+                    word = format_cuant(word)
+                    new_dec = round_2_decimal_vals(word)
+                    word = ("$" + new_dec)
+                result_parts.append(word)
+                continue
+
+        elif bool(_monetary_pattern.search(word)):
             word = "$" + word[1:]
 
         matches = list(_token.finditer(word))
@@ -300,22 +309,31 @@ def get_cuants(text: str) -> str:
                     result = left_part + mid + right_part
 
         result_parts.append(result)
-    
-    return " ".join(result_parts)
+
+    clean_quants =  " ".join(result_parts).strip()
+    cuant_cheks = clean_quants.split(" ")
+    if len(cuant_cheks) > 1:
+        potencial_noise = cuant_cheks[-1]
+        if len(potencial_noise) < 3 and not is_quantitative(potencial_noise):
+            cuant_cheks.pop(-1)
+            clean_quants =  " ".join(cuant_cheks).strip()
+        return clean_quants
+    else:
+        return clean_quants
 
 def format_cuant(text: str) -> str:
     """Convierte strings numericos a cuantitativos y limpia los que ya son cuantitativos para usar Decimal"""
     if text.isdecimal():
-        return (text + _end_cuant_str).strip()
+        return (text + ".00").strip()
     text_0 = _zeros_pattern.sub("0", text)
     cuant_txt = _clean_currency.sub('', text_0).strip()
-    cuant_txt = cuant_txt.replace("$", "5")
+    cuant_txt = cuant_txt.replace("$", "5").strip()
     temp_txt = cuant_txt.replace(".", "")
-    if not temp_txt.isdecimal():
+    if not temp_txt.isdecimal() or len(cuant_txt) > len(text):
         logger.warning(f"CARACTER INTRUSO EN '{text}' NO SE PUDO FORMATEAR")
         return text
     else:
-        return cuant_txt.strip()
+        return cuant_txt
             
 def punct_strip(text: str) -> str:
     """Elimina los caracteres de puntuación que se encuentran al inicio y al final de cada token en el texto."""
@@ -341,7 +359,7 @@ def separate_punt(text: str) -> str:
     tokens = text.split()
     for t in tokens:
         # Mantiene intactas horas y cuantitativos puros; limpia los tokens mixtos.
-        if not bool(_hour_pattern.search(t)) and not is_quantitative(t):
+        if not bool(_hour_pattern.search(t)) and not contains_quantitative(t):
             cleaned_token = _punt_split_pattern.sub(" ", t)
             processed_tokens.append(cleaned_token)
         else:
@@ -431,6 +449,8 @@ def classify_token(s: str) -> Tuple[int, int]:
         return (1, 0)
     
     elif s.isdecimal():
+        if "0" in s and bool(_numeric_code.fullmatch(s)):
+            return (3, total_cuant)
         #  logger.info(f"DECIMAL 1ro: '{s}'")
         return (5, total_text)
     
@@ -557,7 +577,7 @@ def format_elapsed_time(seconds: float) -> str:
 def fast_classfier(text: str) -> Tuple[List[int], int]:
     """Clasifica un string rapidamente, no seleccionar los strings antes de llamar a la función impactará de manera negativa el output del pipeline"""
     if not text:
-        return ([], 0)
+        return ([-1], 0)
     tokens = text.split(" ")
     semantic_classes: List[int] = []
     total_cuants = 0

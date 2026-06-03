@@ -23,6 +23,7 @@ class Refiner(OCRAbstractWorker):
         self.corrector = corrector
         worker_config = config.get("text_refiner", {})
         self.seman_clas_log = config.get("seman_clas")
+        self.refined_text = config.get("refined_text")
         semantic_types_log = any(t == -1 for t in config["semantic_types_log"])
         self.semantic_types_log = config["semantic_types_log"] if not semantic_types_log else list(range(6))
         self.num_passes = worker_config.get("num_passes")
@@ -49,15 +50,15 @@ class Refiner(OCRAbstractWorker):
                     self.fragmenter.transcribe(context, manager)
                     self.classify_strings(manager)
 
+        logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
         if self.seman_clas_log:
-            # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}'s")
             polygons = manager.workflow.polygons if manager.workflow else {}
             for poly, poly_data in polygons.items():
                 if any(sc in self.semantic_types_log for sc in  poly_data.semantic_clasification):
-                    text = poly_data.ocr_text
-                    logger.info(f"{poly}: '{text}', clas: {poly_data.semantic_clasification} | t_cuant: {poly_data.cuant_chars} / len: {len("".join(text))}")
+                    text = poly_data.ocr_text or ""
+                    sc = poly_data.semantic_clasification
+                    logger.info(f"{poly}: '{text}', clas: {sc} | t_cuant: {poly_data.cuant_chars} | {len(text.split(" "))} / {len(sc)}")
 
-        # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
         return True
         
     def classify_strings(self, manager: DataFormatter) -> bool:
@@ -142,7 +143,10 @@ class Refiner(OCRAbstractWorker):
         
         for poly, poly_data in polygons.items():
             text = poly_data.ocr_text or ""
-            if len(text) < 2:
+            if not text:
+                continue
+
+            elif len(text) < 2:
                 final_polygons[poly] = {"text": text}
                 continue
             
@@ -150,22 +154,21 @@ class Refiner(OCRAbstractWorker):
                 final_polygons[poly] = {"text": text}
                 continue
                 
-            elif contains_quantitative(text) and not is_quantitative(text):
+            if contains_quantitative(text):
                 qtext = get_cuants(text)
                 # logger.info(f"POTENCIAL CUANTS: '{text}' -> '{qtext}'")
                 if qtext != text:
-                    # logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
-                    final_polygons[poly] = {"text": qtext}
-                    continue
+                    if self.refined_text:
+                        logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
 
-                final_polygons[poly] = {"text": qtext}
-                continue
+                text = qtext
                     
             if contains_umd(text):
                 umd_text = find_umd(text)
                 # logger.info(f"POTENCIAL UMDS: '{text}'")
                 if umd_text != text:
-                    # logger.info(f"UMD ENCONTRADA:'{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
+                    if self.refined_text:
+                        logger.info(f"UMD ENCONTRADA:'{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
                     final_polygons[poly] = {"text": umd_text}
                     continue
                 
