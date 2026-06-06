@@ -1,0 +1,11 @@
+conda create -n intel --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python=3.12 numpy=1.26.4 pip conda scipy pandas scikit-learn intel-opencl-rt ipp dpcpp-cpp-rt icc_rt cython mkl pythran
+
+conda install -c https://software.repos.intel.com/python/conda/ opencv=4.11.0
+
+conda install paddlepaddle==2.6.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ 
+
+pip install paddleocr==2.8.1
+
+conda install pydantic scikit-image python-dotenv psycopg2
+
+python config\setup.py build_ext --inplace

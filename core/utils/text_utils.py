@@ -52,7 +52,6 @@ _secuence_pattern = secuence_pattern
 _labels_pattern = labels_pattern
 _size_pattern = size_pattern
 _semi_c_fraction = semi_c_fraction
-_measure_unities = measure_unities
 _id_prov_pattern = id_prov_pattern
 
 alone_chars = VALID_ALONE_CHARS
@@ -215,18 +214,18 @@ def validate_quant_chars(text: str) -> bool:
     return valid
 
 def validate_quant_pattern(text: str) -> bool:
-    """Verifica con regex si un string completo es cuantitativo"""
+    """Verifica si si hay match completo de un patrón"""
     return bool(_quant_runs_patterns.fullmatch(text))
     
 def is_quantitative(text: str) -> bool:
-    """Válida rapidamente si un string es cuantitativo."""
+    """Válida rapidamente si un string es cuantitativo"""
     if len(text) < 3 or text.isdecimal():
         return False
     return validate_quant_chars(text) and validate_quant_pattern(text)
 
 def contains_quantitative(text: str) -> bool:
     """Devuelve True si encuentra algún sub-string cuantitativo en el texto."""
-    if not text or text.isalpha() or text.isdecimal():
+    if not text:
         return False
     match = _token.search(text)
     return bool(match and validate_quant_pattern(match.group(0)))
@@ -240,13 +239,17 @@ def get_cuants(text: str) -> str:
     result_parts: List[str] = []
     for word in words:
         monetary_count = word.count("$")
-    
+        
         if bool(_valid_cuant_pattern.search(word)):
-            word = format_cuant(word)
-            word = ("$" + word)
+            logger.info(f"valid_cuant_pattern: '{word}'")
+            word_c = format_cuant(word)
+            word = "$" + word_c
+            logger.info(f"valid_cuant_pattern 2: '{word}'")
 
         elif word.startswith('$') and monetary_count > 1 and validate_quant_chars(word):
+            logger.info(f"startswith: '{word}'")
             word = word[0] + word[1:].replace('$', '5')
+            logger.info(f"startswith 2: '{word}'")
 
         if monetary_count >= 2 and contains_quantitative(word): 
             compact = word.replace(" ", "")                                          # $10.50.$31.50 | $10.50$31.50
@@ -257,7 +260,7 @@ def get_cuants(text: str) -> str:
             
             if total_chunks == 1:
                 if compact_chunks == compact:
-                    chunks = compact.replace("$", " $")
+                    chunks = compact.replace("$", " ")
                     result_parts.append(" ".join(chunks.split()))
                     continue
                 
@@ -288,6 +291,7 @@ def get_cuants(text: str) -> str:
                 continue
 
         elif bool(_monetary_pattern.search(word)):
+            logger.info(f"MONETARY PATTERN: {word}")
             word = "$" + word[1:]
 
         matches = list(_token.finditer(word))
@@ -346,8 +350,8 @@ def punct_strip(text: str) -> str:
     if not text:
         return ""
         
-    if all(char.isalnum() for char in text) or is_acronym(text):
-        # logger.debug(f"Acromimo: {text}")
+    if validate_quant_chars(text) or is_acronym(text):
+        logger.info(f"NO SE SEPARA: {text}")
         return text.strip()
     
     return _edge_punt_pattern.sub("", text).strip()
@@ -357,16 +361,17 @@ def separate_punt(text: str) -> str:
     if not text:
         return ""
     
-    if is_acronym(text):
-        # logger.debug(f"Acromimo: {text}")
+    if text.isalnum() or is_acronym(text):
+        logger.info(f"Acromimo: {text}")
         return text
-   
-    processed_tokens: List[str] = []
+
     tokens = text.split()
+    processed_tokens: List[str] = []
     for t in tokens:
         # Mantiene intactas horas y cuantitativos puros; limpia los tokens mixtos.
         if not bool(_hour_pattern.search(t)) and not contains_quantitative(t):
             cleaned_token = _punt_split_pattern.sub(" ", t)
+            logger.info(f"cleaned_token: '{t}' -> '{cleaned_token}'")
             processed_tokens.append(cleaned_token)
         else:
             # Si es una hora, se mantiene intacta

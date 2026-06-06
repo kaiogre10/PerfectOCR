@@ -25,7 +25,7 @@ TEST_MODE = True
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 LATITUDE_OUTPUT_PATH = "E:"
     
-if os.path.exists(LATITUDE_OUTPUT_PATH):
+if os.path.exists(LATITUDE_OUTPUT_PATH) or LATITUDE_OUTPUT_PATH == PROJECT_ROOT:
     print("Ejecución en LATITUDE")
     output_paths = ["output"]
     default_output = ["output"]

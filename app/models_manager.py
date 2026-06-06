@@ -1,5 +1,6 @@
 # app/models_manager.py
 import logging
+import os
 import threading
 import time
 from typing import Dict, Any, Optional
@@ -31,7 +32,8 @@ class ModelsManager:
                     cls._instance = cls()
         return cls._instance
 
-    def initialize_models(self, config: Dict[str, Any]) -> bool:
+    def initialize_models(self, config: Dict[str, Any], project_root: str) -> bool:
+        self.project_root = project_root
         init_time = time.perf_counter()
         try:
             # 1. Inicialización SELECTIVA de motores de Paddle
@@ -69,13 +71,19 @@ class ModelsManager:
             activate_rec = config.get("activate_rec")
             activate_det = config.get("activate_det")
             models_config = config.get("models_config", {})
+            det_dir = models_config['det_model_dir']
+            rec_dir = models_config['rec_model_dir']
+            
+            det_model_dir = os.path.join(self.project_root, *det_dir)
+            rec_model_dir = os.path.join(self.project_root, *rec_dir)
+            
             if activate_det or activate_rec:
                 self._shared_engine = PaddleOCR(
                     det=activate_det, 
                     rec=activate_rec,
                     cls=models_config.get('use_angle_cls'),
-                    det_model_dir=models_config.get('det_model_dir'),
-                    rec_model_dir=models_config.get('rec_model_dir'),
+                    det_model_dir=det_model_dir,
+                    rec_model_dir=rec_model_dir,
                     show_log=models_config.get('show_log'),
                     use_gpu=models_config.get('use_gpu'),
                     enable_mkldnn=models_config.get('enable_mkldnn'),
@@ -108,9 +116,13 @@ class ModelsManager:
 
     def _activate_wf(self, config: Dict[str, Any]) -> bool:
         models_config = config.get("models_config", {})
+        model_path = models_config["wf_model_path"]
+        
+        model_dir = os.path.join(self.project_root, *model_path)
+        
         try:
             self._word_finder = WordFinder(
-                model_path=models_config.get("wf_model_path"),
+                model_path=model_dir,
                 set_params=models_config.get("set_wf_params", False)
             )
             return True

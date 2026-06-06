@@ -172,7 +172,7 @@ class Refiner(OCRAbstractWorker):
                     final_polygons[poly] = {"text": umd_text}
                     continue
                 
-                final_polygons[poly] = {"text": umd_text}
+                final_polygons[poly] = {"text": text}
                 continue
             else:
                 final_polygons[poly] = {"text": text}

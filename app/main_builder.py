@@ -43,7 +43,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
         models_config = config_services.models_config
         if models_config:
             models_manager = ModelsManager.get_instance()
-            if not models_manager.initialize_models(models_config):
+            if not models_manager.initialize_models(models_config, PROJECT_ROOT):
                 logger.info("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
                 system_service.cleanup_project_cache()
                 return []

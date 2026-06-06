@@ -2,8 +2,8 @@
 system_config:
   input_dirs: [
      input,
-#    input2,
-#     input3,
+    # input2,
+    #  input3,
     # E:/data/tickets_nuevo
   ]
   images_names: [
@@ -119,9 +119,9 @@ models_config:
   max_text_length: 20
   rec_image_inverse: False
   
-  det_model_dir: "C:/PerfectOCR/models/paddle/det/es"
-  rec_model_dir: "C:/PerfectOCR/models/paddle/rec/es"
-  wf_model_path: "C:/PerfectOCR/models/wf/wf_model.pkl"
+  det_model_dir: ["models", "paddle", "det", "es"]
+  rec_model_dir: ["models", "paddle", "rec", "es"]
+  wf_model_path: ["models", "wf", "wf_model.pkl"]
   # wf_model_path: "C:/word_finder_model/models/wf_model.pkl"
   set_wf_params: False
   

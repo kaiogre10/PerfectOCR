@@ -1,0 +1,125 @@
+Ciclo de vida secuencial del Data Formatter y los contenedores DataClasses
+
+================================================================================
+1. ARQUITECTURA Y ESTRUCTURA DE CONTENEDORES DE DATOS (data_models.py)
+================================================================================
+
+El archivo core/domain/data_models.py define los contenedores de datos inmutables y
+semiestructurados mediante dataclasses de Python. Estos objetos representan el estado 
+técnico y estructurado del documento a lo largo de su procesamiento:
+
+- FullImage: Contenedor para el arreglo de la imagen completa en formato numpy.
+- CroppedImage: Contenedor para los arreglos numpy de sub-imágenes recortadas correspondientes
+  a zonas de interés (polígonos).
+- Geometry: Almacena los metadatos geométricos del polígono (coordenadas del polígono,
+  caja delimitadora o bounding box, y el centroide).
+- Polygons: Elemento que agrupa la información de una región segmentada. Contiene su ID,
+  su índice, su objeto Geometry asociado, referencias opcionales a CroppedImage,
+  el texto resultante del OCR (ocr_text), campos clave identificados, clasificación
+  semántica y conteo de caracteres cuantitativos.
+- LineGeometry: Representa el centroide y bounding box de una línea de texto reconstruida.
+- AllLines: Agrupa la información de una línea completa de texto, enlazando los IDs e índices
+  de los polígonos que la componen, su geometría (LineGeometry), y metadatos sobre si es
+  tabular, de cabecera o de pie de página.
+- Metadata: Metadatos del archivo de origen (nombre de la imagen, fecha, DPI y dimensiones).
+- StructuredData: Contenedor del resultado final estructurado. Posee un DataFrame (df_table)
+  para los datos tabulares y un diccionario (global_data) para pares clave-valor.
+- WorkflowData: El nodo raíz que contiene todo el estado consolidado de la imagen actual:
+  ID de registro, imagen completa, metadatos, diccionarios de Polygons y AllLines,
+  e información estructurada final.
+
+================================================================================
+2. EL ROL DE DATAFORMATTER (data_formatter.py)
+================================================================================
+
+La clase DataFormatter actúa como la única válvula de entrada y salida (Facade / State Manager)
+para las mutaciones de estado de la sesión de procesamiento. Su propósito es:
+
+- Encapsular la estructura interna de WorkflowData. Los componentes externos no modifican
+  los diccionarios o listas de WorkflowData directamente.
+- Proporcionar APIs limpias para lecturas y escrituras seguras (usando dataclasses.replace
+  para actualizaciones controladas).
+- Administrar operaciones de optimización de memoria críticas en sistemas de alto rendimiento
+  (liberación explícita de arreglos de imágenes con delete_cropped_images y update_full_img).
+
+================================================================================
+3. FLUJO DE CREACIÓN Y CICLO DE VIDA DETALLADO
+================================================================================
+
+Para cada imagen que ingresa al sistema, el ciclo de vida se desarrolla secuencialmente
+dentro del método process_single_image de ProcessingBuilder:
+
+1. Instanciación Inicial:
+   - Al inicio del procesamiento de una sola imagen, ProcessingBuilder crea una instancia
+     fresca de DataFormatter pasándole logs_config. Su atributo `workflow` inicia como None.
+
+2. Inicialización del Workflow (Fase de Preparación):
+   - El primer worker ejecutor (ImageLoader) recibe la instancia del DataFormatter y
+     llama a create_workflow().
+   - Esto instancia el objeto WorkflowData raíz en el atributo `self.workflow` del DataFormatter,
+     creando los sub-objetos iniciales (FullImage, Metadata y StructuredData con un DataFrame vacío).
+
+3. Enriquecimiento Gradual de las DataClasses (Fases del Pipeline):
+   - Fase de Preparación: Los workers detectores de geometría generan las coordenadas y
+     bounding boxes. Invocan create_polygon_dicts() para instanciar Geometry y Polygons, 
+     almacenándolos en el diccionario `polygons` de WorkflowData.
+   - Fase de Recorte: Los workers de extracción recortan las sub-imágenes y llaman a
+     save_cropped_images(), insertando instancias de CroppedImage dentro de cada Polygons.
+   - Fase de OCR: Los workers de transcripción ejecutan el motor de reconocimiento y guardan 
+     las cadenas de texto en los polígonos llamando a update_ocr_results().
+   - Fase de Clasificación Semántica: Workers especializados evalúan el texto transcrito, 
+     llamando a update_semantic_clasification() y update_key_field() para marcar tipos
+     semánticos y campos clave.
+   - Fase de Reconstrucción Vectorial: Los workers determinan la relación espacial de los
+     polígonos. Instancian AllLines y LineGeometry llamando a create_text_lines() y
+     save_tabular_lines() para poblar el diccionario `all_lines` en WorkflowData.
+   - Fase de Estructuración: Los workers finales estructuran los datos recopilados en
+     tablas y diccionarios globales, llamando a save_final_output() para poblar StructuredData.
+
+4. Liberación de Recursos y Destrucción:
+   - Para minimizar el consumo de memoria RAM y evitar fugas de memoria debidas a buffers de
+     imágenes, el pipeline realiza liberaciones proactivas a través del DataFormatter
+     (por ejemplo, delete_cropped_images() después del OCR).
+   - Una vez finalizada la vectorización, ProcessingBuilder extrae el resultado mediante
+     get_final_data().
+   - Al salir del ámbito del método process_single_image, la referencia local a la instancia 
+     de DataFormatter se pierde, permitiendo que el recolector de basura destruya el
+     DataFormatter, el WorkflowData raíz y todas las instancias de data clases internas.
+
+================================================================================
+4. PROPÓSITO E INTERACCIÓN CON FACTORIES, WORKERS Y STAGERS
+================================================================================
+
+La separación estricta entre el flujo de datos (representado por DataFormatter y DataClasses)
+y la lógica de procesamiento responde a un diseño desacoplado:
+
+- Las Fábricas (MainFactory, StagersFactory y fábricas de módulos):
+  - Responsabilidad: Construcción y configuración de los componentes de procesamiento.
+  - Interacción con Datos: Nula. Las fábricas operan de forma estática durante el arranque
+    o inicialización basándose en archivos de configuración. No conocen ni instancian
+    DataFormatter o WorkflowData.
+
+- Los Coordinadores de Fase (Stagers como ImagePreparationStager, PreprocessingStager, etc.):
+  - Responsabilidad: Ejecutar secuencialmente un grupo predefinido de workers.
+  - Interacción con Datos: Reciben la instancia de DataFormatter en su método execute() y
+    la transmiten como argumento a los workers correspondientes. Los stagers no mantienen
+    estado interno referente a la imagen procesada, haciéndolos reutilizables.
+
+- Los Ejecutores de Tareas (Workers derivados de BaseWorker):
+  - Responsabilidad: Aplicar algoritmos específicos al documento o imagen.
+  - Interacción con Datos: Son completamente sin estado (stateless) en términos de los 
+    datos del documento. No almacenan arrays, textos ni geometrías en sus variables
+    de clase o de instancia. En su lugar, reciben a DataFormatter en sus métodos de ejecución
+    (process, preprocess, transcribe, vectorize), leen los datos necesarios de las dataclasses
+    y escriben las actualizaciones de vuelta usando los métodos expuestos por DataFormatter.
+
+Ventajas Arquitectónicas de este Diseño:
+- Seguridad de Hilos y Concurrencia: Al ser los stagers y workers sin estado, una misma
+  instancia de stager/worker puede procesar diferentes documentos simultáneamente en hilos
+  distintos, siempre que cada hilo tenga su propia instancia de DataFormatter.
+- Mantenimiento Simplificado: Si la estructura de datos interna de los contenedores
+  cambia, los workers no sufren modificaciones directas en su lógica siempre que la interfaz
+  pública de DataFormatter permanezca consistente.
+- Gestión de Memoria Determinista: El ciclo de vida de los datos pesados queda acotado 
+  exclusivamente al tiempo de vida del objeto DataFormatter, facilitando la auditoría de
+  recursos y previniendo fugas durante procesamientos masivos.

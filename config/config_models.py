@@ -55,9 +55,9 @@ class ModelsConfig(ConfigWithNumpy):
     det_limit_side_len: int
     table: bool
     rec_batch_num: int
-    det_model_dir: str
-    rec_model_dir: str
-    wf_model_path: str
+    det_model_dir: List[str]
+    rec_model_dir: List[str]
+    wf_model_path: List[str]
     set_wf_params: bool
     det_db_score_mode: str
     use_mp: bool

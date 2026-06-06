@@ -1,10 +1,10 @@
 # Ignorar tipos de archivo 
-*.md
+#*.md
 *.c
 *.pyc
 *.idea
 *.ini
-*.txt
+#*.txt
 *.png
 *.jpg
 *.jpeg
@@ -12,9 +12,13 @@
 *.iml
 *.cursorignore
 *.yaml
-*.sql
+#*.sql
 *.aiignore
 *.pyd
+*.so
+
+# Ignorar archivos especificos
+perfectocr.txt
 
 # Ignorar carpetas
 .__pycache__/
@@ -30,9 +34,9 @@
 build/
 
 # Ignorar carpeta
-documentation/
-test/
-tools/
+#documentation/
+#test/
+#tools/
 C:/PerfectOCR/data/models/
 data/models/paddle/
 input/
