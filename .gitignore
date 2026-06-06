@@ -43,6 +43,7 @@ input/
 input2/
 input3/
 output/
+migrations/
 
 # secrets
 .env

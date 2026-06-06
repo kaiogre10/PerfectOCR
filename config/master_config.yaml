@@ -55,10 +55,10 @@ pipeline_secuence:
    
 log_debug:
   text_ocr: False
-  text_clean: True
-  text_correct: True
+  text_clean: False
+  text_correct: False
   frag_polys: False
-  refined_text: True
+  refined_text: False
   seman_clas: False
   key_fields: False
   lines: False

@@ -361,7 +361,7 @@ def separate_punt(text: str) -> str:
     if not text:
         return ""
     
-    if text.isalnum() or is_acronym(text):
+    if validate_quant_chars(text) or is_acronym(text):
         logger.info(f"Acromimo: {text}")
         return text
 
@@ -369,9 +369,9 @@ def separate_punt(text: str) -> str:
     processed_tokens: List[str] = []
     for t in tokens:
         # Mantiene intactas horas y cuantitativos puros; limpia los tokens mixtos.
-        if not bool(_hour_pattern.search(t)) and not contains_quantitative(t):
+        if not bool(_hour_pattern.search(t)) or not contains_quantitative(t):
             cleaned_token = _punt_split_pattern.sub(" ", t)
-            logger.info(f"cleaned_token: '{t}' -> '{cleaned_token}'")
+            # logger.info(f"cleaned_token: '{t}' -> '{cleaned_token}'")
             processed_tokens.append(cleaned_token)
         else:
             # Si es una hora, se mantiene intacta

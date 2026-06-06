@@ -8,4 +8,4 @@ pip install paddleocr==2.8.1
 
 conda install pydantic scikit-image python-dotenv psycopg2
 
-python config\setup.py build_ext --inplace
+python config/setup.py build_ext --inplace
