@@ -144,6 +144,7 @@ class Refiner(OCRAbstractWorker):
         for poly, poly_data in polygons.items():
             text = poly_data.ocr_text or ""
             if not text:
+                final_polygons[poly] = {"text": ""}
                 continue
 
             elif len(text) < 2:

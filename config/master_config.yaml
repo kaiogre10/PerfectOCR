@@ -2,8 +2,8 @@
 system_config:
   input_dirs: [
      input,
-    # input2,
-    #  input3,
+    input2,
+     input3,
     # E:/data/tickets_nuevo
   ]
   images_names: [
@@ -55,10 +55,10 @@ pipeline_secuence:
    
 log_debug:
   text_ocr: False
-  text_clean: False
-  text_correct: False
   frag_polys: False
-  refined_text: False
+  text_clean: True
+  text_correct: True
+  refined_text: True
   seman_clas: False
   key_fields: False
   lines: False

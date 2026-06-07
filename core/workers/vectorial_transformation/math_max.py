@@ -860,9 +860,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 df.iat[r, c] = ""
         
         df = df.drop(empty_rows_idx, axis=0)
-        if df.isnull().any().any() or (df == "").any().any():
-            logger.error("El DataFrame contiene celdas vacías o nulas:")
-            logger.error("\n" + df.to_string(index=True))
+        if not self.validate_df(df):
             return pd.DataFrame()
         else:
             df = df.reset_index(drop=True)
@@ -1005,3 +1003,23 @@ class MatrixSolver(VectorizationAbstractWorker):
         context["dec_cols"] = np.array(np.setdiff1d(cols_idx, text_col, assume_unique=True), np.int_)
         # #logger.info("COPY_ATI:\n" + df.to_string(index=True))
         return (df, context)
+
+    def validate_df(self, df: pd.DataFrame) -> bool:
+        if df.empty:
+            logger.error("DF vacio")
+            return False
+        elif df.isnull().any().any() or (df == "").any().any():
+            logger.error("El DataFrame contiene celdas vacías o nulas:\n" + df.to_string(index=True))
+            return False
+        else:
+            try:
+                mtl_col = df["costo_tran"]
+                c_col = df["cantidad_art"]
+                pu_col = df["precio_unitario"]
+                pu_col.map(lambda x: Decimal(x.strip()))
+                mtl_col.map(lambda x: Decimal(x.strip()))
+                c_col.map(lambda x: Decimal(x.strip()))
+                return True
+            except Exception:
+                logger.error("DF con datos intrusos:\n" + df.to_string(index=True))
+        return False

@@ -32,6 +32,7 @@ perfectocr.txt
 .github/chatmodes/
 .aiassistant/
 build/
+conectors/excel_conector/
 
 # Ignorar carpeta
 #documentation/
