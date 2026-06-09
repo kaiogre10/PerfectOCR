@@ -128,7 +128,7 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
         total_processing_time += image_processing_time
         processed_count += 1
         
-        image_name = image_data.get('name', f'imagen_{i}')
+        image_name = image_data.get('name', f'imagen_{i}')[:-4]
 
         if final_df is None:
             logger.error(f"Fallo al procesar imagen: '{image_name}'")
@@ -138,6 +138,7 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
             succcess_image.append(image_name)
             final_results.append(final_df)
             logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}")
+            logger.info(f"IMAGEN '{image_name}' procesada correctamente")
 
     logger.info(f"'{len(succcess_image)} / {total_images}' Archivos Digitalizados en: {total_processing_time:.6f}, promedio: {(total_processing_time / total_images):.6f}'s / documento")
     if len(failed_images) > 0 and len(succcess_image) > 0:

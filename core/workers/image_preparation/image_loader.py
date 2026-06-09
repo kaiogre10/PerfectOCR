@@ -7,6 +7,7 @@ from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import decolorate, is_binarized
+from core.utils.text_utils import get_ids
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,8 @@ class ImageLoader(ImagePrepAbstractWorker):
         
         # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
         image_name = image_info.get('name', "")
+        image_name = get_ids(image_name, "name")
+
         input_path = image_info.get('full_path', image_info.get('path', ""))
         
         try:

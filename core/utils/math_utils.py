@@ -184,23 +184,10 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
 def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], img_dims: Tuple[int, int]) -> np.ndarray[Any, Any]:
     """Calcula features geométricos + alineación tabular por cada línea."""    
     t0 = time.perf_counter()
-    
     all_features = calculate_math_features(sorted_lines, img_dims)
-    # logger.info("Features completas:"
-    # "\n"f"{all_features}"
-    # "\n"f"SHAPE:{all_features.shape}")
-    
     textual_features = calculate_textual_line_features(sorted_lines, polygons_dict)
-    # logger.info(f"Features textuales shape: {textual_features.shape}"
-    #             "\n"f"{textual_features[:, -2]}")
-
     all_lines_features = np.column_stack([all_features, textual_features])
-    #logger.debug("TODAS LAS FEATURES"
-     #       "\n"f"SHAPE:{all_lines_features.shape}"
-      #  "\n"f"{np.array2string(all_lines_features, precision=3, suppress_small=True)}")
-            
     logger.debug(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.7f}s")
-
     return all_lines_features
 
 def calculate_global_stats(geoline_features: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:

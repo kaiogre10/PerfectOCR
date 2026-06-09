@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, Geometry
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.text_utils import is_acronym
+# from core.utils.text_utils import is_acronym
 from core.utils.math_utils import fragment_geometry_horizontal
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ class Fragmenter(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.output = config.get("fragmented_polys", False)
+        self.log_output = config.get("frag_polys")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool: 
         try:
@@ -40,14 +40,13 @@ class Fragmenter(OCRAbstractWorker):
                 ocr_text = ocr_text.strip()
                 
                 if not ocr_text:
-                    logger.debug(f"Polygono sin texto: {poly_id}")
                     continue
 
-                # Si el texto corresponde a una sigla (p.e. 'P.U.C.D', 'I.V.A.') se conserva intacto
-                if is_acronym(ocr_text):
-                    # logger.info(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
-                    final_polygons.append(polygon)
-                    continue
+                # Si el texto corresponde a una sigla se conserva intacto
+                # if is_acronym(ocr_text):
+                #     # logger.info(f"{poly_id} no fragmentando sigla detectada: '{ocr_text}'")
+                #     final_polygons.append(polygon)
+                #     continue
                 
                 semantic_frag = len(sc) > 1 and any(c > 0 for c in sc)
                                     
@@ -71,8 +70,8 @@ class Fragmenter(OCRAbstractWorker):
                 final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=new_index)
                 final_polygons_dict[new_id] = final_poly_obj
             manager.workflow.polygons = final_polygons_dict
-            if fragmented_count > 0:
-                logger.debug(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
+            if fragmented_count > 0 and self.log_output:
+                logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
             
             poly_debug: Dict[str, Polygons] = manager.workflow.polygons
             for pid, pd in poly_debug.items():
@@ -147,8 +146,7 @@ class Fragmenter(OCRAbstractWorker):
         # Si solo hay un fragmento, no hace falta dividir
         if len(fragments) <= 1:
             return [polygon]
-        
-        # Calcular geometría proporcional
+
         # Longitud en caracteres de cada fragmento (para proporción)
         frag_char_lengths = [sum(len(t) for t in frag_tokens) for frag_tokens, _ in fragments]
         total_chars = sum(frag_char_lengths)
@@ -176,6 +174,7 @@ class Fragmenter(OCRAbstractWorker):
                 semantic_clasification=frag_scs
             )
             new_polys.append(new_poly)
-        
-        # logger.info(f"'{polygon.polygon_id}' Fragmentado en '{len([p.ocr_text for p in new_polys])}':\n"f"Text: {[text]} -> {[[p.ocr_text] for p in new_polys]} |\n"f" SC: {sc} -> {[p.semantic_clasification for p in new_polys]}")
+
+        if self.log_output:
+            logger.info(f"'{polygon.polygon_id}' Fragmentado en '{len([p.ocr_text for p in new_polys])}':\n"f"Text: {[text]} -> {[[p.ocr_text] for p in new_polys]} |\n"f" SC: {sc} -> {[p.semantic_clasification for p in new_polys]}")
         return new_polys

@@ -6,14 +6,11 @@ from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import find_umd, fast_classfier, correct_subfix
-from core.utils.data_utils import CUANT_CHAR, NUMERIC_CORRECTIONS, UMD_CORRECTIONS, NOT_VALID_CHARS
+from core.utils.data_utils import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
 from core.utils.compiled_utils import validate_text
 
-cuant_char = CUANT_CHAR
 numeric_corrections = NUMERIC_CORRECTIONS
-# des_corrects = DESCRIPTIVE_CORRECTIONS
 umd_corrects = UMD_CORRECTIONS
-not_valid = NOT_VALID_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +25,7 @@ class TextCorrector(OCRAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         self.output_log = config.get(f"text_correct")
+        self.del_output_log = config.get("text_del")
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         t0 = time.perf_counter()
@@ -53,22 +51,19 @@ class TextCorrector(OCRAbstractWorker):
             if len(original_text.split(" ")) != len(sc):
                 logger.critical(f"ERROR CRÍTICO DISPARIDAD EN {poly_id} ENTRE SC Y TEXTO: '{original_text}' -> {sc} ABORTANDO PROCESO")
                 return False
-
-            # if original_text.isdecimal():
-                  # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
-            #     final_polygons[poly_id] = {"text": original_text}
-            #     continue
                 
             # Si el texto está vacío, no hay nada que corregir
             elif not original_text or not validate_text(original_text):
-                # logger.info(f"Sin Texto válido: {poly_id}: '{original_text}'")
+                if self.del_output_log:
+                    logger.info(f"Sin Texto válido: {poly_id}: '{original_text}'")
                 correced_count +=1
                 continue
             
             # Aplicar corrección según tipo semántico
             corrected_text = self._apply_corrections(original_text, sc)
             if not corrected_text or not validate_text(corrected_text):
-                # logger.info(f"Sin Texto válido: {poly_id}: '{original_text}'")
+                if self.del_output_log:
+                    logger.info(f"Sin Texto válido: {poly_id}: '{original_text}'")
                 correced_count +=1
                 continue
 
@@ -87,7 +82,7 @@ class TextCorrector(OCRAbstractWorker):
             return True
         else:
             logger.warning("Fallo en corrección textual textual")
-            return False
+            return True
         
     def _apply_corrections(self, text: str, semantic_clasification: List[int]) -> str:
         text = text.strip()

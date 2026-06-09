@@ -31,24 +31,23 @@ class Refiner(OCRAbstractWorker):
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Ejecuta el ciclo de refinamiento con clasificación selectiva."""
         t0 = time.perf_counter()
-        self.preprocess_text(manager)
-        self.get_early_data(manager)
-        
-        if self.num_passes == 0:
-            self.classify_strings(manager)
-        else:
-            for _ in range(self.num_passes):
-                if self.cleaner:
-                    self.cleaner.transcribe(context, manager)
-                    self.classify_strings(manager)
 
-                if self.corrector:
-                    self.corrector.transcribe(context, manager)
-                    self.classify_strings(manager)
-                
-                if self.fragmenter:
-                    self.fragmenter.transcribe(context, manager)
-                    self.classify_strings(manager)
+        self.get_early_data(manager)
+        self.preprocess_text(manager)
+        self.classify_strings(manager)
+        
+        for _ in range(self.num_passes):
+            if self.cleaner:
+                self.cleaner.transcribe(context, manager)
+                self.classify_strings(manager)
+
+            if self.corrector:
+                self.corrector.transcribe(context, manager)
+                self.classify_strings(manager)
+            
+            if self.fragmenter:
+                self.fragmenter.transcribe(context, manager)
+                self.classify_strings(manager)
 
         logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
         if self.seman_clas_log:
@@ -77,8 +76,7 @@ class Refiner(OCRAbstractWorker):
             # t0 = time.perf_counter()
             final_results: Dict[str, Tuple[List[int], int]] = clasify_words(polygons_to_classify)
             # logger.info(f"Tiempo de clasificación: {time.perf_counter() - t0:.6f}'s")
-            manager.update_semantic_clasification(final_results)
-            return True
+            return manager.update_semantic_clasification(final_results)
 
         except Exception as e:
             logger.warning(f"Error en el clasificador: {e}", exc_info=True)
@@ -128,8 +126,7 @@ class Refiner(OCRAbstractWorker):
             polygon_updates[poly_id] = [key_field]
 
         if polygon_updates:
-            manager.update_key_field(polygon_updates)    
-            return True
+            return manager.update_key_field(polygon_updates)
             
         return False
             
@@ -143,8 +140,14 @@ class Refiner(OCRAbstractWorker):
         
         for poly, poly_data in polygons.items():
             text = poly_data.ocr_text or ""
+            sc = poly_data.semantic_clasification
+            kf = poly_data.key_field
             if not text:
-                final_polygons[poly] = {"text": ""}
+                final_polygons[poly] = {"text": text}
+                continue
+
+            if 0 in sc and kf is not None:
+                final_polygons[poly] = {"text": text}
                 continue
 
             elif len(text) < 2:
@@ -158,21 +161,20 @@ class Refiner(OCRAbstractWorker):
             if contains_quantitative(text):
                 qtext = get_cuants(text)
                 # logger.info(f"POTENCIAL CUANTS: '{text}' -> '{qtext}'")
-                if qtext != text:
-                    if self.refined_text:
-                        logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
-
+                if qtext != text and self.refined_text:
+                    logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
                 text = qtext
-                    
+
             if contains_umd(text):
                 umd_text = find_umd(text)
-                # logger.info(f"POTENCIAL UMDS: '{text}'")
+                # logger.info(f"POTENCIAL UMDS: {umd_text != text} -> '{text}'")
                 if umd_text != text:
                     if self.refined_text:
                         logger.info(f"UMD ENCONTRADA:'{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")
                     final_polygons[poly] = {"text": umd_text}
                     continue
-                
+
+                text = umd_text
                 final_polygons[poly] = {"text": text}
                 continue
             else:

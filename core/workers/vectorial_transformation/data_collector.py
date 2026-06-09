@@ -61,7 +61,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                         db_values[field_name] = value  # 'MontoTotalDocumento': '1024.12'
         
         image_name = metadata.image_name if metadata else ""
-        id_prov = get_ids(image_name)
+        id_prov = get_ids(image_name, "prov")
         date_creation = metadata.date_creation if metadata else ""
 
         df_correct, totals = self.structure_df(df, manager)

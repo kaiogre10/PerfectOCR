@@ -2,28 +2,44 @@
 import re
 from typing import List, Pattern
 
-_currency_variants = r"[$Ss]"# _alfabeth = r"[A-Za-z]"
+_currency_variants = r"[$Ss]"
 _punt_quant_chars = r'[.,]'
-_zero_variants = r'[0OQo]'
-_diagonal_variants = r'[7/]'
+_diagonal_variants = r'[7\/]'
 _digit_pattern = r"[0-9OQo]"
-_base_date_num_str = r'[0123OQo][0-9OQo]'
-_valid_cuant_str = r'(?<=\$)\$|(?<=\$\d)\$|(?<=\$\d\d)\$'
-_month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\.?'
+_base_date_num_str = r'[012OQo][0-9OQo]'
+_month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)'
+_num_fract = r"[1-9]"
+_standar_size_den = r'(2|4|8|16|32)'
+_c_variants = r"[Cc]"
+_cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
+_bic_variants = r'\b(B(1C|lC|\|C|¡C|!C))\b'
+
+_digits_base = r'0123456789'
+_zero_base = r'OQoD'
+_one_base = r'|liI!¡'
+_two_base = r'Zz?'
+_four_base = r'A'
+_five_base = r'$Ss'
+_six_base = r'G'
+_seven_base = r'/'
+_eight_base = r'B'
+_nine_base = r'qg'
+
+_all_zeros = rf"[0{_zero_base}]"
+_extended_digits = rf"[{_digits_base}{_zero_base}{_one_base}{_two_base}{_four_base}{_five_base}{_six_base}{_seven_base}{_eight_base}{_nine_base}]"   # [0-9OQoD|liI!¡Zz?A$SsG/Bqg]
 
 _stick_chars = r'[!1¡]'
 _stick_set = _stick_chars[1:-1]
-
 _l_variants = rf"[Ll{_stick_set}]"
-_c_variants = r"[Cc]"
 _i_variants = rf"[Ii{_stick_set}]"
 _o_variants = r"[Oo0Q]"
 _n_variants = r"[Nn]"
-_s_variants = r'[Ss$5]'
+_s_variants = rf'[5{_five_base}]'
 
 cion_str = r"CION"
 con_str = r"CON"
 los_str = r'LOS'
+
 cion_search_patt = re.compile(rf"(?<=[A-Za-z]){cion_str}(?:\b|$|\s)", re.IGNORECASE)
 con_search_patt = re.compile(rf"(?:^{con_str}$|(?<=[A-Za-z]){con_str}(?:\b|$|\s))", re.IGNORECASE)
 los_search_patt = re.compile(rf"(?:^{los_str}$|(?<=[A-Za-z]){los_str}(?:\b|$|\s))", re.IGNORECASE)
@@ -53,8 +69,10 @@ _los_typos_regex = (
 )
 los_suffix_pattern = re.compile(_los_typos_regex)
 
+extension_suffix = re.compile(r'\.([A-Za-z]+)$', re.IGNORECASE)
+has_digit_pattern = re.compile(r"\d", re.IGNORECASE)
+swap_term_cuant = re.compile(r'^[A-Za-z]+\$$')
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)
-_bic_variants = r'^(B(1C|lC|\|C|¡C|!C))$'
 # _dixon_variants = rf'(D(1X|LX{_zeros_to_sub}N'
 labels_pattern: Pattern[str] = re.compile(_bic_variants, re.IGNORECASE)
 
@@ -66,12 +84,11 @@ secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECA
 sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$/])[^a-zA-Z0-9\s$/]{2,}(?=[a-zA-Z0-9$/])', re.IGNORECASE)
 
 hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
-punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]")
+punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
 _edge_chars = punt_split_pattern.pattern[:-1] + r"\-]"
 edge_punt_pattern = re.compile(rf'^({_edge_chars}+)|({_edge_chars}+)$', re.IGNORECASE)
 
 # Siglas/Acrónimos
-# Ahora el patrón fuerza secuencias de letra.punto repetidas (ej: P.U.C.D. etc). El último . es opcional solo después de la última letra.
 _acronim = r'(?:[A-Za-z]\.)+[A-Za-z]\.?'
 acromin_currency_pattern = re.compile(r"(?:\d[\d,.]*)?\s*m\s*\.?\s*n\.?", re.IGNORECASE)
 
@@ -79,11 +96,11 @@ acronym_pattern: Pattern[str] = re.compile(rf'^({_acronim}|sa|cv|mn)[:;,.]?$', r
 # _bad_title: Pattern[str] = re.compile(r'^([A-Za-z0-9])(?: [A-Za-z0-9])+$', re.IGNORECASE)
 
 # Datos Globales
-_cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
-phone_number = re.compile(r'(?:\b(?:cel|tel)\b[\s:,-]*)?(?:\d[\s\-]*){10}\b', re.IGNORECASE)
+_phone_str = r'^(cel|tel)((?:\:|\s))'
+phone_number = re.compile(rf"(((?:{_phone_str}){_digit_pattern}{{10}})|(^{_digit_pattern}{{10}}))(?:$|(?=\s))", re.IGNORECASE)
 mail_pattern = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.?(?:com|[a-zA-Z0-9]+)\b', re.IGNORECASE)
 cp_pattern: Pattern[str] = re.compile(rf'\b{_cp_letters}\s*{_digit_pattern}{{5}}\b')
-numeric_code: Pattern[str] = re.compile(rf'^{_zero_variants}{_digit_pattern}+$')
+numeric_code: Pattern[str] = re.compile(rf"\b{_all_zeros}{_digit_pattern}+$")
 
 _rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
 rfc_key_pattern: Pattern[str] = re.compile(r'([A-Z]{3,4}\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3})', re.IGNORECASE)
@@ -96,19 +113,20 @@ _date_patterns_list: List[Pattern[str]] = [
     # Día + mes en letras + año en un solo string OCR (ej. "21 mar 2023")
     re.compile(rf'\b(?:{_month_name_str}|{_base_date_num_str}\s+{_month_name_str}(?:\s*\.?\s*(?:19\d{{2}}|20\d{{2}}|\d{{2}}))?)\b'),
     # Fechas completas y día/mes: Usa el bloque base para evitar confundirse con fracciones/cuantitativos
-    re.compile(rf'\b{_base_date_num_str}[\s\/\-]{_base_date_num_str}(?:[\s\/\-](?:\d{{2,4}}))?\b', re.IGNORECASE),
+    re.compile(rf'\b{_base_date_num_str}{_diagonal_variants}{_base_date_num_str}(?:{_diagonal_variants}(?:\d{{2,4}}))(?=(\b|$))', re.IGNORECASE),
     # Años
     re.compile(r'\b(199\d|20\d{2})\b', re.IGNORECASE),
-    re.compile(rf'\b(?:199[0-9{_zero_variants[1:-1]}]|2[0{_zero_variants[1:-1]}][0-9{_zero_variants[1:-1]}]{{2}})\b',re.IGNORECASE)
+    re.compile(rf'\b(?:199[0-9{_all_zeros}]|2[0{_all_zeros}][0-9{_all_zeros}]{{2}})\b',re.IGNORECASE)
 ]
 date_patterns = re.compile("|".join(p.pattern for p in _date_patterns_list), re.IGNORECASE)
+mont_pattern = re.compile(rf"\b{_month_name_str}(?=(\b|$))")
 
 _unities = re.compile(r'(g|l|m)', re.IGNORECASE)
 _mass_pattern = re.compile(r'(kg|gr|grs|mg|lb|lbs|oz|ton)', re.IGNORECASE)
 _vol_pattern = re.compile(r'(lt|ltr|ltrs|lts|ml|gal)', re.IGNORECASE)
-_len_pattern = re.compile(r'(cm|mm|km|in|ft|mts?|m2|m\^2|cm\^2|km\^2)', re.IGNORECASE)
+_len_pattern = re.compile(r'(mm|cm|km|in|ft|mts|m2|cm2|km2)', re.IGNORECASE)
 size_pattern = re.compile(r'(gde|med|ch|paq)', re.IGNORECASE)
-measure_unities = re.compile("|".join(p.pattern for p in [size_pattern, _mass_pattern, _vol_pattern, _len_pattern]), re.IGNORECASE)
+measure_unities = re.compile("|".join(p.pattern for p in [size_pattern, _mass_pattern, _vol_pattern, _len_pattern]))
 
 # Detecta expresiones como "C / 3 + 2" o variantes OCR para fracciones extendidas con suma: letra C, barra, número, signo más, número.
 _extended_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\s*\+\s*\d+(?![A-Za-z0-9])')
@@ -120,13 +138,17 @@ _full_fraction_pattern = re.compile(r'(?<!\d)[Cc]\s*/\s*\d+\b')
 _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b')
 
 # Detecta fracciones de tipo "C /", "C / 3", permitiendo que el número sea opcional (ej. "C / " o "C / 5")
-semi_c_fraction = re.compile(rf'[Cc]\s*{_diagonal_variants}(?:\s*\{_digit_pattern}+)?(?:$|(?=\s))')
+_cuant_frac_str = rf'{_c_variants}\s*{_diagonal_variants}'
+
+semi_c_fraction = re.compile(rf'\b{_cuant_frac_str}(?:$|(?=\s))')
+cant_frac_pattern = re.compile(rf'{_cuant_frac_str}\s*(?=(\s|\d|\b))')
 
 # Detecta fracciones con guión como "C-3", es decir, letra C, guión y número, sin prefijo.
 c_dash_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]-\d+\b')
 
 # Detecta fracciones "naturales" tipo "1/2", "1/25", donde ambos lados (numerador y denominador) pueden tener de 1 a 3 dígitos.
-measure_fractions = re.compile(rf'\b[1-9]\d\s*{_diagonal_variants}\s*[1-9]\d{{0,2}}(?:$|(?=\s))')
+numeric_fractions = re.compile(rf'(?<!\d)(\b{_digit_pattern}{{1,2}}{_diagonal_variants}{_digit_pattern}{{1,3}})(?:$|(?=\s))')
+measure_fractions = re.compile(rf'(?<!\d\{{1,2}})\s*{_diagonal_variants}\s*[1-9]\d{{1,3}}(?:$|(?=\s))')
 
 # Detecta cantidades con fracción que usan variantes de "C/" para unidades ("C/10", permitiendo variantes OCR en el carácter de barra y ceros sustituidos
 amount_fract = re.compile(
@@ -134,10 +156,7 @@ amount_fract = re.compile(
     rf"\b{_c_variants}{_diagonal_variants}\s*{_digit_pattern}+\b"
 )
 
-# Detecta números seguidos de ceros sustitutos (error OCR) al final de palabra o antes de espacio, útil para limpiar "7100" incorrectos detectados como "C/100"
-umd_cor = re.compile(rf'\b{_zero_variants}(?=\s|$)')
-
-fraction_pattern = re.compile("|".join(p.pattern for p in [semi_c_fraction, c_dash_fraction_pattern, _extended_fraction_pattern, _full_fraction_pattern, _semifraction_pattern, amount_fract, measure_fractions]), re.IGNORECASE)
+fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, c_dash_fraction_pattern, amount_fract, measure_fractions, numeric_fractions, semi_c_fraction, _semifraction_pattern]), re.IGNORECASE)
 
 _umd_paterns_list: List[Pattern[str]] = [
     re.compile(r'(?<![A-Za-z0-9])\d{1,4}\s*m(?:l|1|\||!)(?=$|[^A-Za-z0-9])', re.IGNORECASE),
@@ -152,13 +171,14 @@ _umd_paterns_list: List[Pattern[str]] = [
 _umd_generals = re.compile("|".join(p.pattern for p in _umd_paterns_list), re.IGNORECASE)
 umd_patterns = re.compile("|".join(p.pattern for p in [fraction_pattern, _umd_generals]), re.IGNORECASE)
 
-
 _clean_currency_str = rf"^(?:{_currency_variants})|,"
 clean_currency = re.compile(_clean_currency_str)
 
-monetary_pattern = re.compile(rf'^({_currency_variants}\s*{_digit_pattern}+)\b')
-zeros_pattern = re.compile(rf'{_zero_variants}+')
-valid_cuant_pattern = re.compile(_valid_cuant_str, re.IGNORECASE)
+monetary_pattern = re.compile(rf'^{_currency_variants}\s*\d+(?:{_punt_quant_chars}\d+)?(?=\b|\s|$)')
+_zeros_to_compile = (rf"([{_zero_base}])")
+zeros_variants = re.compile(_zeros_to_compile)
+
+valid_cuant_pattern = re.compile(r'(?<=\$)\$|(?<=\$\d)\$|(?<=\$\d\d)\$', re.IGNORECASE)
 
 # Detecta el "cuerpo" de un monto numérico, es decir la parte de los dígitos principales de una cantidad monetaria o cuantitativa.
 _amount_body_pattern = (
@@ -172,7 +192,7 @@ _token_pattern = (
     rf"{_amount_body_pattern}"
 )
 # Detecta patrones cuantitativos en texto:
-token = re.compile(_token_pattern, re.IGNORECASE)
+_token_cuant = re.compile(_token_pattern)
 
 # Patrón: Montos con símbolo al inicio ($ 80.50)
 _start_pattern = rf"^{_currency_variants}\s*{_amount_body_pattern}$"
@@ -187,13 +207,39 @@ _multi_pattern = rf"^(?:\s*{_currency_variants}\s*{_amount_body_pattern}\s*){{2,
 _multi = re.compile(_multi_pattern, re.IGNORECASE)
 
 # Patrón: Decimales grandes tipo 1,230.50 (sin $)
-_decimal = re.compile(rf"^\d{1,3}(?:{_punt_quant_chars}\d{3})*{_punt_quant_chars}\d{2,}$")
+_decimal = re.compile(rf"^\d\{{1,3}}(?:{_punt_quant_chars}\d\{{3}})*{_punt_quant_chars}\d\{{2,}}$")
 
 quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start, _middle, _multi]), re.IGNORECASE)
-end_cuants = re.compile(rf"{_punt_quant_chars}\[0-9OQo]{{2}}+(?=\b|$)")
 
-# Patrón equivalente a split, pero requiere $ al inicio y una cantidad
-_split_pattern = rf"{_currency_variants}\s*{_amount_body_pattern}"
-split = re.compile(_split_pattern, re.IGNORECASE)
+# 1. Módulo de Divisa: Valida el prefijo monetario y espacios opcionales subsecuentes.
+_currency_prefix = rf"(?:{_currency_variants}\s*)?"
 
-swap_term_cuant = re.compile(r'^[A-Za-z]+\$$')
+# 2. Módulo Entero: 1-3 dígitos, opcionalmente seguidos por bloques repetidos de separador + 3 dígitos.
+_integer_block = rf"{_extended_digits}{{1,3}}(?:\s*{_punt_quant_chars}\s*{_extended_digits}{{3}})*"
+
+# 3. Módulo Decimal: separador decimal obligatorio + exactamente 2 dígitos.
+_decimal_block = rf"\s*{_punt_quant_chars}\s*{_extended_digits}{{2}}"
+
+# 4. Patrón universal: moneda opcional al inicio + entero + decimal obligatorio.
+_universal_money_pattern = (
+    rf"(?<!{_extended_digits})"
+    rf"{_currency_prefix}"
+    rf"{_integer_block}"
+    rf"{_decimal_block}"
+    rf"(?!{_extended_digits})"
+)
+universal_money_regex = re.compile(_universal_money_pattern)
+all_cuants = re.compile("|".join(p.pattern for p in [quant_runs_patterns, _token_cuant, universal_money_regex]))
+
+_correct_ocr = (
+    rf"(?P<zero>[{_zero_base}])|"
+    rf"(?P<one>[{_one_base}])|"
+    rf"(?P<two>[{_two_base}])|"
+    rf"(?P<four>[{_four_base}])|"
+    rf"(?P<five>[{_five_base}])|"
+    rf"(?P<six>[{_six_base}])|"
+    rf"(?P<seven>[{_seven_base}])|"
+    rf"(?P<eight>[{_eight_base}])|"
+    rf"(?P<nine>[{_nine_base}])"
+)
+correct_cuants = re.compile(_correct_ocr)

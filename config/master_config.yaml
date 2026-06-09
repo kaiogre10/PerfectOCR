@@ -1,7 +1,7 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-     input,
+#     input,
     input2,
      input3,
     # E:/data/tickets_nuevo
@@ -10,10 +10,10 @@ system_config:
 #    AAAA0061,
     # AAAC0030,
   #  AAAA0040,
-  #  AAAC0043,
+    AAAC0043,
   #   # AAAA0058,
 #    AAAC0037,
-    # AAAA0059,
+     AAAA0059,
     # AAAB0002,
     #  AAAC0010,
     # AAAA0003,
@@ -48,7 +48,7 @@ pipeline_secuence:
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-    # - "collector"
+   # - "collector"
 
   db_stage:
     # - "db_service"
@@ -56,7 +56,7 @@ pipeline_secuence:
 log_debug:
   text_ocr: False
   frag_polys: False
-  text_clean: True
+  text_clean: False
   text_correct: True
   refined_text: True
   seman_clas: False
@@ -65,14 +65,15 @@ log_debug:
   table_lines: False
   table_geo: False
   table_correct: False
-  semantic_types_log: [-1]
-  kf_list_log: [12]
+  semantic_types_log: [2]
+  kf_list_log: [7, 8,9,10,11,12]
   
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
     full_img: False
     bin_full_img: False
+    text_del: False
     angle_corrected: False
     moire_poly: False
     cropped_img: False

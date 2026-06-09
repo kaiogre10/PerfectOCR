@@ -22,6 +22,7 @@ class TextCleaner(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
+        self.del_output_log = config.get("text_del")
         self.output_log = config.get("text_clean")
         worker_config = config.get("text_cleaner", {})
         self.min_probability = float(worker_config.get("min_probability"))
@@ -51,15 +52,10 @@ class TextCleaner(OCRAbstractWorker):
                 continue
                 
             if not text or not validate_text(text):
-                # logger.info(f"Eliminado {poly_id} sin texto valido incial: '{text}'")
+                if self.del_output_log:
+                    logger.info(f"Eliminado {poly_id} sin texto valido incial: '{text}'")
                 eliminated_count += 1
                 continue
-            
-            # elif text.isdecimal():
-            #     # logger.info(f"'{poly_id}' NUMERICO ya no se CORRIJE: '{original_text}'")
-            #     updated_polygon = dataclasses.replace(polygon)
-            #     list_of_final_polygons.append(updated_polygon)
-            #     continue
 
             if is_acronym(text):
                 final_polygons[poly_id] = {"text": text}
@@ -68,21 +64,24 @@ class TextCleaner(OCRAbstractWorker):
             text_sec = remove_special_sequences(text)
                
             if not text_sec or not validate_text(text_sec):
-                # logger.info(f"{poly_id} sin texto valido después de secuencias especiales: '{text}'")
+                if self.del_output_log:
+                    logger.info(f"{poly_id} sin texto valido después de secuencias especiales: '{text}'")
                 eliminated_count += 1
                 continue
 
             sep_text = separate_punt(text_sec)
 
             if not sep_text or not validate_text(sep_text):
-                # logger.info(f"{poly_id} sin texto válido después de eliminar puntuaciones '{text_sec}'")
+                if self.del_output_log:
+                    logger.info(f"{poly_id} sin texto válido después de eliminar puntuaciones '{text_sec}'")
                 eliminated_count += 1
                 continue
 
             txt = self.process_single_text(sep_text, polygon)
             if not txt or not validate_text(txt):
-                # logger.info(f"{poly_id} sin texto válido después de espacios: '{sep_text}'")
                 eliminated_count += 1
+                if self.del_output_log:
+                    logger.info(f"{poly_id} sin texto válido después de espacios: '{sep_text}'")
                 continue
             
             else:
@@ -91,11 +90,11 @@ class TextCleaner(OCRAbstractWorker):
                     logger.info(f"Limpieza de '{poly_id}' | Original: '{text}' | Ruido:'{set(text.split(" ")).difference(set(txt.split(" ")))}' → '{txt}'")
 
         if manager.update_ocr_results(final_polygons, worker_name):
-            # logger.info(f"Limpieza textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - eliminated_count}, eliminados: {eliminated_count}")
+            logger.debug(f"Limpieza textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - eliminated_count}, eliminados: {eliminated_count}")
             return True
         else:
-            logger.info("Fallo en limpieza textual")
-            return False
+            logger.warning("Fallo en limpieza textual")
+            return True
 
     def process_single_text(self, text: str, polygon: Polygons) -> str:
         """
@@ -117,7 +116,8 @@ class TextCleaner(OCRAbstractWorker):
             clean_token = punct_strip(token)
                 # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if not clean_token or not any(c.isalnum() for c in clean_token):
-                # logger.info(f"Eliminado texto basura : '{clean_token}' in {polygon.polygon_id if polygon else ' '}")
+                if self.del_output_log:
+                    logger.info(f"Eliminado texto basura : '{clean_token}' in {polygon.polygon_id if polygon else ' '}")
                 continue
             else:
                 processed_words.append(clean_token)

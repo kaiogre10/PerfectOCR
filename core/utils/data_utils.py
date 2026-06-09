@@ -430,7 +430,6 @@ NUMERIC_CORRECTIONS: Dict[str, str] = {
     "l": "1",
     "S": "5",
     "s": "5",
-    # "$": "5",
     "G": "6",
     "g": "9",
     "B": "8",
@@ -496,3 +495,9 @@ _conversion_kf: Dict[str, int] = {
     }
 CONVERSION_KF = MappingProxyType(_conversion_kf)
 
+_replace_map: Dict[str, str] = {
+    'zero': '0', 'one': '1', 'two': '2', 'four': '4',
+    'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9'
+}
+
+REPLACEMENT_MAP = MappingProxyType(_replace_map)
