@@ -22,14 +22,18 @@ class StagersFactory:
 
     def create_image_prep_stager(self, context: Dict[str, Any]) -> Optional[ImagePreparationStager]:
         """Crea stager de preparación de imagen con configuraciones específicas del master config."""
+        if not self.image_workers:
+            return None
+        
         factory = self.main_factory.get_image_preparation_factory()
+        if factory is None:
+            return None
+        
         if "polygon_extractor" in self.image_workers:
             if not "geometry_detector" in self.image_workers:
                 self.image_workers.remove("polygon_extractor")
 
         image_workers = factory.create_workers(self.image_workers, context)
-        if not self.image_workers:
-            return None
         
         return ImagePreparationStager(
             workers=image_workers,

@@ -7,7 +7,7 @@ from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
 from core.utils.text_utils import fast_classfier
-from services.output_service import save_raw_json
+from services.output_service import save_text_debug
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow else ""
                     worker_name = context.get("worker_name") or "lineal"                
-                    save_raw_json(worker_name, lines_info, file_name)
+                    save_text_debug(worker_name, lines_info, file_name)
 
                 return True
                                             

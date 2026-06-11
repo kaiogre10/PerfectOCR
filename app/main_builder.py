@@ -28,9 +28,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
             return  []
         
         # 1. Main activa al Configurador y valida parametros mínimos
-        # t1 = time.perf_counter()
         config_services = ConfigService(config_path, TEST_MODE, output_paths)
-        # logger.info(f"Config service completo en {time.perf_counter()-t1:.6f}s")
         
         # 3. Service analiza y reporta
         workflow_report = system_service.count_and_plan(config=config_services.system_config)
@@ -49,7 +47,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
                 return []
         
         if not config_services.no_modules:
-        # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
+            # 5. CREAR STAGERS FACTORY UNA SOLA VEZ
             stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=PROJECT_ROOT)
             
             # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
@@ -110,39 +108,42 @@ def create_single_builder(stagers_factory: StagersFactory, logs_config: Dict[str
 
 def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str, Any]) -> List[Tuple[pd.DataFrame, Dict[str, Any]]]:
     """Ejecuta el procesamiento secuencial reutilizando el builder."""
-    image_info_list = workflow_report['image_info']
-    total_processing_time = 0.0
+    image_info_list: List[Dict[str, Any]] = workflow_report['image_info']
     total_images = len(image_info_list)
-    processed_count = 0
-    succcess_image: List[str] = []
-    final_results: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
     logger.info(f"{total_images} IMAGENES PARA PROCESAR")
-    failed_images: List[str] = []
 
-    
+    final_results: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
+    failed_images: List[str] = []
+    images_names = [names["name"][:-4] for names in image_info_list]
+    start_time = time.perf_counter()
+
     for i, image_data in enumerate(image_info_list):
         # Procesar imagen individualmente
-        start_time = time.perf_counter()
         final_df = builder.process_single_image(image_data)
-        image_processing_time = time.perf_counter() - start_time
-        total_processing_time += image_processing_time
-        processed_count += 1
-        
-        image_name = image_data.get('name', f'imagen_{i}')[:-4]
-
+        image_name = images_names[i]
         if final_df is None:
             logger.error(f"Fallo al procesar imagen: '{image_name}'")
             failed_images.append(image_name)
             continue
         else:
-            succcess_image.append(image_name)
             final_results.append(final_df)
-            logger.debug(f"IMAGEN '{image_name}', #{processed_count} de {total_images}. PROCESADA EN: {image_processing_time:.6f}")
-            logger.info(f"IMAGEN '{image_name}' procesada correctamente")
+            logger.info(f"IMAGEN '{image_name}', '# {(i + 1)}' de '{total_images}' imágenes")
 
-    logger.info(f"'{len(succcess_image)} / {total_images}' Archivos Digitalizados en: {total_processing_time:.6f}, promedio: {(total_processing_time / total_images):.6f}'s / documento")
-    if len(failed_images) > 0 and len(succcess_image) > 0:
-        logger.info(f"IMAGENES EXITOSAS: {succcess_image}")
+    total_processing_time = time.perf_counter() - start_time
+    mean_process = (total_processing_time / total_images)
+    time_formatted = format_elapsed_time(total_processing_time)
+
+    succcess_image = set(images_names).difference(set(failed_images))
+    total_fails = len(failed_images)
+    total_success = total_images - total_fails
+
+    if total_success == total_images:
+        logger.info(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_formatted}, promedio: {mean_process:.6f}'s")
+    elif total_fails == total_images:
+        logger.error(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, TIEMPO: {time_formatted}")
+    else:
+        logger.info(f"'{total_success} / {total_images}' Archivos Digitalizados en: {time_formatted}, promedio: {mean_process:.6f}'s / documento")
+        logger.info(f"IMAGENES EXITOSAS: {list(succcess_image)}")
         logger.info(f"IMAGENES FALLADAS: {failed_images}")
         
     return final_results

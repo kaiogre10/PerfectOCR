@@ -23,8 +23,9 @@ class ImageLoader(ImagePrepAbstractWorker):
         image_info = context.get("image_data", {})
         
         # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
-        image_name = image_info.get('name', "")
-        image_name = get_ids(image_name, "name")
+        img_name = image_info.get('name', "")
+
+        image_name = get_ids(img_name, "name")
 
         input_path = image_info.get('full_path', image_info.get('path', ""))
         
@@ -58,7 +59,7 @@ class ImageLoader(ImagePrepAbstractWorker):
                 "binary": binary
             }
             
-            id_registro = f"{image_name}_{date_creation}{now.microsecond:06d}"
+            id_registro = f"{image_name}_{date_creation}{now.microsecond:08d}"
 
             if manager.create_workflow(id_registro, full_img, metadata):
                 # logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")

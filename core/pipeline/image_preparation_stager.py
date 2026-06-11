@@ -20,23 +20,21 @@ class ImagePreparationStager(AbstractStager):
         # Usar contexto base si existe, sino crear uno nuevo
         exec_context: Dict[str, Any] = context if context else {}
 
+        time_worker_log = exec_context.get("time_worker_log")
+
         for worker_idx, worker in enumerate(self.workers):
-            worker_start = time.perf_counter()
             worker_name = worker.__class__.__name__
-            logger.debug(f"Ejecutando worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            logger.debug(f"Ejecutando {worker_idx + 1}/{len(self.workers)}: '{worker_name}'")
 
             exec_context["worker_name"] = worker_name  # Actualiza el nombre en cada iteración
-
-            if not worker.process(exec_context, manager):
-                logger.error(f"Fallo en {worker.__class__.__name__}", exc_info=True)
-                return None, 0.0
             
-            if manager.workflow:
-                worker_time = time.time() - worker_start
-                logger.debug(f"Worker {worker_name} completado en: {worker_time:.6f}s")
+            worker_start = time.perf_counter()
+            if not worker.process(exec_context, manager):
+                worker_time = time.perf_counter() - start_time
+                logger.error(f"'{worker_name}' falló, tiempo: {worker_start:.6f}'s", exc_info=True)
+                return None, worker_time
 
-            logger.debug(f" {worker.__class__.__name__} completado en {time.perf_counter() - worker_start:.6f}s")
-        
-        total_time = time.perf_counter() - start_time
-        logger.debug(f" Completado en {total_time:.6f}s")
-        return manager, total_time
+            if time_worker_log:
+                logger.info(f"'{worker_name}' completado en: {time.perf_counter() - worker_start:.6f}'s")
+
+        return manager, time.perf_counter() - start_time

@@ -1,6 +1,7 @@
 # core/utils/output_service.py
 import os
-import json
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedSeq
 import logging
 import numpy as np
 import cv2
@@ -52,7 +53,7 @@ def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any],
         file_name = f"{img_id}.png"
         save_image(image, output_dir, file_name)
         output_dir = os.path.join(path, worker_name, image_name)
-        # save_image(image, output_dir, file_name)
+        save_image(image, output_dir, file_name)
 
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
 
@@ -81,59 +82,53 @@ def save_debug_json(worker_name: str, results: Dict[str, Any], file_name: str):
         for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.json"
-            save_json(final_results, output_dir, file_name)
+            save_yaml(final_results, output_dir, file_name)
 
         logger.warning(f"JSON de {worker_name} generado para '{file_name}'.")
 
     except Exception as e:
         logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
     
-def save_raw_json(worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
+def save_text_debug(worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
     try:
         results_ser = to_serializable(results)
         for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
-            file_name = f"{file_name}_{worker_name}.json"
-            if save_json(results_ser, output_dir, file_name):
-                logger.warning(f"JSON de {worker_name} generado para '{file_name}'.")
+            file_name = f"{file_name}_{worker_name}.yaml"
+            if save_yaml(results_ser, output_dir, file_name):
+                logger.info(f"YAML de {worker_name} generado para '{file_name}'")
                 return True
-        
-        return False
-        
-    except Exception as e:
-        logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
-        return False
 
-def save_json(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: str) -> bool:
-    """Guarda un JSON en disco."""
+    except Exception as e:
+        logger.warning(f"Error guardando {worker_name}.YAML: {e}", exc_info=True)
+    return False
+
+def save_yaml(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: str) -> bool:
+    """Guarda un YAML en disco."""
     try:
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, file_name)
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(results, f, indent=4, ensure_ascii=False)
-            
+
+        # Convertir listas a formato inline
+        for item in results.values():
+            for key, value in item.items():
+                if isinstance(value, list):
+                    seq = CommentedSeq(value)
+                    seq.fa.set_flow_style()  # <- [1, 1]
+                    item[key] = seq
+
+        yaml = YAML()
+        yaml.default_flow_style = False
+        yaml.allow_unicode = True
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            yaml.dump(results, f)
+
         return True
-    except Exception as e:
-        logger.error(f"Error guardando JSON: {e}", exc_info=True)
-        return False
-        
-def save_debug_table(corrected_df: pd.DataFrame, file_name: str, worker_name: str, header_polygons: List[Any]):
-    try:
-        header_text: List[str] = []
-        for poly_obj in header_polygons:
-            poly_text = getattr(poly_obj, "ocr_text", None)
-            if poly_text:
-                header_text.append(poly_text)
-        if not header_text:
-            header_text = list(corrected_df.columns)
-
-        for path in OUTPUT_PATHS:
-            output_dir = os.path.join(path, worker_name)
-            file_name = f"{file_name}_{worker_name}.csv"
-            save_table(corrected_df, output_dir, file_name, header_text)
 
     except Exception as e:
-        logger.error(f"Error guardadndo tabla JSON de {worker_name},: {e}", exc_info=True)
+        logger.error(f"Error guardando YAML: {e}", exc_info=True)
+    return False
 
 def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], worker_name: str):
     feature_names = FEATURES_NAME
@@ -151,17 +146,25 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] 
         for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
             table_file_name = f"{file_name}_{worker_name}.csv"
-            save_table(df, output_dir, table_file_name, header)
+            save_table(df, output_dir, table_file_name)
 
     except Exception as e:
         logger.error(f"Error calculando Features output: {e}", exc_info=True)
-        
-def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, header_text: List[str]):
-    """
-    Guarda una tabla estructurada en formato CSV (compatible con Excel).
-    Ruta del archivo guardado o None si hay error.
-    """
-    try:      
+
+def save_debug_table(corrected_df: pd.DataFrame, file_name: str, worker_name: str, stack: bool):
+    try:
+        for path in OUTPUT_PATHS:
+            output_dir = os.path.join(path, worker_name)
+            file_name = f"{file_name}_{worker_name}.csv"
+            save_table(corrected_df, output_dir, file_name, stack)
+
+    except Exception as e:
+        logger.error(f"Error guardadndo tabla CSV de {worker_name}: {e}", exc_info=True)
+
+def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, stack: bool):
+    """Guarda una tabla estructurada en formato CSV (compatible con Excel)."""
+    try:
+        header_text = list(corrected_df.columns)
         os.makedirs(output_dir, exist_ok=True)
         output_file = os.path.join(output_dir, file_name)
         with open(output_file, 'w', newline='', encoding='utf-8') as f:
@@ -170,18 +173,19 @@ def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, head
             # Escribimos las filas del DataFrame, no solo los nombres de columnas
             for row in corrected_df.itertuples(index=False, name=None):
                 writer.writerow(row)                
-        try:
-            _append_table_to_master(
-                corrected_df=corrected_df,
-                output_dir=output_dir,
-                section_title=os.path.splitext(os.path.basename(file_name))[0],
-                header_text=header_text,
-                master_filename="tables_master.csv"
-            )
-        except Exception as e:
-            logger.error(f"error generando el tables_master: {e}", exc_info=True)
+        if stack:
+            try:
+                _append_table_to_master(
+                    corrected_df=corrected_df,
+                    output_dir=output_dir,
+                    section_title=os.path.splitext(os.path.basename(file_name))[0],
+                    header_text=header_text,
+                    master_filename="tables_master.csv"
+                )
+            except Exception as e:
+                logger.error(f"error generando el tables_master: {e}", exc_info=True)
         
-        logger.info(f"Tabla debug generada de: {file_name}")
+        logger.info(f"Tabla generada de: '{file_name}'")
                         
         return output_file
     except Exception as e:

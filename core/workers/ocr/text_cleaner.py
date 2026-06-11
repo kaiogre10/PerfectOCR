@@ -104,6 +104,7 @@ class TextCleaner(OCRAbstractWorker):
         text = text.strip()
         if not text:
             return ""
+
         # Dividir por espacios para procesar token por token, preservando la estructura.
         words = text.split(' ')
         processed_words: List[str] = []

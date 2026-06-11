@@ -37,6 +37,7 @@ class VectorizingOutputs(ConfigWithNumpy):
     image_features: bool
     table_structured: bool
     math_max_corrected: bool
+    stack: bool
 
 class OutputFlags(ConfigWithNumpy):
     image_load_outputs: ImgLoadOutputs
@@ -123,6 +124,7 @@ class ContrastConfig(ConfigWithNumpy):
         
 class MathMaxConfig(ConfigWithNumpy):
     row_relative_tolerance: str
+    cols_name: List[str]
 
 class RestoreConfig(ConfigWithNumpy):
     area_threshold: int
@@ -195,8 +197,10 @@ class PipelineConfig(ConfigWithNumpy):
     db_stage: Optional[List[str]] = None
     
 class DebugOutputs(ConfigWithNumpy):
+    all_logs: bool
     text_ocr: bool
     text_clean: bool
+    text_del: bool
     text_correct: bool
     frag_polys: bool
     refined_text: bool
@@ -208,6 +212,8 @@ class DebugOutputs(ConfigWithNumpy):
     table_correct: bool    
     kf_list_log: List[int]
     semantic_types_log: List[int]
+    time_stages_log: bool
+    time_worker_log: bool
 
 class SystemConfig(ConfigWithNumpy):
     input_dirs: List[str]

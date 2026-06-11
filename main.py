@@ -5,12 +5,18 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-import logging
 import app.main_builder as main_builder
 main_builder.set_project_root(PROJECT_ROOT)
+
 import services.system_service as cache_service
 cache_service.set_project_root(PROJECT_ROOT)
+
 import services.output_service as output_service
+
+import services.logs_service as log_service
+log_service.setup_logging(PROJECT_ROOT)
+
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -23,69 +29,17 @@ os.environ.update({
 TEST_MODE = True
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
-LATITUDE_OUTPUT_PATH = "E:"
-    
-if os.path.exists(LATITUDE_OUTPUT_PATH) or LATITUDE_OUTPUT_PATH == PROJECT_ROOT:
-    print("Ejecución en LATITUDE")
-    output_paths = ["output"]
-    default_output = ["output"]
 
-elif os.environ.get("CODESPACES"):
-    print("Ejecución remota")
-    output_paths = ["output"]
-    default_output = output_paths
-else:
-    print("Ejecución en Inspiron")
-    output_paths = ["output"]
-    default_output = output_paths
-    
-DEFAULT_OUTPUT_PATH = default_output
-OUTPUT_PATH = output_paths
-
-CONSOLE_LEVEL = "INFO"
-FILE_LEVEL = "INFO"
-CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
-FILE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
-DATE_FORMAT = "%H:%M:%S"  # Solo horas:minutos:segundos en formato 00:00:00
-
-logger_root = logging.getLogger()
-logger_root.setLevel(logging.DEBUG)
-
-if logger_root.hasHandlers():
-    logger_root.handlers.clear()
-    
-file_formatter = logging.Formatter(
-    fmt=FILE_FORMAT,
-    datefmt=DATE_FORMAT
-)
-console_formatter = logging.Formatter(
-    fmt=CONSOLE_FORMAT,
-    datefmt=DATE_FORMAT
-)
-LOG_FILE_PATH = os.path.join(PROJECT_ROOT, "perfectocr.txt")
-if not os.path.exists(LOG_FILE_PATH):
-    os.mknod(LOG_FILE_PATH)
-    with open(LOG_FILE_PATH, mode = "r", encoding="utf-8"):
-        pass
-
-file_handler = logging.FileHandler(LOG_FILE_PATH, mode='w', encoding='utf-8')
-file_handler.setFormatter(file_formatter)
-file_handler.setLevel(FILE_LEVEL.upper())
-logger_root.addHandler(file_handler)
-
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setFormatter(console_formatter)
-console_handler.setLevel(CONSOLE_LEVEL.upper())
-logger_root.addHandler(console_handler)
+DEFAULT_OUTPUT_PATH = ["output"]
 
 output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
-config_path = DEFAULT_CONFIG_FILE
+
 output_service.set_output_paths(output_paths)
 
 def main():
     default_output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in DEFAULT_OUTPUT_PATH]
     cache_service.clear_output_folders(default_output_paths)
-    result = main_builder.activate_main(output_paths, config_path, TEST_MODE)
+    result = main_builder.activate_main(output_paths, DEFAULT_CONFIG_FILE, TEST_MODE)
     if not result:
         cache_service.cleanup_project_cache()
 if __name__ == "__main__":

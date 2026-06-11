@@ -336,7 +336,7 @@ class DataFormatter:
                 for lid, l in all_lines.items():
                     line_text= l.text
                     # line_semantic = fast_classfier(line_text)
-                    logger.info(f"{lid}: '{line_text}")
+                    logger.info(f"{lid}: '{line_text}'")
             return True
                         
         except ValueError as e:

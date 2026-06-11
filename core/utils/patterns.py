@@ -18,6 +18,7 @@ _digits_base = r'0123456789'
 _zero_base = r'OQoD'
 _one_base = r'|liI!¡'
 _two_base = r'Zz?'
+_three_base = r'3'
 _four_base = r'A'
 _five_base = r'$Ss'
 _six_base = r'G'
@@ -28,10 +29,10 @@ _nine_base = r'qg'
 _all_zeros = rf"[0{_zero_base}]"
 _extended_digits = rf"[{_digits_base}{_zero_base}{_one_base}{_two_base}{_four_base}{_five_base}{_six_base}{_seven_base}{_eight_base}{_nine_base}]"   # [0-9OQoD|liI!¡Zz?A$SsG/Bqg]
 
-_stick_chars = r'[!1¡]'
+_stick_chars = r'[!1lIi¡]'
 _stick_set = _stick_chars[1:-1]
-_l_variants = rf"[Ll{_stick_set}]"
-_i_variants = rf"[Ii{_stick_set}]"
+_l_variants = rf"[L{_stick_set}]"
+_i_variants = rf"[{_stick_set}]"
 _o_variants = r"[Oo0Q]"
 _n_variants = r"[Nn]"
 _s_variants = rf'[5{_five_base}]'
@@ -93,14 +94,14 @@ _acronim = r'(?:[A-Za-z]\.)+[A-Za-z]\.?'
 acromin_currency_pattern = re.compile(r"(?:\d[\d,.]*)?\s*m\s*\.?\s*n\.?", re.IGNORECASE)
 
 acronym_pattern: Pattern[str] = re.compile(rf'^({_acronim}|sa|cv|mn)[:;,.]?$', re.IGNORECASE)
-# _bad_title: Pattern[str] = re.compile(r'^([A-Za-z0-9])(?: [A-Za-z0-9])+$', re.IGNORECASE)
+bad_title: Pattern[str] = re.compile(r'^\S(?:\s+\S)+\s*$', re.IGNORECASE)
 
 # Datos Globales
 _phone_str = r'^(cel|tel)((?:\:|\s))'
 phone_number = re.compile(rf"(((?:{_phone_str}){_digit_pattern}{{10}})|(^{_digit_pattern}{{10}}))(?:$|(?=\s))", re.IGNORECASE)
 mail_pattern = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.?(?:com|[a-zA-Z0-9]+)\b', re.IGNORECASE)
 cp_pattern: Pattern[str] = re.compile(rf'\b{_cp_letters}\s*{_digit_pattern}{{5}}\b')
-numeric_code: Pattern[str] = re.compile(rf"\b{_all_zeros}{_digit_pattern}+$")
+numeric_code: Pattern[str] = re.compile(rf"(?<=\s){_all_zeros}{_digit_pattern}+$")
 
 _rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
 rfc_key_pattern: Pattern[str] = re.compile(r'([A-Z]{3,4}\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3})', re.IGNORECASE)
@@ -141,7 +142,7 @@ _semifraction_pattern = re.compile(r'(?<![A-Za-z0-9])/\d+\b')
 _cuant_frac_str = rf'{_c_variants}\s*{_diagonal_variants}'
 
 semi_c_fraction = re.compile(rf'\b{_cuant_frac_str}(?:$|(?=\s))')
-cant_frac_pattern = re.compile(rf'{_cuant_frac_str}\s*(?=(\s|\d|\b))')
+cant_frac_pattern = re.compile(rf'{_cuant_frac_str}\s*(?:\s|(?=|\d)(?=|\b))')
 
 # Detecta fracciones con guión como "C-3", es decir, letra C, guión y número, sin prefijo.
 c_dash_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]-\d+\b')
@@ -235,6 +236,7 @@ _correct_ocr = (
     rf"(?P<zero>[{_zero_base}])|"
     rf"(?P<one>[{_one_base}])|"
     rf"(?P<two>[{_two_base}])|"
+    rf"(?P<three>[{_three_base}])|"
     rf"(?P<four>[{_four_base}])|"
     rf"(?P<five>[{_five_base}])|"
     rf"(?P<six>[{_six_base}])|"

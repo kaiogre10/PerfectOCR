@@ -78,10 +78,25 @@ class ConfigService:
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
-        
+
+    @cached_property
+    def logs(self) -> Dict[str, Any]:
+        return {} if self.no_modules else self.config.get("log_debug", {})
+
     @cached_property
     def logs_debug(self) -> Dict[str, Any]:
-        return {} if self.no_modules else self.config.get("log_debug", {})
+        if self.no_modules:
+            return {}
+
+        elif self.logs.get("all_logs"):
+            for key, value in self.logs.items():
+                if isinstance(value, bool):
+                    self.logs[key] = True
+                elif isinstance(value, list):
+                    self.logs[key] = [-1]
+            return self.logs
+        else:
+            return self.logs
 
     @cached_property
     def models_config(self) -> Dict[str, Any]:

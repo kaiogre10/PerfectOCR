@@ -5,13 +5,14 @@ from typing import List, Tuple, Dict, Any, Optional
 from core.utils.math_utils import text_encode
 from core.utils.compiled_utils import validate_quant_chars, count_cuants
 from core.utils.data_utils import VOWELS, REPLACEMENT_MAP
-from core.utils.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, zeros_variants, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
+from core.utils.patterns import bad_title, numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, zeros_variants, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
 
 logger = logging.getLogger(__name__)
 
 density_thr = (23.7, 103.7)
 morph_thr = (-0.297, 0.337)
 
+_bad_title = bad_title
 _numeric_fractions = numeric_fractions
 _has_digit_pattern = has_digit_pattern
 _extension_suffix = extension_suffix
@@ -64,10 +65,14 @@ def normalice_text(s: str, hard_norm: Optional[bool] = False) -> str:
     """"Normaliza texto eliminando apóstrofes, tildes, diéresis. NO ELIMINA CARACTERES DE NINGÚN TIPO, MISMO LEN() EN INPUT Y OUTPUT"""
     if not s:
         return ""
+
     norm_text = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
+    if bool(_bad_title.fullmatch(norm_text)):
+        norm_text = "".join(norm_text.split(" "))
+
     if norm_text and hard_norm:
         hard_text =  unicodedata.normalize('NFKD', norm_text).encode('ascii', 'ignore').decode('utf-8')
-        return "" if not hard_text else hard_text
+        return norm_text if not hard_text else hard_text
     return norm_text if norm_text else ""
     
 def get_rfc(s: str) -> str:
@@ -108,6 +113,8 @@ def correct_subfix(text: str) -> str:
 
     elif not bool(_los_search_patt.search(text)) and bool(_los_suffix_pattern.search(text)):
         return _los_suffix_pattern.sub(_los_str, text)
+    elif bool(_swap_term_cuant.fullmatch(text)):
+        return text.replace("$", "S")
     else:
         return text
 
@@ -128,10 +135,16 @@ def find_umd(text: str) -> str:
     elif text.isalpha():
         return text
 
+    elif text.isdecimal():
+        return text
+
     elif bool(_phone_number.search(text)):
         return text
 
     elif bool(_date_patterns.search(text)):
+        return text
+
+    elif bool(_numeric_code.search(text)):
         return text
 
     result_parts: List[str] = []
@@ -339,7 +352,6 @@ def separate_punt(text: str) -> str:
         # Mantiene intactas horas y cuantitativos puros; limpia los tokens mixtos.
         if not bool(_hour_pattern.search(t)) and not is_quantitative(t):
             cleaned_token_cuant = _punt_split_pattern.sub(" ", t)
-            # logger.info(f"cleaned_token_cuant: '{t}' -> '{cleaned_token_cuant}'")
             processed_token_cuants.append(cleaned_token_cuant)
         else:
             # Si es una hora, se mantiene intacta
@@ -422,14 +434,14 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
         return (-1, 0)
         
     elif s.isalpha():
-        if _size_pattern.search(s):
+        if bool(_size_pattern.search(s)):
             return (2, 0)
         #  logger.info(f"ALPHA 1ro: '{s}'")
         else:
             return (1, 0)
     
     elif s.isdecimal():
-        if "0" in s and bool(_numeric_code.fullmatch(s)):
+        if bool(_numeric_code.fullmatch(s)):
             return (3, total_cuant)
         else:
             return (5, total_text)
@@ -438,7 +450,7 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
         if not any(c.isalpha() for c in s):
             return (-1, 0)
         
-        elif bool(_semi_c_fraction.search(s)) or bool(_amount_fract.search(s)):
+        elif bool(_fraction_pattern.search(s)):
             # logger.info(f"UMD por regex: '{s}'")
             return (2, 0)
 
@@ -450,13 +462,10 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
                 return (1, 0)
 
         if not any(c in vowels for c in s):
-            # logger.info(f"NO DETECCIÓN: {s}")
-            if _fraction_pattern.search(s):
-                # logger.info(f"UMD sin vocales: '{s}'")
+            if _cant_frac_pattern.search(s):
                 return (2, 0)
-                
-            elif total_text > 2:
-                # logger.info(f"CODE sin vocales: '{s}'")
+
+            elif 2 < total_text:
                 return (3, 0)
             
         # logger.info(f"DESC por sobrante: '{s}'")
@@ -473,14 +482,14 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
 
         elif s.startswith("0"):
             if s.isalnum():
-                #  logger.info(f"CODE por inicio 0: '{s}'")
+                # logger.info(f"CODE por inicio 0: '{s}'")
                 return (3, total_cuant)
                 
             elif validate_quant_pattern(s):
-                # #  logger.info(f"CUANT por inicio 0: '{s}'")
+                # logger.info(f"CUANT por inicio 0: '{s}'")
                 return (4, total_cuant)
             else:
-                #  logger.info(f"UMD por inicio 0: '{s}'")
+                # logger.info(f"UMD por inicio 0: '{s}'")
                 return (2, total_cuant)
             
         if is_quantitative(s):
@@ -505,15 +514,14 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
         # logger.info(f"CODE mixto: '{s}'")
         return (3, total_cuant)
     
-    #  logger.info(fr"REBELDES: '{s}'")
+    # logger.info(fr"REBELDES: '{s}'")
     dense_mean, morphology_mean = text_encode(s.lower())
     if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
         # logger.info(f"CODE por codificacion: '{s}'")
         return (3, total_cuant)
     
     elif dense_mean > density_thr[1]:
-        logger.info(f"DESC por codificacion: '{s}'")
-        return (1, total_cuant)
+        return (1, 0)
 
     if dense_mean < density_thr[0]:
         if bool(_fraction_pattern.search(s)):
@@ -528,14 +536,14 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
         
     elif bool(_labels_pattern.fullmatch(s)):
         # logger.info(f"DESCR MARCA: '{s}")
-        return (1, total_cuant)
-    
+        return (1, 0)
+
     if not any(c in vowels for c in s) and total_text > 2:
         # logger.info(f"CODE por FALLBACK: '{s}'")
         return (3, total_cuant)
         
     # logger.info(f"Poligono sin clasificación, será descriptiva: '{s}'")
-    return (1, total_cuant)
+    return (1, 0)
 
 def get_ids(id_registro: str, id_need: str):
     """
@@ -569,9 +577,9 @@ def fast_classfier(text: str) -> Tuple[List[int], int]:
     """Clasifica un string rapidamente, no seleccionar los strings antes de llamar a la función impactará de manera negativa el output del pipeline"""
     if not text:
         return ([-1], 0)
-    tokens = text.split(" ")
-    semantic_classes: List[int] = []
     total_cuants = 0
+    semantic_classes: List[int] = []
+    tokens = text.split(" ")
     for t in tokens:
         t_class, t_cuant = classify_token_cuant(t)
         semantic_classes.append(t_class)
@@ -582,4 +590,16 @@ def _correct_numbers(text: str) -> str:
     """Solo corrije numeros, no borra caracteres"""
     return text if text.isdecimal() else _correct_cuants.sub(lambda match: _replacement_map[match.lastgroup], text)
 
-# def comma_clean()
+def noramalice_df(text: str) -> str:
+    """Elimina todas las comas de un string sin importar nada"""
+    text = normalice_text(text, True)
+    text = text.replace(",", " ")
+    return space_removal(text)
+
+def its_similar(word: str, suspect: str) -> bool:
+    suspect_slice = suspect[:len(word)]
+    if word == suspect_slice:
+        return True
+    else:
+        suspect_slice = _correct_numbers(suspect_slice)
+        return suspect_slice.isdecimal() and word == suspect_slice

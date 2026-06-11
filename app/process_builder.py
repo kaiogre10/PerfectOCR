@@ -18,6 +18,8 @@ class ProcessingBuilder:
         self.ocr_stager = ocr_stager
         self.vectorization_stager = vectorization_stager
         self.logs_config = logs_config
+        self.time_stages_log = logs_config.get("time_stages_log")
+        self.time_worker_log = logs_config.get("time_worker_log")
         
     def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[pd.DataFrame, Dict[str, Any]]]:
         """
@@ -26,14 +28,15 @@ class ProcessingBuilder:
         """
         try:    
             if self.input_stager is None:
-                logger.warning(f"No hay Modulo de carga de imagen, acabando")
+                logger.warning("No hay Modulo de carga de imagen, acabando")
                 return None
-                
+
             # Crear instancia fresca de DataFormatter para esta imagen
             manager = DataFormatter(self.logs_config)
             # Crear contexto para esta ejecución
             context: Dict[str, Any] = {
-                "image_data": image_data
+                "image_data": image_data,
+                "time_worker_log": self.time_worker_log
             }
             
             # FASE 1: Preparación de imagen (usa execute() del AbstractStager)
@@ -41,28 +44,33 @@ class ProcessingBuilder:
             manager, time_poly = self.input_stager.execute(manager, context)
             if manager is None:
                 return None
-            logger.debug(f"Fase de preparación completada en: {time_poly:.6f}s")
+            if self.time_stages_log:
+                logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
 
             # FASE 2: Preprocesamiento (usa execute() del AbstractStager)
             if self.preprocessing_stager is not None:
                 manager, elapsed = self.preprocessing_stager.execute(manager, context)
                 if manager is None:
                     return None
-                logger.debug(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
+
+                if self.time_stages_log:
+                    logger.info(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
             # FASE 3: OCR (usa execute() del AbstractStager)
             if self.ocr_stager is not None:
                 manager, ocr_time = self.ocr_stager.execute(manager, context)
                 if manager is None:
                     return None
-                logger.debug(f"OCR completado en: {ocr_time:.6f}s")
-                    
+                if self.time_stages_log:
+                    logger.info(f"OCR completado en: {ocr_time:.6f}s")
+
             # FASE 4: Vectorización (usa execute() del AbstractStager)
             if self.vectorization_stager is not None:
                 manager, vect_time = self.vectorization_stager.execute(manager, context)
                 if manager is None:
                     return None
-                logger.debug(f"Vectorización completada en: {vect_time:.6f}s")
+                if self.time_stages_log:
+                    logger.info(f"Vectorización completada en: {vect_time:.6f}s")
 
             img_results = manager.get_final_data()
                 

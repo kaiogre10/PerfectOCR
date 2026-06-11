@@ -38,20 +38,29 @@ cpdef bint validate_quant_chars(str text):
     return valid
 
 cpdef int count_cuants(str text):
-    """Cuenta cuantos caracterestes cuantitativos hay es un string si hay por lo menos un dígito"""
-    cdef Py_ssize_t text_len = len(text)
+    """Cuenta caracteres cuantitativos (0-9, ',', '.', '$') y devuelve 0 si no existe ningún dígito."""
+    cdef Py_ssize_t text_len
     cdef Py_ssize_t i
     cdef Py_UCS4 char_code
     cdef int total_cuants = 0
-    
+    cdef bint has_decimal = False
+
     if not text:
         return 0
-    
+
+    text_len = len(text)
+
     for i in range(text_len):
         char_code = PyUnicode_ReadChar(text, i)
-        if _is_cuant_char(char_code):
+
+        if 48 <= char_code <= 57:
+            has_decimal = True
             total_cuants += 1
-    return total_cuants
+
+        elif char_code == 44 or char_code == 46 or char_code == 36:
+            total_cuants += 1
+
+    return total_cuants if has_decimal else 0
 
 cpdef bint validate_text(str text):
     """Valida que un string contenga caracteres válidos y que no esté vacío"""

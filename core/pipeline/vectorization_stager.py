@@ -4,6 +4,7 @@ import time
 from typing import Any, Dict, Tuple, Optional
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_stager import AbstractStager
+# from services.system_service import get_process_report
 
 logger = logging.getLogger(__name__)
 
@@ -15,32 +16,30 @@ class VectorizationStager(AbstractStager):
         return self.vectorize_results(manager, context)
     
     def vectorize_results(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
-        """
-        Orquesta el flujo completo de vectorización siguiendo una estrategia por fases
-        para máxima eficiencia de memoria.
-        """ 
+        """Orquesta el flujo completo de vectorización"""
         start_time = time.perf_counter()
+        # workers_fails: List[str] = []
         try:
             exec_context: Dict[str, Any] = context.copy() if context else {}
-            if "project_root" not in exec_context:
-                exec_context["project_root"] = self.project_root
+            time_worker_log = exec_context.get("time_worker_log")
 
             for worker_idx, worker in enumerate(self.workers):
-                worker_start = time.perf_counter()
                 worker_name = worker.__class__.__name__
-                logger.debug(f"Inicia Worker: {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+                logger.debug(f"Iniciando: {worker_idx + 1}/{len(self.workers)}: {worker_name}")
 
                 exec_context["worker_name"] = worker_name  # Actualiza el nombre en cada iteración
 
+                worker_start = time.perf_counter()
                 if not worker.vectorize(exec_context, manager):
-                    logger.error(f"Worker {worker_name} falló o devolvió resultados vacíos", exc_info=True)
-                    return None, 0.0
-                if manager.workflow:
-                    logger.debug(f"Worker {worker_name} completado en: {time.perf_counter() - worker_start:.6f}s")
-                # continue no es necesario aquí
+                    worker_time = time.perf_counter() - worker_start
+                    logger.error(f"'{worker_name}' falló, tiempo: {worker_time:.6f}'s", exc_info=True)
+                    return None, worker_time
+                
+                if time_worker_log:
+                    logger.info(f"'{worker_name}' completado en: {time.perf_counter() - worker_start:.6f}'s")
 
+            # get_process_report(workers_fails)
             
-            logger.debug(f"Etapa 4 completado en: {time.perf_counter() - start_time:.6f}s")
             return manager, time.perf_counter() - start_time
         except Exception as e:
             logger.error(f"Error en vectorización: '{e}'", exc_info=True)

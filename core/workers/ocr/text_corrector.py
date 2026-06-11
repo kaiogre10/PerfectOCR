@@ -8,6 +8,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.utils.text_utils import find_umd, fast_classfier, correct_subfix
 from core.utils.data_utils import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
 from core.utils.compiled_utils import validate_text
+from string import ascii_lowercase, ascii_uppercase
 
 numeric_corrections = NUMERIC_CORRECTIONS
 umd_corrects = UMD_CORRECTIONS
@@ -24,7 +25,7 @@ class TextCorrector(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.output_log = config.get(f"text_correct")
+        self.output_log = config.get("text_correct")
         self.del_output_log = config.get("text_del")
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -39,7 +40,7 @@ class TextCorrector(OCRAbstractWorker):
         correced_count = 0
 
         for poly_id, polygon in polygons_in.items():
-            original_text = polygon.ocr_text.strip() or ""
+            original_text = polygon.ocr_text or ""
             kf = polygon.key_field
             sc = polygon.semantic_clasification
             
@@ -63,7 +64,7 @@ class TextCorrector(OCRAbstractWorker):
             corrected_text = self._apply_corrections(original_text, sc)
             if not corrected_text or not validate_text(corrected_text):
                 if self.del_output_log:
-                    logger.info(f"Sin Texto válido: {poly_id}: '{original_text}'")
+                    logger.info(f"Sin Texto válido: {poly_id}: '{corrected_text}'")
                 correced_count +=1
                 continue
 
@@ -94,11 +95,11 @@ class TextCorrector(OCRAbstractWorker):
             return ""
 
         elif total_tokens == 1:
-            return self._correct_token(text, semantic_clasification[0])
+            return self.correct_cases(self._correct_token(text, semantic_clasification[0]))
         else:
             for i, token in enumerate(tokens):
                 token_sc = semantic_clasification[i]
-                corrected_token = self._correct_token(token, token_sc)
+                corrected_token = self.correct_cases(self._correct_token(token, token_sc))
                 if not any(c.isalnum() for c in corrected_token):
                     continue
 
@@ -120,10 +121,10 @@ class TextCorrector(OCRAbstractWorker):
             if semantic_clasification == 1 and "0" in token:
                 return token.replace("0", "O")
             return token
-            
+
         if token.isdecimal():
             return token
-        
+
         if semantic_clasification in (4, 5):
             return self._correct_cuants(token)
             
@@ -160,3 +161,21 @@ class TextCorrector(OCRAbstractWorker):
     def _correct_cuants(self, token: str) -> str:
         corrected_chars = [numeric_corrections.get(ch, ch) for ch in token]
         return ''.join(corrected_chars)
+
+    def correct_cases(self, text: str) -> str:
+        if not text:
+            return ""
+        elif text.isdecimal():
+            return text
+        elif text.isupper() or text.islower() or text.istitle():
+            return text
+        else:
+            total_text = len(text)
+            total_uppers = (text.count(ascii_uppercase) / total_text)
+            total_lowers = (text.count(ascii_lowercase) / total_text)
+            if total_uppers > total_lowers or total_lowers < 0.1:
+                return text.upper()
+            elif total_lowers > total_uppers or total_uppers < 0.1:
+                return text.lower()
+            else:
+                return text.title()

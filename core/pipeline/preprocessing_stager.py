@@ -15,30 +15,25 @@ class PreprocessingStager(AbstractStager):
         return self.apply_preprocessing_pipelines(manager, context)
 
     def apply_preprocessing_pipelines(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
-        start_time = time.time()
+        start_time = time.perf_counter()
         
         # Base context setup
         exec_context: Dict[str, Any] = context.copy() if context else {}
-        if "project_root" not in exec_context:
-            exec_context["project_root"] = self.project_root
+        time_worker_log = exec_context.get("time_worker_log")
 
-            # Para cada worker, procesar todos los polígonos
         for worker_idx, worker in enumerate(self.workers):
-            worker_start = time.time()
             worker_name = worker.__class__.__name__
-            logger.debug(f"Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
-                    
             exec_context["worker_name"] = worker_name
-                
-            # Worker procesa esta imagen específica
+
+            logger.debug(f"Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
+            
+            worker_start = time.perf_counter()
             if not worker.preprocess(exec_context, manager):
-                logger.error(f"Worker {worker_name} falló", exc_info=True)
-                return None, 0.0
+                worker_time = time.perf_counter() - start_time
+                logger.error(f"'{worker_name}' falló, tiempo: {worker_start:.6f}'s", exc_info=True)
+                return None, worker_time
 
-            worker_time = time.time() - worker_start
-            logger.debug(f"Worker {worker.__class__.__name__} completado en: {worker_time:.6f}s")
+            if time_worker_log:
+                logger.info(f"'{worker_name}' completado en: {time.perf_counter() - worker_start:.6f}'s")
 
-        elapsed = time.time() - start_time
-        logger.debug(f"Preprocesamiento completado en: {elapsed:.6f}s")
-        return manager, elapsed
-        
+        return manager, time.perf_counter() - start_time

@@ -496,7 +496,7 @@ _conversion_kf: Dict[str, int] = {
 CONVERSION_KF = MappingProxyType(_conversion_kf)
 
 _replace_map: Dict[str, str] = {
-    'zero': '0', 'one': '1', 'two': '2', 'four': '4',
+    'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
     'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9'
 }
 

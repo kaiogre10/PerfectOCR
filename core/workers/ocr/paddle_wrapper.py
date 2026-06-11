@@ -8,7 +8,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from app.models_manager import ModelsManager
 from core.utils.text_utils import normalice_text
 from core.utils.image_utils import elevate_dims, make_contiguous
-from services.output_service import save_raw_json
+from services.output_service import save_text_debug
 from core.utils.compiled_utils import validate_text
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,8 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         self.project_root = project_root
         worker_config = config.get("paddle_wrapper", {})
         self.min_confidence = worker_config.get("min_confidence")
-        self.output = config.get("ocr_raw", False)
+        self.output = config.get("ocr_raw")
+        self.del_output_log = config.get("text_del")
         self._engine = None
         
     @property
@@ -56,8 +57,8 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 
                 if self.output:
                     file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                    file_name = f"{file_name}_2"
-                    save_raw_json(worker_name, final_results, file_name)
+                    file_name = f"{file_name}"
+                    save_text_debug(worker_name, final_results, file_name)
             
             logger.debug(f"Batch OCR completado. {processed_count} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
             
@@ -92,7 +93,8 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 
                 elif confidence < self.min_confidence:
                     deleted.append([polygon_ids[idx], text])
-                    # logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} {confidence*100.0} % | '{text}'")
+                    if self.del_output_log:
+                        logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} | '{text}' | '{(confidence*100.0):.4f}%' ")
                     continue
                 else:
                     norm_text = normalice_text(text)

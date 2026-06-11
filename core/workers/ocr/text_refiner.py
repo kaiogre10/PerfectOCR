@@ -6,6 +6,7 @@ from core.factory.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
+from services.output_service import save_text_debug
 from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, contains_umd
 import logging
 import time
@@ -21,11 +22,11 @@ class Refiner(OCRAbstractWorker):
         self.cleaner = cleaner
         self.fragmenter = fragmenter
         self.corrector = corrector
+        self.output = config.get("cleanned_text")
         worker_config = config.get("text_refiner", {})
         self.seman_clas_log = config.get("seman_clas")
         self.refined_text = config.get("refined_text")
-        semantic_types_log = any(t == -1 for t in config["semantic_types_log"])
-        self.semantic_types_log = config["semantic_types_log"] if not semantic_types_log else list(range(6))
+        self.semantic_types_log = list(range(0, 6)) if -1 in config["semantic_types_log"] else config["semantic_types_log"]
         self.num_passes = worker_config.get("num_passes")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -49,14 +50,22 @@ class Refiner(OCRAbstractWorker):
                 self.fragmenter.transcribe(context, manager)
                 self.classify_strings(manager)
 
-        logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
-        if self.seman_clas_log:
+        # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
+        if self.seman_clas_log or self.output:
             polygons = manager.workflow.polygons if manager.workflow else {}
+            poly_output: Dict[str, Any]= {}
             for poly, poly_data in polygons.items():
-                if any(sc in self.semantic_types_log for sc in  poly_data.semantic_clasification):
-                    text = poly_data.ocr_text or ""
-                    sc = poly_data.semantic_clasification
-                    logger.info(f"{poly}: '{text}', clas: {sc} | t_cuant: {poly_data.cuant_chars}")
+                text = poly_data.ocr_text or ""
+                s_clas = poly_data.semantic_clasification
+                poly_output[poly] = {"text": text, "sc": s_clas}
+                if self.seman_clas_log:
+                    if any(sc in self.semantic_types_log for sc in s_clas):
+                        logger.info(f"{poly}: '{text}', clas: {s_clas} | t_cuant: {poly_data.cuant_chars}")
+
+            if self.output:
+                worker_name = context.get("worker_name") or "paddle_wrapper"
+                file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                save_text_debug(worker_name, poly_output, file_name)
 
         return True
         

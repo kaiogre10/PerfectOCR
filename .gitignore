@@ -11,7 +11,7 @@
 *.xml
 *.iml
 *.cursorignore
-*.yaml
+#*.yaml
 #*.sql
 *.aiignore
 *.pyd
