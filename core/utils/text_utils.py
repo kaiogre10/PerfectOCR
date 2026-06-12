@@ -591,10 +591,10 @@ def _correct_numbers(text: str) -> str:
     return text if text.isdecimal() else _correct_cuants.sub(lambda match: _replacement_map[match.lastgroup], text)
 
 def noramalice_df(text: str) -> str:
-    """Elimina todas las comas de un string sin importar nada"""
     text = normalice_text(text, True)
     text = text.replace(",", " ")
-    return space_removal(text)
+    text =  space_removal(text)
+    return (text + ",")
 
 def its_similar(word: str, suspect: str) -> bool:
     suspect_slice = suspect[:len(word)]
@@ -603,3 +603,81 @@ def its_similar(word: str, suspect: str) -> bool:
     else:
         suspect_slice = _correct_numbers(suspect_slice)
         return suspect_slice.isdecimal() and word == suspect_slice
+
+# def classify_special(s: str) -> Tuple[str, Optional[int]]:
+#     date_matches = list(_date_patterns.finditer(s))
+#     if date_matches:
+#         date = [match.group() for match in date_matches if _date_patterns.fullmatch(match.group())]
+#         return ("", None) if not date else (date[0], 9)
+#
+#     rfc_matches = list(_rfc_key_pattern.finditer(s))
+#     if rfc_matches:
+#         rfc = [match.group() for match in rfc_matches if len(match.group()) > 10]
+#         return ("", None) if not rfc else (rfc[0], 7)
+#
+#     phone_matches = list(_phone_number.finditer(s))
+#     if phone_matches:
+#         phone = [match.group() for match in phone_matches if len(match.group()) > 8]
+#         return ("", None) if not phone else (phone[0], 10)
+#
+#     mail_matches = list(_mail_pattern.finditer(s))
+#     if mail_matches:
+#         mail = [match.group() for match in mail_matches if match.group()]
+#         return ("", None) if not mail else (mail[0], 11)
+#
+#     iva_matches = list(_iva_patterns.finditer(s))
+#     if iva_matches:
+#         iva = [match.group() for match in iva_matches if validate_quant_chars(match.group()) or not match.group().isalpha()]
+#         return ("", None) if not iva else (iva[0], 8)
+#
+#     cp_matches = list(_cp_pattern_patterns.finditer(s))
+#     if cp_matches:
+#         cp = [match.group() for match in cp_matches if _cp_pattern.fullmatch(match.group())]
+#         return ("", None) if not cp else (cp[0], 12)
+#     return ("", None)
+#
+#
+# polygons: Dict[str, Polygons] = manager.workflow.polygons
+#         final_polygons: Dict[str, Dict[str, Any]] = {}
+#         final_results: Dict[str, List[int]] = {}
+#         for poly_id, poly_data in polygons.items():
+#             text = poly_data.ocr_text or ""
+#             kf_text, kf = classify_special(text)
+#             if not kf_text or kf is None:
+#                 final_polygons[poly_id] = {"text": text}
+#                 continue
+#
+#             final_results[poly_id] = [kf]
+#
+#             kf_match = kf_text  # el que devuelve classify_special()
+#             kf_text = kf_match.replace(" ", "").strip()
+#
+#             if text == kf_match:
+#                 text_recon = kf_text
+#             else:
+#                 index_kf = text.find(kf_match)
+#                 if index_kf >= 0:
+#                     end_kf = index_kf + len(kf_match)
+#                     text_recon = (text[:index_kf] + " " + kf_text + " " + text[end_kf:])
+#                     text_recon = " ".join(text_recon.split())
+#                 else:
+#                     text_recon = text
+#
+#             text_list = text_recon.split(" ")
+#             idx_kf = text_list.index(kf_text)
+#             s_class, t_cuant = fast_classfier(text_recon)
+#
+#             s_classiy: List[int] = []
+#             for i, s_c in enumerate(s_class):
+#                 if i == idx_kf:
+#                     s_classiy.append(0)
+#                 else:
+#                     s_classiy.append(s_c)
+#
+#             s_class = s_classiy
+#             final_polygons[poly_id] = {"text": text_recon, "sc": s_class, "cuant_chars": 0}
+#             continue
+#
+#         worker_name = context.get("worker_name") or "text_refiner"
+#         manager.update_ocr_results(final_polygons, worker_name)
+#         manager.update_key_field(final_results)

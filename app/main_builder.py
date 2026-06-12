@@ -128,6 +128,7 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
         else:
             final_results.append(final_df)
             logger.info(f"IMAGEN '{image_name}', '# {(i + 1)}' de '{total_images}' imágenes")
+            continue
 
     total_processing_time = time.perf_counter() - start_time
     mean_process = (total_processing_time / total_images)

@@ -441,7 +441,7 @@ class DataFormatter:
         
         df: pd.DataFrame = structured_data.df_table
         db_values = structured_data.global_data
-        if df.empty or not db_values:
+        if df.empty:
             return (pd.DataFrame(), {})
         
         return (df, db_values)
