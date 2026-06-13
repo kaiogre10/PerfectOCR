@@ -4,7 +4,7 @@
 *.pyc
 *.idea
 *.ini
-#*.txt
+*.txt
 *.png
 *.jpg
 *.jpeg
@@ -33,18 +33,19 @@ perfectocr.txt
 .aiassistant/
 build/
 conectors/excel_conector/
-
-# Ignorar carpeta
 #documentation/
 #test/
 #tools/
 C:/PerfectOCR/data/models/
-data/models/paddle/
+models/paddle/
+models/
 input/
 input2/
 input3/
 output/
 migrations/
+memory_managment/
+conectors/
 
 # secrets
 .env

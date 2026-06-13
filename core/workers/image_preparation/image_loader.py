@@ -34,9 +34,9 @@ class ImageLoader(ImagePrepAbstractWorker):
                 logger.error(f"No se proporcionó una ruta de entrada válida para la imagen '{image_name}'")
                 return False
 
-            time0 = time.perf_counter()
+            # time0 = time.perf_counter()
             full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
-            logger.info(f"IMAGEN: '{input_path}', cargada en {time.perf_counter() - time0:.6f}'s")
+            # logger.info(f"IMAGEN: '{input_path}', cargada en {time.perf_counter() - time0:.6f}'s")
             
             if is_binarized(full_image):
                 binary = True
@@ -75,4 +75,5 @@ class ImageLoader(ImagePrepAbstractWorker):
 
         except cv2.error as e:
             logger.error(f"Error OpenCV al cargar '{image_name}': {e}", exc_info=True)
+            context = {}
         return False

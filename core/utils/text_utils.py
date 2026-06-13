@@ -5,7 +5,7 @@ from typing import List, Tuple, Dict, Any, Optional
 from core.utils.math_utils import text_encode
 from core.utils.compiled_utils import validate_quant_chars, count_cuants
 from core.utils.data_utils import VOWELS, REPLACEMENT_MAP
-from core.utils.patterns import bad_title, numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, zeros_variants, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, semi_c_fraction, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
+from core.utils.patterns import bad_title, numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,6 @@ _los_suffix_pattern = los_suffix_pattern
 _umd_patterns = umd_patterns
 _date_patterns = date_patterns
 _amount_fract = amount_fract
-_zeros_variants = zeros_variants
 _fraction_pattern = fraction_pattern
 _rfc_patterns = rfc_patterns
 _iva_patterns = iva_patterns
@@ -55,13 +54,12 @@ _sequence_middle_pattern = sequence_middle_pattern
 _secuence_pattern = secuence_pattern
 _labels_pattern = labels_pattern
 _size_pattern = size_pattern
-_semi_c_fraction = semi_c_fraction
 _id_prov_pattern = id_prov_pattern
 
 _replacement_map = REPLACEMENT_MAP
 vowels = VOWELS
 
-def normalice_text(s: str, hard_norm: Optional[bool] = False) -> str:
+def normalice_text(s: str, hard_norm: bool) -> str:
     """"Normaliza texto eliminando apóstrofes, tildes, diéresis. NO ELIMINA CARACTERES DE NINGÚN TIPO, MISMO LEN() EN INPUT Y OUTPUT"""
     if not s:
         return ""

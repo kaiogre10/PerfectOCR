@@ -3,7 +3,7 @@ import pandas as pd # type: ignore
 import logging
 import numpy as np
 from decimal import Decimal
-from typing import Dict, Any, Tuple, List, FrozenSet
+from typing import Dict, Any, Tuple, List, Optional
 from core.utils.text_utils import format_cuant, get_rfc, get_ids, noramalice_df, its_similar, fast_classfier
 from core.utils.patterns import umd_patterns
 from core.utils.compiled_utils import validate_text
@@ -21,17 +21,17 @@ class FinalStructurer(VectorizationAbstractWorker):
     """"Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        worker_config = config.get('math_max', {})
-        all_cols_name: List[str] = worker_config["cols_name"]
-        self.cant_name, self.pu_name, self.mtl_name, self.product_name = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3]
-        self.dec_cols_name: FrozenSet[str] = frozenset({self.cant_name, self.pu_name, self.mtl_name})
         self.project_root = project_root
+        all_cols_name: List[str] = config["cols_name"]
+        self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3], all_cols_name[4]
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         try:
             df, global_data = self.collect_data(manager)
 
             if manager.save_final_output(df, global_data):
+                context = context
+                context = {}
                 return True
         except Exception as e:
             logger.error(f"Error recolectando datos: '{e}'", exc_info=True)
@@ -42,12 +42,12 @@ class FinalStructurer(VectorizationAbstractWorker):
         if structured_data is None:
             return (pd.DataFrame(), {})
         
-        df: pd.DataFrame = structured_data.df_table
+        df: Optional[pd.DataFrame] = structured_data.df_table
         metadata = manager.workflow.metadata if manager.workflow else None
-        if df.empty or metadata is None:
+        if df is None or df.empty or metadata is None:
             return (pd.DataFrame(), {})
 
-        df, totals = self.structure_df(df, manager)
+        df, totals = self.standarice_df(df, manager)
         kf_map_inv = {v: k for k, v in conversion_kf.items()}
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
         db_values: Dict[str, Any] = {}
@@ -84,29 +84,35 @@ class FinalStructurer(VectorizationAbstractWorker):
         # logger.info(f"{db_values}")
         return (df, db_values)
     
-    def structure_df(self, df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
+    def standarice_df(self, df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
+
         mtl_col = df[self.mtl_name]
         c_col = df[self.cant_name]
-        
-        mtl_col_dec = mtl_col.map(lambda x: Decimal(x.strip()))
-        c_col_dec = c_col.map(lambda x: Decimal(x.strip()))
-        
-        total = Decimal(str(sum(mtl_col_dec)))
-        total_prod = Decimal(str(sum(c_col_dec)))
-
-        idx: str = manager.workflow.IDRegistro if manager.workflow else ""
-        totals = {"art_cal": str(total_prod), "total_cal": str(total), "id_registro": idx}
-
         pu_col = df[self.pu_name]
         product_col = df[self.product_name]
         df = pd.concat([c_col, product_col, pu_col, mtl_col], axis=1)
-        # Limpiamos data frame validado ahora que tiene menos información y antes de añadir más información
         df = self.clean_df(df, manager)
-        df.insert(loc=0, column="id_registro", value=idx, allow_duplicates=True)
+
+        mtl_col = df[self.mtl_name]
+        c_col = df[self.cant_name]
+        
+        mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1]))
+        c_col_dec = c_col.map(lambda x: Decimal(x[0:-1]))
+        
+        total_total = Decimal(str(sum(mtl_col_dec)))
+        total_prod = Decimal(str(sum(c_col_dec)))
+
+        idx: str = manager.workflow.IDRegistro if manager.workflow else ""
+        totals = {"art_cal": str(total_prod), "total_cal": str(total_total), self.id_registro: idx}
+        
+        # df.insert(loc=0, column=self.id_registro, value=idx, allow_duplicates=True)
         df = df.reset_index(drop=True)
         return df, totals
     
     def clean_df(self, df: pd.DataFrame, manager: DataFormatter) -> pd.DataFrame:
+        pro_idx = df.columns.get_loc(self.product_name) if self.product_name in df.columns else None
+        c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None
+
         all_lines_dict: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
         line_ids = sorted(all_lines_dict.keys())
         sorted_lines = [all_lines_dict[k] for k in line_ids]
@@ -116,9 +122,6 @@ class FinalStructurer(VectorizationAbstractWorker):
         lineal_ids_df = tabular_lines[df_rows_ids]
         list_text_df = [line.text for line in all_lines_dict.values() if line.line_index in tabular_lines]
         # logger.info(f"\n"f"TABULAR: '{tabular_lines} SIZE: {tabular_lines.size}'\n"f"ROWS DF'{df_rows_ids} SIZE: {df_rows_ids.size}'\n"f"linealiddf: {lineal_ids_df} SIZE: {lineal_ids_df.size}")
-
-        pro_idx = df.columns.get_loc(self.product_name) if self.product_name in df.columns else None
-        c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None
 
         for i, r in enumerate(df_rows_ids):
             p_values = str(df.iat[i, pro_idx]).strip()
@@ -156,4 +159,5 @@ class FinalStructurer(VectorizationAbstractWorker):
                             df.iat[i, pro_idx] = (orig_p_value +  concat_val)
 
         df = df.map(lambda x: noramalice_df(x))
+        # logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
         return df

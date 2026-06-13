@@ -1,12 +1,12 @@
 # PerfectOCR/app/process_builder.py
 import logging
-import pandas as pd # type: ignore
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
 from core.domain.data_formatter import DataFormatter
+import services.storage_service as storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,11 @@ class ProcessingBuilder:
         self.time_stages_log = logs_config.get("time_stages_log")
         self.time_worker_log = logs_config.get("time_worker_log")
         
-    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[pd.DataFrame, Dict[str, Any]]]:
+    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Any]:
         """
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
         Recibe image_data para configurar el contexto de esta ejecución específica.
+        Devuelve Direcciones en memoria de los datos generados
         """
         try:    
             if self.input_stager is None:
@@ -73,7 +74,7 @@ class ProcessingBuilder:
                     logger.info(f"Vectorización completada en: {vect_time:.6f}s")
 
             img_results = manager.get_final_data()
-                
+            storage_service.storage_data(img_results)
             return img_results
             
         except Exception as e:

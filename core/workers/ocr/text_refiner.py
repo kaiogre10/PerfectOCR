@@ -31,43 +31,48 @@ class Refiner(OCRAbstractWorker):
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Ejecuta el ciclo de refinamiento con clasificación selectiva."""
-        t0 = time.perf_counter()
+        try:
+            t0 = time.perf_counter()
 
-        self.get_early_data(manager)
-        self.preprocess_text(manager)
-        self.classify_strings(manager)
-        
-        for _ in range(self.num_passes):
-            if self.cleaner:
-                self.cleaner.transcribe(context, manager)
-                self.classify_strings(manager)
-
-            if self.corrector:
-                self.corrector.transcribe(context, manager)
-                self.classify_strings(manager)
+            self.get_early_data(manager)
+            self.preprocess_text(manager)
+            self.classify_strings(manager)
             
-            if self.fragmenter:
-                self.fragmenter.transcribe(context, manager)
-                self.classify_strings(manager)
+            for _ in range(self.num_passes):
+                if self.cleaner:
+                    self.cleaner.transcribe(context, manager)
+                    self.classify_strings(manager)
 
-        # logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
-        if self.seman_clas_log or self.output:
-            polygons = manager.workflow.polygons if manager.workflow else {}
-            poly_output: Dict[str, Any]= {}
-            for poly, poly_data in polygons.items():
-                text = poly_data.ocr_text or ""
-                s_clas = poly_data.semantic_clasification
-                poly_output[poly] = {"text": text, "sc": s_clas}
-                if self.seman_clas_log:
-                    if any(sc in self.semantic_types_log for sc in s_clas):
-                        logger.info(f"{poly}: '{text}', clas: {s_clas} | t_cuant: {poly_data.cuant_chars}")
+                if self.corrector:
+                    self.corrector.transcribe(context, manager)
+                    self.classify_strings(manager)
+                
+                if self.fragmenter:
+                    self.fragmenter.transcribe(context, manager)
+                    self.classify_strings(manager)
 
-            if self.output:
-                worker_name = context.get("worker_name") or "paddle_wrapper"
-                file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                save_text_debug(worker_name, poly_output, file_name)
+            if self.seman_clas_log or self.output:
+                logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
+                polygons = manager.workflow.polygons if manager.workflow else {}
+                poly_output: Dict[str, Any]= {}
+                for poly, poly_data in polygons.items():
+                    text = poly_data.ocr_text or ""
+                    s_clas = poly_data.semantic_clasification
+                    poly_output[poly] = {"text": text, "sc": s_clas}
+                    if self.seman_clas_log:
+                        if any(sc in self.semantic_types_log for sc in s_clas):
+                            logger.info(f"{poly}: '{text}', clas: {s_clas} | t_cuant: {poly_data.cuant_chars}")
 
-        return True
+                if self.output:
+                    worker_name = context.get("worker_name") or "paddle_wrapper"
+                    file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                    save_text_debug(worker_name, poly_output, file_name)
+
+            return True
+        except Exception as e:
+            logger.error(f"Error refinando texto: {e}", exc_info=True)
+            context={}
+        return False
         
     def classify_strings(self, manager: DataFormatter) -> bool:
         try:

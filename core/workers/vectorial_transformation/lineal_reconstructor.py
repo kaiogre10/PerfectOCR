@@ -6,7 +6,6 @@ from typing import Dict, Any, List, Optional, Tuple
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.text_utils import fast_classfier
 from services.output_service import save_text_debug
 
 logger = logging.getLogger(__name__)
@@ -65,7 +64,8 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 return True
                                             
         except Exception as e:
-            logger.error(f"error {e}", exc_info=True)
+            logger.error(f"ERROR RECONSTRUYENDO LÍNEAS {e}", exc_info=True)
+            context = {}
         return False
         
     def reconstruct_lines(self, polygons: Dict[str, Polygons], boundaries: Tuple[List[int], List[int]]) -> Optional[Tuple[Dict[str, Any], Tuple[Optional[int], Optional[int]]]]:

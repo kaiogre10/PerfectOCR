@@ -124,7 +124,6 @@ class ContrastConfig(ConfigWithNumpy):
         
 class MathMaxConfig(ConfigWithNumpy):
     row_relative_tolerance: str
-    cols_name: List[str]
 
 class RestoreConfig(ConfigWithNumpy):
     area_threshold: int
@@ -220,6 +219,9 @@ class SystemConfig(ConfigWithNumpy):
     images_names: List[str]
     valid_extensions: Tuple[str, ...]
 
+class ExportingConfig(ConfigWithNumpy):
+    cols_name: List[str]
+
 class MasterConfig(ConfigWithNumpy):
     system_config: SystemConfig
     pipeline_secuence: PipelineConfig
@@ -228,3 +230,4 @@ class MasterConfig(ConfigWithNumpy):
     modules: ModulesConfig
     utils: UtilsConfig
     log_debug: DebugOutputs
+    exporting_config: ExportingConfig

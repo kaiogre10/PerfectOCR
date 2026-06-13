@@ -121,6 +121,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         
         except Exception as e:
             logger.critical(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
+        context = {}
         return False
 
     # def validate_polygons(self, img: np.ndarray[Any, np.dtype[np.uint8]], polygons_list: List[Dict[str, Any]], manager: DataFormatter, context: Dict[str, Any]) -> List[Dict[str, Any]]:

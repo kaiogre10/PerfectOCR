@@ -1,48 +1,52 @@
 # services/config_service.py
 import yaml
-from typing import Dict, Any, cast, List, Set, Tuple
+from typing import Dict, Any, cast, List, Set, Tuple, FrozenSet
 from functools import cached_property
 from config.config_models import MasterConfig
 import logging
+
+elemental_worker = "image_loader"
+det: str = "geometry_detector"
+ocr_workers: Set[str] = set(["polygon_extractor", "paddle_wrapper", det])
+full_ocr: FrozenSet[str] = frozenset(ocr_workers.union(["data_finder"]))
+min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set(elemental_worker))) # "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"
 
 logger = logging.getLogger(__name__)
 
 class ConfigService:
     """Gestor de los parametros de configuración"""
-    def __init__(self, config_path: str, TEST_MODE: bool, output_paths: List[str]):
+    def __init__(self, config_path: str, TEST_MODE: bool):
         validated_config = self._load_and_validate_yaml(config_path)
         self.config = validated_config.model_dump()
         if not self.system_config:
+            logger.error("No hay rutas input")
             self.config = {}
-        elemental_worker: Set[str] = {"image_loader"}
-        elemental_params = elemental_worker.issubset(self.create_stager[0][1])
-        self.det = {"geometry_detector"}
-        ocr_workers: Set[str] = {"polygon_extractor", "paddle_wrapper"}
-        self.ocr_workers = ocr_workers.union(self.det)
-        self.min_workers: Set[str] = self.ocr_workers.union(elemental_worker) #"lineal", "vectorizer", "cos_sim", "table_structurer"
+            
+        elemental_params = elemental_worker in self.create_stager[0][1]
         self.no_modules = (elemental_params is False) and (TEST_MODE is True)
-        self.enable_outputs = True if output_paths else False
-        self.active_full_ocr = self.ocr_workers.issubset(self.all_workers)
-        
+        self.active_full_ocr = ocr_workers.issubset(self.all_workers)
+        self.config = self.validate_config(TEST_MODE, elemental_params)
+
+    def validate_config(self, TEST_MODE: bool, elemental_params: bool) -> Dict[str, Any]:
         if not TEST_MODE and not elemental_params:
             logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
-            self.config = {}
+            return {}
 
         elif TEST_MODE and not elemental_params:
             logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. '{self.log_active_areas()}'")
-            self.config = self.config
+            return self.config
             
         elif TEST_MODE:
             logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. Modulos: '{self.log_active_areas()}'")
-            self.config = self.config
+            return self.config
 
         elif not self.no_modules and self._validate_min_workers():
             logger.warning(f"MODO PRODUCCIÓN ACTIVADO, se realizarán validaciones robustas. Stages activas: '{self.log_active_areas()}'")
-            self.config = self.config
+            return self.config
         else:
             logger.error(f"Error de configuración")
-            self.config = {}
-                
+            return {}
+        
     def _load_and_validate_yaml(self, config_path: str) -> MasterConfig:
         """Carga YAML y valida con Pydantic - ROBUSTEZ."""
         try:
@@ -78,6 +82,10 @@ class ConfigService:
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
+    
+    @cached_property
+    def exporting_config(self) -> Dict[str, Any]:
+        return self.config.get("exporting_config", {})
 
     @cached_property
     def logs(self) -> Dict[str, Any]:
@@ -111,15 +119,12 @@ class ConfigService:
         if not self.all_workers:
             return {}
 
-        finder: Set[str] = {"data_finder"}
-        full_ocr = self.ocr_workers.union(finder)
-
-        if not self.det.issubset(self.all_workers):
-            # logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
+        if det not in self.all_workers:
+            logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
             return {}
 
         if full_ocr.issubset(self.all_workers):
-            # logger.debug("Configuración: OCR completo + Word Finder")
+            logger.debug("Configuración: OCR completo + Word Finder")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": True,
@@ -128,7 +133,7 @@ class ConfigService:
             }
 
         if self.active_full_ocr:
-            # logger.debug("Configuración: OCR completo sin Word Finder")
+            logger.debug("Configuración: OCR completo sin Word Finder")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": False,
@@ -136,7 +141,7 @@ class ConfigService:
                 "activate_det": True
             }
 
-        # logger.debug("Configuración: Solo modelo de detección")
+        logger.debug("Configuración: Solo modelo de detección")
         return {
             "models_config": self.config.get("models_config", {}),
             "activate_wf": False,
@@ -200,7 +205,7 @@ class ConfigService:
             return {
                 **self.modules_config.get("vectorization", {}),
                 **self.enabled_outputs.get("vectorization_outputs", {}),
-                **self.utils_config,
+                **self.exporting_config,
                 "vector_stage": self.workers_order["vector_stage"]
             }
         
@@ -228,11 +233,11 @@ class ConfigService:
             if not self.workers_order:
                 logger.critical("No hay configuración de workers disponible")
                 return False
-            elif self.min_workers.issubset(self.all_workers):
+            elif min_workers.issubset(self.all_workers):
                 return True
             else:
-                workers_missing: Set[str] = self.min_workers.difference(self.all_workers)
-                logger.critical(f"Faltan: {workers_missing} de los '{len(self.min_workers)}' workers mínimos para el pipeline")
+                workers_missing = min_workers.difference(self.all_workers)
+                logger.critical(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
                 return False
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
@@ -246,25 +251,26 @@ class ConfigService:
         return full_stage
     
     @cached_property
-    def all_workers(self) -> Set[str]:
-        all_workers = set(self.create_stager[0][1])
+    def all_workers(self) -> FrozenSet[str]:
+        img_prep = self.create_stager[0][1]
+        all_workers: Set[str] = set(img_prep)
 
         if self.create_stager[1][1]:
-            prep = set(self.create_stager[1][1])
+            prep = self.create_stager[1][1]
             all_workers.update(prep)
 
         if self.create_stager[2][1]:
-            ocr = set(self.create_stager[2][1])
+            ocr = self.create_stager[2][1]
             all_workers.update(ocr)
 
         if self.create_stager[3][1]:
-            vect = set(self.create_stager[3][1])
+            vect = self.create_stager[3][1]
             all_workers.update(vect)
 
         if self.create_stager[4][1]:
-            vect = set(self.create_stager[4][1])
-            all_workers.update(vect)
-        return all_workers
+            db = self.create_stager[4][1]
+            all_workers.update(db)
+        return frozenset(all_workers)
         
     def log_active_areas(self):
         stages_list: List[str] = []

@@ -65,6 +65,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             return True
         except Exception as e:
             logger.error(f"Error en paddle OCR: {e}", exc_info=True)
+            context = {}
         return False
         
     def recognize_text_from_batch(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, Dict[str, Any]]:
@@ -97,7 +98,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} | '{text}' | '{(confidence*100.0):.4f}%' ")
                     continue
                 else:
-                    norm_text = normalice_text(text)
+                    norm_text = normalice_text(text, False)
                     raw_map[polygon_ids[idx]] = {"text": norm_text.strip()}
                     # logger.info(f"OCR FILTRO: {polygon_ids[idx]}: '{text}' -> '{norm_text}', CONF: {confidence*100.0} %")
                     continue

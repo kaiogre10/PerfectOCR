@@ -1,15 +1,16 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-    input,
+    # input,
     input2,
-     input3,
+    #  input3,
 #    /media/kaiogre05/DATA/data/tickets_nuevo
   ]
   images_names: [
 #     AAAA0061,
+    # AAAA0006,
 #     AAAC0030,
-#    AAAA0040,
+   AAAA0040,
 #    AAAC0043,
 #     AAAA0058,
 #   AAAC0037,
@@ -49,7 +50,7 @@ pipeline_secuence:
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-#    - "collector"
+    - "collector"
 
   db_stage:
     # - "db_service"
@@ -220,7 +221,6 @@ modules:
 
     math_max:
       row_relative_tolerance: "0.10"
-      cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm"]
 
 utils:
   dpi_range: [100, 200, 300, 400, 600, 1200]
@@ -228,3 +228,7 @@ utils:
   percentile: [0.10, 0.99]
   white: [255, 255, 255]
   black: [0, 0, 0]
+  
+exporting_config:
+  cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
+  storage_dll: ["core", "utils", "compiled_utils", "storage.dll"]

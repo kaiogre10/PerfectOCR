@@ -20,6 +20,9 @@ class DataFormatter:
         self.table_lines_log = logs_config.get("table_lines", False)
         self.table_geo_log = logs_config.get("table_geo", False)
         self.table_correct_log = logs_config.get("table_correct", False)
+
+    def reset_data(self) -> None:
+        self.workflow: Optional[WorkflowData] = None
         
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
@@ -36,7 +39,7 @@ class DataFormatter:
                 binary=metadata.get("binary", False)
             )
             table_data_obj = StructuredData(
-                df_table=pd.DataFrame(),
+                df_table=None,
                 global_data={}
             )
             self.workflow = WorkflowData(
@@ -398,7 +401,7 @@ class DataFormatter:
                 return False
 
             if df.empty and not key_data:
-                updated_data = StructuredData(df_table=pd.DataFrame(), global_data={})
+                updated_data = StructuredData(df_table=None, global_data={})
                 self.workflow.table_data = dataclasses.replace(updated_data)
                 logger.error("Sin DATA FRAME NI DATOS")
                 return False
@@ -434,14 +437,17 @@ class DataFormatter:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
         return False
         
-    def get_final_data(self) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    def get_final_data(self): #Tuple[str, Dict[str, Any]]:
         structured_data = self.workflow.table_data if self.workflow else None
         if structured_data is None:
-            return (pd.DataFrame(), {})
+            return ""
         
-        df: pd.DataFrame = structured_data.df_table
-        db_values = structured_data.global_data
-        if df.empty:
-            return (pd.DataFrame(), {})
+        df: Optional[pd.DataFrame] = structured_data.df_table
+        # db_values = structured_data.global_data
+        if df is None or df.empty:
+            return ""
         
-        return (df, db_values)
+        structured_data.df_table = None
+        structured_data = None
+        # logger.info(f"ARRAY STRING: {np.array2string(arr)}")
+        return df

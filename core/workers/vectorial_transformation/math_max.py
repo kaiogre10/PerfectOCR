@@ -26,7 +26,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('math_max', {})
-        all_cols_name: List[str] = worker_config["cols_name"]
+        all_cols_name: List[str] = config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3]
         self.dec_cols_name: FrozenSet[str] = frozenset({self.cant_name, self.pu_name, self.mtl_name})
         tol: str = worker_config.get('row_relative_tolerance', "")
@@ -50,10 +50,13 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             if corrected_df.empty:
                 logger.debug(f"SE DEVOLVIÓ DATA FRAME VACÍO, TIEMPO: {time.perf_counter() - start_time:.6f}'s")
+                context = {}
                 return False
 
             if manager.save_final_output(corrected_df, {}):
+                context = {}
                 # logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
+
                 logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
                 if self.output:
                     worker_name = context.get("worker_name") or "paddle_wrapper"
@@ -61,11 +64,9 @@ class MatrixSolver(VectorizationAbstractWorker):
                     save_debug_table(corrected_df, file_name, worker_name, self.apile)
                 return True
 
-            logger.error("No se pudo guardar data frame")
-            return False
-
         except Exception as e:
             logger.debug(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
+            context = {}
         return False
 
     def solve(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
@@ -93,6 +94,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             cols_list: List[str] = list(df.columns)
             text_col: str = cols_list[int(text_col_idx[0])]
             df.rename(columns={text_col: self.product_name}, inplace = True)
+            logger.info(f"DF PERFECTO")
             return df
         else:
             if df.shape == (arithmetical_rows.size, arithmetical_cols.size):
@@ -612,7 +614,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         fake_size = fake_unique_idx.size
         double_size = double_idx_final.size
         if fake_size < 1 and double_size < 1:
-            logger.info("SIN CELDAS DOBLES O MEZCLADAS")
+            # logger.info("SIN CELDAS DOBLES O MEZCLADAS")
             df_copy = context["df_copy"]
             return (df, df_copy)
 

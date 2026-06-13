@@ -6,6 +6,7 @@ from services.config_service import ConfigService
 from app.models_manager import ModelsManager
 from services.db_service import DataBaseService
 import services.system_service as system_service
+import services.storage_service as storage_services
 from core.utils.text_utils import format_elapsed_time
 import time
 import pandas as pd # type: ignore
@@ -19,7 +20,7 @@ def set_project_root(project_root: str):
 
 logger = logging.getLogger(__name__)
 
-def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) -> List[str]:
+def activate_main(config_path: str, TEST_MODE: bool) -> List[str]:
     t0 = time.perf_counter()
     try:
         if not config_path or not PROJECT_ROOT:
@@ -28,7 +29,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
             return  []
         
         # 1. Main activa al Configurador y valida parametros mínimos
-        config_services = ConfigService(config_path, TEST_MODE, output_paths)
+        config_services = ConfigService(config_path, TEST_MODE)
         
         # 3. Service analiza y reporta
         workflow_report = system_service.count_and_plan(config=config_services.system_config)
@@ -42,7 +43,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
         if models_config:
             models_manager = ModelsManager.get_instance()
             if not models_manager.initialize_models(models_config, PROJECT_ROOT):
-                logger.info("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
+                logger.error("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
                 system_service.cleanup_project_cache()
                 return []
         
@@ -63,6 +64,7 @@ def activate_main(output_paths: List[str], config_path: str, TEST_MODE: bool) ->
             final_df_list = transform_image_to_df(processing_builder, workflow_report)
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
             if final_df_list and config_services.db_config:
+                storage_services.set_config(config_services.exporting_config)
                 db_service = DataBaseService(dsn=None)
                 if db_service.test_connection():
                     system_service.clean_db(db_service)

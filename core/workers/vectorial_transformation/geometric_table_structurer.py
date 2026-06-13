@@ -70,10 +70,10 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     context["df_copy"] = df_copy
                     logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     return True
-                return False
 
         except Exception as e:
             logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
+            context = {}
         return False
 
     def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], target_columns: int) -> List[List[float]]:
