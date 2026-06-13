@@ -222,6 +222,7 @@ class SystemConfig(ConfigWithNumpy):
 class ExportingConfig(ConfigWithNumpy):
     cols_name: List[str]
     storage_dll: List[str]
+    destinations: List[str]
 
 class MasterConfig(ConfigWithNumpy):
     system_config: SystemConfig

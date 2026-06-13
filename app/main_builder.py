@@ -8,8 +8,8 @@ from services.db_service import DataBaseService
 import services.system_service as system_service
 import services.storage_service as storage_services
 from core.utils.text_utils import format_elapsed_time
+from app.conections_builder import ConectorsBuilder
 import time
-import pandas as pd # type: ignore
 import logging
 
 PROJECT_ROOT = ""
@@ -63,6 +63,8 @@ def activate_main(config_path: str, TEST_MODE: bool) -> List[str]:
             # 7. Main ejecuta procesamiento secuencial usando el builder único
             # t4 = time.perf_counter()
             final_payload_list = transform_image_to_df(processing_builder, workflow_report)
+            conections_service = ConectorsBuilder(config_services.exporting_config)
+            conections_service.set_up_connectors(final_payload_list)
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
             if final_payload_list and config_services.db_config:
                 db_service = DataBaseService(dsn=None)
@@ -114,9 +116,9 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
     total_images = len(image_info_list)
     logger.info(f"{total_images} IMAGENES PARA PROCESAR")
 
-    final_results: List[Tuple[int, int]] = []
-    failed_images: List[str] = []
+    succes_images: List[str] = []
     images_names = [names["name"][:-4] for names in image_info_list]
+    final_results: List[Tuple[int, int]] = []
     start_time = time.perf_counter()
 
     for i, image_data in enumerate(image_info_list):
@@ -125,9 +127,9 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
         image_name = images_names[i]
         if payload_dirs is None:
             logger.error(f"Fallo al procesar imagen: '{image_name}'")
-            failed_images.append(image_name)
             continue
         else:
+            succes_images.append(image_name)
             final_results.append(payload_dirs)
             logger.info(f"IMAGEN '{image_name}', '# {(i + 1)}' de '{total_images}' imágenes")
             continue
@@ -136,9 +138,9 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
     mean_process = (total_processing_time / total_images)
     time_formatted = format_elapsed_time(total_processing_time)
 
-    succcess_image = set(images_names).difference(set(failed_images))
-    total_fails = len(failed_images)
-    total_success = total_images - total_fails
+    failed_images = set(images_names).difference(set(succes_images))
+    total_success = len(failed_images)
+    total_fails = total_images - total_success
 
     if total_success == total_images:
         logger.info(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_formatted}, promedio: {mean_process:.6f}'s")
@@ -146,10 +148,11 @@ def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str,
         logger.error(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, TIEMPO: {time_formatted}")
     else:
         logger.info(f"'{total_success} / {total_images}' Archivos Digitalizados en: {time_formatted}, promedio: {mean_process:.6f}'s / documento")
-        logger.info(f"IMAGENES EXITOSAS: {list(succcess_image)}")
-        logger.info(f"IMAGENES FALLADAS: {failed_images}")
-        
+        logger.info(f"IMAGENES EXITOSAS: {total_success}")
+        logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")
+    
+    logger.info(f"Direcciónes exitosas")
     return final_results
     
-def insert_data(db_service: DataBaseService, final_df_list: List[Tuple[pd.DataFrame, Dict[str, Any]]]):
+def insert_data(db_service: DataBaseService, final_df_list: List[Tuple[Any]]):
     return db_service.insert_payload(final_df_list)

@@ -41,7 +41,7 @@ class ConfigService:
             return self.config
 
         elif not self.no_modules and self._validate_min_workers():
-            logger.warning(f"MODO PRODUCCIÓN ACTIVADO, se realizarán validaciones robustas. Stages activas: '{self.log_active_areas()}'")
+            logger.debug(f"MODO PRODUCCIÓN ACTIVADO, se realizarán validaciones robustas. Stages activas: '{self.log_active_areas()}'")
             return self.config
         else:
             logger.error(f"Error de configuración")

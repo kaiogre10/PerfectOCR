@@ -13,9 +13,7 @@ load_dotenv()
 
 class DataBaseService:
     def __init__(self, dsn: Optional[str] = None):
-        """
-        dsn opcional; si no, toma de env: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
-        """
+        """dsn opcional; si no, toma de env: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS"""
         self.dsn = dsn or self._build_dsn_from_env()
 
     def _build_dsn_from_env(self) -> str:

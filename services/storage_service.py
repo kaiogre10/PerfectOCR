@@ -40,16 +40,16 @@ def storage_data(data_to_flat: Any) -> Tuple[int, int]:
     Retorna una tupla con la dirección de memoria y el tamaño del buffer.
     """
     flat_data = data_to_flat.to_numpy(dtype=str, copy=False).ravel(order="C")
-    # logger.debug(f"Flat data:'\n"f"TAMAÑO BYTES ARRAY: {flat_data.nbytes}'B\n"f"TAMAÑO DF: {data_to_flat.memory_usage(index=True, deep=True).sum()}'B")
-    ptr, buff_size = _request_storage(flat_data)
+    buff_size = sum(len(x.encode("utf-8")) for x in flat_data)
+    logger.info(f"Flat data:'{flat_data}'\n"f"TAMAÑO BYTES ARRAY: {flat_data.nbytes}'B\n"f"TAMAÑO DF: {data_to_flat.memory_usage(index=True, deep=True).sum()}'B\n"f"TAMAÑO BYTES MEMORIA: '{buff_size}'B'")
+    ptr, buff_size = _request_storage(flat_data, buff_size)
     return ptr, buff_size
 
-def _request_storage(flat_data: Any) -> Tuple[int, int]:
+def _request_storage(flat_data: Any, buff_size: int) -> Tuple[int, int]:
     """
     Solicita memoria y escribe bytes en memoria apartada por C++.
     Retorna la dirección de memoria (int) y el tamaño del buffer (int).
     """
-    buff_size = sum(len(x.encode("utf-8")) for x in flat_data)
     try:
         ptr = LIB.storage_reserve(buff_size)
     except MemoryError as e:
@@ -76,6 +76,6 @@ def _request_storage(flat_data: Any) -> Tuple[int, int]:
     #     return (ptr, buff_size)
 
     # logger.info(f"\n"f"Dirección: '{ptr} | '{hex(ptr)}', TAMAÑO EN BYTES: '{buff_size}'B'")
-    LIB.storage_free(ptr)
+    # LIB.storage_free(ptr)
 
     return ptr, buff_size

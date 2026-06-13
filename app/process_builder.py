@@ -17,9 +17,9 @@ class ProcessingBuilder:
         self.preprocessing_stager = preprocessing_stager
         self.ocr_stager = ocr_stager
         self.vectorization_stager = vectorization_stager
-        self.logs_config = logs_config
         self.time_stages_log = logs_config.get("time_stages_log")
         self.time_worker_log = logs_config.get("time_worker_log")
+        self.logs_config = logs_config
         
     def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[int, int]]:
         """
@@ -74,7 +74,10 @@ class ProcessingBuilder:
                     logger.info(f"Vectorización completada en: {vect_time:.6f}s")
 
             img_results = manager.get_final_data()
-            (ptr, buff_size) = storage_service.storage_data(img_results)
+            ptr, buff_size = storage_service.storage_data(img_results)
+            if ptr < 1 or buff_size < 1:
+                return None
+            
             return (ptr, buff_size)
             
         except Exception as e:
