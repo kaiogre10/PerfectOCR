@@ -231,4 +231,4 @@ utils:
   
 exporting_config:
   cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
-  storage_dll: ["core", "utils", "compiled_utils", "storage.dll"]
+  storage_dll: ["core", "utils", "compiled_utils", "buffer_handler.dll"]

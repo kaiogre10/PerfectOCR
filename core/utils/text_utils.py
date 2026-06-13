@@ -317,12 +317,15 @@ def get_cuants(text: str) -> str:
 
 def format_cuant(text: str) -> str:
     """Convierte strings numericos a cuantitativos y limpia los que ya son cuantitativos para usar Decimal"""
-    if text.isdecimal():
+    if text.isalpha():
+        logger.debug(f"TEXTO ALFABÉTICO NO SE FORMATEA: '{text}'")
+        return text
+    elif text.isdecimal():
         return (text + ".00").strip()
     text_0 = _clean_currency.sub("", text).strip()
     cuant_txt = _correct_numbers(text_0)
     if not cuant_txt.replace(".", "").isdecimal() or len(cuant_txt) > len(text):
-        logger.warning(f"CARACTER INTRUSO EN '{text}' NO SE PUDO FORMATEAR")
+        # logger.warning(f"CARACTER INTRUSO EN '{text}' NO SE PUDO FORMATEAR")
         return text
     else:
         return cuant_txt

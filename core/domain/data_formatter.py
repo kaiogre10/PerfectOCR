@@ -409,12 +409,12 @@ class DataFormatter:
             if not df.empty and key_data:
                 data_obj = StructuredData(df_table=df, global_data=key_data)
                 self.workflow.table_data = dataclasses.replace(data_obj)
-                logger.info("ACTUALIZADOS AMBOS CAMPOS")
+                # logger.info("ACTUALIZADOS AMBOS CAMPOS")
 
                 if self.table_correct_log:
                     table_f = self.workflow.table_data.df_table
                     global_data = self.workflow.table_data.global_data
-                    logger.info("Tabla recibida:\n"f"{table_f.to_string(index=True)}"
+                    logger.debug("Tabla recibida:\n"f"{table_f.to_string(index=True)}"
                     "\n"f"GLOBAL_DATA:\n"f"{global_data}")
                 return True
             

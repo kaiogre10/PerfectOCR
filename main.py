@@ -13,8 +13,8 @@ cache_service.set_project_root(PROJECT_ROOT)
 
 import services.output_service as output_service
 
-import services.storage_service as storage_services
-storage_services.set_project_root(PROJECT_ROOT)
+import services.storage_service as storage_service
+storage_service.set_project_root(PROJECT_ROOT)
 
 import services.logs_service as log_service
 log_service.setup_logging(PROJECT_ROOT)

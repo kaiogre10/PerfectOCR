@@ -11,11 +11,14 @@
 *.xml
 *.iml
 *.cursorignore
-#*.yaml
-#*.sql
+*.yaml
+*.sql
 *.aiignore
 *.pyd
 *.so
+*.dll
+*.ilk
+*.pdb
 
 # Ignorar archivos especificos
 perfectocr.txt
@@ -31,8 +34,9 @@ perfectocr.txt
 .github/
 .github/chatmodes/
 .aiassistant/
+.vs/
 build/
-conectors/excel_conector/
+out/
 #documentation/
 #test/
 #tools/
@@ -44,8 +48,7 @@ input2/
 input3/
 output/
 migrations/
-memory_managment/
-conectors/
+CMakeFiles/
 
 # secrets
 .env

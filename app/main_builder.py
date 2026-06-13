@@ -52,6 +52,7 @@ def activate_main(config_path: str, TEST_MODE: bool) -> List[str]:
             stagers_factory = StagersFactory(manager_config=config_services.manager_config, project_root=PROJECT_ROOT)
             
             # 6. CREAR UN ÚNICO BUILDER REUTILIZABLE
+            storage_services.set_config(config_services.exporting_config)
             logs_config = config_services.logs_debug
             processing_builder = create_single_builder(stagers_factory=stagers_factory, logs_config=logs_config)
             if not processing_builder:
@@ -61,14 +62,13 @@ def activate_main(config_path: str, TEST_MODE: bool) -> List[str]:
         
             # 7. Main ejecuta procesamiento secuencial usando el builder único
             # t4 = time.perf_counter()
-            final_df_list = transform_image_to_df(processing_builder, workflow_report)
+            final_payload_list = transform_image_to_df(processing_builder, workflow_report)
             # logger.info(f"Procesamiento builder principal términado en {time.perf_counter()-t4:.6f}s")
-            if final_df_list and config_services.db_config:
-                storage_services.set_config(config_services.exporting_config)
+            if final_payload_list and config_services.db_config:
                 db_service = DataBaseService(dsn=None)
                 if db_service.test_connection():
                     system_service.clean_db(db_service)
-                    if not insert_data(db_service, final_df_list):
+                    if not insert_data(db_service, final_payload_list):
                         logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
 
             system_service.cleanup_project_cache()
@@ -108,27 +108,27 @@ def create_single_builder(stagers_factory: StagersFactory, logs_config: Dict[str
         logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
         return None
 
-def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str, Any]) -> List[Tuple[pd.DataFrame, Dict[str, Any]]]:
+def transform_image_to_df(builder: ProcessingBuilder, workflow_report: Dict[str, Any]):
     """Ejecuta el procesamiento secuencial reutilizando el builder."""
     image_info_list: List[Dict[str, Any]] = workflow_report['image_info']
     total_images = len(image_info_list)
     logger.info(f"{total_images} IMAGENES PARA PROCESAR")
 
-    final_results: List[Tuple[pd.DataFrame, Dict[str, Any]]] = []
+    final_results: List[Tuple[int, int]] = []
     failed_images: List[str] = []
     images_names = [names["name"][:-4] for names in image_info_list]
     start_time = time.perf_counter()
 
     for i, image_data in enumerate(image_info_list):
         # Procesar imagen individualmente
-        final_df = builder.process_single_image(image_data)
+        payload_dirs = builder.process_single_image(image_data)
         image_name = images_names[i]
-        if final_df is None:
+        if payload_dirs is None:
             logger.error(f"Fallo al procesar imagen: '{image_name}'")
             failed_images.append(image_name)
             continue
         else:
-            final_results.append(final_df)
+            final_results.append(payload_dirs)
             logger.info(f"IMAGEN '{image_name}', '# {(i + 1)}' de '{total_images}' imágenes")
             continue
 

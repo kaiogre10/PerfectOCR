@@ -1,4 +1,4 @@
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Tuple
 import logging
 import os
 import ctypes
@@ -19,40 +19,63 @@ def set_config(config: Dict[str, Any]):
     storage_dll_path = config["storage_dll"] 
     storage_dll = os.path.join(PROJECT_ROOT, *storage_dll_path)
     global LIB
-    LIB =  ctypes.CDLL(storage_dll)
+    try:
+        LIB =  ctypes.CDLL(storage_dll)
+    except OSError as e:
+        logger.warning(f"ERROR CARGANDO EL BINARIO: {e}", exc_info=True)
+        return None
+        
     LIB.storage_reserve.argtypes = [ctypes.c_size_t]
     LIB.storage_reserve.restype = ctypes.c_void_p
     LIB.storage_commit.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
     LIB.storage_commit.restype = None
+    LIB.storage_free.argtypes = [ctypes.c_void_p]
+    LIB.storage_free.restype = None
     
 logger = logging.getLogger(__name__)
 
-def storage_data(data_to_flat: Any) -> tuple[int, int]:
+def storage_data(data_to_flat: Any) -> Tuple[int, int]:
     """
     Interfaz para guardar la información generada.
     Retorna una tupla con la dirección de memoria y el tamaño del buffer.
     """
     flat_data = data_to_flat.to_numpy(dtype=str, copy=False).ravel(order="C")
-    return _request_storage(flat_data)
+    # logger.debug(f"Flat data:'\n"f"TAMAÑO BYTES ARRAY: {flat_data.nbytes}'B\n"f"TAMAÑO DF: {data_to_flat.memory_usage(index=True, deep=True).sum()}'B")
+    ptr, buff_size = _request_storage(flat_data)
+    return ptr, buff_size
 
-def _request_storage(flat_data: Any) -> tuple[int, int]:
+def _request_storage(flat_data: Any) -> Tuple[int, int]:
     """
     Solicita memoria y escribe bytes en memoria apartada por C++.
     Retorna la dirección de memoria (int) y el tamaño del buffer (int).
     """
     buff_size = sum(len(x.encode("utf-8")) for x in flat_data)
+    try:
+        ptr = LIB.storage_reserve(buff_size)
+    except MemoryError as e:
+        logger.warning(f"La DLL de C++ no pudo reservar la memoria solicitada: {e}", exc_info=True)
+        return (0, 0)
     
-    ptr = LIB.storage_reserve(buff_size)
-    if not ptr:
-        raise MemoryError("La DLL de C++ no pudo reservar la memoria solicitada.")
+    try:
+        offset = 0
+        for x in flat_data:
+            b = x.encode("utf-8")
+            byte_len = len(b)
+            ctypes.memmove(ptr + offset, b, byte_len)
+            offset += byte_len
 
-    offset = 0
-    for x in flat_data:
-        b = x.encode("utf-8")
-        byte_len = len(b)
-        ctypes.memmove(ptr + offset, b, byte_len)
-        offset += byte_len
-
-    LIB.storage_commit(ptr, buff_size)
+        LIB.storage_commit(ptr, buff_size)
+    except BufferError as e:
+        logger.warning(f"Error escribiendo bytecode en memoria asignada por C++: {e}", exc_info=True)
+        return (0, 0)
     
+    # try:
+    #     bytes_leidos = ctypes.string_at(ptr, buff_size)
+    # except MemoryError as e:
+    #     logger.warning(f"Error leyendo bytecode: {e}", exc_info=True)
+    #     return (ptr, buff_size)
+
+    # logger.info(f"\n"f"Dirección: '{ptr} | '{hex(ptr)}', TAMAÑO EN BYTES: '{buff_size}'B'")
+    LIB.storage_free(ptr)
+
     return ptr, buff_size
