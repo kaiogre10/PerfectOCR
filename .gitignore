@@ -4,7 +4,7 @@
 *.pyc
 *.idea
 *.ini
-*.txt
+# *.txt
 *.png
 *.jpg
 *.jpeg
