@@ -1,15 +1,15 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-    input,
+#    input,
     input2,
-     input3,
+#     input3,
 #    /media/kaiogre05/DATA/data/tickets_nuevo
   ]
   images_names: [
-    AAAA0061,
-    AAAA0006,
-    AAAC0030,
+#    AAAA0061,
+#    AAAA0006,
+#    AAAC0030,
    AAAA0040,
 #    AAAC0043,
 #     AAAA0058,
@@ -231,7 +231,7 @@ utils:
   
 exporting_config:
   cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
-  storage_dll: ["core", "utils", "compiled_utils", "buffer_handler.dll"]
+  storage_bin: ["core", "utils", "compiled_utils", "buffer_handler"]
   destinations:
     - postgre
     - excel

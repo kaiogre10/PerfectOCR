@@ -14,9 +14,23 @@ add_library(buffer_handler SHARED
     "buffer_handler.h"
 )
 
+set(DESTINY "${CMAKE_CURRENT_SOURCE_DIR}/../core/utils/compiled_utils")
+
 # Las rutas de salida hacia Cython se mantienen intactas
 set_target_properties(buffer_handler PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../core/utils/compiled_utils"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../core/utils/compiled_utils"
-    WINDOWS_EXPORT_ALL_SYMBOLS ON
+        PREFIX ""
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
 )
+
+if (WIN32)
+  set_target_properties(buffer_handler PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${DESTINY}"
+  ARCHIVE_OUTPUT_DIRECTORY "${DESTINY}"
+  )
+
+else()
+  set_target_properties(buffer_handler PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY "${DESTINY}"
+  )
+
+endif()

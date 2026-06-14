@@ -2,6 +2,7 @@ from typing import List, Any, Dict, Tuple
 import logging
 import os
 import ctypes
+from services.system_service import get_so
 
 PROJECT_ROOT: str = ""
 OUTPUT_PATHS: List[str] = []
@@ -16,11 +17,16 @@ def set_output_paths(output_paths: List[str]):
     OUTPUT_PATHS = output_paths # type: ignore
 
 def set_config(config: Dict[str, Any]):
-    storage_dll_path = config["storage_dll"] 
-    storage_dll = os.path.join(PROJECT_ROOT, *storage_dll_path)
-    global LIB
+    binary_extension: str = get_so()
+    storage_bin_path = config["storage_bin"]
+
+    binary_ext = storage_bin_path.pop(-1)
+    binary_extension = (binary_ext + binary_extension)
+    storage_bin = os.path.join(PROJECT_ROOT, *storage_bin_path, binary_extension)
+
+    global LIB # type: ignore
     try:
-        LIB =  ctypes.CDLL(storage_dll)
+        LIB = ctypes.CDLL(storage_bin)
     except OSError as e:
         logger.warning(f"ERROR CARGANDO EL BINARIO: {e}", exc_info=True)
         return None

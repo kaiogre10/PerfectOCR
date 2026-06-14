@@ -1,10 +1,9 @@
-﻿// El include debe reflejar el nuevo nombre del archivo
-#include "buffer_handler.h"
+﻿#include "buffer_handler.h"
 #include <cstdlib>
 
 extern "C" {
 
-    void* storage_reserve(size_t size) {
+    [[nodiscard]] void* storage_reserve(size_t size) {
         if (size == 0) return nullptr;
         return std::malloc(size);
     }

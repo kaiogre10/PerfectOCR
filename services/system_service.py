@@ -2,7 +2,7 @@
 import shutil
 import os
 import logging
-# from collections import Counter
+import platform
 from typing import Set, Tuple, Optional
 from services.db_service import DataBaseService
 from psycopg2 import sql
@@ -28,8 +28,8 @@ valid_extensions: Tuple[str, ...] = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '
 def _can_delete_entry(path: str) -> bool:
     """
     Verifica permisos mínimos de borrado:
-    - Para borrar un archivo/carpeta se requiere permiso de escritura + ejecución
-      en su carpeta padre.
+    Para borrar un archivo/carpeta se requiere permiso de escritura + ejecución
+    en su carpeta padre.
     """
     parent = os.path.dirname(path) or "."
     return os.access(parent, os.W_OK | os.X_OK)
@@ -250,7 +250,11 @@ def get_images_in_dir(input_path: str, files_list: List[str]) -> List[str]:
     # logger.info(f"INTER IDX: {files_in_dir}")
     return files_name_dir if not files_in_dir else files_in_dir
 
-# def get_process_report(workers_list: List[str]):
-#     workers_fails = dict(Counter(workers_list))
-#     logger.info(f"FALLOS POR WORKERS: {workers_fails}")
-#     return None
+def get_so() -> str:
+    if platform.system() == "Windows":
+        return ".dll"
+    elif platform.system() == "Linux":
+        return ".so"
+    else:
+        # MacOS
+        return ".dylib"

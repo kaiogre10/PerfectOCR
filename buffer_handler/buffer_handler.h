@@ -1,13 +1,13 @@
-﻿// Actualización de los Include Guards a la nueva nomenclatura
-#ifndef BUFFER_HANDLER_H
+﻿#ifndef BUFFER_HANDLER_H
 #define BUFFER_HANDLER_H
 
 #include <cstddef>
 
+// Configuración dinámica de exportación según el Sistema Operativo
 #if defined(_WIN32)
-#define EXPORT_API __declspec(dllexport)
+    #define EXPORT_API __declspec(dllexport)
 #else
-#define EXPORT_API __attribute__((visibility("default")))
+    #define EXPORT_API __attribute__((visibility("default")))
 #endif
 
 extern "C" {
