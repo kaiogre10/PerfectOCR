@@ -1,51 +1,51 @@
-import psycopg2
+# import psycopg2
 import logging
-import os
-import pandas as pd # type: ignore
+# import os
+import pandas as pd  # type: ignore
 from typing import Optional, Dict, Tuple, List, Any
-from dotenv import load_dotenv
-from contextlib import contextmanager
-from psycopg2.extras import execute_values # type: ignore
+# from dotenv import load_dotenv
+# from contextlib import contextmanager
+# from psycopg2.extras import execute_values  # type: ignore
+# import ctypes
 
 logger = logging.getLogger(__name__)
 
-load_dotenv()
+# load_dotenv()
 
-class DataBaseService:
+class PostgreLocalConector:
     def __init__(self, dsn: Optional[str] = None):
         """dsn opcional; si no, toma de env: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS"""
-        self.dsn = dsn or self._build_dsn_from_env()
 
-    def _build_dsn_from_env(self) -> str:
-        host = os.getenv("DB_HOST")
-        port = os.getenv("DB_PORT")
-        dbname = os.getenv("DB_NAME")
-        user = os.getenv("DB_USER")
-        password = os.getenv("DB_PASS")
-        if not all([host, port, dbname, user, password]):
-            raise RuntimeError("Faltan variables de entorno para Postgres")
-        return f"host={host} port={port} dbname={dbname} user={user} password={password}"
-
-    @contextmanager
-    def get_connection(self):
-        conn = None
-        try:
-            conn = psycopg2.connect(self.dsn)
-            yield conn
-        finally:
-            if conn:
-                conn.close()
-    
-    def test_connection(self) -> bool:
-        try:
-            with self.get_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT 1")
-                    cur.fetchone()
-            return True
-        except Exception:
-            logger.warning("Sin conexión a Postgres")
-        return False
+    # def _build_dsn_from_env(self) -> str:
+    #     host = os.getenv("DB_HOST")
+    #     port = os.getenv("DB_PORT")
+    #     dbname = os.getenv("DB_NAME")
+    #     user = os.getenv("DB_USER")
+    #     password = os.getenv("DB_PASS")
+    #     if not all([host, port, dbname, user, password]):
+    #         raise RuntimeError("Faltan variables de entorno para Postgres")
+    #     return f"host={host} port={port} dbname={dbname} user={user} password={password}"
+    #
+    # @contextmanager
+    # def get_connection(self):
+    #     conn = None
+    #     try:
+    #         conn = psycopg2.connect(self.dsn)
+    #         yield conn
+    #     finally:
+    #         if conn:
+    #             conn.close()
+    #
+    # def test_connection(self) -> bool:
+    #     try:
+    #         with self.get_connection() as conn:
+    #             with conn.cursor() as cur:
+    #                 cur.execute("SELECT 1")
+    #                 cur.fetchone()
+    #         return True
+    #     except Exception:
+    #         logger.warning("Sin conexión a Postgres")
+    #     return False
 
     def insert_payload(self, payload: List[Tuple[pd.DataFrame, Dict[str, Any]]]) -> bool:
         """
@@ -78,7 +78,7 @@ class DataBaseService:
             return False
 
         logger.info("TABLA FINAL:\n"f"{df_con.to_string(index=True)}"
-            "\n"f"GLOBAL_DATA:\n"f"{all_data}")
+                    "\n"f"GLOBAL_DATA:\n"f"{all_data}")
 
         # Deduplicar maestros por su PK antes del bulk insert
         clientes_unicos: Dict[Any, Tuple[Any, Any, Any]] = {}
@@ -119,7 +119,8 @@ class DataBaseService:
         detalles_cols = ["id_registro", "cantidad_art", "producto_norm", "precio_unitario", "costo_tran"]
         detalles_records: List[Tuple[Any, ...]] = [
             tuple(row)  # type: ignore[reportUnknownArgumentType]
-            for row in df_con[detalles_cols].itertuples(index=False, name=None)  # type: ignore[reportUnknownVariableType]
+            for row in df_con[detalles_cols].itertuples(index=False, name=None)
+            # type: ignore[reportUnknownVariableType]
         ]
 
         try:
@@ -166,3 +167,14 @@ class DataBaseService:
         except Exception as e:
             logger.error("Error en insert_payload: %s", e, exc_info=True)
         return False
+
+    # def set_up_connectors(self, final_results: List[Tuple[int, int]]):
+    #     for i, _ in enumerate(final_results):
+    #         ptr, buff_size = final_results[i]
+    #         # try:
+    #         bytes_leidos = ctypes.string_at(ptr, buff_size)
+    #             # raise MemoryError("Error leyendo bytecode")
+    #         # except MemoryError as e:
+    #         #     logger.warning(f"Error leyendo bytecode: {e}", exc_info=True)
+    #         logger.info(f"BYTES_ALMACENADOS: '{bytes_leidos}'")
+    #     return None

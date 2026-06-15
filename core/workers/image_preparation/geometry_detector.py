@@ -4,7 +4,7 @@ import cv2
 # import time
 import numpy as np
 from typing import Dict, Any, Optional, List
-from app.models_manager import ModelsManager
+from app.models_builder import ModelsBuilder
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import binarice_img, make_contiguous, cropp_img # get_contours_values
@@ -30,14 +30,13 @@ class GeometryDetector(ImagePrepAbstractWorker):
     @property
     def engine(self) -> Optional[Any]:
         if self._engine is None:
-            paddle_manager = ModelsManager.get_instance()
+            paddle_manager = ModelsBuilder.get_instance()
             self._engine = paddle_manager.detection_engine
 
             if self._engine is None:
-                logger.error("GeometryDetector: Motor de detección no disponible en PaddleManager")
-        
-            logger.debug("GeometryDetector: Motor de detección obtenido del PaddleManager")
-    
+                logger.error("Motor de detección no disponible")
+                return None
+
         return self._engine
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

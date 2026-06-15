@@ -1,4 +1,4 @@
-# app/models_manager.py
+# app/models_builder.py
 import logging
 import os
 import threading
@@ -9,14 +9,14 @@ from core.utils.word_finder import WordFinder
 
 logger = logging.getLogger(__name__)
 
-class ModelsManager:
+class ModelsBuilder:
     _instance = None
     _lock = threading.Lock()
     
     def __init__(self):
         try:
-            if ModelsManager._instance is not None:
-                raise Exception("ModelsManager es un singleton. Usa get_instance()")
+            if ModelsBuilder._instance is not None:
+                raise Exception(f"{self.__class__.__name__} es un singleton. Usa get_instance()")
             self._detection_engine = None
             self._recognition_engine = None
             self._shared_engine = None
@@ -33,7 +33,7 @@ class ModelsManager:
         return cls._instance
 
     def initialize_models(self, config: Dict[str, Any], project_root: str) -> bool:
-        self.project_root = project_root
+        self.project_root = project_root # type: ignore
         init_time = time.perf_counter()
         try:
             # 1. Inicialización SELECTIVA de motores de Paddle

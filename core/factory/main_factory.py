@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 class MainFactory:
     """Factory universal que coordina todas las factories de módulos."""
-
     def __init__(self, modules_config: Dict[str, Any], project_root: str):
         self.modules_config = modules_config
         self.project_root = project_root

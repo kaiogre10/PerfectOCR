@@ -42,12 +42,12 @@ logger = logging.getLogger(__name__)
 
 def storage_data(data_to_flat: Any) -> Tuple[int, int]:
     """
-    Interfaz para guardar la información generada.
+    Interfaz pública para guardar la información generada.
     Retorna una tupla con la dirección de memoria y el tamaño del buffer.
     """
     flat_data = data_to_flat.to_numpy(dtype=str, copy=False).ravel(order="C")
     buff_size = sum(len(x.encode("utf-8")) for x in flat_data)
-    logger.info(f"Flat data:'{flat_data}'\n"f"TAMAÑO BYTES ARRAY: {flat_data.nbytes}'B\n"f"TAMAÑO DF: {data_to_flat.memory_usage(index=True, deep=True).sum()}'B\n"f"TAMAÑO BYTES MEMORIA: '{buff_size}'B'")
+    # logger.info(f"Flat data:'{flat_data}'\n"f"TAMAÑO BYTES ARRAY: {flat_data.nbytes}'B\n"f"TAMAÑO DF: {data_to_flat.memory_usage(index=True, deep=True).sum()}'B\n"f"TAMAÑO BYTES MEMORIA: '{buff_size}'B'")
     ptr, buff_size = _request_storage(flat_data, buff_size)
     return ptr, buff_size
 

@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, List
 from core.domain.data_models import Polygons
 from core.domain.data_formatter import DataFormatter
 from core.factory.abstract_worker import OCRAbstractWorker
-from app.models_manager import ModelsManager
+from app.models_builder import ModelsBuilder
 from core.utils.text_utils import normalice_text
 from core.utils.image_utils import elevate_dims, make_contiguous
 from services.output_service import save_text_debug
@@ -31,7 +31,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     @property
     def engine(self) -> Optional[Any]:
         if self._engine is None:
-            paddle_manager = ModelsManager.get_instance()
+            paddle_manager = ModelsBuilder.get_instance()
             self._engine = paddle_manager.recognition_engine
             
             if self._engine is None:

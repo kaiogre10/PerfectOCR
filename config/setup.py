@@ -4,7 +4,7 @@ from setuptools import setup, Extension
 from Cython.Build import cythonize
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(BASE_DIR)  # ← Sube a la raíz
+PROJECT_ROOT: str = os.path.dirname(BASE_DIR)  # ← Sube a la raíz
 
 # Añade PROJECT_ROOT al path ANTES de importar services
 if PROJECT_ROOT not in sys.path:

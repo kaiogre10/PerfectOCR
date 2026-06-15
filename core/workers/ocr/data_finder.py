@@ -6,7 +6,7 @@ import numpy as np
 from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from app.models_manager import ModelsManager
+from app.models_builder import ModelsBuilder
 from core.utils.text_utils import contains_quantitative, get_rfc
 from core.utils.compiled_utils import validate_text
 
@@ -26,13 +26,12 @@ class DataFinder(OCRAbstractWorker):
     def model(self) -> Optional[Any]:
         try:
             if self._model is None: #type: ignore
-                model_manager = ModelsManager.get_instance()
-                self._model = model_manager.word_finder #type: ignore
-                logger.debug("Modelo de búsqueda obtenido del ModelsManager")
+                models_builder = ModelsBuilder.get_instance()
+                self._model = models_builder.word_finder #type: ignore
             return self._model #type: ignore
 
         except ModuleNotFoundError as e:
-            logger.error(f"DataFinder: Modelo de búsqueda no disponible en ModelManager{e}", exc_info=True)
+            logger.error(f"DataFinder: Modelo de búsqueda no disponible: {e}", exc_info=True)
         return None
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

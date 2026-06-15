@@ -1,17 +1,15 @@
 # Ignorar tipos de archivo 
-#*.md
 *.c
 *.pyc
 *.idea
 *.ini
-# *.txt
 *.png
 *.jpg
 *.jpeg
 *.xml
 *.iml
 *.cursorignore
-*.yaml
+#*.yaml
 *.sql
 *.aiignore
 *.pyd
@@ -19,6 +17,8 @@
 *.dll
 *.ilk
 *.pdb
+*.lib
+*.exp
 
 # Ignorar archivos especificos
 perfectocr.txt
@@ -41,7 +41,6 @@ out/
 #test/
 #tools/
 C:/PerfectOCR/data/models/
-models/paddle/
 models/
 input/
 input2/

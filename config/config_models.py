@@ -193,7 +193,6 @@ class PipelineConfig(ConfigWithNumpy):
     preprocessing_stage: Optional[List[str]] = None
     ocr_stage: Optional[List[str]] = None
     vector_stage: Optional[List[str]] = None
-    db_stage: Optional[List[str]] = None
     
 class DebugOutputs(ConfigWithNumpy):
     all_logs: bool
@@ -217,12 +216,15 @@ class DebugOutputs(ConfigWithNumpy):
 class SystemConfig(ConfigWithNumpy):
     input_dirs: List[str]
     images_names: List[str]
-    valid_extensions: Tuple[str, ...]
+    valid_img_ext: List[str]
+    output_paths: List[str]
+    storage_bin: List[str]
+    trash_ext: List[str]
+    invalid_extensions: List[str]
 
 class ExportingConfig(ConfigWithNumpy):
     cols_name: List[str]
-    storage_bin: List[str]
-    destinations: List[str]
+    destination_services: Optional[List[str]] = None
 
 class MasterConfig(ConfigWithNumpy):
     system_config: SystemConfig

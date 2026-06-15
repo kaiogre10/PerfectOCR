@@ -4,26 +4,30 @@ import os
 import logging
 import platform
 from typing import Set, Tuple, Optional
-from services.db_service import DataBaseService
+from services.gateaway_service import ServiceGateaway
 from psycopg2 import sql
 from typing import List, Dict, Any
 
 PROJECT_ROOT: str = ""
+CONFIG: Dict[str, List[str]] = {}
+output_paths: List[str] = []
+valid_img_ext: Tuple[str, ...] = ()
+valid_extensions: List[str] = []
+trash_ext: Tuple[str, ...] = ()
 
 def set_project_root(project_root: str):
     global PROJECT_ROOT
     PROJECT_ROOT = project_root # type: ignore
 
+def set_system_config(config: Dict[str, List[str]]):
+    global CONFIG, output_paths, valid_img_ext, valid_extensions, trash_ext
+    CONFIG = config # type: ignore
+    output_paths = config["output_paths"]
+    valid_extensions = CONFIG["valid_img_ext"]
+    valid_img_ext = tuple(valid_extensions)
+    trash_ext = tuple(CONFIG["trash_ext"])
+
 logger = logging.getLogger(__name__)
-
-DEFAULT_ALLOWED_EXTENSIONS: Set[str] = {
-    ".json", ".txt",
-    ".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp"
-}
-
-trash_ext: Tuple[str, ...] = ('.pyc', '.pyo', ".c")
-
-valid_extensions: Tuple[str, ...] = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2')
 
 def _can_delete_entry(path: str) -> bool:
     """
@@ -71,15 +75,17 @@ def _preflight_delete_plan(output_paths: List[str], exts: Set[str]) -> Tuple[boo
 
     return (len(blocked) == 0, blocked)
 
-def clear_output_folders(output_paths: List[str]) -> None:
+def clear_output_folders() -> None:
     """Vacia carpetas de salida de forma segura.
     - Si falta permiso en cualquier objetivo, no elimina nada.
     - Carpetas: se eliminan completas.
     - Archivos sueltos: solo extensiones objetivo.
     """
+    invalid_extensions = set(CONFIG["invalid_extensions"])
+    invalid_extensions.update(valid_extensions)
     deleted_files = 0
     deleted_folder = 0
-    exts = {e.lower() for e in DEFAULT_ALLOWED_EXTENSIONS}
+    exts = {e.lower() for e in invalid_extensions}
 
     # Fase 1: preflight (fail-closed)
     ok, blocked = _preflight_delete_plan(output_paths, exts)
@@ -124,30 +130,28 @@ def clear_output_folders(output_paths: List[str]) -> None:
 
 def cleanup_project_cache(aditional_files: Optional[str] = None):
     """Elimina la caché y residuos del proyecto """
-    cache_path: str
+    cache_path: str = ""
     try:
         for dirpath, dirnames, filenames in os.walk(PROJECT_ROOT):
             for d in list(dirnames):
-                if d in ("__pycache__", "build", "dist"):
+                if d in trash_ext:
                     try:
                         cache_path = os.path.join(dirpath, d)
                         shutil.rmtree(cache_path)
                         dirnames.remove(d)
                         
                     except Exception as e:
-                        logger.error(f"Error al eliminar {cache_path}: {e}") # type: ignore
+                        logger.error(f"Error al eliminar '{cache_path}': {e}") # type: ignore
                         return
-            
-            filename: str
-            file_path: str
+
             if aditional_files is not None:
-                trash_extensions: Tuple[str, ...] = trash_ext + tuple(aditional_files.split(','))
+                trash_extensions: Tuple[str, ...] = trash_ext + tuple(aditional_files.split(',')) # type: ignore
             else:
                 trash_extensions = trash_ext
                 
             for filename in filenames:
                 if filename.endswith(trash_extensions):
-                    file_path = os.path.join(dirpath, filename)
+                    file_path: str = os.path.join(dirpath, filename)
                     os.remove(file_path)
                     logger.debug(f"Eliminado archivo de caché: {file_path}")
                         
@@ -155,9 +159,10 @@ def cleanup_project_cache(aditional_files: Optional[str] = None):
         logger.error(f"Error al eliminar {file_path}: {e}") # type: ignore
         return
 
-def clean_db(db_service: DataBaseService) -> bool:
+def clean_db(db_service: ServiceGateaway) -> bool:
+    """Limpia toda la db en postgre de manera automatizada para facilitar el testeo"""
     try:
-        with db_service.get_connection() as conn:
+        with db_service.get_local_connection() as conn:
             with conn.cursor() as cur:
                 # Trae todas las tablas reales del esquema public
                 cur.execute("""
@@ -173,7 +178,6 @@ def clean_db(db_service: DataBaseService) -> bool:
                     conn.commit()
                     return True
 
-                # TRUNCATE TABLE t1, t2, ... RESTART IDENTITY CASCADE
                 truncate_query = sql.SQL("TRUNCATE TABLE {} RESTART IDENTITY CASCADE").format(
                     sql.SQL(", ").join(sql.Identifier(t) for t in tables)
                 )
@@ -187,15 +191,15 @@ def clean_db(db_service: DataBaseService) -> bool:
         logger.error("Error limpiando la DB: %s", e, exc_info=True)
         return False
 
-def count_and_plan(config: Dict[str, Any]) -> Dict[str, Any]:
+def count_and_plan() -> Dict[str, Any]:
     """
     PLANIFICA el procesamiento: cuenta imágenes y decide estrategia según las reglas:
     1. Si se especifican `images_names`, se buscan prioritariamente.
     2. Si no, se procesan todas las imágenes en `input_dirs`.
     3. Si se encuentran todos los `images_names` y quedan directorios, se procesan completos.
     """
-    input_paths: List[str] = config['input_dirs']
-    images_names = config['images_names']
+    input_paths: List[str] = CONFIG['input_dirs']
+    images_names = CONFIG['images_names']
     if not input_paths:
         logger.warning("No se proporcionaron rutas de entrada (input_dirs).")
         return {}
@@ -208,9 +212,9 @@ def count_and_plan(config: Dict[str, Any]) -> Dict[str, Any]:
         if names_to_find:
             files_in_dir = get_images_in_dir(path, list(names_to_find))
             if files_in_dir:
-                files_to_remove = set(files_in_dir)
+                files_to_remove: Set[str] = set(files_in_dir)
                 if not names_to_find.isdisjoint(files_to_remove):
-                    names_to_find.discard(files_to_remove)
+                    names_to_find.difference_update(files_to_remove)
                 
                 for file in files_in_dir:
                     full_path = os.path.join(PROJECT_ROOT, path, file)
@@ -239,7 +243,7 @@ def count_and_plan(config: Dict[str, Any]) -> Dict[str, Any]:
     return {"image_info": image_info}
     
 def get_images_in_dir(input_path: str, files_list: List[str]) -> List[str]:
-    files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_extensions)]
+    files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_img_ext)]
     if not files_name_dir:
         return []
     if not files_list:
