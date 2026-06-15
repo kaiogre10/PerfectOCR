@@ -29,6 +29,8 @@ _nine_base = r'qg'
 _all_zeros = rf"[0{_zero_base}]"
 _extended_digits = rf"[{_digits_base}{_zero_base}{_one_base}{_two_base}{_four_base}{_five_base}{_six_base}{_seven_base}{_eight_base}{_nine_base}]"   # [0-9OQoD|liI!¡Zz?A$SsG/Bqg]
 
+# floats_pattern = re.compile(r'\d+\.\d')
+
 _stick_chars = r'[!1lIi¡]'
 _stick_set = _stick_chars[1:-1]
 _l_variants = rf"[L{_stick_set}]"

@@ -22,5 +22,5 @@ class ConectorsBuilder:
                 # raise MemoryError("Error leyendo bytecode")
             # except MemoryError as e:
             #     logger.warning(f"Error leyendo bytecode: {e}", exc_info=True)
-            logger.info(f"BYTES_ALMACENADOS: '{bytes_leidos}'")
+            # logger.info(f"BYTES_ALMACENADOS: '{bytes_leidos}'")
         return None

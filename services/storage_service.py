@@ -6,15 +6,10 @@ from services.system_service import get_so
 
 PROJECT_ROOT: str = ""
 OUTPUT_PATHS: List[str] = []
-ALL_COLS_NAME: List[str] = []
 
 def set_project_root(project_root: str):
     global PROJECT_ROOT
     PROJECT_ROOT = project_root # type: ignore
-
-def set_output_paths(output_paths: List[str]):
-    global OUTPUT_PATHS
-    OUTPUT_PATHS = output_paths # type: ignore
 
 def set_config(config: Dict[str, Any]):
     binary_extension: str = get_so()

@@ -1,6 +1,6 @@
 # services/config_models.py
 from pydantic import BaseModel, ConfigDict
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 
 class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -235,3 +235,5 @@ class MasterConfig(ConfigWithNumpy):
     utils: UtilsConfig
     log_debug: DebugOutputs
     exporting_config: ExportingConfig
+    test_mode: bool
+    env_config: Dict[str, Any]

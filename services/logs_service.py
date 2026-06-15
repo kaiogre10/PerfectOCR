@@ -1,9 +1,17 @@
 ﻿import os
 import sys
+import paddle # type: ignore
 import logging
+import inspect
+from datetime import datetime
+from typing import List, Dict, Any, Tuple, Optional
+# from core.utils.text_utils import format_elapsed_time
 
-CONSOLE_LEVEL = "INFO"
-FILE_LEVEL = "INFO"
+logger = logging.getLogger(__name__)
+    
+PROJECT_ROOT: str = ""
+CONSOLE_LEVEL = 'INFO'
+FILE_LEVEL = 'INFO'
 CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
 FILE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
@@ -13,9 +21,22 @@ EXTRA_FILE_LOGS = [
     # {"filename": "errors.txt", "level": "ERROR"},
 ]
 
-def setup_logging(project_root: str):
+def set_project_root(project_root: str):
+    global PROJECT_ROOT
+    PROJECT_ROOT = project_root # type: ignore
+    paddle.disable_signal_handler()
+
+def get_time_stamp():
+    now = datetime.now()
+    return f"{now.strftime(DATE_FORMAT)}"
+
+def get_caller_info() -> Tuple[str, str]:
+    frame = inspect.stack()[2]
+    return os.path.basename(frame[1]), str(frame[2])
+
+def setup_logging():
     log_root = logging.getLogger()
-    log_root.setLevel(logging.DEBUG)
+    log_root.setLevel('INFO')
 
     if log_root.hasHandlers():
         log_root.handlers.clear()
@@ -24,11 +45,11 @@ def setup_logging(project_root: str):
     console_formatter = logging.Formatter(fmt=CONSOLE_FORMAT, datefmt=DATE_FORMAT)
 
     # Handler principal
-    _add_file_handler(log_root, project_root, "perfectocr.txt", FILE_LEVEL, file_formatter)
+    _add_file_handler(log_root, PROJECT_ROOT, "perfectocr.txt", FILE_LEVEL, file_formatter)
 
     # Handlers adicionales por nivel
-    for entry in EXTRA_FILE_LOGS:
-        _add_file_handler(log_root, project_root, entry["filename"], entry["level"], file_formatter)
+    for entry in EXTRA_FILE_LOGS: # type: ignore
+        _add_file_handler(log_root, PROJECT_ROOT, entry["filename"], entry["level"], file_formatter) # type: ignore
 
     # Consola
     console_handler = logging.StreamHandler(sys.stdout)
@@ -45,3 +66,20 @@ def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str
     handler.setFormatter(formatter)
     handler.setLevel(level.upper())
     log_root.addHandler(handler)
+
+def log_active_areas(message: str, manager_config: Optional[Dict[str, Dict[str, Any]]] = None) -> None:
+    message = f"{get_logging_info(get_caller_info())} {message}"
+    if manager_config:
+        stages_list: List[str] = []
+        for stage, stager in manager_config.items():
+            if not stager:
+                continue
+            stage = stage.replace("_", " ", 1).title()
+            stages_list.append(stage)
+        msg = f"{", ".join(stages_list) if stages_list else "SOLO BUILDERS"}"
+        print(f"{message}'{msg}'")
+    else:
+        print(f"{message}")
+    
+def get_logging_info(get_caller_info: Tuple[str, str]):
+    return f"{get_time_stamp()} - {get_caller_info[0]}:{get_caller_info[1]}"

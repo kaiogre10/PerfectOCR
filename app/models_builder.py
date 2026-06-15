@@ -67,21 +67,27 @@ class ModelsBuilder:
 
     def _activate_paddle(self, config: Dict[str, Any]) -> bool:
         try:
-        # PaddleOCR solo cargará en RAM/VRAM los modelos marcados como True
+            # PaddleOCR solo cargará en RAM/VRAM los modelos marcados como True
             activate_rec = config.get("activate_rec")
             activate_det = config.get("activate_det")
             models_config = config.get("models_config", {})
-            det_dir = models_config['det_model_dir']
-            rec_dir = models_config['rec_model_dir']
             
-            det_model_dir = os.path.join(self.project_root, *det_dir)
-            rec_model_dir = os.path.join(self.project_root, *rec_dir)
+            activate_cls = models_config.get('use_angle_cls')
+            if activate_cls:
+                logger.warning(f"ADVERTENCIA SE ACTIVÓ EL MODELO DE DETECCIÓN DE ANGULO DE PADDLE: {activate_cls}")
             
             if activate_det or activate_rec:
+                
+                det_dir = models_config['det_model_dir']
+                rec_dir = models_config['rec_model_dir']
+                
+                det_model_dir = os.path.join(self.project_root, *det_dir)
+                rec_model_dir = os.path.join(self.project_root, *rec_dir)
+            
                 self._shared_engine = PaddleOCR(
                     det=activate_det, 
                     rec=activate_rec,
-                    cls=models_config.get('use_angle_cls'),
+                    cls=activate_cls,
                     det_model_dir=det_model_dir,
                     rec_model_dir=rec_model_dir,
                     show_log=models_config.get('show_log'),

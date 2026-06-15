@@ -191,7 +191,7 @@ def clean_db(db_service: ServiceGateaway) -> bool:
         logger.error("Error limpiando la DB: %s", e, exc_info=True)
         return False
 
-def count_and_plan() -> Dict[str, Any]:
+def count_and_plan() -> List[Dict[str, Any]]:
     """
     PLANIFICA el procesamiento: cuenta imágenes y decide estrategia según las reglas:
     1. Si se especifican `images_names`, se buscan prioritariamente.
@@ -202,7 +202,7 @@ def count_and_plan() -> Dict[str, Any]:
     images_names = CONFIG['images_names']
     if not input_paths:
         logger.warning("No se proporcionaron rutas de entrada (input_dirs).")
-        return {}
+        return []
 
     image_info: List[Dict[str, Any]] = []
     names_to_find = set(images_names)
@@ -238,9 +238,9 @@ def count_and_plan() -> Dict[str, Any]:
 
     if not image_info:
         logger.error("No se encontraron imágenes válidas en las rutas especificadas.")
-        return {}
-        
-    return {"image_info": image_info}
+        return []
+
+    return image_info
     
 def get_images_in_dir(input_path: str, files_list: List[str]) -> List[str]:
     files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_img_ext)]

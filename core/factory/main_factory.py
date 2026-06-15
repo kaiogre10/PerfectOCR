@@ -38,7 +38,6 @@ class MainFactory:
                 project_root
             ) if vectorizing_config else None,
         }
-        logger.debug(f"{self.module_factories}")
 
     def get_image_preparation_factory(self) -> Optional[ImagePreparationFactory]:
         return self.module_factories["image_preparation"]

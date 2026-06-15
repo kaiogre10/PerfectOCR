@@ -40,15 +40,12 @@ class ProcessingBuilder:
                 "time_worker_log": self.time_worker_log
             }
             
-            # FASE 1: Preparación de imagen (usa execute() del AbstractStager)
-            # Pasamos contexto que incluye image_data para que el ImageLoader sepa qué cargar
             manager, time_poly = self.input_stager.execute(manager, context)
             if manager is None:
                 return None
             if self.time_stages_log:
                 logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
 
-            # FASE 2: Preprocesamiento (usa execute() del AbstractStager)
             if self.preprocessing_stager is not None:
                 manager, elapsed = self.preprocessing_stager.execute(manager, context)
                 if manager is None:
@@ -57,7 +54,6 @@ class ProcessingBuilder:
                 if self.time_stages_log:
                     logger.info(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
 
-            # FASE 3: OCR (usa execute() del AbstractStager)
             if self.ocr_stager is not None:
                 manager, ocr_time = self.ocr_stager.execute(manager, context)
                 if manager is None:
@@ -65,7 +61,6 @@ class ProcessingBuilder:
                 if self.time_stages_log:
                     logger.info(f"OCR completado en: {ocr_time:.6f}s")
 
-            # FASE 4: Vectorización (usa execute() del AbstractStager)
             if self.vectorization_stager is not None:
                 manager, vect_time = self.vectorization_stager.execute(manager, context)
                 if manager is None:
@@ -83,3 +78,5 @@ class ProcessingBuilder:
         except Exception as e:
             logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)
         return None
+
+    # def create_stagers(self)

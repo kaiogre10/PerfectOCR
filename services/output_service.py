@@ -10,11 +10,17 @@ from typing import Dict, Any, List
 import csv
 from core.utils.data_utils import FEATURES_NAME
 
+PROJECT_ROOT: str = ""
 OUTPUT_PATHS: List[str] = []
 
-def set_output_paths(output_paths: List[str]):
+def set_project_root(project_root: str):
+    global PROJECT_ROOT
+    PROJECT_ROOT = project_root # type: ignore
+
+def set_output_config(config: Dict[str, List[str]]):
     global OUTPUT_PATHS
-    OUTPUT_PATHS = output_paths # type: ignore
+    output_paths = config["output_paths"]
+    OUTPUT_PATHS = [os.path.join(PROJECT_ROOT, folder) for folder in output_paths]
 
 logger = logging.getLogger(__name__)
 
@@ -131,22 +137,19 @@ def save_yaml(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: st
     return False
 
 def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], worker_name: str):
-    feature_names = FEATURES_NAME
     try:
         if isinstance(all_features, dict):
             df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index') # type: ignore
             df.index.name = 'line_id'
             df = df.reset_index()
-            header = list(df.columns)
         else:
             
             df: pd.DataFrame = pd.DataFrame(all_features[1:, :])
-            header = list(feature_names)
 
         for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
             table_file_name = f"{file_name}_{worker_name}.csv"
-            save_table(df, output_dir, table_file_name)
+            save_table(df, output_dir, table_file_name, False)
 
     except Exception as e:
         logger.error(f"Error calculando Features output: {e}", exc_info=True)

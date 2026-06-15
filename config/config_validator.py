@@ -1,55 +1,55 @@
 # services/config_service.py
 import yaml
 from typing import Dict, Any, cast, List, Set, Tuple, FrozenSet
+from types import MappingProxyType
 from functools import cached_property
 from config.config_models import MasterConfig
+import services.logs_service as log_service
 import logging
-from types import MappingProxyType
-
-elemental_worker = "image_loader"
-det: str = "geometry_detector"
-ocr_workers: Set[str] = set(["polygon_extractor", "paddle_wrapper", det])
-full_ocr: FrozenSet[str] = frozenset(ocr_workers.union(["data_finder"]))
-min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set(elemental_worker))) # "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"
 
 logger = logging.getLogger(__name__)
 
+elemental_worker = "image_loader"
+det = "geometry_detector"
+ocr_workers: Set[str] = set(["polygon_extractor", "paddle_wrapper", det])
+full_ocr: FrozenSet[str] = frozenset(ocr_workers.union(["data_finder"]))
+min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set([elemental_worker]))) # "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"
+
 class ConfigBuilder:
     """Validada de los parametros de configuración"""
-    def __init__(self, config_path: str, TEST_MODE: bool):
+    def __init__(self, config_path: str):
         self.config = self._load_and_validate_yaml(config_path)
         elemental_params = elemental_worker in self.create_stager[0][1]
-        self.no_modules = (elemental_params is False) and (TEST_MODE is True)
+        self.no_modules = (elemental_params is False) and (self.test_mode is True)
         self.active_full_ocr = ocr_workers.issubset(self.all_workers)
-        if not self._validate_config(TEST_MODE, elemental_params):
+        if not self._validate_config(elemental_params):
             self.config = {}
         else:
             self.config = self.config
 
-    def _validate_config(self, TEST_MODE: bool, elemental_params: bool) -> bool:
+    def _validate_config(self, elemental_params: bool) -> bool:
+        msg: str = f"MODO: {"TEST" if self.test_mode else "PRODUCIÓN"}, verificaciones_robustas: '{self.test_mode}'."
         if not self.system_config:
-            logger.error("No hay rutas input")
+            log_service.log_active_areas("No hay rutas input")
             return False
 
-        elif not TEST_MODE and not elemental_params:
-            logger.error(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
+        elif not self.test_mode and not elemental_params:
+            log_service.log_active_areas(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
             return False
 
-        elif TEST_MODE and not elemental_params:
-            logger.warning(f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. '{self.log_active_areas()}'")
+        elif self.test_mode and not elemental_params:
+            log_service.log_active_areas(msg, self.manager_config) # type: ignore
             return True
 
-        elif TEST_MODE:
-            logger.warning(
-                f"TEST MODE ACTIVADO, verificaciones robustas desactivadas. Modulos: '{self.log_active_areas()}'")
+        elif self.test_mode:
+            log_service.log_active_areas((msg + " Modulos:"), self.manager_config) # type: ignore
             return True
 
-        elif not self.no_modules and self._validate_min_workers():
-            logger.debug(
-                f"MODO PRODUCCIÓN ACTIVADO, se realizarán validaciones robustas. Stages activas: '{self.log_active_areas()}'")
+        elif not self.activate_modules and self._validate_min_workers():
+            log_service.log_active_areas((msg + "Stages Activas:"), self.manager_config) # type: ignore
             return True
         else:
-            logger.error(f"Error de configuración")
+            log_service.log_active_areas(f"Error de configuración")
             return False
 
     def _load_and_validate_yaml(self, config_path: str) -> Dict[str, Any]:
@@ -67,18 +67,21 @@ class ConfigBuilder:
         return {}
 
     @cached_property
+    def test_mode(self) -> bool:
+        return bool(self.config.get("test_mode"))
+    
+    @cached_property
     def activate_modules(self) -> bool:
         return self.no_modules
 
     @cached_property
     def system_config(self) -> Dict[str, List[str]]:
-        sys_config =  self.config.get("system_config", {})
-        input_dirs = sys_config["input_dirs"]
-        return {} if not input_dirs else sys_config
+        sys_config = self.config.get("system_config", {})
+        return {} if not sys_config["input_dirs"] else sys_config
 
     @cached_property
-    def enabled_outputs(self) -> Dict[str, Any]:
-        if self.no_modules:
+    def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
+        if self.activate_modules:
             logger.info("Enabled output desactivados, sin workers")
             return {}
 
@@ -94,11 +97,11 @@ class ConfigBuilder:
 
     @cached_property
     def _logs(self) -> Dict[str, Any]:
-        return {} if self.no_modules else self.config.get("log_debug", {})
+        return {} if self.activate_modules else self.config.get("log_debug", {})
 
     @cached_property
     def logs_debug(self) -> Dict[str, Any]:
-        if self.no_modules:
+        if self.activate_modules:
             return {}
 
         elif self._logs.get("all_logs"):
@@ -112,51 +115,51 @@ class ConfigBuilder:
             return self._logs
 
     @cached_property
-    def models_config(self) -> MappingProxyType[str, Any]:
-        if self.no_modules:
-            return MappingProxyType({
+    def models_config(self) -> Dict[str, Any]:
+        if self.activate_modules:
+            return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": True,
                 "activate_rec": True,
                 "activate_det": True
-            })
+            }
 
         if not self.all_workers:
-            return MappingProxyType({})
+            return {}
 
         if det not in self.all_workers:
             logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
-            return MappingProxyType({})
+            return {}
 
         if full_ocr.issubset(self.all_workers):
             logger.debug("Configuración: OCR completo + Word Finder")
-            return MappingProxyType({
+            return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": True,
                 "activate_rec": True,
                 "activate_det": True
-            })
+            }
 
         if self.active_full_ocr:
             logger.debug("Configuración: OCR completo sin Word Finder")
-            return MappingProxyType({
+            return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": False,
                 "activate_rec": True,
                 "activate_det": True
-            })
+            }
 
         logger.debug("Configuración: Solo modelo de detección")
-        return MappingProxyType({
+        return {
             "models_config": self.config.get("models_config", {}),
             "activate_wf": False,
             "activate_rec": False,
             "activate_det": True
-        })
+        }
 
     @cached_property
     def modules_config(self) -> Dict[str, Any]:
-        return {} if self.no_modules else self.config.get("modules", {})
+        return {} if self.activate_modules else self.config.get("modules", {})
 
     @cached_property
     def utils_config(self) -> Dict[str, Any]:
@@ -164,7 +167,7 @@ class ConfigBuilder:
       
     @cached_property
     def img_prep_config(self) -> MappingProxyType[str, Any]:
-        if self.no_modules:
+        if self.activate_modules:
             return MappingProxyType({})
         else:
             return MappingProxyType({
@@ -176,7 +179,7 @@ class ConfigBuilder:
        
     @cached_property
     def preprocessing_config(self)-> MappingProxyType[str, Any]:
-        if self.no_modules or not self.create_stager[1][1]:
+        if self.activate_modules or not self.create_stager[1][1]:
             return MappingProxyType({})
         else:
             return MappingProxyType({
@@ -188,7 +191,7 @@ class ConfigBuilder:
 
     @cached_property
     def ocr_config(self) -> MappingProxyType[str, Any]:
-        if self.no_modules or not self.create_stager[2][1] or not self.active_full_ocr:
+        if self.activate_modules or not self.create_stager[2][1] or not self.active_full_ocr:
             return MappingProxyType({})
         else:
             create_refiners = self.modules_config.get("ocr", {}).get("text_refiner", {}).get("num_passes")
@@ -204,7 +207,7 @@ class ConfigBuilder:
     @cached_property
     def vectorization_config(self) -> MappingProxyType[str, Any]:
         vect_stage = self.create_stager[3][1]
-        if self.no_modules or not vect_stage or not "lineal" in vect_stage or not self.active_full_ocr:
+        if self.activate_modules or not vect_stage or not "lineal" in vect_stage or not self.active_full_ocr:
             return MappingProxyType({})
         else:
             return MappingProxyType({
@@ -223,17 +226,21 @@ class ConfigBuilder:
             "ocr": self.ocr_config,
             "vectorization": self.vectorization_config
         }
+    
+    @property
+    def env_config(self) -> Dict[str, Any]:
+        return self.config.get("env_config", {})
 
     def _validate_min_workers(self) -> bool:
         try:
             if not self.workers_order:
-                logger.critical("No hay configuración de workers disponible")
+                log_service.log_active_areas("ERROR: No hay configuración de workers disponible")
                 return False
             elif min_workers.issubset(self.all_workers):
                 return True
             else:
-                workers_missing = min_workers.difference(self.all_workers)
-                logger.critical(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
+                workers_missing = min_workers - self.all_workers
+                log_service.log_active_areas(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
                 return False
         except Exception as e:
             logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
@@ -263,13 +270,3 @@ class ConfigBuilder:
             vect = self.create_stager[3][1]
             all_workers.update(vect)
         return frozenset(all_workers)
-
-    def log_active_areas(self):
-        stages_list: List[str] = []
-        for stage, stager in self.manager_config.items():
-            if not stager:
-                continue
-            stage = stage.replace("_", " ", 1).title()
-            stages_list.append(stage)
-            
-        return ", ".join(stages_list) if stages_list else "SOLO BUILDERS"

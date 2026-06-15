@@ -1,51 +1,15 @@
-# import psycopg2
+import psycopg2
 import logging
-# import os
 import pandas as pd  # type: ignore
-from typing import Optional, Dict, Tuple, List, Any
-# from dotenv import load_dotenv
-# from contextlib import contextmanager
-# from psycopg2.extras import execute_values  # type: ignore
+from typing import Dict, Tuple, List, Any
+from psycopg2.extras import execute_values  # type: ignore
 # import ctypes
 
 logger = logging.getLogger(__name__)
 
-# load_dotenv()
-
 class PostgreLocalConector:
-    def __init__(self, dsn: Optional[str] = None):
-        """dsn opcional; si no, toma de env: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS"""
-
-    # def _build_dsn_from_env(self) -> str:
-    #     host = os.getenv("DB_HOST")
-    #     port = os.getenv("DB_PORT")
-    #     dbname = os.getenv("DB_NAME")
-    #     user = os.getenv("DB_USER")
-    #     password = os.getenv("DB_PASS")
-    #     if not all([host, port, dbname, user, password]):
-    #         raise RuntimeError("Faltan variables de entorno para Postgres")
-    #     return f"host={host} port={port} dbname={dbname} user={user} password={password}"
-    #
-    # @contextmanager
-    # def get_connection(self):
-    #     conn = None
-    #     try:
-    #         conn = psycopg2.connect(self.dsn)
-    #         yield conn
-    #     finally:
-    #         if conn:
-    #             conn.close()
-    #
-    # def test_connection(self) -> bool:
-    #     try:
-    #         with self.get_connection() as conn:
-    #             with conn.cursor() as cur:
-    #                 cur.execute("SELECT 1")
-    #                 cur.fetchone()
-    #         return True
-    #     except Exception:
-    #         logger.warning("Sin conexión a Postgres")
-    #     return False
+    def __init__(self, project_root: str):
+        self.project_root = project_root
 
     def insert_payload(self, payload: List[Tuple[pd.DataFrame, Dict[str, Any]]]) -> bool:
         """

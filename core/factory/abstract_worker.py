@@ -14,31 +14,29 @@ class BaseWorker(ABC):
 class ImagePrepAbstractWorker(BaseWorker):
     @abstractmethod
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """
-        Recibe el dict de datos (no el esquema), lo procesa y devuelve el dict actualizado.
-        """
+        """Carga y preparada la imagen para su procesamiento"""
         pass
     
 class PreprocessingAbstractWorker(BaseWorker):
     @abstractmethod
     def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """
-        Recibe la imagen para corregirla si es necesario
-        """
+        """Recibe la imagen para corregirla si es necesario"""
         pass
     
 class OCRAbstractWorker(BaseWorker):
     @abstractmethod
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        """
-        Transcribe la imagen por OCR
-        """
+        """Transcribe la imagen por OCR y limpia/corrije texto"""
         pass
     
 class VectorizationAbstractWorker(BaseWorker):
     @abstractmethod
-    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> object:
-        """
-        Vectoriza el resultado del texto ocr
-        """
+    def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+        """Vectoriza el resultado del texto ocr"""
+        pass
+
+class ConnectorAbstractWorker(BaseWorker):
+    @abstractmethod
+    def transfer(self) -> bool:
+        """Envía la información a la plataforma destino"""
         pass

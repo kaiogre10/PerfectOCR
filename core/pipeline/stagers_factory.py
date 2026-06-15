@@ -1,4 +1,8 @@
 # core/pipeline/stagers_factory.py
+# from core.workers.image_preparation.image_preparation_factory import ImagePreparationFactory
+# from core.workers.preprocessing.preprocessing_factory import PreprocessingFactory
+# from core.workers.ocr.ocr_factory import OCRFactory
+# from core.workers.vectorial_transformation.vectorizing_factory import VectorizingFactory
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager

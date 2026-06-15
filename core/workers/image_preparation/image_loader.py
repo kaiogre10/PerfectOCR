@@ -24,9 +24,7 @@ class ImageLoader(ImagePrepAbstractWorker):
         
         # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
         img_name = image_info.get('name', "")
-
         image_name = get_ids(img_name, "name")
-
         input_path = image_info.get('full_path', image_info.get('path', ""))
         
         try:

@@ -554,8 +554,8 @@ def get_ids(id_registro: str, id_need: str):
     """
     try:
         if id_need == "prov":
-            match = _id_prov_pattern.search(id_registro.strip())
-            return match.group(0)
+            matches = list(_id_prov_pattern.finditer(id_registro.strip()))
+            return [match.group() for match in matches if _id_prov_pattern.fullmatch(match.group())][0]
         elif id_need =="name":
             return _extension_suffix.sub("", id_registro)
         else:
@@ -567,7 +567,7 @@ def get_ids(id_registro: str, id_need: str):
 def format_elapsed_time(seconds: float) -> str:
     """Convierte segundos a formato HH:MM:SS.ms"""
     if seconds < 60.0:
-        return f"{seconds:.8f}'s"
+        return f"{seconds:.6f}'s"
     minutes = int((seconds % 3600) // 60)
     if minutes < 60:
         return f"{minutes:02d}:M {seconds % 60:06.3f}'s"

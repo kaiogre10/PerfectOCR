@@ -25,7 +25,7 @@ system_config:
 
   valid_img_ext: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
   output_paths: [
-    "output"
+    "output",
   ]
   storage_bin: ["core", "utils", "compiled_utils", "buffer_handler"]
   trash_ext: [ '.pyc', '.pyo', ".c" ]
@@ -75,6 +75,7 @@ log_debug:
   table_correct: False
   time_stages_log: False
   time_worker_log: False
+  
   semantic_types_log: [2,3,4,5]
   kf_list_log: [7, 8,9,10,11,12]
   
@@ -235,10 +236,23 @@ utils:
   
 exporting_config:
   cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
-  destination_services:
-    - "postgre_local"
+  destination_services: [
+    "postgre_local"
     # - "office_local"
     # - "google_workspace"
     # - "remote"
     # - "azure"
     # - "csv"
+    ]
+test_mode: True
+
+env_config:
+  'OMP_NUM_THREADS': '4'
+  'MKL_NUM_THREADS': '4'
+  'FLAGS_use_mkldnn': '1'
+  'MKL_DYNAMIC': 'TRUE'
+  'KMP_AFFINITY': 'granularity=fine, compact, 1, 0'
+  'KMP_BLOCKTIME': '0'
+  'OPENBLAS_NUM_THREADS': '1'
+  'NUMEXPR_NUM_THREADS': '1'
+  'MKL_DISABLE_FAST_MM': '0'
