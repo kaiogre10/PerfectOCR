@@ -8,7 +8,7 @@ import cv2
 import pandas as pd # type: ignore
 from typing import Dict, Any, List
 import csv
-from core.utils.data_utils import FEATURES_NAME
+# from core.utils.data_utils import FEATURES_NAME
 
 PROJECT_ROOT: str = ""
 OUTPUT_PATHS: List[str] = []

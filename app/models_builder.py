@@ -1,11 +1,13 @@
 # app/models_builder.py
-import logging
+import services.logs_service as logger_service
+logger_service.intercept_paddle_logs()
 import os
+import logging
 import threading
 import time
 from typing import Dict, Any, Optional
-from paddleocr import PaddleOCR # type: ignore
 from core.utils.word_finder import WordFinder
+from paddleocr import PaddleOCR # type: ignore
 
 logger = logging.getLogger(__name__)
 

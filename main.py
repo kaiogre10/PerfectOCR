@@ -16,9 +16,6 @@ if config_service.test_config:
     sys.exit()
 
 system_config = config_service.system_config
-env_config = config_service.env_config
-
-os.environ.update(env_config)
 
 import services.system_service as system_service
 system_service.set_project_root(PROJECT_ROOT)
@@ -31,6 +28,9 @@ storage_service.set_config(system_config) # type: ignore
 import services.output_service as output_service
 output_service.set_project_root(PROJECT_ROOT)
 output_service.set_output_config(system_config) # type: ignore
+
+env_config = config_service.env_config
+os.environ.update(env_config)
 
 from app.main_builder import MainBuilder
 main_builder = MainBuilder(config_service, PROJECT_ROOT)

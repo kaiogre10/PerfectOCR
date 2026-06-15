@@ -1,14 +1,12 @@
 ﻿import os
 import sys
-import paddle # type: ignore
 import logging
 import inspect
 from datetime import datetime
-from typing import List, Dict, Any, Tuple, Optional
-
-from paddle.io.dataloader import worker
-
+from typing import List, Tuple, Optional
 # from core.utils.text_utils import format_elapsed_time
+import re
+# # Sobrescribe la escritura de errores para borrar el aviso si aparece
 
 logger = logging.getLogger(__name__)
     
@@ -27,7 +25,6 @@ EXTRA_FILE_LOGS = [
 def set_project_root(project_root: str):
     global PROJECT_ROOT
     PROJECT_ROOT = project_root # type: ignore
-    paddle.disable_signal_handler()
 
 def get_time_stamp():
     now = datetime.now()
@@ -93,3 +90,6 @@ def log_active_areas(message: str, manager_config: Optional[List[Tuple[str, List
     
 def get_logging_info(get_caller_info: Tuple[str, str]):
     return f"{get_time_stamp()} - {get_caller_info[0]}:{get_caller_info[1]}"
+
+def intercept_paddle_logs():
+    sys.stderr.write = lambda text, orig=sys.stderr.write: orig(re.sub(r".*OMP_NUM_THREADS.*|.*PLEASE USE OMP_NUM_THREADS WISELY.*", "", text)) # type: ignore

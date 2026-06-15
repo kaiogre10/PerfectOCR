@@ -85,16 +85,11 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             image_list = None
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
-
-            idx = 0
-            for word_tuple in batch_result:
-                logger.info(f"WORDS: '{word_tuple}'")
-                text = word_tuple[0]
-                confidence = word_tuple[1]
-                idx += 1
+            for idx, (text, confidence) in enumerate(batch_result[0]):
                 if not text or not validate_text(text):
                     deleted.append([polygon_ids[idx], text])
-                    # logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
+                    if self.del_output_log:
+                        logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
                     continue
                 
                 elif confidence < self.min_confidence:
@@ -104,13 +99,14 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     continue
                 else:
                     norm_text = normalice_text(text, False)
+                    if not norm_text:
+                        if self.del_output_log:
+                            logger.info(f"OCR FILTRO: {polygon_ids[idx]}: '{text}' -> '{norm_text}', CONF: {confidence*100.0} %")
+                        continue
+
                     raw_map[polygon_ids[idx]] = {"text": norm_text.strip()}
-                    # logger.info(f"OCR FILTRO: {polygon_ids[idx]}: '{text}' -> '{norm_text}', CONF: {confidence*100.0} %")
                     continue
 
-            # for id, data in raw_map.items():
-            #     logger.info(f"OCR FILTRO: {id} {data.get("text", "")}")
-                
             # logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")
             return raw_map
             
