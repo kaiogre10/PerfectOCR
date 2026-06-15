@@ -26,9 +26,9 @@ class MatrixSolver(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('math_max', {})
-        all_cols_name: List[str] = config["cols_name"]
+        all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3]
-        self.dec_cols_name: FrozenSet[str] = frozenset({self.cant_name, self.pu_name, self.mtl_name})
+        self.dec_cols_name: FrozenSet[str] = frozenset({all_cols_name[0], all_cols_name[1], all_cols_name[2]})
         tol: str = worker_config.get('row_relative_tolerance', "")
         self.arithmetic_tolerance = Decimal(tol) if tol else Decimal('0.10')
         self.output = config.get("math_max_corrected")
@@ -40,11 +40,11 @@ class MatrixSolver(VectorizationAbstractWorker):
             if not manager.workflow:
                 return False
             df = manager.workflow.table_data.df_table if manager.workflow.table_data is not None else pd.DataFrame()
-            if df.empty:
+            if df is None or df.empty:
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             corrected_df = self.solve(df, context)
 
@@ -59,13 +59,13 @@ class MatrixSolver(VectorizationAbstractWorker):
 
                 logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
                 if self.output:
-                    worker_name = context.get("worker_name") or "paddle_wrapper"
+                    worker_name = context.get("worker_name") or "math_max"
                     file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
                     save_debug_table(corrected_df, file_name, worker_name, self.apile)
                 return True
 
         except Exception as e:
-            logger.debug(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
+            logger.info(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
             context = {}
         return False
 

@@ -28,7 +28,7 @@ class OCRStager(AbstractStager):
             worker_start = time.perf_counter()
             if not worker.transcribe(exec_context, manager):
                 worker_time = time.perf_counter() - start_time
-                logger.error(f"'{worker_name}' falló, tiempo: {worker_start:.6f}'s", exc_info=True)
+                logger.error(f"'{worker_name}' falló, tiempo: {worker_time:.6f}'s", exc_info=True)
                 return None, worker_time
             
             if time_worker_log:

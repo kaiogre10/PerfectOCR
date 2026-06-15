@@ -35,7 +35,8 @@ class ProcessingBuilder:
             # Crear instancia fresca de DataFormatter para esta imagen
             manager = DataFormatter(self.logs_config)
             # Crear contexto para esta ejecución
-            context: Dict[str, Any] = {
+            context: Dict[str, Any] = {}
+            context = {
                 "image_data": image_data,
                 "time_worker_log": self.time_worker_log
             }
@@ -43,6 +44,7 @@ class ProcessingBuilder:
             manager, time_poly = self.input_stager.execute(manager, context)
             if manager is None:
                 return None
+
             if self.time_stages_log:
                 logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
 
@@ -58,6 +60,7 @@ class ProcessingBuilder:
                 manager, ocr_time = self.ocr_stager.execute(manager, context)
                 if manager is None:
                     return None
+
                 if self.time_stages_log:
                     logger.info(f"OCR completado en: {ocr_time:.6f}s")
 
@@ -69,6 +72,9 @@ class ProcessingBuilder:
                     logger.info(f"Vectorización completada en: {vect_time:.6f}s")
 
             img_results = manager.get_final_data()
+            if img_results.empty:
+                return None
+            
             ptr, buff_size = storage_service.storage_data(img_results)
             if ptr < 1 or buff_size < 1:
                 return None

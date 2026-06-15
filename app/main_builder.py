@@ -7,7 +7,6 @@ from app.models_builder import ModelsBuilder
 from services.config_service import ConfigService
 from core.utils.text_utils import format_elapsed_time
 from app.conections_builder import ConectorsBuilder
-from core.factory.main_factory import MainFactory
 import time
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ class MainBuilder:
                     logger.error("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
                     return []
 
-            if not self.config_service.no_modules:
+            if not self.config_service.no_activate_modules:
                 # CREAR UN ÚNICO BUILDER REUTILIZABLE
                 processing_builder = self.create_single_builder(logs_config=self.config_service.logs_debug) # type: ignore
                 if not processing_builder:
@@ -66,14 +65,12 @@ class MainBuilder:
         """Crea un único builder reutilizable usando StagersFactory."""
         try:
             # CREAR STAGERS FACTORY UNA SOLA VEZ
-            stagers_factory = StagersFactory(manager_config=self.config_service.manager_config, project_root=self.project_root)
-            context: Dict[str, Any] = {}
-            # main_factory = MainFactory(modules_config=self.config_service.modules_config, project_root=self.project_root) # type: ignore
-            input_stager = stagers_factory.create_image_prep_stager(context)
-            preprocessing_stager = stagers_factory.create_preprocessing_stager(context)
-            ocr_stager = stagers_factory.create_ocr_stager(context)
-            vectorization_stager = stagers_factory.create_vectorization_stager(context)
-            
+            manager_config = self.config_service.manager_config
+            stagers_factory = StagersFactory(manager_config, project_root=self.project_root) # type: ignore
+            input_stager = stagers_factory.create_image_prep_stager()
+            preprocessing_stager = stagers_factory.create_preprocessing_stager()
+            ocr_stager = stagers_factory.create_ocr_stager()
+            vectorization_stager = stagers_factory.create_vectorization_stager()
 
             # El manager se crea dentro del proceso de cada imagen, no aquí
             builder = ProcessingBuilder(
@@ -87,7 +84,7 @@ class MainBuilder:
 
         except Exception as e:
             logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
-            return None
+        return None
 
     def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[Dict[str, Any]]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
@@ -130,5 +127,4 @@ class MainBuilder:
             logger.info(f"IMAGENES EXITOSAS: {succes_images}")
             logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")
 
-        logger.info(f"Direcciónes exitosas")
         return final_results

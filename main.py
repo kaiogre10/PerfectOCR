@@ -12,6 +12,9 @@ DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
 from services.config_service import ConfigService
 config_service = ConfigService(DEFAULT_CONFIG_FILE)
+if config_service.test_config:
+    sys.exit()
+
 system_config = config_service.system_config
 env_config = config_service.env_config
 

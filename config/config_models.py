@@ -10,7 +10,6 @@ class ImgLoadOutputs(ConfigWithNumpy):
     deleted_polys: bool
     bin_full_img: bool
     angle_corrected: bool
-    moire_poly: bool
     cropped_img: bool
     final_polys: bool
     discarded_polys: bool
@@ -24,8 +23,6 @@ class PreprocessingOutputs(ConfigWithNumpy):
 
 class OCROutputs(ConfigWithNumpy):
     ocr_raw: bool
-    binarized_polygons: bool
-    cropp_blobs: bool
     fragmented_polys: bool
     semantic_field: bool
     cleanned_text: bool
@@ -54,7 +51,6 @@ class ModelsConfig(ConfigWithNumpy):
     cpu_threads: int
     max_batch_size: int
     det_limit_side_len: int
-    table: bool
     rec_batch_num: int
     det_model_dir: List[str]
     rec_model_dir: List[str]
@@ -63,9 +59,11 @@ class ModelsConfig(ConfigWithNumpy):
     det_db_score_mode: str
     use_mp: bool
     max_text_length: int
-    rec_image_inverse: bool
+    return_word_box: bool
     
 class InkConfig(ConfigWithNumpy):
+    white: List[int]
+    black: List[int]
     aspect_ratio_range: Tuple[float, float]
     angle_threshold: float
     thr: float
@@ -105,7 +103,6 @@ class DeskewConfig(ConfigWithNumpy):
     hough_min_line_length_cap_px: int
     hough_max_line_gap_px: int
     hough_angle_filter_range_degrees: Tuple[float, float]
-    border_cutt: int
 
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: float
@@ -124,6 +121,7 @@ class ContrastConfig(ConfigWithNumpy):
         
 class MathMaxConfig(ConfigWithNumpy):
     row_relative_tolerance: str
+    cols_name: List[str]
 
 class RestoreConfig(ConfigWithNumpy):
     area_threshold: int
@@ -137,13 +135,8 @@ class PreprocessingConfig(ConfigWithNumpy):
     contrast: ContrastConfig
     sharpening: SharpeningConfig
 
-class TextualCleanConfig(ConfigWithNumpy):
-    min_probability: float
-            
 class TextRefiner(ConfigWithNumpy):
     num_passes: int
-    encode_mean: Tuple[float, float]
-    morph_mean: Tuple[float, float]
 
 class PaddleTranscription(ConfigWithNumpy):
     min_confidence: float
@@ -151,7 +144,6 @@ class PaddleTranscription(ConfigWithNumpy):
 class OCRConfig(ConfigWithNumpy):
     paddle_wrapper: PaddleTranscription
     text_refiner: TextRefiner
-    text_cleaner: TextualCleanConfig
 
 class Lineal(ConfigWithNumpy):
     get_vectors: bool
@@ -174,13 +166,6 @@ class VectorConfig(ConfigWithNumpy):
     cos_sim: CosineSimilarity
     math_max: MathMaxConfig
     table_structurer: TableStructurer
-
-class UtilsConfig(ConfigWithNumpy):
-    dpi_range: List[int]
-    bin_interval: Tuple[float, float]
-    percentile: Tuple[float, float]
-    white: List[int]
-    black: List[int]
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation
@@ -223,8 +208,11 @@ class SystemConfig(ConfigWithNumpy):
     invalid_extensions: List[str]
 
 class ExportingConfig(ConfigWithNumpy):
-    cols_name: List[str]
     destination_services: Optional[List[str]] = None
+
+class TestingModes(ConfigWithNumpy):
+    deploy_mode: bool
+    test_config: bool
 
 class MasterConfig(ConfigWithNumpy):
     system_config: SystemConfig
@@ -232,8 +220,7 @@ class MasterConfig(ConfigWithNumpy):
     enabled_outputs: OutputFlags
     models_config: ModelsConfig
     modules: ModulesConfig
-    utils: UtilsConfig
     log_debug: DebugOutputs
     exporting_config: ExportingConfig
-    test_mode: bool
+    test_modes: TestingModes
     env_config: Dict[str, Any]

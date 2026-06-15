@@ -49,11 +49,11 @@ pipeline_secuence:
 
   ocr_stage:
     - "paddle_wrapper"
-    - "text_refiner"
-    - "data_finder"
+    # - "text_refiner"
+    # - "data_finder"
     
   vector_stage:
-    - "lineal"
+    # - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
@@ -85,7 +85,6 @@ enabled_outputs:
     full_img: False
     bin_full_img: False
     angle_corrected: False
-    moire_poly: False
     cropped_img: False
     final_polys: False
     discarded_polys: False
@@ -100,8 +99,6 @@ enabled_outputs:
 
   ocr_outputs:
     ocr_raw: False
-    binarized_polygons: False
-    cropp_blobs: False
     fragmented_polys: False
     semantic_field: False
     cleanned_text: False
@@ -126,10 +123,9 @@ models_config:
   max_batch_size: 32
   det_limit_side_len: 1280
   det_db_score_mode: 'slow'
-  table: False
   use_mp: True
   max_text_length: 20
-  rec_image_inverse: False
+  return_word_box: True
   
   det_model_dir: ["models", "paddle", "det", "es"]
   rec_model_dir: ["models", "paddle", "rec", "es"]
@@ -140,6 +136,8 @@ models_config:
 modules:
   image_preparation:
     ink_enhancement:
+      white: [255, 255, 255]
+      black: [0, 0, 0]
       aspect_ratio_range: [2.5, 13.8]
       angle_threshold: 41.25
       thr: 0.23
@@ -154,7 +152,6 @@ modules:
       hough_min_line_length_cap_px: 250
       hough_max_line_gap_px: 20
       hough_angle_filter_range_degrees: [-22.5, 22.5]
-      border_cutt: 100
       
     geometry_detect:
       morph_kernel: [2, 2]
@@ -201,11 +198,6 @@ modules:
       
     text_refiner:
       num_passes: 1
-      encode_mean: [23.7, 103.7] # Promedio de densidad
-      morph_mean: [-0.297, 0.337] # Promedio morfológico
-  
-    text_cleaner:
-      min_probability: 75.0
     
   vectorization:
     lineal:
@@ -226,16 +218,9 @@ modules:
 
     math_max:
       row_relative_tolerance: "0.10"
-
-utils:
-  dpi_range: [100, 200, 300, 400, 600, 1200]
-  bin_interval: [10.0, 245.0]
-  percentile: [0.10, 0.99]
-  white: [255, 255, 255]
-  black: [0, 0, 0]
+      cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
   
 exporting_config:
-  cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
   destination_services: [
     "postgre_local"
     # - "office_local"
@@ -244,7 +229,10 @@ exporting_config:
     # - "azure"
     # - "csv"
     ]
-test_mode: True
+
+test_modes:
+  deploy_mode: True
+  test_config: False
 
 env_config:
   'OMP_NUM_THREADS': '4'

@@ -24,8 +24,6 @@ class TextCleaner(OCRAbstractWorker):
         self.project_root = project_root
         self.del_output_log = config.get("text_del")
         self.output_log = config.get("text_clean")
-        worker_config = config.get("text_cleaner", {})
-        self.min_probability = float(worker_config.get("min_probability"))
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         worker_name = context.get("worker_name") or "paddle_wrapper"

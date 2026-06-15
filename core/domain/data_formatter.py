@@ -440,12 +440,12 @@ class DataFormatter:
     def get_final_data(self): #Tuple[str, Dict[str, Any]]:
         structured_data = self.workflow.table_data if self.workflow else None
         if structured_data is None:
-            return ""
+            return pd.DataFrame()
         
         df: Optional[pd.DataFrame] = structured_data.df_table
         # db_values = structured_data.global_data
         if df is None or df.empty:
-            return ""
+            return pd.DataFrame()
         
         structured_data.df_table = None
         structured_data = None

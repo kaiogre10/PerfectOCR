@@ -17,7 +17,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config.get('polygon_extractor', {})
-        self.bin_interval: Tuple[float, float] = config["bin_interval"]
         self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
         self.filtered_ouputs = config.get("final_polys", False)

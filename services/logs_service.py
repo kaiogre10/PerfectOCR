@@ -5,6 +5,9 @@ import logging
 import inspect
 from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
+
+from paddle.io.dataloader import worker
+
 # from core.utils.text_utils import format_elapsed_time
 
 logger = logging.getLogger(__name__)
@@ -67,14 +70,21 @@ def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str
     handler.setLevel(level.upper())
     log_root.addHandler(handler)
 
-def log_active_areas(message: str, manager_config: Optional[Dict[str, Dict[str, Any]]] = None) -> None:
+def log_simple(message: str) -> None:
+    info = get_logging_info(get_caller_info())
+    print(f"{info} {message}")
+
+def log_active_areas(message: str, manager_config: Optional[List[Tuple[str, List[str]]]] = None) -> None:
     message = f"{get_logging_info(get_caller_info())} {message}"
     if manager_config:
         stages_list: List[str] = []
-        for stage, stager in manager_config.items():
-            if not stager:
+        for stager in manager_config:
+            stage = stager[0]
+
+            workers = stager[1]
+            if not stager or not workers:
                 continue
-            stage = stage.replace("_", " ", 1).title()
+            stage = stage.removesuffix("_stage").title()
             stages_list.append(stage)
         msg = f"{", ".join(stages_list) if stages_list else "SOLO BUILDERS"}"
         print(f"{message}'{msg}'")
