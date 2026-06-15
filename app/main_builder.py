@@ -7,6 +7,7 @@ from app.models_builder import ModelsBuilder
 from services.config_service import ConfigService
 from core.utils.text_utils import format_elapsed_time
 from app.conections_builder import ConectorsBuilder
+from app.distribution_manager import DistributionManager
 import time
 
 logger = logging.getLogger(__name__)
@@ -40,17 +41,11 @@ class MainBuilder:
                     return []
 
                 final_payload_list = self.transform_image_to_df(processing_builder, workflow_report)
-
-                conections_service = ConectorsBuilder(self.config_service.exporting_config) # type: ignore
+                exporting_config = self.config_service.exporting_config
+                conections_service = ConectorsBuilder(exporting_config) # type: ignore
                 if conections_service.active_services and final_payload_list:
-                    conections_service.set_up_connectors(final_payload_list)
-                    # db_service = DataBaseService(dsn=None)
-                    # if db_service.test_connection():
-                    #     system_service.clean_db(db_service)
-                    #     if not insert_data(db_service, final_payload_list):
-                    #         logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
+                    self.export_data()
 
-                
                 logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
                 return []
 
@@ -85,6 +80,19 @@ class MainBuilder:
         except Exception as e:
             logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
         return None
+    
+    def export_data(self):
+        conections_service.set_up_connectors(final_payload_list)
+        dist_service = DistributionManager(exporting_config)
+        dist_service.distibute()
+
+        # db_service = DataBaseService(dsn=None)
+        # if db_service.test_connection():
+        #     system_service.clean_db(db_service)
+        #     if not insert_data(db_service, final_payload_list):
+        #         logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
+        return 
+        
 
     def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[Dict[str, Any]]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""

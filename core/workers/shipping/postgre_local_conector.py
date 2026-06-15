@@ -1,15 +1,21 @@
-import psycopg2
+#import psycopg2
 import logging
 import pandas as pd  # type: ignore
 from typing import Dict, Tuple, List, Any
 from psycopg2.extras import execute_values  # type: ignore
+from core.factory.abstract_connector import ConnectorAbstractWorker
 # import ctypes
 
 logger = logging.getLogger(__name__)
 
-class PostgreLocalConector:
-    def __init__(self, project_root: str):
+class PostgreLocalConector(ConnectorAbstractWorker):
+    def __init__(self, config: Dict[str, Any], project_root: str):
+        super().__init__(config, project_root)
+        self.config = config
         self.project_root = project_root
+
+    def transfer(self, context: Dict[str, Any]) -> bool:
+        return True
 
     def insert_payload(self, payload: List[Tuple[pd.DataFrame, Dict[str, Any]]]) -> bool:
         """

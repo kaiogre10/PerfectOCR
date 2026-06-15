@@ -4,7 +4,8 @@ from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
 
 class BaseWorker(ABC):
-    """Contrato que todo worker de procesamiento debe cumplir.
+    """
+    Contrato que todo worker de procesamiento debe cumplir.
     Cada worker es una etapa en el pipeline.
     """
     def __init__(self, config: Dict[str, Any], project_root: str):
@@ -33,10 +34,4 @@ class VectorizationAbstractWorker(BaseWorker):
     @abstractmethod
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Vectoriza el resultado del texto ocr"""
-        pass
-
-class ConnectorAbstractWorker(BaseWorker):
-    @abstractmethod
-    def transfer(self) -> bool:
-        """Envía la información a la plataforma destino"""
         pass
