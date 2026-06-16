@@ -210,6 +210,7 @@ class SystemConfig(ConfigWithNumpy):
 
 class ExportingConfig(ConfigWithNumpy):
     destination_services: Optional[List[str]] = None
+    dns: str
 
 class TestingModes(ConfigWithNumpy):
     deploy_mode: bool

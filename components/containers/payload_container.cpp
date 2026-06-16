@@ -1,11 +1,16 @@
-#include "container.h"
+#include "containers.h"
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
 
 PayloadContainer* container_create(const char** strings,
                                    const size_t* sizes,
                                    size_t count) {
-    if (!strings || !sizes || count == 0) return nullptr;
+    if (!strings || !sizes || count == 0) {
+        printf("container_create: validacion fallida strings=%p sizes=%p count=%zu\n", 
+               (void*)strings, (void*)sizes, count);
+        return nullptr;
+    }
 
     size_t total = 0;
     for (size_t i = 0; i < count; i++) total += sizes[i];

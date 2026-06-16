@@ -222,6 +222,7 @@ modules:
       separator: "_"
   
 exporting_config:
+  dns: ""
   destination_services: [
     "postgre_local"
     # - "office_local"
@@ -229,7 +230,7 @@ exporting_config:
     # - "remote"
     # - "azure"
     # - "csv"
-    ]
+  ]
 
 test_modes:
   deploy_mode: True

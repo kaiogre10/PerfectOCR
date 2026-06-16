@@ -26,12 +26,16 @@ def set_config(config: Dict[str, Any]):
         logger.warning(f"ERROR CARGANDO EL BINARIO: {e}", exc_info=True)
         return None
         
-    LIB.storage_reserve.argtypes = [ctypes.c_size_t]
+    LIB.storage_reserve.argtypes = [
+        ctypes.POINTER(ctypes.c_char_p),   # strings
+        ctypes.POINTER(ctypes.c_size_t),   # sizes
+        ctypes.c_size_t,                   # count
+        ctypes.POINTER(ctypes.c_size_t),   # offsets_out
+    ]
     LIB.storage_reserve.restype = ctypes.c_void_p
-    LIB.storage_commit.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-    LIB.storage_commit.restype = None
+
     LIB.storage_free.argtypes = [ctypes.c_void_p]
-    LIB.storage_free.restype = None
+    LIB.storage_free.restype  = None
     
 logger = logging.getLogger(__name__)
 
@@ -48,27 +52,44 @@ def storage_data(data_to_flat: Any) -> Tuple[int, List[int]]:
     return ptr, buff_size
 
 def _request_storage(flat_data: List[str], buff_sizes: List[int]) -> Tuple[int, List[int]]:
-    count = len(flat_data)
+    try:
+        count = len(flat_data)
+        try:
+            c_strings  = (ctypes.c_char_p * count)(*[s.encode("utf-8") for s in flat_data])
+            c_sizes    = (ctypes.c_size_t * count)(*buff_sizes)
+            c_offsets  = (ctypes.c_size_t * (count + 1))()  # +1 sentinel
+        except TypeError as e:
+            logger.info(f"ERROR DE TYPO: {e}", exc_info=True)
+            return (0, [])
 
-    c_strings  = (ctypes.c_char_p * count)(*[s.encode("utf-8") for s in flat_data])
-    c_sizes    = (ctypes.c_size_t * count)(*buff_sizes)
-    c_offsets  = (ctypes.c_size_t * (count + 1))()  # +1 sentinel
+        try:
+            LIB.storage_reserve.restype  = ctypes.c_void_p
+            LIB.storage_reserve.argtypes = [
+                ctypes.POINTER(ctypes.c_char_p),
+                ctypes.POINTER(ctypes.c_size_t),
+                ctypes.c_size_t,
+                ctypes.POINTER(ctypes.c_size_t),
+            ]
+        except MemoryError as e:
+            logger.error(f"ERROR EN MEMORIA: {e}", exc_info=True)
+            return (0, [])
 
-    LIB.storage_reserve.restype  = ctypes.c_void_p
-    LIB.storage_reserve.argtypes = [
-        ctypes.POINTER(ctypes.c_char_p),
-        ctypes.POINTER(ctypes.c_size_t),
-        ctypes.c_size_t,
-        ctypes.POINTER(ctypes.c_size_t),
-    ]
+        try:
+            ptr = LIB.storage_reserve(c_strings, c_sizes, count, c_offsets)
+            if not ptr:
+                logger.info(f"ptr raw: {ptr}, offsets: {list(c_offsets)}")
+                raise MemoryError
+        except OSError as e:
+            logger.info(f"ERROR EN MEMORUA: {e}", exc_info=True)
+            return (0, [])
 
-    ptr = LIB.storage_reserve(c_strings, c_sizes, count, c_offsets)
-    if not ptr:
-        logger.warning("C++ no pudo reservar memoria")
-        return (0, [])
-
-    offsets = list(c_offsets)  # count+1 valores, último es total
-    return (ptr, offsets)
+        offsets = list(c_offsets)  # count+1 valores, último es total
+        logger.info(f"PTR: {ptr}, HEX: '{hex(ptr)}', {offsets}")
+        return (ptr, offsets)
+    
+    except Exception as e:
+        logger.error(f"Error conectadno con C++: {e}", exc_info=True)
+    return (0, [])
 
 def transform_data(df: Any) -> Tuple[List[str], List[int]]:
     plain_df: List[str] = []
@@ -80,7 +101,7 @@ def transform_data(df: Any) -> Tuple[List[str], List[int]]:
         plain_df.append(string_row)
         buffer_sizes.append(buff_size)
 
-    logger.info(f"BUUF_SIZES: {buffer_sizes}\n"f"PLANO:'{plain_df}'")
+    logger.info(f"BUUF_SIZES: {buffer_sizes}\n"f"PLANO: {plain_df}")
 
     return plain_df, buffer_sizes
 

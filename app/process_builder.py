@@ -1,6 +1,6 @@
 # PerfectOCR/app/process_builder.py
 import logging
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
@@ -21,7 +21,7 @@ class ProcessingBuilder:
         self.time_worker_log = logs_config.get("time_worker_log")
         self.logs_config = logs_config
         
-    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[int, int]]:
+    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[int, List[int]]]:
         """
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
         Recibe image_data para configurar el contexto de esta ejecución específica.
@@ -76,7 +76,7 @@ class ProcessingBuilder:
                 return None
             
             ptr, buff_size = storage_service.storage_data(img_results)
-            if ptr < 1 or buff_size < 1:
+            if ptr < 1 or len(buff_size) < 1:
                 return None
             
             return (ptr, buff_size)

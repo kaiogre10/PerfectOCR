@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
+from services.gateaway_service import ServiceGateaway
 
 class BaseWorker(ABC):
     """
@@ -34,4 +35,10 @@ class VectorizationAbstractWorker(BaseWorker):
     @abstractmethod
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Vectoriza el resultado del texto ocr"""
+        pass
+
+class ConnectorAbstractWorker(BaseWorker):
+    @abstractmethod
+    def transfer(self, context: Dict[str, Any], gateaway: ServiceGateaway) -> bool:
+        """Envía la información a la plataforma destino"""
         pass

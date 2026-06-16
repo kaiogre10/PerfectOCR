@@ -4,7 +4,6 @@ import os
 import logging
 import platform
 from typing import Set, Tuple, Optional
-from services.gateaway_service import ServiceGateaway
 from psycopg2 import sql
 from typing import List, Dict, Any
 
@@ -159,10 +158,10 @@ def cleanup_project_cache(aditional_files: Optional[str] = None):
         logger.error(f"Error al eliminar {file_path}: {e}") # type: ignore
         return
 
-def clean_db(db_service: ServiceGateaway) -> bool:
+def clean_db(get_local_connection: Any) -> bool:
     """Limpia toda la db en postgre de manera automatizada para facilitar el testeo"""
     try:
-        with db_service.get_local_connection() as conn:
+        with get_local_connection as conn:
             with conn.cursor() as cur:
                 # Trae todas las tablas reales del esquema public
                 cur.execute("""

@@ -1,19 +1,17 @@
 # PerfectOCR/main_builder.py
 import logging
+import time
 from typing import Optional, List, Dict, Any, Tuple
 from app.process_builder import ProcessingBuilder
-from core.pipeline.stagers_factory import StagersFactory
 from app.models_builder import ModelsBuilder
+from app.conections_builder import ConectorsBuilder
+from app.distribution_manager import DistributionManager
+from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
 from core.utils.text_utils import format_elapsed_time
-from app.conections_builder import ConectorsBuilder
-# from app.distribution_manager import DistributionManager
-import time
 
 logger = logging.getLogger(__name__)
 
-
-# noinspection PyTypeChecker
 class MainBuilder:
     def __init__(self, config_service: ConfigService, project_root: str):
         self.project_root = project_root
@@ -44,11 +42,8 @@ class MainBuilder:
 
                 final_payload_list = self.transform_image_to_df(processing_builder, workflow_report)
 
-                exporting_config = self.config_service.exporting_config
-                conections_service = ConectorsBuilder(exporting_config, self.project_root) # type: ignore
-
-                if conections_service.active_services and final_payload_list:
-                    # self.export_data()
+                if final_payload_list:
+                    self.export_data(final_payload_list)
 
                     logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
                     return []
@@ -85,17 +80,22 @@ class MainBuilder:
             logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
         return None
     
-    # def export_data(self):
-    #     conections_service.set_up_connectors(final_payload_list)
-    #     dist_service = DistributionManager(exporting_config)
-    #     dist_service.distibute()
+    def export_data(self, final_payloads: List[Tuple[int, List[int]]]):
+        exporting_config = self.config_service.exporting_config
+        conections_service = ConectorsBuilder(exporting_config, self.project_root) # type: ignore
+
+        conectors = conections_service.create_conectors()
+        if conectors is None:
+            return 
+        dist_service = DistributionManager(config=exporting_config, conectors=conectors, project_root=self.project_root) # type: ignore
+
+        dist_service.distibute(final_payloads)
 
         # db_service = DataBaseService(dsn=None)
         # if db_service.test_connection():
-        #     system_service.clean_db(db_service)
         #     if not insert_data(db_service, final_payload_list):
         #         logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
-        return 
+        return  
         
 
     def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[Dict[str, Any]]):
@@ -105,7 +105,7 @@ class MainBuilder:
 
         succes_images: List[str] = []
         images_names = [names["name"][:-4] for names in workflow_report]
-        final_results: List[Tuple[int, int]] = []
+        final_results: List[Tuple[int, List[int]]] = []
         start_time = time.perf_counter()
 
         for i, image_data in enumerate(workflow_report):
