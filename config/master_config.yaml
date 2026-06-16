@@ -57,7 +57,7 @@ pipeline_secuence:
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-#    - "collector"
+    - "collector"
        
 log_debug:
   all_logs: False
@@ -219,6 +219,7 @@ modules:
     math_max:
       row_relative_tolerance: "0.10"
       cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
+      separator: "_"
   
 exporting_config:
   destination_services: [

@@ -7,11 +7,13 @@ from app.models_builder import ModelsBuilder
 from services.config_service import ConfigService
 from core.utils.text_utils import format_elapsed_time
 from app.conections_builder import ConectorsBuilder
-from app.distribution_manager import DistributionManager
+# from app.distribution_manager import DistributionManager
 import time
 
 logger = logging.getLogger(__name__)
 
+
+# noinspection PyTypeChecker
 class MainBuilder:
     def __init__(self, config_service: ConfigService, project_root: str):
         self.project_root = project_root
@@ -41,15 +43,17 @@ class MainBuilder:
                     return []
 
                 final_payload_list = self.transform_image_to_df(processing_builder, workflow_report)
+
                 exporting_config = self.config_service.exporting_config
-                conections_service = ConectorsBuilder(exporting_config) # type: ignore
+                conections_service = ConectorsBuilder(exporting_config, self.project_root) # type: ignore
+
                 if conections_service.active_services and final_payload_list:
-                    self.export_data()
+                    # self.export_data()
 
-                logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
-                return []
+                    logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
+                    return []
 
-            logger.debug(f"Proceso debugger completo en {format_elapsed_time(time.perf_counter()-t0)}")
+            logger.info(f"Proceso debugger completo en {format_elapsed_time(time.perf_counter()-t0)}")
             return []
 
         except NameError as e:
@@ -81,10 +85,10 @@ class MainBuilder:
             logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
         return None
     
-    def export_data(self):
-        conections_service.set_up_connectors(final_payload_list)
-        dist_service = DistributionManager(exporting_config)
-        dist_service.distibute()
+    # def export_data(self):
+    #     conections_service.set_up_connectors(final_payload_list)
+    #     dist_service = DistributionManager(exporting_config)
+    #     dist_service.distibute()
 
         # db_service = DataBaseService(dsn=None)
         # if db_service.test_connection():

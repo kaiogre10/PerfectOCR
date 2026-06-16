@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, List, Dict, Any, Tuple
-import time
-import services.gateaway_service as gateaway_service
+# import time
+# import services.gateaway_service as gateaway_service
 
 logger = logging.getLogger(__name__)
 
@@ -11,5 +11,5 @@ class DistributionManager:
         self.project_root = project_root
         self.conectors = conectors
 
-    def distibute(self, payload_dirs: Tuple[int, int]):
+    # def distibute(self, payload_dirs: Tuple[int, int]):
         

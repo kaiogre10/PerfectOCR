@@ -122,6 +122,7 @@ class ContrastConfig(ConfigWithNumpy):
 class MathMaxConfig(ConfigWithNumpy):
     row_relative_tolerance: str
     cols_name: List[str]
+    separator: str
 
 class RestoreConfig(ConfigWithNumpy):
     area_threshold: int

@@ -1,19 +1,13 @@
-﻿#ifndef BUFFER_HANDLER_H
-#define BUFFER_HANDLER_H
-
+﻿#pragma once
 #include <cstddef>
 
-// Configuración dinámica de exportación según el Sistema Operativo
-#if defined(_WIN32)
-    #define EXPORT_API __declspec(dllexport)
-#else
-    #define EXPORT_API __attribute__((visibility("default")))
-#endif
-
 extern "C" {
-    EXPORT_API void* storage_reserve(size_t size);
-    EXPORT_API void storage_commit(void* ptr, size_t size);
-    EXPORT_API void storage_free(void* ptr);
-}
+    // Retorna puntero base al arena y llena offsets[]
+    // offsets debe tener espacio para (count + 1) elementos
+    void* storage_reserve(const char** strings,
+                          const size_t* sizes,
+                          size_t count,
+                          size_t* offsets_out);
 
-#endif // BUFFER_HANDLER_H
+    void storage_free(void* ptr);
+}

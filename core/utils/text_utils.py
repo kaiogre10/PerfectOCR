@@ -591,11 +591,11 @@ def _correct_numbers(text: str) -> str:
     """Solo corrije numeros, no borra caracteres"""
     return text if text.isdecimal() else _correct_cuants.sub(lambda match: _replacement_map[match.lastgroup], text)
 
-def noramalice_df(text: str) -> str:
+def noramalice_df(text: str, separator: str) -> str:
     text = normalice_text(text, True)
-    text = text.replace(",", " ")
-    text =  space_removal(text)
-    return (text + ",")
+    text = text.replace(separator, " ")
+    text = space_removal(text)
+    return (text + separator)
 
 def its_similar(word: str, suspect: str) -> bool:
     suspect_slice = suspect[:len(word)]

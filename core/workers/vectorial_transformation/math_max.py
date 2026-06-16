@@ -44,7 +44,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             corrected_df = self.solve(df, context)
 

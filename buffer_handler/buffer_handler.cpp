@@ -1,22 +1,35 @@
 ﻿#include "buffer_handler.h"
+#include "../components/containers/container.h"
 #include <cstdlib>
+
+// Container vivo mientras el bloque esté en uso
+static PayloadContainer* g_container = nullptr;
 
 extern "C" {
 
-    [[nodiscard]] void* storage_reserve(size_t size) {
-        if (size == 0) return nullptr;
-        return std::malloc(size);
+void* storage_reserve(const char** strings,
+                      const size_t* sizes,
+                      size_t count,
+                      size_t* offsets_out) {
+    if (g_container) {
+        container_destroy(g_container);
+        g_container = nullptr;
     }
 
-    void storage_commit(void* ptr, size_t size) {
-        if (!ptr) return;
-        (void)ptr;
-        (void)size;
-    }
+    g_container = container_create(strings, sizes, count);
+    if (!g_container) return nullptr;
 
-    void storage_free(void* ptr) {
-        if (ptr) {
-            std::free(ptr);
-        }
-    }
+    // Copiar offsets al caller
+    for (size_t i = 0; i <= count; i++)
+        offsets_out[i] = g_container->offsets[i];
+
+    return g_container->arena;
+}
+
+void storage_free(void* ptr) {
+    (void)ptr; // arena pertenece al container
+    container_destroy(g_container);
+    g_container = nullptr;
+}
+
 }

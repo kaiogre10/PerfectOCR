@@ -25,6 +25,7 @@ class FinalStructurer(VectorizationAbstractWorker):
         worker_config = config.get('math_max', {})
         all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3], all_cols_name[4]
+        self.separator = worker_config.get("separator", "")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         try:
@@ -159,8 +160,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                         if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == 2 and pm == 5):
                             df.iat[i, pro_idx] = (orig_p_value +  concat_val)
 
-        df = df.map(lambda x: noramalice_df(x))
-        val = df.iat[-1, -1]
-        df.iat[-1, -1] = val[:-1]
-        # logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
+        separator = self.separator
+        df = df.map(lambda x: noramalice_df(x, separator)) # type: ignore
+        #logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
         return df

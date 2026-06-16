@@ -35,48 +35,55 @@ def set_config(config: Dict[str, Any]):
     
 logger = logging.getLogger(__name__)
 
-def storage_data(data_to_flat: Any) -> Tuple[int, int]:
+def storage_data(data_to_flat: Any) -> Tuple[int, List[int]]:
     """
     Interfaz pública para guardar la información generada.
     Retorna una tupla con la dirección de memoria y el tamaño del buffer.
     """
-    flat_data = data_to_flat.to_numpy(dtype=str, copy=False).ravel(order="C")
-    buff_size = sum(len(x.encode("utf-8")) for x in flat_data)
-    # logger.info(f"Flat data:'{flat_data}'\n"f"TAMAÑO BYTES ARRAY: {flat_data.nbytes}'B\n"f"TAMAÑO DF: {data_to_flat.memory_usage(index=True, deep=True).sum()}'B\n"f"TAMAÑO BYTES MEMORIA: '{buff_size}'B'")
+    # flat_data = data_to_flat.to_numpy(dtype=str, copy=False).ravel(order="C")
+    # buff_size = sum(len(x.encode("utf-8")) for x in flat_data)
+    flat_data, buff_size = transform_data(data_to_flat)
+    #logger.info(f"ANTES DE INGRESAR: Flat data:'{flat_data}'\n"f"TAMAÑO BYTES NP.ARRAY: {flat_data.nbytes}'B\n"f"TAMAÑO DF: {data_to_flat.memory_usage(index=True, deep=True).sum()}'B\n"f"TAMAÑO BYTES MEMORIA: '{buff_size}'B'")
     ptr, buff_size = _request_storage(flat_data, buff_size)
     return ptr, buff_size
 
-def _request_storage(flat_data: Any, buff_size: int) -> Tuple[int, int]:
-    """
-    Solicita memoria y escribe bytes en memoria apartada por C++.
-    Retorna la dirección de memoria (int) y el tamaño del buffer (int).
-    """
-    try:
-        ptr = LIB.storage_reserve(buff_size)
-    except MemoryError as e:
-        logger.warning(f"La DLL de C++ no pudo reservar la memoria solicitada: {e}", exc_info=True)
-        return (0, 0)
-    
-    try:
-        offset = 0
-        for x in flat_data:
-            b = x.encode("utf-8")
-            byte_len = len(b)
-            ctypes.memmove(ptr + offset, b, byte_len)
-            offset += byte_len
+def _request_storage(flat_data: List[str], buff_sizes: List[int]) -> Tuple[int, List[int]]:
+    count = len(flat_data)
 
-        LIB.storage_commit(ptr, buff_size)
-    except BufferError as e:
-        logger.warning(f"Error escribiendo bytecode en memoria asignada por C++: {e}", exc_info=True)
-        return (0, 0)
-    
-    # try:
-    #     bytes_leidos = ctypes.string_at(ptr, buff_size)
-    # except MemoryError as e:
-    #     logger.warning(f"Error leyendo bytecode: {e}", exc_info=True)
-    #     return (ptr, buff_size)
+    c_strings  = (ctypes.c_char_p * count)(*[s.encode("utf-8") for s in flat_data])
+    c_sizes    = (ctypes.c_size_t * count)(*buff_sizes)
+    c_offsets  = (ctypes.c_size_t * (count + 1))()  # +1 sentinel
 
-    # logger.info(f"\n"f"Dirección: '{ptr} | '{hex(ptr)}', TAMAÑO EN BYTES: '{buff_size}'B'")
-    # LIB.storage_free(ptr)
+    LIB.storage_reserve.restype  = ctypes.c_void_p
+    LIB.storage_reserve.argtypes = [
+        ctypes.POINTER(ctypes.c_char_p),
+        ctypes.POINTER(ctypes.c_size_t),
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
 
-    return ptr, buff_size
+    ptr = LIB.storage_reserve(c_strings, c_sizes, count, c_offsets)
+    if not ptr:
+        logger.warning("C++ no pudo reservar memoria")
+        return (0, [])
+
+    offsets = list(c_offsets)  # count+1 valores, último es total
+    return (ptr, offsets)
+
+def transform_data(df: Any) -> Tuple[List[str], List[int]]:
+    plain_df: List[str] = []
+    buffer_sizes: List[int] = []
+    for fila in df.itertuples(index=False, name=None):
+        fila = list(fila)
+        string_row = "".join(fila)[:-1]
+        buff_size = sum(len(x.encode("utf-8")) for x in string_row)
+        plain_df.append(string_row)
+        buffer_sizes.append(buff_size)
+
+    logger.info(f"BUUF_SIZES: {buffer_sizes}\n"f"PLANO:'{plain_df}'")
+
+    return plain_df, buffer_sizes
+
+# Para acceder desde cualquier lado
+#base_ptr, offsets = _request_storage(plano, BUUF_SIZES)
+# elemento i → base_ptr + offsets[i], longitud → offsets[i+1] - offsets[i]
