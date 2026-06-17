@@ -1,47 +1,47 @@
 #include "containers.h"
-#include <cstdlib>
-#include <cstring>
-#include <cstdio>
+#include <vector>
+#include <deque>
+#include <cstdint>
+#include <mutex>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
 
-PayloadContainer* container_create(const char** strings,
-                                   const size_t* sizes,
-                                   size_t count) {
-    if (!strings || !sizes || count == 0) {
-        printf("container_create: validacion fallida strings=%p sizes=%p count=%zu\n", 
-               (void*)strings, (void*)sizes, count);
-        return nullptr;
+struct PayloadContainer {
+    std::deque<std::vector<std::vector<uint8_t>>> payload_container;
+    std::mutex mtx;
+};
+
+static PayloadContainer* g_canal = nullptr;
+
+extern "C" void container_create(int trigger) {
+    if (trigger != 0 && g_canal == nullptr) {
+        g_canal = new PayloadContainer(); // El contenedor nace vacío en el heap
     }
-
-    size_t total = 0;
-    for (size_t i = 0; i < count; i++) total += sizes[i];
-
-    auto* c = static_cast<PayloadContainer*>(std::malloc(sizeof(PayloadContainer)));
-    if (!c) return nullptr;
-
-    c->arena   = static_cast<char*>(std::malloc(total));
-    c->offsets = static_cast<size_t*>(std::malloc((count + 1) * sizeof(size_t)));
-    c->count   = count;
-    c->total   = total;
-
-    if (!c->arena || !c->offsets) {
-        container_destroy(c);
-        return nullptr;
-    }
-
-    size_t off = 0;
-    for (size_t i = 0; i < count; i++) {
-        c->offsets[i] = off;
-        std::memcpy(c->arena + off, strings[i], sizes[i]);
-        off += sizes[i];
-    }
-    c->offsets[count] = total; // sentinel
-
-    return c;
 }
 
-void container_destroy(PayloadContainer* c) {
-    if (!c) return;
-    std::free(c->arena);
-    std::free(c->offsets);
-    std::free(c);
+void push(std::vector<std::vector<uint8_t>>&& struct_payload) {
+    if (!g_canal) return;
+
+    std::lock_guard<std::mutex> lock(g_canal->mtx);
+    std::ofstream archivo_log("verificacion_init.log", std::ios::app);
+
+    if(archivo_log.is_open()) {
+        for (const auto& fila : struct_payload) {
+            // Equivale exactamente a: "".join(fila) de Python
+            archivo_log << std::string(fila.begin(), fila.end()) << "\n";
+        }
+        archivo_log.close();
+    }
+    g_canal->payload_container.push_back(std::move(struct_payload));
+}
+
+std::deque<std::vector<std::vector<uint8_t>>> drain() {
+    std::deque<std::vector<std::vector<uint8_t>>> local;
+    {
+        std::lock_guard<std::mutex> lock(g_canal->mtx);
+        // El consumidor se lleva TODOS los lotes acumulados hasta el momento de golpe
+        g_canal->payload_container.swap(local); 
+    }
+    return local;
 }

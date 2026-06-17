@@ -1,7 +1,7 @@
 ﻿// connectors_postgre.cpp: define el punto de entrada de la aplicación.
 //
 
-#include "connectors_postgre.h"
+#include "local_conectors.h"
 
 using namespace std;
 

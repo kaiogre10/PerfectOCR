@@ -79,9 +79,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             image_list = elevate_dims(img_list)
             manager.delete_cropped_images()
             
-            time_t = time.perf_counter()
+            # time_t = time.perf_counter()
             batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
-            logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
+            # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
             image_list = None
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}

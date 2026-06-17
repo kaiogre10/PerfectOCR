@@ -1,39 +1,34 @@
-﻿#include "buffer_handler.h"
+#include "buffer_handler.h"
 #include "../containers/containers.h"
 #include <cstdlib>
+#include <deque>
+#include <vector>
 
-// Mitigación de concurrencia: Cada hilo del ciclo de ejecución posee su propia instancia aislada
-static thread_local PayloadContainer* g_container = nullptr;
+// Declaración de la función puente (definida en Contenedor.cpp)
+void push(std::vector<std::vector<uint8_t>>&& struct_payload);
 
-extern "C" {
+extern "C" void storage_batch_flat(const uint8_t* plain_data,
+                                   const size_t* len_list, 
+                                   size_t total_bytes) {
+    
+    if (!plain_data || !len_list || total_bytes == 0) return;
 
-    void* storage_reserve(const char** strings,
-        const size_t* sizes,
-        size_t count,
-        size_t* offsets_out) {
-        // Garantizar la liberación de recursos asignados previamente en el mismo hilo
-        if (g_container) {
-            container_destroy(g_container);
-            g_container = nullptr;
-        }
+    // El productor procesa y reconstruye de manera privada
+    std::vector<std::vector<uint8_t>> struct_payload;
+    struct_payload.resize(total_bytes);
 
-        g_container = container_create(strings, sizes, count);
-        if (!g_container) return nullptr;
+    size_t offset_view = 0;
 
-        // Transferencia de offsets (Se asume invariante de diseño: offsets tiene tamaño count + 1)
-        for (size_t i = 0; i <= count; i++) {
-            offsets_out[i] = g_container->offsets[i];
-        }
+    for (size_t i = 0; i < total_bytes; ++i) {
+        size_t actual_size = len_list[i];
 
-        return g_container->arena;
-    }
-
-    void storage_free(void* ptr) {
-        // Monitorear que el puntero liberado corresponda efectivamente a la arena activa del hilo
-        if (g_container && g_container->arena == ptr) {
-            container_destroy(g_container);
-            g_container = nullptr;
+        if (actual_size > 0) {
+            struct_payload[i].reserve(actual_size);
+            struct_payload[i].assign(plain_data + offset_view,
+                plain_data + offset_view + actual_size);
+            
+            offset_view += actual_size;
         }
     }
-
+    push(std::move(struct_payload));
 }

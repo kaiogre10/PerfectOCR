@@ -1,2 +1,3 @@
 ﻿# Orquestación jerárquica de conectores
-add_subdirectory("connectors_postgre")
+add_subdirectory(locals)
+add_subdirectory(remote)

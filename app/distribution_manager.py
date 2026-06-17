@@ -8,13 +8,14 @@ logger = logging.getLogger(__name__)
 
 class DistributionManager:
     def __init__(self, config: Dict[str,Any], conectors: List[ConnectorAbstractWorker], project_root: str):
-        self.config = config.get("exporting_config")
+        self.exporting_config = config
         self.project_root = project_root
         self.conectors = conectors
+        self.dns = self.exporting_config.get("dns")
 
     def distibute(self, payload_dirs: List[Tuple[int, List[int]]]):
         start_time = time.perf_counter()
-        gateaway_service = ServiceGateaway()
+        gateaway_service = ServiceGateaway(self.dns)
         exec_context: Dict[str, Any] = {}
         exec_context["payload_dirs"] = payload_dirs
 

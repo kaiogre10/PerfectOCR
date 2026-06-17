@@ -1,14 +1,12 @@
 #pragma once
-#include <cstddef>
+#include <vector>
+#include <cstdint>
+#include <deque>
 
-struct PayloadContainer {
-    char*   arena;     // bloque contiguo dueño de los datos
-    size_t* offsets;   // offsets[i] = inicio del elemento i en arena
-    size_t  count;
-    size_t  total;     // bytes totales del arena
-};
+extern "C" {
+    // La señal mínima en las primeras líneas de main que acciona todo
+    void container_create(int trigger);
+}
 
-PayloadContainer* container_create(const char** strings,
-                                   const size_t* sizes,
-                                   size_t count);
-void              container_destroy(PayloadContainer* c);
+void push(std::vector<std::vector<uint8_t>>&& struct_payload);
+std::deque<std::vector<std::vector<uint8_t>>> drain();

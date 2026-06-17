@@ -10,12 +10,10 @@ class ConectorsBuilder:
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.project_root = project_root
         self.exporting_config = config
-        dns = self.exporting_config.get("dns")
-        self.gateaway_service = ServiceGateaway(dns)
 
     @property
     def active_services(self) -> bool:
-        return False if not (self.exporting_config["destination_services"] and self.gateaway_service.test_local_connection()) else True
+        return False if not self.exporting_config["destination_services"] else True
     
     def create_conectors(self, context: Optional[Dict[str, Any]] = None):
         """Crea stager de preparación de imagen con configuraciones específicas del master config."""

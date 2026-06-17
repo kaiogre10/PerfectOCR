@@ -13,8 +13,20 @@ def set_project_root(project_root: str):
 
 def set_config(config: Dict[str, Any]):
     binary_extension: str = get_so()
-    storage_bin_path = config["storage_bin"]
 
+    container_bin_path = config["container_bin"]
+    container_ext = container_bin_path.pop(-1)
+    container_extension = (container_ext + binary_extension)
+    container_bin = os.path.join(PROJECT_ROOT, *container_bin_path, container_extension)
+    try:
+        CON = ctypes.CDLL(container_bin)
+        CON.container_create.argtypes = [ctypes.c_int]
+        CON.container_create.restype = None
+        CON.container_create(1)
+    except BaseExceptionGroup as e:
+        logger.error(f"NO SE PUDO PUDO INICIAR EL CONTENDOR EN MEMORIA: {e}", exc_info=True)
+    
+    storage_bin_path = config["storage_bin"]
     binary_ext = storage_bin_path.pop(-1)
     binary_extension = (binary_ext + binary_extension)
     storage_bin = os.path.join(PROJECT_ROOT, *storage_bin_path, binary_extension)
@@ -22,21 +34,17 @@ def set_config(config: Dict[str, Any]):
     global LIB # type: ignore
     try:
         LIB = ctypes.CDLL(storage_bin)
-    except OSError as e:
+    except FileNotFoundError as e:
         logger.warning(f"ERROR CARGANDO EL BINARIO: {e}", exc_info=True)
         return None
-        
-    LIB.storage_reserve.argtypes = [
-        ctypes.POINTER(ctypes.c_char_p),   # strings
-        ctypes.POINTER(ctypes.c_size_t),   # sizes
-        ctypes.c_size_t,                   # count
-        ctypes.POINTER(ctypes.c_size_t),   # offsets_out
-    ]
-    LIB.storage_reserve.restype = ctypes.c_void_p
 
-    LIB.storage_free.argtypes = [ctypes.c_void_p]
-    LIB.storage_free.restype  = None
-    
+    LIB.storage_batch_flat.argtypes = [
+    ctypes.POINTER(ctypes.c_uint8),  # Puntero a los bytes contiguos aplanados
+    ctypes.POINTER(ctypes.c_size_t), # Arreglo de tamaños individuales de cada string
+    ctypes.c_size_t                 # Cantidad total de elementos (N)
+    ]
+    LIB.storage_batch_flat.restype = None
+
 logger = logging.getLogger(__name__)
 
 def storage_data(data_to_flat: Any) -> Tuple[int, List[int]]:
@@ -46,54 +54,27 @@ def storage_data(data_to_flat: Any) -> Tuple[int, List[int]]:
     """
     # flat_data = data_to_flat.to_numpy(dtype=str, copy=False).ravel(order="C")
     # buff_size = sum(len(x.encode("utf-8")) for x in flat_data)
-    flat_data, buff_size = transform_data(data_to_flat)
+    buff_size, plain_text = transform_data(data_to_flat)
     #logger.info(f"ANTES DE INGRESAR: Flat data:'{flat_data}'\n"f"TAMAÑO BYTES NP.ARRAY: {flat_data.nbytes}'B\n"f"TAMAÑO DF: {data_to_flat.memory_usage(index=True, deep=True).sum()}'B\n"f"TAMAÑO BYTES MEMORIA: '{buff_size}'B'")
-    ptr, buff_size = _request_storage(flat_data, buff_size)
+    ptr, buff_size = _request_storage(plain_text, buff_size)
     return ptr, buff_size
 
-def _request_storage(flat_data: List[str], buff_sizes: List[int]) -> Tuple[int, List[int]]:
+def _request_storage(plain_text: str , buff_sizes: List[int]) -> Tuple[int, List[int]]:
+    byte_len = sum(buff_sizes)
+    arreglo_tamanos_c = (ctypes.c_size_t * byte_len)(*buff_sizes)
+    plaintext = (ctypes.c_uint8 * byte_len)(*plain_text.encode("utf-8"))
     try:
-        count = len(flat_data)
-        try:
-            c_strings  = (ctypes.c_char_p * count)(*[s.encode("utf-8") for s in flat_data])
-            c_sizes    = (ctypes.c_size_t * count)(*buff_sizes)
-            c_offsets  = (ctypes.c_size_t * (count + 1))()  # +1 sentinel
-        except TypeError as e:
-            logger.info(f"ERROR DE TYPO: {e}", exc_info=True)
-            return (0, [])
-
-        try:
-            LIB.storage_reserve.restype  = ctypes.c_void_p
-            LIB.storage_reserve.argtypes = [
-                ctypes.POINTER(ctypes.c_char_p),
-                ctypes.POINTER(ctypes.c_size_t),
-                ctypes.c_size_t,
-                ctypes.POINTER(ctypes.c_size_t),
-            ]
-        except MemoryError as e:
-            logger.error(f"ERROR EN MEMORIA: {e}", exc_info=True)
-            return (0, [])
-
-        try:
-            ptr = LIB.storage_reserve(c_strings, c_sizes, count, c_offsets)
-            if not ptr:
-                logger.info(f"ptr raw: {ptr}, offsets: {list(c_offsets)}")
-                raise MemoryError
-        except OSError as e:
-            logger.info(f"ERROR EN MEMORUA: {e}", exc_info=True)
-            return (0, [])
-
-        offsets = list(c_offsets)  # count+1 valores, último es total
-        logger.info(f"PTR: {ptr}, HEX: '{hex(ptr)}', {offsets}")
-        return (ptr, offsets)
-    
-    except Exception as e:
-        logger.error(f"Error conectadno con C++: {e}", exc_info=True)
+        # logger.info(f"PUNT: '{plaintext}', | memory view: {bytes(plaintext)}")
+        LIB.storage_batch_flat(plaintext, arreglo_tamanos_c, ctypes.c_size_t(byte_len))
+    except ctypes.ArgumentError as e:
+        logger.warning(f"Error escribiendo bytecode en memoria asignada por C++: {e}", exc_info=True)
+        return (0, [])
     return (0, [])
 
-def transform_data(df: Any) -> Tuple[List[str], List[int]]:
+def transform_data(df: Any):
     plain_df: List[str] = []
     buffer_sizes: List[int] = []
+    plain_text: str = ""
     for fila in df.itertuples(index=False, name=None):
         fila = list(fila)
         string_row = "".join(fila)[:-1]
@@ -101,9 +82,9 @@ def transform_data(df: Any) -> Tuple[List[str], List[int]]:
         plain_df.append(string_row)
         buffer_sizes.append(buff_size)
 
-    logger.info(f"BUUF_SIZES: {buffer_sizes}\n"f"PLANO: {plain_df}")
-
-    return plain_df, buffer_sizes
+    plain_text = "".join(plain_df)
+    # logger.info(f"BUUF_SIZES: {buffer_sizes}\n"f"DF PLANO: {plain_df}\n"f"TEXTO PLANO: '{plain_text}'")
+    return buffer_sizes, plain_text
 
 # Para acceder desde cualquier lado
 #base_ptr, offsets = _request_storage(plano, BUUF_SIZES)

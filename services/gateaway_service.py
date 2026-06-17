@@ -5,7 +5,7 @@ import subprocess
 from typing import Optional
 from dotenv import load_dotenv
 from contextlib import contextmanager
-from services.system_service import clean_db
+# from services.system_service import clean_db
 
 load_dotenv()
 
@@ -56,7 +56,6 @@ class ServiceGateaway:
         )
 
     def stop_postgres(self) -> None:
-        clean_db(self.get_local_connection())
         subprocess.run(
             ["sc", "stop", "postgresql-x64-17"],
             check=False,

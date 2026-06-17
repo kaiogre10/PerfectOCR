@@ -1,13 +1,9 @@
-﻿#pragma once
+#pragma once
 #include <cstddef>
+#include <cstdint>
 
 extern "C" {
-    // Retorna puntero base al arena y llena offsets[]
-    // offsets debe tener espacio para (count + 1) elementos
-    void* storage_reserve(const char** strings,
-                          const size_t* sizes,
-                          size_t count,
-                          size_t* offsets_out);
-
-    void storage_free(void* ptr);
+    void storage_batch_flat(const uint8_t* plain_data,
+                            const size_t* len_list, 
+                            size_t total_bytes);
 }

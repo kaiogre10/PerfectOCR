@@ -205,6 +205,7 @@ class SystemConfig(ConfigWithNumpy):
     valid_img_ext: List[str]
     output_paths: List[str]
     storage_bin: List[str]
+    container_bin: List[str]
     trash_ext: List[str]
     invalid_extensions: List[str]
 

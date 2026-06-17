@@ -28,6 +28,7 @@ system_config:
     "output",
   ]
   storage_bin: ["core", "utils", "compiled_utils", "buffer_handler"]
+  container_bin: ["core", "utils", "compiled_utils", "containers"]
   trash_ext: [ '.pyc', '.pyo', ".c" ]
   invalid_extensions: [ ".json", ".txt", ".webp" ]
 

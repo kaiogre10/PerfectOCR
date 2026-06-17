@@ -16,7 +16,8 @@ class PostgreLocalConector(ConnectorAbstractWorker):
     
     def transfer(self, context: Dict[str, Any], gateaway: ServiceGateaway) -> bool:
         logger.info("POSTGRE ARRANCADO")
-        return True
+        
+        return self.insert_payload()
 
     def insert_payload(self, payload: List[Tuple[pd.DataFrame, Dict[str, Any]]]) -> bool:
         """
