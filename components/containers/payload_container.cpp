@@ -3,7 +3,6 @@
 #include <deque>
 #include <cstdint>
 #include <mutex>
-#include <iostream>
 #include <iomanip>
 #include <fstream>
 
@@ -24,7 +23,8 @@ void push(std::vector<std::vector<uint8_t>>&& struct_payload) {
     if (!g_canal) return;
 
     std::lock_guard<std::mutex> lock(g_canal->mtx);
-    std::ofstream archivo_log("verificacion_init.log", std::ios::app);
+    // ReSharper disable once CppTooWideScopeInitStatement
+    std::ofstream archivo_log("verificacion_init.txt", std::ios::app);
 
     if(archivo_log.is_open()) {
         for (const auto& fila : struct_payload) {

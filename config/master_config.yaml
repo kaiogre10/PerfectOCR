@@ -9,11 +9,11 @@ system_config:
   images_names: [
 #    AAAA0061,
 #    AAAA0006,
-#    AAAC0030,
+   AAAC0030,
    AAAA0040,
 #    AAAC0043,
 #     AAAA0058,
-#   AAAC0037,
+    AAAC0037,
 #    AAAA0059,
 #     AAAB0002,
 #      AAAC0010,

@@ -1,5 +1,6 @@
 # Ignorar tipos de archivo 
 *.c
+*.log
 *.pyc
 *.idea
 *.ini
@@ -9,7 +10,7 @@
 *.xml
 *.iml
 *.cursorignore
-#*.yaml
+*.yaml
 *.sql
 *.aiignore
 *.pyd
@@ -22,6 +23,7 @@
 
 # Ignorar archivos especificos
 perfectocr.txt
+verificacion_init.txt
 
 # Ignorar carpetas
 .__pycache__/
