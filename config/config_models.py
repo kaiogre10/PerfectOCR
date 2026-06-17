@@ -179,6 +179,7 @@ class PipelineConfig(ConfigWithNumpy):
     preprocessing_stage: Optional[List[str]] = None
     ocr_stage: Optional[List[str]] = None
     vector_stage: Optional[List[str]] = None
+    db_stage: Optional[List[str]] = None
     
 class DebugOutputs(ConfigWithNumpy):
     all_logs: bool
@@ -209,10 +210,6 @@ class SystemConfig(ConfigWithNumpy):
     trash_ext: List[str]
     invalid_extensions: List[str]
 
-class ExportingConfig(ConfigWithNumpy):
-    destination_services: Optional[List[str]] = None
-    dns: str
-
 class TestingModes(ConfigWithNumpy):
     deploy_mode: bool
     test_config: bool
@@ -224,6 +221,5 @@ class MasterConfig(ConfigWithNumpy):
     models_config: ModelsConfig
     modules: ModulesConfig
     log_debug: DebugOutputs
-    exporting_config: ExportingConfig
     test_modes: TestingModes
     env_config: Dict[str, Any]

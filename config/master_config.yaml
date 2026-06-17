@@ -59,6 +59,9 @@ pipeline_secuence:
     - "table_structurer"
     - "math_max"
     - "collector"
+
+  db_stage:
+  - "postgre_local"
        
 log_debug:
   all_logs: False
@@ -221,17 +224,6 @@ modules:
       row_relative_tolerance: "0.10"
       cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
       separator: "_"
-  
-exporting_config:
-  dns: ""
-  destination_services: [
-    "postgre_local"
-    # - "office_local"
-    # - "google_workspace"
-    # - "remote"
-    # - "azure"
-    # - "csv"
-  ]
 
 test_modes:
   deploy_mode: True

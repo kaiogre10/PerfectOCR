@@ -1,7 +1,5 @@
-import psycopg2
 import logging
 import os
-import subprocess
 from typing import Optional
 from dotenv import load_dotenv
 from contextlib import contextmanager
@@ -14,7 +12,6 @@ logger = logging.getLogger(__name__)
 class ServiceGateaway:
     def __init__(self, dsn: Optional[str] = None):
         """Servicio encargado de gestionar, testear y obtener conexiones con otros servicios de manera local o remota"""
-        self.start_postgres()
         self.dsn = dsn or self._build_dsn_from_env() # dsn opcional; si no, toma de env: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
 
     def _build_dsn_from_env(self) -> str:
@@ -47,17 +44,3 @@ class ServiceGateaway:
         except ConnectionRefusedError:
             logger.warning("Sin conexión a Postgres")
         return False
-
-    def start_postgres(self) -> None:
-        subprocess.run(
-            ["sc", "start", "postgresql-x64-17"],
-            check=False,
-            capture_output=True
-        )
-
-    def stop_postgres(self) -> None:
-        subprocess.run(
-            ["sc", "stop", "postgresql-x64-17"],
-            check=False,
-            capture_output=True
-        )

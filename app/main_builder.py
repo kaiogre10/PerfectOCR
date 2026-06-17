@@ -4,10 +4,9 @@ import time
 from typing import Optional, List, Dict, Any, Tuple
 from app.process_builder import ProcessingBuilder
 from app.models_builder import ModelsBuilder
-from app.conections_builder import ConectorsBuilder
-from app.distribution_manager import DistributionManager
 from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
+import services.postgre_local_service as postgre_local_service
 from core.utils.text_utils import format_elapsed_time
 
 logger = logging.getLogger(__name__)
@@ -43,10 +42,11 @@ class MainBuilder:
                 final_payload_list = self.transform_image_to_df(processing_builder, workflow_report)
 
                 if final_payload_list:
-                    self.export_data(final_payload_list)
+                    if postgre_local_service.start_postgres():
+                        postgre_local_service.insert_payload(final_payload_list) # type: ignore
 
-                    logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
-                    return []
+                logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
+                return []
 
             logger.info(f"Proceso debugger completo en {format_elapsed_time(time.perf_counter()-t0)}")
             return []
@@ -78,25 +78,7 @@ class MainBuilder:
 
         except Exception as e:
             logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
-        return None
-    
-    def export_data(self, final_payloads: List[Tuple[int, List[int]]]):
-        exporting_config = self.config_service.exporting_config
-        conections_service = ConectorsBuilder(exporting_config, self.project_root) # type: ignore
-
-        conectors = conections_service.create_conectors()
-        if conectors is None:
-            return 
-        dist_service = DistributionManager(config=exporting_config, conectors=conectors, project_root=self.project_root) # type: ignore
-
-        dist_service.distibute(final_payloads)
-
-        # db_service = DataBaseService(dsn=None)
-        # if db_service.test_connection():
-        #     if not insert_data(db_service, final_payload_list):
-        #         logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
-        return  
-        
+        return None        
 
     def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[Dict[str, Any]]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""

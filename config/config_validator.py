@@ -183,6 +183,18 @@ class ConfigBuilder:
                 **self.enabled_outputs.get("vectorization_outputs", {}),
                 "vector_stage": self.workers_order["vector_stage"]
             })
+        
+    @cached_property
+    def local_db_config(self) -> MappingProxyType[str, Any]:
+        db_stage = self.create_stager[4][1]
+        if self.no_activate_modules or not db_stage or not self.active_full_ocr:
+            return MappingProxyType({})
+        else:
+            math_max_config = self.modules_config.get("vectorization", {})
+            return MappingProxyType({
+                **math_max_config.get("math_max", {}),
+                "postgre_local": self.workers_order["db_stage"]
+            })
 
     @property
     def env_config(self) -> Dict[str, Any]:

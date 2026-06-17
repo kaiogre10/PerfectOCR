@@ -63,6 +63,10 @@ class ConfigService:
             "vectorization": self.validated_config.vectorization_config
         })
     
+    @property
+    def local_db_config(self) -> MappingProxyType[str, Any]:
+        return self.validated_config.local_db_config
+    
     # Configuración optimizada para desarrollo ajustada a mi Pc (LATITUDE 5591, 32GB DE RAM, INTEL i5 H8400 DE 4 NÚCLEOS)
     @property
     def env_config(self) -> Dict[str, Any]:
