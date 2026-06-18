@@ -75,14 +75,11 @@ class ProcessingBuilder:
             if img_results.empty:
                 return None
             
-            ptr, buff_size = storage_service.storage_data(img_results)
-            if ptr < 1 or len(buff_size) < 1:
+            if storage_service.storage_data(img_results):
+                return (0, [0])
+            else:
                 return None
-            
-            return (ptr, buff_size)
             
         except Exception as e:
             logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)
         return None
-
-    # def create_stagers(self)

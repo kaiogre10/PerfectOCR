@@ -8,19 +8,15 @@ import cv2
 import pandas as pd # type: ignore
 from typing import Dict, Any, List
 import csv
-# from core.utils.data_utils import FEATURES_NAME
 
-PROJECT_ROOT: str = ""
-OUTPUT_PATHS: List[str] = []
+PROJECT_ROOT: str 
+OUTPUT_PATHS: List[str]
 
-def set_project_root(project_root: str):
-    global PROJECT_ROOT
+def set_output_config(project_root: str, config: Dict[str, List[str]]):
+    global OUTPUT_PATHS, PROJECT_ROOT
     PROJECT_ROOT = project_root # type: ignore
-
-def set_output_config(config: Dict[str, List[str]]):
-    global OUTPUT_PATHS
     output_paths = config["output_paths"]
-    OUTPUT_PATHS = [os.path.join(PROJECT_ROOT, folder) for folder in output_paths]
+    OUTPUT_PATHS = [os.path.join(PROJECT_ROOT, folder) for folder in output_paths] 
 
 logger = logging.getLogger(__name__)
 

@@ -95,6 +95,7 @@ class ModelsBuilder:
                     show_log = models_config.get('show_log'),
                     use_gpu = models_config.get('use_gpu'),
                     enable_mkldnn = models_config.get('enable_mkldnn'),
+                    table= models_config.get('table'),
                     lang = models_config.get("lang"),
                     rec_batch_num = models_config.get('rec_batch_num'),
                     cpu_threads = models_config.get('cpu_threads'),

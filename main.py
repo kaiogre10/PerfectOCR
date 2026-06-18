@@ -1,12 +1,10 @@
 # main.py
 import os
 import sys
+import logging
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-
-import services.logs_service as log_service
-log_service.set_project_root(PROJECT_ROOT)
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
@@ -15,36 +13,39 @@ config_service = ConfigService(DEFAULT_CONFIG_FILE)
 if config_service.test_config:
     sys.exit()
 
-system_config = config_service.system_config
-
+import services.logs_service as log_service
 import services.system_service as system_service
-system_service.set_project_root(PROJECT_ROOT)
-system_service.set_system_config(system_config) # type: ignore
-
 import services.storage_service as storage_service
-storage_service.set_project_root(PROJECT_ROOT)
-storage_service.set_config(system_config) # type: ignore
-
 import services.output_service as output_service
-output_service.set_project_root(PROJECT_ROOT)
-output_service.set_output_config(system_config) # type: ignore
-
-env_config = config_service.env_config
-os.environ.update(env_config)
-
 from app.main_builder import MainBuilder
-main_builder = MainBuilder(config_service, PROJECT_ROOT)
-
-import logging
 
 logger = logging.getLogger(__name__)
-log_service.setup_logging()
+
+storage_service.storage_config(PROJECT_ROOT, system_config) # type: ignore
 
 def main():
+
+    os.environ.update(config_service.env_config)
+    system_config = config_service.system_config
+
+    log_service.set_project_root(PROJECT_ROOT)
+    log_service.setup_logging()
+
+    system_service.set_system_config(PROJECT_ROOT, system_config) # type: ignore
     system_service.clear_output_folders()
+
     workflow_report = system_service.count_and_plan()
+    if not workflow_report and not config_service.no_activate_modules:
+        system_service.clear_output_folders()
+        sys.exit()
+
+    output_service.set_output_config(PROJECT_ROOT, system_config) # type: ignore
+    
+    main_builder = MainBuilder(config_service, PROJECT_ROOT)
     main_builder.activate_main(workflow_report)
+
     system_service.cleanup_project_cache()
+
 if __name__ == "__main__":
     main()
 

@@ -1,19 +1,19 @@
 # config/master_config.yaml
 system_config:
   input_dirs: [
-#    input,
+   input,
     input2,
-#     input3,
+    input3,
 #    /media/kaiogre05/DATA/data/tickets_nuevo
   ]
   images_names: [
 #    AAAA0061,
 #    AAAA0006,
-   AAAC0030,
-   AAAA0040,
+   #AAAC0030,
+   #AAAA0040,
 #    AAAC0043,
 #     AAAA0058,
-    AAAC0037,
+    #AAAC0037,
 #    AAAA0059,
 #     AAAB0002,
 #      AAAC0010,
@@ -61,7 +61,7 @@ pipeline_secuence:
     - "collector"
 
   db_stage:
-  - "postgre_local"
+#  - "postgre_local"
        
 log_debug:
   all_logs: False
@@ -128,6 +128,7 @@ models_config:
   det_limit_side_len: 1280
   det_db_score_mode: 'slow'
   use_mp: True
+  table: False
   max_text_length: 20
   return_word_box: False
   

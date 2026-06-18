@@ -1,17 +1,12 @@
-from typing import List, Any, Dict, Tuple
+from typing import List, Any, Dict
 import logging
 import os
 import ctypes
 from services.system_service import get_so
 
-PROJECT_ROOT: str = ""
 OUTPUT_PATHS: List[str] = []
 
-def set_project_root(project_root: str):
-    global PROJECT_ROOT
-    PROJECT_ROOT = project_root # type: ignore
-
-def set_config(config: Dict[str, Any]):
+def storage_config(PROJECT_ROOT: str, config: Dict[str, Any]):
     binary_extension: str = get_so()
 
     container_bin_path = config["container_bin"]
@@ -47,17 +42,14 @@ def set_config(config: Dict[str, Any]):
 
 logger = logging.getLogger(__name__)
 
-def storage_data(data_to_flat: Any) -> Tuple[int, List[int]]:
-    """
-    Interfaz pública para guardar la información generada.
-    """
+def storage_data(data_to_flat: Any) -> bool:
+    """Interfaz pública para guardar la información generada."""
     # 1. NOTA: Invertimos el orden del return de transform_data para que coincida con tu firma
     buffer_sizes, plain_text = transform_data(data_to_flat)
-    ptr, buff_size = _request_storage(plain_text, buffer_sizes)
-    return ptr, buff_size
+    return request_storage(plain_text, buffer_sizes)
 
 
-def _request_storage(plain_text: str, buff_sizes: List[int]) -> Tuple[int, List[int]]:
+def request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
     # CAMBIO 1: El tamaño total en bytes es la suma de los tamaños UTF-16 ya calculados
     total_bytes = sum(buff_sizes)
     cantidad_elementos = len(buff_sizes) # N es la cantidad de strings, no el total de bytes
@@ -74,8 +66,8 @@ def _request_storage(plain_text: str, buff_sizes: List[int]) -> Tuple[int, List[
         LIB.storage_batch_flat(plaintext_c, arreglo_tamanos_c, ctypes.c_size_t(cantidad_elementos))
     except ctypes.ArgumentError as e:
         logger.warning(f"Error escribiendo bytecode en memoria asignada por C++: {e}", exc_info=True)
-        return (0, [])
-    return (0, [])
+        return False
+    return True
 
 def transform_data(df: Any):
     plain_df: List[str] = []
