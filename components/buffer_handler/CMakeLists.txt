@@ -1,4 +1,4 @@
-﻿add_library(buffer_handler SHARED
+add_library(buffer_handler SHARED
     "buffer_handler.cpp"
     "buffer_handler.h"
 )
@@ -13,4 +13,5 @@ target_include_directories(buffer_handler
 target_link_libraries(buffer_handler 
     PRIVATE 
         containers
+        ${OS_FRONTIER_LIBS}
 )

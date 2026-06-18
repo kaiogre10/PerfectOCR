@@ -2,29 +2,119 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "default-base",
+      "name": "base-global",
       "hidden": true,
+      "binaryDir": "${sourceDir}/out/build/${presetName}"
+    },
+    {
+      "name": "windows-oneapi",
+      "inherits": "base-global",
+      "displayName": "Windows - Intel OneAPI",
+      "description": "Usa OneAPI x64 en Windows",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "toolset": "Intel C++ Compiler 2026",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-msvc",
+      "inherits": "base-global",
+      "displayName": "Windows - MSVC Nativo (x64)",
+      "description": "Respaldo estándar de Windows",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "toolset": "host=x64",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-oneapi",
+      "inherits": "base-global",
+      "displayName": "Linux - Intel OneAPI",
+      "description": "Usa icx/icpx en Linux mediante Ninja",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_C_COMPILER": "icx",
+        "CMAKE_CXX_COMPILER": "icpx"
       }
     },
     {
-      "name": "debug",
-      "displayName": "Debug Config",
-      "inherits": "default-base",
+      "name": "linux-gcc",
+      "inherits": "base-global",
+      "displayName": "Linux - GCC Nativo",
+      "description": "Respaldo estándar de Linux mediante Ninja",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
       }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "win-oneapi-release",
+      "displayName": "Release (Windows OneAPI)",
+      "configurePreset": "windows-oneapi",
+      "configuration": "Release"
     },
     {
-      "name": "release",
-      "displayName": "Release Config",
-      "inherits": "default-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
+      "name": "win-oneapi-debug",
+      "displayName": "Debug (Windows OneAPI)",
+      "configurePreset": "windows-oneapi",
+      "configuration": "Debug"
+    },
+    {
+      "name": "win-msvc-release",
+      "displayName": "Release (Windows MSVC)",
+      "configurePreset": "windows-msvc",
+      "configuration": "Release"
+    },
+    {
+      "name": "win-msvc-debug",
+      "displayName": "Debug (Windows MSVC)",
+      "configurePreset": "windows-msvc",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-oneapi-release",
+      "displayName": "Release (Linux OneAPI)",
+      "configurePreset": "linux-oneapi",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-oneapi-debug",
+      "displayName": "Debug (Linux OneAPI)",
+      "configurePreset": "linux-oneapi",
+      "configuration": "Debug"
+    },
+    {
+      "name": "linux-gcc-release",
+      "displayName": "Release (Linux GCC)",
+      "configurePreset": "linux-gcc",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-gcc-debug",
+      "displayName": "Debug (Linux GCC)",
+      "configurePreset": "linux-gcc",
+      "configuration": "Debug"
     }
   ]
 }
