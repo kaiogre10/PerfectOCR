@@ -1,13 +1,9 @@
-# services/config_service.py
-import yaml
-from typing import Dict, Any, cast, List, Set, Tuple, FrozenSet
+# services/config_validator.py
+from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from types import MappingProxyType
 from functools import cached_property
-from config.config_models import MasterConfig
 import services.logs_service as log_service
-import logging
-
-logger = logging.getLogger(__name__)
+import config_loader as cfg_loader
 
 elemental_worker = "image_loader"
 det = "geometry_detector"
@@ -18,7 +14,7 @@ min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set([elemental_worker]
 class ConfigBuilder:
     """Validada de los parametros de configuración"""
     def __init__(self, config_path: str):
-        self.config = self._load_and_validate_yaml(config_path)
+        self.config = cfg_loader.load_config_file(config_path)
         elemental_params = elemental_worker in self.create_stager[0][1]
         self.active_full_ocr = ocr_workers.issubset(self.all_workers)
         if not self._validate_config(elemental_params):
@@ -91,11 +87,11 @@ class ConfigBuilder:
             return {}
 
         if det not in self.all_workers:
-            logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
+            #logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
             return {}
 
         if full_ocr.issubset(self.all_workers):
-            logger.debug("Configuración: OCR completo + Word Finder")
+            #logger.debug("Configuración: OCR completo + Word Finder")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": True,
@@ -104,7 +100,7 @@ class ConfigBuilder:
             }
 
         if self.active_full_ocr:
-            logger.debug("Configuración: OCR completo sin Word Finder")
+            #logger.debug("Configuración: OCR completo sin Word Finder")
             return {
                 "models_config": self.config.get("models_config", {}),
                 "activate_wf": False,
@@ -112,7 +108,7 @@ class ConfigBuilder:
                 "activate_det": True
             }
 
-        logger.debug("Configuración: Solo modelo de detección")
+        #logger.debug("Configuración: Solo modelo de detección")
         return {
             "models_config": self.config.get("models_config", {}),
             "activate_wf": False,
@@ -141,12 +137,6 @@ class ConfigBuilder:
                 "imagepre_stage": self.workers_order["imagepre_stage"]
             })
 
-    # @property
-    # def preprocessing_workers_config(self):
-    #     return MappingProxyType({
-    #         **self.modules_config.get("image_preparation", {}),
-    #         **self.enabled_outputs.get("image_load_outputs", {})
-    #     })
     @cached_property
     def preprocessing_config(self)-> MappingProxyType[str, Any]:
         if self.no_activate_modules or not self.create_stager[1][1]:
@@ -226,7 +216,7 @@ class ConfigBuilder:
         return frozenset(all_workers)
     
     def _validate_config(self, elemental_params: bool) -> bool:
-        msg: str = f"MODO: {"TEST" if self.test_mode else "PRODUCIÓN"}, verificaciones_robustas: '{self.test_mode}'."
+        msg: str = f"MODO: '{"TEST" if self.test_mode else "PRODUCIÓN"}', verificaciones_robustas: '{self.test_mode}'."
         if not self.system_config:
             log_service.log_active_areas("No hay rutas input")
             return False
@@ -250,20 +240,7 @@ class ConfigBuilder:
             log_service.log_active_areas(f"Error de configuración")
             return False
 
-    def _load_and_validate_yaml(self, config_path: str) -> Dict[str, Any]:
-        """Carga YAML y valida con Pydantic - ROBUSTEZ."""
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                raw = yaml.safe_load(f)
-            if not isinstance(raw, dict):
-                raise TypeError(f"Config raíz debe ser dict, recibido: {type(raw).__name__}")
-            typed_raw = cast(Dict[str, Any], raw)
-            return MasterConfig.model_validate(typed_raw).model_dump()
-
-        except Exception as e:
-            logger.error(f"Error validando configuración desde {config_path}: {e}", exc_info=True)
-        return {}
-
+    
     def _validate_min_workers(self) -> bool:
         try:
             if not self.workers_order:
@@ -276,5 +253,5 @@ class ConfigBuilder:
                 log_service.log_active_areas(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
                 return False
         except Exception as e:
-            logger.error(f"Error crítico en la revisión de parámetros mínimos: {e}", exc_info=True)
+            log_service.basic_logger(f"Error crítico en la revisión de parámetros mínimos: {e}")
         return False

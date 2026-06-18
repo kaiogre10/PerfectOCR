@@ -113,3 +113,18 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         except TypeError as e:
             logger.error(f"Error en recognize_text_from_batch: {e}", exc_info=True)
         return {}
+
+    # def procesar_pagina_pdf(self, ruta_pdf: str):
+    #     # 1. INTENTO DE SUPLANTACIÓN (Costo de CPU/RAM: Casi 0)
+    #     with pdfplumber.open(ruta_pdf) as pdf:
+    #         texto_vectorial: List[str] = []
+    #         for pagina in pdf.pages:
+    #             text_lines = pagina.extract_text_lines()
+    #             for line in text_lines:
+    #                 line_text: str = line.get("text", "")
+    #                 if validate_text(line_text):
+    #                     texto_vectorial.append(line_text)
+    #                     # logger.info(f"{line_text}")
+    #
+    #     logger.info(f"TEXTO VECTORIAL: '{texto_vectorial}'")
+    #     return texto_vectorial

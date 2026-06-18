@@ -14,12 +14,9 @@ valid_img_ext: Tuple[str, ...] = ()
 valid_extensions: List[str] = []
 trash_ext: Tuple[str, ...] = ()
 
-def set_project_root(project_root: str):
-    global PROJECT_ROOT
+def set_system_config(project_root: str, config: Dict[str, List[str]]):
+    global PROJECT_ROOT, CONFIG, output_paths, valid_img_ext, valid_extensions, trash_ext
     PROJECT_ROOT = project_root # type: ignore
-
-def set_system_config(config: Dict[str, List[str]]):
-    global CONFIG, output_paths, valid_img_ext, valid_extensions, trash_ext
     CONFIG = config # type: ignore
     output_paths = config["output_paths"]
     valid_extensions = CONFIG["valid_img_ext"]

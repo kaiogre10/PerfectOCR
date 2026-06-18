@@ -6,7 +6,7 @@ from app.process_builder import ProcessingBuilder
 from app.models_builder import ModelsBuilder
 from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
-import services.postgre_local_service as postgre_local_service
+#import services.postgre_local_service as postgre_local_service
 from core.utils.text_utils import format_elapsed_time
 
 logger = logging.getLogger(__name__)
@@ -39,11 +39,11 @@ class MainBuilder:
                     
                     return []
 
-                final_payload_list = self.transform_image_to_df(processing_builder, workflow_report)
+                self.transform_image_to_df(processing_builder, workflow_report)
 
-                if final_payload_list:
-                    if postgre_local_service.start_postgres():
-                        postgre_local_service.insert_payload(final_payload_list) # type: ignore
+                #if final_payload_list:
+                 #   if postgre_local_service.start_postgres():
+                  #      postgre_local_service.insert_payload(final_payload_list) # type: ignore
 
                 logger.info(f"Tiempo en completar pipeline: {format_elapsed_time(time.perf_counter()-t0)}")
                 return []

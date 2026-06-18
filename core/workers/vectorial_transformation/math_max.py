@@ -44,7 +44,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            # logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            #logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             corrected_df = self.solve(df, context)
 
@@ -55,7 +55,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             if manager.save_final_output(corrected_df, {}):
                 context = {}
-                # logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
+#                logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
 
                 logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
                 if self.output:
@@ -65,7 +65,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 return True
 
         except Exception as e:
-            logger.info(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
+            logger.debug(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
             context = {}
         return False
 
@@ -350,7 +350,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         else:
             context["complete"] = False
             context["text_col_temp"] = []
-            context["arith_cols_ids"] = []
+            context["arith_cols_ids"] = np.empty(0)
             context["dec_rows_ids"] = context["rows_idx"]
             logger.warning("No hay filas con suficientes datos, devolviendo df original")
             return (df, context)
@@ -358,7 +358,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         invalid_indexes = (full_dec_idx.size < 1) | (decimal_cols.size < 1)
         if invalid_indexes:
             ##logger.info("No hay filas completas para aritmetic, devolviendo df original")
-            context["arith_cols_ids"] = []
+            context["arith_cols_ids"] = np.empty(0)
             context["text_col_temp"] = []
             context["dec_rows_ids"] = context["rows_idx"]
             context["complete"] = False

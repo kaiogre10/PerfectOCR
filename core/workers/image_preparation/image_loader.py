@@ -1,6 +1,5 @@
 import cv2
 import logging
-import time
 import numpy as np
 from datetime import datetime
 from typing import Dict, Any
@@ -43,7 +42,7 @@ class ImageLoader(ImagePrepAbstractWorker):
                 full_img = decolorate(full_image)
                 binary = False
             
-            if full_img.size < 1 or full_img is None:
+            if full_img.size < 1 or full_img is None: # type: ignore
                 return False
             
             full_img = np.require(full_img, dtype=np.uint8, requirements=['C', 'A', 'W', 'O', 'E'])

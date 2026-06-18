@@ -93,3 +93,6 @@ def get_logging_info(get_caller_info: Tuple[str, str]):
 
 def intercept_paddle_logs():
     sys.stderr.write = lambda text, orig=sys.stderr.write: orig(re.sub(r".*OMP_NUM_THREADS.*|.*PLEASE USE OMP_NUM_THREADS WISELY.*", "", text)) # type: ignore
+
+def basic_logger(message: str):
+    print(f"{get_logging_info(get_caller_info())} {message}")

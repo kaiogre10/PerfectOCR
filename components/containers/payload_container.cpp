@@ -24,15 +24,15 @@ void push(std::vector<std::vector<uint8_t>>&& struct_payload) {
 
     std::lock_guard<std::mutex> lock(g_canal->mtx);
     // ReSharper disable once CppTooWideScopeInitStatement
-    std::ofstream archivo_log("verificacion_init.txt", std::ios::app);
+//    std::ofstream archivo_log("verificacion_init.txt", std::ios::app);
 
-    if(archivo_log.is_open()) {
-        for (const auto& fila : struct_payload) {
+  //  if(archivo_log.is_open()) {
+    //    for (const auto& fila : struct_payload) {
             // Equivale exactamente a: "".join(fila) de Python
-            archivo_log << std::string(fila.begin(), fila.end()) << "\n";
-        }
-        archivo_log.close();
-    }
+      //      archivo_log << std::string(fila.begin(), fila.end()) << "\n";
+        //}
+//        archivo_log.close();
+  //  }
     g_canal->payload_container.push_back(std::move(struct_payload));
 }
 

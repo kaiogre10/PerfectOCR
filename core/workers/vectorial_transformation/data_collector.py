@@ -98,8 +98,8 @@ class FinalStructurer(VectorizationAbstractWorker):
         mtl_col = df[self.mtl_name]
         c_col = df[self.cant_name]
         
-        mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1]))
-        c_col_dec = c_col.map(lambda x: Decimal(x[0:-1]))
+        mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
+        c_col_dec = c_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
         
         total_total = Decimal(str(sum(mtl_col_dec)))
         total_prod = Decimal(str(sum(c_col_dec)))
@@ -112,8 +112,8 @@ class FinalStructurer(VectorizationAbstractWorker):
         return df, totals
     
     def clean_df(self, df: pd.DataFrame, manager: DataFormatter) -> pd.DataFrame:
-        pro_idx = df.columns.get_loc(self.product_name) if self.product_name in df.columns else None
-        c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None
+        pro_idx = df.columns.get_loc(self.product_name) if self.product_name in df.columns else None # type: ignore
+        c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None # type: ignore
 
         all_lines_dict: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
         line_ids = sorted(all_lines_dict.keys())
@@ -126,11 +126,11 @@ class FinalStructurer(VectorizationAbstractWorker):
         # logger.info(f"\n"f"TABULAR: '{tabular_lines} SIZE: {tabular_lines.size}'\n"f"ROWS DF'{df_rows_ids} SIZE: {df_rows_ids.size}'\n"f"linealiddf: {lineal_ids_df} SIZE: {lineal_ids_df.size}")
 
         for i, r in enumerate(df_rows_ids):
-            p_values = str(df.iat[i, pro_idx]).strip()
-            cant_values = str(df.iat[i, c_idx]).strip()
+            p_values = str(df.iat[i, pro_idx]) # type: ignore
+            cant_values = str(df.iat[i, c_idx]) # type: ignore
             cant_split = cant_values.split(" ")
             if its_similar(cant_split[-1], p_values):
-                p_values = p_values[len(cant_split[-1]):].strip()
+                p_values = p_values[len(cant_split[-1]):]
                 p_split = p_values.split(" ")
                 if not validate_text(p_split[0]):
                     p_split.remove(p_split[0])
@@ -142,7 +142,7 @@ class FinalStructurer(VectorizationAbstractWorker):
             for i, r in enumerate(df_rows_ids):
                 if tabular_lines[r] == lineal_ids_df[i]:
                     p_value = str(df.iat[i, pro_idx])
-                    concat_val = list_text_df[r + 1]
+                    concat_val = list_text_df[i + 1]
                     if p_value.endswith(concat_val):
                         orig_p_value = p_value[:-len(concat_val)].strip()
                         orig_p_value_list: List[str] = orig_p_value.split(" ")
@@ -160,7 +160,6 @@ class FinalStructurer(VectorizationAbstractWorker):
                         if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == 2 and pm == 5):
                             df.iat[i, pro_idx] = (orig_p_value +  concat_val)
 
-        separator = self.separator
-        df = df.map(lambda x: noramalice_df(x, separator)) # type: ignore
+        df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
         #logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
         return df

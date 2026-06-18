@@ -50,6 +50,7 @@ class ModelsConfig(ConfigWithNumpy):
     enable_mkldnn: bool
     cpu_threads: int
     max_batch_size: int
+    table: bool
     det_limit_side_len: int
     rec_batch_num: int
     det_model_dir: List[str]
