@@ -6,7 +6,7 @@ from services.system_service import get_so
 
 OUTPUT_PATHS: List[str] = []
 
-def storage_config(PROJECT_ROOT: str, config: Dict[str, Any]):
+def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]):
     binary_extension: str = get_so()
 
     container_bin_path = config["container_bin"]

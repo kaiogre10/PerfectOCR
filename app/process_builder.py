@@ -76,7 +76,7 @@ class ProcessingBuilder:
                 return None
             
             if storage_service.storage_data(img_results):
-                return (0, [0])
+                return (1, [1])
             else:
                 return None
             

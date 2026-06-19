@@ -1,35 +1,33 @@
 # main.py
 import os
 import sys
-import logging
+
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+from services import log_service
 
 DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
 
 from services.config_service import ConfigService
 config_service = ConfigService(DEFAULT_CONFIG_FILE)
 if config_service.test_config:
+    log_service.log_simple("TEST CONFIG ACTIVADO, FINALIZANDO")
     sys.exit()
 
-import services.logs_service as log_service
+system_config = config_service.system_config
+
+from services import storage_service
+storage_service.storage_config(PROJECT_ROOT, system_config) # type: ignore
+
 import services.system_service as system_service
-import services.storage_service as storage_service
 import services.output_service as output_service
 from app.main_builder import MainBuilder
 
-logger = logging.getLogger(__name__)
-
-storage_service.storage_config(PROJECT_ROOT, system_config) # type: ignore
-
 def main():
-
     os.environ.update(config_service.env_config)
-    system_config = config_service.system_config
-
-    log_service.set_project_root(PROJECT_ROOT)
-    log_service.setup_logging()
+    log_service.setup_logging(PROJECT_ROOT)
 
     system_service.set_system_config(PROJECT_ROOT, system_config) # type: ignore
     system_service.clear_output_folders()
@@ -37,6 +35,7 @@ def main():
     workflow_report = system_service.count_and_plan()
     if not workflow_report and not config_service.no_activate_modules:
         system_service.clear_output_folders()
+        log_service.log_simple("NO HAY INPUT PATHS")
         sys.exit()
 
     output_service.set_output_config(PROJECT_ROOT, system_config) # type: ignore

@@ -1,6 +1,4 @@
 # app/models_builder.py
-import services.logs_service as logger_service
-logger_service.intercept_paddle_logs()
 import os
 import logging
 import threading

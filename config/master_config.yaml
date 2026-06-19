@@ -1,15 +1,19 @@
 # config/master_config.yaml
+test_modes:
+  deploy_mode: True   # Modo que permite inicializar el sistema completo sin validar la configuración
+  test_config: False   # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
+
 system_config:
   input_dirs: [
-   input,
+  #  input,
     input2,
-    input3,
+    # input3,
 #    /media/kaiogre05/DATA/data/tickets_nuevo
   ]
   images_names: [
 #    AAAA0061,
 #    AAAA0006,
-   #AAAC0030,
+   AAAC0030,
    #AAAA0040,
 #    AAAC0043,
 #     AAAA0058,
@@ -24,9 +28,7 @@ system_config:
   ]
 
   valid_img_ext: ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.webp', '.pbm', '.pgm', '.ppm', '.jp2']
-  output_paths: [
-    "output",
-  ]
+  output_paths: ["output"]
   storage_bin: ["core", "utils", "compiled_utils", "buffer_handler"]
   container_bin: ["core", "utils", "compiled_utils", "containers"]
   trash_ext: [ '.pyc', '.pyo', ".c" ]
@@ -225,10 +227,6 @@ modules:
       row_relative_tolerance: "0.10"
       cols_name: ["cantidad_art", "precio_unitario", "costo_tran", "producto_norm", "id_registro"]
       separator: "_"
-
-test_modes:
-  deploy_mode: True
-  test_config: False
 
 env_config:
   'OMP_NUM_THREADS': '4'

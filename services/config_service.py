@@ -7,11 +7,11 @@ from functools import cached_property
 logger = logging.getLogger(__name__)
 
 class ConfigService:
-    __slots__ = [
+    __slots__ = (
         "validated_config", 
         "_manager_config", 
         "__dict__"
-        ]
+        )
     """Gestor de los parametros de configuración"""
     def __init__(self, config_path: str):
         self.validated_config = ConfigBuilder(config_path)
@@ -22,7 +22,7 @@ class ConfigService:
 
     @property
     def logs_debug(self) -> Dict[str, Any]:
-        """Devuelve la configuración para los logs en termial y archivo.log"""
+        """Devuelve la configuración para los logs en termial y archivo"""
         return self.validated_config.logs_debug
 
     @property

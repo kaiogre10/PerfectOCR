@@ -18,7 +18,6 @@ class VectorizationStager(AbstractStager):
     def vectorize_results(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         """Orquesta el flujo completo de vectorización"""
         start_time = time.perf_counter()
-        # workers_fails: List[str] = []
         try:
             exec_context: Dict[str, Any] = context.copy() if context else {}
             time_worker_log = exec_context.get("time_worker_log")
@@ -32,7 +31,7 @@ class VectorizationStager(AbstractStager):
                 worker_start = time.perf_counter()
                 if not worker.vectorize(exec_context, manager):
                     worker_time = time.perf_counter() - worker_start
-                    logger.error(f"'{worker_name}' falló, tiempo: {worker_time:.6f}'s", exc_info=True)
+                    logger.error(f"'{worker_name}' falló, tiempo: {worker_time:.6f}'s")
                     return None, worker_time
                 
                 if time_worker_log:

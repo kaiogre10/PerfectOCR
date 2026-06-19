@@ -30,7 +30,7 @@ _all_zeros = rf"[0{_zero_base}]"
 _extended_digits = rf"[{_digits_base}{_zero_base}{_one_base}{_two_base}{_four_base}{_five_base}{_six_base}{_seven_base}{_eight_base}{_nine_base}]"   # [0-9OQoD|liI!¡Zz?A$SsG/Bqg]
 
 # floats_pattern = re.compile(r'\d+\.\d')
-
+float_time = re.compile(r"Tiempo:\s*(\d+\.\d)\b")
 _stick_chars = r'[!1lIi¡]'
 _stick_set = _stick_chars[1:-1]
 _l_variants = rf"[L{_stick_set}]"
@@ -247,3 +247,5 @@ _correct_ocr = (
     rf"(?P<nine>[{_nine_base}])"
 )
 correct_cuants = re.compile(_correct_ocr)
+
+# paddle_silene = re.compile(r".*OMP_NUM_THREADS.*|.*PLEASE USE OMP_NUM_THREADS WISELY.*")

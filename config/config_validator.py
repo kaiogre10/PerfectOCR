@@ -2,41 +2,44 @@
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from types import MappingProxyType
 from functools import cached_property
-import services.logs_service as log_service
-import config_loader as cfg_loader
+from services.log_service import log_active_areas, log_simple
+from config.config_loader import load_config_file
 
-elemental_worker = "image_loader"
+ELEMENTAL_WORKER = "image_loader"
 det = "geometry_detector"
 ocr_workers: Set[str] = set(["polygon_extractor", "paddle_wrapper", det])
 full_ocr: FrozenSet[str] = frozenset(ocr_workers.union(["data_finder"]))
-min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set([elemental_worker]))) # "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"
+min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set([ELEMENTAL_WORKER]))) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
 
 class ConfigBuilder:
     """Validada de los parametros de configuración"""
     def __init__(self, config_path: str):
-        self.config = cfg_loader.load_config_file(config_path)
-        elemental_params = elemental_worker in self.create_stager[0][1]
+        self.config = load_config_file(config_path)
         self.active_full_ocr = ocr_workers.issubset(self.all_workers)
-        if not self._validate_config(elemental_params):
+        if not self._validate_config():
             self.config = {}
         else:
             self.config = self.config
 
     @cached_property
-    def testing_modes(self) -> MappingProxyType[str, bool]:
-        return MappingProxyType(self.config.get("test_modes",{}))
+    def elemental_params(self) -> bool:
+        return ELEMENTAL_WORKER in self.create_stager[0][1]
+    
+    @cached_property
+    def testing_modes(self) -> Dict[str, bool]:
+        return self.config.get("test_modes",{})
 
     @property
-    def test_mode(self):
-        return self.testing_modes.get("deploy_mode")
+    def deploy_mode(self) -> bool:
+        return bool(self.testing_modes.get("deploy_mode"))
 
     @property
-    def test_config(self):
-        return self.testing_modes.get("test_config")
+    def test_config(self) -> bool:
+        return bool(self.testing_modes.get("test_config"))
     
     @cached_property
     def no_activate_modules(self) -> bool:
-        return (self.test_mode == True) and ((elemental_worker in self.create_stager[0][1]) == False)
+        return (self.deploy_mode == True) and ((self.elemental_params) == False)
 
     @cached_property
     def system_config(self) -> MappingProxyType[str, List[str]]:
@@ -186,7 +189,7 @@ class ConfigBuilder:
                 "postgre_local": self.workers_order["db_stage"]
             })
 
-    @property
+    @cached_property
     def env_config(self) -> Dict[str, Any]:
         return self.config.get("env_config", {})
     
@@ -215,43 +218,43 @@ class ConfigBuilder:
             all_workers.update(vect)
         return frozenset(all_workers)
     
-    def _validate_config(self, elemental_params: bool) -> bool:
-        msg: str = f"MODO: '{"TEST" if self.test_mode else "PRODUCIÓN"}', verificaciones_robustas: '{self.test_mode}'."
+    def _validate_config(self) -> bool:
+        mode = (f'{"DEPLOY" if self.deploy_mode else "PRODUCTION"}') if not self.test_config else "CONFIG TESTING"
+        msg: str = f"Modo: '{mode}', Validación: '{"MÍNIMA" if mode == "DEPLOY" else "COMPLETA"}' de la configuración."
         if not self.system_config:
-            log_service.log_active_areas("No hay rutas input")
+            log_simple("No hay rutas input")
             return False
 
-        elif not self.test_mode and not elemental_params:
-            log_service.log_active_areas(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
+        elif not self.deploy_mode and not self.elemental_params:
+            log_simple(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
             return False
 
-        elif self.test_mode and not elemental_params:
-            log_service.log_active_areas(msg, self.create_stager) # type: ignore
+        elif self.deploy_mode and not self.elemental_params:
+            log_active_areas(msg, self.create_stager) # type: ignore
             return True
 
-        elif self.test_mode:
-            log_service.log_active_areas((msg + " Modulos:"), self.create_stager) # type: ignore
+        elif self.deploy_mode:
+            log_active_areas((msg + " Modulos:"), self.create_stager) # type: ignore
             return True
 
         elif not self.no_activate_modules and self._validate_min_workers():
-            log_service.log_active_areas((msg + "Stages Activas:"), self.create_stager) # type: ignore
+            log_active_areas((msg + "Stages Activas:"), self.create_stager) # type: ignore
             return True
         else:
-            log_service.log_active_areas(f"Error de configuración")
+            log_simple(f"Error de configuración")
             return False
 
-    
     def _validate_min_workers(self) -> bool:
         try:
             if not self.workers_order:
-                log_service.log_active_areas("ERROR: No hay configuración de workers disponible")
+                log_simple("ERROR: No hay configuración de workers disponible")
                 return False
             elif min_workers.issubset(self.all_workers):
                 return True
             else:
                 workers_missing = min_workers - self.all_workers
-                log_service.log_active_areas(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
+                log_simple(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
                 return False
         except Exception as e:
-            log_service.basic_logger(f"Error crítico en la revisión de parámetros mínimos: {e}")
+            log_simple(f"Error crítico en la revisión de parámetros mínimos: {e}")
         return False

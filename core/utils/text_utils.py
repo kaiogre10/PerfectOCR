@@ -564,16 +564,6 @@ def get_ids(id_registro: str, id_need: str):
         logger.info(f"NO se encontró id requerido: {e}")
     return id_registro
 
-def format_elapsed_time(seconds: float) -> str:
-    """Convierte segundos a formato HH:MM:SS.ms"""
-    if seconds < 60.0:
-        return f"{seconds:.6f}'s"
-    minutes = int((seconds % 3600) // 60)
-    if minutes < 60:
-        return f"{minutes:02d}:M {seconds % 60:06.3f}'s"
-    else:
-        return f"{int(seconds // 3600):02d}:H {minutes:02d}:M {seconds % 60:06.3f}'s"
-
 def fast_classfier(text: str) -> Tuple[List[int], int]:
     """Clasifica un string rapidamente, no seleccionar los strings antes de llamar a la función impactará de manera negativa el output del pipeline"""
     if not text:
@@ -589,7 +579,7 @@ def fast_classfier(text: str) -> Tuple[List[int], int]:
 
 def _correct_numbers(text: str) -> str:
     """Solo corrije numeros, no borra caracteres"""
-    return text if text.isdecimal() else _correct_cuants.sub(lambda match: _replacement_map[match.lastgroup], text)
+    return text if text.isdecimal() else _correct_cuants.sub(lambda match: _replacement_map[match.lastgroup], text) # type: ignore
 
 def noramalice_df(text: str, separator: str) -> str:
     text = normalice_text(text, True)

@@ -11,6 +11,16 @@ logger = logging.getLogger(__name__)
 
 class DataFormatter:
     """Válvula de entrada/salida para todas las operaciones del workflow."""
+    __slots__ = (
+        "workflow",
+        "text_ocr_log",
+        "key_fields_log",
+        "kf_list_log",
+        "lines_log",
+        "table_lines_log",
+        "table_geo_log",
+        "table_correct_log",
+    )
     def __init__(self, logs_config: Dict[str, Any]):
         self.workflow: Optional[WorkflowData] = None
         self.text_ocr_log = logs_config.get("text_ocr", False)
