@@ -9,7 +9,7 @@ from core.workers.preprocessing.clahe import ClaherEnhancer
 from core.workers.preprocessing.sharp import SharpeningEnhancer
 
 class PreprocessingFactory(AbstractBaseFactory[PreprocessingAbstractWorker]):
-    def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], PreprocessingAbstractWorker]]:
+    def create_registry(self) -> Dict[str, Callable[[Dict[str, Any]], PreprocessingAbstractWorker]]:
 
         return {
             "restorer": self._create_restorer,

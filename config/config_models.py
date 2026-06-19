@@ -176,10 +176,10 @@ class ModulesConfig(ConfigWithNumpy):
     vectorization: VectorConfig
 
 class PipelineConfig(ConfigWithNumpy):
-    imagepre_stage: Optional[List[str]] = None
-    preprocessing_stage: Optional[List[str]] = None
-    ocr_stage: Optional[List[str]] = None
-    vector_stage: Optional[List[str]] = None
+    image_preparation_stager: Optional[List[str]] = None
+    preprocessing_stager: Optional[List[str]] = None
+    ocr_stager: Optional[List[str]] = None
+    vectorization_stager: Optional[List[str]] = None
     db_stage: Optional[List[str]] = None
     
 class DebugOutputs(ConfigWithNumpy):

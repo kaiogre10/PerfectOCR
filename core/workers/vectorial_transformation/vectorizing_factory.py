@@ -9,7 +9,7 @@ from core.workers.vectorial_transformation.math_max import MatrixSolver
 from core.workers.vectorial_transformation.data_collector import FinalStructurer
 
 class VectorizingFactory(AbstractBaseFactory[VectorizationAbstractWorker]):
-    def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], VectorizationAbstractWorker]]:
+    def create_registry(self) -> Dict[str, Callable[[Dict[str, Any]], VectorizationAbstractWorker]]:
         
         return {
             "lineal": self._create_lineal,

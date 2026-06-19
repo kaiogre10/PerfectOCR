@@ -29,7 +29,7 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
                 self._shared_refiner_workers = {}
         return self._shared_refiner_workers
     
-    def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], OCRAbstractWorker]]:
+    def create_registry(self) -> Dict[str, Callable[[Dict[str, Any]], OCRAbstractWorker]]:
         return {
             "paddle_wrapper": self._create_paddle_wrapper,
             "text_refiner": self._create_refiner,

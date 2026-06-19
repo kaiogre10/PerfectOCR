@@ -1,4 +1,4 @@
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Tuple
 import logging
 from config.config_validator import ConfigBuilder
 from types import MappingProxyType
@@ -7,12 +7,12 @@ from functools import cached_property
 logger = logging.getLogger(__name__)
 
 class ConfigService:
+    """Gestor de los parametros de configuración"""
     __slots__ = (
         "validated_config", 
         "_manager_config", 
         "__dict__"
         )
-    """Gestor de los parametros de configuración"""
     def __init__(self, config_path: str):
         self.validated_config = ConfigBuilder(config_path)
 
@@ -57,15 +57,19 @@ class ConfigService:
         de los workers leerán directamente de la memoria RAM sin ejecutar código.
         """
         return MappingProxyType({
-            "image_preparation": self.validated_config.img_prep_config,
-            "preprocessing": self.validated_config.preprocessing_config,
-            "ocr": self.validated_config.ocr_config,
-            "vectorization": self.validated_config.vectorization_config
+            "image_preparation_stager": self.validated_config.img_prep_config,
+            "preprocessing_stager": self.validated_config.preprocessing_config,
+            "ocr_stager": self.validated_config.ocr_config,
+            "vectorization_stager": self.validated_config.vectorization_config
         })
     
     @property
     def local_db_config(self) -> MappingProxyType[str, Any]:
         return self.validated_config.local_db_config
+    
+    @property
+    def create_stager(self) -> List[Tuple[str, List[str]]]:
+        return self.validated_config.create_stager
     
     # Configuración optimizada para desarrollo ajustada a mi Pc (LATITUDE 5591, 32GB DE RAM, INTEL i5 H8400 DE 4 NÚCLEOS)
     @property

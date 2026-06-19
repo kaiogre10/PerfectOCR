@@ -8,9 +8,9 @@ if TYPE_CHECKING:
 class AbstractStager(ABC):
     """Clase base abstracta para todos los stagers del pipeline."""
     
-    def __init__(self, workers: List[Any], stage_config: Dict[str, Any], project_root: str):
+    def __init__(self, workers: List[Any], modules_config: Dict[str, Any], project_root: str):
         self.workers = workers
-        self.stage_config = stage_config
+        self.modules_config = modules_config
         self.project_root = project_root
     
     @abstractmethod

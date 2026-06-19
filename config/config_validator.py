@@ -124,20 +124,14 @@ class ConfigBuilder:
         return MappingProxyType({}) if self.no_activate_modules else MappingProxyType(self.config.get("modules", {}))
 
     @cached_property
-    def img_workers_config(self):
-        return MappingProxyType({
-            **self.modules_config.get("image_preparation", {}),
-            **self.enabled_outputs.get("image_load_outputs", {})
-        })
-
-    @cached_property
     def img_prep_config(self) -> MappingProxyType[str, Any]:
         if self.no_activate_modules or not self.create_stager[0][1]:
             return MappingProxyType({})
         else:
             return MappingProxyType({
-                "worker_config": self.img_workers_config,
-                "imagepre_stage": self.workers_order["imagepre_stage"]
+                **self.modules_config.get("image_preparation", {}),
+                **self.enabled_outputs.get("image_load_outputs", {}),
+                "image_preparation_stager": self.workers_order["image_preparation_stager"]
             })
 
     @cached_property
@@ -148,7 +142,7 @@ class ConfigBuilder:
             return MappingProxyType({
                 **self.modules_config.get("preprocessing", {}),
                 **self.enabled_outputs.get("preprocessing_outputs", {}),
-                "preprocessing_stage": self.workers_order["preprocessing_stage"]
+                "preprocessing_stager": self.workers_order["preprocessing_stager"]
             })
 
     @cached_property
@@ -161,7 +155,7 @@ class ConfigBuilder:
                 **self.modules_config.get("ocr", {}),
                 **self.enabled_outputs.get("ocr_outputs", {}),
                 **self.logs_debug,
-                "ocr_stage": self.workers_order["ocr_stage"],
+                "ocr_stager": self.workers_order["ocr_stager"],
                 "create_refiners": create_refiners > 0
             })
        
@@ -174,7 +168,7 @@ class ConfigBuilder:
             return MappingProxyType({
                 **self.modules_config.get("vectorization", {}),
                 **self.enabled_outputs.get("vectorization_outputs", {}),
-                "vector_stage": self.workers_order["vector_stage"]
+                "vectorization_stager": self.workers_order["vectorization_stager"]
             })
         
     @cached_property

@@ -48,18 +48,13 @@ class DataFormatter:
                 img_dims = (0 , 0),
                 binary=metadata.get("binary", False)
             )
-            table_data_obj = StructuredData(
-                df_table=None,
-                global_data={}
-            )
             self.workflow = WorkflowData(
                 IDRegistro=IDRegistro,
                 full_img=full_image,
                 metadata=metadata_obj,
-                polygons={},
-                all_lines={},
-                table_data=table_data_obj,
-                H=0
+                polygons=None,
+                all_lines=None,
+                table_data=None,
             )
             logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{IDRegistro}'")
             return True
@@ -125,6 +120,7 @@ class DataFormatter:
                 return False
 
             for poly_id, polygon in self.workflow.polygons.items():
+                polygon.cropped_img = None
                 updated_polygon = dataclasses.replace(polygon, cropped_img=None)
                 self.workflow.polygons[poly_id] = updated_polygon
 
@@ -176,7 +172,7 @@ class DataFormatter:
     def save_cropped_images(self, cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]]) -> bool:
         """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""
         try:
-            if not self.workflow:
+            if not self.workflow or not self.workflow.polygons:
                 logger.error("No hay workflow inicializado para guardar imágenes recortadas.")
                 return False
 
@@ -201,12 +197,12 @@ class DataFormatter:
             return True
         except Exception as e:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
-            return False
+        return False
                     
     def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]], worker: str) -> bool:
         """Actualiza los resultados de OCR en las dataclasses de polígonos."""
         try:
-            if not self.workflow:
+            if not self.workflow or not self.workflow.polygons:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
                 return False
                                     
@@ -240,7 +236,7 @@ class DataFormatter:
             self.workflow.polygons = reindexed_polygons
 
             if self.text_ocr_log and (worker == "PaddleOCRWrapper" or worker == "paddle_wrapper"):
-                polys: Dict[str, Polygons] = self.workflow.polygons
+                polys = self.workflow.polygons if self.workflow else None
                 logger.info("------TEXTO OCR RAW------")
                 for pid, poly, in polys.items():
                     logger.info(f"{pid}: '{poly.ocr_text}'")
@@ -253,7 +249,7 @@ class DataFormatter:
     def update_semantic_clasification(self, final_results: Dict[str, Tuple[List[int], int]]) -> bool:
         """Actualiza el semantic_clasification de los polígonos."""
         try:
-            if not self.workflow:
+            if not self.workflow or not self.workflow.polygons:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
                 return False
 
@@ -268,12 +264,12 @@ class DataFormatter:
             
         except Exception as e:
             logger.error(f"Error actualizando múltiples polígonos: {e}", exc_info=True)
-            return False
+        return False
                 
     def update_key_field(self, polygon_updates: Optional[Dict[str, List[int]]]) -> bool:
         """Actualiza los datos de los polígonos en las dataclasses de polígonos."""
         try:
-            if not self.workflow:
+            if not self.workflow or not self.workflow.polygons:
                 logger.error("No hay workflow inicializado para actualizar polígonos.")
                 return False
             
@@ -345,11 +341,12 @@ class DataFormatter:
                 self.workflow.all_lines = all_lines_dataclasses
                 
             if self.lines_log:
-                all_lines: Dict[str, AllLines] = self.workflow.all_lines if self.workflow else {}
-                for lid, l in all_lines.items():
-                    line_text= l.text
-                    # line_semantic = fast_classfier(line_text)
-                    logger.info(f"{lid}: '{line_text}'")
+                all_lines = self.workflow.all_lines if self.workflow else None
+                if all_lines:
+                    for lid, l in all_lines.items():
+                        line_text= l.text
+                        # line_semantic = fast_classfier(line_text)
+                        logger.info(f"{lid}: '{line_text}'")
             return True
                         
         except ValueError as e:
@@ -359,10 +356,10 @@ class DataFormatter:
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
         """Identifica las líneas tabulares y las guarda como dataclasses TabularLines"""
         try:
-            if not self.workflow:
+            if not self.workflow or not self.workflow.all_lines:
                 return False
             
-            all_lines = self.workflow.all_lines if self.workflow else {}
+            all_lines = self.workflow.all_lines
             for lid, line_obj in all_lines.items():
                 if line_obj.tabular_line:
                     updated = dataclasses.replace(line_obj, tabular_line=False)
@@ -448,7 +445,11 @@ class DataFormatter:
         return False
         
     def get_final_data(self): #Tuple[str, Dict[str, Any]]:
-        structured_data = self.workflow.table_data if self.workflow else None
+        self.workflow = self.workflow if self.workflow else None
+        if self.workflow is None:
+            return pd.DataFrame()
+
+        structured_data = self.workflow.table_data
         if structured_data is None:
             return pd.DataFrame()
         
@@ -456,8 +457,11 @@ class DataFormatter:
         # db_values = structured_data.global_data
         if df is None or df.empty:
             return pd.DataFrame()
-        
-        structured_data.df_table = None
+
         structured_data = None
-        # logger.info(f"ARRAY STRING: {np.array2string(arr)}")
+        self.workflow.metadata = None
+        self.workflow.IDRegistro = None
+        self.workflow.polygons = None
+        self.workflow.all_lines = None
+        self.workflow.table_data = None
         return df

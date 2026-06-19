@@ -9,7 +9,7 @@ from core.workers.image_preparation.geometry_detector import GeometryDetector
 from core.workers.image_preparation.poly_gone import PolygonExtractor
 
 class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
-    def create_worker_registry(self) -> Dict[str, Callable[[Dict[str, Any]], ImagePrepAbstractWorker]]:
+    def create_registry(self) -> Dict[str, Callable[[Dict[str, Any]], ImagePrepAbstractWorker]]:
         
         return {
             'image_loader': self._create_loader,

@@ -33,7 +33,7 @@ class MainBuilder:
             if not self.config_service.no_activate_modules:
                 # CREAR UN ÚNICO BUILDER REUTILIZABLE
                 processing_builder = self.create_single_builder(logs_config=self.config_service.logs_debug) # type: ignore
-                if not processing_builder:                    
+                if processing_builder is None:
                     return []
 
                 self.transform_image_to_df(processing_builder, workflow_report)
@@ -57,20 +57,11 @@ class MainBuilder:
         try:
             # CREAR STAGERS FACTORY UNA SOLA VEZ
             manager_config = self.config_service.manager_config
-            stagers_factory = StagersFactory(manager_config, project_root=self.project_root) # type: ignore
-            input_stager = stagers_factory.create_image_prep_stager()
-            preprocessing_stager = stagers_factory.create_preprocessing_stager()
-            ocr_stager = stagers_factory.create_ocr_stager()
-            vectorization_stager = stagers_factory.create_vectorization_stager()
+            stagers_factory = StagersFactory(manager_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
+            all_stagers = stagers_factory.get_all_stagers()
 
             # El manager se crea dentro del proceso de cada imagen, no aquí
-            builder = ProcessingBuilder(
-                input_stager=input_stager,
-                preprocessing_stager=preprocessing_stager,
-                ocr_stager=ocr_stager,
-                vectorization_stager=vectorization_stager,
-                logs_config=logs_config
-            )
+            builder = ProcessingBuilder(all_stagers=all_stagers, logs_config=logs_config)
             return builder
 
         except AttributeError as e:
@@ -79,6 +70,8 @@ class MainBuilder:
 
     def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[Dict[str, Any]]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
+        # if builder is None:
+        #     return
         
         total_images = len(workflow_report)
         logger.info(f"'{total_images}' IMAGENES PARA PROCESAR")
@@ -91,7 +84,6 @@ class MainBuilder:
         for i, image_data in enumerate(workflow_report):
             # Procesar imagen individualmente
             payload_dirs = builder.process_single_image(image_data)
-
             if payload_dirs is None:
                 # logger.info(f"Fallo al procesar imagen: '{images_names[i]}'")
                 continue
@@ -103,6 +95,7 @@ class MainBuilder:
                 continue
 
         total_processing_time = time.perf_counter() - start_time
+        del builder
         mean_process = f"{(total_processing_time / total_images):.6f}"
 
         failed_images = set(images_names).difference(set(succes_images))

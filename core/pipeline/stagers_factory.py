@@ -7,120 +7,75 @@ from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Tuple, List
+import logging
+
+keyimglo ="image_preparation_stager"
+keypre = "preprocessing_stager"
+ocrkey = "ocr_stager"
+veckey = "vectorization_stager"
+
+list_keys: List[str] = list([keyimglo, keypre, ocrkey, veckey])
+
+logger = logging.getLogger(__name__)
 
 class StagersFactory:
     """Crea workers y ensambla stagers de forma uniforme."""
-    def __init__(self, manager_config: Dict[str, Any], project_root: str):
+    def __init__(self, modules_config: Dict[str, Dict[str, Any]], project_root: str, stagging: List[Tuple[str, List[str]]]):
         self.project_root = project_root
-        modules_config = manager_config
-        self.image_preparation_config = modules_config.get("image_preparation", {})
-        self.preprocessing_config = modules_config.get('preprocessing', {})
-        self.ocr_config = modules_config.get('ocr', {})
-        self.vectorizing_config = modules_config.get('vectorization', {})
+        self.stagging = stagging
+        self.modules_config = modules_config
+        
+        factories_dict: Dict[str, Any] = {
+            keyimglo: self.get_image_preparation_factory(self.modules_config.get(keyimglo)), # type: ignore
+            keypre: self.get_preprocessing_factory(self.modules_config.get(keypre)), # type: ignore
+            ocrkey: self.get_ocr_factory(self.modules_config.get(ocrkey)), # type: ignore
+            veckey: self.get_vectorizing_factory(self.modules_config.get(veckey)) # type: ignore
+        }
 
-    def create_image_prep_stager(self, context: Optional[Dict[str, Any]] = None) -> Optional[ImagePreparationStager]:
-        """Crea stager de preparación de imagen con configuraciones específicas del master config."""
-        image_preparation_config = self.image_preparation_config
-        if not image_preparation_config:
-            return None
+        stagers_dict: Dict[str, Any] = {
+            keyimglo: ImagePreparationStager,
+            keypre: PreprocessingStager,
+            ocrkey: OCRStager,
+            veckey: VectorizationStager,    
+        }
+        all_stagers: List[Any] = self.buil_stagers(factories_dict, stagers_dict)
+        self.all_stagers = all_stagers
 
-        image_workers = image_preparation_config["imagepre_stage"]
-        if not image_workers:
-            return None
+    def buil_stagers(self, factories_dict: Dict[str, Any], stagers_dict: Dict[str, Any]) -> List[Any]:
+        # logger.info(f"Stagers: {stagging}")
+        stagers: List[Any] = []
+        
+        for (stage, workers) in self.stagging:
+            stage_config  = self.modules_config.get(stage) # Configuración por etapa
+            if not workers or not stage:
+                # logger.info(f"STAGE SIN WORKERS: '{stage}'")
+                continue
+            try:
+                workers_order = stage_config.get(stage) # Pipeline_config
+                # logger.info(f"STAGE: {stage}: WORKERS: {workers_order}")
 
-        worker_config = image_preparation_config.get("worker_config")
-        factory = self.get_image_preparation_factory(worker_config)
-        if factory is None:
-            return None
+                config = self.modules_config.get(stage)
+                # logger.info(f"STAGE DEBUGG: {stage}")
+                factory = factories_dict[stage]
+                workers_created = factory.create_components(workers_order)
+                stager = stagers_dict.pop(stage)
+                stagers.append(stager(workers_created, config, self.project_root))
+            except AttributeError as e:
+                logger.info(f"error stagggin: {e}", exc_info=True)
+        return stagers
 
-        if "polygon_extractor" in image_workers:
-            if "geometry_detector" not in image_workers:
-                image_workers.remove("polygon_extractor")
+    def get_all_stagers(self) -> List[Any]:
+        return self.all_stagers
 
-        image_workers = factory.create_workers(image_workers, context)
+    def get_image_preparation_factory(self, config: Dict[str, Any]) -> ImagePreparationFactory:
+        return ImagePreparationFactory(config, self.project_root)
 
-        return ImagePreparationStager(
-            workers=image_workers,
-            stage_config=image_preparation_config,
-            project_root=self.project_root
-        )
+    def get_preprocessing_factory(self, config: Dict[str, Any]) -> PreprocessingFactory:
+        return PreprocessingFactory(config, self.project_root)
 
-    def create_preprocessing_stager(self, context: Optional[Dict[str, Any]] = None) -> Optional[PreprocessingStager]:
-        """Crea stager de preprocessing con configuraciones específicas del master config."""
-        preprocessing_config = self.preprocessing_config
-        if not preprocessing_config:
-            return None
+    def get_ocr_factory(self, config: Dict[str, Any]) -> OCRFactory:
+        return OCRFactory(config, self.project_root)
 
-        preprocessing_workers = preprocessing_config["preprocessing_stage"]
-
-        if not preprocessing_workers:
-            return None
-
-        factory = self.get_preprocessing_factory(preprocessing_config)
-        if factory is None:
-            return None
-
-        preprocessing_workers = factory.create_workers(preprocessing_workers, context)
-
-        return PreprocessingStager(
-            workers=preprocessing_workers,
-            stage_config=preprocessing_config,
-            project_root=self.project_root,
-        )
-
-    def create_ocr_stager(self, context: Optional[Dict[str, Any]] = None) -> Optional[OCRStager]:
-        """Crea stager de OCR con configuraciones específicas del master config."""
-        ocr_config = self.ocr_config
-        if not ocr_config:
-            return None
-
-        ocr_workers = self.ocr_config["ocr_stage"]
-        if not ocr_workers:
-            return None
-
-        factory = self.get_ocr_factory(ocr_config)
-        if factory is None:
-            return None
-
-        ocr_workers = factory.create_workers(ocr_workers, context)
-
-        return OCRStager(
-            workers=ocr_workers,
-            stage_config=ocr_config,
-            project_root=self.project_root
-        )
-
-    def create_vectorization_stager(self, context: Optional[Dict[str, Any]] = None) -> Optional[VectorizationStager]:
-        """Crea stager de vectorización con configuraciones específicas del master config."""
-        vectorizing_config = self.vectorizing_config
-        if not vectorizing_config:
-            return None
-
-        vectorizing_workers = self.vectorizing_config["vector_stage"]
-        if not vectorizing_workers:
-            return None
-
-        factory = self.get_vectorizing_factory(vectorizing_config)
-        if factory is None:
-            return None
-
-        vectorizing_workers = factory.create_workers(vectorizing_workers, context)
-
-        return VectorizationStager(
-            workers=vectorizing_workers,
-            stage_config=vectorizing_config,
-            project_root=self.project_root
-        )
-
-    def get_image_preparation_factory(self, image_preparation_config: Dict[str, Any]) -> Optional[ImagePreparationFactory]:
-        return None if not image_preparation_config else ImagePreparationFactory(image_preparation_config, self.project_root)
-
-    def get_preprocessing_factory(self, preprocessing_config: Dict[str, Any]) -> Optional[PreprocessingFactory]:
-        return None if not preprocessing_config else PreprocessingFactory(preprocessing_config, self.project_root)
-
-    def get_ocr_factory(self, ocr_config: Dict[str, Any]) -> Optional[OCRFactory]:
-        return None if not ocr_config else OCRFactory(ocr_config, self.project_root)
-
-    def get_vectorizing_factory(self, vectorizing_config: Dict[str, Any]) -> Optional[VectorizingFactory]:
-        return None if not vectorizing_config else VectorizingFactory(vectorizing_config, self.project_root)
+    def get_vectorizing_factory(self, config: Dict[str, Any]) -> VectorizingFactory:
+        return VectorizingFactory(config, self.project_root)

@@ -83,10 +83,9 @@ class StructuredData:
 
 @dataclass(slots=True)
 class WorkflowData:
-    IDRegistro: str
+    IDRegistro: Optional[str]
     full_img: Optional[FullImage]
     metadata: Optional[Metadata]
-    polygons: Dict[str, Polygons]
-    all_lines: Dict[str, AllLines]
+    polygons: Optional[Dict[str, Polygons]]
+    all_lines: Optional[Dict[str, AllLines]]
     table_data: Optional[StructuredData]
-    H: int

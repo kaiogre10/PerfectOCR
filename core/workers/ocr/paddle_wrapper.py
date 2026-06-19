@@ -82,7 +82,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             # time_t = time.perf_counter()
             batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
             # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
-            image_list = None
+            del image_list
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
             for idx, (text, confidence) in enumerate(batch_result[0]):

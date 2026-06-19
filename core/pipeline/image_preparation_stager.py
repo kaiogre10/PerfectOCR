@@ -9,12 +9,7 @@ logger = logging.getLogger(__name__)
 
 class ImagePreparationStager(AbstractStager):
     """Stager de preparación de imágenes."""
-    
     def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
-        """Ejecuta la fase de preparación completa."""
-        return self.prepare_image(manager, context)
-
-    def prepare_image(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
         
         # Usar contexto base si existe, sino crear uno nuevo

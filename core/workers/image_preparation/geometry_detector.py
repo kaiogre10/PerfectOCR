@@ -68,6 +68,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 
             # paddle_time = time.perf_counter()
             polygons = engine.ocr(img=img, det=True, cls=False, rec=False)[0]
+            del img
             # logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
             if not polygons:
                 logger.critical("No hay polygonos detectados")

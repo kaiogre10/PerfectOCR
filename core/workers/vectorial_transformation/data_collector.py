@@ -161,5 +161,5 @@ class FinalStructurer(VectorizationAbstractWorker):
                             df.iat[i, pro_idx] = (orig_p_value +  concat_val)
 
         df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
-        #logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
+        logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
         return df

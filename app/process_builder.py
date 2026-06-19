@@ -1,25 +1,24 @@
 # PerfectOCR/app/process_builder.py
 import logging
 from typing import Optional, Dict, Any, Tuple, List
-from core.pipeline.image_preparation_stager import ImagePreparationStager
-from core.pipeline.preprocessing_stager import PreprocessingStager
-from core.pipeline.ocr_stager import OCRStager
-from core.pipeline.vectorization_stager import VectorizationStager
 from core.domain.data_formatter import DataFormatter
 import services.storage_service as storage_service
 
 logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
-    """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y coordina el procesamiento técnico de una sola imagen."""    
-    def __init__(self, input_stager: Optional[ImagePreparationStager], preprocessing_stager: Optional[PreprocessingStager], ocr_stager: Optional[OCRStager], vectorization_stager: Optional[VectorizationStager], logs_config: Dict[str, Any]):
-        self.input_stager = input_stager
-        self.preprocessing_stager = preprocessing_stager
-        self.ocr_stager = ocr_stager
-        self.vectorization_stager = vectorization_stager
+    __slots__ = (
+        "all_stagers",
+        "logs_config",
+        "time_stages_log",
+        "time_worker_log"
+    )
+    """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y coordina el procesamiento técnico de una sola imagen."""
+    def __init__(self, all_stagers: List[Any], logs_config: Dict[str, Any]):
+        self.all_stagers = all_stagers
+        self.logs_config = logs_config
         self.time_stages_log = logs_config.get("time_stages_log")
         self.time_worker_log = logs_config.get("time_worker_log")
-        self.logs_config = logs_config
         
     def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[int, List[int]]]:
         """
@@ -28,10 +27,6 @@ class ProcessingBuilder:
         Devuelve Direcciones en memoria de los datos generados
         """
         try:    
-            if self.input_stager is None:
-                logger.warning("No hay Modulo de carga de imagen, acabando")
-                return None
-
             # Crear instancia fresca de DataFormatter para esta imagen
             manager = DataFormatter(self.logs_config)
             # Crear contexto para esta ejecución
@@ -40,36 +35,14 @@ class ProcessingBuilder:
                 "image_data": image_data,
                 "time_worker_log": self.time_worker_log
             }
-            
-            manager, time_poly = self.input_stager.execute(manager, context)
-            if manager is None:
-                return None
 
-            if self.time_stages_log:
-                logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
-
-            if self.preprocessing_stager is not None:
-                manager, elapsed = self.preprocessing_stager.execute(manager, context)
+            for _, stager in enumerate(self.all_stagers):
+                manager, time_poly = stager.execute(manager, context)
                 if manager is None:
                     return None
-
+                
                 if self.time_stages_log:
-                    logger.info(f"Fase de preprocesamiento completada en: {elapsed:.6f}s")
-
-            if self.ocr_stager is not None:
-                manager, ocr_time = self.ocr_stager.execute(manager, context)
-                if manager is None:
-                    return None
-
-                if self.time_stages_log:
-                    logger.info(f"OCR completado en: {ocr_time:.6f}s")
-
-            if self.vectorization_stager is not None:
-                manager, vect_time = self.vectorization_stager.execute(manager, context)
-                if manager is None:
-                    return None
-                if self.time_stages_log:
-                    logger.info(f"Vectorización completada en: {vect_time:.6f}s")
+                    logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
 
             img_results = manager.get_final_data()
             if img_results.empty:

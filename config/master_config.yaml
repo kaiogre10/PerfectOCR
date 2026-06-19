@@ -5,19 +5,19 @@ test_modes:
 
 system_config:
   input_dirs: [
-    input,
-    # input2,
+#    input,
+     input2,
     #  input3,
 #    /media/kaiogre05/DATA/data/tickets_nuevo
   ]
   images_names: [
 #    AAAA0061,
 #    AAAA0006,
-  #  AAAC0030,
-   #AAAA0040,
-#    AAAC0043,
+    AAAC0030,
+   AAAA0040,
+   AAAC0043,
 #     AAAA0058,
-    #AAAC0037,
+    AAAC0037,
 #    AAAA0059,
 #     AAAB0002,
 #      AAAC0010,
@@ -35,25 +35,25 @@ system_config:
   invalid_extensions: [ ".json", ".txt", ".webp" ]
 
 pipeline_secuence:
-  imagepre_stage:
+  image_preparation_stager:
     - "image_loader"
     - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
-  preprocessing_stage:
+  preprocessing_stager:
     #  - "sp"
     #  - "gauss"
     #  - "clahe"
     #  - "sharp"
 
-  ocr_stage:
+  ocr_stager:
     - "paddle_wrapper"
     - "text_refiner"
     - "data_finder"
     
-  vector_stage:
+  vectorization_stager:
     - "lineal"
     - "cos_sim"
     - "table_structurer"

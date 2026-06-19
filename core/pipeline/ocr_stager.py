@@ -8,13 +8,9 @@ from core.factory.abstract_stager import AbstractStager
 logger = logging.getLogger(__name__)
 
 class OCRStager(AbstractStager):
-    """Stager ee reconocimiento óptico de caracteres."""
-    
+    """FASE DE OCR Y POSTPROCESAMIENTO TEXTUAL"""
+
     def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
-        """Ejecuta la fase de OCR completa."""
-        return self.run_ocr_on_polygons(manager, context)
-        
-    def run_ocr_on_polygons(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
         exec_context: Dict[str, Any] = context.copy() if context else {}
         time_worker_log = exec_context.get("time_worker_log")

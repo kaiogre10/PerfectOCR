@@ -1,12 +1,18 @@
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Tuple
 import logging
 import os
 import ctypes
 from services.system_service import get_so
 
 OUTPUT_PATHS: List[str] = []
+CON: ctypes.CDLL
+LIB: ctypes.CDLL
+PLACEHOLDER: str
 
-def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]):
+logger = logging.getLogger(__name__)
+
+def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
+    PLACEHOLDER = config.get("placeholder", "_")
     binary_extension: str = get_so()
 
     container_bin_path = config["container_bin"]
@@ -20,6 +26,7 @@ def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]):
         CON.container_create(1)
     except BaseExceptionGroup as e:
         logger.error(f"NO SE PUDO PUDO INICIAR EL CONTENDOR EN MEMORIA: {e}", exc_info=True)
+        raise
     
     storage_bin_path = config["storage_bin"]
     binary_ext = storage_bin_path.pop(-1)
@@ -31,7 +38,7 @@ def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]):
         LIB = ctypes.CDLL(storage_bin)
     except FileNotFoundError as e:
         logger.warning(f"ERROR CARGANDO EL BINARIO: {e}", exc_info=True)
-        return None
+        raise
 
     LIB.storage_batch_flat.argtypes = [
         ctypes.POINTER(ctypes.c_uint8),  # Puntero a los bytes contiguos aplanados
@@ -40,44 +47,45 @@ def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]):
     ]
     LIB.storage_batch_flat.restype = None
 
-logger = logging.getLogger(__name__)
-
 def storage_data(data_to_flat: Any) -> bool:
     """Interfaz pública para guardar la información generada."""
-    # 1. NOTA: Invertimos el orden del return de transform_data para que coincida con tu firma
     buffer_sizes, plain_text = transform_data(data_to_flat)
-    return request_storage(plain_text, buffer_sizes)
+    return _request_storage(plain_text, buffer_sizes)
 
-
-def request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
-    # CAMBIO 1: El tamaño total en bytes es la suma de los tamaños UTF-16 ya calculados
-    total_bytes = sum(buff_sizes)
-    cantidad_elementos = len(buff_sizes) # N es la cantidad de strings, no el total de bytes
-
-    arreglo_tamanos_c = (ctypes.c_size_t * cantidad_elementos)(*buff_sizes)
-
-    # CAMBIO 2: Convertimos la cadena completa a UTF-16LE de forma directa.
-    # .encode("utf-16le") genera exactamente 'total_bytes' de longitud.
-    bytes_utf16 = plain_text.encode("utf-16le")
-    plaintext_c = (ctypes.c_uint8 * total_bytes).from_buffer_copy(bytes_utf16)
-
+def _request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
     try:
-        # CAMBIO 3: Pasamos la cantidad real de elementos (N) en el tercer argumento
-        LIB.storage_batch_flat(plaintext_c, arreglo_tamanos_c, ctypes.c_size_t(cantidad_elementos))
-    except ctypes.ArgumentError as e:
-        logger.warning(f"Error escribiendo bytecode en memoria asignada por C++: {e}", exc_info=True)
-        return False
-    return True
+        # El tamaño total en bytes es la suma de los tamaños UTF-16 ya calculados
+        total_bytes = sum(buff_sizes)
+        total_rows = len(buff_sizes) # N es la cantidad de columnas de strings planos, no el total de bytes
+        try:
+            # Convertir la cadena completa a UTF-16LE de forma directa.
+            # .encode("utf-16le") genera exactamente 'total_bytes' de longitud.
+            arreglo_tamanos_c = (ctypes.c_size_t * total_rows)(*buff_sizes)
+            bytes_utf16 = plain_text.encode("utf-16le")
+            plaintext_c = (ctypes.c_uint8 * total_bytes).from_buffer_copy(bytes_utf16)
+            # Pasar la cantidad real de elementos (N) en el tercer argumento
+            LIB.storage_batch_flat(plaintext_c, arreglo_tamanos_c, ctypes.c_size_t(total_rows))
+        except ctypes.ArgumentError as e:
+            logger.warning(f"Error escribiendo bytecode en memoria asignada por C++: {e}", exc_info=True)
+            raise
+        return True
+    except Exception as e:
+        logger.error(f"ERROR SOLICITANDO MEMORIA: {e}", exc_info=True)
+    return False
 
-def transform_data(df: Any):
+def transform_data(df: Any) -> Tuple[List[int], str]:
+    """Devuelve tamaño de cada fila y el df aplanado"""
     plain_df: List[str] = []
     buffer_sizes: List[int] = []
+    total_rows = df.shape[0]
 
-    for fila in df.itertuples(index=False, name=None):
+    for i, fila in enumerate(df.itertuples(index=False, name=None)):
         fila = list(fila)
-        string_row = "".join(fila)[:-1]
+        if (i + 1) != total_rows:
+            string_row = "".join(fila)[:-1]
+        else:
+            string_row = "".join(fila)
 
-        # CAMBIO 4: Medir de forma ultra eficiente el tamaño en bytes de la fila en UTF-16LE.
         # Al multiplicar por 2 evitamos codificar celda por celda en el bucle.
         buff_size_bytes = len(string_row) * 2
 
@@ -85,4 +93,5 @@ def transform_data(df: Any):
         buffer_sizes.append(buff_size_bytes)
 
     plain_text = "".join(plain_df)
+    logger.info(f"TAMAÑO: '{buffer_sizes}' PLAIN TEXT:\n"f"'{plain_text}'")
     return buffer_sizes, plain_text
