@@ -42,7 +42,6 @@ def main():
     
     main_builder = MainBuilder(config_service, PROJECT_ROOT)
     main_builder.activate_main(workflow_report)
-
     system_service.cleanup_project_cache()
 
 if __name__ == "__main__":

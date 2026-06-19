@@ -93,7 +93,7 @@ class MainBuilder:
             payload_dirs = builder.process_single_image(image_data)
 
             if payload_dirs is None:
-                logger.info(f"Fallo al procesar imagen: '{images_names[i]}'")
+                # logger.info(f"Fallo al procesar imagen: '{images_names[i]}'")
                 continue
             else:
                 image_name = images_names[i]
@@ -103,18 +103,17 @@ class MainBuilder:
                 continue
 
         total_processing_time = time.perf_counter() - start_time
-        mean_process = (total_processing_time / total_images)
+        mean_process = f"{(total_processing_time / total_images):.6f}"
 
         failed_images = set(images_names).difference(set(succes_images))
         total_fails = len(failed_images)
         
         if total_fails == 0:
-            logger.info(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_mask}{total_processing_time}, promedio: {mean_process:.6f}'s")
+            logger.info(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_mask}{total_processing_time}, promedio: {mean_process}'s")
         elif total_fails == total_images:
-            logger.info(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {time_mask}{total_processing_time}")
-            final_results = []
+            logger.info(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {time_mask}{total_processing_time}, promedio: {mean_process}")
         else:
-            logger.info(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process:.6f}'s / documento")
+            logger.info(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
 
             logger.info(f"IMAGENES EXITOSAS: {succes_images}")
             logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")

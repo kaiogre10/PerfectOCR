@@ -7,12 +7,11 @@ from core.utils.patterns import float_time
 import inspect
 from typing import List, Tuple, Optional
 
-# _paddle_silene = paddle_silene
 _float_time = float_time
 CONSOLE_LEVEL = 'INFO'
 FILE_LEVEL = 'INFO'
 CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
-FILE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
+FILE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 EXTRA_FILE_LOGS = []
 
@@ -113,10 +112,9 @@ def format_elapsed_time(seconds: float) -> str:
     else:
         return f"{int(seconds // 3600):02d}:H {minutes:02d}:M {seconds % 60:06.3f}'s"
 
-# class TiempoFilter(logging.Filter):
-
+# class TimeWorker(logging.Filter):
 #     def filter(self, record: logging.LogRecord):
-
+#
 #         if (record.levelno == logging.WARNING and record.module == "main_builder"):
 #             msg = record.getMessage()
 #             matches = _float_time.finditer(msg)
@@ -124,5 +122,5 @@ def format_elapsed_time(seconds: float) -> str:
 #                 text_float = float([(match.group()[7:]) for match in matches if match.group()][0].strip())
 #                 record.msg = f"Total: {format_elapsed_time(text_float)}"
 #                 record.args = ()
-
+#
 #         return True

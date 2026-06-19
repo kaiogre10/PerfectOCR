@@ -142,7 +142,7 @@ class ConfigBuilder:
 
     @cached_property
     def preprocessing_config(self)-> MappingProxyType[str, Any]:
-        if self.no_activate_modules or not self.create_stager[1][1]:
+        if self.no_activate_modules or not self.create_stager[1][1] or not self.active_full_ocr:
             return MappingProxyType({})
         else:
             return MappingProxyType({
@@ -156,7 +156,7 @@ class ConfigBuilder:
         if self.no_activate_modules or not self.create_stager[2][1] or not self.active_full_ocr:
             return MappingProxyType({})
         else:
-            create_refiners = self.modules_config.get("ocr", {}).get("text_refiner", {}).get("num_passes")
+            create_refiners = self.modules_config.get("ocr", {}).get("text_refine", {}).get("num_passes")
             return MappingProxyType({
                 **self.modules_config.get("ocr", {}),
                 **self.enabled_outputs.get("ocr_outputs", {}),

@@ -5,15 +5,15 @@ test_modes:
 
 system_config:
   input_dirs: [
-  #  input,
-    input2,
-    # input3,
+    input,
+    # input2,
+    #  input3,
 #    /media/kaiogre05/DATA/data/tickets_nuevo
   ]
   images_names: [
 #    AAAA0061,
 #    AAAA0006,
-   AAAC0030,
+  #  AAAC0030,
    #AAAA0040,
 #    AAAC0043,
 #     AAAA0058,
@@ -31,7 +31,7 @@ system_config:
   output_paths: ["output"]
   storage_bin: ["core", "utils", "compiled_utils", "buffer_handler"]
   container_bin: ["core", "utils", "compiled_utils", "containers"]
-  trash_ext: [ '.pyc', '.pyo', ".c" ]
+  trash_ext: ['.pyc', '.pyo', ".c", "__pycache__"]
   invalid_extensions: [ ".json", ".txt", ".webp" ]
 
 pipeline_secuence:
@@ -43,12 +43,10 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stage:
-    # - restorer
-#     - "moire"
-#    - "sp"
-#    - "gauss"
-#    - "clahe"
-#    - "sharp"
+    #  - "sp"
+    #  - "gauss"
+    #  - "clahe"
+    #  - "sharp"
 
   ocr_stage:
     - "paddle_wrapper"
@@ -63,7 +61,7 @@ pipeline_secuence:
     - "collector"
 
   db_stage:
-#  - "postgre_local"
+  # - "postgre_local"
        
 log_debug:
   all_logs: False
@@ -203,7 +201,7 @@ modules:
     paddle_wrapper:
       min_confidence: 0.5307
       
-    text_refiner:
+    text_refine:
       num_passes: 1
     
   vectorization:

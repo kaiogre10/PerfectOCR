@@ -128,13 +128,13 @@ class MatricialCusine(VectorizationAbstractWorker):
         # logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
 
         if sims_final[0] < self.min_internal_sim:
-            logger.info(f"PRIMERA LINEA RUIDOSA: {sims_final[0]}")
+            # logger.info(f"PRIMERA LINEA RUIDOSA: {sims_final[0]}")
             line_ids = line_ids[1:]
             sims_final = sims_final[1:]
 
         sim_idx = np.where(sims_final > self.similarity_threshold)[0]                       # Índices donde se superó el umbral de similitud
         if sim_idx.size < 1:
-            logger.warning(f"SE USARA EL UMBRAL DE SEGURIDAD: '{self.emergency_threshold}'")
+            # logger.warning(f"SE USARA EL UMBRAL DE SEGURIDAD: '{self.emergency_threshold}'")
             sims_idx = np.where(sims_final > self.emergency_threshold)[0]
         else:
             sims_idx = sim_idx

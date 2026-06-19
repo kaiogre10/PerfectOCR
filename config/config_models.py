@@ -145,7 +145,7 @@ class PaddleTranscription(ConfigWithNumpy):
 
 class OCRConfig(ConfigWithNumpy):
     paddle_wrapper: PaddleTranscription
-    text_refiner: TextRefiner
+    text_refine: TextRefiner
 
 class Lineal(ConfigWithNumpy):
     get_vectors: bool

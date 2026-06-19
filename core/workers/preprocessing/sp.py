@@ -101,7 +101,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                     save_croped_image(image_name, poly_id, corrected_img, worker_name)
 
             total_time = time.time() - start_time
-            logger.info(f"Corregidos: {corrected_poly}/{len(poly_ids_order)} polígonos en: {total_time:.6f}s")
+            logger.debug(f"Corregidos: {corrected_poly}/{len(poly_ids_order)} polígonos en: {total_time:.6f}s")
             return True
         
         except Exception as e:
