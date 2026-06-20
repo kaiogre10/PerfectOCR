@@ -61,6 +61,7 @@ class ModelsConfig(ConfigWithNumpy):
     use_mp: bool
     max_text_length: int
     return_word_box: bool
+    save_log_path: str
     
 class InkConfig(ConfigWithNumpy):
     white: List[int]
@@ -214,6 +215,11 @@ class SystemConfig(ConfigWithNumpy):
 class TestingModes(ConfigWithNumpy):
     deploy_mode: bool
     test_config: bool
+    handle_memory: bool
+
+class GlobalParams(ConfigWithNumpy):
+    payloads_size: int
+    postgre_local: bool
 
 class MasterConfig(ConfigWithNumpy):
     system_config: SystemConfig

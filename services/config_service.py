@@ -9,9 +9,7 @@ logger = logging.getLogger(__name__)
 class ConfigService:
     """Gestor de los parametros de configuración"""
     __slots__ = (
-        "validated_config", 
-        "_manager_config", 
-        "__dict__"
+        "validated_config"
         )
     def __init__(self, config_path: str):
         self.validated_config = ConfigBuilder(config_path)
@@ -30,9 +28,9 @@ class ConfigService:
         return self.validated_config.no_activate_modules
 
     @property
-    def system_config(self) -> MappingProxyType[str, List[str]]:
+    def system_dirs(self) -> MappingProxyType[str, List[str]]:
         """Devuelve la configuración general del sistema"""
-        return MappingProxyType(self.validated_config.system_config)
+        return MappingProxyType(self.validated_config.system_dirs)
 
     @property
     def enabled_outputs(self) -> MappingProxyType[str, Dict[str, bool]]:
@@ -49,19 +47,9 @@ class ConfigService:
         """Devuelve la configuración de los modelos entrenados"""
         return MappingProxyType(self.validated_config.models_config)
 
-    @cached_property
+    @property
     def manager_config(self) -> MappingProxyType[str, Any]:
-        """
-        Se ejecuta UNA SOLA VEZ en el primer llamado de todo el pipeline.
-        Construye la estructura y congela el mapa. Los subsecuentes accesos
-        de los workers leerán directamente de la memoria RAM sin ejecutar código.
-        """
-        return MappingProxyType({
-            "image_preparation_stager": self.validated_config.img_prep_config,
-            "preprocessing_stager": self.validated_config.preprocessing_config,
-            "ocr_stager": self.validated_config.ocr_config,
-            "vectorization_stager": self.validated_config.vectorization_config
-        })
+        return self.validated_config.manager_config
     
     @property
     def local_db_config(self) -> MappingProxyType[str, Any]:
@@ -75,3 +63,11 @@ class ConfigService:
     @property
     def env_config(self) -> Dict[str, Any]:
         return self.validated_config.env_config
+    
+    @cached_property
+    def handle_memory(self) -> bool:
+        return self.validated_config.handle_memory
+    
+    @cached_property
+    def global_params(self) -> Dict[str, Any]:
+        return self.validated_config.global_params

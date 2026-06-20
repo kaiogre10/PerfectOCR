@@ -1,23 +1,28 @@
 # config/master_config.yaml
-test_modes:
-  deploy_mode: True   # Modo que permite inicializar el sistema completo sin validar la configuración
-  test_config: False   # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
+global_params:
+  payloads_size: 2          # Cantidad de memoria máxima Que puede tener un payload antes de ser enviado
+  postgre_local: False      # Habilitar el servicio local de postgre
+  handle_memory: False   # Interruptor para gestionar la memoria de forma dinámica,
 
-system_config:
+test_modes:
+  deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración
+  test_config: False    # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
+
+dirs:
   input_dirs: [
-#    input,
+   input,
      input2,
-    #  input3,
+     input3,
 #    /media/kaiogre05/DATA/data/tickets_nuevo
   ]
   images_names: [
 #    AAAA0061,
 #    AAAA0006,
-    AAAC0030,
-   AAAA0040,
-   AAAC0043,
-#     AAAA0058,
-    AAAC0037,
+#    AAAC0030,
+ #   AAAA0040,
+#   AAAC0043,
+##     AAAA0058,
+#    AAAC0037,
 #    AAAA0059,
 #     AAAB0002,
 #      AAAC0010,
@@ -59,9 +64,6 @@ pipeline_secuence:
     - "table_structurer"
     - "math_max"
     - "collector"
-
-  db_stage:
-  # - "postgre_local"
        
 log_debug:
   all_logs: False
@@ -82,7 +84,7 @@ log_debug:
   
   semantic_types_log: [2,3,4,5]
   kf_list_log: [7, 8,9,10,11,12]
-  
+
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
@@ -131,6 +133,7 @@ models_config:
   table: False
   max_text_length: 20
   return_word_box: False
+  save_log_path: './log_output/'
   
   det_model_dir: ["models", "paddle", "det", "es"]
   rec_model_dir: ["models", "paddle", "rec", "es"]

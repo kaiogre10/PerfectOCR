@@ -28,37 +28,41 @@ class ConfigBuilder:
     @cached_property
     def testing_modes(self) -> Dict[str, bool]:
         return self.config.get("test_modes",{})
-
-    @property
+    
+    @cached_property
+    def handle_memory(self) -> bool:
+        return bool(self.testing_modes.get("handle_memory"))
+    
+    @cached_property
     def deploy_mode(self) -> bool:
         return bool(self.testing_modes.get("deploy_mode"))
 
-    @property
+    @cached_property
     def test_config(self) -> bool:
         return bool(self.testing_modes.get("test_config"))
     
     @cached_property
     def no_activate_modules(self) -> bool:
         return (self.deploy_mode == True) and ((self.elemental_params) == False)
+    
+    @cached_property
+    def global_params(self) -> Dict[str, Any]:
+        return self.config.get("global_params", {})
 
     @cached_property
-    def system_config(self) -> MappingProxyType[str, List[str]]:
-        sys_config = self.config.get("system_config", {})
-        return MappingProxyType({}) if not sys_config["input_dirs"] else MappingProxyType(sys_config)
+    def system_dirs(self) -> MappingProxyType[str, List[str]]:
+        sys_dirs = self.config.get("dirs", {})
+        return MappingProxyType({}) if not sys_dirs["input_dirs"] else MappingProxyType(sys_dirs)
 
     @cached_property
     def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
-        if self.no_activate_modules or not self.system_config["output_paths"]:
+        if self.no_activate_modules or not self.system_dirs["output_paths"]:
             return {}
         return self.config.get("enabled_outputs", {})
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
-
-    @cached_property
-    def exporting_config(self) -> Dict[str, List[str]]:
-        return self.config.get("exporting_config", {})
 
     @cached_property
     def logs_debug(self) -> Dict[str, Any]:
@@ -173,7 +177,7 @@ class ConfigBuilder:
         
     @cached_property
     def local_db_config(self) -> MappingProxyType[str, Any]:
-        db_stage = self.create_stager[4][1]
+        db_stage = bool(self.global_params.get("global_params"))
         if self.no_activate_modules or not db_stage or not self.active_full_ocr:
             return MappingProxyType({})
         else:
@@ -183,7 +187,7 @@ class ConfigBuilder:
                 "postgre_local": self.workers_order["db_stage"]
             })
 
-    @cached_property
+    @property
     def env_config(self) -> Dict[str, Any]:
         return self.config.get("env_config", {})
     
@@ -215,12 +219,17 @@ class ConfigBuilder:
     def _validate_config(self) -> bool:
         mode = (f'{"DEPLOY" if self.deploy_mode else "PRODUCTION"}') if not self.test_config else "CONFIG TESTING"
         msg: str = f"Modo: '{mode}', Validación: '{"MÍNIMA" if mode == "DEPLOY" else "COMPLETA"}' de la configuración."
-        if not self.system_config:
+        
+        if not self.system_dirs:
             log_simple("No hay rutas input")
             return False
 
         elif not self.deploy_mode and not self.elemental_params:
             log_simple(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
+            return False
+        
+        elif not self.deploy_mode and not self.handle_memory:
+            log_simple(f"ACTIVAR MEMORIA DINÁMICA")
             return False
 
         elif self.deploy_mode and not self.elemental_params:
@@ -252,3 +261,17 @@ class ConfigBuilder:
         except Exception as e:
             log_simple(f"Error crítico en la revisión de parámetros mínimos: {e}")
         return False
+    
+    @cached_property
+    def manager_config(self) -> MappingProxyType[str, Any]:
+        """
+        Se ejecuta UNA SOLA VEZ en el primer llamado de todo el pipeline.
+        Construye la estructura y congela el mapa. Los subsecuentes accesos
+        de los workers leerán directamente de la memoria RAM sin ejecutar código.
+        """
+        return MappingProxyType({
+            "image_preparation_stager": self.img_prep_config,
+            "preprocessing_stager": self.preprocessing_config,
+            "ocr_stager": self.ocr_config,
+            "vectorization_stager": self.vectorization_config
+        })

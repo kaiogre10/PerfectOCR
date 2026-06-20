@@ -65,6 +65,11 @@ def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str
     handler.setLevel(level.upper())
     log_root.addHandler(handler)
 
+# def add_log_file(module_name: str):
+#     EXTRA_FILE_LOGS.append(module_name)
+#     _add_file_handler()
+#     return
+
 def log_active_areas(message: str, manager_config: Optional[List[Tuple[str, List[str]]]] = None) -> None:
     caller_info = get_caller_info()
     message = f"{get_logging_info(caller_info)} {message}"

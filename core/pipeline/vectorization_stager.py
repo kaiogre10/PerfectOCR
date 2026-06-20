@@ -25,7 +25,7 @@ class VectorizationStager(AbstractStager):
                 worker_start = time.perf_counter()
                 if not worker.vectorize(exec_context, manager):
                     worker_time = time.perf_counter() - worker_start
-                    logger.error(f"'{worker_name}' falló, tiempo: {worker_time:.6f}'s")
+                    #logger.error(f"'{worker_name}' falló, tiempo: {worker_time:.6f}'s")
                     return None, worker_time
                 
                 if time_worker_log:

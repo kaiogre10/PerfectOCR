@@ -16,20 +16,20 @@ if config_service.test_config:
     log_service.log_simple("TEST CONFIG ACTIVADO, FINALIZANDO")
     sys.exit()
 
-system_config = config_service.system_config
-
 from services import storage_service
-storage_service.storage_config(PROJECT_ROOT, system_config) # type: ignore
-
 import services.system_service as system_service
 import services.output_service as output_service
 from app.main_builder import MainBuilder
 
 def main():
+    system_dirs = config_service.system_dirs
     os.environ.update(config_service.env_config)
     log_service.setup_logging(PROJECT_ROOT)
+    
+    if config_service.handle_memory:
+        storage_service.storage_config(PROJECT_ROOT, system_dirs) # type: ignore
 
-    system_service.set_system_config(PROJECT_ROOT, system_config) # type: ignore
+    system_service.set_system_config(PROJECT_ROOT, system_dirs) # type: ignore
     system_service.clear_output_folders()
 
     workflow_report = system_service.count_and_plan()
@@ -38,7 +38,7 @@ def main():
         log_service.log_simple("NO HAY INPUT PATHS")
         sys.exit()
 
-    output_service.set_output_config(PROJECT_ROOT, system_config) # type: ignore
+    output_service.set_output_config(PROJECT_ROOT, system_dirs) # type: ignore
     
     main_builder = MainBuilder(config_service, PROJECT_ROOT)
     main_builder.activate_main(workflow_report)

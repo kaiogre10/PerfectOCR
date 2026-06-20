@@ -37,7 +37,7 @@ class ModelsBuilder:
         init_time = time.perf_counter()
         try:
             # 1. Inicialización SELECTIVA de motores de Paddle
-            if not self._activate_paddle(config):
+            if not self._activate_paddle(config, project_root):
                 return False
 
             # 2. Inicialización de WordFinder
@@ -65,13 +65,19 @@ class ModelsBuilder:
     def word_finder(self) -> Optional[WordFinder]:
         return self._word_finder
 
-    def _activate_paddle(self, config: Dict[str, Any]) -> bool:
+    def _activate_paddle(self, config: Dict[str, Any], project_root: str) -> bool:
         try:
             # PaddleOCR solo cargará en RAM/VRAM los modelos marcados como True
             activate_rec = config.get("activate_rec")
             activate_det = config.get("activate_det")
             models_config = config.get("models_config", {})
-            
+
+            show_log = models_config.get('show_log')
+            if show_log:
+                save_log_path = os.path.join(project_root)
+            else:
+                save_log_path = models_config["save_log_path"]
+
             activate_cls = models_config.get('use_angle_cls')
             if activate_cls:
                 logger.warning(f"ADVERTENCIA SE ACTIVÓ EL MODELO DE DETECCIÓN DE ANGULO DE PADDLE: {activate_cls}")
@@ -90,7 +96,7 @@ class ModelsBuilder:
                     cls = activate_cls,
                     det_model_dir = det_model_dir,
                     rec_model_dir = rec_model_dir,
-                    show_log = models_config.get('show_log'),
+                    show_log = show_log,
                     use_gpu = models_config.get('use_gpu'),
                     enable_mkldnn = models_config.get('enable_mkldnn'),
                     table= models_config.get('table'),
@@ -102,7 +108,8 @@ class ModelsBuilder:
                     det_db_score_mode = models_config.get('det_db_score_mode'),
                     use_mp = models_config.get('use_mp'),
                     max_text_length = models_config.get('max_text_length'),
-                    return_word_box = models_config.get('return_word_box')
+                    return_word_box = models_config.get('return_word_box'),
+                    save_log_path = save_log_path
                 )
                 # Asignamos al puntero solo si el modelo está realmente activo
                 self._detection_engine = self._shared_engine if activate_det else None

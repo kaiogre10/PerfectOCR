@@ -6,6 +6,7 @@ from app.models_builder import ModelsBuilder
 from core.pipeline.stagers_factory import StagersFactory
 from services.config_service import ConfigService
 import logging
+import bitmath # type: ignore
 
 time_mask = f"Tiempo: "
 logger = logging.getLogger(__name__)
@@ -14,6 +15,8 @@ class MainBuilder:
     def __init__(self, config_service: ConfigService, project_root: str):
         self.project_root = project_root
         self.config_service = config_service
+        self.config = self.config_service.global_params
+        self.tolerance = self.config.get("payloads_size", 0)
 
     def activate_main(self, workflow_report: List[Dict[str, Any]]) -> List[str]:
         t0 = time.perf_counter()
@@ -27,12 +30,12 @@ class MainBuilder:
             if models_config:
                 models_builder = ModelsBuilder.get_instance()
                 if not models_builder.initialize_models(models_config, self.project_root): # type: ignore
-                    logger.info("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
+                    logger.error("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
                     return []
 
             if not self.config_service.no_activate_modules:
                 # CREAR UN ÚNICO BUILDER REUTILIZABLE
-                processing_builder = self.create_single_builder(logs_config=self.config_service.logs_debug) # type: ignore
+                processing_builder = self.create_single_builder() # type: ignore
                 if processing_builder is None:
                     return []
 
@@ -49,19 +52,18 @@ class MainBuilder:
             return []
 
         except Exception as e:
-           logging.error(f"ERROR FATAL EN BUILDERS, FINALIZANDO PROCESO: {e}", exc_info=True)
+           logging.info(f"ERROR FATAL EN BUILDERS, FINALIZANDO PROCESO: {e}", exc_info=True)
         return []
 
-    def create_single_builder(self, logs_config: Dict[str, Any]) -> Optional[ProcessingBuilder]:
+    def create_single_builder(self) -> Optional[ProcessingBuilder]:
         """Crea un único builder reutilizable usando StagersFactory."""
         try:
             # CREAR STAGERS FACTORY UNA SOLA VEZ
             manager_config = self.config_service.manager_config
             stagers_factory = StagersFactory(manager_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
             all_stagers = stagers_factory.get_all_stagers()
-
             # El manager se crea dentro del proceso de cada imagen, no aquí
-            builder = ProcessingBuilder(all_stagers=all_stagers, logs_config=logs_config)
+            builder = ProcessingBuilder(all_stagers=all_stagers, processing_config=self.config)
             return builder
 
         except AttributeError as e:
@@ -70,29 +72,40 @@ class MainBuilder:
 
     def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[Dict[str, Any]]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
-        # if builder is None:
-        #     return
-        
+        tolerance = bitmath.KiB(self.tolerance)
         total_images = len(workflow_report)
         logger.info(f"'{total_images}' IMAGENES PARA PROCESAR")
 
         succes_images: List[str] = []
         images_names = [names["name"][:-4] for names in workflow_report]
-        final_results: List[Tuple[int, List[int]]] = []
+        final_results: List[Tuple[bitmath.Any, int]] = []
 
+        payloads_buffer: bitmath.Byte = bitmath.Byte(0)
+        payload_cunter = 0
+        
         start_time = time.perf_counter()
         for i, image_data in enumerate(workflow_report):
             # Procesar imagen individualmente
-            payload_dirs = builder.process_single_image(image_data)
-            if payload_dirs is None:
+            payload_size = builder.process_single_image(image_data)
+            if payload_size is None:
                 # logger.info(f"Fallo al procesar imagen: '{images_names[i]}'")
                 continue
             else:
                 image_name = images_names[i]
                 succes_images.append(image_name)
-                final_results.append(payload_dirs)
-                logger.info(f"IMAGEN '{image_name}' # {(i + 1)} de '{total_images}' imágenes")
-                continue
+                #logger.info(f"IMAGEN '{image_name}' # {(i + 1)} de '{total_images}' imágenes")
+                payload_cunter += 1
+
+                payload_size = bitmath.Byte(sum(payload_size))
+                if (payload_size + payloads_buffer) < tolerance and (i+1) < total_images:
+                    payloads_buffer += payload_size
+                    continue
+                else:
+                    payloads_sended = self.send_payload_pack(payloads_buffer, payload_cunter)
+                    final_results.append(payloads_sended)
+                    payloads_buffer = bitmath.Byte(0)
+                    payload_cunter = 0
+                    continue
 
         total_processing_time = time.perf_counter() - start_time
         del builder
@@ -108,7 +121,14 @@ class MainBuilder:
         else:
             logger.info(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
 
-            logger.info(f"IMAGENES EXITOSAS: {succes_images}")
-            logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")
+            #logger.info(f"IMAGENES EXITOSAS: {succes_images}")
+            #logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")
 
+        for result in final_results:
+            logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")
         return final_results
+
+    def send_payload_pack(self, size: bitmath.Any, total_payloads: int) -> Tuple[bitmath.Any, int]:
+        payload_resized = bitmath.best_prefix(size)
+        logger.info(f"TAMAÑO DEL PAYLOAD: '{payload_resized}', enviados: '{total_payloads}'")
+        return (payload_resized, total_payloads)

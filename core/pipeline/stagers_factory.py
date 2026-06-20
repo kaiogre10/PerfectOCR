@@ -7,8 +7,7 @@ from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
-from typing import Dict, Any, Tuple, List
-import logging
+from typing import Dict, Any, Tuple, List, Optional
 
 keyimglo ="image_preparation_stager"
 keypre = "preprocessing_stager"
@@ -17,11 +16,10 @@ veckey = "vectorization_stager"
 
 list_keys: List[str] = list([keyimglo, keypre, ocrkey, veckey])
 
-logger = logging.getLogger(__name__)
 
 class StagersFactory:
     """Crea workers y ensambla stagers de forma uniforme."""
-    def __init__(self, modules_config: Dict[str, Dict[str, Any]], project_root: str, stagging: List[Tuple[str, List[str]]]):
+    def __init__(self, modules_config: Dict[str, Dict[str, Any]], project_root: str, stagging: List[Tuple[str, Optional[List[str]]]]):
         self.project_root = project_root
         self.stagging = stagging
         self.modules_config = modules_config
@@ -43,26 +41,25 @@ class StagersFactory:
         self.all_stagers = all_stagers
 
     def buil_stagers(self, factories_dict: Dict[str, Any], stagers_dict: Dict[str, Any]) -> List[Any]:
-        # logger.info(f"Stagers: {stagging}")
         stagers: List[Any] = []
-        
         for (stage, workers) in self.stagging:
             stage_config  = self.modules_config.get(stage) # Configuración por etapa
-            if not workers or not stage:
-                # logger.info(f"STAGE SIN WORKERS: '{stage}'")
+            if workers is None or not workers or not stage:
                 continue
             try:
-                workers_order = stage_config.get(stage) # Pipeline_config
-                # logger.info(f"STAGE: {stage}: WORKERS: {workers_order}")
-
+                workers_order: List[str] = stage_config.get(stage) # Pipeline_config 
+                if not workers_order:
+                    continue
                 config = self.modules_config.get(stage)
-                # logger.info(f"STAGE DEBUGG: {stage}")
-                factory = factories_dict[stage]
+                factory = factories_dict.get(stage)
+                if factory is None:
+                    continue
                 workers_created = factory.create_components(workers_order)
                 stager = stagers_dict.pop(stage)
                 stagers.append(stager(workers_created, config, self.project_root))
-            except AttributeError as e:
-                logger.info(f"error stagggin: {e}", exc_info=True)
+                continue
+            except AttributeError:
+                raise
         return stagers
 
     def get_all_stagers(self) -> List[Any]:

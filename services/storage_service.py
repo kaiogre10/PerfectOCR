@@ -7,12 +7,13 @@ from services.system_service import get_so
 OUTPUT_PATHS: List[str] = []
 CON: ctypes.CDLL
 LIB: ctypes.CDLL
-PLACEHOLDER: str
+PLACEHOLDER: str 
 
 logger = logging.getLogger(__name__)
 
 def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
-    PLACEHOLDER = config.get("placeholder", "_")
+    global PLACEHOLDER
+    PLACEHOLDER = config.get("placeholder", "_") # type: ignore
     binary_extension: str = get_so()
 
     container_bin_path = config["container_bin"]
@@ -35,7 +36,7 @@ def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
 
     global LIB # type: ignore
     try:
-        LIB = ctypes.CDLL(storage_bin)
+        LIB = ctypes.CDLL(storage_bin) # type: ignore
     except FileNotFoundError as e:
         logger.warning(f"ERROR CARGANDO EL BINARIO: {e}", exc_info=True)
         raise
@@ -47,22 +48,25 @@ def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
     ]
     LIB.storage_batch_flat.restype = None
 
-def storage_data(data_to_flat: Any) -> bool:
+def storage_data(data_to_flat: Any) -> List[int]:
     """Interfaz pública para guardar la información generada."""
     buffer_sizes, plain_text = transform_data(data_to_flat)
-    return _request_storage(plain_text, buffer_sizes)
+    if _request_storage(plain_text, buffer_sizes):
+        return buffer_sizes
+    else:
+        return []
 
 def _request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
     try:
         # El tamaño total en bytes es la suma de los tamaños UTF-16 ya calculados
-        total_bytes = sum(buff_sizes)
-        total_rows = len(buff_sizes) # N es la cantidad de columnas de strings planos, no el total de bytes
+        total_bytes = sum(buff_sizes)               
+        total_rows = len(buff_sizes)                                                     # Tma de columnas de strings planos, no el total de bytes
         try:
             # Convertir la cadena completa a UTF-16LE de forma directa.
             # .encode("utf-16le") genera exactamente 'total_bytes' de longitud.
-            arreglo_tamanos_c = (ctypes.c_size_t * total_rows)(*buff_sizes)
+            arreglo_tamanos_c = (ctypes.c_size_t * total_rows)(*buff_sizes)             # Tamaño de cada fila aplanada
             bytes_utf16 = plain_text.encode("utf-16le")
-            plaintext_c = (ctypes.c_uint8 * total_bytes).from_buffer_copy(bytes_utf16)
+            plaintext_c = (ctypes.c_uint8 * total_bytes).from_buffer_copy(bytes_utf16)  # Texto aplanado
             # Pasar la cantidad real de elementos (N) en el tercer argumento
             LIB.storage_batch_flat(plaintext_c, arreglo_tamanos_c, ctypes.c_size_t(total_rows))
         except ctypes.ArgumentError as e:
@@ -93,5 +97,5 @@ def transform_data(df: Any) -> Tuple[List[int], str]:
         buffer_sizes.append(buff_size_bytes)
 
     plain_text = "".join(plain_df)
-    logger.info(f"TAMAÑO: '{buffer_sizes}' PLAIN TEXT:\n"f"'{plain_text}'")
+    #logger.info(f"TAMAÑO: '{buffer_sizes}' PLAIN TEXT:\n"f"'{plain_text}'")
     return buffer_sizes, plain_text

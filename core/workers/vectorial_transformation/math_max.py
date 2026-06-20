@@ -94,7 +94,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             cols_list: List[str] = list(df.columns)
             text_col: str = cols_list[int(text_col_idx[0])]
             df.rename(columns={text_col: self.product_name}, inplace = True)
-            logger.info(f"DF PERFECTO")
+            #logger.info(f"DF PERFECTO")
             return df
         else:
             if df.shape == (arithmetical_rows.size, arithmetical_cols.size):
