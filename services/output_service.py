@@ -10,7 +10,7 @@ from typing import Dict, Any, List
 import csv
 
 PROJECT_ROOT: str 
-OUTPUT_PATHS: List[str]
+OUTPUT_PATHS: List[str] = []
 
 def set_output_config(project_root: str, config: Dict[str, List[str]]):
     global OUTPUT_PATHS, PROJECT_ROOT

@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import List, Tuple, Optional, Dict, Any
 
 class ConfigWithNumpy(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=False, extra='forbid')
 
 class ImgLoadOutputs(ConfigWithNumpy):
     full_img: bool
@@ -123,8 +123,6 @@ class ContrastConfig(ConfigWithNumpy):
         
 class MathMaxConfig(ConfigWithNumpy):
     row_relative_tolerance: str
-    cols_name: List[str]
-    separator: str
 
 class RestoreConfig(ConfigWithNumpy):
     area_threshold: int
@@ -202,7 +200,7 @@ class DebugOutputs(ConfigWithNumpy):
     time_stages_log: bool
     time_worker_log: bool
 
-class SystemConfig(ConfigWithNumpy):
+class SystemDirs(ConfigWithNumpy):
     input_dirs: List[str]
     images_names: List[str]
     valid_img_ext: List[str]
@@ -212,21 +210,25 @@ class SystemConfig(ConfigWithNumpy):
     trash_ext: List[str]
     invalid_extensions: List[str]
 
-class TestingModes(ConfigWithNumpy):
+class SystemParams(ConfigWithNumpy):
     deploy_mode: bool
     test_config: bool
-    handle_memory: bool
-
-class GlobalParams(ConfigWithNumpy):
+    clean_mode: bool
     payloads_size: int
     postgre_local: bool
+    handle_memory: bool
 
+class PayloadRequest(ConfigWithNumpy):
+    cols_name: List[str]
+    separator: List[str]
+    
 class MasterConfig(ConfigWithNumpy):
-    system_config: SystemConfig
+    dirs: SystemDirs
     pipeline_secuence: PipelineConfig
     enabled_outputs: OutputFlags
     models_config: ModelsConfig
     modules: ModulesConfig
     log_debug: DebugOutputs
-    test_modes: TestingModes
+    system_params: SystemParams
     env_config: Dict[str, Any]
+    payload_request: PayloadRequest

@@ -12,53 +12,60 @@ full_ocr: FrozenSet[str] = frozenset(ocr_workers.union(["data_finder"]))
 min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set([ELEMENTAL_WORKER]))) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
 
 class ConfigBuilder:
-    """Validada de los parametros de configuración"""
-    def __init__(self, config_path: str):
+    """Valida de los parametros de configuración"""
+    def __init__(self, config_path: List[str]):
         self.config = load_config_file(config_path)
-        self.active_full_ocr = ocr_workers.issubset(self.all_workers)
+        self.run_params
+        self.active_full_ocr
         if not self._validate_config():
             self.config = {}
         else:
             self.config = self.config
 
-    @cached_property
-    def elemental_params(self) -> bool:
+    # Paramétros de sistema alto nivel
+    @property
+    def elemental_params(self) -> bool:     # Condición mínima necesaria para que pueda arrancar el sistema
         return ELEMENTAL_WORKER in self.create_stager[0][1]
     
     @cached_property
-    def testing_modes(self) -> Dict[str, bool]:
-        return self.config.get("test_modes",{})
+    def system_params(self) -> Dict[str, Any]:
+        return self.config.get("system_params",{})
+    
+    @cached_property
+    def clean_project(self) -> bool:
+        return bool(self.system_params.get("clean_mode"))
     
     @cached_property
     def handle_memory(self) -> bool:
-        return bool(self.testing_modes.get("handle_memory"))
+        return bool(self.system_params.get("handle_memory"))
     
     @cached_property
     def deploy_mode(self) -> bool:
-        return bool(self.testing_modes.get("deploy_mode"))
+        return bool(self.system_params.get("deploy_mode"))
 
     @cached_property
     def test_config(self) -> bool:
-        return bool(self.testing_modes.get("test_config"))
+        return bool(self.system_params.get("test_config"))
     
     @cached_property
-    def no_activate_modules(self) -> bool:
+    def db_local(self) -> bool:
+        return bool(self.system_params.get("postgre_local"))
+    
+    @cached_property
+    def no_activate_modules(self) -> bool: # Parametro automátizado que permite arrancar el sistema para testear parametros de alto nivel sin crear objetos pesados de manera innecesaria
         return (self.deploy_mode == True) and ((self.elemental_params) == False)
     
     @cached_property
-    def global_params(self) -> Dict[str, Any]:
-        return self.config.get("global_params", {})
-
-    @cached_property
     def system_dirs(self) -> MappingProxyType[str, List[str]]:
         sys_dirs = self.config.get("dirs", {})
-        return MappingProxyType({}) if not sys_dirs["input_dirs"] else MappingProxyType(sys_dirs)
+        return MappingProxyType({}) if (not sys_dirs["input_dirs"] and not self.deploy_mode) else MappingProxyType(sys_dirs)
 
     @cached_property
     def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
-        if self.no_activate_modules or not self.system_dirs["output_paths"]:
+        if not self.system_dirs["output_paths"] or self.no_activate_modules:
             return {}
-        return self.config.get("enabled_outputs", {})
+        else:
+            return self.config.get("enabled_outputs", {})
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
@@ -69,7 +76,6 @@ class ConfigBuilder:
         logs = self.config.get("log_debug", {})
         if self.no_activate_modules:
             return {}
-
         # Mutación controlada: Se ejecuta UNA SOLA VEZ y se queda en caché
         if logs.get("all_logs") or self.test_config:
             for key, value in logs.items():
@@ -79,6 +85,10 @@ class ConfigBuilder:
                     logs[key] = [-1]
             return logs
         return logs
+    
+    @cached_property
+    def payload_request(self) -> Dict[str, Any]:
+        return self.config.get("payload_request", {})
         
     @cached_property
     def models_config(self) -> Dict[str, Any]:
@@ -124,61 +134,60 @@ class ConfigBuilder:
         }
 
     @cached_property
-    def modules_config(self) -> MappingProxyType[str, Any]:
-        return MappingProxyType({}) if self.no_activate_modules else MappingProxyType(self.config.get("modules", {}))
+    def modules_config(self) -> Dict[str, Any]:
+        return {} if self.no_activate_modules else self.config.get("modules", {})
 
     @cached_property
-    def img_prep_config(self) -> MappingProxyType[str, Any]:
+    def img_prep_config(self) -> Tuple[Dict[str, Any], List[str]]:
         if self.no_activate_modules or not self.create_stager[0][1]:
-            return MappingProxyType({})
+            return ({}, [])
         else:
-            return MappingProxyType({
-                **self.modules_config.get("image_preparation", {}),
-                **self.enabled_outputs.get("image_load_outputs", {}),
-                "image_preparation_stager": self.workers_order["image_preparation_stager"]
-            })
+            image_workers = self.workers_order["image_preparation_stager"]
+            if "polygon_extractor" in image_workers:
+                if not det in image_workers:
+                    self.workers_order["image_preparation_stager"].remove("polygon_extractor")
 
+            config_module = self.modules_config.get("image_preparation", {})
+            enabled_outputs = self.enabled_outputs.get("image_load_outputs", {})
+            config_module.update(enabled_outputs)
+            return config_module, self.workers_order["image_preparation_stager"]
+            
     @cached_property
-    def preprocessing_config(self)-> MappingProxyType[str, Any]:
+    def preprocessing_config(self)-> Tuple[Dict[str, Any], List[str]]:
         if self.no_activate_modules or not self.create_stager[1][1] or not self.active_full_ocr:
-            return MappingProxyType({})
+            return ({}, [])
         else:
-            return MappingProxyType({
-                **self.modules_config.get("preprocessing", {}),
-                **self.enabled_outputs.get("preprocessing_outputs", {}),
-                "preprocessing_stager": self.workers_order["preprocessing_stager"]
-            })
-
+            config_module = self.modules_config.get("preprocessing", {})
+            enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {}),
+            config_module.update(enabled_outputs)
+            config_module.update(self.enabled_outputs.get("preprocessing_outputs"))
+            return config_module, self.workers_order["preprocessing_stager"]
+            
     @cached_property
-    def ocr_config(self) -> MappingProxyType[str, Any]:
+    def ocr_config(self) -> Tuple[Dict[str, Any], List[str]]:
         if self.no_activate_modules or not self.create_stager[2][1] or not self.active_full_ocr:
-            return MappingProxyType({})
+            return ({}, [])
         else:
-            create_refiners = self.modules_config.get("ocr", {}).get("text_refine", {}).get("num_passes")
-            return MappingProxyType({
-                **self.modules_config.get("ocr", {}),
-                **self.enabled_outputs.get("ocr_outputs", {}),
-                **self.logs_debug,
-                "ocr_stager": self.workers_order["ocr_stager"],
-                "create_refiners": create_refiners > 0
-            })
-       
+            config_module = self.modules_config.get("ocr", {})
+            config_module.update(self.logs_debug)
+            config_module.update(self.enabled_outputs.get("ocr_outputs"))
+            return config_module, self.workers_order["ocr_stager"]
+               
     @cached_property
-    def vectorization_config(self) -> MappingProxyType[str, Any]:
+    def vectorization_config(self) -> Tuple[Dict[str, Any], List[str]]:
         vect_stage = self.create_stager[3][1]
         if self.no_activate_modules or not vect_stage or not "lineal" in vect_stage or not self.active_full_ocr:
-            return MappingProxyType({})
+            return ({}, [])
         else:
-            return MappingProxyType({
-                **self.modules_config.get("vectorization", {}),
-                **self.enabled_outputs.get("vectorization_outputs", {}),
-                "vectorization_stager": self.workers_order["vectorization_stager"]
-            })
+            config_module = self.modules_config.get("vectorization", {})
+            enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
+            config_module.update(enabled_outputs)
+            config_module.update(self.payload_request)
+            return config_module, self.workers_order["vectorization_stager"]
         
     @cached_property
     def local_db_config(self) -> MappingProxyType[str, Any]:
-        db_stage = bool(self.global_params.get("global_params"))
-        if self.no_activate_modules or not db_stage or not self.active_full_ocr:
+        if self.no_activate_modules or not self.db_local or not self.active_full_ocr:
             return MappingProxyType({})
         else:
             math_max_config = self.modules_config.get("vectorization", {})
@@ -186,6 +195,20 @@ class ConfigBuilder:
                 **math_max_config.get("math_max", {}),
                 "postgre_local": self.workers_order["db_stage"]
             })
+
+    @cached_property
+    def stagers_config(self) -> MappingProxyType[str, Tuple[Dict[str, Any], List[str]]]:
+        """
+        Se ejecuta UNA SOLA VEZ en el primer llamado de todo el pipeline.
+        Construye la estructura y congela el mapa. Los subsecuentes accesos
+        de los workers leerán directamente de la memoria RAM sin ejecutar código.
+        """
+        return MappingProxyType({
+            "image_preparation_stager": self.img_prep_config,
+            "preprocessing_stager": self.preprocessing_config,
+            "ocr_stager":  self.ocr_config,
+            "vectorization_stager": self.vectorization_config
+        })
 
     @property
     def env_config(self) -> Dict[str, Any]:
@@ -261,17 +284,27 @@ class ConfigBuilder:
         except Exception as e:
             log_simple(f"Error crítico en la revisión de parámetros mínimos: {e}")
         return False
-    
+
     @cached_property
-    def manager_config(self) -> MappingProxyType[str, Any]:
-        """
-        Se ejecuta UNA SOLA VEZ en el primer llamado de todo el pipeline.
-        Construye la estructura y congela el mapa. Los subsecuentes accesos
-        de los workers leerán directamente de la memoria RAM sin ejecutar código.
-        """
-        return MappingProxyType({
-            "image_preparation_stager": self.img_prep_config,
-            "preprocessing_stager": self.preprocessing_config,
-            "ocr_stager": self.ocr_config,
-            "vectorization_stager": self.vectorization_config
-        })
+    def active_full_ocr(self):
+        return ocr_workers.issubset(self.all_workers)
+
+    @cached_property
+    def run_params(self):
+        try:
+            self.elemental_params
+            pass
+            self.all_workers
+            pass
+            self.active_full_ocr
+            pass
+            self.workers_order
+            pass
+            self.stagers_config
+            pass
+            self.models_config
+            pass
+            self.logs_debug
+        except ValueError as e:
+            log_simple(f"ERROR ARRANCANDO CONFIGURACIÓN: '{e}'")
+            raise

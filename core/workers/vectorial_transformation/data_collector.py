@@ -22,10 +22,9 @@ class FinalStructurer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config.get('math_max', {})
-        all_cols_name: List[str] = worker_config["cols_name"]
+        all_cols_name: List[str] = config[0].get("cols_name")
         self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3], all_cols_name[4]
-        self.separator = worker_config.get("separator", "")
+        self.separator = config[0]["separator"][0]
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         try:
@@ -87,7 +86,6 @@ class FinalStructurer(VectorizationAbstractWorker):
         return (df, db_values)
     
     def standarice_df(self, df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
-
         mtl_col = df[self.mtl_name]
         c_col = df[self.cant_name]
         pu_col = df[self.pu_name]
@@ -161,5 +159,5 @@ class FinalStructurer(VectorizationAbstractWorker):
                             df.iat[i, pro_idx] = (orig_p_value +  concat_val)
 
         df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
-        #logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
+        # logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
         return df

@@ -15,7 +15,7 @@ class MainBuilder:
     def __init__(self, config_service: ConfigService, project_root: str):
         self.project_root = project_root
         self.config_service = config_service
-        self.config = self.config_service.global_params
+        self.config = config_service.system_params
         self.tolerance = self.config.get("payloads_size", 0)
 
     def activate_main(self, workflow_report: List[Dict[str, Any]]) -> List[str]:
@@ -59,11 +59,12 @@ class MainBuilder:
         """Crea un único builder reutilizable usando StagersFactory."""
         try:
             # CREAR STAGERS FACTORY UNA SOLA VEZ
-            manager_config = self.config_service.manager_config
-            stagers_factory = StagersFactory(manager_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
+            stagers_config = self.config_service.stagers_config
+            # logger.error(f"STAGERS CONFIG: {stagers_config.get("ocr_stager")}")
+            stagers_factory = StagersFactory(stagers_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
             all_stagers = stagers_factory.get_all_stagers()
             # El manager se crea dentro del proceso de cada imagen, no aquí
-            builder = ProcessingBuilder(all_stagers=all_stagers, processing_config=self.config)
+            builder = ProcessingBuilder(all_stagers=all_stagers, processing_config=self.config_service.logs_debug)
             return builder
 
         except AttributeError as e:

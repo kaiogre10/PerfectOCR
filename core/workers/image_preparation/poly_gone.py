@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import time
 import dataclasses
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
@@ -16,11 +16,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config.get('polygon_extractor', {})
+        worker_config = config[0].get('polygon_extractor', {})
         self.padding = worker_config.get("cropping_padding")
-        self.output = config.get("cropped_img", False)
-        self.filtered_ouputs = config.get("final_polys", False)
-        self.disoutput = config.get("discarded_polys", False)
+        self.output = config[0].get("cropped_img", False)
+        self.filtered_ouputs = config[0].get("final_polys", False)
+        self.disoutput = config[0].get("discarded_polys", False)
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae, filtra y actualiza polígonos en un solo paso, optimizando el proceso."""

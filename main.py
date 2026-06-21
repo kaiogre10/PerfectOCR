@@ -8,16 +8,17 @@ if PROJECT_ROOT not in sys.path:
 
 from services import log_service
 
-DEFAULT_CONFIG_FILE = os.path.join(PROJECT_ROOT, "config", "master_config.yaml")
+DEFAULT_CONFIG_FILE = [PROJECT_ROOT, "config"]
 
+from services import system_service 
 from services.config_service import ConfigService
 config_service = ConfigService(DEFAULT_CONFIG_FILE)
 if config_service.test_config:
-    log_service.log_simple("TEST CONFIG ACTIVADO, FINALIZANDO")
+    log_service.log_simple("TEST CONFIG/CLEAN UP ACTIVADO, FINALIZANDO")
+    # system_service.cleanup_project()
     sys.exit()
 
 from services import storage_service
-import services.system_service as system_service
 import services.output_service as output_service
 from app.main_builder import MainBuilder
 
@@ -26,11 +27,11 @@ def main():
     os.environ.update(config_service.env_config)
     log_service.setup_logging(PROJECT_ROOT)
     
-    if config_service.handle_memory:
-        storage_service.storage_config(PROJECT_ROOT, system_dirs) # type: ignore
-
     system_service.set_system_config(PROJECT_ROOT, system_dirs) # type: ignore
     system_service.clear_output_folders()
+    
+    # if config_service.handle_memory:
+    storage_service.storage_config(PROJECT_ROOT, system_dirs) # type: ignore
 
     workflow_report = system_service.count_and_plan()
     if not workflow_report and not config_service.no_activate_modules:
@@ -38,7 +39,8 @@ def main():
         log_service.log_simple("NO HAY INPUT PATHS")
         sys.exit()
 
-    output_service.set_output_config(PROJECT_ROOT, system_dirs) # type: ignore
+    if config_service.enabled_outputs:
+        output_service.set_output_config(PROJECT_ROOT, system_dirs) # type: ignore
     
     main_builder = MainBuilder(config_service, PROJECT_ROOT)
     main_builder.activate_main(workflow_report)

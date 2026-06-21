@@ -16,10 +16,9 @@ veckey = "vectorization_stager"
 
 list_keys: List[str] = list([keyimglo, keypre, ocrkey, veckey])
 
-
 class StagersFactory:
     """Crea workers y ensambla stagers de forma uniforme."""
-    def __init__(self, modules_config: Dict[str, Dict[str, Any]], project_root: str, stagging: List[Tuple[str, Optional[List[str]]]]):
+    def __init__(self, modules_config: Dict[str, Tuple[Dict[str, Any], List[str]]], project_root: str, stagging: List[Tuple[str, Optional[List[str]]]]):
         self.project_root = project_root
         self.stagging = stagging
         self.modules_config = modules_config
@@ -43,16 +42,16 @@ class StagersFactory:
     def buil_stagers(self, factories_dict: Dict[str, Any], stagers_dict: Dict[str, Any]) -> List[Any]:
         stagers: List[Any] = []
         for (stage, workers) in self.stagging:
-            stage_config  = self.modules_config.get(stage) # Configuración por etapa
-            if workers is None or not workers or not stage:
+            stage_config = self.modules_config.get(stage) # Configuración por etapa
+            if workers is None or not workers or not stage or not stage_config:
                 continue
             try:
-                workers_order: List[str] = stage_config.get(stage) # Pipeline_config 
+                workers_order: List[str] = stage_config[1] # Pipeline_config 
                 if not workers_order:
                     continue
                 config = self.modules_config.get(stage)
                 factory = factories_dict.get(stage)
-                if factory is None:
+                if factory is None or not workers_order:
                     continue
                 workers_created = factory.create_components(workers_order)
                 stager = stagers_dict.pop(stage)

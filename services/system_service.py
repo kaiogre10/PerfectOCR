@@ -31,6 +31,9 @@ def _can_delete_entry(path: str) -> bool:
     Para borrar un archivo/carpeta se requiere permiso de escritura + ejecución
     en su carpeta padre.
     """
+    no_del = (".py", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml")
+    if path.endswith(no_del):
+        return False
     parent = os.path.dirname(path) or "."
     return os.access(parent, os.W_OK | os.X_OK)
 
@@ -258,3 +261,5 @@ def get_so() -> str:
     else:
         # MacOS
         return ".dylib"
+    
+# def cleanup_project():

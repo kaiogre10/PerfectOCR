@@ -15,7 +15,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.output = config.get("table_structured", False)
+        self.output = config[0].get("table_structured", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """

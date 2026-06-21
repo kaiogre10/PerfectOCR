@@ -8,12 +8,22 @@ from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.data_finder import DataFinder
+import logging
+
+logger = logging.getLogger(__name__)
 
 class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
     def __init__(self, module_config: Dict[str, Any], project_root: str):
         super().__init__(module_config, project_root)
         self._shared_refiner_workers: Optional[Dict[str, OCRAbstractWorker]] = None
-        self._create_refiners: bool = module_config.get("create_refiners", False)
+        create_refiners = module_config[0].get("text_refine", {})
+        num_passes = create_refiners.get("num_passes", {})
+        logger.info(f"OCR FACT: {num_passes}")
+        if not create_refiners:
+            _create_refiners = False
+        else:
+            _create_refiners: bool = bool(num_passes > 0)
+        self._create_refiners = _create_refiners
     
     @property
     def shared_refiner_workers(self) -> Dict[str, OCRAbstractWorker]:

@@ -19,12 +19,12 @@ class GeometryDetector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config.get("geometry_detect", {})
+        worker_config = config[0].get("geometry_detect", {})
         kernel_threshold = worker_config["morph_kernel"]
         self.kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_threshold[0], kernel_threshold[1]))
         self.iterations = worker_config.get("iterations")
-        self.output = config.get("deleted_polys")
-        self.output2 = config.get("opened")
+        self.output = config[0].get("deleted_polys")
+        self.output2 = config[0].get("opened")
         self._engine = None
             
     @property

@@ -1,17 +1,13 @@
 from typing import Any, List, Dict, Tuple
-import logging
 from config.config_validator import ConfigBuilder
 from types import MappingProxyType
-from functools import cached_property
-
-logger = logging.getLogger(__name__)
 
 class ConfigService:
     """Gestor de los parametros de configuración"""
     __slots__ = (
         "validated_config"
         )
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: List[str]):
         self.validated_config = ConfigBuilder(config_path)
 
     @property
@@ -26,11 +22,19 @@ class ConfigService:
     @property
     def no_activate_modules(self) -> bool:
         return self.validated_config.no_activate_modules
+    
+    @property
+    def handle_memory(self) -> bool:
+        return self.validated_config.handle_memory
 
     @property
     def system_dirs(self) -> MappingProxyType[str, List[str]]:
         """Devuelve la configuración general del sistema"""
         return MappingProxyType(self.validated_config.system_dirs)
+    
+    @property
+    def system_params(self) -> Dict[str, Any]:
+        return self.validated_config.system_params
 
     @property
     def enabled_outputs(self) -> MappingProxyType[str, Dict[str, bool]]:
@@ -38,18 +42,13 @@ class ConfigService:
         return MappingProxyType(self.validated_config.enabled_outputs)
 
     @property
-    def exporting_config(self) -> MappingProxyType[str, Any]:
-        """Devuelve la configuración del modulo de exportación de datos"""
-        return MappingProxyType(self.validated_config.exporting_config)
-
-    @property
     def models_config(self) -> MappingProxyType[str, Any]:
         """Devuelve la configuración de los modelos entrenados"""
         return MappingProxyType(self.validated_config.models_config)
 
     @property
-    def manager_config(self) -> MappingProxyType[str, Any]:
-        return self.validated_config.manager_config
+    def stagers_config(self) -> Dict[str, Tuple[Dict[str, Any], List[str]]]:
+        return self.validated_config.stagers_config
     
     @property
     def local_db_config(self) -> MappingProxyType[str, Any]:
@@ -63,11 +62,3 @@ class ConfigService:
     @property
     def env_config(self) -> Dict[str, Any]:
         return self.validated_config.env_config
-    
-    @cached_property
-    def handle_memory(self) -> bool:
-        return self.validated_config.handle_memory
-    
-    @cached_property
-    def global_params(self) -> Dict[str, Any]:
-        return self.validated_config.global_params
