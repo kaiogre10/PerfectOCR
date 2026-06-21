@@ -45,15 +45,15 @@ class ProcessingBuilder:
             if img_results.empty:
                 return None
             
-            if runtime_config_logs.get("handle_memory"):
-                sizes = storage_data(img_results)
-                if sizes and sum(sizes) > 1:
-                    return sizes
-                else:
-                    return None
+            # if runtime_config_logs.get("handle_memory"):
+            sizes = storage_data(img_results)
+            if sizes and sum(sizes) > 1:
+                return sizes
             else:
-                sizes = transform_data(img_results)[0]
-                return None if not sizes else sizes
+                return None
+            # else:
+            #     sizes = transform_data(img_results)[0]
+            #     return None if not sizes else sizes
             
         except Exception as e:
             logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)

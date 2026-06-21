@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <cstdint>
-#include <deque>
+#include <queue>
 
 extern "C" {
     // La señal mínima en las primeras líneas de main que acciona todo
@@ -9,4 +9,4 @@ extern "C" {
 }
 
 void push(std::vector<std::vector<uint8_t>>&& struct_payload);
-std::deque<std::vector<std::vector<uint8_t>>> drain();
+std::queue<std::vector<std::vector<uint8_t>>> drain();

@@ -2,7 +2,7 @@
 system_params:
   payloads_size: 2          # Cantidad de memoria máxima (en unidades de información actualmente KB) que puede tener un payload antes de ser enviado
   postgre_local: False      # Habilitar el servicio local de postgre
-  handle_memory: False   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
+  handle_memory: True   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración
   test_config: False    # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
   clean_mode: False
@@ -83,7 +83,7 @@ enabled_outputs:
     features: False
     image_features: False
     table_structured: False
-    math_max_corrected: True
+    math_max_corrected: False
     stack: False
 
 models_config:

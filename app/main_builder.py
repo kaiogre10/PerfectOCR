@@ -125,11 +125,11 @@ class MainBuilder:
             #logger.info(f"IMAGENES EXITOSAS: {succes_images}")
             #logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")
 
-        for result in final_results:
-            logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")
+        # for result in final_results:
+            # logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")
         return final_results
 
     def send_payload_pack(self, size: bitmath.Any, total_payloads: int) -> Tuple[bitmath.Any, int]:
         payload_resized = bitmath.best_prefix(size)
-        logger.info(f"TAMAÑO DEL PAYLOAD: '{payload_resized}', enviados: '{total_payloads}'")
+        # logger.info(f"TAMAÑO DEL PAYLOAD: '{payload_resized}', enviados: '{total_payloads}'")
         return (payload_resized, total_payloads)

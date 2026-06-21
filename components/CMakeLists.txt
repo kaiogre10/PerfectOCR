@@ -27,19 +27,30 @@ else()
 endif()
 
 # 1. Definición de la ruta de destino global (Común para todos los SO)
+# 1. Definición de la ruta de destino global
 set(GLOBAL_DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../core/utils/compiled_utils")
 
+# Configuraciones base para generadores mono-configuración (Ninja/Makefiles)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${GLOBAL_DESTINATION}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${GLOBAL_DESTINATION}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${GLOBAL_DESTINATION}")
 
-# Remoción de prefijos para carga limpia en ctypes (ej: buffer_handler.dll / buffer_handler.so)
+# Desactivar subcarpetas por configuración en generadores multi-configuración (Visual Studio)
+set(CMAKE_MAP_IMPORTED_CONFIG_MINSIZEREL "MinSizeRel") # Requerido por consistencia interna
+foreach(OUTPUT_TYPE RUNTIME LIBRARY ARCHIVE)
+    foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+        string(TOUPPER ${CONFIG} CONFIG_UPPER)
+        set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${GLOBAL_DESTINATION}")
+    endforeach()
+endforeach()
+
+# Remoción de prefijos para carga limpia en ctypes
 set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_IMPORT_LIBRARY_PREFIX "")
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # Orden secuencial por dependencias
+add_subdirectory(buffer_handler)
 add_subdirectory(containers)
 #add_subdirectory(locals)
-#add_subdirectory(remote)
-add_subdirectory(buffer_handler)
+#add_subdirectory(remote
