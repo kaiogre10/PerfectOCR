@@ -26,7 +26,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         self.project_root = project_root
         worker_config = config[0].get('math_max', {})
-        all_cols_name: List[str] = config[0].get("cols_name")
+        all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3]
         self.dec_cols_name: FrozenSet[str] = frozenset({all_cols_name[0], all_cols_name[1], all_cols_name[2]})
         tol: str = worker_config.get('row_relative_tolerance', "")

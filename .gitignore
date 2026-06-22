@@ -40,13 +40,11 @@ verificacion_init.txt
 .vs/
 build/
 out/
-#documentation/
-#test/
+documentation/
 #tools/
 models/
 # models/paddle/
 # models/wf
-C:/PerfectOCR/data/models/
 input/
 input2/
 input3/

@@ -15,8 +15,6 @@ class MainBuilder:
     def __init__(self, config_service: ConfigService, project_root: str):
         self.project_root = project_root
         self.config_service = config_service
-        self.config = config_service.system_params
-        self.tolerance = self.config.get("payloads_size", 0)
 
     def activate_main(self, workflow_report: List[Dict[str, Any]]) -> List[str]:
         t0 = time.perf_counter()
@@ -48,7 +46,7 @@ class MainBuilder:
                 logger.info(f"{time_mask}{time.perf_counter()-t0} total en completar el proceso")
                 return []
 
-            logger.warning(f"Proceso debugger completo, {time_mask}{time.perf_counter()-t0}")
+            logger.warning(f"No modules completo, {time_mask}{time.perf_counter()-t0}")
             return []
 
         except Exception as e:
@@ -59,12 +57,11 @@ class MainBuilder:
         """Crea un único builder reutilizable usando StagersFactory."""
         try:
             # CREAR STAGERS FACTORY UNA SOLA VEZ
-            stagers_config = self.config_service.stagers_config
-            # logger.error(f"STAGERS CONFIG: {stagers_config.get("ocr_stager")}")
-            stagers_factory = StagersFactory(stagers_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
+            stagers_factory = StagersFactory(self.config_service.stagers_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
             all_stagers = stagers_factory.get_all_stagers()
             # El manager se crea dentro del proceso de cada imagen, no aquí
-            builder = ProcessingBuilder(all_stagers=all_stagers, processing_config=self.config_service.logs_debug)
+            handle_storage = bool(self.config_service.deploy_settings.get("handle_memory"))
+            builder = ProcessingBuilder(all_stagers=all_stagers, logs_debug=self.config_service.logs_debug, handle_storage=handle_storage)
             return builder
 
         except AttributeError as e:
@@ -73,7 +70,7 @@ class MainBuilder:
 
     def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[Dict[str, Any]]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
-        tolerance = bitmath.KiB(self.tolerance)
+        tolerance = bitmath.KiB(2)
         total_images = len(workflow_report)
         logger.info(f"'{total_images}' IMAGENES PARA PROCESAR")
 
@@ -122,14 +119,14 @@ class MainBuilder:
         else:
             logger.info(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
 
-            #logger.info(f"IMAGENES EXITOSAS: {succes_images}")
-            #logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")
+            logger.info(f"IMAGENES EXITOSAS: {succes_images}")
+            logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")
 
-        # for result in final_results:
-            # logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")
+        for result in final_results:
+            logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")
         return final_results
 
     def send_payload_pack(self, size: bitmath.Any, total_payloads: int) -> Tuple[bitmath.Any, int]:
         payload_resized = bitmath.best_prefix(size)
-        # logger.info(f"TAMAÑO DEL PAYLOAD: '{payload_resized}', enviados: '{total_payloads}'")
+        logger.info(f"TAMAÑO DEL PAYLOAD: '{payload_resized}', enviados: '{total_payloads}'")
         return (payload_resized, total_payloads)

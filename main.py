@@ -10,12 +10,17 @@ from services import log_service
 
 DEFAULT_CONFIG_FILE = [PROJECT_ROOT, "config"]
 
-from services import system_service 
 from services.config_service import ConfigService
+from services import system_service
 config_service = ConfigService(DEFAULT_CONFIG_FILE)
 if config_service.test_config:
-    log_service.log_simple("TEST CONFIG/CLEAN UP ACTIVADO, FINALIZANDO")
-    # system_service.cleanup_project()
+    log_service.log_simple("TESTING CONFIG FINALIZANDO")
+    sys.exit()
+
+if config_service.clean_project:
+    log_service.log_simple("CLEAN UP ACTIVADO, FINALIZANDO")
+    system_service.set_system_config(PROJECT_ROOT ,config_service.system_paths) # type: ignore
+    system_service.cleanup_project()
     sys.exit()
 
 from services import storage_service
@@ -23,24 +28,24 @@ import services.output_service as output_service
 from app.main_builder import MainBuilder
 
 def main():
-    system_dirs = config_service.system_dirs
     os.environ.update(config_service.env_config)
+    system_paths = config_service.system_paths
     log_service.setup_logging(PROJECT_ROOT)
-    
-    system_service.set_system_config(PROJECT_ROOT, system_dirs) # type: ignore
+
+    system_service.set_system_config(PROJECT_ROOT, system_paths) # type: ignore
     system_service.clear_output_folders()
     
-    # if config_service.handle_memory:
-    storage_service.storage_config(PROJECT_ROOT, system_dirs) # type: ignore
+    if config_service.handle_memory:
+        storage_service.storage_config(PROJECT_ROOT, system_paths) # type: ignore
 
-    workflow_report = system_service.count_and_plan()
+    workflow_report = system_service.count_and_plan(config_service.input_paths) # type: ignore
     if not workflow_report and not config_service.no_activate_modules:
-        system_service.clear_output_folders()
+        system_service.cleanup_project_cache()
         log_service.log_simple("NO HAY INPUT PATHS")
         sys.exit()
 
     if config_service.enabled_outputs:
-        output_service.set_output_config(PROJECT_ROOT, system_dirs) # type: ignore
+        output_service.set_output_config(PROJECT_ROOT, system_paths) # type: ignore
     
     main_builder = MainBuilder(config_service, PROJECT_ROOT)
     main_builder.activate_main(workflow_report)

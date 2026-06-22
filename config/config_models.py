@@ -5,6 +5,49 @@ from typing import List, Tuple, Optional, Dict, Any
 class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=False, extra='forbid')
 
+class SystemPaths(ConfigWithNumpy):
+    output_paths: List[str]
+    temp_path: List[str]
+    storage_bin: List[str]
+    container_bin: List[str]
+
+class SystemParams(ConfigWithNumpy):
+    system_paths: SystemPaths
+    payloads_size: int
+
+class DeploySettings(ConfigWithNumpy):
+    deploy_mode: bool
+    test_config: bool
+    clean_mode: bool
+    postgre_local: bool
+    handle_memory: bool
+
+class PipelineConfig(ConfigWithNumpy):
+    image_preparation_stager: Optional[List[str]] = None
+    preprocessing_stager: Optional[List[str]] = None
+    ocr_stager: Optional[List[str]] = None
+    vectorization_stager: Optional[List[str]] = None
+    db_stage: Optional[List[str]] = None
+
+class DebugOutputs(ConfigWithNumpy):
+    all_logs: bool
+    text_ocr: bool
+    text_clean: bool
+    text_del: bool
+    text_correct: bool
+    frag_polys: bool
+    refined_text: bool
+    seman_clas: bool
+    key_fields: bool
+    lines: bool
+    table_lines: bool
+    table_geo: bool
+    table_correct: bool
+    kf_list_log: List[int]
+    semantic_types_log: List[int]
+    time_stages_log: bool
+    time_worker_log: bool
+
 class ImgLoadOutputs(ConfigWithNumpy):
     full_img: bool
     deleted_polys: bool
@@ -77,27 +120,6 @@ class GeometryDetect(ConfigWithNumpy):
     morph_kernel: Tuple[int, int]
     iterations: int
 
-class SharpeningConfig(ConfigWithNumpy):
-    sharpness_threshold: float
-    kernel: int
-
-class MoireConfig(ConfigWithNumpy):
-    min_distance_from_center: int
-    notch_radius: int
-    percentile_threshold: int
-    mean_factor: int
-    abs_threshold: int
-    
-class SaltPepper(ConfigWithNumpy):
-    kernel_size: int
-    salt_pepper_threshold: float
-    salt_pepper_low: int
-    salt_pepper_high: int
-    sobel_threshold: float
-
-class GaussianConfig(ConfigWithNumpy):
-    laplacian_variance_threshold: float
-
 class DeskewConfig(ConfigWithNumpy):
     min_angle_for_correction: float
     canny_thresholds: Tuple[int, int]
@@ -115,21 +137,34 @@ class ImagePreparation(ConfigWithNumpy):
     geometry_detect: GeometryDetect
     polygon_extractor: CuttingConfig
 
+class MoireConfig(ConfigWithNumpy):
+    min_distance_from_center: int
+    notch_radius: int
+    percentile_threshold: int
+    mean_factor: int
+    abs_threshold: int
+
+class SharpeningConfig(ConfigWithNumpy):
+    sharpness_threshold: float
+    kernel: int
+
+class SaltPepper(ConfigWithNumpy):
+    kernel_size: int
+    salt_pepper_threshold: float
+    salt_pepper_low: int
+    salt_pepper_high: int
+    sobel_threshold: float
+
+class GaussianConfig(ConfigWithNumpy):
+    laplacian_variance_threshold: float
+
 class ContrastConfig(ConfigWithNumpy):
     clahe_clip_limit: float
     contrast_threshold: int
     dimension_thresholds_px: List[int]
     grid_sizes_map: List[Tuple[int, int]]
-        
-class MathMaxConfig(ConfigWithNumpy):
-    row_relative_tolerance: str
-
-class RestoreConfig(ConfigWithNumpy):
-    area_threshold: int
-    kernel_threshold: int
 
 class PreprocessingConfig(ConfigWithNumpy):
-    restorer: RestoreConfig
     moire: MoireConfig
     sp_config: SaltPepper 
     gauss_params: GaussianConfig
@@ -162,6 +197,11 @@ class CosineSimilarity(ConfigWithNumpy):
     emergency_threshold: float
     min_internal_sim: float
 
+class MathMaxConfig(ConfigWithNumpy):
+    row_relative_tolerance: str
+    separator: List[str]
+    cols_name: List[str]
+
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
     cos_sim: CosineSimilarity
@@ -174,61 +214,24 @@ class ModulesConfig(ConfigWithNumpy):
     ocr: OCRConfig
     vectorization: VectorConfig
 
-class PipelineConfig(ConfigWithNumpy):
-    image_preparation_stager: Optional[List[str]] = None
-    preprocessing_stager: Optional[List[str]] = None
-    ocr_stager: Optional[List[str]] = None
-    vectorization_stager: Optional[List[str]] = None
-    db_stage: Optional[List[str]] = None
-    
-class DebugOutputs(ConfigWithNumpy):
-    all_logs: bool
-    text_ocr: bool
-    text_clean: bool
-    text_del: bool
-    text_correct: bool
-    frag_polys: bool
-    refined_text: bool
-    seman_clas: bool
-    key_fields: bool
-    lines: bool
-    table_lines: bool
-    table_geo: bool
-    table_correct: bool    
-    kf_list_log: List[int]
-    semantic_types_log: List[int]
-    time_stages_log: bool
-    time_worker_log: bool
-
-class SystemDirs(ConfigWithNumpy):
+class Dirs(ConfigWithNumpy):
     input_dirs: List[str]
     images_names: List[str]
-    valid_img_ext: List[str]
-    output_paths: List[str]
-    storage_bin: List[str]
-    container_bin: List[str]
-    trash_ext: List[str]
-    invalid_extensions: List[str]
-
-class SystemParams(ConfigWithNumpy):
-    deploy_mode: bool
-    test_config: bool
-    clean_mode: bool
-    payloads_size: int
-    postgre_local: bool
-    handle_memory: bool
 
 class PayloadRequest(ConfigWithNumpy):
-    cols_name: List[str]
-    separator: List[str]
+    payload_cols: List[str]
     
+class UserRequests(ConfigWithNumpy):
+    dirs: Dirs
+    payload_request: PayloadRequest
+
 class MasterConfig(ConfigWithNumpy):
-    dirs: SystemDirs
+    system_params: SystemParams
+    deploy_settings: DeploySettings
     pipeline_secuence: PipelineConfig
+    log_debug: DebugOutputs
     enabled_outputs: OutputFlags
     models_config: ModelsConfig
     modules: ModulesConfig
-    log_debug: DebugOutputs
-    system_params: SystemParams
     env_config: Dict[str, Any]
-    payload_request: PayloadRequest
+    user_requests: UserRequests

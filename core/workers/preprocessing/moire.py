@@ -4,14 +4,14 @@ import numpy as np
 import logging
 from numpy.fft import fft2, fftshift, ifft2, ifftshift
 from typing import Dict, Any, Tuple
-from core.factory.abstract_worker import ImagePrepAbstractWorker
+from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.utils.image_utils import use_bilateral_filter
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
-class MoireDenoiser(ImagePrepAbstractWorker):
+class MoireDenoiser(PreprocessingAbstractWorker):
     """Detecta y corrige patrones de moiré."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
@@ -25,7 +25,7 @@ class MoireDenoiser(ImagePrepAbstractWorker):
         self.abs_threshold: int = worker_config.get('abs_threshold', {})
         self.output = config.get("moire_poly", False)
 
-    def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
+    def preprocess(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Analiza y corrige el moiré."""
         try:
             logger.debug("Moire empezado conéxito")

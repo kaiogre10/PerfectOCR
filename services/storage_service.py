@@ -4,19 +4,17 @@ import os
 import time
 import ctypes
 from services.system_service import get_so
+from services.log_service import log_simple
 
 OUTPUT_PATHS: List[str] = []
 CON: ctypes.CDLL
 LIB: ctypes.CDLL
-PLACEHOLDER: str 
 
 logger = logging.getLogger(__name__)
 
 def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
-    global PLACEHOLDER
-    PLACEHOLDER = config.get("placeholder", "_") # type: ignore
+    log_simple("STORAGE ACTIVADO")
     binary_extension: str = get_so()
-
     container_bin_path = config["container_bin"]
     container_ext = container_bin_path.pop(-1)
     container_extension = (container_ext + binary_extension)
@@ -69,9 +67,9 @@ def _request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
             bytes_utf16 = plain_text.encode("utf-16le")
             plaintext_c = (ctypes.c_uint8 * total_bytes).from_buffer_copy(bytes_utf16)  # Texto aplanado
             # Pasar la cantidad real de elementos (N) en el tercer argumento
-            # time0 = time.perf_counter()
+            time0 = time.perf_counter()
             LIB.storage_batch_flat(plaintext_c, arreglo_tamanos_c, ctypes.c_size_t(total_rows))
-            # logger.info(f"TIEMPO ESCRIBIENDO '{sum(buff_sizes)}' Bytes EN MEMORIA: {time.perf_counter() - time0:.8f}'s")
+            logger.info(f"TIEMPO ESCRIBIENDO '{sum(buff_sizes)}' Bytes EN MEMORIA: {time.perf_counter() - time0:.8f}'s")
         except ctypes.ArgumentError as e:
             logger.warning(f"Error escribiendo bytecode en memoria asignada por C++: {e}", exc_info=True)
             raise

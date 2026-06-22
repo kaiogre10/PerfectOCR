@@ -54,8 +54,8 @@ def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any],
         output_dir = os.path.join(path, image_name)
         file_name = f"{img_id}.png"
         save_image(image, output_dir, file_name)
-        output_dir = os.path.join(path, worker_name, image_name)
-        save_image(image, output_dir, file_name)
+        # output_dir = os.path.join(path, worker_name, image_name)
+        # save_image(image, output_dir, file_name)
 
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
 

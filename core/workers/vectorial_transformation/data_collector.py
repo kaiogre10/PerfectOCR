@@ -22,9 +22,12 @@ class FinalStructurer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        all_cols_name: List[str] = config[0].get("cols_name")
+        worker_config = config[0].get('math_max', {})
+        all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3], all_cols_name[4]
-        self.separator = config[0]["separator"][0]
+        self.separator = worker_config["separator"][0]
+        self.output = config[0].get("math_max_corrected")
+        self.apile = config[0].get("stack")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         try:

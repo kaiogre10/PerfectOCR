@@ -1,8 +1,16 @@
 # config/master_config.yaml
 system_params:
   payloads_size: 2          # Cantidad de memoria máxima (en unidades de información actualmente KB) que puede tener un payload antes de ser enviado
+
+  system_paths:
+    "output_paths": ["output"]
+    "temp_path": ["temp"]
+    "storage_bin": ["core", "utils", "compiled_utils", "buffer_handler"]
+    "container_bin": ["core", "utils", "compiled_utils", "containers"]
+
+deploy_settings:
   postgre_local: False      # Habilitar el servicio local de postgre
-  handle_memory: True   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
+  handle_memory: False   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración
   test_config: False    # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
   clean_mode: False
@@ -16,6 +24,7 @@ pipeline_secuence:
     - "polygon_extractor"
 
   preprocessing_stager:
+    #  - "moire"
     #  - "sp"
     #  - "gauss"
     #  - "clahe"
@@ -137,10 +146,6 @@ modules:
       cropping_padding: 1.0
 
   preprocessing:
-    restorer:
-      area_threshold: 12
-      kernel_threshold: 3
-
     moire:
       min_distance_from_center: 150
       notch_radius: 3
@@ -194,6 +199,14 @@ modules:
 
     math_max:
       row_relative_tolerance: "0.10"
+      cols_name: [
+        "cantidad_art",
+        "precio_unitario",
+        "costo_tran",
+        "producto_norm",
+        "id_registro"
+      ]
+      separator: ["_"]
 
 env_config:
   'OMP_NUM_THREADS': '4'

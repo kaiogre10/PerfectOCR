@@ -15,57 +15,81 @@ class ConfigBuilder:
     """Valida de los parametros de configuración"""
     def __init__(self, config_path: List[str]):
         self.config = load_config_file(config_path)
-        self.run_params
-        self.active_full_ocr
+        try:
+            self._run_params
+            self.active_full_ocr
+        except Exception as e:
+            log_simple(f"Error corriendo parametros: {e}")
+            pass
         if not self._validate_config():
             self.config = {}
         else:
             self.config = self.config
 
     # Paramétros de sistema alto nivel
-    @property
+    @cached_property
     def elemental_params(self) -> bool:     # Condición mínima necesaria para que pueda arrancar el sistema
         return ELEMENTAL_WORKER in self.create_stager[0][1]
-    
+
     @cached_property
-    def system_params(self) -> Dict[str, Any]:
-        return self.config.get("system_params",{})
+    def active_full_ocr(self):
+        return ocr_workers.issubset(self.all_workers)
+
+    @cached_property
+    def system_params(self):
+        return self.config.get("system_params", {})
+
+    @cached_property
+    def system_paths(self) -> Dict[str, List[str]]:
+        return self.system_params["system_paths"]
+
+    @cached_property
+    def deploy_settings(self) -> Dict[str, bool]:
+        return self.config.get("deploy_settings",{})
     
     @cached_property
     def clean_project(self) -> bool:
-        return bool(self.system_params.get("clean_mode"))
+        return bool(self.deploy_settings.get("clean_mode"))
     
     @cached_property
     def handle_memory(self) -> bool:
-        return bool(self.system_params.get("handle_memory"))
+        return bool(self.deploy_settings.get("handle_memory"))
     
     @cached_property
     def deploy_mode(self) -> bool:
-        return bool(self.system_params.get("deploy_mode"))
+        return bool(self.deploy_settings.get("deploy_mode"))
 
     @cached_property
     def test_config(self) -> bool:
-        return bool(self.system_params.get("test_config"))
+        return bool(self.deploy_settings.get("test_config"))
     
     @cached_property
     def db_local(self) -> bool:
-        return bool(self.system_params.get("postgre_local"))
+        return bool(self.deploy_settings.get("postgre_local"))
     
     @cached_property
     def no_activate_modules(self) -> bool: # Parametro automátizado que permite arrancar el sistema para testear parametros de alto nivel sin crear objetos pesados de manera innecesaria
         return (self.deploy_mode == True) and ((self.elemental_params) == False)
     
     @cached_property
-    def system_dirs(self) -> MappingProxyType[str, List[str]]:
-        sys_dirs = self.config.get("dirs", {})
-        return MappingProxyType({}) if (not sys_dirs["input_dirs"] and not self.deploy_mode) else MappingProxyType(sys_dirs)
-
-    @cached_property
     def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
-        if not self.system_dirs["output_paths"] or self.no_activate_modules:
+        if not self.system_paths["output_paths"] or self.no_activate_modules:
             return {}
         else:
             return self.config.get("enabled_outputs", {})
+        
+    @cached_property
+    def user_requests(self):
+        return self.config.get("user_requests", {})
+    
+    @cached_property
+    def input_paths(self) -> Dict[str, List[str]]:
+        user_dirs = self.user_requests.get("dirs", {})
+        return {} if (not user_dirs["input_dirs"] and not self.deploy_mode) else user_dirs
+
+    @cached_property
+    def payload_request(self) -> Dict[str, Any]:
+        return self.config.get("payload_request", {})
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
@@ -85,10 +109,6 @@ class ConfigBuilder:
                     logs[key] = [-1]
             return logs
         return logs
-    
-    @cached_property
-    def payload_request(self) -> Dict[str, Any]:
-        return self.config.get("payload_request", {})
         
     @cached_property
     def models_config(self) -> Dict[str, Any]:
@@ -240,10 +260,10 @@ class ConfigBuilder:
         return frozenset(all_workers)
     
     def _validate_config(self) -> bool:
-        mode = (f'{"DEPLOY" if self.deploy_mode else "PRODUCTION"}') if not self.test_config else "CONFIG TESTING"
-        msg: str = f"Modo: '{mode}', Validación: '{"MÍNIMA" if mode == "DEPLOY" else "COMPLETA"}' de la configuración."
+        mode = (f'{"DEPLOY" if self.deploy_mode else "PRODUCTION"}') if not self.no_activate_modules else ("CONFIG TESTING" if self.test_config else "NO MODULES")
+        msg: str = f"Modo: '{mode}', Validación: '{"COMPLETA" if not self.deploy_mode else "MÍNIMA"}' de la configuración."
         
-        if not self.system_dirs:
+        if not self.input_paths:
             log_simple("No hay rutas input")
             return False
 
@@ -255,8 +275,8 @@ class ConfigBuilder:
             log_simple(f"ACTIVAR MEMORIA DINÁMICA")
             return False
 
-        elif self.deploy_mode and not self.elemental_params:
-            log_active_areas(msg, self.create_stager) # type: ignore
+        elif self.no_activate_modules:
+            log_active_areas(msg + " 'SOLO MODULOS DE ALTO NIVEL'") # type: ignore
             return True
 
         elif self.deploy_mode:
@@ -286,25 +306,11 @@ class ConfigBuilder:
         return False
 
     @cached_property
-    def active_full_ocr(self):
-        return ocr_workers.issubset(self.all_workers)
-
-    @cached_property
-    def run_params(self):
-        try:
-            self.elemental_params
-            pass
-            self.all_workers
-            pass
-            self.active_full_ocr
-            pass
-            self.workers_order
-            pass
-            self.stagers_config
-            pass
-            self.models_config
-            pass
-            self.logs_debug
-        except ValueError as e:
-            log_simple(f"ERROR ARRANCANDO CONFIGURACIÓN: '{e}'")
-            raise
+    def _run_params(self):
+        self.elemental_params
+        self.all_workers
+        self.active_full_ocr
+        self.workers_order
+        self.stagers_config
+        self.models_config
+        self.logs_debug

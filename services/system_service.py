@@ -6,24 +6,24 @@ import platform
 from typing import Set, Tuple, Optional
 from psycopg2 import sql
 from typing import List, Dict, Any
+from services.log_service import basic_exc_logger
 
+# Configuraciones estáticas
 PROJECT_ROOT: str = ""
-CONFIG: Dict[str, List[str]] = {}
 output_paths: List[str] = []
-valid_img_ext: Tuple[str, ...] = ()
-valid_extensions: List[str] = []
-trash_ext: Tuple[str, ...] = ()
-
-def set_system_config(project_root: str, config: Dict[str, List[str]]):
-    global PROJECT_ROOT, CONFIG, output_paths, valid_img_ext, valid_extensions, trash_ext
-    PROJECT_ROOT = project_root # type: ignore
-    CONFIG = config # type: ignore
-    output_paths = config["output_paths"]
-    valid_extensions = CONFIG["valid_img_ext"]
-    valid_img_ext = tuple(valid_extensions)
-    trash_ext = tuple(CONFIG["trash_ext"])
+valid_img_ext: Tuple[str, ...] = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2")
+invalid_extensions: List[str] = [".txt", ".webp"]
+trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", "__pycache__", ".log")
+no_del: Tuple[str, ...] = (".py", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml")
+all_files_types: Set[str] = set(invalid_extensions).union(valid_img_ext, trash_ext, no_del)
 
 logger = logging.getLogger(__name__)
+
+def set_system_config(project_root: str, config: Dict[str, List[str]]):
+    global PROJECT_ROOT, output_paths
+    PROJECT_ROOT = project_root # type: ignore
+    output_path = config["output_paths"]
+    output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in output_path] 
 
 def _can_delete_entry(path: str) -> bool:
     """
@@ -31,7 +31,6 @@ def _can_delete_entry(path: str) -> bool:
     Para borrar un archivo/carpeta se requiere permiso de escritura + ejecución
     en su carpeta padre.
     """
-    no_del = (".py", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml")
     if path.endswith(no_del):
         return False
     parent = os.path.dirname(path) or "."
@@ -80,18 +79,15 @@ def clear_output_folders() -> None:
     - Carpetas: se eliminan completas.
     - Archivos sueltos: solo extensiones objetivo.
     """
-    invalid_extensions = set(CONFIG["invalid_extensions"])
-    invalid_extensions.update(valid_extensions)
     deleted_files = 0
     deleted_folder = 0
-    exts = {e.lower() for e in invalid_extensions}
 
     # Fase 1: preflight (fail-closed)
-    ok, blocked = _preflight_delete_plan(output_paths, exts)
+    ok, blocked = _preflight_delete_plan(output_paths, all_files_types)
     if not ok:
-        logger.error("Limpieza abortada: hay rutas sin permisos. No se eliminó nada.")
+        logger.warning("Limpieza abortada: hay rutas sin permisos. No se eliminó nada.")
         for p in blocked:
-            logger.error(f"Sin permisos: {p}")
+            logger.warning(f"Sin permisos: {p}")
         return
 
     # Fase 2: ejecución real (solo si todo pasó preflight)
@@ -113,7 +109,7 @@ def clear_output_folders() -> None:
                     logger.debug(f"Carpeta eliminada: {item_path}")
                 else:
                     ext = os.path.splitext(item_name)[1].lower()
-                    if ext in exts:
+                    if ext in all_files_types:
                         os.remove(item_path)
                         deleted_files += 1
                         logger.debug(f"Archivo eliminado: {item_path}")
@@ -122,7 +118,7 @@ def clear_output_folders() -> None:
 
             except Exception as e:
                 # Defensa adicional
-                logger.error(f"Error al eliminar {item_path}: {e}", exc_info=True)
+                basic_exc_logger(f"Error al eliminar {item_path}: {e}", exc_info=True)
                 return
 
     logger.debug(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
@@ -138,24 +134,27 @@ def cleanup_project_cache(aditional_files: Optional[str] = None):
                         cache_path = os.path.join(dirpath, d)
                         shutil.rmtree(cache_path)
                         dirnames.remove(d)
-                        
-                    except Exception as e:
-                        logger.error(f"Error al eliminar '{cache_path}': {e}") # type: ignore
+
+                    except FileNotFoundError as e:
+                        basic_exc_logger(f"Error al eliminar '{cache_path}': {e}") # type: ignore
                         return
 
             if aditional_files is not None:
-                trash_extensions: Tuple[str, ...] = trash_ext + tuple(aditional_files.split(',')) # type: ignore
+                trash_extensions: Tuple[str, ...] = trash_ext + tuple(aditional_files.split(','))
             else:
                 trash_extensions = trash_ext
-                
-            for filename in filenames:
-                if filename.endswith(trash_extensions):
-                    file_path: str = os.path.join(dirpath, filename)
-                    os.remove(file_path)
-                    logger.debug(f"Eliminado archivo de caché: {file_path}")
-                        
-    except Exception as e:
-        logger.error(f"Error al eliminar {file_path}: {e}") # type: ignore
+            try:
+                for filename in filenames:
+                    if filename.endswith(trash_extensions):
+                        file_path: str = os.path.join(dirpath, filename)
+                        os.remove(file_path)
+                        logger.debug(f"Eliminado archivo de caché: '{file_path}'")
+            except FileNotFoundError as e:
+                basic_exc_logger(f"Error eliminando '{aditional_files}': {e}", exc_info=True)
+                raise
+
+    except FileNotFoundError as e:
+        basic_exc_logger(f"Error al eliminar {e}", exc_info=True)
         return
 
 def clean_db(get_local_connection: Any) -> bool:
@@ -177,7 +176,7 @@ def clean_db(get_local_connection: Any) -> bool:
                     conn.commit()
                     return True
 
-                truncate_query = sql.SQL("TRUNCATE TABLE {} RESTART IDENTITY CASCADE").format(
+                truncate_query = sql.SQL("TRUNCATE TABLE OR RESTART IDENTITY CASCADE").format(
                     sql.SQL(", ").join(sql.Identifier(t) for t in tables)
                 )
                 cur.execute(truncate_query)
@@ -190,68 +189,74 @@ def clean_db(get_local_connection: Any) -> bool:
         logger.error("Error limpiando la DB: %s", e, exc_info=True)
         return False
 
-def count_and_plan() -> List[Dict[str, Any]]:
+def count_and_plan(config: Dict[str, List[str]]) -> List[Dict[str, Any]]:
     """
     PLANIFICA el procesamiento: cuenta imágenes y decide estrategia según las reglas:
     1. Si se especifican `images_names`, se buscan prioritariamente.
     2. Si no, se procesan todas las imágenes en `input_dirs`.
     3. Si se encuentran todos los `images_names` y quedan directorios, se procesan completos.
     """
-    input_paths: List[str] = CONFIG['input_dirs']
-    images_names = CONFIG['images_names']
+    input_paths: List[str] = config['input_dirs']
+    images_names = config['images_names']
     if not input_paths:
-        logger.warning("No se proporcionaron rutas de entrada (input_dirs).")
+        logger.error("No se proporcionaron rutas de entrada (input_dirs)")
         return []
 
     image_info: List[Dict[str, Any]] = []
     names_to_find = set(images_names)
     total_paths = len(input_paths)
-    
-    for i, path in enumerate(input_paths):
-        if names_to_find:
-            files_in_dir = get_images_in_dir(path, list(names_to_find))
-            if files_in_dir:
-                files_to_remove: Set[str] = set(files_in_dir)
-                if not names_to_find.isdisjoint(files_to_remove):
-                    names_to_find.difference_update(files_to_remove)
-                
-                for file in files_in_dir:
+    try:
+        for i, path in enumerate(input_paths):
+            if names_to_find:
+                files_in_dir = get_images_in_dir(path, list(names_to_find))
+                if files_in_dir:
+                    files_to_remove: Set[str] = set(files_in_dir)
+                    if not names_to_find.isdisjoint(files_to_remove):
+                        names_to_find.difference_update(files_to_remove)
+
+                    for file in files_in_dir:
+                        full_path = os.path.join(PROJECT_ROOT, path, file)
+                        image_info.append({"full_path": full_path, "name": file})
+                        continue
+
+                elif names_to_find:
+                    continue
+
+            elif total_paths >= i:
+                all_files_dir = get_images_in_dir(path, [])
+                if not all_files_dir:
+                    continue
+
+                for file in all_files_dir:
                     full_path = os.path.join(PROJECT_ROOT, path, file)
                     image_info.append({"full_path": full_path, "name": file})
                     continue
-                
-            elif names_to_find:
-                continue
-            
-        elif total_paths >= i:
-            all_files_dir = get_images_in_dir(path, [])
-            if not all_files_dir:
-                continue
+            else:
+                break
 
-            for file in all_files_dir:
-                full_path = os.path.join(PROJECT_ROOT, path, file)
-                image_info.append({"full_path": full_path, "name": file})
-                continue
-        else:
-            break
+        if not image_info:
+            logger.error("No se encontraron imágenes válidas en las rutas especificadas.")
+            return []
 
-    if not image_info:
-        logger.error("No se encontraron imágenes válidas en las rutas especificadas.")
-        return []
+        return image_info
+    except FileNotFoundError as e:
+        logger.error(f"ERROR BUSCANDO ARCHIVOS DE ENTRADA EN '{input_paths}': '{e}'", exc_info=True)
+    return []
 
-    return image_info
-    
 def get_images_in_dir(input_path: str, files_list: List[str]) -> List[str]:
-    files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_img_ext)]
-    if not files_name_dir:
-        return []
-    if not files_list:
-        return files_name_dir
+    try:
+        files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_img_ext)]
+        if not files_name_dir:
+            return []
+        if not files_list:
+            return files_name_dir
 
-    split_names = [os.path.splitext(file) for file in files_name_dir]        
-    files_in_dir = ["".join(name) for name in split_names if name[0] in files_list]
-    # logger.info(f"INTER IDX: {files_in_dir}")
-    return files_name_dir if not files_in_dir else files_in_dir
+        split_names = [os.path.splitext(file) for file in files_name_dir]
+        files_in_dir = ["".join(name) for name in split_names if name[0] in files_list]
+        return files_name_dir if not files_in_dir else files_in_dir
+    except FileNotFoundError as e:
+        logger.error(f"Error buscando archivos:en '{input_path}'", exc_info=True)
+    return []
 
 def get_so() -> str:
     if platform.system() == "Windows":
@@ -262,4 +267,6 @@ def get_so() -> str:
         # MacOS
         return ".dylib"
     
-# def cleanup_project():
+def cleanup_project():
+    clear_output_folders()
+    cleanup_project_cache()
