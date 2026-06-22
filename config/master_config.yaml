@@ -4,13 +4,12 @@ system_params:
 
   system_paths:
     "output_paths": ["output"]
-    "temp_path": ["temp"]
     "storage_bin": ["core", "utils", "compiled_utils", "buffer_handler"]
     "container_bin": ["core", "utils", "compiled_utils", "containers"]
 
 deploy_settings:
   postgre_local: False      # Habilitar el servicio local de postgre
-  handle_memory: False   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
+  handle_memory: True   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración
   test_config: False    # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
   clean_mode: False

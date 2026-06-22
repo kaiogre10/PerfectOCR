@@ -25,14 +25,14 @@ class MatrixSolver(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config[0].get('math_max', {})
+        worker_config = config.get('math_max', {})
         all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3]
         self.dec_cols_name: FrozenSet[str] = frozenset({all_cols_name[0], all_cols_name[1], all_cols_name[2]})
         tol: str = worker_config.get('row_relative_tolerance', "")
         self.arithmetic_tolerance = Decimal(tol) if tol else Decimal('0.10')
-        self.output = config[0].get("math_max_corrected")
-        self.apile = config[0].get("stack")
+        self.output = config.get("math_max_corrected")
+        self.apile = config.get("stack")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         start_time = time.perf_counter()

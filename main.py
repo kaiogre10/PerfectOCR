@@ -11,25 +11,26 @@ from services import log_service
 DEFAULT_CONFIG_FILE = [PROJECT_ROOT, "config"]
 
 from services.config_service import ConfigService
-from services import system_service
 config_service = ConfigService(DEFAULT_CONFIG_FILE)
 if config_service.test_config:
     log_service.log_simple("TESTING CONFIG FINALIZANDO")
     sys.exit()
 
+from services import system_service
 if config_service.clean_project:
     log_service.log_simple("CLEAN UP ACTIVADO, FINALIZANDO")
-    system_service.set_system_config(PROJECT_ROOT ,config_service.system_paths) # type: ignore
+    system_service.set_system_config(PROJECT_ROOT, config_service) # type: ignore
     system_service.cleanup_project()
     sys.exit()
 
-from services import storage_service
+system_paths = config_service.system_paths
 import services.output_service as output_service
+output_service.set_output_config(PROJECT_ROOT, system_paths) # type: ignore
+from services import storage_service
 from app.main_builder import MainBuilder
 
 def main():
     os.environ.update(config_service.env_config)
-    system_paths = config_service.system_paths
     log_service.setup_logging(PROJECT_ROOT)
 
     system_service.set_system_config(PROJECT_ROOT, system_paths) # type: ignore
@@ -43,9 +44,6 @@ def main():
         system_service.cleanup_project_cache()
         log_service.log_simple("NO HAY INPUT PATHS")
         sys.exit()
-
-    if config_service.enabled_outputs:
-        output_service.set_output_config(PROJECT_ROOT, system_paths) # type: ignore
     
     main_builder = MainBuilder(config_service, PROJECT_ROOT)
     main_builder.activate_main(workflow_report)

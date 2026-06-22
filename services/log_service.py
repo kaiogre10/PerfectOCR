@@ -13,11 +13,14 @@ FILE_LEVEL = 'INFO'
 CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
 FILE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
+TEMP_DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
+TEMP_PATH_FILE: str = "temp"
+TEMP_FILE: str
 EXTRA_FILE_LOGS = []
 
-def get_time_stamp():
+def get_time_stamp(log: bool):
     now = datetime.now()
-    return f"{now.strftime(DATE_FORMAT)}"
+    return f"{now.strftime((DATE_FORMAT if log else TEMP_DATE_FORMAT))}"
 
 def get_caller_info() -> Tuple[str, str]:
     """Devuelve path, linea"""
@@ -25,7 +28,7 @@ def get_caller_info() -> Tuple[str, str]:
     return os.path.basename(frame[1]), str(frame[2])
 
 def get_logging_info(get_caller_info: Tuple[str, str]) -> str:
-    return f"{get_time_stamp()} - {get_caller_info[0]}:{get_caller_info[1]} "
+    return f"{get_time_stamp(True)} - {get_caller_info[0]}:{get_caller_info[1]} "
 
 def setup_logging(project_root: str) -> None:
     """
@@ -46,6 +49,9 @@ def setup_logging(project_root: str) -> None:
     for entry in EXTRA_FILE_LOGS: # type: ignore
         _add_file_handler(_log_root, project_root, entry["filename"], entry["level"], file_formatter) # type: ignore
 
+    TEMP_FILE = os.path.join(project_root, TEMP_PATH_FILE, "tmp_file.txt") # type: ignore
+    reset_temp_file(TEMP_FILE)
+
     # 3. Configurar Salida por Consola
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(console_formatter)
@@ -64,11 +70,6 @@ def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str
     handler.setFormatter(formatter)
     handler.setLevel(level.upper())
     log_root.addHandler(handler)
-
-# def add_log_file(module_name: str):
-#     EXTRA_FILE_LOGS.append(module_name)
-#     _add_file_handler()
-#     return
 
 def log_active_areas(message: str, manager_config: Optional[List[Tuple[str, List[str]]]] = None) -> None:
     caller_info = get_caller_info()
@@ -129,3 +130,7 @@ def format_elapsed_time(seconds: float) -> str:
 #                 record.args = ()
 #
 #         return True
+
+def reset_temp_file(TEMP_FILE: str):
+    with open(TEMP_FILE, "w", encoding="utf-8"):
+        pass

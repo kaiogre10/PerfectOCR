@@ -6,17 +6,20 @@ import logging
 import numpy as np
 import cv2
 import pandas as pd # type: ignore
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
+from services.log_service import get_time_stamp
 import csv
 
 PROJECT_ROOT: str 
 OUTPUT_PATHS: List[str] = []
+TEMP_FILE: str
 
 def set_output_config(project_root: str, config: Dict[str, List[str]]):
-    global OUTPUT_PATHS, PROJECT_ROOT
+    global OUTPUT_PATHS, PROJECT_ROOT, TEMP_FILE
     PROJECT_ROOT = project_root # type: ignore
     output_paths = config["output_paths"]
-    OUTPUT_PATHS = [os.path.join(PROJECT_ROOT, folder) for folder in output_paths] 
+    OUTPUT_PATHS = [os.path.join(PROJECT_ROOT, folder) for folder in output_paths] # type: ignore
+    TEMP_FILE = os.path.join(PROJECT_ROOT, "temp", "tmp_file.txt") # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -210,8 +213,17 @@ def to_serializable(obj: Any) -> Any:
     elif isinstance(obj, (np.integer, np.floating)):
         return obj.item()
     elif isinstance(obj, dict):
-        return {k: to_serializable(v) for k, v in obj.items()} #type: ignore
+        return {k: to_serializable(v) for k, v in obj.items()} # type: ignore
     elif isinstance(obj, (list, tuple)):
-        return [to_serializable(item) for item in obj]#type: ignore
+        return [to_serializable(item) for item in obj] # type: ignore
     else:
         return obj
+
+def write_temp_log(payload_temp: Tuple[str, str]):
+    try:
+        with open(TEMP_FILE, "a", encoding="utf-8") as file_temp:
+            time = get_time_stamp(False)
+            file_temp.write(f"{time} {payload_temp[0]} {payload_temp[1]}\n")
+    except FileNotFoundError as e:
+        logger.error(f"Error escribiendo archivo de seguridad: {e}", exc_info=True)
+    return

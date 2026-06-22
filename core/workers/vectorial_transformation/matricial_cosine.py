@@ -15,7 +15,7 @@ class MatricialCusine(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config[0].get('cos_sim', {})
+        worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
         self.min_cluster = worker_config.get("min_cluster", 1)
         self.tolerance_sim = worker_config.get("tolerance_sim")
@@ -23,8 +23,8 @@ class MatricialCusine(VectorizationAbstractWorker):
         self.eps = worker_config.get("eps")
         self.metric = worker_config.get("metric", "")
         self.min_internal_sim = worker_config.get("min_internal_sim")
-        self.output = config[0].get("table_lines", False)
-        self.output_features = config[0].get("features")
+        self.output = config.get("table_lines", False)
+        self.output_features = config.get("features")
                 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         timw9 = time.perf_counter()

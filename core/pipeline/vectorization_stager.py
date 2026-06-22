@@ -13,7 +13,7 @@ class VectorizationStager(AbstractStager):
         """Orquesta el flujo completo de vectorización"""
         start_time = time.perf_counter()
         try:
-            exec_context: Dict[str, Any] = context.copy() if context else {}
+            exec_context: Dict[str, Any] = context if context else {}
             time_worker_log = exec_context.get("time_worker_log")
 
             for worker_idx, worker in enumerate(self.workers):

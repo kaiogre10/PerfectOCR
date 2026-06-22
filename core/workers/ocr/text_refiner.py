@@ -22,11 +22,11 @@ class Refiner(OCRAbstractWorker):
         self.cleaner = cleaner
         self.fragmenter = fragmenter
         self.corrector = corrector
-        self.output = config[0].get("cleanned_text")
-        worker_config = config[0].get("text_refine", {})
-        self.seman_clas_log = config[0].get("seman_clas")
-        self.refined_text = config[0].get("refined_text")
-        self.semantic_types_log = list(range(0, 6)) if -1 in config[0]["semantic_types_log"] else config[0]["semantic_types_log"]
+        self.output = config.get("cleanned_text")
+        worker_config = config.get("text_refine", {})
+        self.seman_clas_log = config.get("seman_clas")
+        self.refined_text = config.get("refined_text")
+        self.semantic_types_log = list(range(0, 6)) if -1 in config["semantic_types_log"] else config["semantic_types_log"]
         self.num_passes = worker_config.get("num_passes")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

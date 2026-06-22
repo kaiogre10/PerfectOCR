@@ -13,7 +13,7 @@ class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
     def __init__(self, module_config: Dict[str, Any], project_root: str):
         super().__init__(module_config, project_root)
         self._shared_refiner_workers: Optional[Dict[str, OCRAbstractWorker]] = None
-        create_refiners = module_config[0].get("text_refine", {})
+        create_refiners = module_config.get("text_refine", {})
         num_passes = create_refiners.get("num_passes", {})
         if not create_refiners:
             _create_refiners = False

@@ -2,7 +2,8 @@
 import logging
 from typing import Optional, Dict, Any, List
 from core.domain.data_formatter import DataFormatter
-from services.storage_service import storage_data, transform_data
+from services.storage_service import storage_data
+from services.output_service import write_temp_log
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class ProcessingBuilder:
         self.logs_debug = logs_debug
         self.handle_storage = handle_storage
         
-    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[List[int]]:
+    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[int]:
         """
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
         Recibe image_data para configurar el contexto de esta ejecución específica.
@@ -42,19 +43,18 @@ class ProcessingBuilder:
                 if self.logs_debug.get("time_stages_log"):
                     logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
 
-            img_results = manager.get_final_data()
-            if img_results.empty:
+            name = manager.payload.name if manager.payload else None
+            plain_text = manager.payload.payload if manager.payload else None
+            buffer_size = manager.payload.buffer_sizes if manager.payload else None
+
+            if plain_text is None or buffer_size is None or name is None:
                 return None
             
-            if self.handle_storage:
-                sizes = storage_data(img_results)
-                if sizes and sum(sizes) > 1:
-                    return sizes
-                else:
-                    return None
+            if self.handle_storage and storage_data(plain_text, buffer_size):
+                write_temp_log((name, plain_text))
+                return sum(buffer_size)
             else:
-                sizes = transform_data(img_results)[0]
-                return None if not sizes else sizes
+                return None
             
         except Exception as e:
             logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)

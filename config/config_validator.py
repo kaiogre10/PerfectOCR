@@ -45,7 +45,7 @@ class ConfigBuilder:
 
     @cached_property
     def deploy_settings(self) -> Dict[str, bool]:
-        return self.config.get("deploy_settings",{})
+        return self.config.get("deploy_settings", {})
     
     @cached_property
     def clean_project(self) -> bool:

@@ -1,4 +1,4 @@
-from typing import List, Any, Dict, Tuple
+from typing import List, Dict
 import logging
 import os
 import time
@@ -47,13 +47,9 @@ def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
     ]
     LIB.storage_batch_flat.restype = None
 
-def storage_data(data_to_flat: Any) -> List[int]:
+def storage_data(plain_text: str, buffer_sizes: List[int]) -> bool:
     """Interfaz pública para guardar la información generada."""
-    buffer_sizes, plain_text = transform_data(data_to_flat)
-    if _request_storage(plain_text, buffer_sizes):
-        return buffer_sizes
-    else:
-        return []
+    return _request_storage(plain_text, buffer_sizes)
 
 def _request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
     try:
@@ -67,9 +63,9 @@ def _request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
             bytes_utf16 = plain_text.encode("utf-16le")
             plaintext_c = (ctypes.c_uint8 * total_bytes).from_buffer_copy(bytes_utf16)  # Texto aplanado
             # Pasar la cantidad real de elementos (N) en el tercer argumento
-            time0 = time.perf_counter()
+            #time0 = time.perf_counter()
             LIB.storage_batch_flat(plaintext_c, arreglo_tamanos_c, ctypes.c_size_t(total_rows))
-            logger.info(f"TIEMPO ESCRIBIENDO '{sum(buff_sizes)}' Bytes EN MEMORIA: {time.perf_counter() - time0:.8f}'s")
+            #logger.info(f"TIEMPO ESCRIBIENDO '{sum(buff_sizes)}' Bytes EN MEMORIA: {time.perf_counter() - time0:.8f}'s")
         except ctypes.ArgumentError as e:
             logger.warning(f"Error escribiendo bytecode en memoria asignada por C++: {e}", exc_info=True)
             raise
@@ -77,26 +73,3 @@ def _request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
     except Exception as e:
         logger.error(f"ERROR SOLICITANDO MEMORIA: {e}", exc_info=True)
     return False
-
-def transform_data(df: Any) -> Tuple[List[int], str]:
-    """Devuelve tamaño de cada fila y el df aplanado"""
-    plain_df: List[str] = []
-    buffer_sizes: List[int] = []
-    total_rows = df.shape[0]
-
-    for i, fila in enumerate(df.itertuples(index=False, name=None)):
-        fila = list(fila)
-        if (i + 1) != total_rows:
-            string_row = "".join(fila)[:-1]
-        else:
-            string_row = "".join(fila)
-
-        # Al multiplicar por 2 evitamos codificar celda por celda en el bucle.
-        buff_size_bytes = len(string_row) * 2
-
-        plain_df.append(string_row)
-        buffer_sizes.append(buff_size_bytes)
-
-    plain_text = "".join(plain_df)
-    #logger.info(f"TAMAÑO: '{buffer_sizes}' PLAIN TEXT:\n"f"'{plain_text}'")
-    return buffer_sizes, plain_text

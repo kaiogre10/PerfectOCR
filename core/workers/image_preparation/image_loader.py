@@ -15,7 +15,7 @@ class ImageLoader(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.output = config[0].get("full_img")
+        self.output = config.get("full_img")
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Carga la imagen y extrae metadatos."""

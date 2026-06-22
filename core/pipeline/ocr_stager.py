@@ -12,7 +12,7 @@ class OCRStager(AbstractStager):
 
     def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
-        exec_context: Dict[str, Any] = context.copy() if context else {}
+        exec_context: Dict[str, Any] = context if context else {}
         time_worker_log = exec_context.get("time_worker_log")
 
         for worker_idx, worker in enumerate(self.workers):

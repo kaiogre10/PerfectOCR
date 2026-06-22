@@ -94,7 +94,7 @@ class MainBuilder:
                 #logger.info(f"IMAGEN '{image_name}' # {(i + 1)} de '{total_images}' imágenes")
                 payload_cunter += 1
 
-                payload_size = bitmath.Byte(sum(payload_size))
+                payload_size = bitmath.Byte(payload_size)
                 if (payload_size + payloads_buffer) < tolerance and (i+1) < total_images:
                     payloads_buffer += payload_size
                     continue

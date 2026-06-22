@@ -89,3 +89,9 @@ class WorkflowData:
     polygons: Optional[Dict[str, Polygons]]
     all_lines: Optional[Dict[str, AllLines]]
     table_data: Optional[StructuredData]
+
+@dataclass(slots=True)
+class Payload:
+    payload: Optional[str]
+    buffer_sizes: Optional[List[int]]
+    name: Optional[str]

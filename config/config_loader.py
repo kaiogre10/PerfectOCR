@@ -6,7 +6,7 @@ from typing import cast, Dict, Any, List
 from config.config_models import MasterConfig
 import services.log_service as log_service
 
-def load_config_file(default_config_path: List[str]) -> Dict[str, Any]:
+def load_config_file(default_config_path: List[str]):
     """Carga archivos de configuración, asegura agnosismo si cambia el formato de archivo de entrada"""
     system_config_file = os.path.join(*default_config_path, ("master_config" + ".yaml"))
     user_config_file = os.path.join(*default_config_path, ("user_config" + ".jsonc")) # Con comentarios temporalmente para flexibilidad
@@ -14,7 +14,7 @@ def load_config_file(default_config_path: List[str]) -> Dict[str, Any]:
     config_json = _load_user_config(user_config_file)
     config_yaml = _load_yaml(system_config_file)
     config_yaml.update(config_json)    
-    return MasterConfig.model_validate(config_yaml).model_dump()
+    return MasterConfig.model_validate(obj=config_yaml, strict=True, extra='forbid', from_attributes=True, by_name=True).model_dump()
 
 def _load_yaml(system_config_path: str):
     try:

@@ -14,7 +14,7 @@ class Fragmenter(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.log_output = config[0].get("frag_polys")
+        self.log_output = config.get("frag_polys")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool: 
         try:

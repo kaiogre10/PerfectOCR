@@ -17,7 +17,7 @@ class InkCorrector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config[0].get('ink_enhancement', {})
+        worker_config = config.get('ink_enhancement', {})
         self.metric = worker_config.get("manhattan", "manhattan")
         self.white = worker_config["white"]
         self.black = worker_config["black"]

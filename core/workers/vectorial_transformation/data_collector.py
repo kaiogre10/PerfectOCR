@@ -22,18 +22,19 @@ class FinalStructurer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config[0].get('math_max', {})
+        worker_config = config.get('math_max', {})
         all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3], all_cols_name[4]
         self.separator = worker_config["separator"][0]
-        self.output = config[0].get("math_max_corrected")
-        self.apile = config[0].get("stack")
+        self.output = config.get("math_max_corrected")
+        self.apile = config.get("stack")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         try:
-            df, global_data = self.collect_data(manager)
+            df, image_name = self.collect_data(manager)
+            payload = self.transform_data(df)
 
-            if manager.save_final_output(df, global_data):
+            if manager.store_payload([payload[0], payload[1], image_name]):
                 context = context
                 context = {}
                 return True
@@ -41,19 +42,24 @@ class FinalStructurer(VectorizationAbstractWorker):
             logger.error(f"Error recolectando datos: '{e}'", exc_info=True)
         return False
 
-    def collect_data(self, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+    def collect_data(self, manager: DataFormatter) -> Tuple[pd.DataFrame, str]:
         structured_data = manager.workflow.table_data if manager.workflow else None
         if structured_data is None:
-            return (pd.DataFrame(), {})
+            return (pd.DataFrame(), "")
         
         df: Optional[pd.DataFrame] = structured_data.df_table
         metadata = manager.workflow.metadata if manager.workflow else None
         if df is None or df.empty or metadata is None:
-            return (pd.DataFrame(), {})
+            return (pd.DataFrame(), "")
 
+        image_name = metadata.image_name if metadata else ""
         df, totals = self.standarice_df(df, manager)
-        kf_map_inv = {v: k for k, v in conversion_kf.items()}
+
         polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+        date_creation = metadata.date_creation if metadata else ""
+
+        kf_map_inv = {v: k for k, v in conversion_kf.items()}
+
         db_values: Dict[str, Any] = {}
         for poly_data in polygons.values():
             kf_list = poly_data.key_field
@@ -72,9 +78,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                     if field_name is not None:
                         db_values[field_name] = value  # 'MontoTotalDocumento': '1024.12'
         
-        image_name = metadata.image_name if metadata else ""
         id_prov = get_ids(image_name, "prov")
-        date_creation = metadata.date_creation if metadata else ""
 
         db_values.update(totals)
         db_values["image_name"] = image_name
@@ -86,7 +90,8 @@ class FinalStructurer(VectorizationAbstractWorker):
         db_values["fecha_captura"] = date_creation
 
         # logger.info(f"{db_values}")
-        return (df, db_values)
+        manager.reset_data()
+        return (df, image_name)
     
     def standarice_df(self, df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
         mtl_col = df[self.mtl_name]
@@ -162,5 +167,28 @@ class FinalStructurer(VectorizationAbstractWorker):
                             df.iat[i, pro_idx] = (orig_p_value +  concat_val)
 
         df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
-        # logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
+        logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
         return df
+    
+    def transform_data(self, df: pd.DataFrame) -> Tuple[List[int], str]:
+        """Devuelve tamaño de cada fila y el df aplanado"""
+        plain_df: List[str] = []
+        buffer_sizes: List[int] = []
+        total_rows = df.shape[0]
+
+        for i, fila in enumerate(df.itertuples(index=False, name=None)):
+            fila = list(fila)
+            if (i + 1) != total_rows:
+                string_row = "".join(fila)[:-1]
+            else:
+                string_row = "".join(fila)
+
+            # Al multiplicar por 2 evitamos codificar celda por celda en el bucle.
+            buff_size_bytes = len(string_row) * 2
+
+            plain_df.append(string_row)
+            buffer_sizes.append(buff_size_bytes)
+
+        plain_text = "".join(plain_df)
+        logger.info(f"TAMAÑO: '{buffer_sizes}' PLAIN TEXT:\n"f"'{plain_text}'")
+        return buffer_sizes, plain_text

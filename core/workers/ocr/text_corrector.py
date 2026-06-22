@@ -25,8 +25,8 @@ class TextCorrector(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.output_log = config[0].get("text_correct")
-        self.del_output_log = config[0].get("text_del")
+        self.output_log = config.get("text_correct")
+        self.del_output_log = config.get("text_del")
             
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         t0 = time.perf_counter()

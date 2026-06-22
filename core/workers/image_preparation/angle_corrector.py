@@ -19,15 +19,15 @@ class AngleCorrector(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        worker_config = config[0].get("angle_corrector", {})
-        self.color = config[0].get('ink_enhancement', {}).get("white", [])
+        worker_config = config.get("angle_corrector", {})
+        self.color = config.get('ink_enhancement', {}).get("white", [])
         self.min_angle_for_correction = worker_config.get('min_angle_for_correction')
         self.canny_thresholds = worker_config['canny_thresholds']
         self.hough_threshold = worker_config.get('hough_threshold')
         self.hough_max_line_gap_px = worker_config.get('hough_max_line_gap_px')
         self.hough_angle_filter_range_degrees = worker_config['hough_angle_filter_range_degrees']
         self.hough_min_line_length_cap_px = worker_config.get('hough_min_line_length_cap_px')
-        self.output = config[0].get("angle_corrected", False)
+        self.output = config.get("angle_corrected", False)
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:

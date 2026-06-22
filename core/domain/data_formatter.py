@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowData, StructuredData, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage
+from core.domain.data_models import WorkflowData, StructuredData, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage, Payload
 import numpy as np
 import dataclasses
 import logging
@@ -13,6 +13,7 @@ class DataFormatter:
     """Válvula de entrada/salida para todas las operaciones del workflow."""
     __slots__ = (
         "workflow",
+        "payload",
         "text_ocr_log",
         "key_fields_log",
         "kf_list_log",
@@ -23,6 +24,7 @@ class DataFormatter:
     )
     def __init__(self, logs_config: Dict[str, Any]):
         self.workflow: Optional[WorkflowData] = None
+        self.payload: Optional[Payload] = None
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
         self.kf_list_log = list(range(1, 13)) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
@@ -443,25 +445,41 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
         return False
+    
+    def store_payload(self, payloads: List[Any]):
+        try:
+            buffer_sizes = payloads[0]
+            payload = payloads[1]
+            image_name = payloads[2]
+            payload = Payload(buffer_sizes=buffer_sizes, payload=payload, name=image_name)
+            self.payload = dataclasses.replace(payload)
+            return True
+        except ValueError as e:
+            logger.error(f"EROR DE DATOS: {e}", exc_info=True)
+        return False
         
-    def get_final_data(self): #Tuple[str, Dict[str, Any]]:
-        self.workflow = self.workflow if self.workflow else None
-        if self.workflow is None:
-            return pd.DataFrame()
+    def restore_data(self):
+        try:
+            self.workflow = self.workflow if self.workflow else None
+            if self.workflow is None:
+                return
 
-        structured_data = self.workflow.table_data
-        if structured_data is None:
-            return pd.DataFrame()
-        
-        df: Optional[pd.DataFrame] = structured_data.df_table
-        # db_values = structured_data.global_data
-        if df is None or df.empty:
-            return pd.DataFrame()
+            self.workflow.table_data = self.workflow.table_data if self.workflow else None
+            if self.workflow.table_data is None:
+                return
+            
+            self.workflow.table_data.global_data = self.workflow.table_data.global_data if self.workflow.table_data else {}
+            self.workflow.table_data.df_table = self.workflow.table_data.df_table if self.workflow.table_data else None
+            if self.workflow.table_data.df_table is None or self.workflow.table_data.df_table.empty:
+                return
 
-        structured_data = None
-        self.workflow.metadata = None
-        self.workflow.IDRegistro = None
-        self.workflow.polygons = None
-        self.workflow.all_lines = None
-        self.workflow.table_data = None
-        return df
+            del self.workflow.table_data
+            del self.workflow.polygons
+            del self.workflow.all_lines 
+            del self.workflow.IDRegistro
+            del self.workflow.table_data
+            del self.workflow.metadata
+            del self.workflow
+            
+        except TypeError as e:
+            logger.info(f"Sin clave: {e}")

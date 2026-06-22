@@ -1,13 +1,12 @@
 # services/config_models.py
 from pydantic import BaseModel, ConfigDict
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 
 class ConfigWithNumpy(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=False, extra='forbid')
+    model_config = ConfigDict(extra='forbid', validate_assignment=True, arbitrary_types_allowed=False, strict=True)
 
 class SystemPaths(ConfigWithNumpy):
     output_paths: List[str]
-    temp_path: List[str]
     storage_bin: List[str]
     container_bin: List[str]
 
@@ -109,7 +108,7 @@ class ModelsConfig(ConfigWithNumpy):
 class InkConfig(ConfigWithNumpy):
     white: List[int]
     black: List[int]
-    aspect_ratio_range: Tuple[float, float]
+    aspect_ratio_range: List[float]
     angle_threshold: float
     thr: float
     black_thr: float
@@ -117,16 +116,16 @@ class InkConfig(ConfigWithNumpy):
     shape_thr: float
 
 class GeometryDetect(ConfigWithNumpy):
-    morph_kernel: Tuple[int, int]
+    morph_kernel: List[int]
     iterations: int
 
 class DeskewConfig(ConfigWithNumpy):
     min_angle_for_correction: float
-    canny_thresholds: Tuple[int, int]
+    canny_thresholds: List[int]
     hough_threshold: int
     hough_min_line_length_cap_px: int
     hough_max_line_gap_px: int
-    hough_angle_filter_range_degrees: Tuple[float, float]
+    hough_angle_filter_range_degrees: List[float]
 
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: float
@@ -162,7 +161,7 @@ class ContrastConfig(ConfigWithNumpy):
     clahe_clip_limit: float
     contrast_threshold: int
     dimension_thresholds_px: List[int]
-    grid_sizes_map: List[Tuple[int, int]]
+    grid_sizes_map: List[List[int]]
 
 class PreprocessingConfig(ConfigWithNumpy):
     moire: MoireConfig

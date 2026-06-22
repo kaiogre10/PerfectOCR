@@ -24,10 +24,10 @@ class StagersFactory:
         self.modules_config = modules_config
         
         factories_dict: Dict[str, Any] = {
-            keyimglo: self.get_image_preparation_factory(self.modules_config.get(keyimglo)), # type: ignore
-            keypre: self.get_preprocessing_factory(self.modules_config.get(keypre)), # type: ignore
-            ocrkey: self.get_ocr_factory(self.modules_config.get(ocrkey)), # type: ignore
-            veckey: self.get_vectorizing_factory(self.modules_config.get(veckey)) # type: ignore
+            keyimglo: self.get_image_preparation_factory,
+            keypre: self.get_preprocessing_factory,
+            ocrkey: self.get_ocr_factory,
+            veckey: self.get_vectorizing_factory,
         }
 
         stagers_dict: Dict[str, Any] = {
@@ -50,7 +50,9 @@ class StagersFactory:
                 if not workers_order:
                     continue
                 config = self.modules_config.get(stage)
-                factory = factories_dict.get(stage)
+                if config is None:
+                    continue
+                factory = factories_dict[stage](config[0])
                 if factory is None or not workers_order:
                     continue
                 workers_created = factory.create_components(workers_order)
@@ -71,7 +73,7 @@ class StagersFactory:
         return PreprocessingFactory(config, self.project_root)
 
     def get_ocr_factory(self, config: Dict[str, Any]) -> OCRFactory:
-        return OCRFactory(config, self.project_root)
+        return OCRFactory(config, self.project_root) # type: ignore
 
     def get_vectorizing_factory(self, config: Dict[str, Any]) -> VectorizingFactory:
         return VectorizingFactory(config, self.project_root)
