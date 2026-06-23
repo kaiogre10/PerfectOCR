@@ -221,9 +221,9 @@ def to_serializable(obj: Any) -> Any:
 
 def write_temp_log(payload_temp: Tuple[str, str]):
     try:
-        with open(TEMP_FILE, "a", encoding="utf-8") as file_temp:
+        with open(TEMP_FILE, "a", encoding="utf-16") as file_temp:
             time = get_time_stamp(False)
             file_temp.write(f"{time} {payload_temp[0]} {payload_temp[1]}\n")
-    except FileNotFoundError as e:
+    except OSError as e:
         logger.error(f"Error escribiendo archivo de seguridad: {e}", exc_info=True)
     return

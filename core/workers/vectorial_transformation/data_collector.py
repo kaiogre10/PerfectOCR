@@ -167,21 +167,19 @@ class FinalStructurer(VectorizationAbstractWorker):
                             df.iat[i, pro_idx] = (orig_p_value +  concat_val)
 
         df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
-        logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
+        #logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
         return df
     
     def transform_data(self, df: pd.DataFrame) -> Tuple[List[int], str]:
         """Devuelve tamaño de cada fila y el df aplanado"""
         plain_df: List[str] = []
         buffer_sizes: List[int] = []
-        total_rows = df.shape[0]
+        #total_rows = df.shape[0]
 
-        for i, fila in enumerate(df.itertuples(index=False, name=None)):
+        for _, fila in enumerate(df.itertuples(index=False, name=None)):
             fila = list(fila)
-            if (i + 1) != total_rows:
-                string_row = "".join(fila)[:-1]
-            else:
-                string_row = "".join(fila)
+
+            string_row = "".join(fila)
 
             # Al multiplicar por 2 evitamos codificar celda por celda en el bucle.
             buff_size_bytes = len(string_row) * 2
@@ -190,5 +188,5 @@ class FinalStructurer(VectorizationAbstractWorker):
             buffer_sizes.append(buff_size_bytes)
 
         plain_text = "".join(plain_df)
-        logger.info(f"TAMAÑO: '{buffer_sizes}' PLAIN TEXT:\n"f"'{plain_text}'")
+        #logger.info(f"TAMAÑO: '{buffer_sizes}' PLAIN TEXT:\n"f"'{plain_text}'")
         return buffer_sizes, plain_text

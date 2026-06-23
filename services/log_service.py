@@ -13,7 +13,7 @@ FILE_LEVEL = 'INFO'
 CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
 FILE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
-TEMP_DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
+TEMP_DATE_FORMAT = "%d/%m/%Y-%H:%M:%S"
 TEMP_PATH_FILE: str = "temp"
 TEMP_FILE: str
 EXTRA_FILE_LOGS = []
@@ -132,5 +132,5 @@ def format_elapsed_time(seconds: float) -> str:
 #         return True
 
 def reset_temp_file(TEMP_FILE: str):
-    with open(TEMP_FILE, "w", encoding="utf-8"):
+    with open(TEMP_FILE, "w", encoding="utf-16"):
         pass

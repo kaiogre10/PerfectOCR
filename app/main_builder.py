@@ -94,10 +94,16 @@ class MainBuilder:
                 #logger.info(f"IMAGEN '{image_name}' # {(i + 1)} de '{total_images}' imágenes")
                 payload_cunter += 1
 
-                payload_size = bitmath.Byte(payload_size)
-                if (payload_size + payloads_buffer) < tolerance and (i+1) < total_images:
+                payload_size = bitmath.Byte(sum(payload_size))
+                if total_images == 1:
+                    payloads_buffer += payload_size
+                    payloads_sended = self.send_payload_pack(payloads_buffer, payload_cunter)
+                    continue
+
+                elif (payload_size + payloads_buffer) < tolerance and total_images > (i + 1):
                     payloads_buffer += payload_size
                     continue
+                    
                 else:
                     payloads_sended = self.send_payload_pack(payloads_buffer, payload_cunter)
                     final_results.append(payloads_sended)
@@ -114,8 +120,10 @@ class MainBuilder:
         
         if total_fails == 0:
             logger.info(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_mask}{total_processing_time}, promedio: {mean_process}'s")
+
         elif total_fails == total_images:
             logger.info(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {time_mask}{total_processing_time}, promedio: {mean_process}")
+
         else:
             logger.info(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
 
