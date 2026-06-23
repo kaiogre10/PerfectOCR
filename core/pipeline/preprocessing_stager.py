@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class PreprocessingStager(AbstractStager):
     """Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente."""
-    def excute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
+    def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
         
         # Base context setup

@@ -1,4 +1,4 @@
-﻿# services/logs_service.py
+# services/logs_service.py
 import os
 import sys
 from datetime import datetime

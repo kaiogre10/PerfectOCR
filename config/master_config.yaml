@@ -24,7 +24,7 @@ pipeline_secuence:
 
   preprocessing_stager:
     #  - "moire"
-    #  - "sp"
+#    - "sp"
     #  - "gauss"
     #  - "clahe"
     #  - "sharp"

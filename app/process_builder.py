@@ -10,14 +10,12 @@ logger = logging.getLogger(__name__)
 class ProcessingBuilder:
     __slots__ = (
         "all_stagers",
-        "logs_debug",
-        "handle_storage"
+        "logs_debug"
     )
     """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y coordina el procesamiento técnico de una sola imagen."""
-    def __init__(self, all_stagers: List[Any], logs_debug: Dict[str, Any], handle_storage: bool):
+    def __init__(self, all_stagers: List[Any], logs_debug: Dict[str, Any]):
         self.all_stagers = all_stagers
         self.logs_debug = logs_debug
-        self.handle_storage = handle_storage
         
     def process_single_image(self, image_data: Dict[str, Any]) -> Optional[List[int]]:
         """
@@ -50,7 +48,7 @@ class ProcessingBuilder:
             if plain_text is None or buffer_size is None or name is None:
                 return None
             
-            if self.handle_storage and storage_data(plain_text, buffer_size):
+            if self.logs_debug.get("handle_memory") and storage_data(plain_text, buffer_size):
                 write_temp_log((name, plain_text))
                 return buffer_size
             else:

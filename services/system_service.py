@@ -255,7 +255,7 @@ def get_images_in_dir(input_path: str, files_list: List[str]) -> List[str]:
         files_in_dir = ["".join(name) for name in split_names if name[0] in files_list]
         return files_name_dir if not files_in_dir else files_in_dir
     except FileNotFoundError as e:
-        logger.error(f"Error buscando archivos:en '{input_path}'", exc_info=True)
+        logger.error(f"Error buscando archivos:en '{input_path}', {e}", exc_info=True)
     return []
 
 def get_so() -> str:

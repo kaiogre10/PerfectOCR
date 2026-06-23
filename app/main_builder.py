@@ -22,27 +22,24 @@ class MainBuilder:
             if not workflow_report or not self.config_service:
                 logger.info("NO HAY RUTAS PRINCIPALES PARA PIPELINE, REVISAR MAIN\n"f"PROCESO DETENIDO: {time.perf_counter() - t0}")
                 return []
+                    # CREAR UN ÚNICO BUILDER REUTILIZABLE
+            processing_builder = self.create_single_builder()  # type: ignore
+            if processing_builder is None:
+                return []
 
-            # 4. Iniciar modelos Singleton
             models_config = self.config_service.models_config
             if models_config:
                 models_builder = ModelsBuilder.get_instance()
-                if not models_builder.initialize_models(models_config, self.project_root): # type: ignore
+                if not models_builder.initialize_models(models_config, self.project_root):  # type: ignore
                     logger.error("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
                     return []
 
             if not self.config_service.no_activate_modules:
-                # CREAR UN ÚNICO BUILDER REUTILIZABLE
-                processing_builder = self.create_single_builder() # type: ignore
-                if processing_builder is None:
-                    return []
-
                 self.transform_image_to_df(processing_builder, workflow_report)
 
                 #if final_payload_list:
                  #   if postgre_local_service.start_postgres():
                   #      postgre_local_service.insert_payload(final_payload_list) # type: ignore
-
                 logger.warning(f"{time_mask}{time.perf_counter()-t0} total en completar el proceso")
                 return []
 
@@ -60,8 +57,7 @@ class MainBuilder:
             stagers_factory = StagersFactory(self.config_service.stagers_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
             all_stagers = stagers_factory.get_all_stagers()
             # El manager se crea dentro del proceso de cada imagen, no aquí
-            handle_storage = bool(self.config_service.deploy_settings.get("handle_memory"))
-            builder = ProcessingBuilder(all_stagers=all_stagers, logs_debug=self.config_service.logs_debug, handle_storage=handle_storage)
+            builder = ProcessingBuilder(all_stagers=all_stagers, logs_debug=self.config_service.logs_debug)
             return builder
 
         except AttributeError as e:

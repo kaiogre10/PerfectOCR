@@ -4,10 +4,7 @@ from typing import Dict, Any
 from core.domain.data_formatter import DataFormatter
 
 class BaseWorker(ABC):
-    """
-    Contrato que todo worker de procesamiento debe cumplir.
-    Cada worker es una etapa en el pipeline.
-    """
+    """Cada Abstract worker es una etapa en el pipeline."""
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.config = config
         self.project_root = project_root    

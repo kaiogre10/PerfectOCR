@@ -2,16 +2,13 @@ import os
 import logging
 import numpy as np
 import pickle
-import re
-import unicodedata
 import time
 from typing import List, Any, Dict, Tuple, Set, FrozenSet
+from core.utils.patterns import space_pattern
 
 logger = logging.getLogger(__name__)
 
-_space_pattern = re.compile(r"\s+")
-_space_clean_pattern = re.compile(r"[^a-z\s]+")
-_nom_pattern= re.compile(r'(?<=[a-zA-Z])[^\w\s]+(?=[a-zA-Z])')
+_space_pattern = space_pattern
 
 class WordFinder:
     def __init__(self, model_path: str, set_params: bool):
@@ -457,21 +454,7 @@ class WordFinder:
         except Exception as e:
             logger.error(f"Error eliminando substrings de ruido: {e}", exc_info=True)
             return text, []
-            
-    def _normalize(self, s: str) -> str:
-        try:
-            if not s:
-                return ""
-            s = s.lower()  # 1. Entra el texto y convertimos a minusuculas
-            s = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")  # 2. Convertimos letras con con puntuación a su versión estandar, NO ELIMINAMOS PUNTUACIÓN SOLO TRATAMOS CON ALFABÉTICOS
-            s = _nom_pattern.sub("", s)  # 3. Eliminar especiales con el patrón definido internos juntando los caracteres.
-            # s = _space_clean_pattern.sub(" ", s)  # 4. Ahora sí eliminamos puntuación y números convirtiendolos en espacios sin juntar aún
-            q = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8')  # 5. Normalizamos ASCII para estandarizar
-            return _space_pattern.sub(" ", q).strip()  # 6. Normalizar espacios dobles que se hayan podido generar
-        except UnicodeError as e:
-            logger.error(f"Error limpiando texto: {e}", exc_info=True)
-        return ""
-                    
+
     def _update_best_match(self, current_best: Dict[str, Any], match: Dict[str, Any]) -> Dict[str, Any]:
         """
         Decide si el nuevo match es mejor que el actual según las reglas de similitud y longitud.

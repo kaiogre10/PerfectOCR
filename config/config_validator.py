@@ -2,7 +2,7 @@
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from types import MappingProxyType
 from functools import cached_property
-from services.log_service import log_active_areas, log_simple
+from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from config.config_loader import load_config_file
 
 ELEMENTAL_WORKER = "image_loader"
@@ -98,8 +98,6 @@ class ConfigBuilder:
     @cached_property
     def logs_debug(self) -> Dict[str, Any]:
         logs = self.config.get("log_debug", {})
-        if self.no_activate_modules:
-            return {}
         # Mutación controlada: Se ejecuta UNA SOLA VEZ y se queda en caché
         if logs.get("all_logs") or self.test_config:
             for key, value in logs.items():
@@ -107,7 +105,9 @@ class ConfigBuilder:
                     logs[key] = True
                 elif isinstance(value, list):
                     logs[key] = [-1]
+            logs.update({"handle_memory": self.handle_memory})
             return logs
+        logs.update({"handle_memory": self.handle_memory})
         return logs
         
     @cached_property
@@ -177,11 +177,14 @@ class ConfigBuilder:
         if self.no_activate_modules or not self.create_stager[1][1] or not self.active_full_ocr:
             return ({}, [])
         else:
-            config_module = self.modules_config.get("preprocessing", {})
-            enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {}),
-            config_module.update(enabled_outputs)
-            config_module.update(self.enabled_outputs.get("preprocessing_outputs"))
-            return config_module, self.workers_order["preprocessing_stager"]
+            try:
+                config_module = self.modules_config.get("preprocessing", {})
+                enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {})
+                config_module.update(enabled_outputs)
+                return config_module, self.workers_order["preprocessing_stager"]
+            except ValueError as e:
+                basic_exc_logger(f"ERROR EN CDONFIGURACIÓN DE STAGER: {e}", exc_info=True)
+            return ({}, [])
             
     @cached_property
     def ocr_config(self) -> Tuple[Dict[str, Any], List[str]]:

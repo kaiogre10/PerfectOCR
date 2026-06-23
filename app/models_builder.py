@@ -33,7 +33,6 @@ class ModelsBuilder:
         return cls._instance
 
     def initialize_models(self, config: Dict[str, Any], project_root: str) -> bool:
-        self.project_root = project_root # type: ignore
         init_time = time.perf_counter()
         try:
             # 1. Inicialización SELECTIVA de motores de Paddle
@@ -41,11 +40,11 @@ class ModelsBuilder:
                 return False
 
             # 2. Inicialización de WordFinder
-            elif config.get("activate_wf") and self._activate_wf(config):
-                logger.debug(f"STACK COMPLETO DE MODELOS CARGADOS EN: {time.perf_counter() - init_time:.6f}'s")
+            elif config.get("activate_wf") and self._activate_wf(config, project_root):
+                #logger.info(f"STACK COMPLETO DE MODELOS CARGADOS EN: {time.perf_counter() - init_time:.6f}'s")
                 return True
             else:
-                logger.debug("SOLO SE CARGÓ OCR")
+                #logger.debug("SOLO SE CARGÓ OCR")
                 self._word_finder = None
                 return True
 
@@ -80,15 +79,15 @@ class ModelsBuilder:
 
             activate_cls = models_config.get('use_angle_cls')
             if activate_cls:
-                logger.warning(f"ADVERTENCIA SE ACTIVÓ EL MODELO DE DETECCIÓN DE ANGULO DE PADDLE: {activate_cls}")
+                logger.warning(f"ADVERTENCIA SE ACTIVÓ EL MODELO DE DETECCIÓN DE ANGULO DE PADDLE: '{activate_cls}'")
             
             if activate_det or activate_rec:
                 
                 det_dir = models_config['det_model_dir']
                 rec_dir = models_config['rec_model_dir']
                 
-                det_model_dir = os.path.join(self.project_root, *det_dir)
-                rec_model_dir = os.path.join(self.project_root, *rec_dir)
+                det_model_dir = os.path.join(project_root, *det_dir)
+                rec_model_dir = os.path.join(project_root, *rec_dir)
             
                 self._shared_engine = PaddleOCR(
                     det = activate_det, 
@@ -127,12 +126,11 @@ class ModelsBuilder:
             logger.error(f"NO SE CARGO MODULO OCR: {e}", exc_info=True)
         return False
 
-    def _activate_wf(self, config: Dict[str, Any]) -> bool:
+    def _activate_wf(self, config: Dict[str, Any], project_root: str) -> bool:
         models_config = config.get("models_config", {})
         model_path = models_config["wf_model_path"]
-        
-        model_dir = os.path.join(self.project_root, *model_path)
-        
+        model_dir = os.path.join(project_root, *model_path)
+
         try:
             self._word_finder = WordFinder(
                 model_path=model_dir,

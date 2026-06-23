@@ -14,8 +14,6 @@ keypre = "preprocessing_stager"
 ocrkey = "ocr_stager"
 veckey = "vectorization_stager"
 
-list_keys: List[str] = list([keyimglo, keypre, ocrkey, veckey])
-
 class StagersFactory:
     """Crea workers y ensambla stagers de forma uniforme."""
     def __init__(self, modules_config: Dict[str, Tuple[Dict[str, Any], List[str]]], project_root: str, stagging: List[Tuple[str, Optional[List[str]]]]):

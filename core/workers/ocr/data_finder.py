@@ -135,10 +135,9 @@ class DataFinder(OCRAbstractWorker):
                         continue
                         
             if polygon_updates:
-                # logger.info(f"KEY FIELDS ENCONTRADOS: '{polygon_updates}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
                 return polygon_updates
                 # return self.get_key_fields_values(manager, polygon_updates)
-
             else:
                 logger.warning(f"No se hallaron Keywords, tiempo de ejecución: {time.perf_counter() - time0:.6}'s")
                 return {}
