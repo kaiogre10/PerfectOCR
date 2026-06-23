@@ -43,7 +43,7 @@ class MainBuilder:
                  #   if postgre_local_service.start_postgres():
                   #      postgre_local_service.insert_payload(final_payload_list) # type: ignore
 
-                logger.info(f"{time_mask}{time.perf_counter()-t0} total en completar el proceso")
+                logger.warning(f"{time_mask}{time.perf_counter()-t0} total en completar el proceso")
                 return []
 
             logger.warning(f"No modules completo, {time_mask}{time.perf_counter()-t0}")

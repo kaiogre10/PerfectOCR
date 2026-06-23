@@ -1,10 +1,8 @@
 from typing import List, Dict
 import logging
 import os
-import time
 import ctypes
 from services.system_service import get_so
-from services.log_service import log_simple
 
 OUTPUT_PATHS: List[str] = []
 CON: ctypes.CDLL
@@ -13,7 +11,6 @@ LIB: ctypes.CDLL
 logger = logging.getLogger(__name__)
 
 def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
-    log_simple("STORAGE ACTIVADO")
     binary_extension: str = get_so()
     container_bin_path = config["container_bin"]
     container_ext = container_bin_path.pop(-1)
@@ -54,7 +51,7 @@ def storage_data(plain_text: str, buffer_sizes: List[int]) -> bool:
 def _request_storage(plain_text: str, buff_sizes: List[int]) -> bool:
     try:
         # El tamaño total en bytes es la suma de los tamaños UTF-16 ya calculados
-        total_bytes = sum(buff_sizes)               
+        total_bytes = sum(buff_sizes)
         total_rows = len(buff_sizes)                                                     # Tma de columnas de strings planos, no el total de bytes
         try:
             # Convertir la cadena completa a UTF-16LE de forma directa.

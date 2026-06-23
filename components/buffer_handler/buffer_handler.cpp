@@ -3,15 +3,15 @@
 #include <vector>
 #include <cstdint>
 #include <mutex>
+#include <cstdio>
 
 extern "C" void storage_batch_flat(const uint8_t* plain_data,
                                    const size_t* len_list,
                                    size_t total_elements) {
-
     if (!plain_data || !len_list || total_elements == 0) return;
-
-    // El productor procesa y reconstruye de manera privada
+    
     std::vector<std::vector<uint8_t>> struct_payload;
+    printf("[LOG]: PAYLOAD: %p\n", plain_data);
     struct_payload.resize(total_elements);
 
     size_t offset_view = 0;
