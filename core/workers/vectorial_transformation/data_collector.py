@@ -7,6 +7,7 @@ from typing import Dict, Any, Tuple, List, Optional
 from core.utils.text_utils import format_cuant, get_rfc, get_ids, noramalice_df, its_similar, fast_classfier
 from core.utils.patterns import umd_patterns
 from core.utils.compiled_utils import validate_text
+from services.output_service import save_debug_table
 from core.utils.data_utils import CONVERSION_KF
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
@@ -26,12 +27,18 @@ class FinalStructurer(VectorizationAbstractWorker):
         all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3], all_cols_name[4]
         self.separator = worker_config["separator"][0]
-        self.output = config.get("math_max_corrected")
-        self.apile = config.get("stack")
+        self.output = config.get("normalized_table")
+        self.stack = config.get("stack")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         try:
             df, image_name = self.collect_data(manager)
+
+            if self.output or self.stack:
+                worker_name = context.get("worker_name") or "math_max"
+                file_name: str = manager.workflow.metadata.image_name if manager.workflow else "" # type: ignore
+                save_debug_table(df, file_name, worker_name, self.output, self.stack) # type: ignore
+                
             payload = self.transform_data(df)
 
             if manager.store_payload([payload[0], payload[1], image_name]):
@@ -126,11 +133,23 @@ class FinalStructurer(VectorizationAbstractWorker):
         sorted_lines = [all_lines_dict[k] for k in line_ids]
 
         tabular_lines = np.array([line.line_index for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line], np.uint8)
-        df_rows_ids = np.asarray(df.index, np.uint8)
-        lineal_ids_df = tabular_lines[df_rows_ids]
-        list_text_df = [line.text for line in all_lines_dict.values() if line.line_index in tabular_lines]
-        # logger.info(f"\n"f"TABULAR: '{tabular_lines} SIZE: {tabular_lines.size}'\n"f"ROWS DF'{df_rows_ids} SIZE: {df_rows_ids.size}'\n"f"linealiddf: {lineal_ids_df} SIZE: {lineal_ids_df.size}")
+        df_rows_ids = np.asarray(df.index, np.uint8)    # índices relativos del data frame, posiblemente no continuos
+        #totaal_df_rows = df_rows_ids.size
 
+        lineal_ids_df = tabular_lines[df_rows_ids] # Líneas absolutas integradas en el df final
+
+        list_text_df = [line.text.strip() for line in all_lines_dict.values() if line.line_index in tabular_lines]  # Lista del texto de la linea tabular
+  #      del_rows = np.setdiff1d(np.arange(df_rows_ids.shape[0], dtype=np.uint8), df_rows_ids)     
+   #     del_table_rows = tabular_lines[del_rows]
+
+#        logger.info("\n"f"TABULAR: {tabular_lines}\n"f"ROWS DF:    {df_rows_ids}\n"f"linealiddf: {lineal_ids_df}")
+ #       logger.info("\n"f"DOBLETES:  {del_rows}\n"f"TABULAR_DEL: {del_table_rows}")
+        
+      #  lineal_text = [line.text.strip() for line in all_lines_dict.values() if line.line_index in del_table_rows]
+        
+    #    logger.info(f"LINE: '{lineal_text}'")
+
+     #   logger.info(f"FILAS CON REASIGNACIÓN:\n"f"{df.iloc[del_rows].to_string(index=True)}")
         for i, r in enumerate(df_rows_ids):
             p_values = str(df.iat[i, pro_idx]) # type: ignore
             cant_values = str(df.iat[i, c_idx]) # type: ignore
@@ -144,30 +163,40 @@ class FinalStructurer(VectorizationAbstractWorker):
 
                 df.iat[i, pro_idx] = " ".join(p_split).strip()
 
-        if tabular_lines.size != lineal_ids_df.size:
+#        if tabular_lines.size != lineal_ids_df.size:
+ #           for i, tab_line in enumerate(tabular_lines):
+  #              for lineal_ids_df[i] in tab_line:
+   #                 logger.info(f"LINEAL DF: {lineal_ids_df[i]} | {df_rows_ids[i]}")
+
             for i, r in enumerate(df_rows_ids):
                 if tabular_lines[r] == lineal_ids_df[i]:
+
                     p_value = str(df.iat[i, pro_idx])
                     concat_val = list_text_df[i + 1]
                     if p_value.endswith(concat_val):
-                        orig_p_value = p_value[:-len(concat_val)].strip()
-                        orig_p_value_list: List[str] = orig_p_value.split(" ")
+                        #logger.info(f"TEXTO: \n"f"ALL LINES IGUALES: '{list_text_df[1] + list_text_df[i + 1]}'\n"f"DF: '{p_value}'")
+                        orig_p_value = p_value[:-len(concat_val)].strip() # NO REMOVER ESTE STRIP, EVITA GENERAR RUIDO
 
+                        orig_p_value_list: List[str] = orig_p_value.split(" ")
                         con_split_values: List[str] = concat_val.split(" ")
 
-                        p_end = orig_p_value_list[-1].strip()
+                        p_end = orig_p_value_list[-1]
                         con_beg = con_split_values[0]
                         concat_p_text = (p_end + " " + con_beg)
+
+                    #    logger.info(f"ORIG LIST : '{orig_p_value_list}' | '{con_split_values}'")
+                     #   logger.info(f"CONCAT P: '{concat_p_text}' -> pend: '{p_end}' + '{con_beg}'")
+
                         sc, _ = fast_classfier(concat_p_text)
                         po = sc[0]
                         pm = sc[1]   # Texto solitario
                         if po == 4 or pm == 4:
                             continue
                         if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == 2 and pm == 5):
-                            df.iat[i, pro_idx] = (orig_p_value +  concat_val)
+                            df.iat[i, pro_idx] = (orig_p_value + concat_val)
 
         df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
-        #logger.info(f"DF NORMALIZADO:\n{df.to_string(index=False)}")
+        logger.info(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
         return df
     
     def transform_data(self, df: pd.DataFrame) -> Tuple[List[int], str]:

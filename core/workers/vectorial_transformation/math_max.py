@@ -32,7 +32,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         tol: str = worker_config.get('row_relative_tolerance', "")
         self.arithmetic_tolerance = Decimal(tol) if tol else Decimal('0.10')
         self.output = config.get("math_max_corrected")
-        self.apile = config.get("stack")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         start_time = time.perf_counter()
@@ -61,7 +60,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 if self.output:
                     worker_name = context.get("worker_name") or "math_max"
                     file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                    save_debug_table(corrected_df, file_name, worker_name, self.apile)
+                    save_debug_table(corrected_df, file_name, worker_name) # type: ignore
                 return True
 
         except Exception as e:

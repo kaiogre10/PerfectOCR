@@ -93,16 +93,16 @@
       "configuration": "Debug"
     },
     {
-      "name": "linux-oneapi-release",
-      "displayName": "Release (Linux OneAPI)",
-      "configurePreset": "linux-oneapi",
-      "configuration": "Release"
-    },
-    {
       "name": "linux-oneapi-debug",
       "displayName": "Debug (Linux OneAPI)",
       "configurePreset": "linux-oneapi",
       "configuration": "Debug"
+    },
+    {
+      "name": "linux-oneapi-release",
+      "displayName": "Release (Linux OneAPI)",
+      "configurePreset": "linux-oneapi",
+      "configuration": "Release"
     },
     {
       "name": "linux-gcc-release",

@@ -98,13 +98,13 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} | '{text}' | '{(confidence*100.0):.4f}%' ")
                     continue
                 else:
-                    norm_text = normalice_text(text, False)
+                    norm_text = normalice_text(text, True)
                     if not norm_text:
                         if self.del_output_log:
                             logger.info(f"OCR FILTRO: {polygon_ids[idx]}: '{text}' -> '{norm_text}', CONF: {confidence*100.0} %")
                         continue
 
-                    raw_map[polygon_ids[idx]] = {"text": norm_text.strip()}
+                    raw_map[polygon_ids[idx]] = {"text": norm_text}
                     continue
 
             # logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")

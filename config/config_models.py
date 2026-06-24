@@ -76,6 +76,7 @@ class VectorizingOutputs(ConfigWithNumpy):
     image_features: bool
     table_structured: bool
     math_max_corrected: bool
+    normalized_table: bool
     stack: bool
 
 class OutputFlags(ConfigWithNumpy):

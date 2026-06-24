@@ -123,8 +123,7 @@ class MainBuilder:
         else:
             logger.info(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
 
-            logger.info(f"IMAGENES EXITOSAS: {succes_images}")
-            logger.info(f"IMAGENES FALLADAS: {list(failed_images)}")
+#            logger.info(f"IMAGENES EXITOSAS: {succes_images}")
 
         for result in final_results:
             logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")

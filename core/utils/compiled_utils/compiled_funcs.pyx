@@ -1,6 +1,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
-
-from cpython.unicode cimport PyUnicode_ReadChar
+from libc.stdlib cimport malloc, free
+from cpython.unicode cimport PyUnicode_FromKindAndData, PyUnicode_KIND, PyUnicode_ReadChar
+from cpython.version cimport PY_MAJOR_VERSION
 
 cdef inline bint _is_alpha_char(Py_UCS4 char_code) nogil:
     """Check if char is alpha (65-90: A-Z, 97-122: a-z)"""
@@ -77,3 +78,85 @@ cpdef bint validate_text(str text):
             return True
 
     return False
+
+# Acceso directo a la estructura interna de CPython para strings ASCII/CompactBytes
+cdef extern from "Python.h":
+    char* PyUnicode_AsUTF8(object o) except NULL
+    object PyUnicode_FromStringAndSize(const char *v, Py_ssize_t len)
+
+cpdef str space_removal(str text):
+    """
+    Normaliza espacios asumiendo UTF-8/ASCII garantizado de 1 byte por carácter.
+    Cero objetos intermedios. Máxima velocidad de ejecución en C.
+    """
+    if text is None:
+        return ""
+
+    cdef Py_ssize_t n = len(text)
+    if n == 0:
+        return ""
+
+    # Obtener el puntero nativo de C directo del objeto Python (Sin copiar)
+    cdef char* s = PyUnicode_AsUTF8(text)
+    
+    if n == 1:
+        return "" if s[0] == 32 else text
+
+    # --- Fast Path: Detección rápida ---
+    cdef Py_ssize_t i = 0
+    cdef bint has_changes = False
+    cdef bint in_space = False
+
+    if s[0] == 32:  # Leading space
+        has_changes = True
+    else:
+        while i < n:
+            if s[i] == 32:
+                if in_space or (i == n - 1):  # Espacio duplicado o trailing space
+                    has_changes = True
+                    break
+                in_space = True
+            else:
+                in_space = False
+            i += 1
+
+    # Si el string ya está limpio, retornamos la referencia original (0 alocaciones)
+    if not has_changes:
+        return text
+
+    # --- Allocating Buffer Temporal ---
+    cdef char* buffer = <char*>malloc(n * sizeof(char))
+    if buffer == NULL:
+        raise MemoryError()
+
+    cdef Py_ssize_t j = 0
+    in_space = False
+    i = 0
+
+    while i < n:
+        if s[i] == 32:
+            if j == 0 or in_space:
+                i += 1
+                continue
+            buffer[j] = 32
+            j += 1
+            in_space = True
+        else:
+            buffer[j] = s[i]
+            j += 1
+            in_space = False
+        i += 1
+
+    # Remover trailing space residual si existe
+    if j > 0 and buffer[j - 1] == 32:
+        j -= 1
+
+    if j == 0:
+        free(buffer)
+        return ""
+
+    # Construir el nuevo objeto Python str directamente desde el buffer de C
+    cdef str result = PyUnicode_FromStringAndSize(buffer, j)
+    
+    free(buffer)
+    return result

@@ -3,7 +3,7 @@ import logging
 import unicodedata
 from typing import List, Tuple, Dict, Any, Optional
 from core.utils.math_utils import text_encode
-from core.utils.compiled_utils import validate_quant_chars, count_cuants
+from core.utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
 from core.utils.data_utils import VOWELS, REPLACEMENT_MAP
 from core.utils.patterns import bad_title, numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
 
@@ -360,15 +360,15 @@ def separate_punt(text: str) -> str:
     # Une los tokens y usa space_removal para normalizar todos los espacios
     return space_removal(" ".join(processed_token_cuants))
 
-def space_removal(text: str) -> str:
-    """Normaliza espacios múltiples y limpia bordes."""
-    if not text:
-        return ""
-    if " " not in text:
-        return text
-    if "  " not in text:
-        return text.strip()
-    return " ".join(text.split(" "))
+#def space_removal(text: str) -> str:
+ #   """Normaliza espacios múltiples y limpia bordes."""
+  #  if not text:
+   #     return ""
+   # if " " not in text:
+   #     return text
+   # if "  " not in text:
+   #     return text.strip()
+  #  return " ".join(text.split(" "))
 
 def remove_special_sequences(text: str) -> str:
     """
@@ -582,7 +582,6 @@ def _correct_numbers(text: str) -> str:
     return text if text.isdecimal() else _correct_cuants.sub(lambda match: _replacement_map[match.lastgroup], text) # type: ignore
 
 def noramalice_df(text: str, separator: str) -> str:
-    text = normalice_text(text, True)
     text = text.replace(separator, " ")
     text = space_removal(text)
     return (text + separator)

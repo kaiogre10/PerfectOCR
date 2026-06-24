@@ -2,9 +2,9 @@
   "user_requests": {
     "dirs": {
       "input_dirs": [
-        "input",
+//       "input",
         "input2",
-        "input3"
+  //     "input3"
 //        "/media/kaiogre05/DATA/data/tickets_nuevo"
       ],
       "images_names": [
@@ -14,7 +14,7 @@
       //         "AAAC0030",
       //      "AAAC0043",
       //       "AAAA0058",
-      //      "AAAC0037",
+          "AAAC0037"
       //      "AAAA0059",
       //       "AAAB0002",
       //        "AAAC0010",

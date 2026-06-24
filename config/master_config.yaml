@@ -92,6 +92,7 @@ enabled_outputs:
     image_features: False
     table_structured: False
     math_max_corrected: False
+    normalized_table: False
     stack: False
 
 models_config:

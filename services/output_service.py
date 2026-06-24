@@ -6,7 +6,7 @@ import logging
 import numpy as np
 import cv2
 import pandas as pd # type: ignore
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from services.log_service import get_time_stamp
 import csv
 
@@ -153,12 +153,12 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] 
     except Exception as e:
         logger.error(f"Error calculando Features output: {e}", exc_info=True)
 
-def save_debug_table(corrected_df: pd.DataFrame, file_name: str, worker_name: str, stack: bool):
+def save_debug_table(corrected_df: pd.DataFrame, file_name: str, worker_name: str, output: Optional[bool], stac: Optional[bool]):
     try:
         for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)
             file_name = f"{file_name}_{worker_name}.csv"
-            save_table(corrected_df, output_dir, file_name, stack)
+            save_table(corrected_df, output_dir, file_name, (stac if stac else False))
 
     except Exception as e:
         logger.error(f"Error guardadndo tabla CSV de {worker_name}: {e}", exc_info=True)
