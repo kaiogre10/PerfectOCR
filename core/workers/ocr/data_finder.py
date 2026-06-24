@@ -7,8 +7,8 @@ from core.domain.data_models import Polygons
 from core.factory.abstract_worker import OCRAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
-from core.utils.text_utils import contains_quantitative, get_rfc
-from core.utils.compiled_utils import validate_text
+from utils.text_utils import contains_quantitative, get_rfc
+from utils.compiled_utils import validate_text
 
 kf_decimals = {1, 2, 3, 4, 8}
 kf_relocatables = set(kf_decimals.union({7}))

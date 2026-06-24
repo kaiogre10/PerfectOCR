@@ -4,11 +4,11 @@ import logging
 import numpy as np
 from decimal import Decimal
 from typing import Dict, Any, Tuple, List, Optional
-from core.utils.text_utils import format_cuant, get_rfc, get_ids, noramalice_df, its_similar, fast_classfier
-from core.utils.patterns import umd_patterns
-from core.utils.compiled_utils import validate_text
+from utils.text_utils import format_cuant, get_rfc, get_ids, noramalice_df, its_similar, fast_classfier
+from utils.patterns import umd_patterns
+from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table
-from core.utils.data_utils import CONVERSION_KF
+from utils.data_utils import CONVERSION_KF
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, AllLines

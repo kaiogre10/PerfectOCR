@@ -6,7 +6,7 @@ from skimage.filters import unsharp_mask # type: ignore
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.image_utils import use_sobel
+from utils.image_utils import use_sobel
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)

@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Dict, Any
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import decolorate, is_binarized
-from core.utils.text_utils import get_ids
+from utils.image_utils import decolorate, is_binarized
+from utils.text_utils import get_ids
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)

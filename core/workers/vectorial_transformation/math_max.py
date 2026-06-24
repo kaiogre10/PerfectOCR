@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Tuple, FrozenSet
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.compiled_utils import validate_quant_chars
+from utils.compiled_utils import validate_quant_chars
 from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)

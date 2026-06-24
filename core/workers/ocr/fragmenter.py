@@ -5,7 +5,7 @@ from typing import Dict, Any, List, Tuple
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons, Geometry
 from core.factory.abstract_worker import OCRAbstractWorker
-from core.utils.math_utils import fragment_geometry_horizontal
+from utils.math_utils import fragment_geometry_horizontal
 
 logger = logging.getLogger(__name__)
 

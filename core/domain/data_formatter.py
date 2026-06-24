@@ -4,7 +4,7 @@ import numpy as np
 import dataclasses
 import logging
 from typing import Dict, Any, Optional, List, Tuple
-from core.utils.image_utils import normalice_image
+from utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 
 logger = logging.getLogger(__name__)

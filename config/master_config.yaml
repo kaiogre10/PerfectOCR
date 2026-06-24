@@ -4,8 +4,8 @@ system_params:
 
   system_paths:
     "output_paths": ["output"]
-    "storage_bin": ["core", "utils", "compiled_utils", "buffer_handler"]
-    "container_bin": ["core", "utils", "compiled_utils", "containers"]
+    "storage_bin": ["utils", "compiled_utils", "buffer_handler"]
+    "container_bin": ["utils", "compiled_utils", "containers"]
 
 deploy_settings:
   postgre_local: False      # Habilitar el servicio local de postgre
@@ -24,7 +24,7 @@ pipeline_secuence:
 
   preprocessing_stager:
     #  - "moire"
-#    - "sp"
+    - "sp"
     #  - "gauss"
     #  - "clahe"
     #  - "sharp"

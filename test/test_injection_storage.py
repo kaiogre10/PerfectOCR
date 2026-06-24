@@ -1,4 +1,5 @@
 import os
+PROJECT_ROOT = "../"
 import sys
 import platform
 import ctypes
@@ -87,7 +88,7 @@ def test_execute_injection_test(lib: ctypes.CDLL):
 
 if __name__ == "__main__":
     # Determinación estricta de la ruta del proyecto
-    PROJECT_ROOT = "C:\\PerfectOCR"
+
     
     logger.info(f"Directorio de trabajo: {PROJECT_ROOT}")
     

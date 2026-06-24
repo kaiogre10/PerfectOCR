@@ -6,8 +6,8 @@ from typing import List, Dict, Any, Tuple, cast
 from core.factory.abstract_worker import VectorizationAbstractWorker
 from core.domain.data_models import Polygons, AllLines
 from core.domain.data_formatter import DataFormatter
-from core.utils.math_utils import alignment, euclidean_distance
-from core.utils.text_utils import format_cuant
+from utils.math_utils import alignment, euclidean_distance
+from utils.text_utils import format_cuant
 
 logger = logging.getLogger(__name__)
 

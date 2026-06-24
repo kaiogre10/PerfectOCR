@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 from sklearn.cluster import HDBSCAN, DBSCAN # type: ignore
-from core.utils.data_utils import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE
+from utils.data_utils import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE
 
 dummie_vect = VECTOR_DUMMIE.reshape(1, -1)
 density_encoder = DENSITY_ENCODER

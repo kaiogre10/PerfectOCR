@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 from core.factory.abstract_worker import PreprocessingAbstractWorker
 from core.domain.data_formatter import DataFormatter
 from core.domain.data_models import Polygons
-from core.utils.image_utils import use_bilateral_filter
+from utils.image_utils import use_bilateral_filter
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)

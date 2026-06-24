@@ -3,12 +3,12 @@ import cv2
 import numpy as np
 import logging
 import time
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List
 from core.factory.abstract_worker import ImagePrepAbstractWorker
 from core.domain.data_formatter import DataFormatter
-from core.utils.image_utils import make_contiguous, get_contours_values
-from core.utils.math_utils import soft_histogram, density_cluster, h_density_cluster
-from services.output_service import save_shapes, save_croped_image
+from utils.image_utils import make_contiguous, get_contours_values
+from utils.math_utils import soft_histogram, h_density_cluster
+from services.output_service import save_shapes
 
 logger = logging.getLogger(__name__)
 

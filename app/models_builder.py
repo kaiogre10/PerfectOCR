@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from typing import Dict, Any, Optional
-from core.utils.word_finder import WordFinder
+from utils.word_finder import WordFinder
 from paddleocr import PaddleOCR # type: ignore
 
 logger = logging.getLogger(__name__)

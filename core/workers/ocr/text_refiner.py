@@ -7,7 +7,7 @@ from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
 from services.output_service import save_text_debug
-from core.utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, contains_umd
+from utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, contains_umd
 import logging
 import time
 

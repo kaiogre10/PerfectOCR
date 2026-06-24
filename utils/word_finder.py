@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 import time
 from typing import List, Any, Dict, Tuple, Set, FrozenSet
-from core.utils.patterns import space_pattern
+from utils.patterns import space_pattern
 
 logger = logging.getLogger(__name__)
 
