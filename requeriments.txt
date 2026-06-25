@@ -9,4 +9,4 @@ pip install paddleocr==2.8.1
 pip install bitmath # <-- Opcional, se puede gestionar la estimación del tamaño de los payloads de manera manual
 
 conda install commentjson # <-- Solo para desarrollo y similación de configuración externa
-python config/setup.py build_ext --inplace
+python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython

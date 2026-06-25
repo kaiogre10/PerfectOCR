@@ -3,7 +3,7 @@ import yaml
 import commentjson # type: ignore
 import os
 from typing import cast, Dict, Any, List
-from config.config_models import MasterConfig
+from domain.config_models import MasterConfig
 import services.log_service as log_service
 
 def load_config_file(default_config_path: List[str]):

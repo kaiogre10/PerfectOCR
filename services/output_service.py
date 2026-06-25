@@ -1,5 +1,6 @@
 # core/utils/output_service.py
 import os
+import inspect
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 import logging
@@ -7,7 +8,7 @@ import numpy as np
 import cv2
 import pandas as pd # type: ignore
 from typing import Dict, Any, List, Tuple, Optional
-from services.log_service import get_time_stamp
+#from services.log_service import get_time_stamp
 import csv
 
 PROJECT_ROOT: str 
@@ -19,7 +20,12 @@ def set_output_config(project_root: str, config: Dict[str, List[str]]):
     PROJECT_ROOT = project_root # type: ignore
     output_paths = config["output_paths"]
     OUTPUT_PATHS = [os.path.join(PROJECT_ROOT, folder) for folder in output_paths] # type: ignore
-    TEMP_FILE = os.path.join(PROJECT_ROOT, "temp", "tmp_file.txt") # type: ignore
+    TEMP_FILE = os.path.join(PROJECT_ROOT, "safe_temp", "tmp_file.txt") # type: ignore
+
+def get_caller_info() -> Tuple[str, str]:
+    """[nombre, linea]"""
+    frame = inspect.stack()[2]
+    return os.path.basename(frame[1]), str(frame[2])
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +57,9 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], cont
     except Exception as e:
         logger.error(f"Error guardando contornos: {e}", exc_info=True)
 
-def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any], worker_name: str): 
+def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any]): 
     """Guarda una imagen de depuración si la salida está habilitada."""
+    worker_name = get_caller_info()[0]
     for path in OUTPUT_PATHS:
         output_dir = os.path.join(path, image_name)
         file_name = f"{img_id}.png"
@@ -72,7 +79,9 @@ def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file
     except Exception as e:
         logger.error(f"Error guardando '{file_name}' imagen: {e}")
         
-def save_debug_json(worker_name: str, results: Dict[str, Any], file_name: str):
+def save_debug_json(results: Dict[str, Any], file_name: str):
+    """Guarda un JSON con line_id, text, polygons_ids"""
+    worker_name = get_caller_info()[0]
     try:
         final_results: Dict[str, Any] = {}
         for line_id in results:
@@ -94,7 +103,8 @@ def save_debug_json(worker_name: str, results: Dict[str, Any], file_name: str):
     except Exception as e:
         logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
     
-def save_text_debug(worker_name: str, results: Dict[str, Any], file_name: str) -> bool:
+def save_text_debug(results: Dict[str, Any], file_name: str) -> bool:
+    worker_name = get_caller_info()[0]
     try:
         results_ser = to_serializable(results)
         for path in OUTPUT_PATHS:
@@ -135,7 +145,8 @@ def save_yaml(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: st
         logger.error(f"Error guardando YAML: {e}", exc_info=True)
     return False
 
-def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any], worker_name: str):
+def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any]):
+    worker_name = get_caller_info()[0]
     try:
         if isinstance(all_features, dict):
             df: pd.DataFrame = pd.DataFrame.from_dict(all_features, orient='index') # type: ignore
@@ -153,7 +164,8 @@ def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] 
     except Exception as e:
         logger.error(f"Error calculando Features output: {e}", exc_info=True)
 
-def save_debug_table(corrected_df: pd.DataFrame, file_name: str, worker_name: str, output: Optional[bool], stac: Optional[bool]):
+def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output: Optional[bool], stac: Optional[bool]):
+    worker_name = get_caller_info()[0]
     try:
         for path in OUTPUT_PATHS:
             output_dir = os.path.join(path, worker_name)

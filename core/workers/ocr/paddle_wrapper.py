@@ -2,9 +2,8 @@
 import logging
 import time
 from typing import Dict, Any, Optional, List
-from core.domain.data_models import Polygons
-from core.domain.data_formatter import DataFormatter
-from core.factory.abstract_worker import OCRAbstractWorker
+from domain.data_formatter import DataFormatter
+from domain.abstract_worker import OCRAbstractWorker
 from app.models_builder import ModelsBuilder
 from utils.text_utils import normalice_text
 from utils.image_utils import elevate_dims, make_contiguous
@@ -44,21 +43,17 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.perf_counter()
         try:
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
-
-            final_results = self.recognize_text_from_batch(polygons, manager)
+            final_results = self.recognize_text_from_batch(manager)
 
             processed_count = 0
             if final_results:
-                worker_name = context.get("worker_name") or "paddle_wrapper"
+                worker_name = context.get("worker_name") or "PaddleOCRWrapper"
                 success = manager.update_ocr_results(final_results, worker_name)
                 processed_count = len(final_results) if success else 0
                 
                 if self.output:
                     file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                    file_name = f"{file_name}"
-                    save_text_debug(worker_name, final_results, file_name)
+                    save_text_debug(final_results, file_name)
             
             logger.debug(f"Batch OCR completado. {processed_count} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
             
@@ -68,12 +63,18 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             context = {}
         return False
         
-    def recognize_text_from_batch(self, polygons: Dict[str, Polygons], manager: DataFormatter) -> Dict[str, Dict[str, Any]]:
+    def recognize_text_from_batch(self, manager: DataFormatter) -> Dict[str, Dict[str, Any]]:
         """Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead."""
         if self.engine is None:
             return {}
         time0 = time.perf_counter()
         try:
+            polygons = manager.workflow.polygons if manager.workflow else {}
+            if not polygons:
+                logger.error("No hay polygons para procesar", exc_info=True)
+                return {}
+            
+            logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img.cropped_img is not None]
             img_list = [make_contiguous(p.cropped_img.cropped_img) for p in polygons.values() if p.cropped_img.cropped_img is not None]
             image_list = elevate_dims(img_list)

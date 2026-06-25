@@ -26,10 +26,9 @@
 perfectocr.txt
 verificacion_init.txt
 tmp_file.txt
-temp/
 
 # Ignorar carpetas
-.__pycache__/
+__pycache__/
 .pytest_cache/
 .cache/
 .pyc/
@@ -43,14 +42,12 @@ temp/
 build/
 out/
 documentation/
-#tools/
 models/
-# models/paddle/
-# models/wf
 input/
 input2/
 input3/
 output/
+bin/
 migrations/
 CMakeFiles/
 

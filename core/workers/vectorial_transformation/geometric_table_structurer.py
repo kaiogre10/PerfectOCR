@@ -3,11 +3,12 @@ import logging
 import time
 import pandas as pd #type: ignore
 from typing import List, Dict, Any, Tuple, cast
-from core.factory.abstract_worker import VectorizationAbstractWorker
-from core.domain.data_models import Polygons, AllLines
-from core.domain.data_formatter import DataFormatter
+from domain.abstract_worker import VectorizationAbstractWorker
+from domain.data_models import Polygons, AllLines
+from domain.data_formatter import DataFormatter
 from utils.math_utils import alignment, euclidean_distance
 from utils.text_utils import format_cuant
+from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 logger.warning("No hay workflow disponible")
                 return False
                 
-            all_lines: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+            all_lines = manager.workflow.all_lines if manager.workflow else {}
                     
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            polygons = manager.workflow.polygons if manager.workflow.polygons else {}
+
+            if not all_lines or not polygons:
+                return False
+            
             tabular_line_ids = sorted([lid for lid, line_obj in all_lines.items() if line_obj.tabular_line])
                 
             if not tabular_line_ids or not all_lines or not polygons:
@@ -61,14 +66,16 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # 5. Validar y loggear estructura generada
             if table_matrix:
                 df, df_copy = self._table_matrix_to_dataframe(table_matrix, H)
-                # logger.info(f"DataFrame generado:\n{df.to_string(index=True)}")
+                logger.debug(f"DataFrame generado:\n{df.to_string(index=True)}")
                 if manager.save_final_output(df, {}):
                     # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
-                    polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
                     cut_polygons = self.map_polygons_ids(polygons, df_copy)
                     context["cut_polygons"] = cut_polygons
                     context["df_copy"] = df_copy
                     logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
+                    if self.output:
+                        file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                        save_debug_table(df, file_name, None, None)
                     return True
 
         except Exception as e:

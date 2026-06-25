@@ -2,14 +2,13 @@
 import time
 import logging
 from typing import Optional, Dict, Any, Tuple
-from core.domain.data_formatter import DataFormatter
-from core.factory.abstract_stager import AbstractStager
+from domain.data_formatter import DataFormatter
+from domain.abstract_stager import AbstractStager
 
 logger = logging.getLogger(__name__)
 
 class OCRStager(AbstractStager):
     """FASE DE OCR Y POSTPROCESAMIENTO TEXTUAL"""
-
     def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         start_time = time.perf_counter()
         exec_context: Dict[str, Any] = context if context else {}

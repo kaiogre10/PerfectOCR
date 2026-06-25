@@ -1,8 +1,7 @@
 # core/workers/ocr/text_refiner.py
 from typing import Dict, Any, Optional, List, Tuple
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
-from core.factory.abstract_worker import OCRAbstractWorker
+from domain.data_formatter import DataFormatter
+from domain.abstract_worker import OCRAbstractWorker
 from core.workers.ocr.text_cleaner import TextCleaner
 from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
@@ -54,6 +53,10 @@ class Refiner(OCRAbstractWorker):
             if self.seman_clas_log or self.output:
                 logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
                 polygons = manager.workflow.polygons if manager.workflow else {}
+                if polygons is None:
+                    logger.error(f"NO HAY POLÍGONOS DESPUÉS DE REFINAMINTO TEXTUAL")
+                    return False
+
                 poly_output: Dict[str, Any]= {}
                 for poly, poly_data in polygons.items():
                     text = poly_data.ocr_text or ""
@@ -64,9 +67,8 @@ class Refiner(OCRAbstractWorker):
                             logger.info(f"{poly}: '{text}', clas: {s_clas} | t_cuant: {poly_data.cuant_chars}")
 
                 if self.output:
-                    worker_name = context.get("worker_name") or "paddle_wrapper"
                     file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                    save_text_debug(worker_name, poly_output, file_name)
+                    save_text_debug(poly_output, file_name)
 
             return True
         except Exception as e:
@@ -80,7 +82,7 @@ class Refiner(OCRAbstractWorker):
                 logger.warning("Semantic Clasificator no tiene polígonos para procesar")
                 return False
                 
-            polygons_to_classify: Dict[str, Polygons] = manager.workflow.polygons
+            polygons_to_classify = manager.workflow.polygons if manager.workflow else {}
             
             if not polygons_to_classify:
                 logger.warning("No hay polígonos que clasificar")
@@ -102,7 +104,10 @@ class Refiner(OCRAbstractWorker):
             logger.warning("Semantic Clasificator no tiene polígonos para procesar")
             return False
 
-        polygons: Dict[str, Polygons] = manager.workflow.polygons
+        polygons = manager.workflow.polygons if manager.workflow else {}
+        if not polygons:
+            logger.error("No hay polygons para procesar", exc_info=True)
+            return False
         # [fecha, rfc, iva] — ya satisfechos en el documento
         state: List[bool] = [False, False, False, False, False, False, False, False]
 
@@ -149,7 +154,11 @@ class Refiner(OCRAbstractWorker):
             logger.warning("Semantic Clasificator no tiene polígonos para procesar")
             return False
             
-        polygons: Dict[str, Polygons] = manager.workflow.polygons
+        polygons = manager.workflow.polygons if manager.workflow else {}
+        if not polygons:
+            logger.error("No hay polygons para procesar")
+            return False
+        
         final_polygons: Dict[str, Dict[str, Any]] = {}
         
         for poly, poly_data in polygons.items():

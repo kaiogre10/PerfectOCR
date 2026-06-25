@@ -1,7 +1,7 @@
 # core/factory/abstract_factory.py
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Callable, TypeVar, Generic, Optional
-from core.factory.protocol import FactoryComponentProtocol
+from domain.protocol import FactoryComponentProtocol
 
 # T ahora es CUALQUIER clase que cumpla con el protocolo del constructor
 T = TypeVar('T', bound=FactoryComponentProtocol)

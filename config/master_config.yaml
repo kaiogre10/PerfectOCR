@@ -3,14 +3,13 @@ system_params:
   payloads_size: 2          # Cantidad de memoria máxima (en unidades de información actualmente KB) que puede tener un payload antes de ser enviado
 
   system_paths:
-    "output_paths": ["output"]
-    "storage_bin": ["utils", "compiled_utils", "buffer_handler"]
-    "container_bin": ["utils", "compiled_utils", "containers"]
+    output_paths: ["output"]
+    libs_path: ["bin"]
 
 deploy_settings:
   postgre_local: False      # Habilitar el servicio local de postgre
-  handle_memory: True   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
-  deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración
+  handle_memory: False   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
+  deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
   test_config: False    # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
   clean_mode: False
 
@@ -18,16 +17,16 @@ pipeline_secuence:
   image_preparation_stager:
     - "image_loader"
     - "angle_corrector"
-    # - "ink_enhancement"
+   # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stager:
-    #  - "moire"
-    - "sp"
-    #  - "gauss"
-    #  - "clahe"
-    #  - "sharp"
+ #    - "moire"
+  #  - "sp"
+   # - "gauss"
+  #  - "clahe"
+  #  - "sharp"
 
   ocr_stager:
     - "paddle_wrapper"
@@ -42,7 +41,7 @@ pipeline_secuence:
     - "collector"
        
 log_debug:
-  all_logs: False
+  all_logs: False    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
   text_ocr: False
   text_del: False
   frag_polys: False
@@ -115,7 +114,6 @@ models_config:
   det_model_dir: ["models", "paddle", "det", "es"]
   rec_model_dir: ["models", "paddle", "rec", "es"]
   wf_model_path: ["models", "wf", "wf_model.pkl"]
-  # wf_model_path: "C:/word_finder_model/models/wf_model.pkl"
   set_wf_params: False
   
 modules:

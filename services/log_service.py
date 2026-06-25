@@ -8,13 +8,13 @@ import inspect
 from typing import List, Tuple, Optional
 
 _float_time = float_time
-CONSOLE_LEVEL = 'INFO'
+CONSOLE_LEVEL = 'WARNING'
 FILE_LEVEL = 'INFO'
 CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
 FILE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
 DATE_FORMAT = "%H:%M:%S"
 TEMP_DATE_FORMAT = "%d/%m/%Y-%H:%M:%S"
-TEMP_PATH_FILE: str = "temp"
+TEMP_PATH_FILE: str = "safe_temp"
 TEMP_FILE: str
 EXTRA_FILE_LOGS = []
 
@@ -23,7 +23,7 @@ def get_time_stamp(log: bool):
     return f"{now.strftime((DATE_FORMAT if log else TEMP_DATE_FORMAT))}"
 
 def get_caller_info() -> Tuple[str, str]:
-    """Devuelve path, linea"""
+    """[nombre, linea]"""
     frame = inspect.stack()[2]
     return os.path.basename(frame[1]), str(frame[2])
 
@@ -59,7 +59,7 @@ def setup_logging(project_root: str) -> None:
     _log_root.addHandler(console_handler)
 
     # 4. Establecer el nivel global definitivo
-    _log_root.setLevel('DEBUG')
+    _log_root.setLevel('INFO')
 
 def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str, level: str, formatter: logging.Formatter) -> None:
     path = os.path.join(project_root, filename)

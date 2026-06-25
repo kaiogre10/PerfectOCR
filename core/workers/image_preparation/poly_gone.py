@@ -1,12 +1,12 @@
 # core/preprocessing/poly_gone.py
 import numpy as np
 import logging
-import time
+#import time
 import dataclasses
 from typing import Dict, Any
-from core.factory.abstract_worker import ImagePrepAbstractWorker
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
+from domain.abstract_worker import ImagePrepAbstractWorker
+from domain.data_formatter import DataFormatter
+from domain.data_models import Polygons
 from utils.image_utils import  make_contiguous, validate_image
 from services.output_service import save_croped_image
 
@@ -24,7 +24,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae, filtra y actualiza polígonos en un solo paso, optimizando el proceso."""
-        start_time = time.perf_counter()
+        #start_time = time.perf_counter()
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("PolygonExtractor: No hay workflow o polígonos para procesar.")
@@ -77,7 +77,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                     # logger.info(f"FILTRADO POR MEDIA DE COLOR: {old_poly_id}")
                     if self.disoutput:
                         pid = f"{old_poly_id}_B/N"
-                        self.save_debug(cropped, context, manager, "bn_discarded", pid)
+                        self.save_debug(cropped, manager, "bn_discarded", pid)
                     continue
 
                 # Si el polígono es válido, se crea el nuevo objeto completo
@@ -99,7 +99,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 new_poly_idx += 1
 
                 if self.output:
-                    self.save_debug(cropped, context, manager, "all_valid", new_id)
+                    self.save_debug(cropped, manager, "all_valid", new_id)
 
             manager.update_full_img(corrected=False, full_img=None)
             # 5. Actualización Final y Limpia en el Manager
@@ -119,7 +119,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             if self.filtered_ouputs:
                 for poly_id, polygon in new_polygons.items():
                     if polygon.cropped_img and polygon.cropped_img.cropped_img is not None:
-                        self.save_debug(polygon.cropped_img.cropped_img, context, manager, "filtered_final", poly_id)
+                        self.save_debug(polygon.cropped_img.cropped_img, manager, "filtered_final", poly_id)
             return True
 
         except Exception as e:
@@ -127,8 +127,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         context = {}
         return False
     
-    def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], context: Dict[str, Any], manager: DataFormatter, status: str, id: str):
+    def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter, status: str, id: str):
         image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-        worker_name = context.get("worker_name") or "poly_gone"
         img_id = f"{status}_{id}_close"
-        save_croped_image(image_name, img_id, polygon, worker_name)
+        save_croped_image(image_name, img_id, polygon)

@@ -2,9 +2,8 @@
 import logging
 import time
 from typing import Dict, Any, List
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
-from core.factory.abstract_worker import OCRAbstractWorker
+from domain.data_formatter import DataFormatter
+from domain.abstract_worker import OCRAbstractWorker
 from utils.text_utils import find_umd, fast_classfier, correct_subfix
 from utils.data_utils import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
 from utils.compiled_utils import validate_text
@@ -34,7 +33,10 @@ class TextCorrector(OCRAbstractWorker):
             logger.warning("TextCorrector: No hay polígonos para procesar.")
             return False
             
-        polygons_in: Dict[str, Polygons] = manager.workflow.polygons
+        polygons_in = manager.workflow.polygons if manager.workflow else {}
+        if not polygons_in:
+            logger.error("No hay polygons para procesar", exc_info=True)
+            return False
 
         final_polygons: Dict[str, Dict[str, Any]] = {}
         correced_count = 0

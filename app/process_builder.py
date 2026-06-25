@@ -1,7 +1,7 @@
 # PerfectOCR/app/process_builder.py
 import logging
 from typing import Optional, Dict, Any, List
-from core.domain.data_formatter import DataFormatter
+from domain.data_formatter import DataFormatter
 from services.storage_service import storage_data
 from services.output_service import write_temp_log
 
@@ -9,11 +9,13 @@ logger = logging.getLogger(__name__)
 
 class ProcessingBuilder:
     __slots__ = (
+        "project_root",
         "all_stagers",
         "logs_debug"
     )
     """Director de Operaciones: Recibe a sus Jefes de Área ya entrenados y coordina el procesamiento técnico de una sola imagen."""
-    def __init__(self, all_stagers: List[Any], logs_debug: Dict[str, Any]):
+    def __init__(self, project_root: str, all_stagers: List[Any], logs_debug: Dict[str, Any]):
+        self.project_root = project_root
         self.all_stagers = all_stagers
         self.logs_debug = logs_debug
         
@@ -36,6 +38,7 @@ class ProcessingBuilder:
             for _, stager in enumerate(self.all_stagers):
                 manager, time_poly = stager.execute(manager, context)
                 if manager is None:
+                    logger.error(f"Falla en '{stager.__class__.__name__}'", exc_info=True)
                     return None
                 
                 if self.logs_debug.get("time_stages_log"):

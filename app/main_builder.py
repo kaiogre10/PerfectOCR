@@ -3,7 +3,7 @@ import time
 from typing import Optional, List, Dict, Any, Tuple
 from app.process_builder import ProcessingBuilder
 from app.models_builder import ModelsBuilder
-from core.pipeline.stagers_factory import StagersFactory
+from core.factory.main_factory import MainFactory
 from services.config_service import ConfigService
 import logging
 import bitmath # type: ignore
@@ -54,10 +54,10 @@ class MainBuilder:
         """Crea un único builder reutilizable usando StagersFactory."""
         try:
             # CREAR STAGERS FACTORY UNA SOLA VEZ
-            stagers_factory = StagersFactory(self.config_service.stagers_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
+            stagers_factory = MainFactory(self.config_service.stagers_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
             all_stagers = stagers_factory.get_all_stagers()
             # El manager se crea dentro del proceso de cada imagen, no aquí
-            builder = ProcessingBuilder(all_stagers=all_stagers, logs_debug=self.config_service.logs_debug)
+            builder = ProcessingBuilder(self.project_root, all_stagers=all_stagers, logs_debug=self.config_service.logs_debug)
             return builder
 
         except AttributeError as e:
@@ -81,13 +81,14 @@ class MainBuilder:
         for i, image_data in enumerate(workflow_report):
             # Procesar imagen individualmente
             payload_size = builder.process_single_image(image_data)
+            logger.info(f"Procesadas: {(i + 1)} de '{total_images}' imágenes")
             if payload_size is None:
-                # logger.info(f"Fallo al procesar imagen: '{images_names[i]}'")
+                logger.info(f"Fallo al procesar imagen: '{images_names[i]}'")
                 continue
             else:
                 image_name = images_names[i]
                 succes_images.append(image_name)
-                #logger.info(f"IMAGEN '{image_name}' # {(i + 1)} de '{total_images}' imágenes")
+                logger.info(f"IMAGEN '{image_name}' PROCESADA CON EXITO")
                 payload_cunter += 1
 
                 payload_size = bitmath.Byte(sum(payload_size))
@@ -122,8 +123,8 @@ class MainBuilder:
 
         else:
             logger.info(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
-
-#            logger.info(f"IMAGENES EXITOSAS: {succes_images}")
+            logger.info(f"IMAGENES EXITOSAS:\n"f"{succes_images}\n"f"----------------------------")
+            logger.info(f"IMAGENES FALLIDAS:\n"f"{failed_images}\n"f"----------------------------")
 
         for result in final_results:
             logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")

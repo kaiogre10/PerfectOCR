@@ -1,9 +1,9 @@
-# core/workers/workers_factory/abstract_stager.py
+# domain/abstract_stager.py
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from core.domain.data_formatter import DataFormatter
+    from domain.data_formatter import DataFormatter
 
 class AbstractStager(ABC):
     """Clase base abstracta para todos los stagers del pipeline."""

@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from core.domain.data_models import WorkflowData, StructuredData, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage, Payload
+from domain.data_models import WorkflowData, StructuredData, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage, Payload
 import numpy as np
 import dataclasses
 import logging

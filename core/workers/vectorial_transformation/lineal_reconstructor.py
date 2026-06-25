@@ -3,9 +3,9 @@ import logging
 import time
 import numpy as np
 from typing import Dict, Any, List, Optional, Tuple
-from core.factory.abstract_worker import VectorizationAbstractWorker
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
+from domain.abstract_worker import VectorizationAbstractWorker
+from domain.data_formatter import DataFormatter
+from domain.data_models import Polygons
 from services.output_service import save_text_debug
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         try:
             start_time = time.perf_counter()
             logger.debug(f"Lineal: Estado de get_vectors: {self.get_vectors}")
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            polygons = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 logger.error("Sin poligonos")
                 return False
@@ -48,7 +48,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 if head is not None and foot is not None:
                     # Hay tabla detectada → vectorizar solo si get_vectors está activo
                     table_lines = list(range(head + 1, foot))
-                    # logger.info(f"Table range: {table_range}")
+                    logger.debug(f"Table range: {table_range}")
                     context["vectorice"] = self.get_vectors
                     context["table_range"] = table_lines
                 else:
@@ -58,8 +58,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    worker_name = context.get("worker_name") or "lineal"                
-                    save_text_debug(worker_name, lines_info, file_name)
+                    save_text_debug(lines_info, file_name)
 
                 return True
                                             
@@ -176,7 +175,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
             line_id = f"line_{line_counter:04d}"
             # classified = fast_classfier(joined_text)
             # scl = [p.semantic_clasification for p in current_line_polys]
-            # logger.info("\n"f"{line_id}: {polygon_ids} '{texts}' | POLYS SC: {scl} | LINE SC: {classified[0]}")
+            logger.debug("\n"f"{line_id}: '{joined_text}'")
 
             lines_info[line_id] = {
                 "text": joined_text,
@@ -207,7 +206,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         try:
             headers: List[int] = []
             footer: List[int] = []
-            for _, poly in polygons.items():
+            for poly_id, poly in polygons.items():
                 key_field = poly.key_field
                 if key_field is None:
                     continue
@@ -216,19 +215,19 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 polygon_index = poly.poly_index
 
                 if 6 in keys:
-                    # logger.info(f"Encabezado encontrado en: {poly_id}, idx: {polygon_index}")
+                    logger.debug(f"Encabezado encontrado en: {poly_id}, idx: {polygon_index}")
                     headers.append(polygon_index)
                     continue
 
                 elif any(k in (1, 2) for k in keys):
                     footer.append(polygon_index)
-                    # logger.info(f"Pie de tabla TOTAL MONETARIO encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
+                    logger.debug(f"Pie de tabla TOTAL MONETARIO encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
                     continue
                 else:
                     continue
 
             table_boundaries: Tuple[List[int], List[int]] = headers, footer
-            # logger.info(f"Límites de la tabla: {table_boundaries}")
+            logger.debug(f"Límites de la tabla: {table_boundaries}")
 
             return table_boundaries
         except Exception as e:

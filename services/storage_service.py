@@ -11,12 +11,12 @@ LIB: ctypes.CDLL
 logger = logging.getLogger(__name__)
 
 def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
-    binary_extension: str = get_so()
-    container_bin_path = config["container_bin"]
-    container_ext = container_bin_path.pop(-1)
-    container_extension = (container_ext + binary_extension)
-    container_bin = os.path.join(PROJECT_ROOT, *container_bin_path, container_extension)
+    os_bins_ext: str = get_so()
+    bin_path = config["libs_path"]
+    bins_path = [PROJECT_ROOT, *bin_path]
+
     try:
+        container_bin = os.path.join(*bins_path, f"{"containers" + os_bins_ext}")
         CON = ctypes.CDLL(container_bin) # type: ignore
         CON.container_create.argtypes = [ctypes.c_int]
         CON.container_create.restype = None
@@ -24,17 +24,13 @@ def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
     except BaseExceptionGroup as e:
         logger.error(f"NO SE PUDO PUDO INICIAR EL CONTENDOR EN MEMORIA: {e}", exc_info=True)
         raise
-    
-    storage_bin_path = config["storage_bin"]
-    binary_ext = storage_bin_path.pop(-1)
-    binary_extension = (binary_ext + binary_extension)
-    storage_bin = os.path.join(PROJECT_ROOT, *storage_bin_path, binary_extension)
 
     global LIB # type: ignore
     try:
+        storage_bin = os.path.join(*bins_path, f"{"buffer_handler" + os_bins_ext}")
         LIB = ctypes.CDLL(storage_bin) # type: ignore
     except FileNotFoundError as e:
-        logger.warning(f"ERROR CARGANDO EL BINARIO: {e}", exc_info=True)
+        logger.warning(f"ERROR CARGANDO BUFFER HANDLER: {e}", exc_info=True)
         raise
 
     LIB.storage_batch_flat.argtypes = [

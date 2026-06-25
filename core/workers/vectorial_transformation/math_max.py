@@ -6,8 +6,8 @@ import time
 from itertools import permutations
 from typing import Dict, Any, List, Tuple, FrozenSet
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from core.factory.abstract_worker import VectorizationAbstractWorker
-from core.domain.data_formatter import DataFormatter
+from domain.abstract_worker import VectorizationAbstractWorker
+from domain.data_formatter import DataFormatter
 from utils.compiled_utils import validate_quant_chars
 from services.output_service import save_debug_table
 
@@ -43,7 +43,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            #logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            logger.debug(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             corrected_df = self.solve(df, context)
 
@@ -54,13 +54,12 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             if manager.save_final_output(corrected_df, {}):
                 context = {}
-#                logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
+                logger.debug(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
 
                 logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
                 if self.output:
-                    worker_name = context.get("worker_name") or "math_max"
                     file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                    save_debug_table(corrected_df, file_name, worker_name) # type: ignore
+                    save_debug_table(corrected_df, file_name, None, None)
                 return True
 
         except Exception as e:

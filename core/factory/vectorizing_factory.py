@@ -1,7 +1,7 @@
 # core/workers/factory/vectorizing_factory.py
 from typing import Dict, Callable, Any
-from core.factory.abstract_worker import VectorizationAbstractWorker
-from core.factory.abstract_factory import AbstractBaseFactory
+from domain.abstract_worker import VectorizationAbstractWorker
+from domain.abstract_factory import AbstractBaseFactory
 from core.workers.vectorial_transformation.lineal_reconstructor import LinealReconstructor
 from core.workers.vectorial_transformation.matricial_cosine import MatricialCusine
 from core.workers.vectorial_transformation.geometric_table_structurer import GeometricTableStructurer

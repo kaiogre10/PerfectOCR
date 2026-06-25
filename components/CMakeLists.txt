@@ -26,9 +26,8 @@ else()
     set(OS_FRONTIER_LIBS "")
 endif()
 
-# 1. Definición de la ruta de destino global (Común para todos los SO)
 # 1. Definición de la ruta de destino global
-set(GLOBAL_DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../core/utils/compiled_utils")
+set(GLOBAL_DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../bin")
 
 # Configuraciones base para generadores mono-configuración (Ninja/Makefiles)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${GLOBAL_DESTINATION}")
@@ -52,5 +51,3 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 # Orden secuencial por dependencias
 add_subdirectory(buffer_handler)
 add_subdirectory(containers)
-#add_subdirectory(locals)
-#add_subdirectory(remote)

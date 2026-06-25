@@ -2,9 +2,9 @@
 import dataclasses
 import logging
 from typing import Dict, Any, List, Tuple
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons, Geometry
-from core.factory.abstract_worker import OCRAbstractWorker
+from domain.data_formatter import DataFormatter
+from domain.data_models import Polygons, Geometry
+from domain.abstract_worker import OCRAbstractWorker
 from utils.math_utils import fragment_geometry_horizontal
 
 logger = logging.getLogger(__name__)

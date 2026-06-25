@@ -5,8 +5,8 @@ import numpy as np
 import logging
 import math
 from typing import Dict, Any, Tuple
-from core.factory.abstract_worker import ImagePrepAbstractWorker
-from core.domain.data_formatter import DataFormatter
+from domain.abstract_worker import ImagePrepAbstractWorker
+from domain.data_formatter import DataFormatter
 from utils.image_utils import make_contiguous
 from services.output_service import save_croped_image
 
@@ -51,7 +51,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "angle_corrector"
                 img_id = f"full_img_{image_name}_{worker_name}"
-                save_croped_image(image_name, img_id, full_img, worker_name)
+                save_croped_image(image_name, img_id, full_img)
             
             return True
             

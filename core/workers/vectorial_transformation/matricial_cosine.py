@@ -3,9 +3,8 @@ import numpy as np
 import time
 import logging
 from typing import Dict, Any, List, Tuple
-from core.factory.abstract_worker import VectorizationAbstractWorker
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import AllLines, Polygons
+from domain.abstract_worker import VectorizationAbstractWorker
+from domain.data_formatter import DataFormatter
 from utils.math_utils import get_cosine_similarity, density_cluster, calculate_features, cosine_similarity_matrix, mean_cosine_per_row
 from services.output_service import save_table_values
 
@@ -37,7 +36,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             table_line_ids: List[str] = self._compare_vectors(manager)
             if table_line_ids:
                 if manager.save_tabular_lines(table_line_ids):
-                    logger.debug(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s")
+                    logger.debug(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s:\n"f"{table_line_ids}")
                     return True
                 return False
         except Exception as e:
@@ -46,8 +45,8 @@ class MatricialCusine(VectorizationAbstractWorker):
 
     def _compare_vectors(self, manager: DataFormatter) -> List[str]:
         try:
-            polygons_dict: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            all_lines_dict: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+            polygons_dict = manager.workflow.polygons if manager.workflow else {}
+            all_lines_dict = manager.workflow.all_lines if manager.workflow else {}
             if not polygons_dict or not all_lines_dict:
                 return []
             
@@ -64,7 +63,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                 features_to_ind = analysis[:, 1:].astype(np.str_)
                 features_id = np.column_stack([line_id, features_to_ind])
                 file_name = metadata.image_name if metadata is not None else ""
-                save_table_values(file_name, features_id, "vectorizer")
+                save_table_values(file_name, features_id)
                 
             tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
             
@@ -194,6 +193,10 @@ class MatricialCusine(VectorizationAbstractWorker):
         """Aplica DBSCAN para agrupar líneas similares"""
         logger.warning("DBSCAN PARA FALLBACK")
         all_lines = manager.workflow.all_lines if manager.workflow else {}
+        if not all_lines:
+            return [
+                
+            ]
         int_line_ids = features_array[:, 0].astype(np.int8)
         features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
 

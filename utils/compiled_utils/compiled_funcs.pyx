@@ -1,7 +1,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
+from cpython.version cimport PY_MAJOR_VERSION
 from libc.stdlib cimport malloc, free
 from cpython.unicode cimport PyUnicode_FromKindAndData, PyUnicode_KIND, PyUnicode_ReadChar
-from cpython.version cimport PY_MAJOR_VERSION
 
 cdef inline bint _is_alpha_char(Py_UCS4 char_code) nogil:
     """Check if char is alpha (65-90: A-Z, 97-122: a-z)"""

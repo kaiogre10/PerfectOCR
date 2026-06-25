@@ -4,7 +4,7 @@ import os
 import logging
 import platform
 from typing import Set, Tuple, Optional
-from psycopg2 import sql
+#from psycopg2 import sql
 from typing import List, Dict, Any
 from services.log_service import basic_exc_logger
 
@@ -13,7 +13,9 @@ PROJECT_ROOT: str = ""
 output_paths: List[str] = []
 valid_img_ext: Tuple[str, ...] = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2")
 invalid_extensions: List[str] = [".txt", ".webp"]
-trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", "__pycache__", ".log")
+trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", ".log")
+cache_dirs = ["__pycache__", ".pytest_cache", "build"]
+excluded_dirs = ["components", "bin", "documentation", "models", "safe_temp"]
 no_del: Tuple[str, ...] = (".py", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml")
 all_files_types: Set[str] = set(invalid_extensions).union(valid_img_ext, trash_ext, no_del)
 
@@ -22,8 +24,9 @@ logger = logging.getLogger(__name__)
 def set_system_config(project_root: str, config: Dict[str, List[str]]):
     global PROJECT_ROOT, output_paths
     PROJECT_ROOT = project_root # type: ignore
-    output_path = config["output_paths"]
-    output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in output_path] 
+    if config:
+        output_path = config["output_paths"]
+        output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in output_path] 
 
 def _can_delete_entry(path: str) -> bool:
     """
@@ -79,20 +82,21 @@ def clear_output_folders() -> None:
     - Carpetas: se eliminan completas.
     - Archivos sueltos: solo extensiones objetivo.
     """
+    if not output_paths:
+        basic_exc_logger(f"NO HAY ARCHIVOS OUTPUT, NO SE LIMPIARÁ NADA")
+        return None
+    
     deleted_files = 0
     deleted_folder = 0
-
-    # Fase 1: preflight (fail-closed)
     ok, blocked = _preflight_delete_plan(output_paths, all_files_types)
     if not ok:
         logger.warning("Limpieza abortada: hay rutas sin permisos. No se eliminó nada.")
         for p in blocked:
             logger.warning(f"Sin permisos: {p}")
-        return
+            return
 
-    # Fase 2: ejecución real (solo si todo pasó preflight)
     logger.debug("Limpieza Inicial: Vaciando carpetas de salida")
-    for folder_path in output_paths:
+    for folder_path in (output_paths or cache_dirs):
         if not os.path.isdir(folder_path):
             continue
 
@@ -117,7 +121,6 @@ def clear_output_folders() -> None:
                         logger.debug(f"Saltado por extensión no permitida: {item_path}")
 
             except Exception as e:
-                # Defensa adicional
                 basic_exc_logger(f"Error al eliminar {item_path}: {e}", exc_info=True)
                 return
 
@@ -125,19 +128,24 @@ def clear_output_folders() -> None:
 
 def cleanup_project_cache(aditional_files: Optional[str] = None):
     """Elimina la caché y residuos del proyecto """
-    cache_path: str = ""
     try:
         for dirpath, dirnames, filenames in os.walk(PROJECT_ROOT):
-            for d in list(dirnames):
-                if d in trash_ext:
+            for ed in excluded_dirs:
+                if ed in dirnames:
+                    #ex_cache_path = os.path.join(dirpath, ed)
+                    #basic_exc_logger(f"DIRECTORIO OMITIDO: {ex_cache_path}")
+                    dirnames.remove(ed)
+
+            for d in dirnames:
+                if d in cache_dirs:
                     try:
                         cache_path = os.path.join(dirpath, d)
                         shutil.rmtree(cache_path)
                         dirnames.remove(d)
-
+                        #basic_exc_logger(f"DIRECTORIO ELIMINADO: {cache_path}")
                     except FileNotFoundError as e:
-                        basic_exc_logger(f"Error al eliminar '{cache_path}': {e}") # type: ignore
-                        return
+                        basic_exc_logger(f"Error al eliminar '{cache_path}': {e}", exc_info=True) # type: ignore
+                        continue
 
             if aditional_files is not None:
                 trash_extensions: Tuple[str, ...] = trash_ext + tuple(aditional_files.split(','))
@@ -148,7 +156,7 @@ def cleanup_project_cache(aditional_files: Optional[str] = None):
                     if filename.endswith(trash_extensions):
                         file_path: str = os.path.join(dirpath, filename)
                         os.remove(file_path)
-                        logger.debug(f"Eliminado archivo de caché: '{file_path}'")
+                        basic_exc_logger(f"Eliminado archivo de caché: '{file_path}'")
             except FileNotFoundError as e:
                 basic_exc_logger(f"Error eliminando '{aditional_files}': {e}", exc_info=True)
                 raise
@@ -267,6 +275,6 @@ def get_so() -> str:
         # MacOS
         return ".dylib"
     
-def cleanup_project():
+def cleanup_project(aditional_files: Optional[str] = None):
     clear_output_folders()
-    cleanup_project_cache()
+    cleanup_project_cache(aditional_files)

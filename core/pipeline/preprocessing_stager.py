@@ -2,8 +2,8 @@
 import logging
 import time
 from typing import Any, Dict, Tuple, Optional
-from core.domain.data_formatter import DataFormatter
-from core.factory.abstract_stager import AbstractStager
+from domain.data_formatter import DataFormatter
+from domain.abstract_stager import AbstractStager
 
 logger = logging.getLogger(__name__)
 

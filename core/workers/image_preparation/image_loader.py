@@ -3,8 +3,8 @@ import logging
 import numpy as np
 from datetime import datetime
 from typing import Dict, Any
-from core.factory.abstract_worker import ImagePrepAbstractWorker
-from core.domain.data_formatter import DataFormatter
+from domain.abstract_worker import ImagePrepAbstractWorker
+from domain.data_formatter import DataFormatter
 from utils.image_utils import decolorate, is_binarized
 from utils.text_utils import get_ids
 from services.output_service import save_croped_image
@@ -63,7 +63,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             
                 if self.output:
                     worker_name = context.get("worker_name") or "loader"
-                    save_croped_image(image_name, f"full_img_{image_name}_{worker_name}", full_img, worker_name)
+                    save_croped_image(image_name, f"full_img_{image_name}_{worker_name}", full_img)
 
                 return True
             

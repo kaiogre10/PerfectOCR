@@ -7,8 +7,7 @@ class ConfigWithNumpy(BaseModel):
 
 class SystemPaths(ConfigWithNumpy):
     output_paths: List[str]
-    storage_bin: List[str]
-    container_bin: List[str]
+    libs_path: List[str]
 
 class SystemParams(ConfigWithNumpy):
     system_paths: SystemPaths

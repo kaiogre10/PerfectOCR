@@ -493,7 +493,7 @@ _conversion_kf: Dict[str, int] = {
         "CorreoP": 11,
         "DirecciónP": 12
     }
-CONVERSION_KF = MappingProxyType(_conversion_kf)
+CONVERSION_KF = _conversion_kf
 
 _replace_map: Dict[str, str] = {
     'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',

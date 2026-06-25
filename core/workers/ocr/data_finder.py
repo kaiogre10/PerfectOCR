@@ -3,9 +3,8 @@ import time
 from typing import Dict, Any, Optional, List, Tuple
 import logging
 import numpy as np
-from core.domain.data_models import Polygons
-from core.factory.abstract_worker import OCRAbstractWorker
-from core.domain.data_formatter import DataFormatter
+from domain.abstract_worker import OCRAbstractWorker
+from domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
 from utils.compiled_utils import validate_text
@@ -37,12 +36,7 @@ class DataFinder(OCRAbstractWorker):
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         logger.debug("Data Finder iniciado")
         try:
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-            if not polygons:
-                logger.error("No hay polygons para procesar")
-                return False
-
-            polygon_updates = self._find_data(polygons)
+            polygon_updates = self._find_data(manager)
             if manager.update_key_field(polygon_updates):
                 return True
                 
@@ -50,12 +44,18 @@ class DataFinder(OCRAbstractWorker):
             logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
         return True
 
-    def _find_data(self, polygons: Dict[str, Polygons]) -> Dict[str, List[int]]:
+    def _find_data(self, manager: DataFormatter) -> Dict[str, List[int]]:
         if self.model is None:
             logger.error("DataFinder no iniciado, no se puede buscar Key FIelds")
             return {}
+        
         time0 = time.perf_counter()
         try:
+            polygons = manager.workflow.polygons if manager.workflow else {}
+            if not polygons:
+                logger.error("No hay polygons para procesar")
+                return {}
+        
             processed_count = 0
             polygon_updates: Dict[str, List[int]] = {}
             skipped_semantic = 0
@@ -88,7 +88,7 @@ class DataFinder(OCRAbstractWorker):
                 kf = poly.key_field or None
                 if kf is not None:
                     skipped_semantic += 1
-                    # logger.info(f"KeyField redundante en WODR FINDER {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
+                    logger.debug(f"KeyField redundante en WODR FINDER {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     continue
 
                 ocr_text = poly.ocr_text or ""
@@ -104,6 +104,7 @@ class DataFinder(OCRAbstractWorker):
                         continue
                     
                     # num_keywords = len(valid_results)
+                    logger.debug(f"VALID RESULTS: {valid_results}")
                     left_overs: List[str] = []
                     if any(k['key_field'] == 6 for k in valid_results):
                         key_field = [results['key_field'] for results in valid_results]
@@ -135,7 +136,7 @@ class DataFinder(OCRAbstractWorker):
                         continue
                         
             if polygon_updates:
-                # logger.info(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                logger.debug(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
                 return polygon_updates
                 # return self.get_key_fields_values(manager, polygon_updates)
             else:
@@ -147,8 +148,8 @@ class DataFinder(OCRAbstractWorker):
         return {}
         
     def get_key_fields_values(self, manager: DataFormatter, polygon_updates: Dict[str, List[int]]) -> Dict[str, List[int]]:
-        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
-        if not polygon_updates:
+        polygons = manager.workflow.polygons if manager.workflow else {}
+        if not polygon_updates or not polygons:
             return {}
         
         updates_to_validate: Dict[str, List[int]] = dict(polygon_updates)

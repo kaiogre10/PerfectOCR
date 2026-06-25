@@ -3,15 +3,14 @@ import pandas as pd # type: ignore
 import logging
 import numpy as np
 from decimal import Decimal
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Dict, Any, Tuple, List
 from utils.text_utils import format_cuant, get_rfc, get_ids, noramalice_df, its_similar, fast_classfier
 from utils.patterns import umd_patterns
 from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table
 from utils.data_utils import CONVERSION_KF
-from core.factory.abstract_worker import VectorizationAbstractWorker
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons, AllLines
+from domain.abstract_worker import VectorizationAbstractWorker
+from domain.data_formatter import DataFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +32,12 @@ class FinalStructurer(VectorizationAbstractWorker):
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         try:
             df, image_name = self.collect_data(manager)
-
+            if df.empty:
+                return False
+            
             if self.output or self.stack:
-                worker_name = context.get("worker_name") or "math_max"
                 file_name: str = manager.workflow.metadata.image_name if manager.workflow else "" # type: ignore
-                save_debug_table(df, file_name, worker_name, self.output, self.stack) # type: ignore
+                save_debug_table(df, file_name, self.output, self.stack)
                 
             payload = self.transform_data(df)
 
@@ -54,18 +54,23 @@ class FinalStructurer(VectorizationAbstractWorker):
         if structured_data is None:
             return (pd.DataFrame(), "")
         
-        df: Optional[pd.DataFrame] = structured_data.df_table
+        df = structured_data.df_table
         metadata = manager.workflow.metadata if manager.workflow else None
         if df is None or df.empty or metadata is None:
             return (pd.DataFrame(), "")
 
         image_name = metadata.image_name if metadata else ""
         df, totals = self.standarice_df(df, manager)
+        if df.empty:
+            return (pd.DataFrame(), "")
 
-        polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+        polygons = manager.workflow.polygons if manager.workflow else {}
+        if not polygons:
+            return (pd.DataFrame(), "")
+            
         date_creation = metadata.date_creation if metadata else ""
 
-        kf_map_inv = {v: k for k, v in conversion_kf.items()}
+        kf_map_inv: Dict[int, str] = {v: k for k, v in conversion_kf.items()}
 
         db_values: Dict[str, Any] = {}
         for poly_data in polygons.values():
@@ -74,6 +79,9 @@ class FinalStructurer(VectorizationAbstractWorker):
             
             if kf_list is not None and value:
                 kf = kf_list[0]
+                if not kf:
+                    continue
+
                 if kf not in (5, 6):  # Excluir KeyFields innecesarios
                     if kf == 7:  # RFCProveedor
                         value = get_rfc(value)
@@ -81,7 +89,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                     elif kf in (1, 2):
                         value = format_cuant(value)
                     # Mapear el código numérico al nombre del campo
-                    field_name: str = kf_map_inv.get(kf)
+                    field_name = kf_map_inv.get(kf)
                     if field_name is not None:
                         db_values[field_name] = value  # 'MontoTotalDocumento': '1024.12'
         
@@ -107,17 +115,19 @@ class FinalStructurer(VectorizationAbstractWorker):
         product_col = df[self.product_name]
         df = pd.concat([c_col, product_col, pu_col, mtl_col], axis=1)
         df = self.clean_df(df, manager)
+        idx = manager.workflow.IDRegistro if manager.workflow else ""
+        if df.empty or not idx:
+            return (pd.DataFrame(), {})
 
         mtl_col = df[self.mtl_name]
         c_col = df[self.cant_name]
         
-        mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
-        c_col_dec = c_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
+        mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0])) # type: ignore
+        c_col_dec = c_col.map(lambda x: Decimal(x[0])) # type: ignore
         
         total_total = Decimal(str(sum(mtl_col_dec)))
         total_prod = Decimal(str(sum(c_col_dec)))
 
-        idx: str = manager.workflow.IDRegistro if manager.workflow else ""
         totals = {"art_cal": str(total_prod), "total_cal": str(total_total), self.id_registro: idx}
         
         # df.insert(loc=0, column=self.id_registro, value=idx, allow_duplicates=True)
@@ -127,8 +137,13 @@ class FinalStructurer(VectorizationAbstractWorker):
     def clean_df(self, df: pd.DataFrame, manager: DataFormatter) -> pd.DataFrame:
         pro_idx = df.columns.get_loc(self.product_name) if self.product_name in df.columns else None # type: ignore
         c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None # type: ignore
-
-        all_lines_dict: Dict[str, AllLines] = manager.workflow.all_lines if manager.workflow else {}
+        if not manager or not manager.workflow:
+            return pd.DataFrame()
+        
+        all_lines_dict = manager.workflow.all_lines if manager.workflow else {}
+        if not all_lines_dict:
+            return pd.DataFrame()
+        
         line_ids = sorted(all_lines_dict.keys())
         sorted_lines = [all_lines_dict[k] for k in line_ids]
 
@@ -163,7 +178,7 @@ class FinalStructurer(VectorizationAbstractWorker):
 
                 df.iat[i, pro_idx] = " ".join(p_split).strip()
 
-#        if tabular_lines.size != lineal_ids_df.size:
+        if tabular_lines.size != lineal_ids_df.size:
  #           for i, tab_line in enumerate(tabular_lines):
   #              for lineal_ids_df[i] in tab_line:
    #                 logger.info(f"LINEAL DF: {lineal_ids_df[i]} | {df_rows_ids[i]}")
@@ -174,7 +189,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                     p_value = str(df.iat[i, pro_idx])
                     concat_val = list_text_df[i + 1]
                     if p_value.endswith(concat_val):
-                        #logger.info(f"TEXTO: \n"f"ALL LINES IGUALES: '{list_text_df[1] + list_text_df[i + 1]}'\n"f"DF: '{p_value}'")
+        #                logger.info(f"TEXTO: \n"f"ALL LINES IGUALES: '{list_text_df[1] + list_text_df[i + 1]}'\n"f"DF: '{p_value}'")
                         orig_p_value = p_value[:-len(concat_val)].strip() # NO REMOVER ESTE STRIP, EVITA GENERAR RUIDO
 
                         orig_p_value_list: List[str] = orig_p_value.split(" ")
@@ -184,8 +199,8 @@ class FinalStructurer(VectorizationAbstractWorker):
                         con_beg = con_split_values[0]
                         concat_p_text = (p_end + " " + con_beg)
 
-                    #    logger.info(f"ORIG LIST : '{orig_p_value_list}' | '{con_split_values}'")
-                     #   logger.info(f"CONCAT P: '{concat_p_text}' -> pend: '{p_end}' + '{con_beg}'")
+        #                logger.info(f"LISTS:    '{orig_p_value_list}' | '{con_split_values}'")
+         #               logger.info(f"CONCAT:   '{concat_p_text}' = '{p_end}' + '{con_beg}'")
 
                         sc, _ = fast_classfier(concat_p_text)
                         po = sc[0]
@@ -195,7 +210,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                         if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == 2 and pm == 5):
                             df.iat[i, pro_idx] = (orig_p_value + concat_val)
 
-        df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
+        #df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
         logger.info(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
         return df
     
@@ -203,14 +218,13 @@ class FinalStructurer(VectorizationAbstractWorker):
         """Devuelve tamaño de cada fila y el df aplanado"""
         plain_df: List[str] = []
         buffer_sizes: List[int] = []
-        #total_rows = df.shape[0]
 
         for _, fila in enumerate(df.itertuples(index=False, name=None)):
             fila = list(fila)
 
             string_row = "".join(fila)
 
-            # Al multiplicar por 2 evitamos codificar celda por celda en el bucle.
+            # Al multiplicar por 2 evitamos codificar celda por celda en el bucle para utf-16
             buff_size_bytes = len(string_row) * 2
 
             plain_df.append(string_row)

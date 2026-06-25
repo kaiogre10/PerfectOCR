@@ -1,8 +1,8 @@
 # core/pipeline/stagers_factory.py
-from core.workers.image_preparation.image_preparation_factory import ImagePreparationFactory
-from core.workers.preprocessing.preprocessing_factory import PreprocessingFactory
-from core.workers.ocr.ocr_factory import OCRFactory
-from core.workers.vectorial_transformation.vectorizing_factory import VectorizingFactory
+from core.factory.image_preparation_factory import ImagePreparationFactory
+from core.factory.preprocessing_factory import PreprocessingFactory
+from core.factory.ocr_factory import OCRFactory
+from core.factory.vectorizing_factory import VectorizingFactory
 from core.pipeline.image_preparation_stager import ImagePreparationStager
 from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
@@ -14,7 +14,7 @@ keypre = "preprocessing_stager"
 ocrkey = "ocr_stager"
 veckey = "vectorization_stager"
 
-class StagersFactory:
+class MainFactory:
     """Crea workers y ensambla stagers de forma uniforme."""
     def __init__(self, modules_config: Dict[str, Tuple[Dict[str, Any], List[str]]], project_root: str, stagging: List[Tuple[str, Optional[List[str]]]]):
         self.project_root = project_root

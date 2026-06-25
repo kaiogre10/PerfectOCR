@@ -4,8 +4,8 @@ import numpy as np
 import logging
 import time
 from typing import Dict, Any, List
-from core.factory.abstract_worker import ImagePrepAbstractWorker
-from core.domain.data_formatter import DataFormatter
+from domain.abstract_worker import ImagePrepAbstractWorker
+from domain.data_formatter import DataFormatter
 from utils.image_utils import make_contiguous, get_contours_values
 from utils.math_utils import soft_histogram, h_density_cluster
 from services.output_service import save_shapes
@@ -49,11 +49,9 @@ class InkCorrector(ImagePrepAbstractWorker):
             if manager.update_full_img(True, full_img):
                 # logger.info(f"Corrección de tinta completada para '{image_name}' en: {time.perf_counter() - start_time:.6f}s")
                 if self.output:
-
-                    worker_name = context.get("worker_name") or "inker"
                     
-                    imag_id = f"corrected_blobs_{worker_name}"
-                    image_id = f"outliers_{worker_name}"
+                    imag_id = f"corrected_blobs"
+                    image_id = f"outliers"
                     # id = f"bin_gap_{image_name}_{worker_name}"
                     # gaps_id = f"gaps_{image_name}_{worker_name}"
                     # img_id = f"vec_correct_{image_name}_{worker_name}"
@@ -137,7 +135,6 @@ class InkCorrector(ImagePrepAbstractWorker):
         solid_outer = metrics[:, -1]
 
         area_hist = soft_histogram(cont_area)
-        logger.info(f"HIST: {area_hist}")
 
         area_outliers = area_hist[0] if area_hist[0] > 0 else 1
 
@@ -147,9 +144,9 @@ class InkCorrector(ImagePrepAbstractWorker):
         top_areas_idx = (cont_area >= np.min(top_areas))
         non_child_idx = (hollow_outer == 1)
         outlier_idx = np.where(top_areas_idx & non_child_idx)[0]
-        logger.info(f"{outlier_idx} shape: {outlier_idx.size}")
+        #logger.info(f"{outlier_idx} shape: {outlier_idx.size}")
         if outlier_idx.size < 1:
-            logger.info(f"SIN OUTLIERS")
+        #    logger.info(f"SIN OUTLIERS")
             return grey_img, [], []
         # logger.info(f"TOP AREAS: {top_areas}\n"f" IDX: {top_areas_idx}\n"f"outlier_mask: {outlier_idx}")
 
@@ -218,15 +215,14 @@ class InkCorrector(ImagePrepAbstractWorker):
                 #     lines_correct += 1
                 # outlier_cont2.append(cont_coords)
         except cv2.error as e:
-            logger.info(f"ERROR DIBUJANDO CONTORNOS: '{e}'", exc_info=True)
-        logger.info(f"Outliers: {lines_correct}, size: {outlier_idx.size}")
+            logger.error(f"ERROR DIBUJANDO CONTORNOS: '{e}'", exc_info=True)
+        #logger.info(f"Outliers: {lines_correct}, size: {outlier_idx.size}")
         return make_contiguous(grey_img), outlier_cont, []
         
     def fill_gaps(self, full_img: np.ndarray[Any, Any]):
         time_0 = time.perf_counter()
         grey_img = make_contiguous(full_img)
         cont_coords_list, metrics = get_contours_values(grey_img)
-        logger.info(f"SHAPE: {metrics.shape}")
         has_childs = metrics[:, -1]
         x = metrics[:, 10]
         y = metrics[:, 11]
@@ -281,5 +277,5 @@ class InkCorrector(ImagePrepAbstractWorker):
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
         
-        logger.info(f"Se filtraron {lines_correct} objetos en: {time.perf_counter() - time_0}'s")
+        #logger.info(f"Se filtraron {lines_correct} objetos en: {time.perf_counter() - time_0}'s")
         return make_contiguous(grey_img), outlier_cont, outlier_cont2

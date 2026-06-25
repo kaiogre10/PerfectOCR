@@ -2,9 +2,8 @@
 import logging
 import time
 from typing import Dict, Any, List
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
-from core.factory.abstract_worker import OCRAbstractWorker
+from domain.data_formatter import DataFormatter
+from domain.abstract_worker import OCRAbstractWorker
 from utils.text_utils import remove_special_sequences, punct_strip, separate_punt, is_acronym
 from utils.compiled_utils import validate_text
 
@@ -27,13 +26,15 @@ class TextCleaner(OCRAbstractWorker):
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         worker_name = context.get("worker_name") or "paddle_wrapper"
-        logger.debug(f"Inicia cleanner")
         t0 = time.perf_counter()
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCleaner: No hay polígonos en el workflow para procesar.")
             return False
 
-        polygons_in: Dict[str, Polygons] = manager.workflow.polygons
+        polygons_in = manager.workflow.polygons if manager.workflow else {}
+        if not polygons_in:
+            logger.error("No hay polygons para procesar", exc_info=True)
+            return False
 
         logger.debug(f"Cantidad de polígonos recibidos:{len(polygons_in)}")
         final_polygons: Dict[str, Dict[str, Any]] = {}
@@ -75,7 +76,7 @@ class TextCleaner(OCRAbstractWorker):
                 eliminated_count += 1
                 continue
 
-            txt = self.process_single_text(sep_text, polygon)
+            txt = self.process_single_text(sep_text, poly_id)
             if not txt or not validate_text(txt):
                 eliminated_count += 1
                 if self.del_output_log:
@@ -94,7 +95,7 @@ class TextCleaner(OCRAbstractWorker):
             logger.warning("Fallo en limpieza textual")
             return True
 
-    def process_single_text(self, text: str, polygon: Polygons) -> str:
+    def process_single_text(self, text: str, polygon_id: str) -> str:
         """
         Limpia una única cadena de texto, aplicando un tratamiento diferenciado
         y seguro a los valores que parecen numéricos.
@@ -116,7 +117,7 @@ class TextCleaner(OCRAbstractWorker):
                 # Eliminar tokens que sean un carácter especial especificado (ej. ")")
             if not clean_token or not any(c.isalnum() for c in clean_token):
                 if self.del_output_log:
-                    logger.info(f"Eliminado texto basura : '{clean_token}' in {polygon.polygon_id if polygon else ' '}")
+                    logger.info(f"Eliminado texto basura: '{clean_token}' in {polygon_id}")
                 continue
             else:
                 processed_words.append(clean_token)

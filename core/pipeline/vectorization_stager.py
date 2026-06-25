@@ -2,13 +2,13 @@
 import logging
 import time
 from typing import Any, Dict, Tuple, Optional
-from core.domain.data_formatter import DataFormatter
-from core.factory.abstract_stager import AbstractStager
+from domain.data_formatter import DataFormatter
+from domain.abstract_stager import AbstractStager
 
 logger = logging.getLogger(__name__)
 
 class VectorizationStager(AbstractStager):
-    """Inicializa el coordinador y sus workers. """    
+    """Inicializa el coordinador y sus workers."""
     def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
         """Orquesta el flujo completo de vectorización"""
         start_time = time.perf_counter()
@@ -25,7 +25,7 @@ class VectorizationStager(AbstractStager):
                 worker_start = time.perf_counter()
                 if not worker.vectorize(exec_context, manager):
                     worker_time = time.perf_counter() - worker_start
-                    #logger.error(f"'{worker_name}' falló, tiempo: {worker_time:.6f}'s")
+                    logger.error(f"'{worker_name}' falló, tiempo: {worker_time:.6f}'s")
                     return None, worker_time
                 
                 if time_worker_log:

@@ -1,7 +1,7 @@
-# core/workers/workers_factory/abstract_worker.py
+# domain/abstract_worker.py
 from abc import ABC, abstractmethod
 from typing import Dict, Any
-from core.domain.data_formatter import DataFormatter
+from domain.data_formatter import DataFormatter
 
 class BaseWorker(ABC):
     """Cada Abstract worker es una etapa en el pipeline."""

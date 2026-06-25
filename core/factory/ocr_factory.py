@@ -1,7 +1,7 @@
 # core/workers/ocr/ocr_factory.py
 from typing import Dict, Callable, Any, Optional
-from core.factory.abstract_worker import OCRAbstractWorker
-from core.factory.abstract_factory import AbstractBaseFactory
+from domain.abstract_worker import OCRAbstractWorker
+from domain.abstract_factory import AbstractBaseFactory
 from core.workers.ocr.paddle_wrapper import PaddleOCRWrapper
 from core.workers.ocr.text_refiner import Refiner
 from core.workers.ocr.text_cleaner import TextCleaner

@@ -3,9 +3,9 @@ import numpy as np
 import logging
 from typing import Dict, Any, List
 from skimage.filters import unsharp_mask # type: ignore
-from core.factory.abstract_worker import PreprocessingAbstractWorker
-from core.domain.data_formatter import DataFormatter
-from core.domain.data_models import Polygons
+from domain.abstract_worker import PreprocessingAbstractWorker
+from domain.data_formatter import DataFormatter
+from domain.data_models import Polygons
 from utils.image_utils import use_sobel
 from services.output_service import save_croped_image
 

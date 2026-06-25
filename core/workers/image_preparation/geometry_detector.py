@@ -5,8 +5,8 @@ import time
 import numpy as np
 from typing import Dict, Any, Optional, List
 from app.models_builder import ModelsBuilder
-from core.factory.abstract_worker import ImagePrepAbstractWorker
-from core.domain.data_formatter import DataFormatter
+from domain.abstract_worker import ImagePrepAbstractWorker
+from domain.data_formatter import DataFormatter
 from utils.image_utils import binarice_img, make_contiguous, cropp_img # get_contours_values
 from services.output_service import save_croped_image
 
@@ -63,7 +63,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 # imag_id = f"opened_{image_name}_{worker_name}"
                 img_id = f"bin_img_{image_name}_{worker_name}_+1"
-                save_croped_image(image_name, img_id, img, worker_name)
+                save_croped_image(image_name, img_id, img)
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
             # paddle_time = time.perf_counter()
@@ -88,10 +88,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 # geometry_array[idx, [0, 1, 2, 3, 4, 5]] = bbox[0], bbox[1], bbox[2], bbox[3], centroid[0], centroid[1]
                 if self.output:
                     cropped = cropp_img(img, bbox)
-                    worker_name = context.get("worker_name") or "geometry_detector"
                     pid = f"{poly_id}_{worker_name}"
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    save_croped_image(image_name, pid, cropped, worker_name)
+                    save_croped_image(image_name, pid, cropped)
             
                 polygons_list.append({
                     "poly_index": idx,
