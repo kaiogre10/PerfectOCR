@@ -1,7 +1,7 @@
 # PerfectOCR/core/coordinators/preprocessing_coordinator.py
 import logging
 import time
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Optional
 from domain.data_formatter import DataFormatter
 from domain.abstract_stager import AbstractStager
 
@@ -9,10 +9,7 @@ logger = logging.getLogger(__name__)
 
 class PreprocessingStager(AbstractStager):
     """Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente."""
-    def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Tuple[Optional[DataFormatter], float]:
-        start_time = time.perf_counter()
-        
-        # Base context setup
+    def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Optional[DataFormatter]:
         exec_context: Dict[str, Any] = context if context else {}
         time_worker_log = exec_context.get("time_worker_log")
 
@@ -24,11 +21,10 @@ class PreprocessingStager(AbstractStager):
             
             worker_start = time.perf_counter()
             if not worker.preprocess(exec_context, manager):
-                worker_time = time.perf_counter() - start_time
-                logger.error(f"'{worker_name}' falló, tiempo: {worker_start:.6f}'s", exc_info=True)
-                return None, worker_time
+                logger.error(f"'{worker_name}' falló, tiempo: {time.perf_counter() - worker_start:.6f}'s", exc_info=True)
+                return None
 
             if time_worker_log:
                 logger.info(f"'{worker_name}' completado en: {time.perf_counter() - worker_start:.6f}'s")
 
-        return manager, time.perf_counter() - start_time
+        return manager

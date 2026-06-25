@@ -72,6 +72,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     cut_polygons = self.map_polygons_ids(polygons, df_copy)
                     context["cut_polygons"] = cut_polygons
                     context["df_copy"] = df_copy
+                    context["complete"] = False
+                    context["text_col_temp"] = []
                     logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     if self.output:
                         file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""

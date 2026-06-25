@@ -42,8 +42,6 @@ class FinalStructurer(VectorizationAbstractWorker):
             payload = self.transform_data(df)
 
             if manager.store_payload([payload[0], payload[1], image_name]):
-                context = context
-                context = {}
                 return True
         except Exception as e:
             logger.error(f"Error recolectando datos: '{e}'", exc_info=True)

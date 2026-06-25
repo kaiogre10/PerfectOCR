@@ -1,6 +1,7 @@
 import cv2
 import logging
 import numpy as np
+import time
 from datetime import datetime
 from typing import Dict, Any
 from domain.abstract_worker import ImagePrepAbstractWorker
@@ -31,9 +32,9 @@ class ImageLoader(ImagePrepAbstractWorker):
                 logger.error(f"No se proporcionó una ruta de entrada válida para la imagen '{image_name}'")
                 return False
 
-            # time0 = time.perf_counter()
+            time0 = time.perf_counter()
             full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
-            # logger.info(f"IMAGEN: '{input_path}', cargada en {time.perf_counter() - time0:.6f}'s")
+            logger.info(f"IMAGEN: '{input_path}', cargada en {time.perf_counter() - time0:.6f}'s")
             
             if is_binarized(full_image):
                 binary = True
@@ -59,12 +60,13 @@ class ImageLoader(ImagePrepAbstractWorker):
             id_registro = f"{image_name}_{date_creation}{now.microsecond:08d}"
 
             if manager.create_workflow(id_registro, full_img, metadata):
-                # logger.info(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
-            
+                logger.debug(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
+                
                 if self.output:
                     worker_name = context.get("worker_name") or "loader"
                     save_croped_image(image_name, f"full_img_{image_name}_{worker_name}", full_img)
 
+                del context["image_data"]
                 return True
             
             logger.error(f"Error creando workflow para '{image_name}'")

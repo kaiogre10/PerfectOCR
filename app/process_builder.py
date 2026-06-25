@@ -1,5 +1,6 @@
 # PerfectOCR/app/process_builder.py
 import logging
+import time
 from typing import Optional, Dict, Any, List
 from domain.data_formatter import DataFormatter
 from services.storage_service import storage_data
@@ -29,33 +30,48 @@ class ProcessingBuilder:
             # Crear instancia fresca de DataFormatter para esta imagen
             manager = DataFormatter(self.logs_debug)
             # Crear contexto para esta ejecución
-            context: Dict[str, Any] = {}
-            context = {
+            context: Dict[str, Any] = {
                 "image_data": image_data,
                 "time_worker_log": self.logs_debug.get("time_worker_log")
             }
-
-            for _, stager in enumerate(self.all_stagers):
-                manager, time_poly = stager.execute(manager, context)
-                if manager is None:
-                    logger.error(f"Falla en '{stager.__class__.__name__}'", exc_info=True)
-                    return None
+            try:
+                for _, stager in enumerate(self.all_stagers):
+                    stager_name = stager.__class__.__name__
+                    stager_time = time.perf_counter()
+                    manager = stager.execute(manager, context)
+                    if manager is None:
+                        logger.error(f"Falla en '{stager_name}', tiempo: {time.perf_counter() - stager_time}'s", exc_info=True)
+                        return None
                 
-                if self.logs_debug.get("time_stages_log"):
-                    logger.info(f"Fase de preparación completada en: {time_poly:.6f}s")
+                    if self.logs_debug.get("time_stages_log"):
+                        logger.info(f"Fase de preparación completada en: {time.perf_counter() - stager_time:.6f}'s")
+            except Exception as e:
+                logger.error(f"ERROR PROCESANDO: '{e}'", exc_info=True)
+                return  None
 
             name = manager.payload.name if manager.payload else None
             plain_text = manager.payload.payload if manager.payload else None
             buffer_size = manager.payload.buffer_sizes if manager.payload else None
 
             if plain_text is None or buffer_size is None or name is None:
-                return None
+                if manager is None:
+                    logger.info(f"ERROR")
+                    return None
+                else:
+                    manager.reset_data()
+                    logger.info(f"Proceso correcto con early return, se deuelve datos MOCK para debug")
+                    return [0]
             
-            if self.logs_debug.get("handle_memory") and storage_data(plain_text, buffer_size):
-                write_temp_log((name, plain_text))
-                return buffer_size
-            else:
+            elif self.logs_debug.get("handle_memory"):
+                if storage_data(plain_text, buffer_size) and write_temp_log((name, plain_text)):
+                    manager.reset_data()
+                    logger.warning("PAYLOAD GUARDADO EN MEMORIA Y EN ARCHIVO DE SEGURIDAD")
+                    return buffer_size
                 return None
+            else:
+                manager.reset_data()
+                logger.warning(f"NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
+                return buffer_size
             
         except Exception as e:
             logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)

@@ -23,6 +23,7 @@ class ConfigBuilder:
             pass
         if not self._validate_config():
             self.config = {}
+            del self.config
         else:
             self.config = self.config
 
@@ -69,7 +70,13 @@ class ConfigBuilder:
     
     @cached_property
     def no_activate_modules(self) -> bool: # Parametro automátizado que permite arrancar el sistema para testear parametros de alto nivel sin crear objetos pesados de manera innecesaria
-        return (self.deploy_mode == True) and ((self.elemental_params) == False)
+        """(deploy_mode == True) and (elemental_params == False)"""
+        return (self.deploy_mode == True) and (self.elemental_params == False)
+    
+    @cached_property
+    def not_run_system(self) -> bool:
+        """(self.deploy_mode == False) and (self.elemental_params == False)"""
+        return (self.deploy_mode == False) and (self.elemental_params == False)
     
     @cached_property
     def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
@@ -270,12 +277,12 @@ class ConfigBuilder:
             log_simple("No hay rutas input")
             return False
 
-        elif not self.deploy_mode and not self.elemental_params:
-            log_simple(f"ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
+        elif self.not_run_system:
+            log_simple("ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
             return False
         
         elif not self.deploy_mode and not self.handle_memory:
-            log_simple(f"ACTIVAR MEMORIA DINÁMICA")
+            log_simple("ACTIVAR MEMORIA DINÁMICA")
             return False
 
         elif self.no_activate_modules:
@@ -310,7 +317,7 @@ class ConfigBuilder:
 
     @cached_property
     def _run_params(self):
-        self.elemental_params
+        self.not_run_system
         self.all_workers
         self.active_full_ocr
         self.workers_order

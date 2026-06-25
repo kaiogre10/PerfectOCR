@@ -26,6 +26,7 @@
 perfectocr.txt
 verificacion_init.txt
 tmp_file.txt
+tree.txt
 
 # Ignorar carpetas
 __pycache__/

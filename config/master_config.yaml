@@ -38,7 +38,7 @@ pipeline_secuence:
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-    - "collector"
+#    - "collector"
        
 log_debug:
   all_logs: False    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
