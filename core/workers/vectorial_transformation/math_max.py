@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.compiled_utils import validate_quant_chars
+from utils.math_utils import check_full_df
 from services.output_service import save_debug_table
 
 logger = logging.getLogger(__name__)
@@ -37,12 +38,12 @@ class MatrixSolver(VectorizationAbstractWorker):
         try:
             if not manager.workflow:
                 return False
-            df = manager.workflow.table_data.df_table if manager.workflow.table_data is not None else pd.DataFrame()
+            df = manager.workflow.table_data.df_table if manager.workflow.table_data is not None else pd.DataFrame(dtype=str)
             if df is None or df.empty:
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            logger.debug(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             corrected_df = self.solve(df, context)
             del context
@@ -51,9 +52,8 @@ class MatrixSolver(VectorizationAbstractWorker):
                 return False
 
             if manager.save_final_output(corrected_df, {}):
+                logger.info(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
                 logger.debug(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
-
-                logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow.metadata else ""
                     save_debug_table(corrected_df, file_name, None, None)
@@ -92,7 +92,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             cols_list: List[str] = list(df.columns)
             text_col: str = cols_list[int(text_col_idx[0])]
             df.rename(columns={text_col: self.product_name}, inplace = True)
-            if self.validate_df(df):
+            if check_full_df(df):
                 logger.info("DF PERFECTO")
                 return df
         else:
@@ -100,11 +100,12 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.info(f"DF INCOMPLETO")
                 df_art, context_art = self.solve_incomplete(df, context)
                 if df_art.empty:
+                    context = {}
                     return pd.DataFrame()
                 else:
                     df = df_art
                     context = context_art
-
+        # logger.info(f"RECIBIDO:\n"f"{df.to_string(index=True)}")
         df, context = self.find_hypotesis(df, context)
 
         if df.empty:
@@ -113,7 +114,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         # logger.info("RENAMED:\n" + df.to_string(index=True))
         df = self.correct_df(df, context)
-        if not self.validate_df(df):
+        if not check_full_df(df):
             return pd.DataFrame()
         else:
             return df
@@ -300,7 +301,6 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         if full_dec.size < 1 and full_idx.size < 1:
             min_decs = np.count_nonzero(full_dec_com, axis=1) > 1
-            logger.info("MIN DEC:\n"f"{min_decs}")
             if any(min_decs):
                 context["arith_cols_ids"] = cols_idx
                 context["dec_rows_ids"] = context["rows_idx"]
@@ -483,14 +483,14 @@ class MatrixSolver(VectorizationAbstractWorker):
         # elements_array, matrix_decimal, matrix_quantity = arrays_table[0], arrays_table[4], arrays_table[5]
         # full_dec = matrix_decimal + matrix_quantity
 
-        c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None
-        pu_idx = df.columns.get_loc(self.pu_name) if self.pu_name in df.columns else None
-        mtl_idx = df.columns.get_loc(self.mtl_name) if self.mtl_name in df.columns else None
+        c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None # type: ignore
+        pu_idx = df.columns.get_loc(self.pu_name) if self.pu_name in df.columns else None # type: ignore
+        mtl_idx = df.columns.get_loc(self.mtl_name) if self.mtl_name in df.columns else None # type: ignore
 
         for r in incomplete_rows_id:
-            raw_c: str = str(df.iat[r, c_idx]).strip()
-            raw_pu: str = str(df.iat[r, pu_idx]).strip()
-            raw_mtl: str = str(df.iat[r, mtl_idx]).strip()
+            raw_c: str = str(df.iat[r, c_idx]).strip() # type: ignore
+            raw_pu: str = str(df.iat[r, pu_idx]).strip() # type: ignore
+            raw_mtl: str = str(df.iat[r, mtl_idx]).strip() # type: ignore
 
             missing_c = (raw_c == "")
             missing_pu = (raw_pu == "")
@@ -542,7 +542,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         idx = cols_idx[two_cols_ids]
 
         invaded_df: pd.DataFrame = df.iloc[rows_to_com, idx]
-        invaded_df = invaded_df.map(lambda x: Decimal(x))
+        invaded_df = invaded_df.map(lambda x: Decimal(x)) # type: ignore
         df_copy: pd.DataFrame = context["df_copy"]
 
         #  ##logger.info("INVDED:\n" + df.iloc[:, idx].to_string(index=True))
@@ -903,7 +903,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         return df
 
     def solve_incomplete(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
-        logger.info("INCOMPLETO RECIBIDO:\n" + df.to_string(index=True))
+        # logger.info("INCOMPLETO RECIBIDO:\n" + df.to_string(index=True))
         cols_idx = context["cols_idx"]
         # rows_idx = context["rows_idx"]
         arrays_table = self.get_arrays_table(context)
@@ -1008,7 +1008,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 if c == dest_idx:
                     continue
 
-                val = str(df.iat[r, c])
+                val = str(df.iat[r, c]).strip()
                 vals: List[str] = df_copy.iat[r, c]
                 dest_vals = df_copy.iat[r, dest_idx]
 
@@ -1016,10 +1016,10 @@ class MatrixSolver(VectorizationAbstractWorker):
                     continue
 
                 if c < dest_idx:
-                    df.iat[r, dest_idx] = str(val) + " " + str(df.iat[r, dest_idx]).strip()
+                    df.iat[r, dest_idx] = (val + " " + str(df.iat[r, dest_idx])).strip()
                     df_copy.iat[r, dest_idx] = vals + dest_vals
                 else:
-                    df.iat[r, dest_idx] = str(df.iat[r, dest_idx]) + " " + str(val).strip()
+                    df.iat[r, dest_idx] = str(df.iat[r, dest_idx] + " " + val).strip()
                     df_copy.iat[r, dest_idx] = dest_vals + vals
 
                 artifial_data = str(potencial_val[r, c]).strip()
@@ -1032,37 +1032,13 @@ class MatrixSolver(VectorizationAbstractWorker):
                 }
                 df_copy.iat[r, c] = [current_poly]
 
+        dec_cols = np.array(np.setdiff1d(cols_idx, text_col, assume_unique=True), np.int_)
         context["df_copy"] = df_copy
         context["cut_polygons"] = cut_polygons
         context["dec_rows_ids"] = major_rows_idx
-        context["dec_cols"] = np.array(np.setdiff1d(cols_idx, text_col, assume_unique=True), np.int_)
-        logger.info("DF INVENTADO:\n" + df.to_string(index=True))
+        context["dec_cols"] = dec_cols
+        context["arith_cols_ids"] = dec_cols
+        context["text_col_temp"] = text_col
+        # logger.info("DF INVENTADO:\n" + df.to_string(index=True))
+        # logger.info("DF COPY INVENTADO:\n" + df_copy.to_string(index=True))
         return (df, context)
-
-    def validate_df(self, df: pd.DataFrame) -> bool:
-        if df.empty:
-            logger.error("DF vacio")
-            return False
-        elif not self.check_full(df):
-            logger.error("El DataFrame contiene celdas vacías o nulas:\n" + df.to_string(index=True))
-            return False
-        else:
-            try:
-                mtl_col = df[self.mtl_name]
-                c_col = df[self.cant_name]
-                pu_col = df[self.pu_name]
-            except ValueError as e:
-                logger.error(f"ERROR OBTENIENDO COLUMNAS: {e}")
-                return False
-            try:
-                pu_col.map(lambda x: Decimal(x)) # type: ignore
-                mtl_col.map(lambda x: Decimal(x)) # type: ignore
-                c_col.map(lambda x: Decimal(x)) # type: ignore
-                return True
-            except InvalidOperation as e:
-                logger.error(f"DF con datos intrusos: {e}:\n" + df.to_string(index=True), exc_info=True)
-                return False
-            
-    def check_full(self, df: pd.DataFrame) -> bool:
-        """Devuelve true si todas las celdas tienen strings válidos"""
-        return not (df.isnull().values.any() or (df == "").values.any())

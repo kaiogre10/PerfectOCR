@@ -610,7 +610,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
             rows.append(row_values)
             rows_copy.append(row_copy_values)
-        df_main = pd.DataFrame(rows, columns=columns)
+        df_main = pd.DataFrame(rows, columns=columns, dtype=str)
         df_copy = pd.DataFrame(rows_copy, columns=columns)
         return (df_main, df_copy)
 

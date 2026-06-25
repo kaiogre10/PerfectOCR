@@ -583,8 +583,7 @@ def _correct_numbers(text: str) -> str:
 
 def noramalice_df(text: str, separator: str) -> str:
     text = text.replace(separator, " ")
-    text = space_removal(text)
-    return (text + separator)
+    return space_removal(text + separator)
 
 def its_similar(word: str, suspect: str) -> bool:
     suspect_slice = suspect[:len(word)]

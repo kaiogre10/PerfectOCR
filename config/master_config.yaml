@@ -38,7 +38,7 @@ pipeline_secuence:
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-#    - "collector"
+    - "collector"
        
 log_debug:
   all_logs: False    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
@@ -198,11 +198,11 @@ modules:
     math_max:
       row_relative_tolerance: "0.10"
       cols_name: [
-        "cantidad_art",
-        "precio_unitario",
+        "cant_art",
+        "prec_unit",
         "costo_tran",
-        "producto_norm",
-        "id_registro"
+        "produc_norm",
+        "id_reg"
       ]
       separator: ["_"]
 

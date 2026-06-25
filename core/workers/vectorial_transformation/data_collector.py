@@ -2,10 +2,11 @@
 import pandas as pd # type: ignore
 import logging
 import numpy as np
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, Tuple, List
 from utils.text_utils import format_cuant, get_rfc, get_ids, noramalice_df, its_similar, fast_classfier
 from utils.patterns import umd_patterns
+from utils.math_utils import validate_df
 from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table
 from utils.data_utils import CONVERSION_KF
@@ -119,12 +120,15 @@ class FinalStructurer(VectorizationAbstractWorker):
 
         mtl_col = df[self.mtl_name]
         c_col = df[self.cant_name]
-        
-        mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0])) # type: ignore
-        c_col_dec = c_col.map(lambda x: Decimal(x[0])) # type: ignore
-        
-        total_total = Decimal(str(sum(mtl_col_dec)))
-        total_prod = Decimal(str(sum(c_col_dec)))
+        try:
+            mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
+            c_col_dec = c_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
+            
+            total_total = Decimal(str(sum(mtl_col_dec)))
+            total_prod = Decimal(str(sum(c_col_dec)))
+        except InvalidOperation as e:
+            logger.error(f"Numeros deciales con ruido: '{e}'")
+            raise
 
         totals = {"art_cal": str(total_prod), "total_cal": str(total_total), self.id_registro: idx}
         
@@ -208,9 +212,12 @@ class FinalStructurer(VectorizationAbstractWorker):
                         if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == 2 and pm == 5):
                             df.iat[i, pro_idx] = (orig_p_value + concat_val)
 
-        #df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
-        logger.info(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
-        return df
+        if validate_df(df, self.cant_name, self.pu_name, self.mtl_name):
+            df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
+            logger.info(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
+            return df
+        else:
+            return pd.DataFrame()
     
     def transform_data(self, df: pd.DataFrame) -> Tuple[List[int], str]:
         """Devuelve tamaño de cada fila y el df aplanado"""

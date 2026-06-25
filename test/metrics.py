@@ -34,13 +34,13 @@ def analyze_project(root_dir: Path):
 
     # Directorios a ignorar
     ignore_dirs: Set[str] = {
-        '__pycache__', 'output', 'input', 'models', '.git', '.vscode', 'data', '.txt', "data_base", "test",
-        ".vscode", "input", "tools", "documentation"
+        '__pycache__', 'output', 'input', 'models', '.git', '.vscode', 'data', '.txt',
+        ".vs", "input", "build", "bin", "CMakeFiles"
     }
     # Extensiones de archivo a incluir
-    include_exts: Set[str] = {'.py', '.yaml'}
+    include_exts: Set[str] = {'.py', '.yaml', ".cpp", ".h", ".pyi", ".pyx", ".sql"}
     exclude_files: Set[str] = {'.txt', ".md", ".env", ".json", ".png", ".pkl"}
-    total_summary: Dict[str, int] = {'code': 0, 'comment': 0, 'blank': 0, 'total': 0, "functions": 0, 'files': 0, 'python': 0, 'yaml': 0,}
+    total_summary: Dict[str, int] = {'code': 0, 'comment': 0, 'blank': 0, 'total': 0, "functions": 0, 'files': 0, 'python': 0, 'yaml': 0, 'C++': 0, 'Cython': 0, "sql": 0,}
     all_stats: Dict[str, Any] = {}
     qty_py = 0
     qty_yml = 0
@@ -68,8 +68,14 @@ def analyze_project(root_dir: Path):
                 total_summary['files'] += 1
                 if path.suffix == ".yaml":
                     total_summary['yaml'] += 1
-                if path.suffix == ".py":
+                elif path.suffix == ".py":
                     total_summary['python'] += 1
+                elif path.suffix == ".cpp" or path.suffix == ".h":
+                    total_summary['C++'] += 1
+                elif path.suffix == ".pyx" or path.suffix == ".pyi":
+                    total_summary['Cython'] += 1
+                elif path.suffix == ".sql":
+                    total_summary["sql"] += 1
     print("="*100)
     header = f"{'ANÁLISIS DE LÍNEAS DE CÓDIGO':<60} {'CÓDIGO':>8} {'COMENTARIOS':>12} {'BLANCOS':>8} {'TOTAL':>8}"
     print(header)
@@ -81,7 +87,7 @@ def analyze_project(root_dir: Path):
         print(f"{display_path:<60} {stats['code']:>8} {stats['comment']:>12} {stats['blank']:>8} {stats['total']:>8}")
 
     print("RESUMEN DEL PROYECTO:")
-    print(f"Archivos analizados: {total_summary['files']:,}, Python: {total_summary['python']:,}, Yaml: {total_summary['yaml']:,}")
+    print(f"Archivos analizados: {total_summary['files']:,}, Python: {total_summary['python']:,}, Yaml: {total_summary['yaml']:,}, C++: {total_summary['C++']:,}, Cython: {total_summary['Cython']:,}, SQL: {total_summary['sql']:,}")
     print(f"Cantidad de funciones: {total_summary['functions']:,}")
     print(f"Líneas de código (SLOC): {total_summary['code']:,}")
     print(f"Líneas de comentarios: {total_summary['comment']:,}")

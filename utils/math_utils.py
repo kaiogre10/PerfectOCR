@@ -2,6 +2,8 @@
 import numpy as np
 import logging
 import time
+import pandas as pd
+from decimal import Decimal, InvalidOperation
 from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
@@ -462,3 +464,31 @@ def round_2_decimal_vals(amount_str: str) -> str:
     except ConversionSyntax:
         logger.info(f"ERROR CONVIRTIENDO: '{amount_str}'")
         return amount_str
+    
+def validate_df(df: pd.DataFrame, cant_name: str, pu_name: str, mtl_name: str) -> bool:
+    if df.empty:
+        logger.error("DF vacio")
+        return False
+    elif not check_full_df(df):
+        logger.error("El DataFrame contiene celdas vacías o nulas:\n" + df.to_string(index=True))
+        return False
+    else:
+        try:
+            mtl_col = df[mtl_name]
+            c_col = df[cant_name]
+            pu_col = df[pu_name]
+        except ValueError as e:
+            logger.error(f"ERROR OBTENIENDO COLUMNAS: {e}")
+            return False
+        try:
+            pu_col.map(lambda x: Decimal(x)) # type: ignore
+            mtl_col.map(lambda x: Decimal(x)) # type: ignore
+            c_col.map(lambda x: Decimal(x)) # type: ignore
+            return True
+        except InvalidOperation as e:
+            logger.error(f"DF con datos intrusos: {e}:\n" + df.to_string(index=True), exc_info=True)
+            return False
+            
+def check_full_df( df: pd.DataFrame) -> bool:
+    """Devuelve true si todas las celdas tienen strings válidos"""
+    return not (df.isnull().values.any() or (df == "").values.any())
