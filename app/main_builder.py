@@ -58,6 +58,7 @@ class MainBuilder:
             all_stagers = stagers_factory.get_all_stagers()
             # El manager se crea dentro del proceso de cada imagen, no aquí
             builder = ProcessingBuilder(self.project_root, all_stagers=all_stagers, logs_debug=self.config_service.logs_debug)
+            del stagers_factory
             return builder
 
         except AttributeError as e:
@@ -68,7 +69,7 @@ class MainBuilder:
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
         tolerance = bitmath.KiB(2)
         total_images = len(workflow_report)
-        logger.info(f"'{total_images}' IMAGENES PARA PROCESAR")
+        logger.error(f"'{total_images}' IMAGENES PARA PROCESAR")
 
         succes_images: List[str] = []
         images_names = [names["name"][:-4] for names in workflow_report]
@@ -81,7 +82,7 @@ class MainBuilder:
         for i, image_data in enumerate(workflow_report):
             # Procesar imagen individualmente
             payload_size = builder.process_single_image(image_data)
-            logger.info(f"Procesadas: {(i + 1)} de '{total_images}' imágenes")
+            logger.warning(f"Procesadas: {(i + 1)} de '{total_images}' imágenes")
             if payload_size is None:
                 logger.info(f"Fallo al procesar imagen: '{images_names[i]}'")
                 continue
@@ -116,14 +117,14 @@ class MainBuilder:
         total_fails = len(failed_images)
         
         if total_fails == 0:
-            logger.info(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_mask}{total_processing_time}, promedio: {mean_process}'s")
+            logger.warning(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_mask}{total_processing_time}, promedio: {mean_process}'s")
 
         elif total_fails == total_images:
-            logger.info(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {time_mask}{total_processing_time}, promedio: {mean_process}")
+            logger.warning(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {time_mask}{total_processing_time}, promedio: {mean_process}")
 
         else:
-            logger.info(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
-            logger.info(f"IMAGENES EXITOSAS:\n"f"{succes_images}\n"f"----------------------------")
+            logger.warning(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
+            # logger.info(f"IMAGENES EXITOSAS:\n"f"{succes_images}\n"f"----------------------------")
             logger.info(f"IMAGENES FALLIDAS:\n"f"{failed_images}\n"f"----------------------------")
 
         for result in final_results:

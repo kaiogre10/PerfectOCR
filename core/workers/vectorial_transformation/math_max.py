@@ -43,7 +43,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            logger.info(f"DataFrame recibido:\n{df.to_string(index=True)}")
+            logger.debug(f"DataFrame recibido:\n{df.to_string(index=True)}")
 
             corrected_df = self.solve(df, context)
             del context
@@ -53,7 +53,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             if manager.save_final_output(corrected_df, {}):
                 logger.info(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
-                logger.debug(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
+                logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow.metadata else ""
                     save_debug_table(corrected_df, file_name, None, None)
@@ -359,12 +359,12 @@ class MatrixSolver(VectorizationAbstractWorker):
         else:
             context["arith_cols_ids"] = np.empty(0)
             context["dec_rows_ids"] = context["rows_idx"]
-            logger.warning("No hay filas con suficientes datos, devolviendo df original")
+            logger.debug("No hay filas con suficientes datos, devolviendo df original")
             return (df, context)
 
         invalid_indexes = (full_dec_idx.size < 1) | (decimal_cols.size < 1)
         if invalid_indexes:
-            logger.info("No hay filas completas para aritmetic, devolviendo df original")
+            logger.debug("No hay filas completas para aritmetic, devolviendo df original")
             context["arith_cols_ids"] = cols_idx
             context["dec_rows_ids"] = context["rows_idx"]
             context["text_col_temp"] = []
@@ -794,7 +794,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             row_double_cols = np.where(double_cuant[rr])[0]
             if len(row_double_cols) == 0:
                 continue
-            cur_double_col = row_double_cols[0]
+            cur_double_col = int(row_double_cols[0])
 
             for c in intersect_cols_text_idx:
                 r = int(r)

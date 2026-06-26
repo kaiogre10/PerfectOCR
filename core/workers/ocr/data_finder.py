@@ -34,15 +34,14 @@ class DataFinder(OCRAbstractWorker):
         return None
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        logger.debug("Data Finder iniciado")
-        try:
-            polygon_updates = self._find_data(manager)
-            if manager.update_key_field(polygon_updates):
-                return True
-                
-        except Exception as e:
-            logger.error(f"Error detectando encabezados por palabra: {e}", exc_info=True)
-        return True
+        polygon_updates = self._find_data(manager)
+        if not polygon_updates:
+            return  False
+        elif manager.update_key_field(polygon_updates):
+            logger.debug(f"DATA FINDER ÉXITOSO")
+            return True
+        else:
+            return  False
 
     def _find_data(self, manager: DataFormatter) -> Dict[str, List[int]]:
         if self.model is None:

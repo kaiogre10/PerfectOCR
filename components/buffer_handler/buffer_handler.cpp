@@ -2,33 +2,47 @@
 #include "../containers/containers.h"
 #include <vector>
 #include <cstdint>
+#include <cstdlib>
 #include <mutex>
-#include <cstdio>
+#include <iostream>
 
-extern "C" void storage_batch_flat(const uint8_t* plain_data,
-                                   const size_t* len_list,
-                                   size_t total_elements) {
-    if (!plain_data || !len_list || total_elements == 0) return;
-    
-    std::vector<std::vector<uint8_t>> struct_payload;
-    printf("[LOG]: PAYLOAD: %p\n", plain_data);
-    struct_payload.resize(total_elements);
+uint8_t* buffer_ptr = nullptr;
+size_t buffer_size = 0;
 
-    size_t offset_view = 0;
-
-    for (size_t i = 0; i < total_elements; ++i) {
-        size_t actual_size = len_list[i];
-
-        if (actual_size > 0) {
-            struct_payload[i].reserve(actual_size);
-            struct_payload[i].assign(plain_data + offset_view,
-                plain_data + offset_view + actual_size);
-
-            offset_view += actual_size;
+namespace {
+    void storage_batch_flat(uint8_t* buffer_ptr,
+                                size_t buffer_size) {
+        if (!buffer_ptr || !buffer_size) return;
+        printf("ptr: %p, size: %zu\n", buffer_ptr, buffer_size);
+        std::vector<uint8_t> plain_payload(buffer_ptr, buffer_ptr + buffer_size);
+        for (uint8_t byte : plain_payload) {
+            std::cout << (char)byte;
         }
+        std::cout << std::flush;
+        push(std::move(plain_payload));
+        std::cout << "\nSize: " << plain_payload.size() << "\n";
     }
-    push(std::move(struct_payload));
 }
+
+extern "C" {
+    uint8_t* reserve_buffer(size_t len_bytes) {
+        buffer_ptr = new uint8_t[len_bytes];
+        buffer_size = len_bytes;
+        return buffer_ptr;
+    }
+    void commit_buffer(int signal) {
+        try {
+            storage_batch_flat(buffer_ptr, buffer_size);
+            delete[] buffer_ptr;
+        }
+        catch (...) {
+            delete[] buffer_ptr;
+        }
+        buffer_ptr = nullptr;
+        buffer_size = 0;
+    }
+}
+
 
 //extern "C" {
 //    // La señal mínima en las primeras líneas de main que acciona todo
@@ -44,7 +58,6 @@ extern "C" void storage_batch_flat(const uint8_t* plain_data,
 //    InvocadorReceptor = callback;
 //}
 //
-//// Tu algoritmo original adaptado al empuje de datos
 //void Emisario_EjecutarEnvio() {
 //    // 1. Protección de alcance automática
 //    std::lock_guard<std::mutex> guard(mtx);
@@ -63,3 +76,17 @@ extern "C" void storage_batch_flat(const uint8_t* plain_data,
 //
 //} // <-- Fin del scope: El compilador destruye 'guard' y libera el mutex automáticamente.
 //  // El Frontend ya terminó de procesar porque la llamada es síncrona.
+
+// size_t offset_view = 0;
+
+// for (size_t i = 0; i < total_cols; ++i) {
+//     size_t actual_size = buffer_size[i];
+//
+//     if (actual_size > 0) {
+// plain_payload.reserve(buffer_size);
+// plain_payload.assign(buffer_ptr + buffer_size),
+//             buffer_ptr + offset_view + actual_size);
+//
+//         offset_view += actual_size;
+// }
+// }

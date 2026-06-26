@@ -21,6 +21,7 @@
 *.lib
 *.exp
 *.tlog
+*.prof
 
 # Ignorar archivos especificos
 perfectocr.txt

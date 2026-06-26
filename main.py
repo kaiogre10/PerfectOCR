@@ -60,7 +60,7 @@ if __name__ == "__main__":
 #     nucleos_fisicos = psutil.cpu_count(logical=False) or 2  # Respaldo mínimo seguro de 2
 #     ram_total_gb = psutil.virtual_memory().total / (1024 ** 3)
     
-#     # 2. Configuración base ULTRA-SEGURA (Para cualquier CPU/RAM)
+#     # 2. Configuración base (Para cualquier CPU/RAM)
 #     config = {
 #         'OPENBLAS_NUM_THREADS': '1',     # NumPy ligero siempre corre mejor en 1 hilo en producción
 #         'NUMEXPR_NUM_THREADS': '1',      # Evita hilos ocultos en Pandas/filtros
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 #         'MKL_DYNAMIC': 'TRUE'            # Que el backend decida según el tamaño de la matriz
 #     }
     
-#     # 3. Estrategia adaptativa para la CPU (PaddleOCR masivo)
+#     # 3. Estrategia adaptativa para la CPU 
 #     # Dejamos un núcleo libre si el usuario tiene más de 2 núcleos, para que su PC no se trabe
 #     hilos_calculados = max(1, nucleos_fisicos - 1) if nucleos_fisicos > 2 else nucleos_fisicos
     
@@ -92,7 +92,5 @@ if __name__ == "__main__":
 #         config['KMP_BLOCKTIME'] = '0'   # GNU OpenMP a veces la lee como respaldo
         
 #     return config
-
-# # --- APLICACIÓN EN TU MAIN ---
 # # Correr esto en las primeras 8 líneas antes de cualquier importación pesada
 # os.environ.update(obtener_configuracion_entorno_dinamico())

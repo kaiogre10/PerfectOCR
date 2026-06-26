@@ -65,12 +65,12 @@ class ProcessingBuilder:
             elif self.logs_debug.get("handle_memory"):
                 if storage_data(plain_text, buffer_size) and write_temp_log((name, plain_text)):
                     manager.reset_data()
-                    logger.warning("PAYLOAD GUARDADO EN MEMORIA Y EN ARCHIVO DE SEGURIDAD")
+                    logger.debug("PAYLOAD GUARDADO EN MEMORIA Y EN ARCHIVO DE SEGURIDAD")
                     return buffer_size
                 return None
             else:
                 manager.reset_data()
-                logger.warning(f"NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
+                logger.debug(f"NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
                 return buffer_size
             
         except Exception as e:

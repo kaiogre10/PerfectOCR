@@ -1,0 +1,16 @@
+
+COMANDOS DE ORDENAMIENTO (SORT):
+----------------------------------
+sort tottime    - Ordena por tiempo neto de la función (sin subfunciones)
+sort cumtime    - Ordena por tiempo acumulado (incluyendo subfunciones)
+sort ncalls     - Ordena por la cantidad de veces que se llamó la función
+sort file       - Ordena alfabéticamente por el nombre del archivo .py
+sort line       - Ordena por el número de línea del código
+sort name       - Ordena alfabéticamente por el nombre de la función
+
+Después de usar un comando 'sort', usa 'stats' seguido de un número para ver el top de funciones lentas:
+stats 10        - Muestra las 10 funciones principales del orden actual
+stats 5         - Muestra las 5 funciones principales del orden actual
+stats           - Muestra todas las funciones (lista completa)
+quit
+

@@ -35,6 +35,7 @@ class MainFactory:
             veckey: VectorizationStager,    
         }
         all_stagers: List[Any] = self.buil_stagers(factories_dict, stagers_dict)
+        del factories_dict
         self.all_stagers = all_stagers
 
     def buil_stagers(self, factories_dict: Dict[str, Any], stagers_dict: Dict[str, Any]) -> List[Any]:

@@ -13,7 +13,7 @@ PROJECT_ROOT: str = ""
 output_paths: List[str] = []
 valid_img_ext: Tuple[str, ...] = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2")
 invalid_extensions: List[str] = [".txt", ".webp"]
-trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", ".log")
+trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", ".log", ".prof")
 cache_dirs = ["__pycache__", ".pytest_cache", "build"]
 excluded_dirs = ["components", "bin", "documentation", "models", "safe_temp"]
 no_del: Tuple[str, ...] = (".py", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml")
@@ -93,7 +93,7 @@ def clear_output_folders() -> None:
         logger.warning("Limpieza abortada: hay rutas sin permisos. No se eliminó nada.")
         for p in blocked:
             logger.warning(f"Sin permisos: {p}")
-            return
+            continue
 
     logger.debug("Limpieza Inicial: Vaciando carpetas de salida")
     for folder_path in (output_paths or cache_dirs):
@@ -124,7 +124,7 @@ def clear_output_folders() -> None:
                 basic_exc_logger(f"Error al eliminar {item_path}: {e}", exc_info=True)
                 return
 
-    logger.debug(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
+        logger.debug(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
 
 def cleanup_project_cache(aditional_files: Optional[str] = None):
     """Elimina la caché y residuos del proyecto """
@@ -205,6 +205,7 @@ def count_and_plan(config: Dict[str, List[str]]) -> List[Dict[str, Any]]:
     3. Si se encuentran todos los `images_names` y quedan directorios, se procesan completos.
     """
     input_paths: List[str] = config['input_dirs']
+    # input_paths = ["/media/kaiogre05/DATA/data/tickets_nuevo"]
     images_names = config['images_names']
     if not input_paths:
         logger.error("No se proporcionaron rutas de entrada (input_dirs)")

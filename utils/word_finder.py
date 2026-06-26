@@ -318,6 +318,10 @@ class WordFinder:
                     # gc y gs tienen garantizado tener la misma longitud 'n' aquí
                     if gc == gs:
                         sim = 1.0
+                        
+                    elif not any((char in gs) for char in gc):
+                        sim = 0.0
+
                     else:
                         sim = self._ngram_similarity(gc, gs)
                     # Penalización simétrica

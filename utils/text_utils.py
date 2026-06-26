@@ -5,14 +5,15 @@ from typing import List, Tuple, Dict, Any, Optional
 from utils.math_utils import text_encode
 from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
 from utils.data_utils import VOWELS, REPLACEMENT_MAP
-from utils.patterns import bad_title, numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
+from utils.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
 
 logger = logging.getLogger(__name__)
 
 density_thr = (23.7, 103.7)
 morph_thr = (-0.297, 0.337)
 
-_bad_title = bad_title
+# _space_pattern = space_pattern
+# _bad_title = bad_title
 _numeric_fractions = numeric_fractions
 _has_digit_pattern = has_digit_pattern
 _extension_suffix = extension_suffix
@@ -65,8 +66,8 @@ def normalice_text(s: str, hard_norm: bool) -> str:
         return ""
 
     norm_text = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
-    if bool(_bad_title.fullmatch(norm_text)):
-        norm_text = "".join(norm_text.split(" "))
+    # if bool(_bad_title.fullmatch(norm_text)):
+    #     norm_text = "".join(norm_text.split(" "))
 
     if norm_text and hard_norm:
         hard_text =  unicodedata.normalize('NFKD', norm_text).encode('ascii', 'ignore').decode('utf-8')
@@ -360,16 +361,6 @@ def separate_punt(text: str) -> str:
     # Une los tokens y usa space_removal para normalizar todos los espacios
     return space_removal(" ".join(processed_token_cuants))
 
-#def space_removal(text: str) -> str:
- #   """Normaliza espacios múltiples y limpia bordes."""
-  #  if not text:
-   #     return ""
-   # if " " not in text:
-   #     return text
-   # if "  " not in text:
-   #     return text.strip()
-  #  return " ".join(text.split(" "))
-
 def remove_special_sequences(text: str) -> str:
     """
     Elimina secuencias especiales de dos o más caracteres no alfanuméricos.
@@ -554,7 +545,7 @@ def get_ids(id_registro: str, id_need: str):
     """
     try:
         if id_need == "prov":
-            matches = list(_id_prov_pattern.finditer(id_registro.strip()))
+            matches = list(_id_prov_pattern.finditer(id_registro))
             return [match.group() for match in matches if _id_prov_pattern.fullmatch(match.group())][0]
         elif id_need =="name":
             return _extension_suffix.sub("", id_registro)

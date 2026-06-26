@@ -45,22 +45,17 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         try:
             final_results = self.recognize_text_from_batch(manager)
 
-            processed_count = 0
             if final_results:
                 worker_name = context.get("worker_name") or "PaddleOCRWrapper"
-                success = manager.update_ocr_results(final_results, worker_name)
-                processed_count = len(final_results) if success else 0
-                
-                if self.output:
-                    file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
-                    save_text_debug(final_results, file_name)
-            
-            logger.debug(f"Batch OCR completado. {processed_count} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
-            
-            return True
+                if manager.update_ocr_results(final_results, worker_name):
+                    logger.debug(f"Batch OCR completado. {len(final_results)} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
+                    if self.output:
+                        file_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                        save_text_debug(final_results, file_name)
+                    return True
+
         except Exception as e:
             logger.error(f"Error en paddle OCR: {e}", exc_info=True)
-            context = {}
         return False
         
     def recognize_text_from_batch(self, manager: DataFormatter) -> Dict[str, Dict[str, Any]]:

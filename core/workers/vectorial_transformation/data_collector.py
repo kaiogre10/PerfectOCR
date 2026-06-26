@@ -214,7 +214,7 @@ class FinalStructurer(VectorizationAbstractWorker):
 
         if validate_df(df, self.cant_name, self.pu_name, self.mtl_name):
             df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
-            logger.info(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
+            logger.debug(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
             return df
         else:
             return pd.DataFrame()

@@ -3,7 +3,6 @@
 #include <cstdint>
 
 extern "C" {
-    void storage_batch_flat(const uint8_t* plain_data,
-                            const size_t* len_list, 
-                            size_t total_elements);
+    uint8_t* reserve_buffer(size_t len_bytes);
+    void commit_buffer(int signal);
 }

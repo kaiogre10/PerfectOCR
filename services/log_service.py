@@ -59,7 +59,7 @@ def setup_logging(project_root: str) -> None:
     _log_root.addHandler(console_handler)
 
     # 4. Establecer el nivel global definitivo
-    _log_root.setLevel('INFO')
+    _log_root.setLevel(FILE_LEVEL)
 
 def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str, level: str, formatter: logging.Formatter) -> None:
     path = os.path.join(project_root, filename)
@@ -102,8 +102,8 @@ class TiempoFilter(logging.Filter):
             msg = record.getMessage()
             matches = _float_time.finditer(msg)
             if matches:
-                text_float = float([(match.group()[7:]) for match in matches if match.group()][0].strip())
-                record.msg = f"Total: {format_elapsed_time(text_float)}"
+                text_float = [(match.group()[7:]) for match in matches if match.group()][0].strip()
+                record.msg = f"Total: {format_elapsed_time(float(text_float))}"
                 record.args = ()
 
         return True

@@ -17,16 +17,16 @@ pipeline_secuence:
   image_preparation_stager:
     - "image_loader"
     - "angle_corrector"
-   # - "ink_enhancement"
+    # - "ink_enhancement"
     - "geometry_detector"
     - "polygon_extractor"
 
   preprocessing_stager:
- #    - "moire"
-  #  - "sp"
-   # - "gauss"
-  #  - "clahe"
-  #  - "sharp"
+    # - "moire"
+    # - "sp"
+    # - "gauss"
+    # - "clahe"
+    # - "sharp"
 
   ocr_stager:
     - "paddle_wrapper"

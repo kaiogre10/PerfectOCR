@@ -1,6 +1,6 @@
 add_library(containers SHARED 
     "containers.h" 
-    "payload_container.cpp"
+    "containers.cpp"
 )
 
 target_include_directories(containers 
