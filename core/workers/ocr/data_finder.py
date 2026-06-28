@@ -77,7 +77,7 @@ class DataFinder(OCRAbstractWorker):
             mask = mask_sc | mask_len
             skip_idx = np.compress(mask, all_idx).tolist()
 
-            for pid, poly in polygons.items():
+            for _, (pid, poly) in enumerate(polygons.items()):
                 if poly.poly_index in skip_idx:
                     # logger.info(f"{pid} Omitido: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     skipped_semantic += 1
@@ -92,8 +92,11 @@ class DataFinder(OCRAbstractWorker):
 
                 ocr_text = poly.ocr_text or ""
 
+                if len(ocr_text) < 3:
+                    continue
+
                 if not validate_text(ocr_text):
-                    # logger.info(f"Texto INVÁLIDO: '{ocr_text}' | sc: {poly.semantic_clasification}")
+                    logger.debug(f"Texto INVÁLIDO: '{ocr_text}' | sc: {poly.semantic_clasification}")
                     skipped_semantic += 1
                     continue
             
@@ -102,8 +105,7 @@ class DataFinder(OCRAbstractWorker):
                     if not valid_results:
                         continue
                     
-                    # num_keywords = len(valid_results)
-                    logger.debug(f"VALID RESULTS: {valid_results}")
+                    logger.info(f"VALID RESULTS: {valid_results}")
                     left_overs: List[str] = []
                     if any(k['key_field'] == 6 for k in valid_results):
                         key_field = [results['key_field'] for results in valid_results]
@@ -135,7 +137,7 @@ class DataFinder(OCRAbstractWorker):
                         continue
                         
             if polygon_updates:
-                logger.debug(f"KEY FIELDS ENCONTRADOS: '{len(polygon_updates)}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                logger.info(f"KEY FIELDS ENCONTRADOS: '{polygon_updates}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
                 return polygon_updates
                 # return self.get_key_fields_values(manager, polygon_updates)
             else:
@@ -144,7 +146,7 @@ class DataFinder(OCRAbstractWorker):
 
         except ValueError as e:
             logger.warning(f"Error encontrando keyfields: {e}")
-        return {}
+            return {}
         
     def get_key_fields_values(self, manager: DataFormatter, polygon_updates: Dict[str, List[int]]) -> Dict[str, List[int]]:
         polygons = manager.workflow.polygons if manager.workflow else {}

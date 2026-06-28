@@ -119,9 +119,10 @@ class ConfigBuilder:
         
     @cached_property
     def models_config(self) -> Dict[str, Any]:
+        models_config = self.config.get("models_config", {})
         if self.no_activate_modules:
             return {
-                "models_config": self.config.get("models_config", {}),
+                "models_config": models_config,
                 "activate_wf": True,
                 "activate_rec": True,
                 "activate_det": True
@@ -131,30 +132,30 @@ class ConfigBuilder:
             return {}
 
         if det not in self.all_workers:
-            #logger.debug("Configuración: Sin geometry_detector, no se cargan modelos")
+            # log_simple("Configuración: Sin geometry_detector, no se cargan modelos")
             return {}
 
         if full_ocr.issubset(self.all_workers):
-            #logger.debug("Configuración: OCR completo + Word Finder")
+            # log_simple("Configuración: OCR completo + Word Finder")
             return {
-                "models_config": self.config.get("models_config", {}),
+                "models_config": models_config,
                 "activate_wf": True,
                 "activate_rec": True,
                 "activate_det": True
             }
 
         if self.active_full_ocr:
-            #logger.debug("Configuración: OCR completo sin Word Finder")
+            # log_simple("Configuración: OCR completo sin Word Finder")
             return {
-                "models_config": self.config.get("models_config", {}),
+                "models_config": models_config,
                 "activate_wf": False,
                 "activate_rec": True,
                 "activate_det": True
             }
 
-        #logger.debug("Configuración: Solo modelo de detección")
+        # log_simple("Configuración: Solo modelo de detección")
         return {
-            "models_config": self.config.get("models_config", {}),
+            "models_config": models_config,
             "activate_wf": False,
             "activate_rec": False,
             "activate_det": True

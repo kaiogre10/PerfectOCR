@@ -134,7 +134,7 @@ class ModelsBuilder:
         try:
             self._word_finder = WordFinder(
                 model_path=model_dir,
-                set_params=models_config.get("set_wf_params", False)
+                project_root=project_root
             )
             return True
         except ImportError as e:

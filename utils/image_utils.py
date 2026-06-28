@@ -99,39 +99,6 @@ def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any,
 def validate_image(img: Optional[np.ndarray[Any, Any]]) -> bool:
     return bool(7 < int(np.mean(img)) < 251) if img is not None else False
 
-def cropp_img(full_img: np.ndarray[Any, np.dtype[np.uint8]], all_bboxes: List[np.ndarray[Any, Any]] | np.ndarray[Any, Any], padding: Optional[int] = None) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    img_h = full_img.shape[0]
-    img_w = full_img.shape[1]
-
-    if padding is None:
-        padding = 1
-
-    bboxes_array = np.array(all_bboxes).astype(np.int16)
-
-    # logger.info(f"{bboxes_array.shape}")
-
-    if bboxes_array.ndim == 1 and bboxes_array.shape[0] == 4:
-        bboxes_array = bboxes_array.reshape(1, 4)
-
-    x1, y1, x2, y2 = bboxes_array[:, 0], bboxes_array[:, 1], bboxes_array[:, 2], bboxes_array[:, 3]
-
-    valid_dims = (x2 >= x1) & (y2 >= y1)
-
-    if not np.any(valid_dims):
-        logger.warning("Dimensiones no validas")
-
-    # Aplicar padding y clipping
-    px1 = max(0, int(np.min(x1 - padding)))
-    py1 = max(0, int(np.min(y1 - padding)))
-    px2 = min(img_w, int(np.max(x2 + padding)))
-    py2 = min(img_h, int(np.max(y2 + padding)))
-
-    crop_x1, crop_y1 = px1, py1
-    crop_x2, crop_y2 = px2, py2
-
-    cropped: np.ndarray[Any, np.dtype[np.uint8]] = make_contiguous(full_img[crop_y1:crop_y2, crop_x1:crop_x2])
-    return cropped
-
 def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:
     return make_contiguous(cv2.bilateralFilter(img, d, sigma_color, sigma_space))
 

@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 from app.models_builder import ModelsBuilder
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.image_utils import binarice_img, make_contiguous, cropp_img # get_contours_values
+from utils.image_utils import binarice_img, make_contiguous # get_contours_values
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -23,8 +23,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         kernel_threshold = worker_config["morph_kernel"]
         self.kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_threshold[0], kernel_threshold[1]))
         self.iterations = worker_config.get("iterations")
-        self.output = config.get("deleted_polys")
-        self.output2 = config.get("opened")
+        self.output = config.get("opened")
         self._engine = None
             
     @property
@@ -41,7 +40,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         start_time = time.perf_counter()
-        worker_name = context.get("worker_name") or "geometry_detector"
         try:
             engine = self.engine
             if engine is None:
@@ -59,10 +57,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
             img = make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, self.kernel, iterations=self.iterations))
 
-            if self.output2:
+            if self.output:
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
                 # imag_id = f"opened_{image_name}_{worker_name}"
-                img_id = f"bin_img_{image_name}_{worker_name}_+1"
+                img_id = f"bin_img_{image_name}"
                 save_croped_image(image_name, img_id, img)
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
@@ -86,11 +84,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 centroid = np.mean(coords, axis=0, dtype=np.float32)
 
                 # geometry_array[idx, [0, 1, 2, 3, 4, 5]] = bbox[0], bbox[1], bbox[2], bbox[3], centroid[0], centroid[1]
-                if self.output:
-                    cropped = cropp_img(img, bbox)
-                    pid = f"{poly_id}_{worker_name}"
-                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    save_croped_image(image_name, pid, cropped)
             
                 polygons_list.append({
                     "poly_index": idx,
@@ -115,7 +108,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             else:
-                # logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
+                logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
                 return True
         
         except Exception as e:

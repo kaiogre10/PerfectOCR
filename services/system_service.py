@@ -16,7 +16,7 @@ invalid_extensions: List[str] = [".txt", ".webp"]
 trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", ".log", ".prof")
 cache_dirs = ["__pycache__", ".pytest_cache", "build"]
 excluded_dirs = ["components", "bin", "documentation", "models", "safe_temp"]
-no_del: Tuple[str, ...] = (".py", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml")
+no_del: Tuple[str, ...] = (".py", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy")
 all_files_types: Set[str] = set(invalid_extensions).union(valid_img_ext, trash_ext, no_del)
 
 logger = logging.getLogger(__name__)

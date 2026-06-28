@@ -48,7 +48,6 @@ class DebugOutputs(ConfigWithNumpy):
 
 class ImgLoadOutputs(ConfigWithNumpy):
     full_img: bool
-    deleted_polys: bool
     bin_full_img: bool
     angle_corrected: bool
     cropped_img: bool
@@ -98,12 +97,19 @@ class ModelsConfig(ConfigWithNumpy):
     det_model_dir: List[str]
     rec_model_dir: List[str]
     wf_model_path: List[str]
-    set_wf_params: bool
     det_db_score_mode: str
     use_mp: bool
     max_text_length: int
     return_word_box: bool
     save_log_path: str
+    data_path: List[str]
+    matrix_path: str
+    ngrams_path: List[str]
+    ngrams_name: str
+    data: str
+    indices: str
+    indptr: str
+    mtx_shape: str
     
 class InkConfig(ConfigWithNumpy):
     white: List[int]
