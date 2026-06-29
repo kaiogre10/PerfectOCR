@@ -34,7 +34,7 @@ pipeline_secuence:
     - "data_finder"
     
   vectorization_stager:
-    # - "lineal"
+    - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
