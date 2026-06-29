@@ -133,7 +133,7 @@ class ModelsBuilder:
 
         try:
             self._word_finder = WordFinder(
-                model_path=model_dir,
+                config=models_config,
                 project_root=project_root
             )
             return True

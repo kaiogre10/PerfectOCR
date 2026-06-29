@@ -34,11 +34,11 @@ pipeline_secuence:
     - "data_finder"
     
   vectorization_stager:
-    - "lineal"
+    # - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-    - "collector"
+    # - "collector"
        
 log_debug:
   all_logs: False    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
@@ -58,7 +58,7 @@ log_debug:
   time_worker_log: False
   
   semantic_types_log: [2,3,4,5]
-  kf_list_log: [-1]
+  kf_list_log: [1, 2, 3, 4, 6]
 
 # Configuración de salida
 enabled_outputs:
@@ -115,7 +115,7 @@ models_config:
   wf_model_path: ["models", "wf", "wf_model.pkl"]
   data_path: ['models', 'wf', 'matrixes']
   matrix_path: "matrixes"
-  ngrams_path: ["ngrams"]
+  ngrams_path: ["models", "wf", "ngrams", "all_ngrams.npz"]
   ngrams_name: '_ngrams'
   data: "data.npy"
   indices: "indices.npy"

@@ -108,12 +108,11 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             else:
-                logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
+                logger.debug(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
                 return True
         
         except Exception as e:
             logger.critical(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
-        context = {}
         return False
 
     # def validate_polygons(self, img: np.ndarray[Any, np.dtype[np.uint8]], polygons_list: List[Dict[str, Any]], manager: DataFormatter, context: Dict[str, Any]) -> List[Dict[str, Any]]:

@@ -20,7 +20,7 @@ cdef inline bint _is_cuant_char(Py_UCS4 char_code) nogil:
     return (_is_decimal_char(char_code)) or ((char_code == 44) or (char_code == 36) or (char_code == 46))
 
 cpdef bint validate_quant_chars(str text):
-    """Valida todos si todos los caracteres de un string son cuantitativos"""
+    """Valida todos si todos los caracteres de un string son cuantitativos y hay por lo menos un decimal"""
     cdef Py_ssize_t text_len = len(text)
     cdef Py_ssize_t i
     cdef Py_UCS4 char_code

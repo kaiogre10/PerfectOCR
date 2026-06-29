@@ -8,7 +8,9 @@ from domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
 from utils.compiled_utils import validate_text
+from utils.patterns import cleaner_pattern
 
+_cleaner_pattern = cleaner_pattern
 kf_decimals = {1, 2, 3, 4, 8}
 kf_relocatables = set(kf_decimals.union({7}))
 kf_ignored = {6, 9}
@@ -87,14 +89,17 @@ class DataFinder(OCRAbstractWorker):
                 kf = poly.key_field or None
                 if kf is not None:
                     skipped_semantic += 1
-                    logger.debug(f"KeyField redundante en WODR FINDER {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
+                    logger.error(f"KeyField redundante en WODR FINDER {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     continue
 
                 ocr_text = poly.ocr_text or ""
 
-                if len(ocr_text) < 3:
+                if len(ocr_text) < 2:
                     continue
 
+                if not ocr_text.isalpha():
+                    ocr_text = _cleaner_pattern.sub("", ocr_text).strip()
+                
                 if not validate_text(ocr_text):
                     logger.debug(f"Texto INVÁLIDO: '{ocr_text}' | sc: {poly.semantic_clasification}")
                     skipped_semantic += 1
@@ -105,7 +110,7 @@ class DataFinder(OCRAbstractWorker):
                     if not valid_results:
                         continue
                     
-                    logger.info(f"VALID RESULTS: {valid_results}")
+                    logger.debug(f"VALID RESULTS: {valid_results}")
                     left_overs: List[str] = []
                     if any(k['key_field'] == 6 for k in valid_results):
                         key_field = [results['key_field'] for results in valid_results]
@@ -122,11 +127,12 @@ class DataFinder(OCRAbstractWorker):
                         cursor = 0
                         for start, end in covered:
                             gap = full_text[cursor:start].strip()
-                            if gap:
+                            if gap and len(gap) > 2:
                                 left_overs.append(gap)
                             cursor = max(cursor, end)
+                            
                         tail = full_text[cursor:].strip()
-                        if tail:
+                        if tail and len(tail) > 2:
                             left_overs.append(tail)
 
                         polygon_updates[pid] = key_field + [6] * len(left_overs)
@@ -137,7 +143,7 @@ class DataFinder(OCRAbstractWorker):
                         continue
                         
             if polygon_updates:
-                logger.info(f"KEY FIELDS ENCONTRADOS: '{polygon_updates}', en: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones")
+                logger.debug(f"{len(polygon_updates)} KEY FIELDS ENCONTRADOS EN: {time.perf_counter() - time0:.6}'s, {skipped_semantic} omisiones:\n"f"{polygon_updates}")
                 return polygon_updates
                 # return self.get_key_fields_values(manager, polygon_updates)
             else:

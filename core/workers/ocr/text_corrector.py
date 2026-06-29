@@ -6,9 +6,11 @@ from domain.data_formatter import DataFormatter
 from domain.abstract_worker import OCRAbstractWorker
 from utils.text_utils import find_umd, fast_classfier, correct_subfix
 from utils.data_utils import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
+from utils.patterns import bad_title
 from utils.compiled_utils import validate_text
 from string import ascii_lowercase, ascii_uppercase
 
+_bad_title = bad_title
 numeric_corrections = NUMERIC_CORRECTIONS
 umd_corrects = UMD_CORRECTIONS
 
@@ -89,7 +91,16 @@ class TextCorrector(OCRAbstractWorker):
         
     def _apply_corrections(self, text: str, semantic_clasification: List[int]) -> str:
         text = text.strip()
-        tokens = text.split(' ')
+        if " " in text:
+            if bool(_bad_title.fullmatch(text)):
+                text = text.replace(" ", "").strip()
+                tokens = [text]
+
+            tokens = text.split(' ')
+            
+        else:
+            tokens = [text]
+
         total_tokens = len(tokens)
         corrected_tokens: List[str] = []
 
@@ -98,6 +109,7 @@ class TextCorrector(OCRAbstractWorker):
 
         elif total_tokens == 1:
             return self.correct_cases(self._correct_token(text, semantic_clasification[0]))
+        
         else:
             for i, token in enumerate(tokens):
                 token_sc = semantic_clasification[i]

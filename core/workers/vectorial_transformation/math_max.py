@@ -52,7 +52,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 return False
 
             if manager.save_final_output(corrected_df, {}):
-                logger.info(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
+                logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
                 logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow.metadata else ""

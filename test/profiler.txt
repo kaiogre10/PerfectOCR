@@ -1,4 +1,4 @@
-
+python -m pstats output.prof
 COMANDOS DE ORDENAMIENTO (SORT):
 ----------------------------------
 sort tottime    - Ordena por tiempo neto de la función (sin subfunciones)

@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 density_thr = (23.7, 103.7)
 morph_thr = (-0.297, 0.337)
 
-# _space_pattern = space_pattern
-# _bad_title = bad_title
 _numeric_fractions = numeric_fractions
 _has_digit_pattern = has_digit_pattern
 _extension_suffix = extension_suffix
@@ -66,13 +64,11 @@ def normalice_text(s: str, hard_norm: bool) -> str:
         return ""
 
     norm_text = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
-    # if bool(_bad_title.fullmatch(norm_text)):
-    #     norm_text = "".join(norm_text.split(" "))
 
     if norm_text and hard_norm:
-        hard_text =  unicodedata.normalize('NFKD', norm_text).encode('ascii', 'ignore').decode('utf-8')
+        hard_text = unicodedata.normalize('NFKD', norm_text).encode('ascii', 'ignore').decode('utf-8')
         return norm_text if not hard_text else hard_text
-    return norm_text if norm_text else ""
+    return space_removal(norm_text) if norm_text else ""
     
 def get_rfc(s: str) -> str:
     if not s:
