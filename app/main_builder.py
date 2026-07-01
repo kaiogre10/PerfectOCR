@@ -72,7 +72,6 @@ class MainBuilder:
         logger.error(f"'{total_images}' IMAGENES PARA PROCESAR")
 
         succes_images: List[str] = []
-        images_names = [names["name"][:-4] for names in workflow_report]
         final_results: List[Tuple[bitmath.Any, int]] = []
 
         payloads_buffer: bitmath.Byte = bitmath.Byte(0)
@@ -81,18 +80,17 @@ class MainBuilder:
         start_time = time.perf_counter()
         for i, image_data in enumerate(workflow_report):
             # Procesar imagen individualmente
-            payload_size = builder.process_single_image(image_data)
+            payload = builder.process_single_image(image_data)
             logger.warning(f"Procesadas: {(i + 1)} de '{total_images}' imágenes")
-            if payload_size is None:
-                logger.info(f"Fallo al procesar imagen: '{images_names[i]}'")
+            if payload is None:
+                logger.info(f"Fallo al procesar imagen: '{image_data.get("name")}'")
                 continue
             else:
-                image_name = images_names[i]
-                succes_images.append(image_name)
-                logger.info(f"IMAGEN '{image_name}' PROCESADA CON EXITO")
+                succes_images.append(payload[0])
+                logger.info(f"IMAGEN '{payload[0]}' PROCESADA CON EXITO")
                 payload_cunter += 1
 
-                payload_size = bitmath.Byte(sum(payload_size))
+                payload_size = bitmath.Byte(payload[1])
                 if total_images == 1:
                     payloads_buffer += payload_size
                     payloads_sended = self.send_payload_pack(payloads_buffer, payload_cunter)
@@ -112,8 +110,8 @@ class MainBuilder:
         total_processing_time = time.perf_counter() - start_time
         del builder
         mean_process = f"{(total_processing_time / total_images):.6f}"
-
-        failed_images = set(images_names).difference(set(succes_images))
+        
+        failed_images = {names["name"][:-4] for names in workflow_report}.difference(set(succes_images))
         total_fails = len(failed_images)
         
         if total_fails == 0:
@@ -124,8 +122,8 @@ class MainBuilder:
 
         else:
             logger.warning(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
-            # logger.info(f"IMAGENES EXITOSAS:\n"f"{succes_images}\n"f"----------------------------")
-            logger.info(f"IMAGENES FALLIDAS:\n"f"{failed_images}\n"f"----------------------------")
+            logger.debug(f"IMAGENES EXITOSAS:\n"f"{succes_images}\n"f"----------------------------")
+            logger.debug(f"IMAGENES FALLIDAS:\n"f"{failed_images}\n"f"----------------------------")
 
         for result in final_results:
             logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")

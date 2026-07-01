@@ -53,7 +53,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             if manager.save_final_output(corrected_df, {}):
                 logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
-                logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
+                logger.debug(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow.metadata else ""
                     save_debug_table(corrected_df, file_name, None, None)
@@ -93,11 +93,11 @@ class MatrixSolver(VectorizationAbstractWorker):
             text_col: str = cols_list[int(text_col_idx[0])]
             df.rename(columns={text_col: self.product_name}, inplace = True)
             if check_full_df(df):
-                logger.info("DF PERFECTO")
+                logger.debug("DF PERFECTO")
                 return df
         else:
             if df.shape == (arithmetical_rows.size, arithmetical_cols.size):
-                logger.info(f"DF INCOMPLETO")
+                logger.debug(f"DF INCOMPLETO")
                 df_art, context_art = self.solve_incomplete(df, context)
                 if df_art.empty:
                     context = {}
@@ -109,7 +109,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         df, context = self.find_hypotesis(df, context)
 
         if df.empty:
-            logger.info(f"SIN HIPOTESIS VÁLIDA")
+            logger.warning("SIN HIPOTESIS VÁLIDA")
             return pd.DataFrame()
 
         # logger.info("RENAMED:\n" + df.to_string(index=True))

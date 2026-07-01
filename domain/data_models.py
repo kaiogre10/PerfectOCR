@@ -93,5 +93,4 @@ class WorkflowData:
 @dataclass(slots=True)
 class Payload:
     payload: Optional[str]
-    buffer_sizes: Optional[List[int]]
     name: Optional[str]

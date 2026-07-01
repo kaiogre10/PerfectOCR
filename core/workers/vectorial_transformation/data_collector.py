@@ -42,7 +42,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                 
             payload = self.transform_data(df)
 
-            if manager.store_payload([payload[0], payload[1], image_name]):
+            if manager.store_payload([payload, image_name]):
                 return True
         except Exception as e:
             logger.error(f"Error recolectando datos: '{e}'", exc_info=True)
@@ -219,22 +219,16 @@ class FinalStructurer(VectorizationAbstractWorker):
         else:
             return pd.DataFrame()
     
-    def transform_data(self, df: pd.DataFrame) -> Tuple[List[int], str]:
+    def transform_data(self, df: pd.DataFrame) -> str:
         """Devuelve tamaño de cada fila y el df aplanado"""
         plain_df: List[str] = []
-        buffer_sizes: List[int] = []
 
         for _, fila in enumerate(df.itertuples(index=False, name=None)):
             fila = list(fila)
 
             string_row = "".join(fila)
-
-            # Al multiplicar por 2 evitamos codificar celda por celda en el bucle para utf-16
-            buff_size_bytes = len(string_row) * 2
-
             plain_df.append(string_row)
-            buffer_sizes.append(buff_size_bytes)
 
         plain_text = "".join(plain_df)
         #logger.info(f"TAMAÑO: '{buffer_sizes}' PLAIN TEXT:\n"f"'{plain_text}'")
-        return buffer_sizes, plain_text
+        return plain_text

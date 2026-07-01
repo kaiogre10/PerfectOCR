@@ -146,7 +146,7 @@ class WordFinder:
                         continue
 
                     if q == cand:
-                        logger.info(f"MATCH TEMPRANO: '{q}'")
+                        # logger.info(f"MATCH TEMPRANO: '{q}'")
                         found_matches_for_s.append(self._set_results(key_field, q, 1.0, str(text), q, 0, len(q)))
 
                     # for n in range(self.ngrams[0], (self.ngrams[1] + 1)):

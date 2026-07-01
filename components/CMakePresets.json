@@ -7,17 +7,32 @@
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
-      "name": "windows-oneapi",
+      "name": "base-windows-oneapi",
       "inherits": "base-global",
-      "displayName": "Windows - Intel OneAPI",
-      "description": "Usa OneAPI x64 en Windows",
-      "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
-      "toolset": "Intel C++ Compiler 2026",
+      "hidden": true,
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-oneapi-vs",
+      "inherits": "base-windows-oneapi",
+      "displayName": "Windows - OneAPI (Visual Studio)",
+      "description": "Usa MSBuild y Toolset de Intel en VS 2026",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "toolset": "Intel C++ Compiler 2026"
+    },
+    {
+      "name": "windows-oneapi-clion",
+      "inherits": "base-windows-oneapi",
+      "displayName": "Windows - OneAPI (CLion/Ninja)",
+      "description": "Usa Ninja y compiladores icx nativos en CLion",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "icx"
       }
     },
     {
@@ -69,15 +84,45 @@
   ],
   "buildPresets": [
     {
-      "name": "win-oneapi-release",
-      "displayName": "Release (Windows OneAPI)",
-      "configurePreset": "windows-oneapi",
+      "name": "win-oneapi-vs-release",
+      "displayName": "Release (VS OneAPI)",
+      "configurePreset": "windows-oneapi-vs",
       "configuration": "Release"
     },
     {
-      "name": "win-oneapi-debug",
-      "displayName": "Debug (Windows OneAPI)",
-      "configurePreset": "windows-oneapi",
+      "name": "win-oneapi-vs-debug",
+      "displayName": "Debug (VS OneAPI)",
+      "configurePreset": "windows-oneapi-vs",
+      "configuration": "Debug"
+    },
+    {
+      "name": "win-oneapi-vs-relwithdebinfo",
+      "displayName": "RelWithDebInfo (VS OneAPI)",
+      "configurePreset": "windows-oneapi-vs",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "win-oneapi-clion-release",
+      "displayName": "Release (CLion OneAPI)",
+      "configurePreset": "windows-oneapi-clion",
+      "configuration": "Release"
+    },
+    {
+      "name": "win-oneapi-clion-debug",
+      "displayName": "Debug (CLion OneAPI)",
+      "configurePreset": "windows-oneapi-clion",
+      "configuration": "Debug"
+    },
+    {
+      "name": "win-oneapi-clion-relwithdebinfo",
+      "displayName": "RelWithDebInfo (CLion OneAPI)",
+      "configurePreset": "windows-oneapi-clion",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "win-msvc-debug",
+      "displayName": "Debug (Windows MSVC)",
+      "configurePreset": "windows-msvc",
       "configuration": "Debug"
     },
     {
@@ -85,12 +130,6 @@
       "displayName": "Release (Windows MSVC)",
       "configurePreset": "windows-msvc",
       "configuration": "Release"
-    },
-    {
-      "name": "win-msvc-debug",
-      "displayName": "Debug (Windows MSVC)",
-      "configurePreset": "windows-msvc",
-      "configuration": "Debug"
     },
     {
       "name": "linux-oneapi-debug",

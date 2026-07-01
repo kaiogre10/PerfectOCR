@@ -1,12 +1,14 @@
-conda create -n intel --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python=3.12 numpy=1.26.4 pip conda scipy pandas scikit-learn intel-opencl-rt ipp dpcpp-cpp-rt icc_rt cython mkl pythran pydantic scikit-image python-dotenv psycopg2 scipy
+conda create -n intel --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python=3.12 numpy=1.26.4 pip conda scipy pandas scikit-learn intel-opencl-rt ipp dpcpp-cpp-rt cython mkl -y
 
-conda install -c https://software.repos.intel.com/python/conda/ opencv=4.11.0
+conda install -c https://software.repos.intel.com/python/conda/ opencv=4.11.0 -y
 
-conda install paddlepaddle==2.6.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ 
+conda install paddlepaddle==2.6.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -y
 
 pip install paddleocr==2.8.1
 
+conda install pythran pydantic scikit-image python-dotenv psycopg2 -y
+
 pip install bitmath # <-- Opcional, se puede gestionar la estimación del tamaño de los payloads de manera manual
 
-conda install commentjson # <-- Solo para desarrollo y similación de configuración externa
+conda install commentjson  # <-- Solo para desarrollo y similación de configuración externa
 python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython

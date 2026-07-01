@@ -239,10 +239,12 @@ class DataFormatter:
 
             if self.text_ocr_log and (worker == "PaddleOCRWrapper" or worker == "paddle_wrapper"):
                 polys = self.workflow.polygons if self.workflow else None
-                logger.info("------TEXTO OCR RAW------")
-                for pid, poly, in polys.items():
-                    logger.info(f"{pid}: '{poly.ocr_text}'")
-                logger.info("------FIN DEL TEXTO OCR RAW------")
+                if polys:
+                    
+                    logger.info("------TEXTO OCR RAW------")
+                    for pid, poly, in polys.items():
+                        logger.info(f"{pid}: '{poly.ocr_text}'")
+                    logger.info("------FIN DEL TEXTO OCR RAW------")
             return True
         except Exception as e:
             logger.error(f"Error actualizando resultados OCR: {e}", exc_info=True)
@@ -423,7 +425,7 @@ class DataFormatter:
                 if self.table_correct_log:
                     table_f = self.workflow.table_data.df_table
                     global_data = self.workflow.table_data.global_data
-                    logger.debug("Tabla recibida:\n"f"{table_f.to_string(index=True)}"
+                    logger.debug("Tabla recibida:\n"f"{table_f.to_string(index=True)}" # type: ignore
                     "\n"f"GLOBAL_DATA:\n"f"{global_data}")
                 return True
             
@@ -446,12 +448,11 @@ class DataFormatter:
             logger.error(f"Error guardando structured_table en memoria: {e}", exc_info=True)
         return False
     
-    def store_payload(self, payloads: List[Any]):
+    def store_payload(self, payloads: List[str]):
         try:
-            buffer_sizes = payloads[0]
-            payload = payloads[1]
-            image_name = payloads[2]
-            payload = Payload(buffer_sizes=buffer_sizes, payload=payload, name=image_name)
+            payload = payloads[0]
+            image_name = payloads[1]
+            payload = Payload(payload=payload, name=image_name)
             self.payload = dataclasses.replace(payload)
             return True
         except ValueError as e:

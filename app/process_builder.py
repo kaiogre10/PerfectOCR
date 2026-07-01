@@ -1,7 +1,7 @@
 # PerfectOCR/app/process_builder.py
 import logging
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from domain.data_formatter import DataFormatter
 from services.storage_service import storage_data
 from services.output_service import write_temp_log
@@ -20,7 +20,7 @@ class ProcessingBuilder:
         self.all_stagers = all_stagers
         self.logs_debug = logs_debug
         
-    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[List[int]]:
+    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[str, int]]:
         """
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
         Recibe image_data para configurar el contexto de esta ejecución específica.
@@ -51,27 +51,34 @@ class ProcessingBuilder:
 
             name = manager.payload.name if manager.payload else None
             plain_text = manager.payload.payload if manager.payload else None
-            buffer_size = manager.payload.buffer_sizes if manager.payload else None
 
-            if plain_text is None or buffer_size is None or name is None:
+            if plain_text is None or name is None:
                 if manager is None:
                     logger.info(f"ERROR")
                     return None
                 else:
                     manager.reset_data()
                     logger.info(f"Proceso correcto con early return, se deuelve datos MOCK para debug")
-                    return [0]
-            
-            elif self.logs_debug.get("handle_memory"):
-                if storage_data(plain_text, buffer_size) and write_temp_log((name, plain_text)):
+                    return "", 0
+                
+            elif write_temp_log((name, plain_text)):
+                if self.logs_debug.get("handle_memory"):
+                    buff_size = storage_data(plain_text)
+                    if buff_size is not None:
+                        logger.warning(f"PAYLOAD GUARDADO EN MEMORIA: '{buff_size} B', Y EN ARCHIVO DE SEGURIDAD")
+                        return name, buff_size
+                    
                     manager.reset_data()
-                    logger.debug("PAYLOAD GUARDADO EN MEMORIA Y EN ARCHIVO DE SEGURIDAD")
-                    return buffer_size
-                return None
+                    return None
+                
+                else:
+                    manager.reset_data()
+                    logger.info(f"NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
+                    return name, len(plain_text.encode("ascii")) * 2
             else:
+                logger.error(f"NO SE PUDO GENERAR ARCHIVO DE SEGURIDAD")
                 manager.reset_data()
-                logger.debug(f"NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
-                return buffer_size
+                return None
             
         except Exception as e:
             logger.error(f"Error fatal procesando la imagen: '{e}'", exc_info=True)

@@ -92,7 +92,7 @@ def clear_output_folders() -> None:
     if not ok:
         logger.warning("Limpieza abortada: hay rutas sin permisos. No se eliminó nada.")
         for p in blocked:
-            logger.warning(f"Sin permisos: {p}")
+            logger.warning(f"Sin permisos: '{p}'")
             continue
 
     logger.debug("Limpieza Inicial: Vaciando carpetas de salida")
@@ -110,13 +110,13 @@ def clear_output_folders() -> None:
 
                     shutil.rmtree(item_path)
                     deleted_folder += 1
-                    logger.debug(f"Carpeta eliminada: {item_path}")
+                    logger.info(f"Carpeta eliminada: {item_path}")
                 else:
                     ext = os.path.splitext(item_name)[1].lower()
                     if ext in all_files_types:
                         os.remove(item_path)
                         deleted_files += 1
-                        logger.debug(f"Archivo eliminado: {item_path}")
+                        logger.info(f"Archivo eliminado: {item_path}")
                     else:
                         logger.debug(f"Saltado por extensión no permitida: {item_path}")
 
@@ -124,7 +124,7 @@ def clear_output_folders() -> None:
                 basic_exc_logger(f"Error al eliminar {item_path}: {e}", exc_info=True)
                 return
 
-        logger.debug(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
+        logger.info(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
 
 def cleanup_project_cache(aditional_files: Optional[str] = None):
     """Elimina la caché y residuos del proyecto """
@@ -142,7 +142,7 @@ def cleanup_project_cache(aditional_files: Optional[str] = None):
                         cache_path = os.path.join(dirpath, d)
                         shutil.rmtree(cache_path)
                         dirnames.remove(d)
-                        #basic_exc_logger(f"DIRECTORIO ELIMINADO: {cache_path}")
+                        # basic_exc_logger(f"DIRECTORIO ELIMINADO: {cache_path}")
                     except FileNotFoundError as e:
                         basic_exc_logger(f"Error al eliminar '{cache_path}': {e}", exc_info=True) # type: ignore
                         continue

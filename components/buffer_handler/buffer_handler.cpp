@@ -2,7 +2,6 @@
 #include "../containers/containers.h"
 #include <vector>
 #include <cstdint>
-#include <cstdlib>
 #include <mutex>
 #include <iostream>
 
@@ -13,14 +12,14 @@ namespace {
     void storage_batch_flat(uint8_t* buffer_ptr,
                                 size_t buffer_size) {
         if (!buffer_ptr || !buffer_size) return;
-        printf("ptr: %p, size: %zu\n", buffer_ptr, buffer_size);
+        printf("[BUFFER HANDLER LOG] ptr: %p, size: %zu\n", buffer_ptr, buffer_size);
         std::vector<uint8_t> plain_payload(buffer_ptr, buffer_ptr + buffer_size);
         for (uint8_t byte : plain_payload) {
             std::cout << (char)byte;
         }
         std::cout << std::flush;
-        push(std::move(plain_payload));
         std::cout << "\nSize: " << plain_payload.size() << "\n";
+        push(std::move(plain_payload));
     }
 }
 
@@ -31,15 +30,17 @@ extern "C" {
         return buffer_ptr;
     }
     void commit_buffer(int signal) {
-        try {
-            storage_batch_flat(buffer_ptr, buffer_size);
-            delete[] buffer_ptr;
+        if (signal > 0) {
+            try {
+                storage_batch_flat(buffer_ptr, buffer_size);
+                delete[] buffer_ptr;
+            }
+            catch (...) {
+                delete[] buffer_ptr;
+            }
+            buffer_ptr = nullptr;
+            buffer_size = 0;
         }
-        catch (...) {
-            delete[] buffer_ptr;
-        }
-        buffer_ptr = nullptr;
-        buffer_size = 0;
     }
 }
 

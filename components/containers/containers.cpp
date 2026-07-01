@@ -9,12 +9,13 @@ struct PayloadContainer {
     std::queue<std::vector<uint8_t>> payload_container;
     std::mutex mtx;
 };
+
 static PayloadContainer* g_canal = nullptr;
 
 extern "C" {
-    void container_create(int trigger) {
+    void container_create(const int trigger) {
         if (trigger > 0 && g_canal == nullptr) {
-            printf("[LOG]: PAYLOAD: %p\n", g_canal);
+            printf("[CONTAINER LOG]: PAYLOAD: %p\n", g_canal);
             g_canal = new PayloadContainer(); // El contenedor nace vacío en el heap
         }
     }

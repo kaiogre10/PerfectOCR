@@ -1,19 +1,20 @@
+
 {
   "user_requests": {
     "dirs": {
       "input_dirs": [
-        "input",
+        // "input",
         "input2",
-        "input3"
+        // "input3"
       ],
       "images_names": [
 //       "AAAA0040" 
       //        "AAAA0061",
           //  "AAAA0006"
-              // "AAAC0030",
-      //      "AAAC0043",
-      //       "AAAA0058",
-//          "AAAC0037"
+          //     "AAAC0030",
+          //  "AAAC0043",
+        //     "AAAA0038",
+        //  "AAAC0037"
           //  "AAAA0059",
       //       "AAAB0002",
       //        "AAAC0010",

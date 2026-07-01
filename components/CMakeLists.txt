@@ -12,9 +12,16 @@ option(BUILD_SHARED_LIBS "Fuerza la compilación de librerías dinámicas" ON)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
     message(STATUS "Intel OneAPI detectado. Activando optimización de arquitectura host.")
-    # -xHost fuerza a que el compilador use las instrucciones AVX nativas de TU procesador
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -xHost")
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -xHost")
+
+    if(WIN32)
+        # Sintaxis MSVC requerida para el generador de Visual Studio
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O3 /QxHost")
+        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O3 /QxHost")
+    else()
+        # Sintaxis GNU/Clang requerida para Ninja en Linux
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -xHost")
+        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -xHost")
+    endif()
 endif()
 
 # Preparamos una variable global con las librerías del kernel que requiere cada OS
