@@ -5,4 +5,5 @@
 extern "C" {
     uint8_t* reserve_buffer(size_t len_bytes);
     void commit_buffer(int signal);
+    void send_payloads(int trigger);
 }

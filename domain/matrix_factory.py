@@ -5,7 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class MatrizSimilitudMapeada:
+class MappedMatrix:
     """
     Contenedor inmutable que encapsula los componentes binarios 
     de una matriz dispersa indexada en disco.
@@ -16,26 +16,23 @@ class MatrizSimilitudMapeada:
         self.indptr = np.load(os.path.join(ruta_directorio, "indptr.npy"), mmap_mode='r')
         self.shape = np.load(os.path.join(ruta_directorio, "mtx_shape.npy"))
 
-class MotorMatricesControl:
+class MatrixManager:
     """
     Componente centralizado que gestiona y mantiene en memoria persistente
     las matrices de control segmentadas por longitud.
     """
     def __init__(self, project_root: str, config: Dict[str, Any]):
         # Extracción del subdirectorio destino desde el objeto de configuración
-        # Ejemplo esperado de estructura: config = {"matrix_folder": "matrices_control"}
         self.matrix_folder = config.get("matrix_path", "")
         output_path = config["data_path"]
-        # Resolución de la ruta absoluta del repositorio de almacenamiento
         self.matrix_path = os.path.join(project_root, *output_path)
         # logger.info(f"{self.matrix_path}")
         # Estructura de datos persistente para el almacenamiento indexado de las instancias
-        self.registro_matrices: Dict[int, Any] = {}
+        self.matrix_registry: Dict[int, Any] = {}
         
-        # Ejecución mandatoria del mapeo en el arranque de la instancia
-        self._inicializar_carga_persistente()
+        self._load_matrixes()
 
-    def _inicializar_carga_persistente(self):
+    def _load_matrixes(self):
         """
         Escanea el directorio físico resuelto y consolida los mapas de memoria 
         dentro del estado interno del objeto.
@@ -44,17 +41,17 @@ class MotorMatricesControl:
             raise FileNotFoundError(f"Ruta de almacenamiento no localizada: '{self.matrix_path}'")
 
         for item in os.listdir(self.matrix_path):
-            ruta_completa = os.path.join(self.matrix_path, item)
+            full_path = os.path.join(self.matrix_path, item)
             # logger.info(f"FULL: {ruta_completa}: {os.path.isdir(ruta_completa)}\n"f"item: {item}, {self.matrix_folder}")
             # Identificación de la nomenclatura jerárquica 'longitud_{key}'
-            if os.path.isdir(ruta_completa) and item.endswith(f"{self.matrix_folder}"):
-                llave_rango = int(item.replace(f"_{self.matrix_folder}", ""))
+            if os.path.isdir(full_path) and item.endswith(f"{self.matrix_folder}"):
+                key_len = int(item.replace(f"_{self.matrix_folder}", ""))
                 
                 try:
                     # Persistencia del mapeo virtual en el diccionario de control
-                    self.registro_matrices[llave_rango] = MatrizSimilitudMapeada(ruta_completa)
+                    self.matrix_registry[key_len] = MappedMatrix(full_path)
                     # logger.info(f"{self._registro_matrices[llave_rango]}")
                 except FileNotFoundError:
                     # Omisión de directorios con escrituras binarias corruptas o incompletas
                     continue
-        self.registro_matrices
+        self.matrix_registry

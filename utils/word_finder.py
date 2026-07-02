@@ -6,7 +6,7 @@ import time
 from functools import cached_property
 from typing import List, Any, Dict, Tuple, Set, FrozenSet
 from utils.patterns import space_pattern
-from services.config_factory import MotorMatricesControl
+from domain.matrix_factory import MatrixManager
 import scipy.sparse as sp # type: ignore
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class WordFinder:
         global_filter = model.get("global_filter", {})
 
         self.ngrams_name = config.get("ngrams_name", "")
-        self.motor = MotorMatricesControl(self.project_root, config)
+        self.motor = MatrixManager(self.project_root, config)
         ngrams_path = config["ngrams_path"]
         self.ngrams_path = os.path.join(project_root, *ngrams_path)
 
@@ -47,9 +47,9 @@ class WordFinder:
 
     def get_csr_matix(self, n: int) -> sp.csr_matrix: # type: ignore
         # for n in range(self.ngrams_range[0], (self.ngrams_range[1] + 1)):
-        for regis in self.motor.registro_matrices:
+        for regis in self.motor.matrix_registry:
             if n == regis:
-                mapp_matrix = self.motor.registro_matrices[n]
+                mapp_matrix = self.motor.matrix_registry[n]
                 return sp.csr_matrix((mapp_matrix.data.astype(np.float32), mapp_matrix.indices, mapp_matrix.indptr), shape=tuple(mapp_matrix.shape))
     
     def get_ngrams_sorted(self, key: int) -> np.ndarray[Any, np.dtype[np.uint8]]:

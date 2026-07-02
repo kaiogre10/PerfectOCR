@@ -14,10 +14,8 @@ static PayloadContainer* g_canal = nullptr;
 
 extern "C" {
     void container_create(const int trigger) {
-        if (trigger > 0 && g_canal == nullptr) {
-            printf("[CONTAINER LOG]: PAYLOAD: %p\n", g_canal);
+        if (trigger > 0 && g_canal == nullptr) 
             g_canal = new PayloadContainer(); // El contenedor nace vacío en el heap
-        }
     }
 }
 
@@ -31,7 +29,7 @@ std::queue<std::vector<uint8_t>> drain() {
     {
         std::lock_guard<std::mutex> lock(g_canal->mtx);
         // El consumidor se lleva TODOS los lotes acumulados hasta el momento de golpe
-        g_canal->payload_container.swap(local); 
+        g_canal->payload_container.swap(local);
     }
     return local;
 }

@@ -7,10 +7,10 @@ system_params:
     libs_path: ["bin"]
 
 deploy_settings:
-  postgre_local: False      # Habilitar el servicio local de postgre
+  postgre_local: False     # Habilitar el servicio local de postgre
   handle_memory: True   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
-  test_config: False    # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
+  test_config: False   # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
   clean_mode: False
 
 pipeline_secuence:

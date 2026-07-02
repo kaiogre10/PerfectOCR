@@ -1,16 +1,17 @@
 #include "buffer_handler.h"
 #include "../containers/containers.h"
 #include <vector>
+#include <queue>
 #include <cstdint>
 #include <mutex>
 #include <iostream>
+#include <windows.h>
 
 uint8_t* buffer_ptr = nullptr;
 size_t buffer_size = 0;
 
 namespace {
-    void storage_batch_flat(uint8_t* buffer_ptr,
-                                size_t buffer_size) {
+    void storage_batch_flat(uint8_t* buffer_ptr, size_t buffer_size) {
         if (!buffer_ptr || !buffer_size) return;
         printf("[BUFFER HANDLER LOG] ptr: %p, size: %zu\n", buffer_ptr, buffer_size);
         std::vector<uint8_t> plain_payload(buffer_ptr, buffer_ptr + buffer_size);
@@ -20,6 +21,19 @@ namespace {
         std::cout << std::flush;
         std::cout << "\nSize: " << plain_payload.size() << "\n";
         push(std::move(plain_payload));
+    }
+}
+
+namespace Send {
+    void restruct_final_payloads(std::queue<std::vector<uint8_t>> payloads, HANDLE pipe_handle) {
+        while (!payloads.empty()) {
+            std::vector<uint8_t> lote = std::move(payloads.front());
+            payloads.pop();
+
+            uint32_t len = static_cast<uint32_t>(lote.size());
+            WriteFile(pipe_handle, &len, sizeof(len), nullptr, nullptr);
+            WriteFile(pipe_handle, lote.data(), len, nullptr, nullptr);
+        }
     }
 }
 
@@ -40,43 +54,20 @@ extern "C" {
             }
             buffer_ptr = nullptr;
             buffer_size = 0;
+        } return;
+    }
+    void send_payloads(int trigger) {
+        if (trigger > 0) {
+            try {
+                std::queue<std::vector<uint8_t>> payloads = drain();
+                Send::restruct_final_payloads(std::move(payloads));
+            }
+            catch (...) {
+                return;
+            }
         }
     }
 }
-
-
-//extern "C" {
-//    // La señal mínima en las primeras líneas de main que acciona todo
-//    void container_create(int trigger);
-//}
-//#include <mutex>
-//
-//std::mutex mtx;
-//CallbackDatosNativos InvocadorReceptor = nullptr;
-//
-//// Función interna para conectar el puente
-//void ConfigurarCallbackEmisario(CallbackDatosNativos callback) {
-//    InvocadorReceptor = callback;
-//}
-//
-//void Emisario_EjecutarEnvio() {
-//    // 1. Protección de alcance automática
-//    std::lock_guard<std::mutex> guard(mtx);
-//
-//    // 2. Va por la info en vivo y la aplana en UTF-16
-//    const wchar_t* bytesCrudosNativos = ObtenerDatosEnVivoNativos();
-//
-//    // 3. EL ENLACE FUERTE (El Backend llama al Frontend):
-//    // Si el receptor está registrado, se le entregan los bytes en su propia mano
-//    if (InvocadorReceptor != nullptr) {
-//        InvocadorReceptor(bytesCrudosNativos);
-//    }
-//
-//    // 4. Limpieza de información nativa inmediata
-//    LimpiarMemoriaNativa();
-//
-//} // <-- Fin del scope: El compilador destruye 'guard' y libera el mutex automáticamente.
-//  // El Frontend ya terminó de procesar porque la llamada es síncrona.
 
 // size_t offset_view = 0;
 
