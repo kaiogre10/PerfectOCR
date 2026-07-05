@@ -72,11 +72,11 @@ class ProcessingBuilder:
                     return None
                 
                 else:
+                    logger.info("NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
                     manager.reset_data()
-                    logger.info(f"NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
-                    return name, len(plain_text.encode("ascii")) * 2
+                    return name, (len(plain_text.encode("ascii", 'ignore')) * 2)
             else:
-                logger.error(f"NO SE PUDO GENERAR ARCHIVO DE SEGURIDAD")
+                logger.error("NO SE PUDO GENERAR ARCHIVO DE SEGURIDAD")
                 manager.reset_data()
                 return None
             

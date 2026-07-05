@@ -52,8 +52,8 @@ class MatrixSolver(VectorizationAbstractWorker):
                 return False
 
             if manager.save_final_output(corrected_df, {}):
-                logger.debug(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
-                logger.debug(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
+                logger.info(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
+                logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow.metadata else ""
                     save_debug_table(corrected_df, file_name, None, None)
@@ -93,7 +93,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             text_col: str = cols_list[int(text_col_idx[0])]
             df.rename(columns={text_col: self.product_name}, inplace = True)
             if check_full_df(df):
-                logger.debug("DF PERFECTO")
+                logger.info("DF PERFECTO")
                 return df
         else:
             if df.shape == (arithmetical_rows.size, arithmetical_cols.size):

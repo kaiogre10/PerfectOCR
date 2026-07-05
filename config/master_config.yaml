@@ -8,7 +8,7 @@ system_params:
 
 deploy_settings:
   postgre_local: False     # Habilitar el servicio local de postgre
-  handle_memory: True   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
+  handle_memory: False   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
   test_config: False   # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
   clean_mode: False
@@ -49,7 +49,7 @@ log_debug:
   text_correct: False
   refined_text: False
   seman_clas: False
-  key_fields: False
+  key_fields: True
   lines: False
   table_lines: False
   table_geo: False
@@ -58,7 +58,7 @@ log_debug:
   time_worker_log: False
   
   semantic_types_log: [2,3,4,5]
-  kf_list_log: [1, 2, 3, 4, 6]
+  kf_list_log: [1, 2, 3, 4, 5, 6]
 
 # Configuración de salida
 enabled_outputs:
@@ -94,33 +94,44 @@ enabled_outputs:
     stack: False
 
 models_config:
-  use_angle_cls: False
-  lang: "es"
-  show_log: False
-  use_gpu: False
-  enable_mkldnn: True
-  rec_batch_num: 32
-  cpu_threads: 4
-  max_batch_size: 32
-  det_limit_side_len: 1280
-  det_db_score_mode: 'slow'
-  use_mp: True
-  table: False
-  max_text_length: 20
-  return_word_box: False
-  save_log_path: './log_output/'
-  
-  det_model_dir: ["models", "paddle", "det", "es"]
-  rec_model_dir: ["models", "paddle", "rec", "es"]
-  wf_model_path: ["models", "wf", "wf_model.pkl"]
-  data_path: ['models', 'wf', 'matrixes']
-  matrix_path: "matrixes"
-  ngrams_path: ["models", "wf", "ngrams", "all_ngrams.npz"]
-  ngrams_name: '_ngrams'
-  data: "data.npy"
-  indices: "indices.npy"
-  indptr: "indptr.npy"
-  mtx_shape: "mtx_shape.npy"
+  paddle_config:
+    use_angle_cls: False
+    lang: "es"
+    show_log: False
+    use_gpu: False
+    enable_mkldnn: True
+    rec_batch_num: 32
+    cpu_threads: 4
+    max_batch_size: 32
+    det_limit_side_len: 1280
+    det_db_score_mode: 'slow'
+    use_mp: True
+    table: False
+    max_text_length: 20
+    return_word_box: False
+    save_log_path: ['./log_output/']
+
+    det_model_dir: ["models", "paddle", "det", "es"]
+    rec_model_dir: ["models", "paddle", "rec", "es"]
+
+  wf_config:
+    char_ngrams: [2, 3]
+    threshold_similarity: 0.901
+    global_filter_threshold: 0.65
+    forb_match: 0.80
+    window_flexibility: 3
+    min_diff: 0.000009
+    primes: [301703, 1741]
+    matrix_size: 1000
+    wf_model_path: ["models", "wf", "wf_model.pkl"]
+    data_path: ['models', 'wf', 'matrixes']
+    matrix_path: "matrixes"
+    ngrams_path: ["models", "wf", "ngrams", "all_ngrams.npz"]
+    ngrams_name: '_ngrams'
+    data: "data.npy"
+    indices: "indices.npy"
+    indptr: "indptr.npy"
+    mtx_shape: "mtx_shape.npy"
   
 modules:
   image_preparation:

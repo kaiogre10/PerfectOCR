@@ -82,8 +82,8 @@ class OutputFlags(ConfigWithNumpy):
     preprocessing_outputs: PreprocessingOutputs
     ocr_outputs: OCROutputs
     vectorization_outputs: VectorizingOutputs
-    
-class ModelsConfig(ConfigWithNumpy):
+
+class PaddleConfig(ConfigWithNumpy):
     use_angle_cls: bool
     lang: str
     show_log: bool
@@ -93,15 +93,26 @@ class ModelsConfig(ConfigWithNumpy):
     max_batch_size: int
     table: bool
     det_limit_side_len: int
-    rec_batch_num: int
-    det_model_dir: List[str]
-    rec_model_dir: List[str]
-    wf_model_path: List[str]
     det_db_score_mode: str
     use_mp: bool
     max_text_length: int
     return_word_box: bool
     save_log_path: str
+    rec_batch_num: int
+    save_log_path: List[str]
+    det_model_dir: List[str]
+    rec_model_dir: List[str]
+
+class WordFinderConfig(ConfigWithNumpy):
+    char_ngrams: List[int]
+    threshold_similarity: float
+    global_filter_threshold: float
+    forb_match: float
+    window_flexibility: int
+    min_diff: float
+    primes: List[int]
+    matrix_size: int
+    wf_model_path: List[str]
     data_path: List[str]
     matrix_path: str
     ngrams_path: List[str]
@@ -110,7 +121,11 @@ class ModelsConfig(ConfigWithNumpy):
     indices: str
     indptr: str
     mtx_shape: str
-    
+
+class ModelsConfig(ConfigWithNumpy):
+    wf_config: WordFinderConfig
+    paddle_config: PaddleConfig
+
 class InkConfig(ConfigWithNumpy):
     white: List[int]
     black: List[int]

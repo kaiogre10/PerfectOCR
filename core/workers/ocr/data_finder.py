@@ -79,7 +79,7 @@ class DataFinder(OCRAbstractWorker):
             mask = mask_sc | mask_len
             skip_idx = np.compress(mask, all_idx).tolist()
 
-            for _, (pid, poly) in enumerate(polygons.items()):
+            for pid, poly in polygons.items():
                 if poly.poly_index in skip_idx:
                     # logger.info(f"{pid} Omitido: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     skipped_semantic += 1

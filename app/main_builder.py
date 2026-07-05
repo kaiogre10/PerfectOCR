@@ -82,7 +82,7 @@ class MainBuilder:
             # Procesar imagen individualmente
             payload = builder.process_single_image(image_data)
             logger.warning(f"Procesadas: {(i + 1)} de '{total_images}' imágenes")
-            if payload is None:
+            if payload is None or not payload[0]:
                 logger.info(f"Fallo al procesar imagen: '{image_data.get("name")}'")
                 continue
             else:
@@ -121,7 +121,7 @@ class MainBuilder:
             logger.warning(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {time_mask}{total_processing_time}, promedio: {mean_process}")
 
         else:
-            logger.warning(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
+            logger.warning(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados CORRECTAMENTE en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
             logger.debug(f"IMAGENES EXITOSAS:\n"f"{succes_images}\n"f"----------------------------")
             logger.debug(f"IMAGENES FALLIDAS:\n"f"{failed_images}\n"f"----------------------------")
 

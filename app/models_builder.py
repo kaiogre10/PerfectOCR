@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, Optional
 from utils.word_finder import WordFinder
 from paddleocr import PaddleOCR # type: ignore
+from domain.matrix_factory import MatrixManager
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class ModelsBuilder:
                 return False
 
             # 2. Inicialización de WordFinder
-            elif config.get("activate_wf") and self._activate_wf(config, project_root):
+            elif config.get("activate_wf") and self._activate_wf(config.get("models_config", {}), project_root):
                 #logger.info(f"STACK COMPLETO DE MODELOS CARGADOS EN: {time.perf_counter() - init_time:.6f}'s")
                 return True
             else:
@@ -70,21 +71,22 @@ class ModelsBuilder:
             activate_rec = config.get("activate_rec")
             activate_det = config.get("activate_det")
             models_config = config.get("models_config", {})
+            paddle_config = models_config.get("paddle_config", {})
 
-            show_log = models_config.get('show_log')
+            show_log = paddle_config.get('show_log')
             if show_log:
                 save_log_path = os.path.join(project_root)
             else:
-                save_log_path = models_config["save_log_path"]
+                save_log_path = paddle_config["save_log_path"]
 
-            activate_cls = models_config.get('use_angle_cls')
+            activate_cls = paddle_config.get('use_angle_cls')
             if activate_cls:
                 logger.warning(f"ADVERTENCIA SE ACTIVÓ EL MODELO DE DETECCIÓN DE ANGULO DE PADDLE: '{activate_cls}'")
             
             if activate_det or activate_rec:
                 
-                det_dir = models_config['det_model_dir']
-                rec_dir = models_config['rec_model_dir']
+                det_dir = paddle_config['det_model_dir']
+                rec_dir = paddle_config['rec_model_dir']
                 
                 det_model_dir = os.path.join(project_root, *det_dir)
                 rec_model_dir = os.path.join(project_root, *rec_dir)
@@ -96,18 +98,18 @@ class ModelsBuilder:
                     det_model_dir = det_model_dir,
                     rec_model_dir = rec_model_dir,
                     show_log = show_log,
-                    use_gpu = models_config.get('use_gpu'),
-                    enable_mkldnn = models_config.get('enable_mkldnn'),
-                    table= models_config.get('table'),
-                    lang = models_config.get("lang"),
-                    rec_batch_num = models_config.get('rec_batch_num'),
-                    cpu_threads = models_config.get('cpu_threads'),
-                    max_batch_size = models_config.get('max_batch_size'),
-                    det_limit_side_len = models_config.get('det_limit_side_len'),
-                    det_db_score_mode = models_config.get('det_db_score_mode'),
-                    use_mp = models_config.get('use_mp'),
-                    max_text_length = models_config.get('max_text_length'),
-                    return_word_box = models_config.get('return_word_box'),
+                    use_gpu = paddle_config.get('use_gpu'),
+                    enable_mkldnn = paddle_config.get('enable_mkldnn'),
+                    table = paddle_config.get('table'),
+                    lang = paddle_config.get("lang"),
+                    rec_batch_num = paddle_config.get('rec_batch_num'),
+                    cpu_threads = paddle_config.get('cpu_threads'),
+                    max_batch_size = paddle_config.get('max_batch_size'),
+                    det_limit_side_len = paddle_config.get('det_limit_side_len'),
+                    det_db_score_mode = paddle_config.get('det_db_score_mode'),
+                    use_mp = paddle_config.get('use_mp'),
+                    max_text_length = paddle_config.get('max_text_length'),
+                    return_word_box = paddle_config.get('return_word_box'),
                     save_log_path = save_log_path
                 )
                 # Asignamos al puntero solo si el modelo está realmente activo
@@ -127,13 +129,13 @@ class ModelsBuilder:
         return False
 
     def _activate_wf(self, config: Dict[str, Any], project_root: str) -> bool:
-        models_config = config.get("models_config", {})
-        model_path = models_config["wf_model_path"]
-        model_dir = os.path.join(project_root, *model_path)
+        wf_config = config.get("wf_config", {})
+        model = MatrixManager(project_root, wf_config)
 
         try:
             self._word_finder = WordFinder(
-                config=models_config,
+                config=wf_config,
+                motor=model,
                 project_root=project_root
             )
             return True

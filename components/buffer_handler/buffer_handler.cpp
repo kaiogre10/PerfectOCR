@@ -1,11 +1,9 @@
 #include "buffer_handler.h"
 #include "../containers/containers.h"
 #include <vector>
-#include <queue>
 #include <cstdint>
 #include <mutex>
 #include <iostream>
-#include <windows.h>
 
 uint8_t* buffer_ptr = nullptr;
 size_t buffer_size = 0;
@@ -24,18 +22,18 @@ namespace {
     }
 }
 
-namespace Send {
-    void restruct_final_payloads(std::queue<std::vector<uint8_t>> payloads, HANDLE pipe_handle) {
-        while (!payloads.empty()) {
-            std::vector<uint8_t> lote = std::move(payloads.front());
-            payloads.pop();
-
-            uint32_t len = static_cast<uint32_t>(lote.size());
-            WriteFile(pipe_handle, &len, sizeof(len), nullptr, nullptr);
-            WriteFile(pipe_handle, lote.data(), len, nullptr, nullptr);
-        }
-    }
-}
+// namespace Send {
+//     void restruct_final_payloads(std::queue<std::vector<uint8_t>> payloads, HANDLE pipe_handle) {
+//         while (!payloads.empty()) {
+//             std::vector<uint8_t> lote = std::move(payloads.front());
+//             payloads.pop();
+//
+//             uint32_t len = static_cast<uint32_t>(lote.size());
+//             WriteFile(pipe_handle, &len, sizeof(len), nullptr, nullptr);
+//             WriteFile(pipe_handle, lote.data(), len, nullptr, nullptr);
+//         }
+//     }
+// }
 
 extern "C" {
     uint8_t* reserve_buffer(size_t len_bytes) {
@@ -54,19 +52,19 @@ extern "C" {
             }
             buffer_ptr = nullptr;
             buffer_size = 0;
-        } return;
-    }
-    void send_payloads(int trigger) {
-        if (trigger > 0) {
-            try {
-                std::queue<std::vector<uint8_t>> payloads = drain();
-                Send::restruct_final_payloads(std::move(payloads));
-            }
-            catch (...) {
-                return;
-            }
         }
     }
+    // void send_payloads(int trigger) {
+    //     if (trigger > 0) {
+    //         try {
+    //             std::queue<std::vector<uint8_t>> payloads = drain();
+    //             Send::restruct_final_payloads(std::move(payloads));
+    //         }
+    //         catch (...) {
+    //             return;
+    //         }
+    //     }
+    // }
 }
 
 // size_t offset_view = 0;

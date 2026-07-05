@@ -3,7 +3,6 @@
 #include <queue>
 #include <cstdint>
 #include <mutex>
-#include <cstdio>
 
 struct PayloadContainer {
     std::queue<std::vector<uint8_t>> payload_container;
