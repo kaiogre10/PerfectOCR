@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 
 class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
+        __slots__ = (
+            "project_root",
+            "_model"
+        )
         super().__init__(config, project_root)
         self.project_root = project_root
         self._model = None
@@ -26,10 +30,10 @@ class DataFinder(OCRAbstractWorker):
     @property
     def model(self) -> Optional[Any]:
         try:
-            if self._model is None: #type: ignore
+            if self._model is None:
                 models_builder = ModelsBuilder.get_instance()
-                self._model = models_builder.word_finder #type: ignore
-            return self._model #type: ignore
+                self._model = models_builder.word_finder
+            return self._model
 
         except ModuleNotFoundError as e:
             logger.error(f"DataFinder: Modelo de búsqueda no disponible: {e}", exc_info=True)

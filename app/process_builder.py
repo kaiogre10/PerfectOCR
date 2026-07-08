@@ -20,10 +20,9 @@ class ProcessingBuilder:
         self.all_stagers = all_stagers
         self.logs_debug = logs_debug
         
-    def process_single_image(self, image_data: Dict[str, Any]) -> Optional[Tuple[str, int]]:
+    def process_single_image(self, image_path: str) -> Optional[Tuple[str, int]]:
         """
         Procesa una sola imagen usando el método execute() uniforme de cada stager.
-        Recibe image_data para configurar el contexto de esta ejecución específica.
         Devuelve Direcciones en memoria de los datos generados
         """
         try:
@@ -31,7 +30,7 @@ class ProcessingBuilder:
             manager = DataFormatter(self.logs_debug)
             # Crear contexto para esta ejecución
             context: Dict[str, Any] = {
-                "image_data": image_data,
+                "image_data": image_path,
                 "time_worker_log": self.logs_debug.get("time_worker_log")
             }
             try:
@@ -41,13 +40,15 @@ class ProcessingBuilder:
                     manager = stager.execute(manager, context)
                     if manager is None:
                         logger.error(f"Falla en '{stager_name}', tiempo: {time.perf_counter() - stager_time}'s", exc_info=True)
+                        del context
                         return None
                 
                     if self.logs_debug.get("time_stages_log"):
                         logger.info(f"Fase de preparación completada en: {time.perf_counter() - stager_time:.6f}'s")
-            except Exception as e:
+            except RuntimeError as e:
                 logger.error(f"ERROR PROCESANDO: '{e}'", exc_info=True)
-                return  None
+                del context
+                return None
 
             name = manager.payload.name if manager.payload else None
             plain_text = manager.payload.payload if manager.payload else None
@@ -55,10 +56,12 @@ class ProcessingBuilder:
             if plain_text is None or name is None:
                 if manager is None:
                     logger.info(f"ERROR")
+                    del context
                     return None
                 else:
                     manager.reset_data()
                     logger.info(f"Proceso correcto con early return, se deuelve datos MOCK para debug")
+                    del context
                     return "", 0
                 
             elif write_temp_log((name, plain_text)):
@@ -66,18 +69,22 @@ class ProcessingBuilder:
                     buff_size = storage_data(plain_text)
                     if buff_size is not None:
                         logger.warning(f"PAYLOAD GUARDADO EN MEMORIA: '{buff_size} B', Y EN ARCHIVO DE SEGURIDAD")
+                        del context
                         return name, buff_size
                     
                     manager.reset_data()
+                    del context
                     return None
                 
                 else:
                     logger.info("NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
                     manager.reset_data()
+                    del context
                     return name, (len(plain_text.encode("ascii", 'ignore')) * 2)
             else:
                 logger.error("NO SE PUDO GENERAR ARCHIVO DE SEGURIDAD")
                 manager.reset_data()
+                del context
                 return None
             
         except Exception as e:

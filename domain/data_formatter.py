@@ -114,23 +114,17 @@ class DataFormatter:
     def get_full_img(self) -> Optional[FullImage]:
         return self.workflow.full_img if self.workflow else None
         
-    def delete_cropped_images(self) -> bool:
+    def delete_cropped_images(self):
         """Libera todas las imágenes recortadas de los polígonos para ahorrar memoria."""
-        try:
-            if not self.workflow or not self.workflow.polygons:
-                logger.error("No hay workflow inicializado para limpiar imágenes recortadas.")
-                return False
-
-            for poly_id, polygon in self.workflow.polygons.items():
-                polygon.cropped_img = None
-                updated_polygon = dataclasses.replace(polygon, cropped_img=None)
-                self.workflow.polygons[poly_id] = updated_polygon
-
-            # logger.info("Todas las imágenes recortadas han sido liberadas de memoria.")
-            return True
-        except Exception as e:
-            logger.warning(f"Error liberando imágenes recortadas: {e}", exc_info=True)
-        return True
+        if not self.workflow or not self.workflow.polygons:
+            raise RuntimeError("No hay workflow inicializado para limpiar imágenes recortadas.")
+            
+        for poly_id, polygon in self.workflow.polygons.items():
+            polygon.cropped_img = None
+            del polygon.cropped_img
+            updated_polygon = dataclasses.replace(polygon, cropped_img=None)
+            self.workflow.polygons[poly_id] = updated_polygon
+        logger.debug("Todas las imágenes recortadas han sido liberadas de memoria")
 
     def update_full_img(self, corrected: bool, full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]=None) -> bool:
         """Actualiza o vacía la imagen completa en el workflow"""

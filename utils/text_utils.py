@@ -66,7 +66,9 @@ def normalice_text(s: str, hard_norm: bool) -> str:
     norm_text = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
 
     if norm_text and hard_norm:
-        hard_text = unicodedata.normalize('NFKD', norm_text).encode('ascii', 'ignore').decode('utf-8')
+        hard_text = unicodedata.normalize('NFKD', norm_text).encode('ascii', 'replace').decode('utf-8')
+        if '?' in hard_text:
+            hard_text = hard_text.replace('?', ' ')
         return norm_text if not hard_text else hard_text
     return space_removal(norm_text) if norm_text else ""
     

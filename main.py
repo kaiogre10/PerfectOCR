@@ -6,10 +6,9 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from services import log_service
-
 DEFAULT_CONFIG_FILE = [PROJECT_ROOT, "config"]
 
+from services import log_service
 from services.config_service import ConfigService
 from services import system_service
 config_service = ConfigService(DEFAULT_CONFIG_FILE)

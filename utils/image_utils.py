@@ -240,9 +240,7 @@ def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.ui
 #     cv2.destroyAllWindows()
 
 def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Optional[bool] = False) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
-    """
-    Calcula UNICAMENTE los features de OPEN CV
-    """
+    """Calcula UNICAMENTE los features de OPEN CV"""
     time0 = time.perf_counter()
     if binary or is_binarized(img):
         logger.info("Imagen ya binaria")
@@ -261,7 +259,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Option
 
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
     cols = 16
-    metrics_array_new = np.zeros((total_conts, cols), np.float32)
+    metrics_array_new = np.zeros((total_conts, cols), dtype=np.float32, order='F')
     # single_mask = bin_img.copy()
     # single_mask[:] = 0
 
@@ -327,7 +325,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Option
         logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
         return [], np.empty((0, 5))
         
-    # logger.info(f"Tiempo calculando features de {valid_contours} contornos: {time.perf_counter()-time0:.6f}'s")
+    logger.info(f"Tiempo calculando features de {valid_contours} contornos: {time.perf_counter()-time0:.6f}'s")
     return cont_coords_list, contours_features_array
 
 # def calculate_complementary_feats(metrics_array_new: np.ndarray[Any, Any]):

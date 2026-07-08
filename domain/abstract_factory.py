@@ -8,6 +8,7 @@ T = TypeVar('T', bound=FactoryComponentProtocol)
 
 class AbstractBaseFactory(ABC, Generic[T]):
     """Contrato base para fabricar selectivamente cualquier tipo de componente"""
+    __slots__ = ("module_config", "project_root", "registry")
     def __init__(self, module_config: Dict[str, Any], project_root: str):
         self.module_config = module_config
         self.project_root = project_root

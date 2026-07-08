@@ -19,6 +19,7 @@ class DeploySettings(ConfigWithNumpy):
     clean_mode: bool
     postgre_local: bool
     handle_memory: bool
+    update_model: bool
 
 class PipelineConfig(ConfigWithNumpy):
     image_preparation_stager: Optional[List[str]] = None
@@ -97,11 +98,7 @@ class PaddleConfig(ConfigWithNumpy):
     use_mp: bool
     max_text_length: int
     return_word_box: bool
-    save_log_path: str
     rec_batch_num: int
-    save_log_path: List[str]
-    det_model_dir: List[str]
-    rec_model_dir: List[str]
 
 class WordFinderConfig(ConfigWithNumpy):
     char_ngrams: List[int]
@@ -109,22 +106,22 @@ class WordFinderConfig(ConfigWithNumpy):
     global_filter_threshold: float
     forb_match: float
     window_flexibility: int
-    min_diff: float
-    primes: List[int]
-    matrix_size: int
-    wf_model_path: List[str]
-    data_path: List[str]
+    pkl_path: str
     matrix_path: str
-    ngrams_path: List[str]
-    ngrams_name: str
-    data: str
-    indices: str
-    indptr: str
-    mtx_shape: str
+    kf_path: str
+    kf_idx: str
 
+class ModelsPaths(ConfigWithNumpy):
+    models_dir: str
+    paddle_path: str
+    word_finder_path: str
+    det_model: str
+    rec_model: str
+    
 class ModelsConfig(ConfigWithNumpy):
     wf_config: WordFinderConfig
     paddle_config: PaddleConfig
+    models_paths: ModelsPaths
 
 class InkConfig(ConfigWithNumpy):
     white: List[int]

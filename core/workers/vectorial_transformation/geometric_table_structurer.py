@@ -25,14 +25,11 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         start_time = time.perf_counter()
         try:
-            logger.debug("GeometricTableStructurer iniciado")
-            
             if not manager.workflow:
                 logger.warning("No hay workflow disponible")
                 return False
                 
             all_lines = manager.workflow.all_lines if manager.workflow else {}
-                    
             polygons = manager.workflow.polygons if manager.workflow.polygons else {}
 
             if not all_lines or not polygons:
@@ -82,7 +79,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
         except Exception as e:
             logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
-            context = {}
         return False
 
     def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], target_columns: int) -> List[List[float]]:

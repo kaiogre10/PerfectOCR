@@ -16,6 +16,7 @@ veckey = "vectorization_stager"
 
 class MainFactory:
     """Crea workers y ensambla stagers de forma uniforme."""
+    __slots__ = ("project_root", "stagging", "modules_config", "all_stagers")
     def __init__(self, modules_config: Dict[str, Tuple[Dict[str, Any], List[str]]], project_root: str, stagging: List[Tuple[str, Optional[List[str]]]]):
         self.project_root = project_root
         self.stagging = stagging
@@ -34,11 +35,11 @@ class MainFactory:
             ocrkey: OCRStager,
             veckey: VectorizationStager,    
         }
-        all_stagers: List[Any] = self.buil_stagers(factories_dict, stagers_dict)
+        all_stagers: List[Any] = self.build_stagers(factories_dict, stagers_dict)
         del factories_dict
         self.all_stagers = all_stagers
 
-    def buil_stagers(self, factories_dict: Dict[str, Any], stagers_dict: Dict[str, Any]) -> List[Any]:
+    def build_stagers(self, factories_dict: Dict[str, Any], stagers_dict: Dict[str, Any]) -> List[Any]:
         stagers: List[Any] = []
         for (stage, workers) in self.stagging:
             stage_config = self.modules_config.get(stage) # Configuración por etapa

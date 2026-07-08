@@ -11,9 +11,20 @@ from services.output_service import save_table_values
 logger = logging.getLogger(__name__)
 
 class MatricialCusine(VectorizationAbstractWorker):
+    __slots__ = (
+        "similarity_threshold",
+        "min_cluster",
+        "tolerance_sim",
+        "emergency_threshold",
+        "eps",
+        "metric",
+        "min_internal_sim",
+        "output_features",
+        "output"
+    )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        self.project_root = project_root
+        # self.project_root = project_root
         worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
         self.min_cluster = worker_config.get("min_cluster", 1)
@@ -57,7 +68,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             sorted_lines = [all_lines_dict[k] for k in line_ids]
 
             analysis = calculate_features(sorted_lines, polygons_dict, img_dims)
-            all_idxs = np.array(np.arange(len(line_ids)), np.uint8)
+            all_idxs = np.asarray(np.arange(len(line_ids), dtype=np.uint8), dtype=np.uint8)
             if self.output_features:
                 line_id = np.array([id.lineal_id for id in all_lines_dict.values()], np.str_)
                 features_to_ind = analysis[:, 1:].astype(np.str_)

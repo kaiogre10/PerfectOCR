@@ -20,9 +20,19 @@ conversion_kf = CONVERSION_KF
 
 class FinalStructurer(VectorizationAbstractWorker):
     """"Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db."""
+    __slots__ = (
+        "cant_name",
+        "pu_name",
+        "mtl_name",
+        "product_name",
+        "id_registro",
+        "separator",
+        "output",
+        "stack",
+    )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        self.project_root = project_root
+        # self.project_root = project_root
         worker_config = config.get('math_max', {})
         all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3], all_cols_name[4]

@@ -6,7 +6,7 @@ from domain.data_formatter import DataFormatter
 from domain.abstract_worker import OCRAbstractWorker
 from app.models_builder import ModelsBuilder
 from utils.text_utils import normalice_text
-from utils.image_utils import elevate_dims, make_contiguous
+from utils.image_utils import elevate_dims
 from services.output_service import save_text_debug
 from utils.compiled_utils import validate_text
 
@@ -14,10 +14,16 @@ logger = logging.getLogger(__name__)
 
 class PaddleOCRWrapper(OCRAbstractWorker):
     """
-    Una instancia de PaddleOCR especializada únicamente en el RECONOCIMIENTO
-    de texto en imágenes pre-recortadas (polígonos).
+    Una instancia de PaddleOCR especializada únicamente en el RECONOCIMIENTO de texto en imágenes pre-recortadas (polígonos).
     Utiliza carga perezosa para el motor de PaddleOCR.
     """
+    __slots__ = (
+        "project_root",
+        "min_confidence",
+        "output",
+        "del_output_log",
+        "_engine"
+    )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
@@ -71,7 +77,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             
             logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img.cropped_img is not None]
-            img_list = [make_contiguous(p.cropped_img.cropped_img) for p in polygons.values() if p.cropped_img.cropped_img is not None]
+            img_list = [p.cropped_img.cropped_img for p in polygons.values() if p.polygon_id in polygon_ids]
             image_list = elevate_dims(img_list)
             manager.delete_cropped_images()
             

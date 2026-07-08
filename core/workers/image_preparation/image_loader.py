@@ -2,12 +2,12 @@ import cv2
 import logging
 import numpy as np
 import time
+import os
 from datetime import datetime
 from typing import Dict, Any
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import decolorate, is_binarized
-from utils.text_utils import get_ids
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -20,21 +20,17 @@ class ImageLoader(ImagePrepAbstractWorker):
                         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Carga la imagen y extrae metadatos."""
-        image_info = context.get("image_data", {})
-        
-        # Obtener los datos con claves seguras en caso de archivos pasados explícitamente vs por carpeta
-        img_name = image_info.get('name', "")
-        image_name = get_ids(img_name, "name")
-        input_path = image_info.get('full_path', image_info.get('path', ""))
-        
         try:
-            if not input_path:
-                logger.error(f"No se proporcionó una ruta de entrada válida para la imagen '{image_name}'")
-                return False
+            input_path = context.get("image_data", "")
+            image_name = os.path.splitext(os.path.basename(input_path))[0]
 
-            time0 = time.perf_counter()
+            if not input_path or not os.path.isfile(input_path):
+                raise FileNotFoundError(f"No se proporcionó una ruta de entrada válida: '{input_path}'")
+            
+            # time0 = time.perf_counter()
             full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
-            logger.info(f"IMAGEN: '{input_path}', cargada en {time.perf_counter() - time0:.6f}'s")
+            logger.info(f"IMAGEN: '{input_path}'")
+                        # "\n"f"cargada en {time.perf_counter() - time0:.6f}'s")
             
             if is_binarized(full_image):
                 binary = True
@@ -69,10 +65,6 @@ class ImageLoader(ImagePrepAbstractWorker):
                 del context["image_data"]
                 return True
             
-            logger.error(f"Error creando workflow para '{image_name}'")
-            return False
-
-        except cv2.error as e:
-            logger.error(f"Error OpenCV al cargar '{image_name}': {e}", exc_info=True)
-            context = {}
+        except Exception as e:
+            logger.error(f"Error cargando: {e}", exc_info=True)
         return False

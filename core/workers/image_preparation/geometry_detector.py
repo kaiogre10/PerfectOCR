@@ -13,9 +13,14 @@ from services.output_service import save_croped_image
 logger = logging.getLogger(__name__)
 
 class GeometryDetector(ImagePrepAbstractWorker):
-    """
-    Detecta geometría con PaddleOCR:
-    """
+    """Detecta geometría con PaddleOCR"""
+    __slots__ = (
+        "project_root",
+        "kernel",
+        "iterations",
+        "output",
+        "_engine"
+    )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root

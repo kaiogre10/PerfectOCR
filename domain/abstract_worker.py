@@ -5,6 +5,7 @@ from domain.data_formatter import DataFormatter
 
 class BaseWorker(ABC):
     """Cada Abstract worker es una etapa en el pipeline."""
+    __slots__ = ("config", "project_root")
     def __init__(self, config: Dict[str, Any], project_root: str):
         self.config = config
         self.project_root = project_root    

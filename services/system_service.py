@@ -76,16 +76,15 @@ def _preflight_delete_plan(output_paths: List[str], exts: Set[str]) -> Tuple[boo
 
     return (len(blocked) == 0, blocked)
 
-def clear_output_folders() -> None:
+def clear_output_folders():
     """Vacia carpetas de salida de forma segura.
     - Si falta permiso en cualquier objetivo, no elimina nada.
     - Carpetas: se eliminan completas.
     - Archivos sueltos: solo extensiones objetivo.
     """
     if not output_paths:
-        basic_exc_logger(f"NO HAY ARCHIVOS OUTPUT, NO SE LIMPIARÁ NADA")
-        return None
-    
+        raise ImportError(f"NO HAY ARCHIVOS OUTPUT, NO SE LIMPIARÁ NADA")
+        
     deleted_files = 0
     deleted_folder = 0
     ok, blocked = _preflight_delete_plan(output_paths, all_files_types)
@@ -122,9 +121,7 @@ def clear_output_folders() -> None:
 
             except Exception as e:
                 basic_exc_logger(f"Error al eliminar {item_path}: {e}", exc_info=True)
-                return
-
-        logger.info(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
+    logger.info(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
 
 def cleanup_project_cache(aditional_files: Optional[str] = None):
     """Elimina la caché y residuos del proyecto """
@@ -156,7 +153,7 @@ def cleanup_project_cache(aditional_files: Optional[str] = None):
                     if filename.endswith(trash_extensions):
                         file_path: str = os.path.join(dirpath, filename)
                         os.remove(file_path)
-                        basic_exc_logger(f"Eliminado archivo de caché: '{file_path}'")
+                        # basic_exc_logger(f"Eliminado archivo de caché: '{file_path}'")
             except FileNotFoundError as e:
                 basic_exc_logger(f"Error eliminando '{aditional_files}': {e}", exc_info=True)
                 raise
@@ -197,7 +194,7 @@ def clean_db(get_local_connection: Any) -> bool:
         logger.error("Error limpiando la DB: %s", e, exc_info=True)
         return False
 
-def count_and_plan(config: Dict[str, List[str]]) -> List[Dict[str, Any]]:
+def count_and_plan(config: Dict[str, List[str]]) -> List[str]:
     """
     PLANIFICA el procesamiento: cuenta imágenes y decide estrategia según las reglas:
     1. Si se especifican `images_names`, se buscan prioritariamente.
@@ -207,11 +204,12 @@ def count_and_plan(config: Dict[str, List[str]]) -> List[Dict[str, Any]]:
     input_paths: List[str] = config['input_dirs']
     # input_paths = ["/media/kaiogre05/DATA/data/tickets_nuevo"]
     images_names = config['images_names']
-    if not input_paths:
-        logger.error("No se proporcionaron rutas de entrada (input_dirs)")
-        return []
+    if not images_names:
+        if not input_paths:
+            logger.error("No se proporcionaron rutas de entrada (input_dirs)")
+            return []
 
-    image_info: List[Dict[str, Any]] = []
+    image_info: List[str] = []
     names_to_find = set(images_names)
     total_paths = len(input_paths)
     try:
@@ -225,7 +223,7 @@ def count_and_plan(config: Dict[str, List[str]]) -> List[Dict[str, Any]]:
 
                     for file in files_in_dir:
                         full_path = os.path.join(PROJECT_ROOT, path, file)
-                        image_info.append({"full_path": full_path, "name": file})
+                        image_info.append(full_path)
                         continue
 
                 elif names_to_find:
@@ -238,7 +236,7 @@ def count_and_plan(config: Dict[str, List[str]]) -> List[Dict[str, Any]]:
 
                 for file in all_files_dir:
                     full_path = os.path.join(PROJECT_ROOT, path, file)
-                    image_info.append({"full_path": full_path, "name": file})
+                    image_info.append(full_path)
                     continue
             else:
                 break

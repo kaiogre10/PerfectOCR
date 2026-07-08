@@ -10,6 +10,7 @@ from core.workers.ocr.text_corrector import TextCorrector
 from core.workers.ocr.data_finder import DataFinder
 
 class OCRFactory(AbstractBaseFactory[OCRAbstractWorker]):
+    __slots__ = ("_shared_refiner_workers", "_create_refiners")
     def __init__(self, module_config: Dict[str, Any], project_root: str):
         super().__init__(module_config, project_root)
         self._shared_refiner_workers: Optional[Dict[str, OCRAbstractWorker]] = None

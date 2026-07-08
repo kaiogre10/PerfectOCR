@@ -2,9 +2,10 @@
 import yaml
 import commentjson # type: ignore
 import os
-from typing import cast, Dict, Any, List
+from typing import Any, List
 from domain.config_models import MasterConfig
 import services.log_service as log_service
+import pickle
 
 def load_config_file(default_config_path: List[str]):
     """Carga archivos de configuración, asegura agnosismo si cambia el formato de archivo de entrada"""
@@ -17,31 +18,37 @@ def load_config_file(default_config_path: List[str]):
     return MasterConfig.model_validate(obj=config_yaml, strict=True, extra='forbid', from_attributes=True, by_name=True).model_dump()
 
 def _load_yaml(system_config_path: str):
-    try:
-        with open(system_config_path, 'r', encoding='utf-8') as f:
-            system_raw = yaml.safe_load(f)
-    except FileNotFoundError as e:
-        log_service.basic_exc_logger(f"ERROR BUSCANDO ARCHIVO DE CONFIGURACIÓN GLOBAL: {e}")
-        raise
-    try:
-        if not isinstance(system_raw, dict):
+    if not os.path.isfile(system_config_path):
+        raise FileNotFoundError(f"ARCHIVO DE CONFIGURACIÓN NO ENCONTRADO: {system_config_path}")
+    with open(system_config_path, 'r', encoding='utf-8') as f:
+        system_raw = yaml.safe_load(f)
+        if not system_raw or not isinstance(system_raw, dict):
             raise TypeError(f"DEAFULT CONFIG debe ser Dict[str, params], recibido: {type(system_raw).__name__}")
-        return cast(Dict[str, Any], system_raw)
-    except ValueError as e:
-        log_service.basic_exc_logger(f"Error validando configuración desde {system_raw}: {e}", exc_info=True)
-        raise
+        return system_raw
 
 def _load_user_config(user_config_file: str):
-    try:
-        with open(user_config_file, 'r', encoding='utf-8') as f:
-            user_config_raw = commentjson.load(f) # type: ignore
-    except FileNotFoundError as e:
-        log_service.basic_exc_logger(f"ERROR BUSCANDO ARCHIVO DE CONFIGURACIÓN PARA EL USUARIO: {e}")
-        raise
-    try:
-        if not isinstance(user_config_raw, dict):
+    if not os.path.isfile(user_config_file):
+        raise FileNotFoundError(f"ARCHIVO DE CONFIGURACIÓN NO ENCONTRADO: {user_config_file}")
+    with open(user_config_file, 'r', encoding='utf-8') as f:
+        user_config_raw = commentjson.load(f) # type: ignore
+        if not user_config_raw or not isinstance(user_config_raw, dict):
             raise TypeError(f"DEAFULT CONFIG debe ser Dict[str, params], recibido: {type(user_config_raw).__name__}")
-        return cast(Dict[str, Any], user_config_raw)
-    except ValueError as e:
-        log_service.basic_exc_logger(f"Error validando configuración desde {user_config_raw}: {e}", exc_info=True)
-        raise
+        return user_config_raw
+    
+def load_pickle(pkl_path: str, mode: str):
+    """Carga pickle"""
+    if not os.path.exists(pkl_path):
+        raise FileNotFoundError(f"Pickle no encontrado en {pkl_path}")
+    with open(pkl_path, mode) as f:
+        model_pkl = pickle.load(f)
+        if not model_pkl:
+            raise pickle.UnpicklingError("ERROR EN LA CARGA DEL PICKLE")
+    model_pkl["allow_edit"] = False
+    return model_pkl
+
+def save_pickle(model_pkl: Any, pkl_path: str, mode: str):
+    model_pkl["allow_edit"] = False
+    if not os.path.exists(pkl_path):
+        raise FileNotFoundError(f"Ruta inválida para guardar pickle: {pkl_path}")
+    with open(pkl_path, mode) as f:
+        pickle.dump(model_pkl, f, protocol=5)

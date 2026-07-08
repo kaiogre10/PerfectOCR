@@ -13,9 +13,19 @@ from services.output_service import save_croped_image
 logger = logging.getLogger(__name__)
 
 class AngleCorrector(ImagePrepAbstractWorker):
-    """
-    Worker especializado en detectar y corregir el ángulo de inclinación de una imagen.
-    """
+    """Worker especializado en detectar y corregir el ángulo de inclinación de una imagen"""
+    __slots__ = (
+        "project_root",
+        "color",
+        "min_angle",
+        "canny_thresholds",
+        "hough_threshold",
+        "hough_max_line_gap_px",
+        "hough_angle_filter_range_degrees",
+        "hough_min_line_length_cap_px",
+        "output"
+        
+    )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root

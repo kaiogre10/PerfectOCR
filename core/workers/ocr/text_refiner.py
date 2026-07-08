@@ -13,9 +13,17 @@ import time
 logger = logging.getLogger(__name__)
 
 class Refiner(OCRAbstractWorker):
-    """
-    Orquesta un ciclo de refinamiento de texto post-OCR con clasificación selectiva optimizada.
-    """
+    """Orquesta un ciclo de refinamiento de texto post-OCR con clasificación selectiva optimizada"""
+    __slots__ = (
+        "cleaner",
+        "fragmenter",
+        "corrector",
+        "output",
+        "seman_clas_log",
+        "refined_text",
+        "semantic_types_log",
+        "num_passes"
+    )
     def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, corrector: Optional[TextCorrector] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
         self.cleaner = cleaner

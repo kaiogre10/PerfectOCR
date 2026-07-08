@@ -16,21 +16,30 @@ logger = logging.getLogger(__name__)
 
 ONE = Decimal('1.00')
 ZERO = Decimal('0.00')
+COMBINATIONS = 3
 
 class MatrixSolver(VectorizationAbstractWorker):
     """
     Resuelve inconsistencias matemáticas en una tabla estructurada usando
     clasificación semántica de polígonos, aritmética Decimal y votación global.
     """
+    __slots__ = (
+        "cant_name",
+        "pu_name",
+        "mtl_name",
+        "product_name",
+        "dec_cols_name",
+        "arithmetic_tolerance",
+        "output",
+    )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        self.project_root = project_root
+        # self.project_root = project_root
         worker_config = config.get('math_max', {})
         all_cols_name: List[str] = worker_config["cols_name"]
         self.cant_name, self.pu_name, self.mtl_name, self.product_name = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3]
         self.dec_cols_name: FrozenSet[str] = frozenset({all_cols_name[0], all_cols_name[1], all_cols_name[2]})
-        tol: str = worker_config.get('row_relative_tolerance', "")
-        self.arithmetic_tolerance = Decimal(tol) if tol else Decimal('0.10')
+        self.arithmetic_tolerance = Decimal(worker_config.get('row_relative_tolerance', ""))
         self.output = config.get("math_max_corrected")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
@@ -43,17 +52,14 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            logger.debug(f"DataFrame recibido:\n{df.to_string(index=True)}")
-
             corrected_df = self.solve(df, context)
             del context
             if corrected_df.empty:
-                logger.error(f"SE DEVOLVIÓ DATA FRAME VACÍO")
+                logger.error("SE DEVOLVIÓ DATA FRAME VACÍO")
                 return False
 
             if manager.save_final_output(corrected_df, {}):
-                logger.info(f"Corrección matemática completada en {time.perf_counter() - start_time:.6f}'s")
-                logger.info(f"DataFrame RECONSTRUIDO:\n{corrected_df.to_string(index=True)}")
+                logger.info(f"DataFrame RECONSTRUIDO en {time.perf_counter() - start_time:.6f}'s:\n{corrected_df.to_string(index=False)}")
                 if self.output:
                     file_name = manager.workflow.metadata.image_name if manager.workflow.metadata else ""
                     save_debug_table(corrected_df, file_name, None, None)
@@ -93,19 +99,20 @@ class MatrixSolver(VectorizationAbstractWorker):
             text_col: str = cols_list[int(text_col_idx[0])]
             df.rename(columns={text_col: self.product_name}, inplace = True)
             if check_full_df(df):
-                logger.info("DF PERFECTO")
+                logger.debug("DF PERFECTO")
                 return df
         else:
             if df.shape == (arithmetical_rows.size, arithmetical_cols.size):
                 logger.debug(f"DF INCOMPLETO")
                 df_art, context_art = self.solve_incomplete(df, context)
                 if df_art.empty:
-                    context = {}
+                    del context_art
+                    del context
                     return pd.DataFrame()
                 else:
                     df = df_art
                     context = context_art
-        # logger.info(f"RECIBIDO:\n"f"{df.to_string(index=True)}")
+        
         df, context = self.find_hypotesis(df, context)
 
         if df.empty:
@@ -128,14 +135,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         rows_idx = context["rows_idx"]
         cols_idx = context["cols_idx"]
 
-        matrix_array = np.zeros((r, h), np.uint8)
-
-        total_array = matrix_array.copy()
-        textual_array = matrix_array.copy()
-        umd_array = matrix_array.copy()
-        code_array = matrix_array.copy()
-        cuantiative_array = matrix_array.copy()
-        numeric_array = matrix_array.copy()
+        matrix_array = np.zeros(shape=(6, r, h), dtype=np.uint8)
 
         for row_id in rows_idx:
             for i in cols_idx:
@@ -150,43 +150,22 @@ class MatrixSolver(VectorizationAbstractWorker):
                     poly_data = cut_polygons.get(poly_id)
                     if not poly_data:
                         continue
+                        
                     sc_v.extend(poly_data["semantic_clasification"])
                     if poly_data.get("text"):
                         has_text = True
 
                 if not sc_v or not has_text:
                     continue
+                
+                matrix_array[0, row_id, i] = len(sc_v)
+                
+                sc = np.asarray(sc_v, dtype=np.uint8)
+                counts = np.bincount(sc, minlength=6)
+                matrix_array[1:, row_id, i] = counts[1:]
 
-                total_array[row_id, i] = len(sc_v)
-
-                if any(s == 1 for s in sc_v):
-                    text_elems = sum(1 for ch in sc_v if ch == 1)
-                    textual_array[row_id, i] = text_elems
-                    # total_array[row_id, i] = text_elems
-
-                if any(s == 2 for s in sc_v):
-                    umd_elems = sum(1 for ch in sc_v if ch == 2)
-                    umd_array[row_id, i] = umd_elems
-                    # total_array[row_id, i] = umd_elems
-
-                if any(s == 3 for s in sc_v):
-                    code_elems = sum(1 for ch in sc_v if ch == 3)
-                    code_array[row_id, i] = code_elems
-                    # total_array[row_id, i] = code_elems
-
-                if any(s == 4 for s in sc_v):
-                    cuant_elems = sum(1 for ch in sc_v if ch == 4)
-                    cuantiative_array[row_id, i] = cuant_elems
-                    # total_array[row_id, i] = cuant_elems
-
-                if any(s == 5 for s in sc_v):
-                    numeric_elems = sum(1 for ch in sc_v if ch == 5)
-                    numeric_array[row_id, i] = numeric_elems
-                    # total_array[row_id, i] = numeric_elems
-
-        table_arrays = np.stack([total_array, textual_array, umd_array, code_array, cuantiative_array, numeric_array], dtype=np.uint8)
-        # logger.debug(f"ARRAYS TABLE: \n"f"{table_arrays}")
-        return table_arrays
+        # logger.info(f"ARRAYS TABLE: \n"f"{matrix_array}")
+        return matrix_array
 
     def find_hypotesis(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         """
@@ -198,19 +177,18 @@ class MatrixSolver(VectorizationAbstractWorker):
         arithmetical_cols = context["arith_cols_ids"]
         arithmetical_rows = context["dec_rows_ids"]
 
-        aritmetic_df: pd.DataFrame = df.iloc[arithmetical_rows, arithmetical_cols]
+        sliced_df: pd.DataFrame = df.iloc[arithmetical_rows, arithmetical_cols]
         try:
-            perm_df = aritmetic_df.map(lambda x: Decimal(x)) # type: ignore
+            aritmetic_df = sliced_df.map(lambda x: Decimal(x)) # type: ignore
         except InvalidOperation as e:
             logger.debug(f"ERROR CONVIRTIENDO VALORES DEL DF: '{e}'", exc_info=True)
             return (pd.DataFrame(), {})
         try:
-            array_votes = np.zeros(perm_df.shape, np.int8)
-            for _, row in perm_df.iterrows():
-                row_validated = []
-                row_values = row.values
-                n_cols = len(row_values)
-                for c_idx, pu_idx, mtl_idx in permutations(range(n_cols), 3):
+            time_h = time.perf_counter()
+            n_cols = aritmetic_df.shape[1]
+            array_votes = np.zeros(aritmetic_df.shape, dtype=np.int8, order='F')
+            for row_values in aritmetic_df.values:
+                for c_idx, pu_idx, mtl_idx in permutations(range(n_cols), COMBINATIONS):
                     c_col = row_values[c_idx]
                     pu_col = row_values[pu_idx]
                     mtl_col = row_values[mtl_idx]
@@ -231,16 +209,12 @@ class MatrixSolver(VectorizationAbstractWorker):
                     artimetic_c = mtl_col / pu_col
 
                     if artimetic_mtl == mtl_col and artimetic_c == c_col and artimetic_pu == pu_col:
-                        row_validated.append([c_col, pu_col, mtl_col])
                         array_votes[:, c_idx] = 1
                         array_votes[:, pu_idx] = 2
                         array_votes[:, mtl_idx] = 3
                         break
 
-                    elif (lower_tol_mtl < artimetic_mtl < upper_tol_mtl) and \
-                         (lower_tol_c < artimetic_c < upper_tol_c) and \
-                         (lower_tol_pu < artimetic_pu < upper_tol_pu):
-                        row_validated.append([c_col, pu_col, mtl_col])
+                    elif (lower_tol_mtl < artimetic_mtl < upper_tol_mtl) and (lower_tol_c < artimetic_c < upper_tol_c) and (lower_tol_pu < artimetic_pu < upper_tol_pu):
                         array_votes[:, c_idx] = 1
                         array_votes[:, pu_idx] = 2
                         array_votes[:, mtl_idx] = 3
@@ -248,7 +222,8 @@ class MatrixSolver(VectorizationAbstractWorker):
                     else:
                         continue
 
-        except ValueError as e:
+            logger.warning(f"TIEMPO ITERANDO: {time.perf_counter() - time_h:.6f}'s")
+        except TypeError as e:
             logger.warning(f"ERROR PERMUTANDO: '{e}'", exc_info=True)
             return (pd.DataFrame(), {})
 
@@ -291,7 +266,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         cols_idx = context["cols_idx"]
         arrays_table = self.get_arrays_table(context)
         elements_array, textual_array, umd_array, code_array, matrix_decimal, matrix_quantity = arrays_table[0], arrays_table[1], arrays_table[2], arrays_table[3], arrays_table[4], arrays_table[5]
-        #logger.info("\n"f"{elements_array}")
         full_rows_mask = np.count_nonzero(elements_array, axis=1)
         full_idx = np.where(full_rows_mask==cols_idx.size)[0]               # índices columnas originales sin celdas vacías
 
@@ -317,16 +291,13 @@ class MatrixSolver(VectorizationAbstractWorker):
         full_idx_dec = np.where(full_dec_mask)[0]                           # índices del array anterior (No del array original) donde hay suficientes elementos decimales
         full_dec_idx = full_idx[full_idx_dec]                               # índices originales con filas completas y suficiente numero de decimales
 
-        unique_mask = np.count_nonzero(elements_array[full_dec_idx], axis=1, keepdims=True)
-
-        textual_mask = np.count_nonzero(textual_array[full_dec_idx], axis=1, keepdims=True)
+        masks = np.count_nonzero(arrays_table[:4, full_dec_idx], axis=2, keepdims=True)
+        
         dec_mask = np.count_nonzero(full_dec_com[full_dec_idx], axis=1, keepdims=True)
-        code_mask = np.count_nonzero(code_array[full_dec_idx], axis=1, keepdims=True)
-        umd_mask = np.count_nonzero(umd_array[full_dec_idx], axis=1, keepdims=True)
-
+        unique_mask, textual_mask, umd_mask, code_mask = masks
+        
         sums = textual_mask + dec_mask + code_mask + umd_mask
-        # #logger.info("SUMS:\n"f"{np.column_stack([full_dec_idx, sums, unique_mask])}")
-        full_dec_idx_rel = np.where(unique_mask==sums)[0]                   # índices relativos donde hay elementos decimales de sobra
+        full_dec_idx_rel = np.where(unique_mask==sums)[0]               # índices relativos donde hay elementos decimales de sobra
         if full_dec_idx_rel.size < 1:
             full_dec_idx = full_dec_idx
         else:
@@ -427,7 +398,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         tables_array = self.get_arrays_table(context)
         textual_array = tables_array[1] + tables_array[2]
 
-        incomplete_rows_id = np.setdiff1d(rows_ids, dec_rows_ids)        # índices originales de filas a corregir/completar
+        incomplete_rows_id = np.asarray(np.setdiff1d(rows_ids, dec_rows_ids), dtype=np.uint8)        # índices originales de filas a corregir/completar
         textual_array = textual_array[incomplete_rows_id]
 
         text_in_dec = np.nonzero(textual_array[:, idx_map])
@@ -479,10 +450,6 @@ class MatrixSolver(VectorizationAbstractWorker):
         matemáticas está vacía; calcula el valor faltante con división o
         multiplicación según corresponda.
         """
-        # arrays_table = self.get_arrays_table(context)
-        # elements_array, matrix_decimal, matrix_quantity = arrays_table[0], arrays_table[4], arrays_table[5]
-        # full_dec = matrix_decimal + matrix_quantity
-
         c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None # type: ignore
         pu_idx = df.columns.get_loc(self.pu_name) if self.pu_name in df.columns else None # type: ignore
         mtl_idx = df.columns.get_loc(self.mtl_name) if self.mtl_name in df.columns else None # type: ignore
@@ -570,8 +537,8 @@ class MatrixSolver(VectorizationAbstractWorker):
                     df_copy.at[real_idx, src_a] = []
                     df_copy.at[real_idx, src_b] = []
 
-                    df.at[real_idx, self.mtl_name] = str(val_a).strip()
-                    df.at[real_idx, self.pu_name] = str(val_b).strip()
+                    df.at[real_idx, self.mtl_name] = str(val_a)
+                    df.at[real_idx, self.pu_name] = str(val_b)
 
                     df_copy.at[real_idx, self.mtl_name] = poly_a_mtl
                     df_copy.at[real_idx, self.pu_name] = poly_b_pu
@@ -772,7 +739,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         cols_idx = context["cols_idx"]
 
         cols_decimal_list = [(df.columns.get_loc(name) if name in df.columns else None) for name in self.dec_cols_name]
-        idx_decimal = np.sort(np.array(cols_decimal_list, np.uint8))
+        idx_decimal = np.sort(np.asarray(cols_decimal_list, dtype=np.uint8))
 
         rows_double = np.where(cuantiative_array==2)[0]
         double_cuant = cuantiative_array[rows_double]
@@ -802,7 +769,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 if c == dest_idx:
                     continue
 
-                val: str = str(df.iat[r, c]).strip()
+                val = str(df.iat[r, c]).strip()
                 if val == "" or not val:
                     continue
 
@@ -822,14 +789,14 @@ class MatrixSolver(VectorizationAbstractWorker):
                         closest_idx = close_idx2
 
                 if c < dest_idx:
-                    df.iat[r, dest_idx] = str(str(val) + " " + str(df.iat[r, dest_idx])).strip()
+                    df.iat[r, dest_idx] = val + " " + str(df.iat[r, dest_idx]).strip()
                     df_copy.iat[r, dest_idx] = poly_val + dest_vals
                 else:
-                    df.iat[r, dest_idx] = str(str(df.iat[r, dest_idx]) + " " + str(val)).strip()
+                    df.iat[r, dest_idx] = str(df.iat[r, dest_idx]) + " " + val
                     df_copy.iat[r, dest_idx] = dest_vals + poly_val
 
-                df.iat[r, c] = ""
-                df_copy.iat[r, c] = []
+                    df.iat[r, c] = ""
+                    df_copy.iat[r, c] = []
 
             for dc in cols_idx:
                 dc = int(dc)
@@ -838,7 +805,6 @@ class MatrixSolver(VectorizationAbstractWorker):
                 dec_val: str = str(df.iat[dr, dc]).strip()
                 poly_vals: List[str] = df_copy.iat[dr, dc]
                 dest_polys = df_copy.iat[dr, closest_idx]
-                # logger.debug(f"{dest_polys}")
 
                 if dec_val == "" or not dec_val:
                     continue
@@ -887,14 +853,14 @@ class MatrixSolver(VectorizationAbstractWorker):
             if r_target < 0:
                 continue
 
-            val = str(df.iat[r, c])
+            val = str(df.iat[r, c]).strip()
             if val != "" and val:
                 target_val = str(df.iat[r_target, c_target]).strip()
 
                 if target_val != "" and target_val:
-                    df.iat[r_target, c_target] = str(target_val).strip() + " " + str(val).strip()
+                    df.iat[r_target, c_target] = str(target_val).strip() + " " + val
                 else:
-                    df.iat[r_target, c_target] = str(val).strip()
+                    df.iat[r_target, c_target] = val
 
                 df.iat[r, c] = ""
 
@@ -905,7 +871,6 @@ class MatrixSolver(VectorizationAbstractWorker):
     def solve_incomplete(self, df: pd.DataFrame, context: Dict[str, Any]) -> Tuple[pd.DataFrame, Dict[str, Any]]:
         # logger.info("INCOMPLETO RECIBIDO:\n" + df.to_string(index=True))
         cols_idx = context["cols_idx"]
-        # rows_idx = context["rows_idx"]
         arrays_table = self.get_arrays_table(context)
         # decimal_array, numeric_array, elements_array, textual_array = arrays_table[0], arrays_table[1], arrays_table[2], arrays_table[3]
         decimal_array = arrays_table[4]

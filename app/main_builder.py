@@ -1,6 +1,6 @@
 # PerfectOCR/main_builder.py
 import time
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Tuple
 from app.process_builder import ProcessingBuilder
 from app.models_builder import ModelsBuilder
 from core.factory.main_factory import MainFactory
@@ -12,11 +12,12 @@ time_mask = f"Tiempo: "
 logger = logging.getLogger(__name__)
 
 class MainBuilder:
+    __slots__ = ("project_root", "config_service")
     def __init__(self, config_service: ConfigService, project_root: str):
         self.project_root = project_root
         self.config_service = config_service
 
-    def activate_main(self, workflow_report: List[Dict[str, Any]]) -> List[str]:
+    def activate_main(self, workflow_report: List[str]) -> List[str]:
         t0 = time.perf_counter()
         try:
             if not workflow_report or not self.config_service:
@@ -30,10 +31,14 @@ class MainBuilder:
             models_config = self.config_service.models_config
             if models_config:
                 models_builder = ModelsBuilder.get_instance()
-                if not models_builder.initialize_models(models_config, self.project_root):  # type: ignore
-                    logger.error("MODELOS NO SE PUDIERON INICIAR ABORTANDO")
+                if not models_builder.initialize_models(models_config):
+                    logger.error("MODELOS NO SE PUDIERON INICIAR: ABORTANDO")
                     return []
-
+                
+                elif models_config.get("update_model"):
+                    logger.info("ACTUALIZAICIÓN PARA WORD FINDER, SALIENDO")
+                    return []
+                
             if not self.config_service.no_activate_modules:
                 self.transform_image_to_df(processing_builder, workflow_report)
 
@@ -65,7 +70,7 @@ class MainBuilder:
            logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
         return None
 
-    def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[Dict[str, Any]]):
+    def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[str]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
         tolerance = bitmath.KiB(2)
         total_images = len(workflow_report)
@@ -78,12 +83,11 @@ class MainBuilder:
         payload_cunter = 0
         
         start_time = time.perf_counter()
-        for i, image_data in enumerate(workflow_report):
+        for i, image_path in enumerate(workflow_report):
             # Procesar imagen individualmente
-            payload = builder.process_single_image(image_data)
+            payload = builder.process_single_image(image_path)
             logger.warning(f"Procesadas: {(i + 1)} de '{total_images}' imágenes")
             if payload is None or not payload[0]:
-                logger.info(f"Fallo al procesar imagen: '{image_data.get("name")}'")
                 continue
             else:
                 succes_images.append(payload[0])
@@ -94,6 +98,7 @@ class MainBuilder:
                 if total_images == 1:
                     payloads_buffer += payload_size
                     payloads_sended = self.send_payload_pack(payloads_buffer, payload_cunter)
+                    final_results.append(payloads_sended)
                     continue
 
                 elif (payload_size + payloads_buffer) < tolerance and total_images > (i + 1):
@@ -111,7 +116,7 @@ class MainBuilder:
         del builder
         mean_process = f"{(total_processing_time / total_images):.6f}"
         
-        failed_images = {names["name"][:-4] for names in workflow_report}.difference(set(succes_images))
+        failed_images = {names.replace("\\", "/").split("/")[-1].split(".")[0] for names in workflow_report}.difference(set(succes_images))
         total_fails = len(failed_images)
         
         if total_fails == 0:
