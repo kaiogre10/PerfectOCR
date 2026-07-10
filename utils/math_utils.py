@@ -3,16 +3,16 @@ import numpy as np
 import logging
 import time
 import pandas as pd
-from decimal import Decimal, InvalidOperation
-from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax
+from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax, InvalidOperation
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 from sklearn.cluster import HDBSCAN, DBSCAN # type: ignore
-from utils.data_utils import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE
+from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE
 
-dummie_vect = VECTOR_DUMMIE.reshape(1, -1)
+dummie_vect = VECTOR_DUMMIE
 density_encoder = DENSITY_ENCODER
 cuant_char = CUANT_CHAR
+ref_vec = np.asarray([1.0, 0.0], dtype=np.float32) # eje X positivo
 
 logger = logging.getLogger(__name__)
 
@@ -24,26 +24,28 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
     """
     if not other_c:
         return 1.0
+    
     ref_point = np.array([ref_c[0], 0.0])
-    vec_to_other = np.array([other_c[0] - ref_point[0], other_c[1] - ref_point[1]], np.float32)
-    ref_vec = np.array([1, 0], np.float32)  # eje X positivo
+    vec_to_other = np.asarray([other_c[0] - ref_point[0], other_c[1] - ref_point[1]], dtype=np.float32)
+    
     if np.linalg.norm(vec_to_other) == 0.0:
         return 1.0
-    cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec), np.float32)
+    
+    cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
     return 1.0 - abs(float(cosine))
 
-def get_morphological_encode(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
-    return np.array(list(map(lambda ch: 1.0 if ch in cuant_char else -1.0 if ch.isalpha() else 0.0, text)), np.float32)
+def get_morphological_encode(text: str) -> np.ndarray[Any, np.dtype[np.float16]]:
+    return np.array(list(map(lambda ch: 1.0 if ch in cuant_char else -1.0 if ch.isalpha() else 0.0, text)), np.float16)
 
-def encode_text(text: str, encoder: Dict[str, float]) -> np.ndarray[Any, np.dtype[np.float32]]:
-    return np.array([encoder.get(char, " ") for char in text], np.float32)
+def encode_text(text: str, encoder: Dict[str, float]) -> np.ndarray[Any, np.dtype[np.float16]]:
+    return np.array([encoder.get(char, " ") for char in text], np.float16)
     
-def text_encode(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
+def text_encode(text: str) -> np.ndarray[Any, np.dtype[np.float16]]:
     dense = encode_text(text, density_encoder)
     morph = get_morphological_encode(text)
     # frec = encode_text(text, REL_FRECUENCY_CHAR)
     encoders = np.column_stack([dense, morph])
-    return np.mean(encoders, axis=0)
+    return np.mean(encoders, axis=0, dtype=np.float16)
 
 def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
     """Calcula la matriz de similitudes coseno entre los vectores de X y el Dummie Vector"""
@@ -55,14 +57,13 @@ def cosine_similarity_matrix(x: np.ndarray[Any, np.dtype[np.float32]]) -> np.nda
     return np.matmul(X_norm, X_norm.T, dtype=np.float32)
     
 def mean_cosine_per_row(s: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarray[Any, np.dtype[np.float32]]:
-    return (np.sum(s, axis=1, dtype=np.float32) - 1.0) / (s.shape[0] - 1)
+    return np.asarray((np.sum(s, axis=1, dtype=np.float32) - 1.0) / (s.shape[0] - 1), dtype=np.float32)
 
-def euclidean_distance(point1: Tuple[float, float], point2: Tuple[float, float]) -> float:
+def euclidean_distance(point1: List[float], point2: List[float]):
     """Calcula la distancia euclidiana entre dos puntos en ℝ²."""
-    if point1 != point2:
+    if len(point1) != 2 or point1 != point2:
         return 0.0
-    
-    return float(np.linalg.norm(np.subtract(point1, point2)))
+    return np.linalg.norm(np.subtract(point1, point2, dtype=np.float32))
         
 def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     """
@@ -70,22 +71,23 @@ def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     deleted: Número total de outliers eliminados
     """
     # time_h = time.perf_counter()
-    min_feat = np.min(metrics) if np.min(metrics) == 0 else (np.min(metrics) - 0.1)
+    min_metrics = np.min(metrics)
+    min_feat = min_metrics if min_metrics == 0 else (min_metrics - 0.1)
     
-    def _recursive_cleanup(current_metrics: np.ndarray[Any, Any], total_deleted: int, iteration: int) -> Tuple[int, int]:
+    def _recursive_cleanup(current_metrics: np.ndarray[Any, Any], total_deleted: int, iteration: int) -> Tuple[int, float]:
         current_count = current_metrics.shape[0]
         max_feat = (np.max(current_metrics) + 0.1)
-        
-        hist, bin_edges = np.histogram(current_metrics, bins=(np.histogram_bin_edges(current_metrics, 'fd', (min_feat, max_feat))))
-        relat = np.sum(hist)/np.max(hist)
+        edges = np.histogram_bin_edges(current_metrics, 'fd', (min_feat, max_feat))
+        hist, bin_edges = np.histogram(current_metrics, bins=edges)
+        relat = np.divide(np.sum(hist, dtype=np.float32), np.max(hist), dtype=np.float32)
         # logger.info(f"Relación {relat}")
         # logger.info(f"EDGES: {bin_edges}")
         
         # logger.info(f"HIST iteración {iteration}: {hist}, elementos: {current_count}")
 
-        hist_rever = hist[::-1].astype(np.int32)
+        hist_rever = hist[::-1].astype(np.int16)
         cutting = np.where(hist_rever > 1)[0]
-        idx_orig = len(hist) - 1 - cutting[0] if cutting.size > 0 else -1
+        idx_orig = hist.size - 1 - cutting[0] if cutting.size > 0 else -1
         outliers_indx = np.nonzero(hist == 1)[0]
         filtered_outliers = outliers_indx[outliers_indx > idx_orig]
         
@@ -94,7 +96,7 @@ def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
             # logger.info(f"Analisis de histograma completado en {time.perf_counter()-time_h}'s")
             # logger.info(f"Total eliminados: {total_deleted}")
             # logger.info(f"Iteraciones totales de histograma: {iteration}")
-            return total_deleted, relat
+            return (total_deleted, relat)
         
         # Filtrar outliers
         mask = np.min(filtered_outliers) - 1
@@ -189,7 +191,7 @@ def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], i
     all_features = calculate_math_features(sorted_lines, img_dims)
     textual_features = calculate_textual_line_features(sorted_lines, polygons_dict)
     all_lines_features = np.column_stack([all_features, textual_features])
-    logger.debug(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.7f}s")
+    logger.info(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.8f}s")
     return all_lines_features
 
 def calculate_global_stats(geoline_features: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
@@ -377,8 +379,9 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
 def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
     """Devuelve features textuales ajustadas a la lógica de vectorize.py (-1.0/1.0 y conteos correctos)."""
     # timef = time.perf_counter()
+    rows = len(sorted_lines)
     index_to_id_map = {p.poly_index: p.polygon_id for p in polygons_dict.values()}
-    features = np.zeros((len(sorted_lines), 3), np.float32)
+    features = np.zeros((rows, 3), dtype=np.float32, order='C')
     
     for i, line_data in enumerate(sorted_lines):
         sc_quant_count = 0
@@ -402,7 +405,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
         features[i, 2] = kf_total
     
     if features.shape[0] == 0:
-        return np.zeros((len(sorted_lines), 6), dtype=np.float32)
+        return np.empty(0, dtype=np.float32)
     
     maximus = np.max(features, axis=0)
     # logger.info("\n"f"{np.column_stack([np.arange(len(sorted_lines)), features])}")
@@ -412,7 +415,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     sc_quants, dec_chars, _ = features[:, 0], features[:, 1],features[:, 2]
     
     # Evitar división por cero
-    means = np.mean([sc_quants, dec_chars], axis=0)
+    means = np.mean([sc_quants, dec_chars], axis=0, dtype=np.float32)
     dec_mean = means[1]
                 
     digit_above = np.where(dec_chars > dec_mean, 1.0, -1.0)
@@ -436,7 +439,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     
     if max_digit > 0:
         dig_margin = (dec_chars - dec_mean) / (max_digit / 2.0)
-        dig_margin = np.clip(dig_margin, -1.0, 1.0)
+        dig_margin = np.clip(dig_margin, -1.0, 1.0, dtype=np.float32)
     else:
         dig_margin = np.zeros_like(dec_chars, np.float32)
     
@@ -466,6 +469,7 @@ def round_2_decimal_vals(amount_str: str) -> str:
         return amount_str
     
 def validate_df(df: pd.DataFrame, cant_name: str, pu_name: str, mtl_name: str) -> bool:
+    """Valida que no haya filas vacias, strings válidos y correctamente distribuidos"""
     if df.empty:
         logger.error("DF vacio")
         return False
@@ -487,8 +491,8 @@ def validate_df(df: pd.DataFrame, cant_name: str, pu_name: str, mtl_name: str) -
             return True
         except InvalidOperation as e:
             logger.error(f"DF con datos intrusos: {e}:\n" + df.to_string(index=True), exc_info=True)
-            return False
+        return False
             
-def check_full_df( df: pd.DataFrame) -> bool:
+def check_full_df(df: pd.DataFrame) -> bool:
     """Devuelve true si todas las celdas tienen strings válidos"""
     return not (df.isnull().values.any() or (df == "").values.any())

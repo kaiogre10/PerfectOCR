@@ -2,183 +2,6 @@ from typing import Dict, List, Any, FrozenSet
 from types import MappingProxyType
 import numpy as np
 
-IMPOSIBLE_BIGRAMS: FrozenSet[str] = frozenset({
-    "bh",
-    "bq",
-    "bk",
-    "bw",
-    "bx",
-    "bz",
-    "cv",
-    "cw",
-    "cx",
-    "dc",
-    "df",
-    "dx",
-    "fb",
-    "fc",
-    "fd",
-    "fj",
-    "fm",
-    "fp",
-    "fq",
-    "fv",
-    "fw",
-    "fx",
-    "fy",
-    "fz",
-    "gj",
-    "gq",
-    "gv",
-    "gw",
-    "gx",
-    "gy",
-    "hc",
-    "hd",
-    "hf",
-    "hg",
-    "hh",
-    "hj",
-    "hq",
-    "hv",
-    "hw",
-    "hx",
-    "hz",
-    "jb",
-    "jd",
-    "jf",
-    "jg",
-    "jh",
-    "jj",
-    "jk",
-    "jm",
-    "jn",
-    "jp",
-    "jq",
-    "jr",
-    "js",
-    "jt",
-    "jv",
-    "jw",
-    "jx",
-    "jy",
-    "kb",
-    "kf",
-    "kh",
-    "kk",
-    "kp",
-    "kq",
-    "kt",
-    "kv",
-    "kx",
-    "kz",
-    "lw",
-    "lx",
-    "mf",
-    "mg",
-    "mh",
-    "mj",
-    "mw",
-    "mx",
-    "my",
-    "mz",
-    "nw",
-    "nx",
-    "pb",
-    "pg",
-    "pj",
-    "pk",
-    "pm",
-    "pq",
-    "pw",
-    "px",
-    "pz",
-    "qa",
-    "qb",
-    "qc",
-    "qd",
-    "qe",
-    "qf",
-    "qg",
-    "qh",
-    "qi",
-    "qj",
-    "qk",
-    "ql",
-    "qm",
-    "qn",
-    "qo",
-    "qp",
-    "qq",
-    "qr",
-    "qs",
-    "qt",
-    "qv",
-    "qw",
-    "qx",
-    "qy",
-    "qz",
-    "sx",
-    "tj",
-    "tk",
-    "tq",
-    "tv",
-    "tx",
-    "vb",
-    "vf",
-    "vg",
-    "vh",
-    "vj",
-    "vk",
-    "vm",
-    "vp",
-    "vq",
-    "vr",
-    "vs",
-    "vt",
-    "vv",
-    "vw",
-    "vx",
-    "vz",
-    "wc",
-    "wd",
-    "wf",
-    "wg",
-    "wj",
-    "wk",
-    "wl",
-    "wp",
-    "wq",
-    "wu",
-    "wv",
-    "wx",
-    "wy",
-    "wz",
-    "xb",
-    "xd",
-    "xg",
-    "xj",
-    "xk",
-    "xn",
-    "xr",
-    "xx",
-    "xz",
-    "yf",
-    "yg",
-    "yh",
-    "yj",
-    "yk",
-    "yq",
-    "yv",
-    "yx",
-    "yy",
-    "yz",
-    "zj",
-    "zv",
-    "zw",
-    "zx",
-    "zy"})
-    
 DENSITY_ENCODER: Dict[str, float] = {
     "0": 0.0,
     "1": 1.0,
@@ -297,7 +120,7 @@ DENSITY_ENCODER: Dict[str, float] = {
     " ": 114.0
 }
 
-CHAR_FRECUENCY = np.array(
+CHAR_FRECUENCY = np.asarray(
   [[1100589.0, 1.6773916e+01], #'a'
     [799520.0, 1.2185368e+01], #'e'
     [631299.0, 9.6215363e+00], #'r'
@@ -324,9 +147,9 @@ CHAR_FRECUENCY = np.array(
     [8678.0,   1.3226013e-01], #'y':
     [578.0,    8.8092135e-03], #'k':
     [84.0,     1.2802318e-03]] #'w'
-)
+, dtype=np.float32, order='C')
 
-VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
+VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.asarray([
     0.997321218,
     0.969818993,
     1.011409402,
@@ -360,7 +183,7 @@ VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.array([
     0.836353079,
     1.0,
     1.0
-])
+], dtype=np.float32, order='C').reshape(1, -1)
 
 FEATURES_NAME: List[str] = [
     "line_id",
@@ -456,7 +279,7 @@ CUANT_CHAR: FrozenSet[str] = frozenset(CHAR_NUM.union(VALID_CUANT_CHARS))
 alone_chars: FrozenSet[str] = frozenset({"a", "e", "y", "o", "A", "E", "Y", "O"})
 VALID_ALONE_CHARS: FrozenSet[str] = frozenset(CHAR_NUM.union(alone_chars))
 
-_conversion_kf: Dict[str, int] = {
+CONVERSION_KF: MappingProxyType[str, int] = MappingProxyType({
         "total_doc": 1, # 'MontoTotalDocumento'
         'total_art': 2, # TotalProductos
         'subtotal': 3,
@@ -469,12 +292,9 @@ _conversion_kf: Dict[str, int] = {
         "TelefonoP": 10,
         "CorreoP": 11,
         "DirecciónP": 12
-    }
-CONVERSION_KF = _conversion_kf
+    })
 
-_replace_map: Dict[str, str] = {
+REPLACEMENT_MAP: MappingProxyType[str, str] = MappingProxyType({
     'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
     'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9'
-}
-
-REPLACEMENT_MAP = MappingProxyType(_replace_map)
+})

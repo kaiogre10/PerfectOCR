@@ -59,8 +59,8 @@ class MainBuilder:
         """Crea un único builder reutilizable usando StagersFactory."""
         try:
             # CREAR STAGERS FACTORY UNA SOLA VEZ
-            stagers_factory = MainFactory(self.config_service.stagers_config, project_root=self.project_root, stagging=self.config_service.create_stager) # type: ignore
-            all_stagers = stagers_factory.get_all_stagers()
+            stagers_factory = MainFactory(self.project_root, self.config_service.stagers_config)
+            all_stagers = stagers_factory.get_all_stagers(stagging=self.config_service.create_stager)
             # El manager se crea dentro del proceso de cada imagen, no aquí
             builder = ProcessingBuilder(self.project_root, all_stagers=all_stagers, logs_debug=self.config_service.logs_debug)
             del stagers_factory
@@ -74,7 +74,6 @@ class MainBuilder:
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
         tolerance = bitmath.KiB(2)
         total_images = len(workflow_report)
-        logger.error(f"'{total_images}' IMAGENES PARA PROCESAR")
 
         succes_images: List[str] = []
         final_results: List[Tuple[bitmath.Any, int]] = []

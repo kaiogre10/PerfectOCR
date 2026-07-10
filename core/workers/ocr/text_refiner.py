@@ -26,14 +26,14 @@ class Refiner(OCRAbstractWorker):
     )
     def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, corrector: Optional[TextCorrector] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
+        worker_config = config.get("text_refine", {})
         self.cleaner = cleaner
         self.fragmenter = fragmenter
         self.corrector = corrector
         self.output = config.get("cleanned_text")
-        worker_config = config.get("text_refine", {})
         self.seman_clas_log = config.get("seman_clas")
         self.refined_text = config.get("refined_text")
-        self.semantic_types_log = list(range(0, 6)) if -1 in config["semantic_types_log"] else config["semantic_types_log"]
+        self.semantic_types_log = config.get("semantic_types_log", [])
         self.num_passes = worker_config.get("num_passes")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -81,7 +81,6 @@ class Refiner(OCRAbstractWorker):
             return True
         except Exception as e:
             logger.error(f"Error refinando texto: {e}", exc_info=True)
-            context={}
         return False
         
     def classify_strings(self, manager: DataFormatter) -> bool:
@@ -212,4 +211,4 @@ class Refiner(OCRAbstractWorker):
                 final_polygons[poly] = {"text": text}
                 continue
 
-        return manager.update_ocr_results(final_polygons, "refiner")
+        return manager.update_ocr_results(final_polygons)

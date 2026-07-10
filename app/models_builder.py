@@ -45,15 +45,22 @@ class ModelsBuilder:
             paddle_config = models_config.get("paddle_config", {})
             wf_config = models_config.get("wf_config", {})
             model_update = config.get("update_model")
-            # 1. Inicialización SELECTIVA de motores de Paddle
-            if not self._activate_paddle(paddle_config):
-                return False
+            test_wf_model = wf_config.get("test_wf_model")
+                        
+            if test_wf_model:
+                logger.warning(f"TESTEANDO WORD FINDER")
+                if self._activate_wf(wf_config):
+                    return True
             
             elif model_update:
                 logger.warning("SE ACTUALIAZÁN PARAMETROS DE WORD FINDER")
                 self.edit_model_params(wf_config)
                 logger.warning("PARAMETROS ACTUALIZADOS EN INSTANCIA WORD FINDER")
                 return True
+                    
+            # 1. Inicialización SELECTIVA de motores de Paddle
+            elif not self._activate_paddle(paddle_config):
+                return False
                 
             # 2. Inicialización de WordFinder
             elif config.get("activate_wf"):
@@ -102,7 +109,7 @@ class ModelsBuilder:
                     max_text_length = paddle_config.get('max_text_length'),
                     return_word_box = paddle_config.get('return_word_box'),
                 )
-                # Asignamos al puntero solo si el modelo está realmente activo
+                
                 self._detection_engine = self._shared_engine if activate_det else None
                 self._recognition_engine = self._shared_engine if activate_rec else None
                 logger.debug(f"Motores Paddle listos (det={activate_det}, rec={activate_rec})")
@@ -133,10 +140,11 @@ class ModelsBuilder:
         return False
         
     def edit_model_params(self, config: Dict[str, Any]):
-        pkl_path = config.get("pkl_path", "")
-        if MatrixFactory.edit_pickle_vals(pkl_path):
+        if MatrixFactory.edit_pickle_vals(config):
             logger.info(f"PICLKLE EDITADO CON ÉXITO")
-        self._activate_wf(config)
+            
+        if config.get("test_wf_model"):
+            self._activate_wf(config)
         
     @property
     def detection_engine(self) -> Optional[PaddleOCR]:

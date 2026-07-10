@@ -6,7 +6,6 @@ import time
 from typing import Dict, Any, List
 from domain.abstract_worker import PreprocessingAbstractWorker
 from domain.data_formatter import DataFormatter
-from domain.data_models import Polygons
 from utils.image_utils import use_sobel
 from services.output_service import save_croped_image
 
@@ -32,7 +31,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
         try:
             start_time = time.time()
 
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            polygons = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
             
@@ -155,5 +154,5 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
             return result
         
         else:
-            logger.info(f"Corrección S&P revertida por pérdida de nitidez")
+            logger.debug(f"Corrección S&P revertida por pérdida de nitidez")
             return original_img

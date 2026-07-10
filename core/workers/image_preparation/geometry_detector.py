@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class GeometryDetector(ImagePrepAbstractWorker):
     """Detecta geometría con PaddleOCR"""
     __slots__ = (
-        "project_root",
+        # "project_root",
         "kernel",
         "iterations",
         "output",
@@ -23,10 +23,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
     )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        self.project_root = project_root
+        # self.project_root = project_root
         worker_config = config.get("geometry_detect", {})
-        kernel_threshold = worker_config["morph_kernel"]
-        self.kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_threshold[0], kernel_threshold[1]))
+        self.kernel = worker_config["morph_kernel"]
         self.iterations = worker_config.get("iterations")
         self.output = config.get("opened")
         self._engine = None
@@ -38,7 +37,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             self._engine = paddle_manager.detection_engine
 
             if self._engine is None:
-                logger.error("Motor de detección no disponible")
+                logger.error("PaddleOCR DET no disponible")
                 return None
 
         return self._engine
@@ -57,8 +56,15 @@ class GeometryDetector(ImagePrepAbstractWorker):
             if full_imag is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-
-            bin_img = binarice_img(full_imag, {})
+                
+            metadata = manager.workflow.metadata if manager.workflow else None
+            if metadata is None:
+                raise (f"NO HAY METADATA EN GEOMETRY DETECTOR")
+            
+            if metadata.binary:
+                bin_img = full_imag
+            else:
+                bin_img = binarice_img(full_imag, {})
 
             img = make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, self.kernel, iterations=self.iterations))
 
@@ -83,9 +89,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
             polygons_list: List[Dict[str, Any]] = []
             for idx, poly_pts in enumerate(polygons):
-                poly_id = f"poly_{idx:04d}"
-                coords = np.array([[p[0], p[1]] for p in poly_pts], np.float32)
-                bbox = np.array([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()], np.float32)
+                # poly_id = f"poly_{idx:04d}"
+                coords = np.asarray([[p[0], p[1]] for p in poly_pts], dtype=np.float32)
+                bbox = np.asarray([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()], dtype=np.float32)
                 centroid = np.mean(coords, axis=0, dtype=np.float32)
 
                 # geometry_array[idx, [0, 1, 2, 3, 4, 5]] = bbox[0], bbox[1], bbox[2], bbox[3], centroid[0], centroid[1]
@@ -110,10 +116,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
             if not manager.create_polygon_dicts(final_polygons):
                 logger.critical("GeometryDetector: Fallo al estructurar polígonos.")
-                return False
+                raise
 
             else:
-                logger.debug(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
+                # logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
                 return True
         
         except Exception as e:
@@ -203,3 +209,4 @@ class GeometryDetector(ImagePrepAbstractWorker):
     #     except ValueError as e:
     #         logger.warning(f"Error de contornos: {e}", exc_info=True)
     #         return polygons_list
+    

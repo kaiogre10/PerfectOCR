@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Any, Optional, List, Tuple
 from utils.image_utils import normalice_image
 import pandas as pd #type: ignore
+from services.log_service import get_caller_info
 
 logger = logging.getLogger(__name__)
 
@@ -19,22 +20,22 @@ class DataFormatter:
         "kf_list_log",
         "lines_log",
         "table_lines_log",
-        "table_geo_log",
         "table_correct_log",
     )
     def __init__(self, logs_config: Dict[str, Any]):
         self.workflow: Optional[WorkflowData] = None
         self.payload: Optional[Payload] = None
+        
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
-        self.kf_list_log = list(range(1, 13)) if -1 in logs_config["kf_list_log"] else logs_config["kf_list_log"]
+        self.kf_list_log = logs_config.get("kf_list_log", [])
         self.lines_log = logs_config.get("lines", False)
         self.table_lines_log = logs_config.get("table_lines", False)
-        self.table_geo_log = logs_config.get("table_geo", False)
         self.table_correct_log = logs_config.get("table_correct", False)
 
     def reset_data(self) -> None:
         self.workflow: Optional[WorkflowData] = None
+        self.payload: Optional[Payload] = None
         
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
@@ -195,8 +196,9 @@ class DataFormatter:
             logger.error(f"Error guardando imágenes recortadas y geometría: {e}", exc_info=True)
         return False
                     
-    def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]], worker: str) -> bool:
+    def update_ocr_results(self, final_results: Dict[str, Dict[str, Any]]) -> bool:
         """Actualiza los resultados de OCR en las dataclasses de polígonos."""
+        worker, _ = get_caller_info()
         try:
             if not self.workflow or not self.workflow.polygons:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")

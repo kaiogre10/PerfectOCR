@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from domain.data_formatter import DataFormatter
 from domain.abstract_worker import OCRAbstractWorker
 from utils.text_utils import find_umd, fast_classfier, correct_subfix
-from utils.data_utils import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
+from core.assets.assets import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
 from utils.patterns import bad_title
 from utils.compiled_utils import validate_text
 from string import ascii_lowercase, ascii_uppercase
@@ -81,8 +81,7 @@ class TextCorrector(OCRAbstractWorker):
 
                 final_polygons[poly_id] = {"text": corrected_text, "sc": sc, "cuant_chars": polygon.cuant_chars}
 
-        worker_name = context.get("worker_name") or "text_corrector"
-        if manager.update_ocr_results(final_polygons, worker_name):
+        if manager.update_ocr_results(final_polygons):
             logger.debug(f"Corrección textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - correced_count}, eliminados: {correced_count}")
             return True
         else:

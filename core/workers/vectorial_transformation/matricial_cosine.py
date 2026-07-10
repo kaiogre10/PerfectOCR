@@ -1,41 +1,34 @@
 # core/workers/vectorial_transformation/matricial_cosine.py
 import numpy as np
+from numpy import memmap
 import time
 import logging
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.math_utils import get_cosine_similarity, density_cluster, calculate_features, cosine_similarity_matrix, mean_cosine_per_row
-from services.output_service import save_table_values
+from services.output_service import save_table_values, serialize_arrays
 
 logger = logging.getLogger(__name__)
 
 class MatricialCusine(VectorizationAbstractWorker):
-    __slots__ = (
-        "similarity_threshold",
-        "min_cluster",
-        "tolerance_sim",
-        "emergency_threshold",
-        "eps",
-        "metric",
-        "min_internal_sim",
-        "output_features",
-        "output"
-    )
-    def __init__(self, config: Dict[str, Any], project_root: str):
-        super().__init__(config, project_root)
+    __slots__ = ("similarity_threshold", "min_cluster", "tolerance_sim", "emergency_threshold", "eps", "metric", "min_internal_sim", "output_features", "output", "training_data")
+    def __init__(self, project_root: str, config: Dict[str, Any]):
+        super().__init__(project_root, config)
         # self.project_root = project_root
         worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
-        self.min_cluster = worker_config.get("min_cluster", 1)
+        self.min_cluster = worker_config.get("min_cluster")
         self.tolerance_sim = worker_config.get("tolerance_sim")
         self.emergency_threshold = worker_config.get("emergency_threshold")
         self.eps = worker_config.get("eps")
         self.metric = worker_config.get("metric", "")
         self.min_internal_sim = worker_config.get("min_internal_sim")
+        
         self.output = config.get("table_lines", False)
         self.output_features = config.get("features")
-                
+        self.training_data = config.get("training_data")
+        
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         timw9 = time.perf_counter()
         try:
@@ -44,22 +37,24 @@ class MatricialCusine(VectorizationAbstractWorker):
                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                return True
 
-            table_line_ids: List[str] = self._compare_vectors(manager)
+            table_line_ids, array_table = self._compare_vectors(manager)
             if table_line_ids:
                 if manager.save_tabular_lines(table_line_ids):
-                    logger.debug(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s:\n"f"{table_line_ids}")
+                    logger.info(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s")
+                    if self.training_data:
+                        serialize_arrays(array_table[:, 1:])
                     return True
                 return False
         except Exception as e:
-            logger.error(f"Error en matriz coseno: {e}", exc_info=True)
+            logger.error(f"Error en matriz coseno: '{e}'", exc_info=True)
         return True
 
-    def _compare_vectors(self, manager: DataFormatter) -> List[str]:
+    def _compare_vectors(self, manager: DataFormatter) -> Tuple[List[str], Optional[np.ndarray[Any, np.dtype[np.float32]]]]:
         try:
             polygons_dict = manager.workflow.polygons if manager.workflow else {}
             all_lines_dict = manager.workflow.all_lines if manager.workflow else {}
             if not polygons_dict or not all_lines_dict:
-                return []
+                return [], None
             
             metadata = manager.workflow.metadata if manager.workflow else None
             img_dims: Tuple[int, int] = metadata.img_dims if metadata is not None else (0, 0)
@@ -79,36 +74,36 @@ class MatricialCusine(VectorizationAbstractWorker):
             tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
             
             if tabular_lines:
-                line_idx = np.array([line.line_index for line in sorted_lines if line.lineal_id in tabular_lines], np.uint8)
+                line_idx = np.asarray([line.line_index for line in sorted_lines if line.lineal_id in tabular_lines], dtype=np.uint8)
                 # logger.info(f"TABLES IDX: {line_idx}")
                 if self.validate_similiraity_all_vs_all(analysis, line_idx):
                     # logger.info("VALIDACIÓN GLOBAL PASADA")
-                    return tabular_lines
+                    return tabular_lines, (None if not self.training_data else analysis[line_idx])
                 else:
                     tabular_array = self.cosine_dummies(analysis, line_idx)
                     # logger.info(f"DUMMIES IDX: {tabular_array}")
                     if tabular_array.size > 0 and tabular_array.size == len(tabular_lines):
                         # logger.info(f"DUMMIES TABULAREXACTO: {tabular_lines}")
-                        return tabular_lines
+                        return tabular_lines, (None if not self.training_data else analysis[tabular_array])
                     else:
                         new_tabular_idx: List[int] = all_idxs[tabular_array].tolist()
                         new_tabular_lines = [line_ids[i] for i in new_tabular_idx]
                         # logger.info(f"NEW DUMMIES tab: {new_tabular_lines}, {new_tabular_idx}")
-                        return new_tabular_lines
+                        return new_tabular_lines, (None if not self.training_data else analysis[tabular_array])
             else:
                 tabular_array = self.cosine_dummies(analysis, all_idxs)
                 if tabular_array.size < 1:
                     # logger.info("Sin lineas tabulares, DBSCAN como soporte")
-                    return self.scanner_clustering(analysis, manager)
+                    return self.scanner_clustering(analysis, manager), (None if not self.training_data else analysis[tabular_array])
 
                 new_tabular_idx = tabular_array.tolist()
-                return [line_ids[i] for i in new_tabular_idx]
+                return [line_ids[i] for i in new_tabular_idx], (None if not self.training_data else analysis[tabular_array])
                                     
         except Exception as e:
             logger.error(f"Error en matriz de similitud coseno: {e}", exc_info=True)
-        return []
+        return [], None
 
-    def validate_similiraity_all_vs_all(self, analysis: np.ndarray[Any, Any], line_idx: np.ndarray[Any, np.dtype[np.uint8]]) -> bool:
+    def validate_similiraity_all_vs_all(self, analysis: np.ndarray[Any, Any], line_idx: np.ndarray[Any, np.dtype[np.uint8]]):
         """Validación all-vs-all por similitud coseno sobre el intervalo de líneas reportado. Si todos son válidos, la validaciónes corrtecta"""
         if self.min_cluster >= line_idx.size:
             return True
@@ -117,7 +112,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Ordenamos las filas según el índice original para estar alineados con tabular_indices
         features_all = features_all[features_all[:, 0].argsort()]
                 
-        features = np.ascontiguousarray(features_all[:, 1:], np.float32)
+        features = np.ascontiguousarray(features_all[:, 1:], dtype=np.float32)
                 
         # timecos1 = time.perf_counter()
         sims_mat_dense = cosine_similarity_matrix(features)
@@ -126,14 +121,14 @@ class MatricialCusine(VectorizationAbstractWorker):
         # para cada fila, calcular similitud media con las demás
         mean_sims = mean_cosine_per_row(sims_mat_dense)
         # logger.info("PROMEDIO ALL X ALL:\n"f"{np.column_stack([line_idx, mean_sims])}")
-        return bool(np.all(mean_sims > self.similarity_threshold, keepdims=False))
+        return np.all(mean_sims > self.similarity_threshold, keepdims=False)
 
     def cosine_dummies(self, analysis: np.ndarray[Any, Any], line_ids: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """Compara todas las líneas del documento contra vectores DUMMIE, usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares."""
         # t0 = time.perf_counter()
         analysis = analysis[line_ids]
-        analysi = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
-        sims_final = get_cosine_similarity(analysi, False)
+        analysis = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
+        sims_final = get_cosine_similarity(analysis, False)
         # logger.debug(f"Tiempo: {time.perf_counter() - t0}")
         # logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
 
@@ -253,7 +248,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         selected_indices = [all_lines[line_id].line_index for line_id in table_line_ids if line_id in all_lines]
 
         if not selected_indices:
-            logger.warning("No se encontraron indices para table_line_ids.")
+            logger.error("No se encontraron indices para table_line_ids.")
             return table_line_ids
 
         # Paso 2: Calcular el rango
@@ -265,6 +260,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         # Paso 4: Mapear de vuelta a line_id (str)
         full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        logger.info(f"DBSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
+        logger.warning(f"DBSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
 
         return full_range_line_ids
+        

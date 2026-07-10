@@ -32,7 +32,7 @@ class WordFinder:
         self.all_ngrams: Dict[str, Tuple[int, Dict[int, List[str]]]] = _model.get("all_ngrams", {})
         self.global_words: FrozenSet[str] = frozenset(_model["global_words"])
         self.noise_words: FrozenSet[str] = frozenset(_model["noise_words"])
-
+        
         self.global_filter_threshold: float = config.get("global_filter_threshold", {})
         self.threshold: float = config.get("threshold_similarity", {})
         self.ngrams_len = config["char_ngrams"]

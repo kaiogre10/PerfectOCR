@@ -7,8 +7,11 @@ class ConfigWithNumpy(BaseModel):
 
 class SystemPaths(ConfigWithNumpy):
     output_paths: List[str]
-    libs_path: List[str]
-
+    libs_path: str
+    containers: str
+    buffer_handler: str
+    temp_path: List[str]
+    
 class SystemParams(ConfigWithNumpy):
     system_paths: SystemPaths
     payloads_size: int
@@ -20,6 +23,7 @@ class DeploySettings(ConfigWithNumpy):
     postgre_local: bool
     handle_memory: bool
     update_model: bool
+    test_wf_model: bool
 
 class PipelineConfig(ConfigWithNumpy):
     image_preparation_stager: Optional[List[str]] = None
@@ -71,6 +75,7 @@ class OCROutputs(ConfigWithNumpy):
 class VectorizingOutputs(ConfigWithNumpy):
     reconstructed_lines: bool
     table_lines: bool
+    training_data: bool
     features: bool
     image_features: bool
     table_structured: bool
@@ -110,6 +115,8 @@ class WordFinderConfig(ConfigWithNumpy):
     matrix_path: str
     kf_path: str
     kf_idx: str
+    ngrams_name: str
+    matrix_name: str
 
 class ModelsPaths(ConfigWithNumpy):
     models_dir: str
@@ -215,15 +222,17 @@ class CosineSimilarity(ConfigWithNumpy):
     min_internal_sim: float
 
 class MathMaxConfig(ConfigWithNumpy):
-    row_relative_tolerance: str
-    separator: List[str]
-    cols_name: List[str]
+    row_tol: str
+
+class DataCollector(ConfigWithNumpy):
+    separator: str
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
     cos_sim: CosineSimilarity
     math_max: MathMaxConfig
     table_structurer: TableStructurer
+    collector: DataCollector
     
 class ModulesConfig(ConfigWithNumpy):
     image_preparation: ImagePreparation
@@ -231,16 +240,30 @@ class ModulesConfig(ConfigWithNumpy):
     ocr: OCRConfig
     vectorization: VectorConfig
 
-class Dirs(ConfigWithNumpy):
+class InputPaths(ConfigWithNumpy):
     input_dirs: List[str]
     images_names: List[str]
+    skip_names: List[str]
 
 class PayloadRequest(ConfigWithNumpy):
     payload_cols: List[str]
     
 class UserRequests(ConfigWithNumpy):
-    dirs: Dirs
+    input_paths: InputPaths
     payload_request: PayloadRequest
+
+class SystemSetUp(ConfigWithNumpy):
+    system_params: SystemParams
+    deploy_settings: DeploySettings
+    pipeline_secuence: PipelineConfig
+    log_debug: DebugOutputs
+    enabled_outputs: OutputFlags
+    env_config: Dict[str, Any]
+
+class ConfigParams(ConfigWithNumpy):
+    models_config: ModelsConfig
+    modules: ModulesConfig
+    user_requests: UserRequests
 
 class MasterConfig(ConfigWithNumpy):
     system_params: SystemParams

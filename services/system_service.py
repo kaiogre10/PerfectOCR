@@ -7,10 +7,11 @@ from typing import Set, Tuple, Optional
 #from psycopg2 import sql
 from typing import List, Dict, Any
 from services.log_service import basic_exc_logger
+from utils.patterns import extension_suffix
 
-# Configuraciones estáticas
+_extension_suffix = extension_suffix
 PROJECT_ROOT: str = ""
-output_paths: List[str] = []
+output_paths: List[str]
 valid_img_ext: Tuple[str, ...] = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2")
 invalid_extensions: List[str] = [".txt", ".webp"]
 trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", ".log", ".prof")
@@ -25,8 +26,8 @@ def set_system_config(project_root: str, config: Dict[str, List[str]]):
     global PROJECT_ROOT, output_paths
     PROJECT_ROOT = project_root # type: ignore
     if config:
-        output_path = config["output_paths"]
-        output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in output_path] 
+        output_paths = config["output_paths"]
+        # output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in output_path]
 
 def _can_delete_entry(path: str) -> bool:
     """
@@ -194,76 +195,78 @@ def clean_db(get_local_connection: Any) -> bool:
         logger.error("Error limpiando la DB: %s", e, exc_info=True)
         return False
 
-def count_and_plan(config: Dict[str, List[str]]) -> List[str]:
+def count_and_plan(config: Dict[str, Any]) -> List[str]:
     """
     PLANIFICA el procesamiento: cuenta imágenes y decide estrategia según las reglas:
     1. Si se especifican `images_names`, se buscan prioritariamente.
     2. Si no, se procesan todas las imágenes en `input_dirs`.
     3. Si se encuentran todos los `images_names` y quedan directorios, se procesan completos.
     """
-    input_paths: List[str] = config['input_dirs']
-    # input_paths = ["/media/kaiogre05/DATA/data/tickets_nuevo"]
-    images_names = config['images_names']
-    if not images_names:
+    input_paths = config['input_dirs']
+    skip_names = config.get("skip_names", {})
+    names_to_find = config.get('images_names', {})
+    if not names_to_find:
         if not input_paths:
             logger.error("No se proporcionaron rutas de entrada (input_dirs)")
             return []
-
+    
+    if skip_names:
+        names_to_find.difference_update(skip_names)
+        
     image_info: List[str] = []
-    names_to_find = set(images_names)
     total_paths = len(input_paths)
-    try:
-        for i, path in enumerate(input_paths):
-            if names_to_find:
-                files_in_dir = get_images_in_dir(path, list(names_to_find))
-                if files_in_dir:
-                    files_to_remove: Set[str] = set(files_in_dir)
-                    if not names_to_find.isdisjoint(files_to_remove):
-                        names_to_find.difference_update(files_to_remove)
+    
+    for i, path in enumerate(input_paths):
+        if names_to_find:
+            files_in_dir = get_images_in_dir(path, list(names_to_find))
+            
+            if files_in_dir:
+                files_to_remove: Set[str] = set(files_in_dir)
+                if not names_to_find.isdisjoint(files_to_remove):
+                    names_to_find.difference_update(files_to_remove)
 
-                    for file in files_in_dir:
-                        full_path = os.path.join(PROJECT_ROOT, path, file)
-                        image_info.append(full_path)
-                        continue
-
-                elif names_to_find:
-                    continue
-
-            elif total_paths >= i:
-                all_files_dir = get_images_in_dir(path, [])
-                if not all_files_dir:
-                    continue
-
-                for file in all_files_dir:
+                for file in files_in_dir:
                     full_path = os.path.join(PROJECT_ROOT, path, file)
                     image_info.append(full_path)
                     continue
-            else:
-                break
 
-        if not image_info:
-            logger.error("No se encontraron imágenes válidas en las rutas especificadas.")
-            return []
+            elif names_to_find:
+                continue
 
-        return image_info
-    except FileNotFoundError as e:
-        logger.error(f"ERROR BUSCANDO ARCHIVOS DE ENTRADA EN '{input_paths}': '{e}'", exc_info=True)
-    return []
+        elif total_paths >= i:
+            all_files_dir = get_images_in_dir(path, [])
+            if not all_files_dir:
+                continue
+            
+            if skip_names:
+                all_files_dir = [file for file in all_files_dir if _extension_suffix.sub("", file) not in skip_names]
+                if not all_files_dir:
+                    continue
+                
+            for file in all_files_dir:
+                full_path = os.path.join(PROJECT_ROOT, path, file)
+                image_info.append(full_path)
+                continue
+        else:
+            break
 
-def get_images_in_dir(input_path: str, files_list: List[str]) -> List[str]:
-    try:
-        files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_img_ext)]
-        if not files_name_dir:
-            return []
-        if not files_list:
-            return files_name_dir
+    if not image_info:
+        raise FileNotFoundError(f"No se encontraron imágenes válidas en las rutas especificadas: '{input_paths}'")
 
-        split_names = [os.path.splitext(file) for file in files_name_dir]
-        files_in_dir = ["".join(name) for name in split_names if name[0] in files_list]
-        return files_name_dir if not files_in_dir else files_in_dir
-    except FileNotFoundError as e:
-        logger.error(f"Error buscando archivos:en '{input_path}', {e}", exc_info=True)
-    return []
+    basic_exc_logger(f"'{len(image_info)}' IMAGENES PARA PROCESAR")
+    return image_info
+
+def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
+    """Devuelve todos los archivos que haya en un directorio si son una extensión válida, si no se entrega lista de archivos devuelve todo los archivos del directorio"""
+    files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_img_ext)]
+    if not files_name_dir:
+        return []
+    if not files_to_find:
+        return files_name_dir
+
+    split_names = [os.path.splitext(file) for file in files_name_dir]
+    files_in_dir = ["".join(name) for name in split_names if name[0] in files_to_find]
+    return files_name_dir if not files_in_dir else files_in_dir
 
 def get_so() -> str:
     if platform.system() == "Windows":

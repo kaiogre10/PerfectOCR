@@ -3,36 +3,37 @@ import os
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from functools import cached_property
 from services.log_service import log_active_areas, log_simple, basic_exc_logger
-from config.config_loader import load_config_file
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
+# from contextlib import contextmanager
+from services.system_service import get_so
+import cv2
 
+kf_range = (0, 6)
+sc_range = (1, 13)
 ELEMENTAL_WORKER = "image_loader"
 det = "geometry_detector"
 ocr_workers: Set[str] = set(["polygon_extractor", "paddle_wrapper", det])
 full_ocr: FrozenSet[str] = frozenset(ocr_workers.union(["data_finder"]))
+vect_min = "lineal"     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
 min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set([ELEMENTAL_WORKER]))) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
 
 class ConfigValidator:
     """Valida de los parametros de configuración"""
-    def __init__(self, config_path: List[str]):
-        self.config = load_config_file(config_path)
-        self.project_root = config_path[0]
-        
-        try:
-            self._run_params
-            self.active_full_ocr
-        except RuntimeWarning as e:
-            log_simple(f"Error corriendo parametros: {e}")
-            pass
+    def __init__(self, project_root: str, config: Dict[str, Any]):
+        self.config = config
+        self.project_root = project_root
+    
+        # with self._run_params() as tested:
+        #     log_simple(f"TESTED: {tested}")
+            
         if not self._validate_config():
             self.config = {}
             del self.config
         else:
             self.config = self.config
 
-    # Paramétros de sistema alto nivel
     @cached_property
-    def elemental_params(self) -> bool:     # Condición mínima necesaria para que pueda arrancar el sistema
+    def elemental_params(self) -> bool:                         # Condición mínima necesaria para que pueda arrancar el sistema
         return ELEMENTAL_WORKER in self.create_stager[0][1]
 
     @cached_property
@@ -42,10 +43,6 @@ class ConfigValidator:
     @cached_property
     def system_params(self):
         return self.config.get("system_params", {})
-
-    @cached_property
-    def system_paths(self) -> Dict[str, List[str]]:
-        return self.system_params["system_paths"]
 
     @cached_property
     def deploy_settings(self) -> Dict[str, bool]:
@@ -72,6 +69,12 @@ class ConfigValidator:
         return bool(self.deploy_settings.get("update_model"))
     
     @cached_property
+    def test_wf_model(self) -> bool:
+        test_wf_model = bool(self.deploy_settings.get("test_wf_model"))
+        self.update_model = False if test_wf_model else self.update_model
+        return test_wf_model
+    
+    @cached_property
     def db_local(self) -> bool:
         return bool(self.deploy_settings.get("postgre_local"))
     
@@ -92,37 +95,104 @@ class ConfigValidator:
         else:
             return self.config.get("enabled_outputs", {})
         
-    @cached_property
+    @property
     def user_requests(self):
         return self.config.get("user_requests", {})
     
     @cached_property
+    def _input_paths(self):
+        _input_paths = self.user_requests.get("input_paths", {})
+        _input_paths["images_names"] = set(_input_paths["images_names"])
+        _input_paths["skip_names"] = set(_input_paths["skip_names"])
+        return _input_paths
+    
+    @cached_property
     def input_paths(self) -> Dict[str, List[str]]:
-        user_dirs = self.user_requests.get("dirs", {})
-        return {} if (not user_dirs["input_dirs"] and not self.deploy_mode) else user_dirs
+        input_paths = self._input_paths
+        return {} if (not input_paths["input_dirs"] and not self.deploy_mode) else input_paths
 
     @cached_property
     def payload_request(self) -> Dict[str, Any]:
-        return self.config.get("payload_request", {})
+        return self.user_requests.get("payload_request", {})
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
+    
+    @cached_property
+    def system_paths(self) -> Dict[str, Any]:
+        system_paths = self.system_params.get("system_paths", {})
+        extension = get_so()
+        output_paths = system_paths["output_paths"]
+        temp_path = system_paths["temp_path"]
+        
+        libs_path = system_paths.get("libs_path", "")
+        containers = system_paths.get("containers", "")
+        buffer_handler = system_paths.get("buffer_handler", "")
+        system_paths["output_paths"] = [os.path.join(self.project_root, folder) for folder in output_paths]
+        system_paths["temp_path"] = os.path.join(self.project_root, *temp_path)
+        container_path = os.path.join(self.project_root, libs_path, (containers + extension))
+        buffer_path = os.path.join(self.project_root, libs_path, (buffer_handler + extension))
+        if not os.path.isfile(container_path) or not os.path.isfile(buffer_path):
+            self.handle_memory = False
+            basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
+            
+        system_paths["containers"] = container_path
+        system_paths["buffer_handler"] = buffer_path
+        
+        return system_paths
 
     @cached_property
+    def _logs_debug(self):
+        _logs_debug = self.config.get("log_debug", {})
+        def _max_min_vals(type_list: List[int], lenght: int, limits: Tuple[int, int]) -> List[int]:
+            if -1 in type_list:
+                range_logs = limits
+            elif 1 < lenght:
+                min_val = max_val = type_list[0]
+                boundaries: List[int] = [0, 0]
+                for val in type_list[1:]:
+                    if val < min_val:
+                        min_val = val
+                        boundaries[0] = min_val
+                    elif val > max_val:
+                        max_val = val
+                        boundaries[1] = max_val
+                range_logs = boundaries
+            else:
+                if type_list[0] >= limits[1]:
+                    range_logs = [limits[1] + (limits[1] + 1)]
+                else:
+                    range_logs = [type_list[0] + (type_list[0] + 1)]
+                    
+            return list(range(range_logs[0], range_logs[1]))
+        
+        kf_list_log = _logs_debug["kf_list_log"]
+        semantic_types_log = _logs_debug["semantic_types_log"]
+        
+        if _logs_debug.get("all_logs"):
+            sc_range_logs = list(range(kf_range[0], kf_range[1]))
+            kf_range_logs = list(range(sc_range[0], sc_range[1]))
+            
+        else:
+             kf_range_logs = [] if not _logs_debug["key_fields"] else _max_min_vals(kf_list_log, len(kf_list_log), kf_range)
+             sc_range_logs = [] if not _logs_debug["seman_clas"] else  _max_min_vals(semantic_types_log, len(semantic_types_log), sc_range)
+        
+        _logs_debug["kf_list_log"] = kf_range_logs
+        _logs_debug["semantic_types_log"] = sc_range_logs
+        _logs_debug["handle_memory"] = self.handle_memory
+        return _logs_debug
+    
+    @cached_property
     def logs_debug(self) -> Dict[str, Any]:
-        logs = self.config.get("log_debug", {})
-        # Mutación controlada: Se ejecuta UNA SOLA VEZ y se queda en caché
-        if logs.get("all_logs") or self.test_config:
-            for key, value in logs.items():
+        logs_debug = self._logs_debug
+        if logs_debug.get("all_logs"):
+            for key, value in logs_debug.items():
                 if isinstance(value, bool):
-                    logs[key] = True
+                    logs_debug[key] = True
                 elif isinstance(value, list):
-                    logs[key] = [-1]
-            logs.update({"handle_memory": self.handle_memory})
-            return logs
-        logs.update({"handle_memory": self.handle_memory})
-        return logs
+                    continue
+        return logs_debug
         
     @cached_property
     def _models_config(self) -> Dict[str, Any]:
@@ -156,9 +226,11 @@ class ConfigValidator:
         
         _models_config["wf_config"]["kf_idx"] = os.path.join(wf_path, kf_idx_name)
         _models_config["wf_config"]["pkl_path"] = os.path.join(wf_path, pkl_path_name)
-        
+        _models_config["wf_config"]["train_data"] = os.path.join(self.project_root, "core", "assets", "data.npy")
         _models_config["wf_config"]["matrix_folder"] = os.path.join(wf_path, matrix_path)
         _models_config["wf_config"]["kf_folder"] = os.path.join(wf_path, kf_path)
+        
+        _models_config["wf_config"]["test_wf_model"] = self.test_wf_model
         del _models_config["models_paths"]
         return _models_config
     
@@ -205,18 +277,29 @@ class ConfigValidator:
     @cached_property
     def modules_config(self) -> Dict[str, Any]:
         return {} if self.no_activate_modules else self.config.get("modules", {})
-
+    
+    @cached_property
+    def _img_prep_config(self):
+        image_workers = self.workers_order["image_preparation_stager"]
+        if "polygon_extractor" in image_workers:
+            if not det in image_workers:
+                self.workers_order["image_preparation_stager"].remove("polygon_extractor")
+                
+        _img_prep_config = self.modules_config.get("image_preparation", {})
+        geometry_detect = _img_prep_config.get("geometry_detect", {})
+        ink_enh = _img_prep_config.get("ink_enhancement", {})
+        
+        morph_kernel = geometry_detect["morph_kernel"]
+        _img_prep_config["geometry_detect"]["morph_kernel"] = cv2.getStructuringElement(cv2.MORPH_CROSS, (morph_kernel[0], morph_kernel[1]))
+        _img_prep_config["angle_corrector"]["white"] = ink_enh["white"]
+        return _img_prep_config
+    
     @cached_property
     def img_prep_config(self) -> Tuple[Dict[str, Any], List[str]]:
         if self.no_activate_modules or not self.create_stager[0][1]:
             return ({}, [])
         else:
-            image_workers = self.workers_order["image_preparation_stager"]
-            if "polygon_extractor" in image_workers:
-                if not det in image_workers:
-                    self.workers_order["image_preparation_stager"].remove("polygon_extractor")
-
-            config_module = self.modules_config.get("image_preparation", {})
+            config_module = self._img_prep_config
             enabled_outputs = self.enabled_outputs.get("image_load_outputs", {})
             config_module.update(enabled_outputs)
             return config_module, self.workers_order["image_preparation_stager"]
@@ -226,50 +309,62 @@ class ConfigValidator:
         if self.no_activate_modules or not self.create_stager[1][1] or not self.active_full_ocr:
             return ({}, [])
         else:
-            try:
-                config_module = self.modules_config.get("preprocessing", {})
-                enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {})
-                config_module.update(enabled_outputs)
-                return config_module, self.workers_order["preprocessing_stager"]
-            except ValueError as e:
-                basic_exc_logger(f"ERROR EN CDONFIGURACIÓN DE STAGER: {e}", exc_info=True)
-            return ({}, [])
+            config_module = self.modules_config.get("preprocessing", {})
+            enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {})
+            config_module.update(enabled_outputs)
+            return config_module, self.workers_order["preprocessing_stager"]
             
+    @cached_property
+    def _ocr_config(self):
+        _ocr_config = self.modules_config.get("ocr", {})
+        text_refine = _ocr_config.get("text_refine", {})
+        num_passes = text_refine.get("num_passes", {})
+        _ocr_config["text_refine"]["create_refiners"] = bool(num_passes > 0)
+        return _ocr_config
+        
     @cached_property
     def ocr_config(self) -> Tuple[Dict[str, Any], List[str]]:
         if self.no_activate_modules or not self.create_stager[2][1] or not self.active_full_ocr:
             return ({}, [])
-        elif not self.validate_cols_vals():
-            return ({}, [])
         else:
-            config_module = self.modules_config.get("ocr", {})
+            config_module = self._ocr_config
             config_module.update(self.logs_debug)
             config_module.update(self.enabled_outputs.get("ocr_outputs"))
             return config_module, self.workers_order["ocr_stager"]
-               
+    
+    @cached_property
+    def _vectorization_config(self) -> Dict[str, Any]:
+        _vectorization_config = self.modules_config.get("vectorization", {})
+        all_cols_name = self.payload_request["payload_cols"]
+        math_max = _vectorization_config.get("math_max", {})
+        row_tol = math_max.get("row_tol", "")
+        if not isinstance(row_tol, str):
+            if not isinstance(row_tol, float):
+                del self.modules_config["vectorization"]
+                basic_exc_logger(f"ERROR TYPO DESCONOCIDO: {row_tol}")
+                return {}
+            
+            basic_exc_logger(f"REVISAR CONFIGURACIÓN SE ENCONTRÓ: {type(row_tol)}, DEBERÍA SER STRING")
+            row_tol = str(row_tol)
+            
+        _vectorization_config["math_max"]["row_tol"] = Decimal(row_tol)
+        _vectorization_config["math_max"]["columns"] = all_cols_name[:4]
+        _vectorization_config["math_max"]["dec_cols_name"] = frozenset(all_cols_name[:3])
+        _vectorization_config["collector"]["cols_name"] = all_cols_name
+        
+        return _vectorization_config
+    
     @cached_property
     def vectorization_config(self) -> Tuple[Dict[str, Any], List[str]]:
         vect_stage = self.create_stager[3][1]
-        if self.no_activate_modules or not vect_stage or not "lineal" in vect_stage or not self.active_full_ocr:
+        if self.no_activate_modules or not vect_stage or not vect_min in vect_stage or not self.active_full_ocr:
             return ({}, [])
         else:
-            config_module = self.modules_config.get("vectorization", {})
+            config_module = self._vectorization_config
             enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
             config_module.update(enabled_outputs)
-            config_module.update(self.payload_request)
             return config_module, self.workers_order["vectorization_stager"]
         
-    @cached_property
-    def local_db_config(self) -> Dict[str, Any]:
-        if self.no_activate_modules or not self.db_local or not self.active_full_ocr:
-            return {}
-        else:
-            math_max_config = self.modules_config.get("vectorization", {})
-            return {
-                **math_max_config.get("math_max", {}),
-                "postgre_local": self.workers_order["db_stage"]
-            }
-
     @cached_property
     def stagers_config(self) -> Dict[str, Tuple[Dict[str, Any], List[str]]]:
         """
@@ -355,28 +450,14 @@ class ConfigValidator:
             workers_missing = min_workers - self.all_workers
             log_simple(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
             return False
-    
-    def validate_cols_vals(self) -> bool:
-        vect_config = self.modules_config.get("vectorization", {})
-        math_max_config = vect_config.get("math_max", {})
-        row_tol = math_max_config.get("row_relative_tolerance")
-        if not row_tol:
-            raise KeyError (f"NO EXISTE LA CLAVE DE TOLERANCIA")
-        if not isinstance(row_tol, str):
-            raise TypeError(f"TYPO INCORRECTO: {type(row_tol)} debería ser string")
-        dec_row_tol = Decimal(row_tol)
-        if not dec_row_tol:
-            raise InvalidOperation("NO SE PUDO CONVERTIR A DECIMAL")
-        return True
-
-    @cached_property
-    def _run_params(self):
-        self.not_run_system
-        self.all_workers
-        self.active_full_ocr
-        self.workers_order
-        self._models_config
-        self.stagers_config
-        self.models_config
-        self.logs_debug
         
+    # @contextmanager
+    def _run_params(self):
+        tested = None
+        try:
+            tested = any([self.not_run_system, bool(self.all_workers), self.active_full_ocr, bool(self.workers_order), bool(self.stagers_config), bool(self.models_config), bool(self.logs_debug)])
+            yield tested
+        finally:
+            if tested:
+                log_simple(f"CONTEXT MANAGER FINALIZADO")
+                return tested

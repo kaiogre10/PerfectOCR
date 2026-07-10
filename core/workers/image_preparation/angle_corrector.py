@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 class AngleCorrector(ImagePrepAbstractWorker):
     """Worker especializado en detectar y corregir el ángulo de inclinación de una imagen"""
     __slots__ = (
-        "project_root",
-        "color",
+        # "project_root",
+        "white",
         "min_angle",
         "canny_thresholds",
         "hough_threshold",
@@ -24,13 +24,12 @@ class AngleCorrector(ImagePrepAbstractWorker):
         "hough_angle_filter_range_degrees",
         "hough_min_line_length_cap_px",
         "output"
-        
     )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        self.project_root = project_root
+        # self.project_root = project_root
         worker_config = config.get("angle_corrector", {})
-        self.color = config.get('ink_enhancement', {}).get("white", [])
+        self.white = worker_config["white"]
         self.min_angle_for_correction = worker_config.get('min_angle_for_correction')
         self.canny_thresholds = worker_config['canny_thresholds']
         self.hough_threshold = worker_config.get('hough_threshold')
@@ -111,7 +110,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 rotation_matrix[1, 2] += (new_h / 2) - center[1]
                 
                 logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
-                return make_contiguous(cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.color)), True
+                return make_contiguous(cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.white)), True
             else:             
                 logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
                 return full_img, False

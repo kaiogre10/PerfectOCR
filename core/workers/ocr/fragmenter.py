@@ -68,6 +68,7 @@ class Fragmenter(OCRAbstractWorker):
                 new_index = idx
                 final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=new_index)
                 final_polygons_dict[new_id] = final_poly_obj
+                
             manager.workflow.polygons = final_polygons_dict
             if fragmented_count > 0 and self.log_output:
                 logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")

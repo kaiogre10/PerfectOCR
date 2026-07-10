@@ -1,6 +1,7 @@
 # core/utils/output_service.py
 import os
-import inspect
+# from functools import wraps
+import commentjson # type: ignore
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 import logging
@@ -8,26 +9,47 @@ import numpy as np
 import cv2
 import pandas as pd # type: ignore
 from typing import Dict, Any, List, Tuple, Optional
-#from services.log_service import get_time_stamp
 import csv
-
-PROJECT_ROOT: str 
-OUTPUT_PATHS: List[str] = []
-TEMP_FILE: str
-
-def set_output_config(project_root: str, config: Dict[str, List[str]]):
-    global OUTPUT_PATHS, PROJECT_ROOT, TEMP_FILE
-    PROJECT_ROOT = project_root # type: ignore
-    output_paths = config["output_paths"]
-    OUTPUT_PATHS = [os.path.join(PROJECT_ROOT, folder) for folder in output_paths] # type: ignore
-    TEMP_FILE = os.path.join(PROJECT_ROOT, "safe_temp", "tmp_file.txt") # type: ignore
-
-def get_caller_info() -> Tuple[str, str]:
-    """[nombre, linea]"""
-    frame = inspect.stack()[2]
-    return os.path.basename(frame[1]), str(frame[2])
+from services.log_service import get_caller_info
+import pickle
+# from collections.abc import Callable
+# from typing import TypeAlias
 
 logger = logging.getLogger(__name__)
+
+PROJECT_ROOT: str 
+OUTPUT_PATHS: List[str]
+TEMP_FILE: str
+file_path: str
+
+# SerializerFn: TypeAlias = Callable[[Any, str, str], None]
+
+# _REGISTRY: Dict[str, SerializerFn] = {}
+
+def set_output_config(project_root: str, config: Dict[str, Any]):
+    global PROJECT_ROOT, OUTPUT_PATHS, TEMP_FILE, file_path
+    PROJECT_ROOT = project_root
+    OUTPUT_PATHS = config["output_paths"]
+    file_path = os.path.join(PROJECT_ROOT, "core", "assets", "data.npy")
+    TEMP_FILE = config.get("temp_path", "")
+
+# def serilizable(file_name: str) -> Callable[[SerializerFn],SerializerFn]:
+#     def decorator(fn: SerializerFn) -> SerializerFn:
+#         _REGISTRY = fn
+#         @wraps(fn)
+#         def wrapper(data: Any, output_dir: str, file_name: str) -> None:
+#             return fn(data, output_dir, file_name)
+#         return wrapper
+#     return decorator
+
+# def save_files(items: List[Tuple[Any, str, str]]) -> bool:
+#     try:
+#         for data, output_dir, file_name in items:
+#             _REGISTRY(data, output_dir, file_name[:-4])
+#         return True
+#     except KeyError as e:
+#         logger.warning(f"ERROR GUARDANDO OUTPUTS: {e}", exc_info=True)
+#         return False
 
 def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], contours1: List[np.ndarray[Any, Any]], contours2: List[np.ndarray[Any, Any]]):
     """Guarda una imagen con los contornos marcados sobre ella"""
@@ -63,19 +85,19 @@ def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any])
     for path in OUTPUT_PATHS:
         output_dir = os.path.join(path, image_name)
         file_name = f"{img_id}.png"
+        
         save_image(image, output_dir, file_name)
-        # output_dir = os.path.join(path, worker_name, image_name)
-        # save_image(image, output_dir, file_name)
+        output_dir = os.path.join(path, worker_name, image_name)
 
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
 
-def save_image(image: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name: str):
+# @serilizable(".png")
+def save_image(data: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name: str):
     """Guarda una única imagen en disco."""
     try:    
         os.makedirs(output_dir, exist_ok=True)
         img_path = os.path.join(output_dir, file_name)
-        cv2.imwrite(img_path, image)
-        return img_path
+        cv2.imwrite(img_path, data)
     except Exception as e:
         logger.error(f"Error guardando '{file_name}' imagen: {e}")
         
@@ -231,6 +253,47 @@ def to_serializable(obj: Any) -> Any:
     else:
         return obj
 
+def load_pickle(pkl_path: str, mode: str):
+    """Carga pickle"""
+    if not os.path.exists(pkl_path):
+        raise FileNotFoundError(f"Pickle no encontrado en {pkl_path}")
+    with open(pkl_path, mode) as f:
+        model_pkl = pickle.load(f)
+        if not model_pkl:
+            raise pickle.UnpicklingError("ERROR EN LA CARGA DEL PICKLE")
+    model_pkl["allow_edit"] = False
+    return model_pkl
+
+def save_pickle(model_pkl: Any, pkl_path: str, mode: str):
+    model_pkl["allow_edit"] = False
+    if not os.path.exists(pkl_path):
+        raise FileNotFoundError(f"Ruta inválida para guardar pickle: {pkl_path}")
+    with open(pkl_path, mode) as f:
+        pickle.dump(model_pkl, f, protocol=5)
+
+def load_yaml(file_path: str, mode: str):
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"ARCHIVO DE CONFIGURACIÓN NO ENCONTRADO: {file_path}")
+    
+    yaml = YAML(typ='safe', pure=True)
+    yaml.default_flow_style = False
+    yaml.allow_unicode = True
+
+    with open(file_path, mode, encoding='utf-8') as f:
+        yaml_raw = yaml.load(f)
+        if not yaml_raw:
+            raise ValueError(f"YAML INEXISTENTE")
+    return yaml_raw
+
+def load_jsoncomment(file_path: str, mode: str):
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"ARCHIVO DE CONFIGURACIÓN NO ENCONTRADO: {file_path}")
+    with open(file_path, mode, encoding='utf-8') as f:
+        commentjson_raw = commentjson.load(f) # type: ignore
+        if not commentjson_raw:
+            raise ValueError(f"COMMENT JSON INEXISTENTE")
+    return commentjson_raw    
+        
 def write_temp_log(payload_temp: Tuple[str, str]) -> bool:
     try:
         with open(TEMP_FILE, "a", encoding="utf-16") as file_temp:
@@ -240,3 +303,14 @@ def write_temp_log(payload_temp: Tuple[str, str]) -> bool:
     except OSError as e:
         logger.error(f"Error escribiendo archivo de seguridad: {e}", exc_info=True)
     return False
+
+def serialize_arrays(array_input: np.ndarray[Any, Any]):
+    logger.info(f"ARRAY INPUT:\n"f"{array_input.shape}")
+    if os.path.exists(file_path):
+        data_matrix = np.load(file_path, 'r+', allow_pickle=False)
+        ngrams_array = np.ascontiguousarray(np.concatenate((data_matrix, array_input), axis=0, dtype=np.float32), dtype=np.float32)
+        logger.info(f"SHAPE: {ngrams_array.shape}")
+    else:
+        ngrams_array = np.ascontiguousarray(array_input, dtype=np.float32)
+    np.save(file_path, ngrams_array, allow_pickle=False)
+    

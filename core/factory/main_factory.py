@@ -16,12 +16,37 @@ veckey = "vectorization_stager"
 
 class MainFactory:
     """Crea workers y ensambla stagers de forma uniforme."""
-    __slots__ = ("project_root", "stagging", "modules_config", "all_stagers")
-    def __init__(self, modules_config: Dict[str, Tuple[Dict[str, Any], List[str]]], project_root: str, stagging: List[Tuple[str, Optional[List[str]]]]):
+    __slots__ = ("project_root", "modules_config")
+    def __init__(self, project_root: str, modules_config: Dict[str, Tuple[Dict[str, Any], List[str]]]):
         self.project_root = project_root
-        self.stagging = stagging
         self.modules_config = modules_config
         
+    def get_all_stagers(self, stagging: List[Tuple[str, Optional[List[str]]]]) -> List[Any]:
+        stagers: List[Any] = []
+        stagers_dict, factories_dict = self.get_dicts()
+        for (stage, workers) in stagging:
+            stage_config = self.modules_config.get(stage) # Configuración por etapa
+            if workers is None or not workers or not stage or not stage_config:
+                continue
+            
+            workers_order: List[str] = stage_config[1] # Pipeline_config
+            if not workers_order:
+                continue
+            config = self.modules_config.get(stage)
+            if config is None:
+                continue
+            factory = factories_dict[stage](config[0])
+            if factory is None or not workers_order:
+                continue
+            workers_created = factory.create_components(workers_order)
+            factory.registry.clear()
+            stager = stagers_dict.pop(stage)
+            stagers.append(stager(workers_created, config, self.project_root))
+            continue
+        return stagers
+    
+    def get_dicts(self) -> Tuple[Dict[str, Any],  Dict[str, Any]]:
+        """"StagersDict, FactoriesDict"""
         factories_dict: Dict[str, Any] = {
             keyimglo: self.get_image_preparation_factory,
             keypre: self.get_preprocessing_factory,
@@ -33,38 +58,9 @@ class MainFactory:
             keyimglo: ImagePreparationStager,
             keypre: PreprocessingStager,
             ocrkey: OCRStager,
-            veckey: VectorizationStager,    
+            veckey: VectorizationStager,
         }
-        all_stagers: List[Any] = self.build_stagers(factories_dict, stagers_dict)
-        del factories_dict
-        self.all_stagers = all_stagers
-
-    def build_stagers(self, factories_dict: Dict[str, Any], stagers_dict: Dict[str, Any]) -> List[Any]:
-        stagers: List[Any] = []
-        for (stage, workers) in self.stagging:
-            stage_config = self.modules_config.get(stage) # Configuración por etapa
-            if workers is None or not workers or not stage or not stage_config:
-                continue
-            try:
-                workers_order: List[str] = stage_config[1] # Pipeline_config 
-                if not workers_order:
-                    continue
-                config = self.modules_config.get(stage)
-                if config is None:
-                    continue
-                factory = factories_dict[stage](config[0])
-                if factory is None or not workers_order:
-                    continue
-                workers_created = factory.create_components(workers_order)
-                stager = stagers_dict.pop(stage)
-                stagers.append(stager(workers_created, config, self.project_root))
-                continue
-            except AttributeError:
-                raise
-        return stagers
-
-    def get_all_stagers(self) -> List[Any]:
-        return self.all_stagers
+        return stagers_dict, factories_dict
 
     def get_image_preparation_factory(self, config: Dict[str, Any]) -> ImagePreparationFactory:
         return ImagePreparationFactory(config, self.project_root)

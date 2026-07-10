@@ -11,7 +11,7 @@
 *.iml
 *.cursorignore
 *.yaml
-*.sql
+# *.sql
 *.aiignore
 *.pyd
 *.so
@@ -22,6 +22,8 @@
 *.exp
 *.tlog
 *.prof
+*.npy
+*.npz
 
 # Ignorar archivos especificos
 perfectocr.txt

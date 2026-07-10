@@ -1,13 +1,27 @@
 from typing import Any, List, Dict, Tuple
 from config.config_validator import ConfigValidator
+from config.config_loader import load_config
+# from domain.protocol import ConfigProtocol
+# from typing import Dict, Any, List, Callable, TypeVar, Generic, Optional, ClassVar
+
+# T = TypeVar('T', bound=ConfigProtocol)
 
 class ConfigService:
     """API limpia que expone parametros de configuración al resto del Pipeline"""
     def __init__(self, config_path: List[str]):
-        self.validated_config = ConfigValidator(config_path)
+        # self.validated_config = validated_config
+        configs = load_config(config_path)
+        setup = configs[0]
+        params = configs[1]
+        setup.update(params)
+        self.validated_config = ConfigValidator(config_path[0], setup)
 
     @property
-    def test_config(self):
+    def test_wf_model(self) -> bool:
+        return self.validated_config.test_wf_model
+    
+    @property
+    def test_config(self) -> bool:
         return self.validated_config.test_config
 
     @property

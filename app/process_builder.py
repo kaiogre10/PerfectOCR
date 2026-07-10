@@ -44,7 +44,7 @@ class ProcessingBuilder:
                         return None
                 
                     if self.logs_debug.get("time_stages_log"):
-                        logger.info(f"Fase de preparación completada en: {time.perf_counter() - stager_time:.6f}'s")
+                        logger.warning(f"Fase de '{stager_name[:-6].upper()}' completada en: {time.perf_counter() - stager_time:.6f}'s")
             except RuntimeError as e:
                 logger.error(f"ERROR PROCESANDO: '{e}'", exc_info=True)
                 del context

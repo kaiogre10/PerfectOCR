@@ -88,8 +88,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         total_pixels = metrics[:, 12]
         has_childs = metrics[:, -1]
 
-        hist_values = soft_histogram(metrics[: ,1])
-        perc_val = hist_values[1]
+        _, perc_val = soft_histogram(metrics[: ,1])
         min_areas_mask = np.percentile(cont_area, perc_val)
         top_areas = np.argsort(metrics[:, 1])[::-1]
         

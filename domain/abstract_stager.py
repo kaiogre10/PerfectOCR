@@ -7,11 +7,7 @@ if TYPE_CHECKING:
 
 class AbstractStager(ABC):
     """Clase base abstracta para todos los stagers del pipeline."""
-    __slots__ = (
-        "workers",
-        "modules_config",
-        "project_root"
-    )    
+    __slots__ = ("workers", "modules_config", "project_root")
     def __init__(self, workers: List[Any], modules_config: Dict[str, Any], project_root: str):
         self.workers = workers
         self.modules_config = modules_config

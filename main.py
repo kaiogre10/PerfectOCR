@@ -22,7 +22,15 @@ if config_service.clean_project:
     log_service.log_simple("CLEAN UP ACTIVADO, FINALIZANDO")
     system_service.cleanup_project()
     sys.exit()
-
+    
+if config_service.test_wf_model:
+    log_service.log_simple("MODO TESTEO DE WORD FINDER")
+    from testing.test_wf import TestingManger
+    tester = TestingManger(PROJECT_ROOT, config_service.models_config)
+    tester.run_queries()
+    system_service.cleanup_project()
+    sys.exit()
+    
 system_service.clear_output_folders()
 
 from services import storage_service

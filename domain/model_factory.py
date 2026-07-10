@@ -3,23 +3,24 @@ import numpy as np
 from typing import Dict, Any, List
 import logging
 import pickle
-from config.config_loader import load_pickle, save_pickle
+import time
+from services.output_service import load_pickle, save_pickle
 
 logger = logging.getLogger(__name__)
 
 class MappedMatrix:
     """Contenedor inmutable que encapsula la matriz dispersa universal """
     __slots__ = ("matrix", "matrix_ngrams")
-    def __init__(self, path_dir: str):
-        self.matrix = np.load(os.path.join(path_dir, "matrix.npz"), mmap_mode='r', allow_pickle=False)
-        self.matrix_ngrams = np.load(os.path.join(path_dir, "ngrams.npy"), mmap_mode='r', allow_pickle=False)
+    def __init__(self, path_dir: str, file_type: List[str]):
+        self.matrix = np.load(os.path.join(path_dir, file_type[0]), mmap_mode='r', allow_pickle=False)
+        self.matrix_ngrams = np.load(os.path.join(path_dir, file_type[1]), mmap_mode='r', allow_pickle=False)
 
 class KeyFields:
     """Carga los arrays de los KeyFields"""
     __slots__ = ("kf_matrix", "kf_ngrams")
-    def __init__(self, kf_path: str):
-        self.kf_matrix = np.load(os.path.join(kf_path, "matrix.npz"), mmap_mode='r', allow_pickle=False)
-        self.kf_ngrams = np.load(os.path.join(kf_path, "ngrams.npy"), mmap_mode='r', allow_pickle=False)
+    def __init__(self, kf_path: str, file_type: List[str]):
+        self.kf_matrix = np.load(os.path.join(kf_path, file_type[0]), mmap_mode='r', allow_pickle=False)
+        self.kf_ngrams = np.load(os.path.join(kf_path, file_type[1]), mmap_mode='r', allow_pickle=False)
 
 class KFIndex:
     """kf[:, 0], kw[:, 1], offset[:, -1]"""
@@ -41,10 +42,16 @@ class MatrixFactory:
         "matrix_registry",
         "kf_registry",
         "model_pkl",
-        "index_matrix"
+        "index_matrix",
+        "files_list"
     )
     def __init__(self, config: Dict[str, Any]):
         self.models_path = config.get("wf_path", "")
+        
+        ngrams_name = config.get("ngrams_name", "")
+        matrix_name = config.get("matrix_name", "")
+        
+        self.files_list = [matrix_name, ngrams_name]
         
         self.pkl_path = config.get("pkl_path", "")
         self.idx_path = config.get("kf_idx", "")
@@ -84,7 +91,7 @@ class MatrixFactory:
                     # Identificación de la nomenclatura jerárquica 'longitud_{key}'
                     if os.path.isdir(full_path) and item.endswith(f"{self.matrix_path}"):
                         key_len = int(item.replace(f"_{self.matrix_path}", ""))
-                        self.matrix_registry[key_len] = MappedMatrix(full_path)
+                        self.matrix_registry[key_len] = MappedMatrix(full_path, self.files_list)
                         continue
 
             elif self.kf_path in dirnames:
@@ -92,7 +99,7 @@ class MatrixFactory:
                     full_path = os.path.join(self.kf_folder, item)
                     if os.path.isdir(full_path) and item.endswith(f"{self.kf_path}"):
                         key_len = int(item.replace(f"_{self.kf_path}", ""))
-                        self.kf_registry[key_len] = KeyFields(full_path)
+                        self.kf_registry[key_len] = KeyFields(full_path, self.files_list)
                         continue
             else:
                 continue
@@ -117,16 +124,17 @@ class MatrixFactory:
         self.index_matrix = KFIndex(self.idx_path)
 
     @staticmethod
-    def edit_pickle_vals(pkl_path: str):
-        model_pkl = load_pickle(pkl_path, 'rb')
-        if not isinstance(model_pkl, dict):
-            raise ValueError("El pickle no tiene el formato esperado (dict).")
+    def edit_pickle_vals(config: Dict[str, Any]):
+        # pkl_path = config.get("pkl_path", "")
+        # model_pkl = load_pickle(pkl_path, 'rb')
+        # if not isinstance(model_pkl, dict):
+        #     raise ValueError("El pickle no tiene el formato esperado (dict).")
             
-        logger.info(f"MODEL KEYS: {model_pkl.keys()}")
-        _noise_words = model_pkl["noise_words"]
-        _noise_filter = model_pkl.get("noise_filter", {})
-        _noise_grams: List[Dict[int, List[str]]] = _noise_filter["noise_grams"]
-        model_pkl["noise_cands"] = [(word, _noise_grams[i]) for i, word in enumerate(_noise_words) if word and i < len(_noise_grams)]
+        # logger.info(f"MODEL KEYS: {model_pkl.keys()}")
+        # _noise_words = model_pkl["noise_words"]
+        # _noise_filter = model_pkl.get("noise_filter", {})
+        # _noise_grams: List[Dict[int, List[str]]] = _noise_filter["noise_grams"]
+        # model_pkl["noise_cands"] = [(word, _noise_grams[i]) for i, word in enumerate(_noise_words) if word and i < len(_noise_grams)]
         # noise_words: List[str] = model_pkl["noise_words"]
         # sorted_noise_words = sorted(noise_words, key=len, reverse=True)
         # logger.info(f"NOISE WIRDS: {noise_words}\n"f"SORTED: {sorted_noise_words}")
@@ -140,7 +148,15 @@ class MatrixFactory:
         #
         # global_words: List[str] = model["global_words"]
         # max_len = max((len(s) for s in global_words)) + 3
-        # logger.info(f"total keywords: {global_words}, {max_len}")
+        train_data = config.get("train_data", "")
+        train_array = np.load(train_data, 'r', allow_pickle=False)
+
+        logger.info(f"total keywords: {train_array.shape}, {train_array}")
+        time0 = time.perf_counter()
+        vector_dummie = np.mean(train_array, axis=0, dtype=np.float32, keepdims=True)
+        totttime = time.perf_counter() - time0
+        logger.info(f"TIEMPO ARRAY: {totttime}, SHAPE: {vector_dummie.shape}\n"f"{vector_dummie}")
+
         #
         # kfw = 0
         # kf_indices = np.zeros((total_ngrams, max_len), dtype=np.uint8, order='C')
@@ -179,10 +195,11 @@ class MatrixFactory:
         #
         # np.save(idx_array_path, kf_indices)
         # model["global_words"] = global_words
-        #
-        try:
-            save_pickle(model_pkl, pkl_path, 'wb')
-        except Exception as e:
-            logger.error(f"ERROR GUARDADNO PICKLE: {e}", exc_info=True)
-            return False
+        
+        # if
+        # try:
+        #     save_pickle(model_pkl, pkl_path, 'wb')
+        # except Exception as e:
+        #     logger.error(f"ERROR GUARDADNO PICKLE: {e}", exc_info=True)
+        #     return False
         return True

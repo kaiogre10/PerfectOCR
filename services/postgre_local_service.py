@@ -1,6 +1,6 @@
 import logging
 import subprocess
-import pandas as pd  # type: ignor
+import pandas as pd  # type: ignore
 from typing import Dict, Tuple, List, Any
 from psycopg2.extras import execute_values  # type: ignore
 from services.gateaway_service import ServiceGateaway

@@ -25,7 +25,6 @@ class TextCleaner(OCRAbstractWorker):
         self.output_log = config.get("text_clean")
                     
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        worker_name = context.get("worker_name") or "paddle_wrapper"
         t0 = time.perf_counter()
         if not manager.workflow or not manager.workflow.polygons:
             logger.warning("TextCleaner: No hay polígonos en el workflow para procesar.")
@@ -88,7 +87,7 @@ class TextCleaner(OCRAbstractWorker):
                 if self.output_log and txt != text:
                     logger.info(f"Limpieza de '{poly_id}' | Original: '{text}' | Ruido:'{set(text.split(" ")).difference(set(txt.split(" ")))}' → '{txt}'")
 
-        if manager.update_ocr_results(final_polygons, worker_name):
+        if manager.update_ocr_results(final_polygons):
             logger.debug(f"Limpieza textual completada en: {time.perf_counter() - t0}'s | poligonos restantes: {len(final_polygons) - eliminated_count}, eliminados: {eliminated_count}")
             return True
         else:

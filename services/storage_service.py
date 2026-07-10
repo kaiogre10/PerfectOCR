@@ -1,22 +1,14 @@
 from typing import List, Dict, Optional
 import logging
-import os
 import ctypes
-from services.system_service import get_so
 
 LIB: ctypes.CDLL
 
 logger = logging.getLogger(__name__)
 
 def storage_config(PROJECT_ROOT: str, config: Dict[str, List[str]]) -> None:
-    bin_path = config["libs_path"]
-    bins_path = [PROJECT_ROOT, *bin_path]
-    binary_extension: str = get_so()
-
-    container_bin_path = os.path.join(*bins_path, "containers" + binary_extension)
-    storage_bin_path = os.path.join(*bins_path, "buffer_handler" + binary_extension)
-    if not os.path.exists(storage_bin_path) or not os.path.exists(container_bin_path):
-            logger.error(f"BINARIOS NO ENCONTRADO: {storage_bin_path}")
+    container_bin_path = config.get("containers", "")
+    storage_bin_path = config.get("buffer_handler", "")
     try:
         CON = ctypes.CDLL(container_bin_path)
         CON.container_create.argtypes = [ctypes.c_int]

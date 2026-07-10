@@ -19,25 +19,20 @@ logger = logging.getLogger(__name__)
 
 class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
-        __slots__ = (
-            "project_root",
-            "_model"
-        )
+        __slots__ = ("project_root", "_model")
         super().__init__(config, project_root)
         self.project_root = project_root
         self._model = None
 
     @property
     def model(self) -> Optional[Any]:
-        try:
+        if self._model is None:
+            models_builder = ModelsBuilder.get_instance()
+            self._model = models_builder.word_finder
             if self._model is None:
-                models_builder = ModelsBuilder.get_instance()
-                self._model = models_builder.word_finder
-            return self._model
-
-        except ModuleNotFoundError as e:
-            logger.error(f"DataFinder: Modelo de búsqueda no disponible: {e}", exc_info=True)
-        return None
+                logger.error("WORD FINDER no disponible")
+                return None
+        return self._model
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         polygon_updates = self._find_data(manager)
@@ -66,13 +61,13 @@ class DataFinder(OCRAbstractWorker):
             skipped_semantic = 0
             sc_forb = {0, 2, 4, 5}
 
-            all_idx = np.array([p.poly_index for p in polygons.values()], np.int16)
+            all_idx = np.array([p.poly_index for p in polygons.values()], np.uint8)
 
             sc = [p.semantic_clasification for p in polygons.values()]
             texts = [(p.ocr_text or "") for p in polygons.values()]
 
             texts_length = np.array([len(t) for t in texts])
-            decimal_p = np.array([t.isnumeric() for t in texts])
+            decimal_p = np.array([t.isdecimal() for t in texts])
 
             # sc_length = np.array([len(c) for c in sc])
             sc_eq = np.array([len(set(t)) for t in sc])

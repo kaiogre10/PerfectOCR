@@ -1,6 +1,46 @@
 # core/factory/protocol.py
-from typing import Protocol, Dict, Any
+from typing import Protocol, Dict, Any, List, Tuple
 
 class FactoryComponentProtocol(Protocol):
     """Cualquier componente del sistema que requiera config y project_root al nacer."""
     def __init__(self, config: Dict[str, Any], project_root: str) -> None: ...
+
+class ConfigProtocol(Protocol):
+    """Contrato que se debe de cumplir para la API de configuración"""
+    def __init__(self, config: Any) -> None: ...
+
+    @property
+    def test_config(self) -> bool: ...
+
+    @property
+    def no_activate_modules(self) -> bool: ...
+
+    @property
+    def handle_memory(self) -> bool: ...
+
+    @property
+    def clean_project(self) -> bool: ...
+
+    @property
+    def logs_debug(self) -> Dict[str, Any]: ...
+
+    @property
+    def system_paths(self) -> Dict[str, List[str]]: ...
+
+    @property
+    def enabled_outputs(self) -> Dict[str, Dict[str, bool]]: ...
+
+    @property
+    def models_config(self) -> Dict[str, Any]: ...
+
+    @property
+    def stagers_config(self): ...
+
+    @property
+    def create_stager(self) -> List[Tuple[str, List[str]]]: ...
+    
+    @property
+    def env_config(self) -> Dict[str, Any]: ...
+
+    @property
+    def input_paths(self) -> Dict[str, List[str]]: ...

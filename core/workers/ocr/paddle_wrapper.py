@@ -18,7 +18,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     Utiliza carga perezosa para el motor de PaddleOCR.
     """
     __slots__ = (
-        "project_root",
+        # "project_root",
         "min_confidence",
         "output",
         "del_output_log",
@@ -26,7 +26,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        self.project_root = project_root
+        # self.project_root = project_root
         worker_config = config.get("paddle_wrapper", {})
         self.min_confidence = worker_config.get("min_confidence")
         self.output = config.get("ocr_raw")
@@ -52,8 +52,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             final_results = self.recognize_text_from_batch(manager)
 
             if final_results:
-                worker_name = context.get("worker_name") or "PaddleOCRWrapper"
-                if manager.update_ocr_results(final_results, worker_name):
+                if manager.update_ocr_results(final_results):
                     logger.debug(f"Batch OCR completado. {len(final_results)} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
                     if self.output:
                         file_name = manager.workflow.metadata.image_name if manager.workflow else ""

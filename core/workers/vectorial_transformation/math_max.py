@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import time
 from itertools import permutations
-from typing import Dict, Any, List, Tuple, FrozenSet
+from typing import Dict, Any, List, Tuple
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
@@ -23,23 +23,14 @@ class MatrixSolver(VectorizationAbstractWorker):
     Resuelve inconsistencias matemáticas en una tabla estructurada usando
     clasificación semántica de polígonos, aritmética Decimal y votación global.
     """
-    __slots__ = (
-        "cant_name",
-        "pu_name",
-        "mtl_name",
-        "product_name",
-        "dec_cols_name",
-        "arithmetic_tolerance",
-        "output",
-    )
+    __slots__ = ("cant_name", "pu_name", "mtl_name", "product_name", "dec_cols_name", "arithmetic_tolerance", "output")
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         # self.project_root = project_root
         worker_config = config.get('math_max', {})
-        all_cols_name: List[str] = worker_config["cols_name"]
-        self.cant_name, self.pu_name, self.mtl_name, self.product_name = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3]
-        self.dec_cols_name: FrozenSet[str] = frozenset({all_cols_name[0], all_cols_name[1], all_cols_name[2]})
-        self.arithmetic_tolerance = Decimal(worker_config.get('row_relative_tolerance', ""))
+        self.cant_name, self.pu_name, self.mtl_name, self.product_name = worker_config["columns"]
+        self.dec_cols_name = worker_config.get("dec_cols_name", {})
+        self.row_tol = worker_config.get('row_tol')
         self.output = config.get("math_max_corrected")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
@@ -197,12 +188,12 @@ class MatrixSolver(VectorizationAbstractWorker):
                     if c_col > mtl_col:
                         continue
 
-                    upper_tol_mtl = mtl_col + self.arithmetic_tolerance
-                    lower_tol_mtl = mtl_col - self.arithmetic_tolerance
-                    upper_tol_pu = pu_col + self.arithmetic_tolerance
-                    lower_tol_pu = pu_col - self.arithmetic_tolerance
-                    upper_tol_c = c_col + self.arithmetic_tolerance
-                    lower_tol_c = c_col - self.arithmetic_tolerance
+                    upper_tol_mtl = mtl_col + self.row_tol
+                    lower_tol_mtl = mtl_col - self.row_tol
+                    upper_tol_pu = pu_col + self.row_tol
+                    lower_tol_pu = pu_col - self.row_tol
+                    upper_tol_c = c_col + self.row_tol
+                    lower_tol_c = c_col - self.row_tol
 
                     artimetic_mtl = c_col * pu_col
                     artimetic_pu = mtl_col / c_col
@@ -222,7 +213,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                     else:
                         continue
 
-            logger.warning(f"TIEMPO ITERANDO: {time.perf_counter() - time_h:.6f}'s")
+            logger.debug(f"TIEMPO ITERANDO: {time.perf_counter() - time_h:.6f}'s")
         except TypeError as e:
             logger.warning(f"ERROR PERMUTANDO: '{e}'", exc_info=True)
             return (pd.DataFrame(), {})
@@ -925,7 +916,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             quotient2 = quotient1.to_integral_value(rounding=ROUND_HALF_UP)                 # Redondear por si acaso
             # logger.debug(f"COCIENTE 2: {quotient2}")
             quotient_diff = ZERO if quotient1 != quotient2 else abs(quotient2 - quotient1)  # Diferencia absoluta del redondeo y valor real
-            if quotient_diff == ZERO or quotient_diff < self.arithmetic_tolerance:          # Debajo de umbral
+            if quotient_diff == ZERO or quotient_diff < self.row_tol:          # Debajo de umbral
                 potencial_val[r, 0] = int(quotient2)
             continue                                                                        # Momentaneamente, después agregaré los casos para pu y mtl
 

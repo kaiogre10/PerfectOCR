@@ -22,28 +22,7 @@ class Polygons:
     cropped_img: Optional[CroppedImage]
     ocr_text: Optional[str]
     key_field: Optional[List[int]]
-
-#    'MontoTotalDocumento': 1
-#    'TotalProductos': 2
-#    'Subtotal': 3
-#    'FolioDocumento': 4
-#    "NombreCliente": 5
-#    "HeaderWords": 6
-#    "RFCProveedor": 7,
-#    "MontoIVAGeneral": 8,
-#    "FechaDocumento": 9
-#    "TelefonoP": 10
-#    "CorreoP": 11
-#    "DirecciónP": 12
-
     semantic_clasification: List[int]
-        # noise: -1
-        # unique: 0
-        # descriptive: 1
-        # umd: 2
-        # code: 3
-        # quantitative: 4
-        # numeric: 5
     cuant_chars: int
 
 @dataclass(slots=True)

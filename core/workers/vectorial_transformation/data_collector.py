@@ -9,7 +9,7 @@ from utils.patterns import umd_patterns
 from utils.math_utils import validate_df
 from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table
-from utils.data_utils import CONVERSION_KF
+from core.assets.assets import CONVERSION_KF
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 
@@ -20,23 +20,13 @@ conversion_kf = CONVERSION_KF
 
 class FinalStructurer(VectorizationAbstractWorker):
     """"Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db."""
-    __slots__ = (
-        "cant_name",
-        "pu_name",
-        "mtl_name",
-        "product_name",
-        "id_registro",
-        "separator",
-        "output",
-        "stack",
-    )
+    __slots__ = ("cant_name", "pu_name", "mtl_name", "product_name", "id_registro", "separator", "output", "stack")
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         # self.project_root = project_root
-        worker_config = config.get('math_max', {})
-        all_cols_name: List[str] = worker_config["cols_name"]
-        self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = all_cols_name[0], all_cols_name[1], all_cols_name[2], all_cols_name[3], all_cols_name[4]
-        self.separator = worker_config["separator"][0]
+        worker_config = config.get('collector', {})
+        self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = worker_config["cols_name"]
+        self.separator = worker_config.get("separator", "")
         self.output = config.get("normalized_table")
         self.stack = config.get("stack")
 
