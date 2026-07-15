@@ -1,0 +1,127 @@
+models_config:
+  models_paths:
+    models_dir: "models"
+    word_finder_path: "wf"
+    paddle_path: "paddle"
+    det_model: "det"
+    rec_model: "rec"
+
+  paddle_config:
+    use_angle_cls: False
+    lang: "es"
+    show_log: False
+    use_gpu: False
+    enable_mkldnn: True
+    rec_batch_num: 32
+    cpu_threads: 4
+    max_batch_size: 32
+    det_limit_side_len: 1280
+    det_db_score_mode: 'slow'
+    use_mp: True
+    table: False
+    max_text_length: 20
+    return_word_box: False
+#    det_model_dir: ["models", "paddle", "det", "es"]
+#    rec_model_dir: ["models", "paddle", "rec", "es"]
+
+  wf_config:
+    char_ngrams: [2, 3]
+    threshold_similarity: 0.901
+    global_filter_threshold: 0.6105
+    forb_match: 0.876
+    window_flexibility: 3
+
+#    wf_path: ["models", "wf"]
+    kf_idx: "kf_idx.npy"
+    pkl_path: "wf_model.pkl"
+    
+    matrix_path: "matrixes"
+    kf_path: "key_words"
+    ngrams_name: "ngrams.npy"
+    matrix_name: "matrix.npz"
+    index_dict: "index_dict.npz"
+  
+modules:
+  image_preparation:
+    ink_enhancement:
+      white: [255, 255, 255]
+      black: [0, 0, 0]
+      aspect_ratio_range: [2.5, 13.8]
+      angle_threshold: 41.25
+      thr: 0.23
+      black_thr: 0.726
+      solid_thr: 0.95
+      shape_thr: 0.327
+      
+    angle_corrector:
+      min_angle_for_correction: 0.9
+      canny_thresholds: [70, 120]
+      hough_threshold: 150
+      hough_min_line_length_cap_px: 250
+      hough_max_line_gap_px: 20
+      hough_angle_filter_range_degrees: [-22.5, 22.5]
+      
+    geometry_detect:
+      morph_kernel: [2, 2]
+      iterations: 2
+
+    polygon_extractor:
+      cropping_padding: 1.0
+
+  preprocessing:
+    moire:
+      min_distance_from_center: 150
+      notch_radius: 3
+      percentile_threshold: 96
+      mean_factor: 4
+      abs_threshold: 20000000
+
+    sp_config:
+      kernel_size: 3
+      salt_pepper_threshold: 0.015
+      salt_pepper_low: 10
+      salt_pepper_high: 250
+      sobel_threshold: 0.85
+
+    gauss_params:
+      laplacian_variance_threshold: 80.0
+
+    contrast:
+      clahe_clip_limit: 2.0
+      contrast_threshold: 50
+      dimension_thresholds_px: [1000, 2500, 4000]
+      grid_sizes_map: [[6, 6], [8, 8], [10, 10]]
+    
+    sharpening:
+      sharpness_threshold: 50.0
+      kernel: 3
+        
+  ocr:
+    paddle_wrapper:
+      min_confidence: 0.5307
+      
+    text_refine:
+      num_passes: 1
+
+  vectorization:
+    lineal:
+      get_vectors: True
+      overlap_threshold: 0.596
+      
+    cos_sim:
+      metric: "euclidean"
+      eps: 0.91
+      min_cluster: 2
+      tolerance_sim: 2
+      similarity_threshold: 0.915
+      emergency_threshold: 0.817
+      min_internal_sim: 0.439
+    
+    table_structurer:
+      min_h: 3
+
+    math_max:
+      row_tol: "0.10"
+
+    collector:
+      separator: "_"

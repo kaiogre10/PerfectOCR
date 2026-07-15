@@ -149,7 +149,7 @@ class MatrixFactory:
         # # np.savez(index_dict, **mapped_words)
         
         pkl_path = config.get("pkl_path", "")
-        model_pkl = load_pickle(pkl_path, 'rb')
+        model_pkl: Dict[str, Any] = load_pickle(pkl_path, 'rb')
         if not isinstance(model_pkl, dict):
             raise ValueError("El pickle no tiene el formato esperado (dict).")
             
@@ -174,8 +174,8 @@ class MatrixFactory:
         # logger.info("\n"f"{all_ngrams}")
         # logger.info("\n"f"{ball_ngrams}")
         
-        model_pkl["ball_ngrams"] = ball_ngrams
-        del model_pkl["all_ngrams"]
+        # model_pkl["ball_ngrams"] = ball_ngrams
+        # del model_pkl["all_ngrams"]
         # index_dict = np.load(index_dict_path, mmap_mode='r')
         #
         # bindex_dict: Dict[bytes, np.ndarray[Any, np.dtype[np.uint8]]] = {}
@@ -188,10 +188,10 @@ class MatrixFactory:
         # np.savez(index_dict_path, bindex_dict)
         # # model_pkl["ball_ngrams"] = ball_ngrams
         #
-        try:
-            save_pickle(model_pkl, pkl_path, 'wb')
-        except Exception as e:
-            logger.error(f"ERROR GUARDADNO PICKLE: {e}", exc_info=True)
-            return False
+        # try:
+        #     save_pickle(model_pkl, pkl_path, 'wb')
+        # except Exception as e:
+        #     logger.error(f"ERROR GUARDADNO PICKLE: {e}", exc_info=True)
+        #     return False
         
-        return True
+        # return True

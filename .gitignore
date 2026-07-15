@@ -10,8 +10,6 @@
 *.xml
 *.iml
 *.cursorignore
-*.yaml
-# *.sql
 *.aiignore
 *.pyd
 *.so
