@@ -5,7 +5,7 @@ import numpy as np
 from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, Tuple, List
 from utils.text_utils import format_cuant, get_rfc, get_ids, noramalice_df, its_similar, fast_classfier
-from utils.patterns import umd_patterns
+from core.assets.patterns import umd_patterns
 from utils.math_utils import validate_df
 from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table

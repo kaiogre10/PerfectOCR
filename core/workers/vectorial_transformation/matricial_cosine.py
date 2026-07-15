@@ -15,7 +15,6 @@ class MatricialCusine(VectorizationAbstractWorker):
     __slots__ = ("similarity_threshold", "min_cluster", "tolerance_sim", "emergency_threshold", "eps", "metric", "min_internal_sim", "output_features", "output", "training_data")
     def __init__(self, project_root: str, config: Dict[str, Any]):
         super().__init__(project_root, config)
-        # self.project_root = project_root
         worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
         self.min_cluster = worker_config.get("min_cluster")
@@ -40,7 +39,7 @@ class MatricialCusine(VectorizationAbstractWorker):
             table_line_ids, array_table = self._compare_vectors(manager)
             if table_line_ids:
                 if manager.save_tabular_lines(table_line_ids):
-                    logger.info(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s")
+                    logger.debug(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s")
                     if self.training_data:
                         serialize_arrays(array_table[:, 1:])
                     return True

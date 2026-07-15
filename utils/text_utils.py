@@ -5,7 +5,7 @@ from typing import List, Tuple, Dict, Any, Optional
 from utils.math_utils import text_encode
 from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
 from core.assets.assets import VOWELS, REPLACEMENT_MAP
-from utils.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
+from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
 
 logger = logging.getLogger(__name__)
 

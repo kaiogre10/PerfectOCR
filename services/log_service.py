@@ -3,7 +3,7 @@ import os
 import sys
 from datetime import datetime
 import logging
-from utils.patterns import float_time
+from core.assets.patterns import float_time
 import inspect
 from typing import List, Tuple, Optional
 
@@ -71,15 +71,15 @@ def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str
     handler.setLevel(level.upper())
     log_root.addHandler(handler)
 
-def log_active_areas(message: str, manager_config: Optional[List[Tuple[str, List[str]]]] = None) -> None:
+def log_active_areas(message: str, manager_config: Optional[List[Tuple[str, List[str]]]] = None) -> str:
     caller_info = get_caller_info()
     message = f"{get_logging_info(caller_info)} {message}"
     if manager_config:
         stages_list = [stager[0].removesuffix("_stage").title() for stager in manager_config if stager and stager[1]]
         msg = f"{', '.join(stages_list) if stages_list else 'SOLO BUILDERS'}"
-        print(f"{message} '{msg}'")
+        return (f"{message} '{msg}'")
     else:
-        print(f"{message}")
+        return (f"{message}")
 
 def basic_exc_logger(message: str, exc_info: Optional[bool] = False) -> None:
     caller_info = get_caller_info()

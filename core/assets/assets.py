@@ -1,6 +1,7 @@
-from typing import Dict, List, Any, FrozenSet
+from typing import Dict, List, Any, FrozenSet, Set
 from types import MappingProxyType
 import numpy as np
+from decimal import Decimal
 
 DENSITY_ENCODER: Dict[str, float] = {
     "0": 0.0,
@@ -298,3 +299,16 @@ REPLACEMENT_MAP: MappingProxyType[str, str] = MappingProxyType({
     'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
     'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9'
 })
+
+KF_RANGE = (1, 13)
+SC_RANGE = (0, 6)
+ELEMENTAL_WORKER = "image_loader"
+DET = "geometry_detector"
+OCR_WORKERS: Set[str] = set(["polygon_extractor", "paddle_wrapper", DET])
+FULL_OCR: FrozenSet[str] = frozenset(OCR_WORKERS.union(["data_finder"]))
+VECT_MIN = "lineal"     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
+MIN_WORKERS: FrozenSet[str] = frozenset(OCR_WORKERS.union(set([ELEMENTAL_WORKER]))) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
+
+ONE = Decimal('1.00')
+ZERO = Decimal('0.00')
+COMBINATIONS = 3

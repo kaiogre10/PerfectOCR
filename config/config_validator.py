@@ -6,16 +6,17 @@ from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from decimal import Decimal
 # from contextlib import contextmanager
 from services.system_service import get_so
+from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
 import cv2
 
-kf_range = (0, 6)
-sc_range = (1, 13)
-ELEMENTAL_WORKER = "image_loader"
-det = "geometry_detector"
-ocr_workers: Set[str] = set(["polygon_extractor", "paddle_wrapper", det])
-full_ocr: FrozenSet[str] = frozenset(ocr_workers.union(["data_finder"]))
-vect_min = "lineal"     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
-min_workers: FrozenSet[str] = frozenset(ocr_workers.union(set([ELEMENTAL_WORKER]))) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
+_kf_range = KF_RANGE
+_sc_range = SC_RANGE
+_elemental_workers = ELEMENTAL_WORKER
+_det = DET
+_ocr_workers = OCR_WORKERS
+_full_ocr = FULL_OCR
+_vect_min = VECT_MIN     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
+_min_workers = MIN_WORKERS
 
 class ConfigValidator:
     """Valida de los parametros de configuración"""
@@ -25,7 +26,7 @@ class ConfigValidator:
     
         # with self._run_params() as tested:
         #     log_simple(f"TESTED: {tested}")
-            
+        
         if not self._validate_config():
             self.config = {}
             del self.config
@@ -34,11 +35,11 @@ class ConfigValidator:
 
     @cached_property
     def elemental_params(self) -> bool:                         # Condición mínima necesaria para que pueda arrancar el sistema
-        return ELEMENTAL_WORKER in self.create_stager[0][1]
+        return _elemental_workers in self.create_stager[0][1]
 
     @cached_property
     def active_full_ocr(self):
-        return ocr_workers.issubset(self.all_workers)
+        return _ocr_workers.issubset(self.all_workers)
 
     @cached_property
     def system_params(self):
@@ -169,18 +170,31 @@ class ConfigValidator:
         
         kf_list_log = _logs_debug["kf_list_log"]
         semantic_types_log = _logs_debug["semantic_types_log"]
+        log_sc_size = len(semantic_types_log)
+        log_kf_size = len(kf_list_log)
         
-        if _logs_debug.get("all_logs"):
-            sc_range_logs = list(range(kf_range[0], kf_range[1]))
-            kf_range_logs = list(range(sc_range[0], sc_range[1]))
+        if not _logs_debug.get("all_logs"):
+            if not _logs_debug["key_fields"]:
+                kf_range_logs = []
+                
+            elif log_kf_size == 1 and kf_list_log[0] != -1:
+                kf_range_logs = kf_list_log
+            else:
+                kf_range_logs = _max_min_vals(kf_list_log, log_kf_size, _kf_range)
             
+            if not _logs_debug["seman_clas"]:
+                sc_range_logs = []
+                
+            elif log_sc_size == 1 and semantic_types_log[0] != -1:
+                sc_range_logs = semantic_types_log
+            else:
+                sc_range_logs =  _max_min_vals(semantic_types_log, log_sc_size, _sc_range)
         else:
-             kf_range_logs = [] if not _logs_debug["key_fields"] else _max_min_vals(kf_list_log, len(kf_list_log), kf_range)
-             sc_range_logs = [] if not _logs_debug["seman_clas"] else  _max_min_vals(semantic_types_log, len(semantic_types_log), sc_range)
-        
+            sc_range_logs = list(range(_kf_range[0], _kf_range[1]))
+            kf_range_logs = list(range(_sc_range[0], _sc_range[1]))
+            
         _logs_debug["kf_list_log"] = kf_range_logs
         _logs_debug["semantic_types_log"] = sc_range_logs
-        _logs_debug["handle_memory"] = self.handle_memory
         return _logs_debug
     
     @cached_property
@@ -192,6 +206,8 @@ class ConfigValidator:
                     logs_debug[key] = True
                 elif isinstance(value, list):
                     continue
+                    
+        logs_debug["handle_memory"] = self.handle_memory
         return logs_debug
         
     @cached_property
@@ -216,6 +232,7 @@ class ConfigValidator:
         
         matrix_path = wf_config.get("matrix_path", "")
         kf_path = wf_config.get("kf_path", "")
+        index_dict = wf_config.get("index_dict", "")
         
         kf_idx_name = wf_config.get("kf_idx", "")
         pkl_path_name = wf_config.get("pkl_path", "")
@@ -226,6 +243,8 @@ class ConfigValidator:
         
         _models_config["wf_config"]["kf_idx"] = os.path.join(wf_path, kf_idx_name)
         _models_config["wf_config"]["pkl_path"] = os.path.join(wf_path, pkl_path_name)
+        _models_config["wf_config"]["index_dict"] = os.path.join(wf_path, index_dict)
+        
         _models_config["wf_config"]["train_data"] = os.path.join(self.project_root, "core", "assets", "data.npy")
         _models_config["wf_config"]["matrix_folder"] = os.path.join(wf_path, matrix_path)
         _models_config["wf_config"]["kf_folder"] = os.path.join(wf_path, kf_path)
@@ -246,11 +265,11 @@ class ConfigValidator:
         if not self.all_workers:
             return {}
 
-        if det not in self.all_workers:
+        if _det not in self.all_workers:
             # log_simple("Configuración: Sin geometry_detector, no se cargan modelos")
             return {}
 
-        if full_ocr.issubset(self.all_workers):
+        if _full_ocr.issubset(self.all_workers):
             # log_simple("Configuración: OCR completo + Word Finder")
             return {
                 "models_config": self._models_config,
@@ -282,7 +301,7 @@ class ConfigValidator:
     def _img_prep_config(self):
         image_workers = self.workers_order["image_preparation_stager"]
         if "polygon_extractor" in image_workers:
-            if not det in image_workers:
+            if not _det in image_workers:
                 self.workers_order["image_preparation_stager"].remove("polygon_extractor")
                 
         _img_prep_config = self.modules_config.get("image_preparation", {})
@@ -357,7 +376,7 @@ class ConfigValidator:
     @cached_property
     def vectorization_config(self) -> Tuple[Dict[str, Any], List[str]]:
         vect_stage = self.create_stager[3][1]
-        if self.no_activate_modules or not vect_stage or not vect_min in vect_stage or not self.active_full_ocr:
+        if self.no_activate_modules or not vect_stage or not _vect_min in vect_stage or not self.active_full_ocr:
             return ({}, [])
         else:
             config_module = self._vectorization_config
@@ -444,11 +463,11 @@ class ConfigValidator:
         if not self.workers_order:
             log_simple("ERROR: No hay configuración de workers disponible")
             return False
-        elif min_workers.issubset(self.all_workers):
+        elif _min_workers.issubset(self.all_workers):
             return True
         else:
-            workers_missing = min_workers - self.all_workers
-            log_simple(f"Faltan: {workers_missing} de los '{len(min_workers)}' workers mínimos para el pipeline")
+            workers_missing = _min_workers - self.all_workers
+            log_simple(f"Faltan: {workers_missing} de los '{len(_min_workers)}' workers mínimos para el pipeline")
             return False
         
     # @contextmanager

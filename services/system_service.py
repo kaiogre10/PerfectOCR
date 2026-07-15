@@ -7,11 +7,11 @@ from typing import Set, Tuple, Optional
 #from psycopg2 import sql
 from typing import List, Dict, Any
 from services.log_service import basic_exc_logger
-from utils.patterns import extension_suffix
+from core.assets.patterns import extension_suffix
 
 _extension_suffix = extension_suffix
 PROJECT_ROOT: str = ""
-output_paths: List[str]
+output_paths: List[str] = []
 valid_img_ext: Tuple[str, ...] = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2")
 invalid_extensions: List[str] = [".txt", ".webp"]
 trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", ".log", ".prof")
@@ -84,7 +84,8 @@ def clear_output_folders():
     - Archivos sueltos: solo extensiones objetivo.
     """
     if not output_paths:
-        raise ImportError(f"NO HAY ARCHIVOS OUTPUT, NO SE LIMPIARÁ NADA")
+        logger.info(f"NO HAY ARCHIVOS OUTPUT, NO SE LIMPIARÁ NADA")
+        return
         
     deleted_files = 0
     deleted_folder = 0

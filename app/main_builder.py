@@ -58,12 +58,12 @@ class MainBuilder:
     def create_single_builder(self) -> Optional[ProcessingBuilder]:
         """Crea un único builder reutilizable usando StagersFactory."""
         try:
-            # CREAR STAGERS FACTORY UNA SOLA VEZ
             stagers_factory = MainFactory(self.project_root, self.config_service.stagers_config)
             all_stagers = stagers_factory.get_all_stagers(stagging=self.config_service.create_stager)
+            if not all_stagers:
+                raise AttributeError("NO SE CREÓ LA FACTORY")
             # El manager se crea dentro del proceso de cada imagen, no aquí
             builder = ProcessingBuilder(self.project_root, all_stagers=all_stagers, logs_debug=self.config_service.logs_debug)
-            del stagers_factory
             return builder
 
         except AttributeError as e:
@@ -72,66 +72,33 @@ class MainBuilder:
 
     def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[str]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
-        tolerance = bitmath.KiB(2)
         total_images = len(workflow_report)
-
-        succes_images: List[str] = []
-        final_results: List[Tuple[bitmath.Any, int]] = []
-
-        payloads_buffer: bitmath.Byte = bitmath.Byte(0)
-        payload_cunter = 0
-        
         start_time = time.perf_counter()
-        for i, image_path in enumerate(workflow_report):
-            # Procesar imagen individualmente
-            payload = builder.process_single_image(image_path)
-            logger.warning(f"Procesadas: {(i + 1)} de '{total_images}' imágenes")
-            if payload is None or not payload[0]:
-                continue
-            else:
-                succes_images.append(payload[0])
-                logger.info(f"IMAGEN '{payload[0]}' PROCESADA CON EXITO")
-                payload_cunter += 1
-
-                payload_size = bitmath.Byte(payload[1])
-                if total_images == 1:
-                    payloads_buffer += payload_size
-                    payloads_sended = self.send_payload_pack(payloads_buffer, payload_cunter)
-                    final_results.append(payloads_sended)
-                    continue
-
-                elif (payload_size + payloads_buffer) < tolerance and total_images > (i + 1):
-                    payloads_buffer += payload_size
-                    continue
-                    
-                else:
-                    payloads_sended = self.send_payload_pack(payloads_buffer, payload_cunter)
-                    final_results.append(payloads_sended)
-                    payloads_buffer = bitmath.Byte(0)
-                    payload_cunter = 0
-                    continue
-
+        payloads_list = builder.process_query(workflow_report)
         total_processing_time = time.perf_counter() - start_time
         del builder
-        mean_process = f"{(total_processing_time / total_images):.6f}"
         
-        failed_images = {names.replace("\\", "/").split("/")[-1].split(".")[0] for names in workflow_report}.difference(set(succes_images))
-        total_fails = len(failed_images)
-        
-        if total_fails == 0:
-            logger.warning(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_mask}{total_processing_time}, promedio: {mean_process}'s")
-
-        elif total_fails == total_images:
-            logger.warning(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {time_mask}{total_processing_time}, promedio: {mean_process}")
-
+        if payloads_list is None:
+            return []
         else:
-            logger.warning(f"'{total_images - total_fails} de {total_images}' Archivos Digitalizados CORRECTAMENTE en: {time_mask}{total_processing_time}, promedio: {mean_process}'s / documento")
-            logger.debug(f"IMAGENES EXITOSAS:\n"f"{succes_images}\n"f"----------------------------")
-            logger.debug(f"IMAGENES FALLIDAS:\n"f"{failed_images}\n"f"----------------------------")
-
-        for result in final_results:
-            logger.info(f"SIZE/SENDED: {result[0]} / {result[1]}")
-        return final_results
+            success_images = [name for name in payloads_list[0]]
+            payload_sizes = [bitmath.Byte(sizes) for sizes in payloads_list[1]]
+            mean_process = f"{(total_processing_time / total_images):.6f}"
+            failed_images = {names.replace("\\", "/").split("/")[-1].split(".")[0] for names in workflow_report}.difference(set(success_images))
+            total_fails = len(failed_images)
+            
+            if total_fails == 0:
+                logger.warning(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {time_mask}{total_processing_time}, promedio: {mean_process}'s")
+    
+            elif total_fails == total_images:
+                logger.warning(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {time_mask}{total_processing_time}, promedio: {mean_process}")
+    
+            else:
+                logger.debug(f"IMAGENES EXITOSAS:\n"f"{success_images}\n"f"----------------------------")
+                logger.debug(f"IMAGENES FALLIDAS:\n"f"{failed_images}\n"f"----------------------------")
+        
+            logger.info(f"SIZE/SENDED: {sum(payload_sizes)} / {len(success_images)}")
+            return payloads_list
 
     def send_payload_pack(self, size: bitmath.Any, total_payloads: int) -> Tuple[bitmath.Any, int]:
         payload_resized = bitmath.best_prefix(size)

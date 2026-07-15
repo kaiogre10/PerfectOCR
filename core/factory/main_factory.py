@@ -9,7 +9,7 @@ from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
 from typing import Dict, Any, Tuple, List, Optional
 
-keyimglo ="image_preparation_stager"
+keyimglo = "image_preparation_stager"
 keypre = "preprocessing_stager"
 ocrkey = "ocr_stager"
 veckey = "vectorization_stager"
@@ -32,17 +32,21 @@ class MainFactory:
             workers_order: List[str] = stage_config[1] # Pipeline_config
             if not workers_order:
                 continue
+                
             config = self.modules_config.get(stage)
             if config is None:
                 continue
+                
             factory = factories_dict[stage](config[0])
             if factory is None or not workers_order:
                 continue
+                
             workers_created = factory.create_components(workers_order)
             factory.registry.clear()
             stager = stagers_dict.pop(stage)
             stagers.append(stager(workers_created, config, self.project_root))
             continue
+            
         return stagers
     
     def get_dicts(self) -> Tuple[Dict[str, Any],  Dict[str, Any]]:
@@ -69,7 +73,7 @@ class MainFactory:
         return PreprocessingFactory(config, self.project_root)
 
     def get_ocr_factory(self, config: Dict[str, Any]) -> OCRFactory:
-        return OCRFactory(config, self.project_root) # type: ignore
+        return OCRFactory(config, self.project_root)
 
     def get_vectorizing_factory(self, config: Dict[str, Any]) -> VectorizingFactory:
         return VectorizingFactory(config, self.project_root)

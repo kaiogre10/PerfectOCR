@@ -117,6 +117,7 @@ class WordFinderConfig(ConfigWithNumpy):
     kf_idx: str
     ngrams_name: str
     matrix_name: str
+    index_dict: str
 
 class ModelsPaths(ConfigWithNumpy):
     models_dir: str

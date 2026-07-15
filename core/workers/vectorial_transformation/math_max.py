@@ -10,13 +10,14 @@ from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.compiled_utils import validate_quant_chars
 from utils.math_utils import check_full_df
+from core.assets.assets import ONE, ZERO
 from services.output_service import save_debug_table
+
+_ONE = ONE
+_ZERO = ZERO
 
 logger = logging.getLogger(__name__)
 
-ONE = Decimal('1.00')
-ZERO = Decimal('0.00')
-COMBINATIONS = 3
 
 class MatrixSolver(VectorizationAbstractWorker):
     """
@@ -179,7 +180,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             n_cols = aritmetic_df.shape[1]
             array_votes = np.zeros(aritmetic_df.shape, dtype=np.int8, order='F')
             for row_values in aritmetic_df.values:
-                for c_idx, pu_idx, mtl_idx in permutations(range(n_cols), COMBINATIONS):
+                for c_idx, pu_idx, mtl_idx in permutations(range(n_cols), 3):
                     c_col = row_values[c_idx]
                     pu_col = row_values[pu_idx]
                     mtl_col = row_values[mtl_idx]
@@ -241,10 +242,15 @@ class MatrixSolver(VectorizationAbstractWorker):
             df.rename(columns={col_name_to_rename: self.product_name}, inplace=True)
             context["text_col"] = text_col
             dec_cols = arithmetical_cols
-        else:
+            
+        elif 4 < num_cols:
             dec_cols = np.sort(np.array([(df.columns.get_loc(name) if name in df.columns else None) for name in self.dec_cols_name], np.uint8)) # type: ignore
             context["text_col"] = np.empty(0, dtype=np.uint8)
-
+            
+        else:
+            logger.error(f"NO SE ENCONTRARON TODAS LAS COLUMNAS DECIMALES: {[df.columns.get_loc(name) for name in df.columns]}")
+            return df.empty, {}
+        
         context["dec_cols"] = dec_cols
         df_copy: pd.DataFrame = context["df_copy"]
         df_copy.columns = df.columns
@@ -458,9 +464,9 @@ class MatrixSolver(VectorizationAbstractWorker):
             if (missing_c + missing_pu + missing_mtl) != 1:
                 continue
             try:
-                val_c = Decimal(raw_c) if not missing_c else ZERO
-                val_pu = Decimal(raw_pu) if not missing_pu else ZERO
-                val_mtl = Decimal(raw_mtl) if not missing_mtl else ZERO
+                val_c = Decimal(raw_c) if not missing_c else _ZERO
+                val_pu = Decimal(raw_pu) if not missing_pu else _ZERO
+                val_mtl = Decimal(raw_mtl) if not missing_mtl else _ZERO
             except InvalidOperation as e:
                 logger.warning(f"ERROR COMPLETANDO: '{e}'", exc_info=True)
 
@@ -520,7 +526,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 poly_a_mtl, poly_b_pu = poly_m, poly_n
             else:
                 poly_a_mtl, poly_b_pu = poly_n, poly_m
-            if (val_a / val_b) % ONE == ZERO:
+            if (val_a / val_b) % _ONE == _ZERO:
                 if val_a > quotient and val_b >= quotient and val_a != quotient:
                     df.at[real_idx, src_a] = ""
                     df.at[real_idx, src_b] = ""
@@ -915,8 +921,8 @@ class MatrixSolver(VectorizationAbstractWorker):
             # logger.debug(f"COCIENTE 1: {quotient1}")
             quotient2 = quotient1.to_integral_value(rounding=ROUND_HALF_UP)                 # Redondear por si acaso
             # logger.debug(f"COCIENTE 2: {quotient2}")
-            quotient_diff = ZERO if quotient1 != quotient2 else abs(quotient2 - quotient1)  # Diferencia absoluta del redondeo y valor real
-            if quotient_diff == ZERO or quotient_diff < self.row_tol:          # Debajo de umbral
+            quotient_diff = _ZERO if quotient1 != quotient2 else abs(quotient2 - quotient1)  # Diferencia absoluta del redondeo y valor real
+            if quotient_diff == _ZERO or quotient_diff < self.row_tol:          # Debajo de umbral
                 potencial_val[r, 0] = int(quotient2)
             continue                                                                        # Momentaneamente, después agregaré los casos para pu y mtl
 

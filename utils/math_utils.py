@@ -191,7 +191,7 @@ def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], i
     all_features = calculate_math_features(sorted_lines, img_dims)
     textual_features = calculate_textual_line_features(sorted_lines, polygons_dict)
     all_lines_features = np.column_stack([all_features, textual_features])
-    logger.info(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.8f}s")
+    logger.debug(f"VECTORIZACIÓN COMPLETADA EN: {time.perf_counter() - t0:.8f}s")
     return all_lines_features
 
 def calculate_global_stats(geoline_features: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:

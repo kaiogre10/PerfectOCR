@@ -63,6 +63,31 @@ cpdef int count_cuants(str text):
 
     return total_cuants if has_decimal else 0
 
+cdef inline float _ngram_similarity(const unsigned char* a, const unsigned char* b, int text_len) noexcept nogil:
+    cdef Py_ssize_t i
+    cdef int matches = 0
+
+    for i in range(text_len):
+        if a[i] == b[i]:
+            matches += 1
+
+    # Forzar división flotante para evitar truncamiento a 0
+    return <float>matches / <float>text_len
+
+def ngram_similarity(bytes texta, bytes textb):
+    cdef int text_len = len(texta)
+    if text_len == 0 or text_len != len(textb):
+        raise ValueError("Los textos deben tener longitudes iguales y mayores a cero.")
+
+    # Pasamos los punteros directos a la función inline
+    return _ngram_similarity(texta, textb, text_len)
+
+cdef inline float _length_penalty_c(int a, int b) nogil:
+    return min(a, b) / max(a, b)
+
+def length_penalty(a: int, b: int) -> float:
+    return _length_penalty_c(a, b)
+
 cpdef bint validate_text(str text):
     """Valida que un string contenga caracteres válidos y que no esté vacío"""
     cdef Py_ssize_t text_len = len(text)

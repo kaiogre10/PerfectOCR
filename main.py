@@ -24,7 +24,6 @@ if config_service.clean_project:
     sys.exit()
     
 if config_service.test_wf_model:
-    log_service.log_simple("MODO TESTEO DE WORD FINDER")
     from testing.test_wf import TestingManger
     tester = TestingManger(PROJECT_ROOT, config_service.models_config)
     tester.run_queries()
@@ -42,7 +41,7 @@ def main():
     log_service.setup_logging(PROJECT_ROOT)
     
     if config_service.handle_memory:
-        storage_service.storage_config(PROJECT_ROOT, system_paths) # type: ignore
+        storage_service.storage_config(system_paths) # type: ignore
 
     workflow_report = system_service.count_and_plan(config_service.input_paths) # type: ignore
     if not workflow_report and not config_service.no_activate_modules:

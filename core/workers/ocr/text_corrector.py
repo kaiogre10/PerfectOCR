@@ -6,7 +6,7 @@ from domain.data_formatter import DataFormatter
 from domain.abstract_worker import OCRAbstractWorker
 from utils.text_utils import find_umd, fast_classfier, correct_subfix
 from core.assets.assets import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
-from utils.patterns import bad_title
+from core.assets.patterns import bad_title
 from utils.compiled_utils import validate_text
 from string import ascii_lowercase, ascii_uppercase
 

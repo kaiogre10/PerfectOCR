@@ -23,8 +23,8 @@ class VectorizationStager(AbstractStager):
                 worker_start = time.perf_counter()
                 if not worker.vectorize(exec_context, manager):
                     logger.error(f"'{worker_name}' falló, tiempo: {time.perf_counter() - worker_start:.6f}'s")
-                    manager = None
-                    return manager
+                    manager.reset_data()
+                    return None
                 
                 if time_worker_log:
                     logger.info(f"'{worker_name}' completado en: {time.perf_counter() - worker_start:.6f}'s")
@@ -32,4 +32,4 @@ class VectorizationStager(AbstractStager):
             return manager
         except Exception as e:
             logger.error(f"Error en vectorización: '{e}'", exc_info=True)
-            raise
+        return None

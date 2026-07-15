@@ -12,16 +12,7 @@ logger = logging.getLogger(__name__)
 
 class DataFormatter:
     """Válvula de entrada/salida para todas las operaciones del workflow."""
-    __slots__ = (
-        "workflow",
-        "payload",
-        "text_ocr_log",
-        "key_fields_log",
-        "kf_list_log",
-        "lines_log",
-        "table_lines_log",
-        "table_correct_log",
-    )
+    __slots__ = ("workflow", "payload", "text_ocr_log", "key_fields_log", "kf_list_log", "lines_log", "table_lines_log", "table_correct_log")
     def __init__(self, logs_config: Dict[str, Any]):
         self.workflow: Optional[WorkflowData] = None
         self.payload: Optional[Payload] = None
@@ -40,9 +31,7 @@ class DataFormatter:
     def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
         try:
-            full_image = FullImage(
-                full_img=(gray_img)
-            )
+            full_image = FullImage(full_img=(gray_img))
             image_name=str(metadata.get("image_name", ""))
             metadata_obj = Metadata(
                 image_name=image_name,
@@ -121,8 +110,7 @@ class DataFormatter:
             raise RuntimeError("No hay workflow inicializado para limpiar imágenes recortadas.")
             
         for poly_id, polygon in self.workflow.polygons.items():
-            polygon.cropped_img = None
-            del polygon.cropped_img
+            polygon.cropped_img: Optional[CroppedImage] = None
             updated_polygon = dataclasses.replace(polygon, cropped_img=None)
             self.workflow.polygons[poly_id] = updated_polygon
         logger.debug("Todas las imágenes recortadas han sido liberadas de memoria")
@@ -136,8 +124,9 @@ class DataFormatter:
                 
             if full_img is None and not corrected:
                 # Medir dims de la imagen real almacenada antes de liberar memoria
-                logger.debug("Full image liberada")
+                self.workflow.full_img: Optional[FullImage] = None
                 self.workflow = dataclasses.replace(self.workflow, full_img=None)
+                logger.debug("Full image liberada")
                 return True
             
             if corrected or full_img is not None:
@@ -445,38 +434,8 @@ class DataFormatter:
         return False
     
     def store_payload(self, payloads: List[str]):
-        try:
-            payload = payloads[0]
-            image_name = payloads[1]
-            payload = Payload(payload=payload, name=image_name)
-            self.payload = dataclasses.replace(payload)
-            return True
-        except ValueError as e:
-            logger.error(f"EROR DE DATOS: {e}", exc_info=True)
-        return False
-        
-    def restore_data(self):
-        try:
-            self.workflow = self.workflow if self.workflow else None
-            if self.workflow is None:
-                return
-
-            self.workflow.table_data = self.workflow.table_data if self.workflow else None
-            if self.workflow.table_data is None:
-                return
-            
-            self.workflow.table_data.global_data = self.workflow.table_data.global_data if self.workflow.table_data else {}
-            self.workflow.table_data.df_table = self.workflow.table_data.df_table if self.workflow.table_data else None
-            if self.workflow.table_data.df_table is None or self.workflow.table_data.df_table.empty:
-                return
-
-            del self.workflow.table_data
-            del self.workflow.polygons
-            del self.workflow.all_lines 
-            del self.workflow.IDRegistro
-            del self.workflow.table_data
-            del self.workflow.metadata
-            del self.workflow
-            
-        except TypeError as e:
-            logger.info(f"Sin clave: {e}")
+        payload = payloads[0]
+        image_name = payloads[1]
+        payload = Payload(payload=payload, name=image_name)
+        self.payload = dataclasses.replace(payload)
+        return True

@@ -8,7 +8,7 @@ from domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
 from utils.compiled_utils import validate_text
-from utils.patterns import cleaner_pattern
+from core.assets.patterns import cleaner_pattern
 
 _cleaner_pattern = cleaner_pattern
 kf_decimals = {1, 2, 3, 4, 8}
@@ -35,19 +35,22 @@ class DataFinder(OCRAbstractWorker):
         return self._model
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        polygon_updates = self._find_data(manager)
-        if not polygon_updates:
-            return  False
-        elif manager.update_key_field(polygon_updates):
-            logger.debug(f"DATA FINDER ÉXITOSO")
-            return True
-        else:
-            return  False
+        try:
+            polygon_updates = self._find_data(manager)
+            if not polygon_updates:
+                return  False
+            elif manager.update_key_field(polygon_updates):
+                logger.debug(f"DATA FINDER ÉXITOSO")
+                return True
+            else:
+                return  False
+        except Exception as e:
+            logger.error(f"ERROR BUSCANDO CAMPOS DE CLAVE: {e}", exc_info=True)
+        return False
 
     def _find_data(self, manager: DataFormatter) -> Dict[str, List[int]]:
         if self.model is None:
-            logger.error("DataFinder no iniciado, no se puede buscar Key FIelds")
-            return {}
+            raise ModuleNotFoundError("DataFinder no iniciado, no se puede buscar Key FIelds")
         
         time0 = time.perf_counter()
         try:
@@ -59,24 +62,24 @@ class DataFinder(OCRAbstractWorker):
             processed_count = 0
             polygon_updates: Dict[str, List[int]] = {}
             skipped_semantic = 0
-            sc_forb = {0, 2, 4, 5}
+            sc_forb = {-1, 0, 2, 4, 5}
 
-            all_idx = np.array([p.poly_index for p in polygons.values()], np.uint8)
+            all_idx = np.asarray([p.poly_index for p in polygons.values()], np.int16)
 
             sc = [p.semantic_clasification for p in polygons.values()]
             texts = [(p.ocr_text or "") for p in polygons.values()]
 
-            texts_length = np.array([len(t) for t in texts])
-            decimal_p = np.array([t.isdecimal() for t in texts])
+            texts_length = np.array([len(t) for t in texts], dtype=np.int16)
+            # decimal_p = np.array([t.isdecimal() for t in texts])
 
             # sc_length = np.array([len(c) for c in sc])
-            sc_eq = np.array([len(set(t)) for t in sc])
-            forb_sc = np.array([any(c in sc_forb for c in s) for s in sc])
+            sc_eq = np.array([len(set(t)) for t in sc], dtype=np.int16)
+            forb_sc = np.array([any(c in sc_forb for c in s) for s in sc], dtype=np.int16)
 
             mask_sc = (sc_eq == 1) & (forb_sc == True) 
-            mask_len = (texts_length < 2) & (decimal_p == True)
+            mask_len = (texts_length < 2)
             mask = mask_sc | mask_len
-            skip_idx = np.compress(mask, all_idx).tolist()
+            skip_idx = np.compress(mask, all_idx)
 
             for pid, poly in polygons.items():
                 if poly.poly_index in skip_idx:
@@ -93,9 +96,6 @@ class DataFinder(OCRAbstractWorker):
 
                 ocr_text = poly.ocr_text or ""
 
-                if len(ocr_text) < 2:
-                    continue
-
                 if not ocr_text.isalpha():
                     ocr_text = _cleaner_pattern.sub("", ocr_text).strip()
                 
@@ -105,7 +105,7 @@ class DataFinder(OCRAbstractWorker):
                     continue
             
                 else:
-                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text.lower())
+                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text.lower().encode('ascii'))
                     if not valid_results:
                         continue
                     

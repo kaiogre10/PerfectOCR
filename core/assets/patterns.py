@@ -13,7 +13,7 @@ _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|j
 _c_variants = r"[Cc]"
 _cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
 _bic_variants = r'\b(B(1C|lC|\|C|¡C|!C))\b'
-space_pattern = re.compile(r"\s+", re.IGNORECASE)
+space_pattern: Pattern[bytes] = re.compile(rb"\s+", re.IGNORECASE)
 
 _digits_base = r'0123456789'
 _zero_base = r'OQoD'

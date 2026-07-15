@@ -295,14 +295,13 @@ def load_jsoncomment(file_path: str, mode: str):
     return commentjson_raw    
         
 def write_temp_log(payload_temp: Tuple[str, str]) -> bool:
-    try:
-        with open(TEMP_FILE, "a", encoding="utf-16") as file_temp:
-            # time = get_time_stamp(False)
-            file_temp.write(f"{payload_temp[1]}\n")
+    if not payload_temp[0] or not payload_temp[1]:
+        raise TypeError("DATOS PARA REGISTRO VACIOS")
+    
+    with open(TEMP_FILE, "a", encoding="utf-16") as file_temp:
+        # time = get_time_stamp(False)
+        file_temp.write(f"{payload_temp[1]}\n")
         return True
-    except OSError as e:
-        logger.error(f"Error escribiendo archivo de seguridad: {e}", exc_info=True)
-    return False
 
 def serialize_arrays(array_input: np.ndarray[Any, Any]):
     logger.info(f"ARRAY INPUT:\n"f"{array_input.shape}")
