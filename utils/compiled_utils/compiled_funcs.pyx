@@ -3,6 +3,11 @@ from cpython.version cimport PY_MAJOR_VERSION
 from libc.stdlib cimport malloc, free
 from cpython.unicode cimport PyUnicode_FromKindAndData, PyUnicode_KIND, PyUnicode_ReadChar
 
+# Acceso directo a la estructura interna de CPython para strings ASCII/CompactBytes
+cdef extern from "Python.h":
+    char* PyUnicode_AsUTF8(object o) except NULL
+    object PyUnicode_FromStringAndSize(const char *v, Py_ssize_t len)
+
 cdef inline bint _is_alpha_char(Py_UCS4 char_code) nogil:
     """Check if char is alpha (65-90: A-Z, 97-122: a-z)"""
     return (65 <= char_code <= 90) or (97 <= char_code <= 122)
@@ -103,11 +108,6 @@ cpdef bint validate_text(str text):
             return True
 
     return False
-
-# Acceso directo a la estructura interna de CPython para strings ASCII/CompactBytes
-cdef extern from "Python.h":
-    char* PyUnicode_AsUTF8(object o) except NULL
-    object PyUnicode_FromStringAndSize(const char *v, Py_ssize_t len)
 
 cpdef str space_removal(str text):
     """

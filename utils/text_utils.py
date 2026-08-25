@@ -4,13 +4,13 @@ import unicodedata
 from typing import List, Tuple, Dict, Any, Optional
 from utils.math_utils import text_encode
 from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
-from core.assets.assets import VOWELS, REPLACEMENT_MAP
+from core.assets.assets import VOWELS, REPLACEMENT_MAP, DENSITY_RANGE, MORPH_RANGE, ZEROS_CUANT
 from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
 
 logger = logging.getLogger(__name__)
 
-density_thr = (23.7, 103.7)
-morph_thr = (-0.297, 0.337)
+_density_range = DENSITY_RANGE
+_morph_range = MORPH_RANGE
 
 _numeric_fractions = numeric_fractions
 _has_digit_pattern = has_digit_pattern
@@ -57,6 +57,8 @@ _id_prov_pattern = id_prov_pattern
 
 _replacement_map = REPLACEMENT_MAP
 vowels = VOWELS
+# _zero = ZERO
+_zero_dec = ZEROS_CUANT
 
 def normalice_text(s: str, hard_norm: bool) -> str:
     """"Normaliza texto eliminando apóstrofes, tildes, diéresis. NO ELIMINA CARACTERES DE NINGÚN TIPO, MISMO LEN() EN INPUT Y OUTPUT"""
@@ -319,8 +321,10 @@ def format_cuant(text: str) -> str:
     if text.isalpha():
         logger.debug(f"TEXTO ALFABÉTICO NO SE FORMATEA: '{text}'")
         return text
+    
     elif text.isdecimal():
-        return (text + ".00").strip()
+        return (text.strip() + _zero_dec)
+    
     text_0 = _clean_currency.sub("", text).strip()
     cuant_txt = _correct_numbers(text_0)
     if not cuant_txt.replace(".", "").isdecimal() or len(cuant_txt) > len(text):
@@ -503,15 +507,15 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
         return (3, total_cuant)
     
     # logger.info(fr"REBELDES: '{s}'")
-    dense_mean, morphology_mean = text_encode(s.lower())
-    if dense_mean < density_thr[1] and morphology_mean > morph_thr[0]:
+    dense_mean, morphology_mean = text_encode(s if s.islower() else s.lower(), total_text)
+    if dense_mean < _density_range[1] and morphology_mean > _morph_range[0]:
         # logger.info(f"CODE por codificacion: '{s}'")
         return (3, total_cuant)
     
-    elif dense_mean > density_thr[1]:
+    elif dense_mean > _density_range[1]:
         return (1, 0)
 
-    if dense_mean < density_thr[0]:
+    if dense_mean < _density_range[0]:
         if bool(_fraction_pattern.search(s)):
             # logger.info(f"UMD por codificacion: '{s}'")
             return (2, total_cuant)

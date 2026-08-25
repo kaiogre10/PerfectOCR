@@ -28,10 +28,9 @@ models_config:
     char_ngrams: [2, 3]
     threshold_similarity: 0.901
     global_filter_threshold: 0.6105
-    forb_match: 0.876
+#    forb_match: 0.876
     window_flexibility: 3
 
-#    wf_path: ["models", "wf"]
     kf_idx: "kf_idx.npy"
     pkl_path: "wf_model.pkl"
     

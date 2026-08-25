@@ -3,6 +3,18 @@ from types import MappingProxyType
 import numpy as np
 from decimal import Decimal
 
+ZEROS_CUANT = ".00"
+ZERO = "0"
+ONE = "1"
+TWO = "2"
+THREE = "3"
+FOUR = "4"
+FIVE = "5"
+SIX = "6"
+SEVEN = "7"
+EIGHT = "8"
+NINE = "9"
+
 DENSITY_ENCODER: Dict[str, float] = {
     "0": 0.0,
     "1": 1.0,
@@ -150,6 +162,8 @@ CHAR_FRECUENCY = np.asarray(
     [84.0,     1.2802318e-03]] #'w'
 , dtype=np.float32, order='C')
 
+VECT_REF = np.asarray([1.0, 0.0], dtype=np.float32) # eje X positivo
+
 VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.asarray([
     0.997321218,
     0.969818993,
@@ -272,8 +286,8 @@ DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
 
 VOWELS: FrozenSet[str] = frozenset({"A", "E", "I", "O", "U", "a", "e", "i", "o", "u"})
 
-VALID_CUANT_CHARS: FrozenSet[str] = frozenset({".", ",", "$"})
-CHAR_NUM: FrozenSet[str]= frozenset({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"})
+VALID_CUANT_CHARS = {".", ",", "$"}
+CHAR_NUM = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
 
 CUANT_CHAR: FrozenSet[str] = frozenset(CHAR_NUM.union(VALID_CUANT_CHARS))
 
@@ -302,6 +316,10 @@ REPLACEMENT_MAP: MappingProxyType[str, str] = MappingProxyType({
 
 KF_RANGE = (1, 13)
 SC_RANGE = (0, 6)
+
+DENSITY_RANGE = (23.7, 103.7)
+MORPH_RANGE = (-0.297, 0.337)
+
 ELEMENTAL_WORKER = "image_loader"
 DET = "geometry_detector"
 OCR_WORKERS: Set[str] = set(["polygon_extractor", "paddle_wrapper", DET])
@@ -309,6 +327,13 @@ FULL_OCR: FrozenSet[str] = frozenset(OCR_WORKERS.union(["data_finder"]))
 VECT_MIN = "lineal"     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
 MIN_WORKERS: FrozenSet[str] = frozenset(OCR_WORKERS.union(set([ELEMENTAL_WORKER]))) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
 
-ONE = Decimal('1.00')
-ZERO = Decimal('0.00')
+ZERO_DEC = Decimal(ZERO + ZEROS_CUANT)
+ONE_DEC = Decimal(ONE + ZEROS_CUANT)
 COMBINATIONS = 3
+
+IMGPREP_KEY = "image_preparation_stager"
+PREPRO_KEY = "preprocessing_stager"
+OCR_KEY = "ocr_stager"
+VECT_KEY = "vectorization_stager"
+
+# KF_LIST = frozenset({1, 2, 3, 4, 6})

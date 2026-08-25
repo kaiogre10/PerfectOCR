@@ -5,11 +5,11 @@ from typing import List, Any, Dict, Tuple, Set, FrozenSet
 from core.assets.patterns import space_pattern
 from domain.model_factory import MatrixFactory
 from utils.compiled_utils import ngram_similarity, length_penalty
-import scipy.sparse as sp # type: ignore
+# from core.assets.assets import KF_LIST
 
 logger = logging.getLogger(__name__)
 
-kf_list: FrozenSet[int] = frozenset({1, 2, 3, 4, 6})
+_kf_list = frozenset({1, 2, 3, 4, 6})
 _space_pattern = space_pattern
 
 class WordFinder:
@@ -40,7 +40,7 @@ class WordFinder:
         self.threshold: float = config.get("threshold_similarity", {})
         self.ngrams_len = config["char_ngrams"]
         self.window_flex: int = config.get("window_flexibility", {})
-        self.forb_match: float = config.get("forb_match", {})
+        # self.forb_match: float = config.get("forb_match", {})
         self.kf_file = config.get("kf_path", "")
         self._all_kf_idx = None
     
@@ -51,14 +51,9 @@ class WordFinder:
         else:
             return self._all_kf_idx
         
-    def get_sparce_matrix(self, n: int):
-        try:
-            mtx = self.motor.matrix_registry[n]
-            matrix = mtx.matrix
-            return sp.csr_matrix((matrix['data'], matrix['indices'], matrix['indptr']), shape=tuple(matrix['shape']))
-        except ImportError as e:
-            logger.error(f"ERROR ARMANDO MATRIX: {e}", exc_info=True)
-        return sp.csr_matrix(0)
+    def get_sparse_cross_stats(self, n: int, row_indices: np.ndarray[Any, Any], col_indices: np.ndarray[Any, Any]) -> Tuple[int, float]:
+        matrix = self.motor.matrix_registry[n]
+        return matrix.sum_cross_points(row_indices=row_indices, col_indices=col_indices)
     
     def keyfield_ngrams(self, key_field: int, n: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """
@@ -70,7 +65,7 @@ class WordFinder:
         kf_mtx = kfngrams.kf_matrix
         return kf_mtx.get(id_matrix)
 
-    def find_keywords(self, text: List[bytes] | bytes) -> List[Dict[bytes, Any]]:
+    def find_keywords(self, text: List[bytes] | bytes) -> List[Dict[str, Any]]:
         if not text:
             return []
         
@@ -78,6 +73,7 @@ class WordFinder:
             return []
         
         elif text in self.global_words:
+            # noinspection PyUnhashable
             key = self.all_ngrams.get(text) # type: ignore
             if key and key[0] > 0:
                 # logger.info(f"MATCH TEMPRANO: '{text}'")
@@ -85,12 +81,12 @@ class WordFinder:
         
         single = False
         if isinstance(text, bytes):
-            queue = [text]
+            queue: List[bytes] = [text]
             single = True
         else:
-            queue = text
+            queue: List[bytes] = text
         
-        results: List[Dict[bytes, Any]] = []
+        results: List[Dict[str, Any]] = []
         assigned_fields: Set[int] = set()
         
         while queue:
@@ -114,7 +110,7 @@ class WordFinder:
         
                 q = q_clean
             
-            found_matches_for_s: List[Dict[bytes, Any]] = []
+            found_matches_for_s: List[Dict[str, Any]] = []
             word_len = len(q)
             
             if q in self.global_words:
@@ -125,10 +121,10 @@ class WordFinder:
                     found_matches_for_s.append(self._set_results(key[0], text, 1.0, text, q, start, end))
                     continue
             
-            arr_q = np.frombuffer(q, np.uint8)
+            arr_q = np.frombuffer(q, dtype=np.uint8)
             
             belonged_fields: List[int] = []
-            for keyfield in sorted(kf_list):
+            for keyfield in _kf_list:
                 if not self.belongs_keyfield(keyfield, arr_q):
                     continue
                 else:
@@ -168,7 +164,7 @@ class WordFinder:
                     continue
         
                 best_score_for_cand: float = 0.0
-                best_sub_details: Dict[bytes, int] = {}
+                best_sub_details: Dict[str, int] = {}
                 
                 # Definimos el rango de tamaños de ventana a probar
                 min_w = max(1, cand_len - self.window_flex)
@@ -209,7 +205,7 @@ class WordFinder:
                     found_matches_for_s.append(self._set_results(key_field, cand, best_score_for_cand, text, q, best_sub_details["start"], best_sub_details["end"]))
             # Después de comprobar todos los candidatos, agrupar y seleccionar el mejor por campo
             if found_matches_for_s:
-                best_match_by_field: Dict[int, Dict[bytes, Any]] = {}
+                best_match_by_field: Dict[int, Dict[str, Any]] = {}
         
                 for match in found_matches_for_s:
                     field = match["key_field"]
@@ -258,7 +254,7 @@ class WordFinder:
         #     logger.error(f"Error buscando palabra clave: '{text}' = '{e}'", exc_info=True)
         #     return []
 
-    def _resolve_ambiguity_by_full_word(self, matches: List[Dict[bytes, Any]]) -> List[Dict[bytes, Any]]:
+    def _resolve_ambiguity_by_full_word(self, matches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if not matches:
             return []
 
@@ -414,7 +410,7 @@ class WordFinder:
                     continue
 
                 total_soft_score_vect += num_match
-                all_indices = np.arange(num_input, dtype=np.uint8)
+                all_indices = np.arange(num_input, dtype=np.intp)
                 no_match_indices = np.setdiff1d(all_indices, input_idx, assume_unique=True)
                 
                 # all_kf_idx = np.arange(matrix_keywords.shape[1], dtype=np.uint8)
@@ -422,17 +418,17 @@ class WordFinder:
                 # logger.info(f"N{n}:\n"f"{all_kf_idx}\n"f"NEW: {self.all_kf_idx[:n]}")
                 no_match_kf_idx = np.setdiff1d(self.all_kf_idx[:n], matches_mask, assume_unique=True)
 
-                matrix_sparce = self.get_sparce_matrix(n)
-                cross_points = matrix_sparce[no_match_indices, :][:, no_match_kf_idx]
-                mtx_sims = cross_points.data
-
-                total_sims = mtx_sims.size
+                total_sims, sims_sum = self.get_sparse_cross_stats(
+                    n=n,
+                    row_indices=no_match_indices,
+                    col_indices=no_match_kf_idx
+                )
                 sims_left = num_input - num_match
 
                 if total_sims < 1 or sims_left < 1 or (sims_left - total_sims) < 1:
                     continue
 
-                total_soft_score_vect += sum(mtx_sims)
+                total_soft_score_vect += sims_sum
 
             if total_input_ngrams == 0:
                 # logger.info(f"'{q}' - total_input_ngrams == 0")
@@ -478,7 +474,7 @@ class WordFinder:
                                 # Penalización simétrica
                             # similarity *= length_penalty(w, noise_len)
 
-                            if similarity > self.forb_match:
+                            if similarity > self.threshold:
                                 cleaned = cleaned[:j] + b" " + cleaned[j + w:]
                                 cleaned = _space_pattern.sub(b" ", cleaned)
                                 removed_noise.append(subc)
@@ -495,7 +491,7 @@ class WordFinder:
             logger.error(f"Error eliminando substrings de ruido: {e}", exc_info=True)
         return text, []
 
-    def _update_best_match(self, current_best: Dict[bytes, Any], match: Dict[bytes, Any]) -> Dict[bytes, Any]:
+    def _update_best_match(self, current_best: Dict[str, Any], match: Dict[str, Any]) -> Dict[str, Any]:
         """Decide si el nuevo match es mejor que el actual según las reglas de similitud y longitud."""
         if match["similarity"] > current_best["similarity"]:
             return match
@@ -504,7 +500,7 @@ class WordFinder:
                 return match
         return current_best
 
-    def _set_results(self, key_field: int, key_word: bytes, similarity :float, text: bytes, norm_ocr_text: bytes, start: int, end: int) -> Dict[bytes, Any]:
+    def _set_results(self, key_field: int, key_word: bytes, similarity :float, text: bytes, norm_ocr_text: bytes, start: int, end: int) -> Dict[str, Any]:
         """
         Construye un diccionario con los resultados de la búsqueda de palabra clave.
         Parámetros:
@@ -594,23 +590,19 @@ class WordFinder:
             if kf_matches == posible_matches:
                 continue
             
-            all_indices = np.arange(posible_matches, dtype=np.uint8)
+            all_indices = np.arange(posible_matches, dtype=np.intp)
             no_match_indices = np.setdiff1d(all_indices, input_idx, assume_unique=True)
             
-            all_kf_idx = np.arange(matrix_kf.shape[1], dtype=np.uint8)
+            all_kf_idx = np.arange(matrix_kf.shape[1], dtype=np.intp)
             no_match_kf_idx = np.setdiff1d(all_kf_idx, matches_mask, assume_unique=True)
             
-            matrix_sparce = self.get_sparce_matrix(n)
-            cross_points = matrix_sparce[no_match_indices, :][:, no_match_kf_idx]
-            mtx_sims = cross_points.data
-
-            total_sims = mtx_sims.size
+            total_sims, sims_sum = self.get_sparse_cross_stats(n=n, row_indices=no_match_indices, col_indices=no_match_kf_idx)
             sims_left = posible_matches - kf_matches
 
             if total_sims < 1 or sims_left < 1 or (sims_left - total_sims) < 1:
                 continue
 
-            belong_score += sum(mtx_sims)
+            belong_score += sims_sum
 
         if total_input_ngrams == 0:
             return False

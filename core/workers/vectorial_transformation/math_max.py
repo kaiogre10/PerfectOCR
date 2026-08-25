@@ -10,14 +10,13 @@ from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.compiled_utils import validate_quant_chars
 from utils.math_utils import check_full_df
-from core.assets.assets import ONE, ZERO
+from core.assets.assets import ONE_DEC, ZERO_DEC
 from services.output_service import save_debug_table
 
-_ONE = ONE
-_ZERO = ZERO
+_one = ONE_DEC
+_zero = ZERO_DEC
 
 logger = logging.getLogger(__name__)
-
 
 class MatrixSolver(VectorizationAbstractWorker):
     """
@@ -464,9 +463,9 @@ class MatrixSolver(VectorizationAbstractWorker):
             if (missing_c + missing_pu + missing_mtl) != 1:
                 continue
             try:
-                val_c = Decimal(raw_c) if not missing_c else _ZERO
-                val_pu = Decimal(raw_pu) if not missing_pu else _ZERO
-                val_mtl = Decimal(raw_mtl) if not missing_mtl else _ZERO
+                val_c = Decimal(raw_c) if not missing_c else _zero
+                val_pu = Decimal(raw_pu) if not missing_pu else _zero
+                val_mtl = Decimal(raw_mtl) if not missing_mtl else _zero
             except InvalidOperation as e:
                 logger.warning(f"ERROR COMPLETANDO: '{e}'", exc_info=True)
 
@@ -526,7 +525,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 poly_a_mtl, poly_b_pu = poly_m, poly_n
             else:
                 poly_a_mtl, poly_b_pu = poly_n, poly_m
-            if (val_a / val_b) % _ONE == _ZERO:
+            if (val_a / val_b) % _one == _zero:
                 if val_a > quotient and val_b >= quotient and val_a != quotient:
                     df.at[real_idx, src_a] = ""
                     df.at[real_idx, src_b] = ""
@@ -921,8 +920,8 @@ class MatrixSolver(VectorizationAbstractWorker):
             # logger.debug(f"COCIENTE 1: {quotient1}")
             quotient2 = quotient1.to_integral_value(rounding=ROUND_HALF_UP)                 # Redondear por si acaso
             # logger.debug(f"COCIENTE 2: {quotient2}")
-            quotient_diff = _ZERO if quotient1 != quotient2 else abs(quotient2 - quotient1)  # Diferencia absoluta del redondeo y valor real
-            if quotient_diff == _ZERO or quotient_diff < self.row_tol:          # Debajo de umbral
+            quotient_diff = _zero if quotient1 != quotient2 else abs(quotient2 - quotient1)  # Diferencia absoluta del redondeo y valor real
+            if quotient_diff == _zero or quotient_diff < self.row_tol:          # Debajo de umbral
                 potencial_val[r, 0] = int(quotient2)
             continue                                                                        # Momentaneamente, después agregaré los casos para pu y mtl
 

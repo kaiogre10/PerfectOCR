@@ -109,7 +109,7 @@ class WordFinderConfig(ConfigWithNumpy):
     char_ngrams: List[int]
     threshold_similarity: float
     global_filter_threshold: float
-    forb_match: float
+    # forb_match: float
     window_flexibility: int
     pkl_path: str
     matrix_path: str

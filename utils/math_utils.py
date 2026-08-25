@@ -7,12 +7,12 @@ from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax, InvalidOperation
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 from sklearn.cluster import HDBSCAN, DBSCAN # type: ignore
-from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE
+from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF
 
 dummie_vect = VECTOR_DUMMIE
 density_encoder = DENSITY_ENCODER
 cuant_char = CUANT_CHAR
-ref_vec = np.asarray([1.0, 0.0], dtype=np.float32) # eje X positivo
+_ref_vec = VECT_REF
 
 logger = logging.getLogger(__name__)
 
@@ -31,21 +31,23 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
     if np.linalg.norm(vec_to_other) == 0.0:
         return 1.0
     
-    cosine = np.dot(vec_to_other, ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(ref_vec))
+    cosine = np.dot(vec_to_other, _ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(_ref_vec))
     return 1.0 - abs(float(cosine))
 
-def get_morphological_encode(text: str) -> np.ndarray[Any, np.dtype[np.float16]]:
-    return np.array(list(map(lambda ch: 1.0 if ch in cuant_char else -1.0 if ch.isalpha() else 0.0, text)), np.float16)
+def get_morphological_encode(text: str) -> float:
+    return sum(map(lambda ch: 1.0 if ch in cuant_char else -1.0 if ch.isalpha() else 0.0, text))
 
-def encode_text(text: str, encoder: Dict[str, float]) -> np.ndarray[Any, np.dtype[np.float16]]:
-    return np.array([encoder.get(char, " ") for char in text], np.float16)
+def encode_text(text: str, encoder: Dict[str, float]) -> float:
+    return sum([encoder.get(char, " ") for char in text])
     
-def text_encode(text: str) -> np.ndarray[Any, np.dtype[np.float16]]:
+def text_encode(text: str, txt_size: int) -> Tuple[float, float]:
     dense = encode_text(text, density_encoder)
     morph = get_morphological_encode(text)
+    dense_mean = dense / txt_size
+    morph_mean = morph / txt_size
     # frec = encode_text(text, REL_FRECUENCY_CHAR)
-    encoders = np.column_stack([dense, morph])
-    return np.mean(encoders, axis=0, dtype=np.float16)
+    # encoders = np.column_stack([dense, morph])
+    return dense_mean, morph_mean
 
 def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
     """Calcula la matriz de similitudes coseno entre los vectores de X y el Dummie Vector"""
@@ -282,7 +284,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         Ignora curr_coord[y] y usa 0.0, calculando el coseno con el vector (diferencia_x, other_bbox[y]).
         """
         if other_bbox.shape[0] == 0 or np.all(np.isnan(other_bbox[:, 0])):
-            return np.ones_like(curr_coord)
+            return np.ones_like(curr_coord, dtype=np.float32)
         
         # Calculamos diferencias al estilo ref_point = [curr_coord, 0.0]
         dx = other_bbox[:, idx] - curr_coord
@@ -294,8 +296,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         # Norma del vector (magnitud para dividir en el coseno)
         norms = np.linalg.norm(vec, axis=1)
         
-        # El ref_vec es siempre [1.0, 0.0], por lo que el dot product de vec y ref_vec 
-        # siempre es igual a vec[:, 0] (el componente X). La norma de [1,0] es 1.
+        # El ref_vec es siempre [1.0, 0.0], por lo que el dot product de vec y ref_vec siempre es igual a vec[:, 0] (el componente X). La norma de [1,0] es 1.
         with np.errstate(divide='ignore', invalid='ignore'):
             cosine = np.where(norms > 0, vec[:, 0] / norms, 0.0)
         
@@ -396,7 +397,6 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
                 if kf is None:
                     sc: List[int] = polygons_dict[pid_str].semantic_clasification
                     sc_quant_count += count_quantitative_tokens(sc)
-                    kf_total += 0
                 else:
                     kf_total += len(kf)
                 
@@ -412,19 +412,18 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     # logger.info("MAX VALUES:\n"f"{maximus}")
     max_sc_quant, max_digit = maximus[0], maximus[1]
     
-    sc_quants, dec_chars, _ = features[:, 0], features[:, 1],features[:, 2]
+    sc_quants, dec_chars, kf_count = features[:, 0], features[:, 1], features[:, 2]
     
     # Evitar división por cero
-    means = np.mean([sc_quants, dec_chars], axis=0, dtype=np.float32)
-    dec_mean = means[1]
+    dec_mean = np.mean([sc_quants, dec_chars], axis=0, dtype=np.float32)[1]
                 
     digit_above = np.where(dec_chars > dec_mean, 1.0, -1.0)
     has_digit = np.where(dec_chars > 1.0, 1.0, -1.0)
     
-    if np.all(features[:, 2] < 1):
-        has_kf = np.zeros((features[:, 2].size), dtype=np.float32)
+    if np.all(kf_count < 1):
+        has_kf = np.zeros((kf_count.size), dtype=np.float32)
     else:
-        has_kf = np.where(features[:, 2] == 0, 1.0, -1.0)
+        has_kf = np.where(kf_count == 0, 1.0, -1.0)
     
     if max_sc_quant > 0:
         num_count_norm = (2.0 * sc_quants / float(max_sc_quant)) - 1.0
@@ -433,15 +432,14 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     
     if max_digit > 0:
         digit_char_frec = (2.0 * dec_chars / float(max_digit)) - 1.0
+        
+        dig_marg = (dec_chars - dec_mean) / (max_digit / 2.0)
+        dig_margin = np.clip(dig_marg, -1.0, 1.0, dtype=np.float32)
     else:
         digit_char_frec = np.full_like(dec_chars, -1.0, dtype=np.float32)
-    has_quant = np.where(sc_quants > 0, 1.0, -1.0)
-    
-    if max_digit > 0:
-        dig_margin = (dec_chars - dec_mean) / (max_digit / 2.0)
-        dig_margin = np.clip(dig_margin, -1.0, 1.0, dtype=np.float32)
-    else:
         dig_margin = np.zeros_like(dec_chars, np.float32)
+        
+    has_quant = np.where(sc_quants > 0, 1.0, -1.0)
     
     # logger.info(f"Features textuales calculadas en: {time.perf_counter() - timef:.6f}'s")
     textual_features = np.column_stack([dig_margin, has_quant, num_count_norm, digit_above, digit_char_frec, has_digit, has_kf])
@@ -452,9 +450,15 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     return textual_features
 
 def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
-    sc = np.asarray(semantic_clasification, dtype=np.int8)
-    mask = (sc == 2) | (sc == 4)
-    return 0 if 0 in semantic_clasification else np.count_nonzero(mask)
+    count = 0
+    for x in semantic_clasification:
+        if x == 0 or x == 3 or x == 5:
+            continue
+        if x == 2 or x == 4:
+            count += 1
+        else:
+            return 0
+    return count
 
 def round_2_decimal_vals(amount_str: str) -> str:
     if not amount_str:
@@ -481,7 +485,7 @@ def validate_df(df: pd.DataFrame, cant_name: str, pu_name: str, mtl_name: str) -
             mtl_col = df[mtl_name]
             c_col = df[cant_name]
             pu_col = df[pu_name]
-        except ValueError as e:
+        except TypeError as e:
             logger.error(f"ERROR OBTENIENDO COLUMNAS: {e}")
             return False
         try:

@@ -6,11 +6,17 @@ from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from decimal import Decimal
 # from contextlib import contextmanager
 from services.system_service import get_so
-from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
+from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS, IMGPREP_KEY, PREPRO_KEY, OCR_KEY, VECT_KEY
 import cv2
 
 _kf_range = KF_RANGE
 _sc_range = SC_RANGE
+
+_keyimglo = IMGPREP_KEY
+_keypre = PREPRO_KEY
+_ocrkey = OCR_KEY
+_veckey = VECT_KEY
+
 _elemental_workers = ELEMENTAL_WORKER
 _det = DET
 _ocr_workers = OCR_WORKERS
@@ -299,10 +305,10 @@ class ConfigValidator:
     
     @cached_property
     def _img_prep_config(self):
-        image_workers = self.workers_order["image_preparation_stager"]
+        image_workers = self.workers_order[_keyimglo]
         if "polygon_extractor" in image_workers:
             if not _det in image_workers:
-                self.workers_order["image_preparation_stager"].remove("polygon_extractor")
+                self.workers_order[_keyimglo].remove("polygon_extractor")
                 
         _img_prep_config = self.modules_config.get("image_preparation", {})
         geometry_detect = _img_prep_config.get("geometry_detect", {})
@@ -321,7 +327,7 @@ class ConfigValidator:
             config_module = self._img_prep_config
             enabled_outputs = self.enabled_outputs.get("image_load_outputs", {})
             config_module.update(enabled_outputs)
-            return config_module, self.workers_order["image_preparation_stager"]
+            return config_module, self.workers_order[_keyimglo]
             
     @cached_property
     def preprocessing_config(self)-> Tuple[Dict[str, Any], List[str]]:
@@ -331,7 +337,7 @@ class ConfigValidator:
             config_module = self.modules_config.get("preprocessing", {})
             enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {})
             config_module.update(enabled_outputs)
-            return config_module, self.workers_order["preprocessing_stager"]
+            return config_module, self.workers_order[_keypre]
             
     @cached_property
     def _ocr_config(self):
@@ -349,12 +355,11 @@ class ConfigValidator:
             config_module = self._ocr_config
             config_module.update(self.logs_debug)
             config_module.update(self.enabled_outputs.get("ocr_outputs"))
-            return config_module, self.workers_order["ocr_stager"]
+            return config_module, self.workers_order[_ocrkey]
     
     @cached_property
     def _vectorization_config(self) -> Dict[str, Any]:
         _vectorization_config = self.modules_config.get("vectorization", {})
-        all_cols_name = self.payload_request["payload_cols"]
         math_max = _vectorization_config.get("math_max", {})
         row_tol = math_max.get("row_tol", "")
         if not isinstance(row_tol, str):
@@ -365,7 +370,8 @@ class ConfigValidator:
             
             basic_exc_logger(f"REVISAR CONFIGURACIÓN SE ENCONTRÓ: {type(row_tol)}, DEBERÍA SER STRING")
             row_tol = str(row_tol)
-            
+        
+        all_cols_name = self.payload_request["payload_cols"]
         _vectorization_config["math_max"]["row_tol"] = Decimal(row_tol)
         _vectorization_config["math_max"]["columns"] = all_cols_name[:4]
         _vectorization_config["math_max"]["dec_cols_name"] = frozenset(all_cols_name[:3])
@@ -382,7 +388,7 @@ class ConfigValidator:
             config_module = self._vectorization_config
             enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
             config_module.update(enabled_outputs)
-            return config_module, self.workers_order["vectorization_stager"]
+            return config_module, self.workers_order[_veckey]
         
     @cached_property
     def stagers_config(self) -> Dict[str, Tuple[Dict[str, Any], List[str]]]:
@@ -392,10 +398,10 @@ class ConfigValidator:
         de los workers leerán directamente de la memoria RAM sin ejecutar código.
         """
         return {
-            "image_preparation_stager": self.img_prep_config,
-            "preprocessing_stager": self.preprocessing_config,
-            "ocr_stager":  self.ocr_config,
-            "vectorization_stager": self.vectorization_config
+            _keyimglo: self.img_prep_config,
+            _keypre: self.preprocessing_config,
+            _ocrkey: self.ocr_config,
+            _veckey: self.vectorization_config
         }
 
     @property
