@@ -2,7 +2,7 @@
 import os
 from typing import List
 from domain.config_models import SystemSetUp, ConfigParams
-from services.output_service import load_yaml, load_jsoncomment
+from utils.file_handler import load_yaml, load_jsoncomment
 
 def load_config(default_config_path: List[str]):
     """

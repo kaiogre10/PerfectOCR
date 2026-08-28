@@ -226,7 +226,7 @@ class MathMaxConfig(ConfigWithNumpy):
     row_tol: str
 
 class DataCollector(ConfigWithNumpy):
-    separator: str
+    placeholder: str
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal

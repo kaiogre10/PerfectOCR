@@ -110,7 +110,7 @@ class DataFormatter:
             raise RuntimeError("No hay workflow inicializado para limpiar imágenes recortadas.")
             
         for poly_id, polygon in self.workflow.polygons.items():
-            polygon.cropped_img: Optional[CroppedImage] = None
+            polygon.cropped_img = None
             updated_polygon = dataclasses.replace(polygon, cropped_img=None)
             self.workflow.polygons[poly_id] = updated_polygon
         logger.debug("Todas las imágenes recortadas han sido liberadas de memoria")
@@ -124,7 +124,7 @@ class DataFormatter:
                 
             if full_img is None and not corrected:
                 # Medir dims de la imagen real almacenada antes de liberar memoria
-                self.workflow.full_img: Optional[FullImage] = None
+                self.workflow.full_img = None
                 self.workflow = dataclasses.replace(self.workflow, full_img=None)
                 logger.debug("Full image liberada")
                 return True
@@ -343,7 +343,7 @@ class DataFormatter:
         return False
 
     def save_tabular_lines(self, line_ids: List[str]) -> bool:
-        """Identifica las líneas tabulares y las guarda como dataclasses TabularLines"""
+        """Identifica las líneas tabulares"""
         try:
             if not self.workflow or not self.workflow.all_lines:
                 return False

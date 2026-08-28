@@ -3,9 +3,8 @@ import numpy as np
 import logging
 import time
 import pandas as pd
-from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax, InvalidOperation
+from decimal import Decimal, InvalidOperation
 from typing import List, Any, Optional, Tuple, Dict, Sequence
-from sklearn.metrics.pairwise import cosine_similarity  # type:ignore
 from sklearn.cluster import HDBSCAN, DBSCAN # type: ignore
 from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF
 
@@ -49,9 +48,17 @@ def text_encode(text: str, txt_size: int) -> Tuple[float, float]:
     # encoders = np.column_stack([dense, morph])
     return dense_mean, morph_mean
 
-def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]], dense_output: bool = False) -> np.ndarray[Any, np.dtype[np.float32]]:
-    """Calcula la matriz de similitudes coseno entre los vectores de X y el Dummie Vector"""
-    return cosine_similarity(X, dummie_vect, dense_output=dense_output) # type: ignore
+def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarray[Any, np.dtype[np.float32]]:
+    """Calcula manualmente la similitud coseno contra el vector dummy."""
+    if X.ndim != 2:
+        raise ValueError("X debe ser una matriz bidimensional")
+
+    x_norms = np.linalg.norm(X, axis=1, keepdims=True)
+    dummy_norm = np.linalg.norm(dummie_vect)
+
+    denominators = x_norms * dummy_norm
+
+    return np.divide(X @ dummie_vect.T, denominators, out=np.zeros((X.shape[0], 1), dtype=np.float32), where=denominators != 0)
     
 def cosine_similarity_matrix(x: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarray[Any, np.dtype[np.float32]]:
     norms = np.linalg.norm(x, axis=1, keepdims=True)
@@ -460,17 +467,17 @@ def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
             return 0
     return count
 
-def round_2_decimal_vals(amount_str: str) -> str:
-    if not amount_str:
-        return ""
-    try:
-        dec = Decimal(amount_str)
-        # Redondear con HALF_UP a dos decimales
-        rounded = dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        return str(rounded)
-    except ConversionSyntax:
-        logger.info(f"ERROR CONVIRTIENDO: '{amount_str}'")
-        return amount_str
+# def round_2_decimal_vals(amount_str: str) -> str:
+#     if not amount_str:
+#         return ""
+#     try:
+#         dec = Decimal(amount_str)
+#         # Redondear con HALF_UP a dos decimales
+#         rounded = dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+#         return str(rounded)
+#     except ConversionSyntax:
+#         logger.info(f"ERROR CONVIRTIENDO: '{amount_str}'")
+#         return amount_str
     
 def validate_df(df: pd.DataFrame, cant_name: str, pu_name: str, mtl_name: str) -> bool:
     """Valida que no haya filas vacias, strings válidos y correctamente distribuidos"""

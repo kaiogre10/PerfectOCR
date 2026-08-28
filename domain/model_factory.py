@@ -2,7 +2,7 @@ import os
 import numpy as np
 import logging
 from typing import Dict, Any, List, Tuple
-from services.output_service import load_pickle#, save_pickle
+from utils.file_handler import load_pickle
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class MatrixFactory:
         "index_dict"
     )
     def __init__(self, config: Dict[str, Any]):
-        self.models_path = config.get("wf_path", "")
+        self.models_path: str = config.get("wf_path", "")
         
         ngrams_name = config.get("ngrams_name", "")
         matrix_name = config.get("matrix_name", "")
@@ -114,10 +114,10 @@ class MatrixFactory:
         self.index_dict_path = config.get("index_dict", "")
         
         self.matrix_path = config.get("matrix_path", "")
-        self.matrix_folder = config.get("matrix_folder", "")
+        self.matrix_folder: str = config.get("matrix_folder", "")
         
         self.kf_path = config.get("kf_path", "")
-        self.kf_folder = config.get("kf_folder", "")
+        self.kf_folder: str = config.get("kf_folder", "")
         
         self.matrix_registry: Dict[int, Any] = {}
         self.kf_registry: Dict[int, Any] = {}
@@ -145,7 +145,7 @@ class MatrixFactory:
         for dirnames in os.listdir(self.models_path):    
             if self.matrix_path in dirnames:
                 for item in os.listdir(self.matrix_folder):
-                    full_path = os.path.join(self.matrix_folder, item)
+                    full_path: str = os.path.join(self.matrix_folder, item)
                     # Identificación de la nomenclatura jerárquica 'longitud_{key}'
                     if os.path.isdir(full_path) and item.endswith(f"{self.matrix_path}"):
                         key_len = int(item.replace(f"_{self.matrix_path}", ""))
@@ -154,7 +154,7 @@ class MatrixFactory:
         
             elif self.kf_path in dirnames:
                 for item in os.listdir(self.kf_folder):
-                    full_path = os.path.join(self.kf_folder, item)
+                    full_path: str = os.path.join(self.kf_folder, item)
                     if os.path.isdir(full_path) and item.endswith(f"{self.kf_path}"):
                         key_len = int(item.replace(f"_{self.kf_path}", ""))
                         self.kf_registry[key_len] = KeyFields(full_path, self.files_list)

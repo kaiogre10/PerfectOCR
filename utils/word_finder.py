@@ -1,11 +1,9 @@
 import logging
 import numpy as np
-# import time
 from typing import List, Any, Dict, Tuple, Set, FrozenSet
 from core.assets.patterns import space_pattern
 from domain.model_factory import MatrixFactory
 from utils.compiled_utils import ngram_similarity, length_penalty
-# from core.assets.assets import KF_LIST
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +21,6 @@ class WordFinder:
         "threshold",
         "ngrams_len",
         "window_flex",
-        "forb_match",
-        "kf_file",
         "_all_kf_idx"
     )
     def __init__(self, config: Dict[bytes, Any], motor: MatrixFactory):
@@ -40,8 +36,6 @@ class WordFinder:
         self.threshold: float = config.get("threshold_similarity", {})
         self.ngrams_len = config["char_ngrams"]
         self.window_flex: int = config.get("window_flexibility", {})
-        # self.forb_match: float = config.get("forb_match", {})
-        self.kf_file = config.get("kf_path", "")
         self._all_kf_idx = None
     
     @property
@@ -60,7 +54,7 @@ class WordFinder:
         KEYFIELD, len(NGRAM)
         Devuelve el diccionario de keyfielgramas por KeyField separado
         """
-        id_matrix = rf"{key_field}_{n}_{self.kf_file}"
+        id_matrix = rf"{key_field}_{n}_key_words"
         kfngrams = self.motor.kf_registry[n]
         kf_mtx = kfngrams.kf_matrix
         return kf_mtx.get(id_matrix)

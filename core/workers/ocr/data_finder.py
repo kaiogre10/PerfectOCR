@@ -14,6 +14,7 @@ _cleaner_pattern = cleaner_pattern
 kf_decimals = {1, 2, 3, 4, 8}
 kf_relocatables = set(kf_decimals.union({7}))
 kf_ignored = {6, 9}
+sc_forb = {-1, 0, 2, 4, 5}
 
 logger = logging.getLogger(__name__)
 
@@ -59,27 +60,18 @@ class DataFinder(OCRAbstractWorker):
                 logger.error("No hay polygons para procesar")
                 return {}
         
-            processed_count = 0
             polygon_updates: Dict[str, List[int]] = {}
             skipped_semantic = 0
-            sc_forb = {-1, 0, 2, 4, 5}
 
             all_idx = np.asarray([p.poly_index for p in polygons.values()], np.int16)
 
             sc = [p.semantic_clasification for p in polygons.values()]
-            texts = [(p.ocr_text or "") for p in polygons.values()]
 
-            texts_length = np.array([len(t) for t in texts], dtype=np.int16)
-            # decimal_p = np.array([t.isdecimal() for t in texts])
+            sc_eq = np.asarray([len(set(t)) for t in sc], dtype=np.int16)
+            forb_sc = np.asarray([any(c != 1 for c in s) for s in sc], dtype=np.int16)
 
-            # sc_length = np.array([len(c) for c in sc])
-            sc_eq = np.array([len(set(t)) for t in sc], dtype=np.int16)
-            forb_sc = np.array([any(c in sc_forb for c in s) for s in sc], dtype=np.int16)
-
-            mask_sc = (sc_eq == 1) & (forb_sc == True) 
-            mask_len = (texts_length < 2)
-            mask = mask_sc | mask_len
-            skip_idx = np.compress(mask, all_idx)
+            mask_sc = (sc_eq == 1) & (forb_sc == True)
+            skip_idx = np.compress(mask_sc, all_idx)
 
             for pid, poly in polygons.items():
                 if poly.poly_index in skip_idx:
@@ -87,7 +79,6 @@ class DataFinder(OCRAbstractWorker):
                     skipped_semantic += 1
                     continue
 
-                processed_count += 1
                 kf = poly.key_field or None
                 if kf is not None:
                     skipped_semantic += 1
@@ -95,6 +86,9 @@ class DataFinder(OCRAbstractWorker):
                     continue
 
                 ocr_text = poly.ocr_text or ""
+
+                if len(ocr_text) < 2:
+                    continue
 
                 if not ocr_text.isalpha():
                     ocr_text = _cleaner_pattern.sub("", ocr_text).strip()

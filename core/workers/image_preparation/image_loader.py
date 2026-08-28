@@ -1,13 +1,11 @@
-import cv2
 import logging
-import numpy as np
-import time
 import os
 from datetime import datetime
 from typing import Dict, Any
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import decolorate, is_binarized
+from utils.file_handler import load_images
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -23,14 +21,9 @@ class ImageLoader(ImagePrepAbstractWorker):
         try:
             input_path = context.get("image_data", "")
             image_name = os.path.splitext(os.path.basename(input_path))[0]
+            full_image = load_images(input_path)
 
-            if not input_path or not os.path.isfile(input_path):
-                raise FileNotFoundError(f"No se proporcionó una ruta de entrada válida: '{input_path}'")
-            
-            # time0 = time.perf_counter()
-            full_image = cv2.imread(input_path, cv2.IMREAD_COLOR)
             logger.info(f"IMAGEN: '{input_path}'")
-                        # "\n"f"cargada en {time.perf_counter() - time0:.6f}'s")
             
             if is_binarized(full_image):
                 binary = True
@@ -42,8 +35,6 @@ class ImageLoader(ImagePrepAbstractWorker):
             if full_img.size < 1 or full_img is None: # type: ignore
                 return False
             
-            full_img = np.require(full_img, dtype=np.uint8, requirements=['C', 'A', 'W', 'O', 'E'])
-
             # Metadata: una sola llamada a datetime
             now = datetime.now()
             date_creation = f"{now.strftime('%Y%m%d')}"

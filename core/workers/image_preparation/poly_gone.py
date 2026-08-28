@@ -124,8 +124,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
         except Exception as e:
             logger.error(f"Error en PolygonExtractor: {e}", exc_info=True)
-        context = {}
-        return False
+            return False
     
     def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter, status: str, id: str):
         image_name = manager.workflow.metadata.image_name if manager.workflow else ""

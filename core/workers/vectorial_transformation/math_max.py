@@ -261,7 +261,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         """Selecciona filas/columnas con densidad decimal suficiente para inferencia."""
         cols_idx = context["cols_idx"]
         arrays_table = self.get_arrays_table(context)
-        elements_array, textual_array, umd_array, code_array, matrix_decimal, matrix_quantity = arrays_table[0], arrays_table[1], arrays_table[2], arrays_table[3], arrays_table[4], arrays_table[5]
+        elements_array, textual_array, umd_array, matrix_decimal, matrix_quantity = arrays_table[0], arrays_table[1], arrays_table[2], arrays_table[4], arrays_table[5]
         full_rows_mask = np.count_nonzero(elements_array, axis=1)
         full_idx = np.where(full_rows_mask==cols_idx.size)[0]               # índices columnas originales sin celdas vacías
 

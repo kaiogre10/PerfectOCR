@@ -1,7 +1,6 @@
 # PerfectOCR/core/workers/vectorial_transformation/linal_reconstructor.py
 import logging
 import time
-import numpy as np
 from typing import Dict, Any, List, Optional, Tuple
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
@@ -79,7 +78,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         line_counter = 0
         headers = set(boundaries[0])
         footers = set(boundaries[1]) if boundaries[0] else None
-        bboxes: List[np.ndarray[Any, Any]] = []
+        bboxes: List[Any] = []
         lines_bbox: List[List[float]] = []
         header_idx: int = 0
         footer_idx: int = 0

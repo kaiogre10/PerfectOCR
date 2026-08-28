@@ -123,4 +123,4 @@ modules:
       row_tol: "0.10"
 
     collector:
-      separator: "_"
+      placeholder: "_"

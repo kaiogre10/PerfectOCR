@@ -4,7 +4,7 @@ import logging
 import numpy as np
 from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, Tuple, List
-from utils.text_utils import format_cuant, get_rfc, get_ids, noramalice_df, its_similar, fast_classfier
+from utils.text_utils import format_cuant, get_rfc, get_ids, noramalize_df, its_similar, fast_classfier
 from core.assets.patterns import umd_patterns
 from utils.math_utils import validate_df
 from utils.compiled_utils import validate_text
@@ -20,13 +20,13 @@ conversion_kf = CONVERSION_KF
 
 class FinalStructurer(VectorizationAbstractWorker):
     """"Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db."""
-    __slots__ = ("cant_name", "pu_name", "mtl_name", "product_name", "id_registro", "separator", "output", "stack")
+    __slots__ = ("cant_name", "pu_name", "mtl_name", "product_name", "id_registro", "placeholder", "output", "stack")
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         # self.project_root = project_root
         worker_config = config.get('collector', {})
         self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = worker_config["cols_name"]
-        self.separator = worker_config.get("separator", "")
+        self.placeholder = worker_config.get("placeholder", "")
         self.output = config.get("normalized_table")
         self.stack = config.get("stack")
 
@@ -213,7 +213,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                             df.iat[i, pro_idx] = (orig_p_value + concat_val)
 
         if validate_df(df, self.cant_name, self.pu_name, self.mtl_name):
-            df = df.map(lambda x: noramalice_df(x, self.separator)) # type: ignore
+            df = df.map(lambda x: noramalize_df(x, self.placeholder)) # type: ignore
             logger.debug(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
             return df
         else:

@@ -4,7 +4,6 @@ from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from functools import cached_property
 from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from decimal import Decimal
-# from contextlib import contextmanager
 from services.system_service import get_so
 from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS, IMGPREP_KEY, PREPRO_KEY, OCR_KEY, VECT_KEY
 import cv2
@@ -29,9 +28,6 @@ class ConfigValidator:
     def __init__(self, project_root: str, config: Dict[str, Any]):
         self.config = config
         self.project_root = project_root
-    
-        # with self._run_params() as tested:
-        #     log_simple(f"TESTED: {tested}")
         
         if not self._validate_config():
             self.config = {}
@@ -231,10 +227,12 @@ class ConfigValidator:
         paddle_path = models_paths.get("paddle_path", "")
         lang = paddle_config.get("lang", "")
         
-        _models_config["paddle_config"]["det_model_dir"] = os.path.join(models_dir, paddle_path, det_model, lang)
-        _models_config["paddle_config"]["rec_model_dir"] = os.path.join(models_dir, paddle_path, rec_model, lang)
-        _models_config["paddle_config"]["activate_rec"] = True
-        _models_config["paddle_config"]["activate_det"] = True
+        paddle_config.update({
+            "det_model_dir": os.path.join(models_dir, paddle_path, det_model, lang),
+            "rec_model_dir": os.path.join(models_dir, paddle_path, rec_model, lang),
+            "activate_rec": True,
+            "activate_det": True,
+        })
         
         matrix_path = wf_config.get("matrix_path", "")
         kf_path = wf_config.get("kf_path", "")
@@ -245,17 +243,16 @@ class ConfigValidator:
         
         _wf_path = models_paths.get("word_finder_path", "")
         wf_path = os.path.join(models_dir, _wf_path)
-        _models_config["wf_config"]["wf_path"] = wf_path
-        
-        _models_config["wf_config"]["kf_idx"] = os.path.join(wf_path, kf_idx_name)
-        _models_config["wf_config"]["pkl_path"] = os.path.join(wf_path, pkl_path_name)
-        _models_config["wf_config"]["index_dict"] = os.path.join(wf_path, index_dict)
-        
-        _models_config["wf_config"]["train_data"] = os.path.join(self.project_root, "core", "assets", "data.npy")
-        _models_config["wf_config"]["matrix_folder"] = os.path.join(wf_path, matrix_path)
-        _models_config["wf_config"]["kf_folder"] = os.path.join(wf_path, kf_path)
-        
-        _models_config["wf_config"]["test_wf_model"] = self.test_wf_model
+        wf_config.update({
+            "wf_path": wf_path,
+            "kf_idx": os.path.join(wf_path, kf_idx_name),
+            "pkl_path": os.path.join(wf_path, pkl_path_name),
+            "index_dict": os.path.join(wf_path, index_dict),
+            "train_data": os.path.join(self.project_root, "core", "assets", "data.npy"),
+            "matrix_folder": os.path.join(wf_path, matrix_path),
+            "kf_folder": os.path.join(wf_path, kf_path),
+            "test_wf_model": self.test_wf_model,
+        })
         del _models_config["models_paths"]
         return _models_config
     
@@ -360,6 +357,12 @@ class ConfigValidator:
     @cached_property
     def _vectorization_config(self) -> Dict[str, Any]:
         _vectorization_config = self.modules_config.get("vectorization", {})
+        collector = _vectorization_config.get("collector", {})
+        placeholder = collector.get("placeholder")
+        if not placeholder or not isinstance(placeholder, str) or len(placeholder) !=1 or not placeholder.isascii() or placeholder.isalnum() or placeholder.isspace():
+            basic_exc_logger(f"NO HAY SEPARADOR VÁLIDO")
+            return {}            
+        
         math_max = _vectorization_config.get("math_max", {})
         row_tol = math_max.get("row_tol", "")
         if not isinstance(row_tol, str):
@@ -475,14 +478,3 @@ class ConfigValidator:
             workers_missing = _min_workers - self.all_workers
             log_simple(f"Faltan: {workers_missing} de los '{len(_min_workers)}' workers mínimos para el pipeline")
             return False
-        
-    # @contextmanager
-    def _run_params(self):
-        tested = None
-        try:
-            tested = any([self.not_run_system, bool(self.all_workers), self.active_full_ocr, bool(self.workers_order), bool(self.stagers_config), bool(self.models_config), bool(self.logs_debug)])
-            yield tested
-        finally:
-            if tested:
-                log_simple(f"CONTEXT MANAGER FINALIZADO")
-                return tested

@@ -1,17 +1,13 @@
 # core/utils/output_service.py
 import os
 # from functools import wraps
-import commentjson # type: ignore
-from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedSeq
 import logging
 import numpy as np
 import cv2
 import pandas as pd # type: ignore
 from typing import Dict, Any, List, Tuple, Optional
-import csv
 from services.log_service import get_caller_info
-import pickle
+from utils.file_handler import save_image, save_yaml, save_table
 # from collections.abc import Callable
 # from typing import TypeAlias
 
@@ -28,10 +24,10 @@ file_path: str
 
 def set_output_config(project_root: str, config: Dict[str, Any]):
     global PROJECT_ROOT, OUTPUT_PATHS, TEMP_FILE, file_path
-    PROJECT_ROOT = project_root
-    OUTPUT_PATHS = config["output_paths"]
+    PROJECT_ROOT = project_root # type: ignore
+    OUTPUT_PATHS = config["output_paths"] # type: ignore
     file_path = os.path.join(PROJECT_ROOT, "core", "assets", "data.npy")
-    TEMP_FILE = config.get("temp_path", "")
+    TEMP_FILE = config.get("temp_path", "") # type: ignore
 
 # def serilizable(file_name: str) -> Callable[[SerializerFn],SerializerFn]:
 #     def decorator(fn: SerializerFn) -> SerializerFn:
@@ -90,41 +86,7 @@ def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any])
         output_dir = os.path.join(path, worker_name, image_name)
 
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
-
-# @serilizable(".png")
-def save_image(data: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name: str):
-    """Guarda una única imagen en disco."""
-    try:    
-        os.makedirs(output_dir, exist_ok=True)
-        img_path = os.path.join(output_dir, file_name)
-        cv2.imwrite(img_path, data)
-    except Exception as e:
-        logger.error(f"Error guardando '{file_name}' imagen: {e}")
         
-def save_debug_json(results: Dict[str, Any], file_name: str):
-    """Guarda un JSON con line_id, text, polygons_ids"""
-    worker_name = get_caller_info()[0]
-    try:
-        final_results: Dict[str, Any] = {}
-        for line_id in results:
-            if line_id in results:
-                line_obj = results[line_id]
-                final_results[line_id] = {
-                    'lineal_id': line_obj.lineal_id,
-                    'text': line_obj.text,
-                    'polygon_ids': line_obj.polygon_ids,
-                }
-                
-        for path in OUTPUT_PATHS:
-            output_dir = os.path.join(path, worker_name)
-            file_name = f"{file_name}_{worker_name}.json"
-            save_yaml(final_results, output_dir, file_name)
-
-        logger.warning(f"JSON de {worker_name} generado para '{file_name}'.")
-
-    except Exception as e:
-        logger.warning(f"Error guardando {worker_name}.JSON: {e}", exc_info=True)
-    
 def save_text_debug(results: Dict[str, Any], file_name: str) -> bool:
     worker_name = get_caller_info()[0]
     try:
@@ -138,33 +100,6 @@ def save_text_debug(results: Dict[str, Any], file_name: str) -> bool:
 
     except Exception as e:
         logger.warning(f"Error guardando {worker_name}.YAML: {e}", exc_info=True)
-    return False
-
-def save_yaml(results: Dict[str, Dict[str, Any]], output_dir: str, file_name: str) -> bool:
-    """Guarda un YAML en disco."""
-    try:
-        os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, file_name)
-
-        # Convertir listas a formato inline
-        for item in results.values():
-            for key, value in item.items():
-                if isinstance(value, list):
-                    seq = CommentedSeq(value)
-                    seq.fa.set_flow_style()  # <- [1, 1]
-                    item[key] = seq
-
-        yaml = YAML()
-        yaml.default_flow_style = False
-        yaml.allow_unicode = True
-
-        with open(output_file, "w", encoding="utf-8") as f:
-            yaml.dump(results, f)
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Error guardando YAML: {e}", exc_info=True)
     return False
 
 def save_table_values(file_name: str, all_features: Dict[str, Dict[str, float]] | np.ndarray[Any, Any]):
@@ -196,50 +131,7 @@ def save_debug_table(corrected_df: pd.DataFrame, file_name: str, output: Optiona
 
     except Exception as e:
         logger.error(f"Error guardadndo tabla CSV de {worker_name}: {e}", exc_info=True)
-
-def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, stack: bool):
-    """Guarda una tabla estructurada en formato CSV (compatible con Excel)."""
-    try:
-        header_text = list(corrected_df.columns)
-        os.makedirs(output_dir, exist_ok=True)
-        output_file = os.path.join(output_dir, file_name)
-        with open(output_file, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow(header_text)
-            # Escribimos las filas del DataFrame, no solo los nombres de columnas
-            for row in corrected_df.itertuples(index=False, name=None):
-                writer.writerow(row)                
-        if stack:
-            try:
-                _append_table_to_master(
-                    corrected_df=corrected_df,
-                    output_dir=output_dir,
-                    section_title=os.path.splitext(os.path.basename(file_name))[0],
-                    header_text=header_text,
-                    master_filename="tables_master.csv"
-                )
-            except Exception as e:
-                logger.error(f"error generando el tables_master: {e}", exc_info=True)
         
-        logger.info(f"Tabla generada de: '{file_name}'")
-                        
-        return output_file
-    except Exception as e:
-        logger.error(f"Error guardando CSV: {e}", exc_info=True)
-        
-def _append_table_to_master(corrected_df: pd.DataFrame, output_dir: str, section_title: str, header_text: List[str], master_filename: str = "tables_master.csv"):
-    os.makedirs(output_dir, exist_ok=True)
-    master_path = os.path.join(output_dir, master_filename)
-    write_header = not os.path.exists(master_path) or os.path.getsize(master_path) == 0
-
-    with open(master_path, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow([f"# --- {section_title} ---"])
-        if write_header:
-            writer.writerow(header_text if (header_text and len(header_text) > 0) else list(corrected_df.columns))
-        for row in corrected_df.itertuples(index=False, name=None):
-            writer.writerow(row)
-
 def to_serializable(obj: Any) -> Any:
     """Convierte numpy arrays y tipos numpy a tipos nativos Python."""
     if isinstance(obj, np.ndarray):
@@ -252,47 +144,6 @@ def to_serializable(obj: Any) -> Any:
         return [to_serializable(item) for item in obj] # type: ignore
     else:
         return obj
-
-def load_pickle(pkl_path: str, mode: str):
-    """Carga pickle"""
-    if not os.path.exists(pkl_path):
-        raise FileNotFoundError(f"Pickle no encontrado en {pkl_path}")
-    with open(pkl_path, mode) as f:
-        model_pkl = pickle.load(f)
-        if not model_pkl:
-            raise pickle.UnpicklingError("ERROR EN LA CARGA DEL PICKLE")
-    model_pkl["allow_edit"] = False
-    return model_pkl
-
-def save_pickle(model_pkl: Any, pkl_path: str, mode: str):
-    model_pkl["allow_edit"] = False
-    if not os.path.exists(pkl_path):
-        raise FileNotFoundError(f"Ruta inválida para guardar pickle: {pkl_path}")
-    with open(pkl_path, mode) as f:
-        pickle.dump(model_pkl, f, protocol=5)
-
-def load_yaml(file_path: str, mode: str):
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError(f"ARCHIVO DE CONFIGURACIÓN NO ENCONTRADO: {file_path}")
-    
-    yaml = YAML(typ='safe', pure=True)
-    yaml.default_flow_style = False
-    yaml.allow_unicode = True
-
-    with open(file_path, mode, encoding='utf-8') as f:
-        yaml_raw = yaml.load(f)
-        if not yaml_raw:
-            raise ValueError(f"YAML INEXISTENTE")
-    return yaml_raw
-
-def load_jsoncomment(file_path: str, mode: str):
-    if not os.path.isfile(file_path):
-        raise FileNotFoundError(f"ARCHIVO DE CONFIGURACIÓN NO ENCONTRADO: {file_path}")
-    with open(file_path, mode, encoding='utf-8') as f:
-        commentjson_raw = commentjson.load(f) # type: ignore
-        if not commentjson_raw:
-            raise ValueError(f"COMMENT JSON INEXISTENTE")
-    return commentjson_raw    
         
 def write_temp_log(payload_temp: Tuple[str, str]) -> bool:
     if not payload_temp[0] or not payload_temp[1]:
@@ -312,4 +163,3 @@ def serialize_arrays(array_input: np.ndarray[Any, Any]):
     else:
         ngrams_array = np.ascontiguousarray(array_input, dtype=np.float32)
     np.save(file_path, ngrams_array, allow_pickle=False)
-    

@@ -1,6 +1,5 @@
 # core/workers/vectorial_transformation/matricial_cosine.py
 import numpy as np
-from numpy import memmap
 import time
 import logging
 from typing import Dict, Any, List, Tuple, Optional
@@ -127,7 +126,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         # t0 = time.perf_counter()
         analysis = analysis[line_ids]
         analysis = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
-        sims_final = get_cosine_similarity(analysis, False)
+        sims_final = get_cosine_similarity(analysis)
         # logger.debug(f"Tiempo: {time.perf_counter() - t0}")
         # logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")
 
