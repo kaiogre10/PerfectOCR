@@ -601,3 +601,4 @@ class WordFinder:
         
         # logger.info(f"SCORE KF: {key_field}: {total_score}")
         return 0.30 < total_score
+    

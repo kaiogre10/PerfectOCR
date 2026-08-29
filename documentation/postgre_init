@@ -1,5 +1,0 @@
-sudo systemctl status postgresql # <-- EStado actual
-sudo systemctl stop postgresql   # <-- DEtener el servicio
-sudo systemctl start postgresql  # <-- Iniciar el servidor
-sudo -u postgres psql            # <-- SQL Shell
-

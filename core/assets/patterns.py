@@ -1,5 +1,5 @@
 # PerfectOCR/core/utils/patterns.py
-import re
+import regex as re
 from typing import List, Pattern
 
 _currency_variants = r"[$Ss]"
