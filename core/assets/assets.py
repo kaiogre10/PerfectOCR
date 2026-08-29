@@ -3,6 +3,28 @@ from types import MappingProxyType
 import numpy as np
 from decimal import Decimal
 
+ID_CLIENTE = "id_cliente"
+NOMBRE_CLIENTE = "nombre_cliente"
+TOTAL_DOC = "total_doc"
+TOTAL_ART = "total_art"
+TOTAL_CAL = "total_cal"
+ART_CAL = "art_cal"
+ID_PROVEEDOR = "id_proveedor"
+GIRO = "giro"
+PROVEEDOR_NORM = "proveedor_norm"
+FECHA_CAPTURA = "fecha_captura"
+RFC_PROV = "rfc_prov"
+ID_REGISTRO = "id_registro"
+FOLIO_DOC = "folio_doc"
+DATE_DOC = "date_doc"
+MONTO_IVA = "monto_iva"
+SUBTOTAL = 'subtotal'
+
+CANTIDAD_ART = "cantidad_art"
+PRECIO_UNITARIO = "precio_unitario"
+COSTO_TRAN = "costo_tran"
+PRODUCT_NORM = "produc_norm"
+
 ZEROS_CUANT = ".00"
 ZERO = "0"
 ONE = "1"
@@ -284,30 +306,30 @@ DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
     "(": "C",
 }
 
-VOWELS: FrozenSet[str] = frozenset({"A", "E", "I", "O", "U", "a", "e", "i", "o", "u"})
+VOWELS: FrozenSet[str] = frozenset(["A", "E", "I", "O", "U", "a", "e", "i", "o", "u"])
 
 VALID_CUANT_CHARS = {".", ",", "$"}
 CHAR_NUM = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
 
 CUANT_CHAR: FrozenSet[str] = frozenset(CHAR_NUM.union(VALID_CUANT_CHARS))
 
-alone_chars: FrozenSet[str] = frozenset({"a", "e", "y", "o", "A", "E", "Y", "O"})
+alone_chars: FrozenSet[str] = frozenset(["a", "e", "y", "o", "A", "E", "Y", "O"])
 VALID_ALONE_CHARS: FrozenSet[str] = frozenset(CHAR_NUM.union(alone_chars))
 
 CONVERSION_KF: MappingProxyType[str, int] = MappingProxyType({
-        "total_doc": 1, # 'MontoTotalDocumento'
-        'total_art': 2, # TotalProductos
-        'subtotal': 3,
-        'folio_doc': 4,
-        # "NombreCliente": 5 Se ajustará su eliminación ya que es innecesario
-        "HeaderWords": 6,
-        "rfc_prov": 7,
-        "monto_iva": 8,
-        "date_doc": 9,
-        "TelefonoP": 10,
-        "CorreoP": 11,
-        "DirecciónP": 12
-    })
+    TOTAL_DOC: 1, # 'MontoTotalDocumento'
+    TOTAL_ART: 2, # TotalProductos
+    SUBTOTAL: 3,
+    FOLIO_DOC: 4,
+    # "NombreCliente": 5 Se ajustará su eliminación ya que es innecesario
+    "HeaderWords": 6,
+    RFC_PROV: 7,
+    MONTO_IVA: 8,
+    DATE_DOC: 9,
+    "TelefonoP": 10,
+    "CorreoP": 11,
+    "DirecciónP": 12
+})
 
 REPLACEMENT_MAP: MappingProxyType[str, str] = MappingProxyType({
     'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
@@ -315,7 +337,7 @@ REPLACEMENT_MAP: MappingProxyType[str, str] = MappingProxyType({
 })
 
 KF_RANGE = (1, 13)
-SC_RANGE = (0, 6)
+SC_RANGE = tuple([0, 6])
 
 DENSITY_RANGE = (23.7, 103.7)
 MORPH_RANGE = (-0.297, 0.337)
@@ -329,11 +351,11 @@ MIN_WORKERS: FrozenSet[str] = frozenset(OCR_WORKERS.union(set([ELEMENTAL_WORKER]
 
 ZERO_DEC = Decimal(ZERO + ZEROS_CUANT)
 ONE_DEC = Decimal(ONE + ZEROS_CUANT)
+ROW_TOL = Decimal("0.10")
+
 COMBINATIONS = 3
 
 IMGPREP_KEY = "image_preparation_stager"
 PREPRO_KEY = "preprocessing_stager"
 OCR_KEY = "ocr_stager"
 VECT_KEY = "vectorization_stager"
-
-# KF_LIST = frozenset({1, 2, 3, 4, 6})

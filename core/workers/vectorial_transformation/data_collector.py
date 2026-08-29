@@ -9,7 +9,7 @@ from core.assets.patterns import umd_patterns
 from utils.math_utils import validate_df
 from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table
-from core.assets.assets import CONVERSION_KF
+from core.assets.assets import CONVERSION_KF, CANTIDAD_ART, PRECIO_UNITARIO, COSTO_TRAN, PRODUCT_NORM, ID_PROVEEDOR, ID_CLIENTE, NOMBRE_CLIENTE, GIRO, PROVEEDOR_NORM, FECHA_CAPTURA, ART_CAL, TOTAL_CAL, ID_REGISTRO
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 
@@ -17,15 +17,25 @@ logger = logging.getLogger(__name__)
 
 _umd_patterns = umd_patterns
 conversion_kf = CONVERSION_KF
+_cant_name = CANTIDAD_ART
+_pu_name = PRECIO_UNITARIO
+_mtl_name = COSTO_TRAN
+_product_name = PRODUCT_NORM
+_id_proveedor = ID_PROVEEDOR
+_id_cliente= ID_CLIENTE
+_nombre_cliente = NOMBRE_CLIENTE
+_giro = GIRO
+_proveedor_norm = PROVEEDOR_NORM
+_fecha_captura = FECHA_CAPTURA
+_total_cal = TOTAL_CAL
+_art_cal = ART_CAL
+_id_registro = ID_REGISTRO
 
 class FinalStructurer(VectorizationAbstractWorker):
     """"Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db."""
-    __slots__ = ("cant_name", "pu_name", "mtl_name", "product_name", "id_registro", "placeholder", "output", "stack")
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        # self.project_root = project_root
         worker_config = config.get('collector', {})
-        self.cant_name, self.pu_name, self.mtl_name, self.product_name, self.id_registro = worker_config["cols_name"]
         self.placeholder = worker_config.get("placeholder", "")
         self.output = config.get("normalized_table")
         self.stack = config.get("stack")
@@ -67,7 +77,7 @@ class FinalStructurer(VectorizationAbstractWorker):
         if not polygons:
             return (pd.DataFrame(), "")
             
-        date_creation = metadata.date_creation if metadata else ""
+        date_creation = metadata.fecha_captura if metadata else ""
 
         kf_map_inv: Dict[int, str] = {v: k for k, v in conversion_kf.items()}
 
@@ -96,30 +106,30 @@ class FinalStructurer(VectorizationAbstractWorker):
 
         db_values.update(totals)
         db_values["image_name"] = image_name
-        db_values["id_proveedor"] = id_prov
-        db_values["id_cliente"] = 1
-        db_values["nombre_cliente"] = "cliente_demo"
-        db_values["giro"] = "giro_demo"
-        db_values["proveedor_norm"] = f"proveedor_demo_{id_prov}"
-        db_values["fecha_captura"] = date_creation
+        db_values[_id_proveedor] = id_prov
+        db_values[_id_cliente] = 1
+        db_values[_nombre_cliente] = "cliente_demo"
+        db_values[_giro] = "giro_demo"
+        db_values[_proveedor_norm] = f"proveedor_demo_{id_prov}"
+        db_values[_fecha_captura] = date_creation
 
         # logger.info(f"{db_values}")
         manager.reset_data()
         return (df, image_name)
     
     def standarice_df(self, df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
-        mtl_col = df[self.mtl_name]
-        c_col = df[self.cant_name]
-        pu_col = df[self.pu_name]
-        product_col = df[self.product_name]
+        mtl_col = df[_mtl_name]
+        c_col = df[_cant_name]
+        pu_col = df[_pu_name]
+        product_col = df[_product_name]
         df = pd.concat([c_col, product_col, pu_col, mtl_col], axis=1)
         df = self.clean_df(df, manager)
         idx = manager.workflow.IDRegistro if manager.workflow else ""
         if df.empty or not idx:
             return (pd.DataFrame(), {})
 
-        mtl_col = df[self.mtl_name]
-        c_col = df[self.cant_name]
+        mtl_col = df[_mtl_name]
+        c_col = df[_cant_name]
         try:
             mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
             c_col_dec = c_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
@@ -130,15 +140,15 @@ class FinalStructurer(VectorizationAbstractWorker):
             logger.error(f"Numeros deciales con ruido: '{e}'")
             raise
 
-        totals = {"art_cal": str(total_prod), "total_cal": str(total_total), self.id_registro: idx}
+        totals = {_art_cal: str(total_prod), _total_cal: str(total_total), _id_registro: idx}
         
         # df.insert(loc=0, column=self.id_registro, value=idx, allow_duplicates=True)
         df = df.reset_index(drop=True)
         return df, totals
     
     def clean_df(self, df: pd.DataFrame, manager: DataFormatter) -> pd.DataFrame:
-        pro_idx = df.columns.get_loc(self.product_name) if self.product_name in df.columns else None # type: ignore
-        c_idx = df.columns.get_loc(self.cant_name) if self.cant_name in df.columns else None # type: ignore
+        pro_idx = df.columns.get_loc(_product_name) if _product_name in df.columns else None # type: ignore
+        c_idx = df.columns.get_loc(_cant_name) if _cant_name in df.columns else None # type: ignore
         if not manager or not manager.workflow:
             return pd.DataFrame()
         
@@ -212,7 +222,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                         if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == 2 and pm == 5):
                             df.iat[i, pro_idx] = (orig_p_value + concat_val)
 
-        if validate_df(df, self.cant_name, self.pu_name, self.mtl_name):
+        if validate_df(df, _cant_name, _pu_name, _mtl_name):
             df = df.map(lambda x: noramalize_df(x, self.placeholder)) # type: ignore
             logger.debug(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
             return df

@@ -1,13 +1,11 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
-import cv2
 import time
-import numpy as np
 from typing import Dict, Any, Optional, List
 from app.models_builder import ModelsBuilder
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.image_utils import binarice_img, make_contiguous # get_contours_values
+from utils.image_utils import binarice_img, morph_operations # get_contours_values
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -15,7 +13,6 @@ logger = logging.getLogger(__name__)
 class GeometryDetector(ImagePrepAbstractWorker):
     """Detecta geometría con PaddleOCR"""
     __slots__ = (
-        # "project_root",
         "kernel",
         "iterations",
         "output",
@@ -23,7 +20,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
     )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        # self.project_root = project_root
         worker_config = config.get("geometry_detect", {})
         self.kernel = worker_config["morph_kernel"]
         self.iterations = worker_config.get("iterations")
@@ -43,7 +39,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         return self._engine
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        start_time = time.perf_counter()
+        # start_time = time.perf_counter()
         try:
             engine = self.engine
             if engine is None:
@@ -59,14 +55,15 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 
             metadata = manager.workflow.metadata if manager.workflow else None
             if metadata is None:
-                raise (f"NO HAY METADATA EN GEOMETRY DETECTOR")
+                logger.error(f"NO HAY METADATA EN GEOMETRY DETECTOR")
+                return False
             
             if metadata.binary:
                 bin_img = full_imag
             else:
                 bin_img = binarice_img(full_imag, {})
 
-            img = make_contiguous(cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, self.kernel, iterations=self.iterations))
+            img = morph_operations(bin_img, self.kernel, self.iterations)
 
             if self.output:
                 image_name = manager.workflow.metadata.image_name if manager.workflow else ""
@@ -89,16 +86,18 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
             polygons_list: List[Dict[str, Any]] = []
             for idx, poly_pts in enumerate(polygons):
-                # poly_id = f"poly_{idx:04d}"
-                coords = np.asarray([[p[0], p[1]] for p in poly_pts], dtype=np.float32)
-                bbox = np.asarray([coords[:, 0].min(), coords[:, 1].min(), coords[:, 0].max(), coords[:, 1].max()], dtype=np.float32)
-                centroid = np.mean(coords, axis=0, dtype=np.float32)
+            
+                coords: List[List[int]] = [[p[0], p[1]] for p in poly_pts]
+                xs = [c[0] for c in coords]
+                ys = [c[1] for c in coords]
+                bbox = [min(xs), min(ys), max(xs), max(ys)]
+                centroid = [sum(xs) / len(xs), sum(ys) / len(ys)]
 
                 # geometry_array[idx, [0, 1, 2, 3, 4, 5]] = bbox[0], bbox[1], bbox[2], bbox[3], centroid[0], centroid[1]
             
                 polygons_list.append({
                     "poly_index": idx,
-                    "polygon_coords": coords.reshape(-1, 1, 2),
+                    "polygon_coords": coords,
                     "bounding_box": bbox,
                     "centroid": centroid,
                 })

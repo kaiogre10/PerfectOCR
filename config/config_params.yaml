@@ -119,8 +119,5 @@ modules:
     table_structurer:
       min_h: 3
 
-    math_max:
-      row_tol: "0.10"
-
     collector:
       placeholder: "_"

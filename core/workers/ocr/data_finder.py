@@ -168,9 +168,6 @@ class DataFinder(OCRAbstractWorker):
             source_poly = polygons.get(pid)
             source_texts[pid] = {source_poly.ocr_text or "": key_fields} if source_poly else ""
         # logger.info(f"KF UPDATES ANTES DE REUBICACIÓN: {source_texts}")
-        
-        if not polygons:
-            return polygon_updates
 
         polyid_by_index = {p.poly_index: pid for pid, p in polygons.items()}
         new_updates: Dict[str, List[int]] = {}

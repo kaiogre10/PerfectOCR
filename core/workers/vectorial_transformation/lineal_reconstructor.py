@@ -86,7 +86,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         cum_poly = 0
         for poly in prepared_sorted:
             bbox = poly.geometry.bounding_box
-            if bbox.size == 0:
+            if len(bbox) == 0:
                 total_polys -= 1
                 continue
 

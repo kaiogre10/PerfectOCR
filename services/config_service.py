@@ -9,7 +9,6 @@ from config.config_loader import load_config
 class ConfigService:
     """API limpia que expone parametros de configuración al resto del Pipeline"""
     def __init__(self, config_path: List[str]):
-        # self.validated_config = validated_config
         configs = load_config(config_path)
         setup = configs[0]
         params = configs[1]

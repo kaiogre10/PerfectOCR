@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class MatricialCusine(VectorizationAbstractWorker):
     __slots__ = ("similarity_threshold", "min_cluster", "tolerance_sim", "emergency_threshold", "eps", "metric", "min_internal_sim", "output_features", "output", "training_data")
     def __init__(self, project_root: str, config: Dict[str, Any]):
-        super().__init__(project_root, config)
+        super().__init__(config, project_root)
         worker_config = config.get('cos_sim', {})
         self.similarity_threshold: float = worker_config.get("similarity_threshold")
         self.min_cluster = worker_config.get("min_cluster")
@@ -161,7 +161,8 @@ class MatricialCusine(VectorizationAbstractWorker):
         
     def _find_best_cluster(self, sorted_candidates: List[str], line_ids: List[str]) -> List[str]:
         """Encuentra el mejor cluster respetando min_cluster e interval y devuelve todas las líneas del intervalo."""
-        if len(sorted_candidates) < self.min_cluster:
+        total_cands = len(sorted_candidates)
+        if total_cands < self.min_cluster:
             logger.warning(f"No hay suficientes candidatos '{len(sorted_candidates)}' para min_cluster: '{self.min_cluster}'")
             return []
         
@@ -170,12 +171,12 @@ class MatricialCusine(VectorizationAbstractWorker):
         best_end = None
         best_size = 0
 
-        for i in range(len(candidate_indices)):
+        for i in range(total_cands):
             start_idx = candidate_indices[i]
             end_idx = start_idx
             current_size = 1
 
-            for j in range(i + 1, len(candidate_indices)):
+            for j in range(i + 1, total_cands):
                 if candidate_indices[j] - candidate_indices[j-1] <= self.min_cluster:
                     end_idx = candidate_indices[j]
                     current_size += 1

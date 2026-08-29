@@ -217,7 +217,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     
     line_id = np.array([lid.line_index for lid in sorted_lines])
     geometry = [lid.line_geometry for lid in sorted_lines]
-    all_bboxes = np.array([geo.line_bbox for geo in geometry], np.float32)
+    all_bboxes = np.asarray([geo.line_bbox for geo in geometry], np.float32)
     x, y, w, h = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
     width = (w - x)
     height = (h - y)
@@ -275,7 +275,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     main_centroid = np.tile([cw, ch], (line_id.shape[0], 1))
 
     # Coordenadas prev/next mediante slicing con padding NaN
-    centroids = np.array([geo.line_centroid for geo in geometry], np.float32)
+    centroids = np.asarray([geo.line_centroid for geo in geometry], np.float32)
     prev_bboxes = np.vstack([np.full((1, 4), np.nan), all_bboxes[:-1]])
     next_bboxes = np.vstack([all_bboxes[1:], np.full((1, 4), np.nan)])
     prev_centroids = np.vstack([np.full((1, 2), np.nan), centroids[:-1]])

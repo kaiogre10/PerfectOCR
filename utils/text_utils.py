@@ -4,7 +4,7 @@ import unicodedata
 from typing import List, Tuple, Dict, Any, Optional
 from utils.math_utils import text_encode
 from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
-from core.assets.assets import VOWELS, REPLACEMENT_MAP, DENSITY_RANGE, MORPH_RANGE, ZEROS_CUANT
+from core.assets.assets import VOWELS, REPLACEMENT_MAP, DENSITY_RANGE, MORPH_RANGE
 from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
 
 logger = logging.getLogger(__name__)
@@ -57,26 +57,23 @@ _id_prov_pattern = id_prov_pattern
 
 _replacement_map = REPLACEMENT_MAP
 vowels = VOWELS
-# _zero = ZERO
-_zero_dec = ZEROS_CUANT
 
-def normalice_text(s: str, hard_norm: bool) -> str:
+def normalice_text(s: str) -> str:
     """"Normaliza texto eliminando apóstrofes, tildes, diéresis. NO ELIMINA CARACTERES DE NINGÚN TIPO, MISMO LEN() EN INPUT Y OUTPUT"""
     if not s:
         return ""
 
     norm_text = "".join(ch for ch in unicodedata.normalize("NFD", s) if unicodedata.category(ch) != "Mn")
-
-    if norm_text and hard_norm:
-        hard_text = unicodedata.normalize('NFKD', norm_text).encode('ascii', 'replace').decode('utf-8')
-        if '?' in hard_text:
-            hard_text = hard_text.replace('?', ' ')
+    hard_text = unicodedata.normalize('NFKD', norm_text).encode('ascii', 'replace').decode('ascii')
+    if '?' in hard_text:
+        hard_text = hard_text.replace('?', ' ')
         return norm_text if not hard_text else hard_text
     return space_removal(norm_text) if norm_text else ""
     
 def get_rfc(s: str) -> str:
     if not s:
         return ""
+    
     match = _rfc_key_pattern.search(s.strip())
     return match.group(0) if match else ""
 
@@ -323,7 +320,7 @@ def format_cuant(text: str) -> str:
         return text
     
     elif text.isdecimal():
-        return (text.strip() + _zero_dec)
+        return (text.strip() + ".00")
     
     text_0 = _clean_currency.sub("", text).strip()
     cuant_txt = _correct_numbers(text_0)
@@ -379,13 +376,7 @@ def get_brands(text: str) -> bool:
 
 def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
     final_results: Dict[str, Tuple[List[int], int]] = {}
-    for pid, polygon in polygons.items():
-        
-        if polygon.key_field is not None and 0 in polygon.semantic_clasification:
-            # logger.info(f"Poligono {pid} con {polygon.key_field} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
-            final_results[pid] = ([0], 0)
-            continue
-        
+    for pid, polygon in polygons.items():        
         s = polygon.ocr_text or ""
         s = s.strip()
         if not s:
@@ -393,6 +384,11 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
             # #  logger.info(f"VACIO 1ro: '{s}'")
             continue
 
+        if polygon.key_field is not None and 0 in polygon.semantic_clasification:
+            # logger.info(f"Poligono {pid} con {polygon.key_field} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
+            final_results[pid] = ([0], 0)
+            continue
+        
         tokens = s.split(" ")
         total_token_cuants = len(tokens) # Cantidad de tokens
 

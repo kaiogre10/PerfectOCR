@@ -11,7 +11,7 @@
       "images_names": [
 //         "AAAA0040",
       //        "AAAA0061",
-//            "AAAA0006"
+          //  "AAAA0006"
 //             "AAAC0030",
           //  "AAAC0043",
 //             "AAAA0038",
@@ -29,11 +29,11 @@
     },
     "payload_request": {
       "payload_cols": [
-        "cant_art",
-        "prec_unit",
+        "cantidad_art",
+        "precio_unitario",
         "costo_tran",
         "produc_norm",
-        "id_reg"
+        "id_registro"
       ]
     }
   }

@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 class PolygonExtractor(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        self.project_root = project_root
         worker_config = config.get('polygon_extractor', {})
         self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
@@ -34,7 +33,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # 1. Recopilar Bounding Boxes y IDs
             poly_ids_order = list(polygons.keys())
-            all_bboxes = np.array([polygons[pid].geometry.bounding_box for pid in poly_ids_order], dtype=np.int16)
+            all_bboxes = np.array([polygons[pid].geometry.bounding_box for pid in poly_ids_order], dtype=np.int32)
 
             if all_bboxes.size < 1:
                 logger.warning("PolygonExtractor: No hay bboxes válidos para procesar.")
@@ -84,9 +83,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 new_id = f"poly_{new_poly_idx:04d}"
                 
                 # Actualizar geometría con las nuevas coordenadas (con padding)
-                new_bbox = np.array([crop_x1, crop_y1, crop_x2, crop_y2])
                 original_poly = polygons[old_poly_id]
-                new_geometry = dataclasses.replace(original_poly.geometry, bounding_box=new_bbox)
+                original_bbox = original_poly.geometry.bounding_box
+                new_geometry = dataclasses.replace(original_poly.geometry, bounding_box=original_bbox)
 
                 # Crear el nuevo objeto Polygons actualizado y añadirlo al diccionario final
                 new_polygons[new_id] = dataclasses.replace(

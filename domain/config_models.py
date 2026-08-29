@@ -109,7 +109,6 @@ class WordFinderConfig(ConfigWithNumpy):
     char_ngrams: List[int]
     threshold_similarity: float
     global_filter_threshold: float
-    # forb_match: float
     window_flexibility: int
     pkl_path: str
     matrix_path: str
@@ -222,16 +221,12 @@ class CosineSimilarity(ConfigWithNumpy):
     emergency_threshold: float
     min_internal_sim: float
 
-class MathMaxConfig(ConfigWithNumpy):
-    row_tol: str
-
 class DataCollector(ConfigWithNumpy):
     placeholder: str
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
     cos_sim: CosineSimilarity
-    math_max: MathMaxConfig
     table_structurer: TableStructurer
     collector: DataCollector
     

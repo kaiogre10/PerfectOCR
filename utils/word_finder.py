@@ -412,11 +412,7 @@ class WordFinder:
                 # logger.info(f"N{n}:\n"f"{all_kf_idx}\n"f"NEW: {self.all_kf_idx[:n]}")
                 no_match_kf_idx = np.setdiff1d(self.all_kf_idx[:n], matches_mask, assume_unique=True)
 
-                total_sims, sims_sum = self.get_sparse_cross_stats(
-                    n=n,
-                    row_indices=no_match_indices,
-                    col_indices=no_match_kf_idx
-                )
+                total_sims, sims_sum = self.get_sparse_cross_stats(n=n, row_indices=no_match_indices, col_indices=no_match_kf_idx)
                 sims_left = num_input - num_match
 
                 if total_sims < 1 or sims_left < 1 or (sims_left - total_sims) < 1:

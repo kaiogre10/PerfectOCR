@@ -379,3 +379,9 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Option
 def is_binarized(img: np.ndarray[Any, Any]) -> bool:
     """True si es una imagen binarizada"""
     return bool(np.all((img == 0) | (img == 255)))
+
+def configure_kernel(x: int, y: int):
+    return cv2.getStructuringElement(cv2.MORPH_CROSS, (x, y))
+
+def morph_operations(img: np.ndarray[Any, Any], kernel: Any, iterations: int) -> np.ndarray[Any, Any]:
+    return make_contiguous(cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations))

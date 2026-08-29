@@ -12,7 +12,7 @@ from core.assets.patterns import extension_suffix
 _extension_suffix = extension_suffix
 PROJECT_ROOT: str = ""
 output_paths: List[str] = []
-valid_img_ext: Tuple[str, ...] = (".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2")
+valid_img_ext = frozenset([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2"])
 invalid_extensions: List[str] = [".txt", ".webp"]
 trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".c", ".log", ".prof")
 cache_dirs = ["__pycache__", ".pytest_cache", "build"]
@@ -259,7 +259,7 @@ def count_and_plan(config: Dict[str, Any]) -> List[str]:
 
 def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
     """Devuelve todos los archivos que haya en un directorio si son una extensión válida, si no se entrega lista de archivos devuelve todo los archivos del directorio"""
-    files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if file.endswith(valid_img_ext)]
+    files_name_dir = [file for _, _, files in os.walk(input_path) for file in files if os.path.splitext(file)[1] in valid_img_ext]
     if not files_name_dir:
         return []
     if not files_to_find:

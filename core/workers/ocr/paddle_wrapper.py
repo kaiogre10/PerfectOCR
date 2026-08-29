@@ -26,7 +26,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
     )
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        # self.project_root = project_root
         worker_config = config.get("paddle_wrapper", {})
         self.min_confidence = worker_config.get("min_confidence")
         self.output = config.get("ocr_raw")
@@ -67,7 +66,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         """Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead."""
         if self.engine is None:
             return {}
-        time0 = time.perf_counter()
+        # time0 = time.perf_counter()
         try:
             polygons = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
@@ -87,7 +86,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
             for idx, (text, confidence) in enumerate(batch_result[0]):
-                if not text or not validate_text(text):
+                if not text:
                     deleted.append([polygon_ids[idx], text])
                     if self.del_output_log:
                         logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
@@ -98,9 +97,10 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     if self.del_output_log:
                         logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} | '{text}' | '{(confidence*100.0):.4f}%' ")
                     continue
+                
                 else:
-                    norm_text = normalice_text(text, True)
-                    if not norm_text:
+                    norm_text = normalice_text(text)
+                    if not norm_text or not validate_text(text):
                         if self.del_output_log:
                             logger.info(f"OCR FILTRO: {polygon_ids[idx]}: '{text}' -> '{norm_text}', CONF: {confidence*100.0} %")
                         continue

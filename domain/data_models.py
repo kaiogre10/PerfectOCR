@@ -10,9 +10,9 @@ class CroppedImage:
             
 @dataclass(slots=True)
 class Geometry:
-    polygon_coords: np.ndarray[Any, np.dtype[np.int32]]  # shape: (n_points, 1, 4)
-    bounding_box: np.ndarray[Any, np.dtype[np.float32]]    # shape: (4,)
-    centroid: np.ndarray[Any, np.dtype[np.float32]]       # shape: (2,)
+    polygon_coords: List[int]  # shape: (n_points, 1, 4)
+    bounding_box: List[float]    # shape: (4,)
+    centroid: List[float]
 
 @dataclass(slots=True)
 class Polygons:
@@ -46,7 +46,7 @@ class AllLines:
 @dataclass(slots=True)
 class Metadata:
     image_name: str
-    date_creation: str
+    fecha_captura: str
     dpi: Optional[int]
     img_dims: Tuple[int, int]
     binary: bool

@@ -1,7 +1,8 @@
 # core/workers/vectorial_transformation/geometric_table_structurer.py
 import logging
 import time
-import pandas as pd #type: ignore
+import numpy as np
+import pandas as pd # type: ignore
 from typing import List, Dict, Any, Tuple, cast
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_models import Polygons, AllLines
@@ -71,6 +72,10 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     context["df_copy"] = df_copy
                     context["complete"] = False
                     context["text_col_temp"] = []
+                    rows_idx = np.arange(df.shape[0], dtype=np.uint8)
+                    cols_idx = np.arange(df.shape[1], dtype=np.uint8)
+                    context["rows_idx"] = rows_idx
+                    context["cols_idx"] = cols_idx
                     logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     if self.output:
                         file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
@@ -108,7 +113,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # Si tenemos suficientes polígonos, usar directamente sus centroides
             if num_polys >= target_columns:
                 for _, poly_data in header_polys[:target_columns]:
-                    centroid = poly_data.geometry.centroid.tolist()
+                    centroid = poly_data.geometry.centroid
                     header_centroids.append(centroid)
             else:
                 # Necesitamos subdivider los polígonos
@@ -501,9 +506,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
         for cell in row_cells[:H]:
             cell_words = cell['words']
-            text = " ".join(
-                [str(elem.get('ocr_text', '')).strip() for elem in cell_words if elem.get('ocr_text')]
-            ).strip()
+            text = " ".join([elem.get('ocr_text', '') for elem in cell_words if elem.get('ocr_text')]).strip()
 
             polygon_ids: List[str] = []
             semantic_values: List[int] = []
@@ -593,12 +596,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         for row in table_matrix:
             row_values: List[str] = []
             row_copy_values: List[List[str]] = []
-
+            row_len = len(row)
             for col_idx in range(width):
                 text_val = ""
                 poly_ids: List[str] = []
-                if col_idx < len(row):
-                    text_val = str(row[col_idx].get("text", "") or "")
+                if col_idx < row_len:
+                    text_val = row[col_idx].get("text", "")
                     poly_ids = row[col_idx]["polygon_ids"]
 
                 row_values.append(text_val)

@@ -3,10 +3,9 @@ import os
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from functools import cached_property
 from services.log_service import log_active_areas, log_simple, basic_exc_logger
-from decimal import Decimal
+from utils.image_utils import configure_kernel
 from services.system_service import get_so
 from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS, IMGPREP_KEY, PREPRO_KEY, OCR_KEY, VECT_KEY
-import cv2
 
 _kf_range = KF_RANGE
 _sc_range = SC_RANGE
@@ -248,7 +247,7 @@ class ConfigValidator:
             "kf_idx": os.path.join(wf_path, kf_idx_name),
             "pkl_path": os.path.join(wf_path, pkl_path_name),
             "index_dict": os.path.join(wf_path, index_dict),
-            "train_data": os.path.join(self.project_root, "core", "assets", "data.npy"),
+            # "train_data": os.path.join(self.project_root, "core", "assets", "data.npy"),
             "matrix_folder": os.path.join(wf_path, matrix_path),
             "kf_folder": os.path.join(wf_path, kf_path),
             "test_wf_model": self.test_wf_model,
@@ -312,7 +311,7 @@ class ConfigValidator:
         ink_enh = _img_prep_config.get("ink_enhancement", {})
         
         morph_kernel = geometry_detect["morph_kernel"]
-        _img_prep_config["geometry_detect"]["morph_kernel"] = cv2.getStructuringElement(cv2.MORPH_CROSS, (morph_kernel[0], morph_kernel[1]))
+        _img_prep_config["geometry_detect"]["morph_kernel"] = configure_kernel(morph_kernel[0], morph_kernel[1])
         _img_prep_config["angle_corrector"]["white"] = ink_enh["white"]
         return _img_prep_config
     
@@ -356,29 +355,15 @@ class ConfigValidator:
     
     @cached_property
     def _vectorization_config(self) -> Dict[str, Any]:
-        _vectorization_config = self.modules_config.get("vectorization", {})
+        _vectorization_config: Dict[str, Any] = self.modules_config.get("vectorization", {})
         collector = _vectorization_config.get("collector", {})
         placeholder = collector.get("placeholder")
         if not placeholder or not isinstance(placeholder, str) or len(placeholder) !=1 or not placeholder.isascii() or placeholder.isalnum() or placeholder.isspace():
             basic_exc_logger(f"NO HAY SEPARADOR VÁLIDO")
             return {}            
         
-        math_max = _vectorization_config.get("math_max", {})
-        row_tol = math_max.get("row_tol", "")
-        if not isinstance(row_tol, str):
-            if not isinstance(row_tol, float):
-                del self.modules_config["vectorization"]
-                basic_exc_logger(f"ERROR TYPO DESCONOCIDO: {row_tol}")
-                return {}
-            
-            basic_exc_logger(f"REVISAR CONFIGURACIÓN SE ENCONTRÓ: {type(row_tol)}, DEBERÍA SER STRING")
-            row_tol = str(row_tol)
-        
         all_cols_name = self.payload_request["payload_cols"]
-        _vectorization_config["math_max"]["row_tol"] = Decimal(row_tol)
-        _vectorization_config["math_max"]["columns"] = all_cols_name[:4]
-        _vectorization_config["math_max"]["dec_cols_name"] = frozenset(all_cols_name[:3])
-        _vectorization_config["collector"]["cols_name"] = all_cols_name
+        _vectorization_config["math_max"] = {"dec_cols_name": frozenset(all_cols_name[:3])}
         
         return _vectorization_config
     

@@ -6,6 +6,7 @@ from domain.data_formatter import DataFormatter
 from domain.data_models import Polygons, Geometry
 from domain.abstract_worker import OCRAbstractWorker
 from utils.math_utils import fragment_geometry_horizontal
+from utils.compiled_utils.compiled_funcs import space_removal, validate_text
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,7 @@ class Fragmenter(OCRAbstractWorker):
         current_tokens: List[str] = []
         current_scs: List[int] = []
         current_cls: int | None = None
+        
         for _, (token, cls) in enumerate(zip(parts, sc)):
             if cls in (1, 2):
                 # Si la clase cambia o es la primera, cerrar fragmento anterior
@@ -144,7 +146,8 @@ class Fragmenter(OCRAbstractWorker):
             fragments.append((current_tokens, current_scs))
         
         # Si solo hay un fragmento, no hace falta dividir
-        if len(fragments) <= 1:
+        total_fragments = len(fragments)
+        if total_fragments <= 1:
             return [polygon]
 
         # Longitud en caracteres de cada fragmento (para proporción)
@@ -156,17 +159,22 @@ class Fragmenter(OCRAbstractWorker):
         
         new_polys: List[Polygons] = []
         proportions = [float(frag_len) / float(total_chars) for frag_len in frag_char_lengths]
-        geom_parts = fragment_geometry_horizontal(polygon.geometry, num_fragments=len(fragments), proportions=proportions)
+        geom_parts = fragment_geometry_horizontal(polygon.geometry, num_fragments = total_fragments, proportions=proportions)
         if not geom_parts:
             return [polygon]
             
         for (frag_tokens, frag_scs), geom_part in zip(fragments, geom_parts):
+            frag_text = space_removal(' '.join(frag_tokens))
+
+            if not validate_text(frag_text):
+                continue
+            
             new_geom = Geometry(
                 polygon_coords=geom_part["polygon_coords"],
                 bounding_box=geom_part["bounding_box"],
                 centroid=geom_part["centroid"],
             )
-            frag_text = ' '.join(frag_tokens)
+            
             new_poly = dataclasses.replace(
                 polygon,
                 geometry=new_geom,
