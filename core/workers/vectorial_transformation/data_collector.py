@@ -9,27 +9,15 @@ from core.assets.patterns import umd_patterns
 from utils.math_utils import validate_df
 from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table
-from core.assets.assets import CONVERSION_KF, CANTIDAD_ART, PRECIO_UNITARIO, COSTO_TRAN, PRODUCT_NORM, ID_PROVEEDOR, ID_CLIENTE, NOMBRE_CLIENTE, GIRO, PROVEEDOR_NORM, FECHA_CAPTURA, ART_CAL, TOTAL_CAL, ID_REGISTRO
+from core.assets.assets import CONVERSION_KF
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
+from domain.class_models import SemantiClass, KeyField, DataKeys
 
 logger = logging.getLogger(__name__)
 
 _umd_patterns = umd_patterns
 conversion_kf = CONVERSION_KF
-_cant_name = CANTIDAD_ART
-_pu_name = PRECIO_UNITARIO
-_mtl_name = COSTO_TRAN
-_product_name = PRODUCT_NORM
-_id_proveedor = ID_PROVEEDOR
-_id_cliente= ID_CLIENTE
-_nombre_cliente = NOMBRE_CLIENTE
-_giro = GIRO
-_proveedor_norm = PROVEEDOR_NORM
-_fecha_captura = FECHA_CAPTURA
-_total_cal = TOTAL_CAL
-_art_cal = ART_CAL
-_id_registro = ID_REGISTRO
 
 class FinalStructurer(VectorizationAbstractWorker):
     """"Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db."""
@@ -91,45 +79,45 @@ class FinalStructurer(VectorizationAbstractWorker):
                 if not kf:
                     continue
 
-                if kf not in (5, 6):  # Excluir KeyFields innecesarios
-                    if kf == 7:  # RFCProveedor
+                if kf != KeyField.header.value:  # Excluir KeyFields innecesarios
+                    if kf == KeyField.rfc_prov.value:  # RFCProveedor
                         value = get_rfc(value)
 
-                    elif kf in (1, 2):
+                    elif kf in (KeyField.total_doc.value, KeyField.total_art.value):
                         value = format_cuant(value)
                     # Mapear el código numérico al nombre del campo
                     field_name = kf_map_inv.get(kf)
                     if field_name is not None:
                         db_values[field_name] = value  # 'MontoTotalDocumento': '1024.12'
         
-        id_prov = get_ids(image_name, "prov")
+        id_prov = get_ids(image_name, DataKeys.id_proveedor.value)
 
         db_values.update(totals)
         db_values["image_name"] = image_name
-        db_values[_id_proveedor] = id_prov
-        db_values[_id_cliente] = 1
-        db_values[_nombre_cliente] = "cliente_demo"
-        db_values[_giro] = "giro_demo"
-        db_values[_proveedor_norm] = f"proveedor_demo_{id_prov}"
-        db_values[_fecha_captura] = date_creation
+        db_values[DataKeys.id_proveedor.value] = id_prov
+        db_values[DataKeys.id_cliente.value] = 1
+        db_values[DataKeys.nombre_cliente.value] = "cliente_demo"
+        db_values[DataKeys.giro.value] = "giro_demo"
+        db_values[DataKeys.proveedor_norm.value] = f"proveedor_demo_{id_prov}"
+        db_values[DataKeys.fecha_captura.value] = date_creation
 
         # logger.info(f"{db_values}")
         manager.reset_data()
         return (df, image_name)
     
     def standarice_df(self, df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
-        mtl_col = df[_mtl_name]
-        c_col = df[_cant_name]
-        pu_col = df[_pu_name]
-        product_col = df[_product_name]
+        mtl_col = df[DataKeys.costo_tran.value]
+        c_col = df[DataKeys.cantidad_art.value]
+        pu_col = df[DataKeys.precio_unitario.value]
+        product_col = df[DataKeys.product_norm.value]
         df = pd.concat([c_col, product_col, pu_col, mtl_col], axis=1)
         df = self.clean_df(df, manager)
         idx = manager.workflow.IDRegistro if manager.workflow else ""
         if df.empty or not idx:
             return (pd.DataFrame(), {})
 
-        mtl_col = df[_mtl_name]
-        c_col = df[_cant_name]
+        mtl_col = df[DataKeys.costo_tran.value]
+        c_col = df[DataKeys.cantidad_art.value]
         try:
             mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
             c_col_dec = c_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
@@ -140,15 +128,15 @@ class FinalStructurer(VectorizationAbstractWorker):
             logger.error(f"Numeros deciales con ruido: '{e}'")
             raise
 
-        totals = {_art_cal: str(total_prod), _total_cal: str(total_total), _id_registro: idx}
+        totals = {DataKeys.art_cal.value: str(total_prod), DataKeys.total_cal.value: str(total_total), DataKeys.id_registro.value: idx}
         
-        # df.insert(loc=0, column=self.id_registro, value=idx, allow_duplicates=True)
+        df.insert(loc=0, column=DataKeys.id_registro.value, value=idx, allow_duplicates=True)
         df = df.reset_index(drop=True)
         return df, totals
     
     def clean_df(self, df: pd.DataFrame, manager: DataFormatter) -> pd.DataFrame:
-        pro_idx = df.columns.get_loc(_product_name) if _product_name in df.columns else None # type: ignore
-        c_idx = df.columns.get_loc(_cant_name) if _cant_name in df.columns else None # type: ignore
+        pro_idx = df.columns.get_loc(DataKeys.product_norm.value) if DataKeys.product_norm.value in df.columns else None # type: ignore
+        c_idx = df.columns.get_loc(DataKeys.cantidad_art.value) if DataKeys.cantidad_art.value in df.columns else None # type: ignore
         if not manager or not manager.workflow:
             return pd.DataFrame()
         
@@ -217,12 +205,12 @@ class FinalStructurer(VectorizationAbstractWorker):
                         sc, _ = fast_classfier(concat_p_text)
                         po = sc[0]
                         pm = sc[1]   # Texto solitario
-                        if po == 4 or pm == 4:
+                        if po == SemantiClass.QUANTITATIVE or pm == SemantiClass.QUANTITATIVE:
                             continue
-                        if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == 2 and pm == 5):
+                        if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == SemantiClass.UMD and pm == SemantiClass.NUMERIC):
                             df.iat[i, pro_idx] = (orig_p_value + concat_val)
 
-        if validate_df(df, _cant_name, _pu_name, _mtl_name):
+        if validate_df(df):
             df = df.map(lambda x: noramalize_df(x, self.placeholder)) # type: ignore
             logger.debug(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
             return df

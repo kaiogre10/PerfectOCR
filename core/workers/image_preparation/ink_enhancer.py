@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import make_contiguous, get_contours_values
-from utils.math_utils import soft_histogram, h_density_cluster
+from utils.math_utils import soft_histogram
 from services.output_service import save_shapes
 
 logger = logging.getLogger(__name__)

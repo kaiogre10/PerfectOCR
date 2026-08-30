@@ -5,12 +5,13 @@ import time
 import pandas as pd
 from decimal import Decimal, InvalidOperation
 from typing import List, Any, Optional, Tuple, Dict, Sequence
-from sklearn.cluster import HDBSCAN, DBSCAN # type: ignore
+from sklearn.cluster import DBSCAN
 from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF
+from domain.class_models import SemantiClass, DataKeys
 
 dummie_vect = VECTOR_DUMMIE
 density_encoder = DENSITY_ENCODER
-cuant_char = CUANT_CHAR
+_cuant_char = CUANT_CHAR
 _ref_vec = VECT_REF
 
 logger = logging.getLogger(__name__)
@@ -24,17 +25,25 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
     if not other_c:
         return 1.0
     
-    ref_point = np.array([ref_c[0], 0.0])
+    ref_point = np.asarray([ref_c[0], 0.0], dtype=np.float32)
     vec_to_other = np.asarray([other_c[0] - ref_point[0], other_c[1] - ref_point[1]], dtype=np.float32)
     
     if np.linalg.norm(vec_to_other) == 0.0:
         return 1.0
     
-    cosine = np.dot(vec_to_other, _ref_vec) / (np.linalg.norm(vec_to_other) * np.linalg.norm(_ref_vec))
-    return 1.0 - abs(float(cosine))
+    cosine = np.dot(vec_to_other, _ref_vec) / (np.linalg.norm(vec_to_other))
+    return 1.0 - abs(cosine)
 
 def get_morphological_encode(text: str) -> float:
-    return sum(map(lambda ch: 1.0 if ch in cuant_char else -1.0 if ch.isalpha() else 0.0, text))
+    counter = 0.0
+    for ch in text:
+        if ch.isalpha():
+            counter -= 1
+        elif ch in _cuant_char:
+            counter += 1
+
+    return counter if counter != 0.0 else 1.2802318e-03
+    # return sum(map(lambda ch: 1.0 if ch in _cuant_char else -1.0 if ch.isalpha() else 0.0, text))
 
 def encode_text(text: str, encoder: Dict[str, float]) -> float:
     return sum([encoder.get(char, " ") for char in text])
@@ -42,10 +51,8 @@ def encode_text(text: str, encoder: Dict[str, float]) -> float:
 def text_encode(text: str, txt_size: int) -> Tuple[float, float]:
     dense = encode_text(text, density_encoder)
     morph = get_morphological_encode(text)
-    dense_mean = dense / txt_size
     morph_mean = morph / txt_size
-    # frec = encode_text(text, REL_FRECUENCY_CHAR)
-    # encoders = np.column_stack([dense, morph])
+    dense_mean = dense / txt_size
     return dense_mean, morph_mean
 
 def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarray[Any, np.dtype[np.float32]]:
@@ -70,8 +77,9 @@ def mean_cosine_per_row(s: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarray[
 
 def euclidean_distance(point1: List[float], point2: List[float]):
     """Calcula la distancia euclidiana entre dos puntos en ℝ²."""
-    if len(point1) != 2 or point1 != point2:
+    if point1 != point2 or len(point1) != 2:
         return 0.0
+    
     return np.linalg.norm(np.subtract(point1, point2, dtype=np.float32))
         
 def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
@@ -94,7 +102,7 @@ def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
         
         # logger.info(f"HIST iteración {iteration}: {hist}, elementos: {current_count}")
 
-        hist_rever = hist[::-1].astype(np.int16)
+        hist_rever = hist[::-1].astype(np.int32)
         cutting = np.where(hist_rever > 1)[0]
         idx_orig = hist.size - 1 - cutting[0] if cutting.size > 0 else -1
         outliers_indx = np.nonzero(hist == 1)[0]
@@ -129,9 +137,9 @@ def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float,
     clustering = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
     return np.asarray(clustering.fit_predict(features), np.int16)
 
-def h_density_cluster(h_features: np.ndarray[Any, np.dtype[np.float32]], h_min_samples: int, h_metric: str) -> np.ndarray[Any, np.dtype[np.int16]]:
-    h_clustering = HDBSCAN(min_samples=h_min_samples, metric=h_metric)
-    return np.asarray(h_clustering.fit_predict(h_features), np.int16)
+# def h_density_cluster(h_features: np.ndarray[Any, np.dtype[np.float32]], h_min_samples: int, h_metric: str) -> np.ndarray[Any, np.dtype[np.int16]]:
+#     h_clustering = HDBSCAN(min_samples=h_min_samples, metric=h_metric)
+#     return np.asarray(h_clustering.fit_predict(h_features), np.int16)
     
 def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions: Optional[Sequence[float]] = None) -> List[Dict[str, np.ndarray[Any, Any]]]:
     """
@@ -165,7 +173,7 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
         if len(proportions) != num_fragments:
             return []
         props = np.asarray(list(proportions), dtype=np.float32)
-        total = float(np.sum(props))
+        total = np.sum(props, dtype=np.float32)
         if total <= 0:
             return []
         props = props / total
@@ -177,9 +185,9 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
         frag_width = float(props[i]) * width
         new_xmax = xmax if i == (num_fragments - 1) else (current_x + frag_width)
 
-        new_bbox = np.array([current_x, ymin, new_xmax, ymax], dtype=np.float32)
-        new_centroid = np.array([(current_x + new_xmax) / 2.0, (ymin + ymax) / 2.0], dtype=np.float32)
-        new_coords = np.array(
+        new_bbox = np.asarray([current_x, ymin, new_xmax, ymax], dtype=np.float32)
+        new_centroid = np.asarray([(current_x + new_xmax) / 2.0, (ymin + ymax) / 2.0], dtype=np.float32)
+        new_coords = np.asarray(
             [
                 [new_bbox[0], new_bbox[1]],
                 [new_bbox[2], new_bbox[1]],
@@ -215,7 +223,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     total_height = img_dims[0] or 0.0
     total_size = total_width * total_height
     
-    line_id = np.array([lid.line_index for lid in sorted_lines])
+    line_id = np.asarray([lid.line_index for lid in sorted_lines], dtype=np.float32)
     geometry = [lid.line_geometry for lid in sorted_lines]
     all_bboxes = np.asarray([geo.line_bbox for geo in geometry], np.float32)
     x, y, w, h = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
@@ -268,18 +276,18 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     angle_inv = safe_div(angle, global_stats[:, 13])
     diag_norm = safe_div(diagonal, global_stats[:, 5])
     
-    compact = safe_div((perimeter ** 2), area) / 100.0
+    compact = safe_div((perimeter ** 2.0), area) / 100.0
     
-    cw: float = (total_width / 2.0)  # centro horizontal de la imagen
-    ch: float = (total_height / 2.0)  # centro vertical de la imagen
+    cw = (total_width / 2.0)
+    ch = (total_height / 2.0)
     main_centroid = np.tile([cw, ch], (line_id.shape[0], 1))
 
     # Coordenadas prev/next mediante slicing con padding NaN
     centroids = np.asarray([geo.line_centroid for geo in geometry], np.float32)
-    prev_bboxes = np.vstack([np.full((1, 4), np.nan), all_bboxes[:-1]])
-    next_bboxes = np.vstack([all_bboxes[1:], np.full((1, 4), np.nan)])
-    prev_centroids = np.vstack([np.full((1, 2), np.nan), centroids[:-1]])
-    next_centroids = np.vstack([centroids[1:], np.full((1, 2), np.nan)])
+    prev_bboxes = np.vstack([np.full((1, 4), np.nan, dtype=np.float32), all_bboxes[:-1]])
+    next_bboxes = np.vstack([all_bboxes[1:], np.full((1, 4), np.nan, dtype=np.float32)])
+    prev_centroids = np.vstack([np.full((1, 2), np.nan, dtype=np.float32), centroids[:-1]])
+    next_centroids = np.vstack([centroids[1:], np.full((1, 2), np.nan, dtype=np.float32)])
 
     # Coordenadas xmin/xmax actuales
     current_xmin = x
@@ -402,7 +410,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
                 poly = polygons_dict[pid_str]
                 kf: Optional[List[int]] = poly.key_field
                 if kf is None:
-                    sc: List[int] = polygons_dict[pid_str].semantic_clasification
+                    sc: List[int] = poly.semantic_clasification
                     sc_quant_count += count_quantitative_tokens(sc)
                 else:
                     kf_total += len(kf)
@@ -456,12 +464,13 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     #            "\n"f"{textual_df.to_string(index=True)}")
     return textual_features
 
-def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
+# @njit(cache=True)
+def count_quantitative_tokens(values: List[int]) -> int:
     count = 0
-    for x in semantic_clasification:
-        if x == 0 or x == 3 or x == 5:
+    for x in values:
+        if x == SemantiClass.DESCRIPTIVE or x == SemantiClass.CODE or x == SemantiClass.NUMERIC:
             continue
-        if x == 2 or x == 4:
+        if x == SemantiClass.UMD or x == SemantiClass.QUANTITATIVE:
             count += 1
         else:
             return 0
@@ -479,7 +488,7 @@ def count_quantitative_tokens(semantic_clasification: List[int]) -> int:
 #         logger.info(f"ERROR CONVIRTIENDO: '{amount_str}'")
 #         return amount_str
     
-def validate_df(df: pd.DataFrame, cant_name: str, pu_name: str, mtl_name: str) -> bool:
+def validate_df(df: pd.DataFrame) -> bool:
     """Valida que no haya filas vacias, strings válidos y correctamente distribuidos"""
     if df.empty:
         logger.error("DF vacio")
@@ -489,9 +498,9 @@ def validate_df(df: pd.DataFrame, cant_name: str, pu_name: str, mtl_name: str) -
         return False
     else:
         try:
-            mtl_col = df[mtl_name]
-            c_col = df[cant_name]
-            pu_col = df[pu_name]
+            mtl_col = df[DataKeys.costo_tran.value]
+            c_col = df[DataKeys.cantidad_art.value]
+            pu_col = df[DataKeys.precio_unitario.value]
         except TypeError as e:
             logger.error(f"ERROR OBTENIENDO COLUMNAS: {e}")
             return False

@@ -6,6 +6,7 @@ from utils.math_utils import text_encode
 from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
 from core.assets.assets import VOWELS, REPLACEMENT_MAP, DENSITY_RANGE, MORPH_RANGE
 from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
+from domain.class_models import SemantiClass, KeyField, DataKeys
 
 logger = logging.getLogger(__name__)
 
@@ -200,31 +201,31 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
 
     if not activate_func[0] and bool(_date_patterns.search(s)):
         activate_func[0] = True
-        return 9
+        return KeyField.date_doc.value
 
     if not activate_func[1] and bool(_rfc_patterns.search(s)):
         activate_func[1] = True
-        return 7
+        return KeyField.rfc_prov.value
 
     if not activate_func[2] and bool(_iva_patterns.search(s)):
         activate_func[2] = True
-        return 8
+        return KeyField.monto_iva.value
 
     if not activate_func[3] and bool(_phone_number.search(s)):
         activate_func[3] = True
-        return 10
+        return KeyField.telefonop.value
 
     if not activate_func[4] and bool(_mail_pattern.search(s)):
         activate_func[4] = True
-        return 11
+        return KeyField.correop.value
 
     if not activate_func[5] and bool(_acromin_currency_pattern.search(s)):
         activate_func[5] = True
-        return 0
+        return SemantiClass.UNIQUE
     
     if not activate_func[6] and bool(_cp_pattern.search(s)):
         activate_func[6] = True
-        return 12
+        return KeyField.direcciónp.value
     return None
 
 def validate_quant_pattern(text: str) -> bool:
@@ -380,13 +381,13 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
         s = polygon.ocr_text or ""
         s = s.strip()
         if not s:
-            final_results[pid] = ([-1], 0)
+            final_results[pid] = ([SemantiClass.NOISE], 0)
             # #  logger.info(f"VACIO 1ro: '{s}'")
             continue
 
-        if polygon.key_field is not None and 0 in polygon.semantic_clasification:
+        if polygon.key_field is not None and SemantiClass.UNIQUE in polygon.semantic_clasification:
             # logger.info(f"Poligono {pid} con {polygon.key_field} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
-            final_results[pid] = ([0], 0)
+            final_results[pid] = ([SemantiClass.UNIQUE], 0)
             continue
         
         tokens = s.split(" ")
@@ -415,123 +416,123 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
     total_cuant = count_cuants(s)
     if not s:
         #  logger.info(f"VACIO 3RO: {s}")
-        return (-1, 0)
+        return (SemantiClass.NOISE, 0)
         
     elif not any(c.isalnum() for c in s):
         #  logger.info(f"INVÁLIDO 1: '{s}'")
-        return (-1, 0)
+        return (SemantiClass.NOISE, 0)
         
     elif s.isalpha():
         if bool(_size_pattern.search(s)):
-            return (2, 0)
+            return (SemantiClass.UMD, 0)
         #  logger.info(f"ALPHA 1ro: '{s}'")
         else:
-            return (1, 0)
+            return (SemantiClass.DESCRIPTIVE, 0)
     
     elif s.isdecimal():
         if bool(_numeric_code.fullmatch(s)):
-            return (3, total_cuant)
+            return (SemantiClass.CODE, total_cuant)
         else:
-            return (5, total_text)
+            return (SemantiClass.NUMERIC, total_cuant)
     
     if total_cuant == 0:
         if not any(c.isalpha() for c in s):
-            return (-1, 0)
+            return (SemantiClass.NOISE, 0)
         
         elif bool(_fraction_pattern.search(s)):
             # logger.info(f"UMD por regex: '{s}'")
-            return (2, 0)
+            return (SemantiClass.UMD, 0)
 
         elif is_acronym(s):
             if bool(_acromin_currency_pattern.search(s)):
                 # logger.info(f"ACRONIMO DEC: '{s}'")
-                return (0, 0)
+                return (SemantiClass.UNIQUE, 0)
             else:
-                return (1, 0)
+                return (SemantiClass.DESCRIPTIVE, 0)
 
         if not any(c in vowels for c in s):
             if _cant_frac_pattern.search(s):
-                return (2, 0)
+                return (SemantiClass.UMD, 0)
 
             elif 2 < total_text:
-                return (3, 0)
+                return (SemantiClass.CODE, 0)
             
         # logger.info(f"DESC por sobrante: '{s}'")
-        return (1, 0)
+        return (SemantiClass.DESCRIPTIVE, 0)
 
     elif total_cuant == total_text:
         if total_text < 3:
             if s == "0":
                 # #  logger.info(f"NUMERIC 0: '{s}'")
-                return (5, total_cuant)
+                return (SemantiClass.NUMERIC, total_cuant)
             else:
                 #  logger.info(f"CODE CONSOLACIÓN: '{s}'")
-                return (3, total_cuant)
+                return (SemantiClass.CODE, total_cuant)
 
         elif s.startswith("0"):
             if s.isalnum():
                 # logger.info(f"CODE por inicio 0: '{s}'")
-                return (3, total_cuant)
+                return (SemantiClass.CODE, total_cuant)
                 
             elif validate_quant_pattern(s):
                 # logger.info(f"CUANT por inicio 0: '{s}'")
-                return (4, total_cuant)
+                return (SemantiClass.QUANTITATIVE, total_cuant)
             else:
                 # logger.info(f"UMD por inicio 0: '{s}'")
-                return (2, total_cuant)
+                return (SemantiClass.UMD, total_cuant)
             
         if is_quantitative(s):
             #  logger.info(f"CUANT por validacion: '{s}'")
-            return (4, total_cuant)
+            return (SemantiClass.QUANTITATIVE, total_cuant)
 
         #  logger.info(f"NUM por descarte en conteo: '{s}'")
-        return (5, total_cuant)
+        return (SemantiClass.NUMERIC, total_cuant)
     
     if contains_quantitative(s):
         #  logger.info(f"CUANT CONTENIDO: '{s}'")
-        return (4, total_cuant)
+        return (SemantiClass.QUANTITATIVE, total_cuant)
 
     elif bool(_acromin_currency_pattern.search(s)):
-        return (0, 0)
+        return (SemantiClass.UNIQUE, 0)
 
     elif contains_umd(s):
         # logger.info(f"UMD mixto: '{s}'")
-        return (2, total_cuant)
+        return (SemantiClass.UMD, total_cuant)
 
     elif is_code(s):
         # logger.info(f"CODE mixto: '{s}'")
-        return (3, total_cuant)
+        return (SemantiClass.CODE, total_cuant)
     
     # logger.info(fr"REBELDES: '{s}'")
     dense_mean, morphology_mean = text_encode(s if s.islower() else s.lower(), total_text)
     if dense_mean < _density_range[1] and morphology_mean > _morph_range[0]:
         # logger.info(f"CODE por codificacion: '{s}'")
-        return (3, total_cuant)
+        return (SemantiClass.CODE, total_cuant)
     
     elif dense_mean > _density_range[1]:
-        return (1, 0)
+        return (SemantiClass.DESCRIPTIVE, 0)
 
     if dense_mean < _density_range[0]:
         if bool(_fraction_pattern.search(s)):
             # logger.info(f"UMD por codificacion: '{s}'")
-            return (2, total_cuant)
+            return (SemantiClass.UMD, total_cuant)
 
         if not any(c in ("/", ":") for c in s) and (total_cuant / total_text) > 0.687:
             #  logger.info(f"NUM por codificacion: '{s}'")
-            return (5, total_cuant)
+            return (SemantiClass.NUMERIC, total_cuant)
         # logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
-        return (3, total_cuant)
+        return (SemantiClass.CODE, total_cuant)
         
     elif bool(_labels_pattern.fullmatch(s)):
         # logger.info(f"DESCR MARCA: '{s}")
-        return (1, 0)
+        return (SemantiClass.DESCRIPTIVE, 0)
 
     if not any(c in vowels for c in s) and total_text > 2:
         # logger.info(f"CODE por FALLBACK: '{s}'")
-        return (3, total_cuant)
+        return (SemantiClass.CODE, total_cuant)
         
     # logger.info(f"Poligono sin clasificación, será descriptiva: '{s}'")
-    return (1, 0)
+    return (SemantiClass.DESCRIPTIVE, 0)
 
 def get_ids(id_registro: str, id_need: str):
     """
@@ -540,7 +541,7 @@ def get_ids(id_registro: str, id_need: str):
     name: nombre de la imagen sin extensión
     """
     try:
-        if id_need == "prov":
+        if id_need == DataKeys.id_proveedor.value:
             matches = list(_id_prov_pattern.finditer(id_registro))
             return [match.group() for match in matches if _id_prov_pattern.fullmatch(match.group())][0]
         elif id_need =="name":
@@ -554,7 +555,7 @@ def get_ids(id_registro: str, id_need: str):
 def fast_classfier(text: str) -> Tuple[List[int], int]:
     """Clasifica un string rapidamente, no seleccionar los strings antes de llamar a la función impactará de manera negativa el output del pipeline"""
     if not text:
-        return ([-1], 0)
+        return ([SemantiClass.NOISE], 0)
     total_cuants = 0
     semantic_classes: List[int] = []
     tokens = text.split(" ")

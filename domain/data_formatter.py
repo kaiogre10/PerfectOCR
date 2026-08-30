@@ -8,6 +8,7 @@ from utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 from services.log_service import get_caller_info
 from core.assets.assets import FECHA_CAPTURA
+from domain.class_models import SemantiClass
 
 _fecha_captura = FECHA_CAPTURA
 
@@ -89,7 +90,7 @@ class DataFormatter:
                     cropped_img=None,
                     ocr_text=None,
                     key_field=None,
-                    semantic_clasification=[1],
+                    semantic_clasification=[SemantiClass.DESCRIPTIVE],
                     cuant_chars=0
                 )
                 polygons_dataclass[poly_id] = polygon_obj
@@ -274,7 +275,7 @@ class DataFormatter:
             for poly_id, key_field in polygon_updates.items():
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
-                    updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[0], cuant_chars=0)
+                    updated_polygon = dataclasses.replace(polygon, key_field=key_field, semantic_clasification=[SemantiClass.UNIQUE], cuant_chars=0)
                     self.workflow.polygons[poly_id] = updated_polygon
                     updated_count += 1
                     

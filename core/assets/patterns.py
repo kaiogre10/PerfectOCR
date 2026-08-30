@@ -47,6 +47,7 @@ los_str = r'LOS'
 cion_search_patt = re.compile(rf"(?<=[A-Za-z]){cion_str}(?:\b|$|\s)", re.IGNORECASE)
 con_search_patt = re.compile(rf"(?:^{con_str}$|(?<=[A-Za-z]){con_str}(?:\b|$|\s))", re.IGNORECASE)
 los_search_patt = re.compile(rf"(?:^{los_str}$|(?<=[A-Za-z]){los_str}(?:\b|$|\s))", re.IGNORECASE)
+
 # Solo puede aparecer después de algún otro caracter
 _cion_typos_regex = (
     rf"(?<=[A-Za-z])"                   # Debe aparecer después de caracteres alfabéticos
@@ -152,7 +153,7 @@ c_dash_fraction_pattern = re.compile(r'(?<![A-Za-z0-9])[Cc]-\d+\b')
 
 # Detecta fracciones "naturales" tipo "1/2", "1/25", donde ambos lados (numerador y denominador) pueden tener de 1 a 3 dígitos.
 numeric_fractions = re.compile(rf'(?<!\d)(\b{_digit_pattern}{{1,2}}{_diagonal_variants}{_digit_pattern}{{1,3}})(?:$|(?=\s))')
-measure_fractions = re.compile(rf'(?<!\d\{{1,2}})\s*{_diagonal_variants}\s*[1-9]\d{{1,3}}(?:$|(?=\s))')
+measure_fractions = re.compile(rf'(?<!\d)(?<!\d{{2}})\s*{_diagonal_variants}\s*[1-9]\d{{1,3}}(?:$|(?=\s))')
 
 # Detecta cantidades con fracción que usan variantes de "C/" para unidades ("C/10", permitiendo variantes OCR en el carácter de barra y ceros sustituidos
 amount_fract = re.compile(
@@ -211,7 +212,7 @@ _multi_pattern = rf"^(?:\s*{_currency_variants}\s*{_amount_body_pattern}\s*){{2,
 _multi = re.compile(_multi_pattern, re.IGNORECASE)
 
 # Patrón: Decimales grandes tipo 1,230.50 (sin $)
-_decimal = re.compile(rf"^\d\{{1,3}}(?:{_punt_quant_chars}\d\{{3}})*{_punt_quant_chars}\d\{{2,}}$")
+_decimal = re.compile(rf"^\d{{1,3}}(?:{_punt_quant_chars}\d{{3}})*{_punt_quant_chars}\d{{2,}}$")
 
 quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start, _middle, _multi]), re.IGNORECASE)
 

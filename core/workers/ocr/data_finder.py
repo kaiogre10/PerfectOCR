@@ -1,6 +1,6 @@
 # core/workers/ocr/data_finder.py
 import time
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Set
 import logging
 import numpy as np
 from domain.abstract_worker import OCRAbstractWorker
@@ -9,6 +9,7 @@ from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
 from utils.compiled_utils import validate_text
 from core.assets.patterns import cleaner_pattern
+from domain.class_models import SemantiClass, KeyField
 
 _cleaner_pattern = cleaner_pattern
 kf_decimals = {1, 2, 3, 4, 8}
@@ -20,9 +21,8 @@ logger = logging.getLogger(__name__)
 
 class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
-        __slots__ = ("project_root", "_model")
+        __slots__ = ("_model")
         super().__init__(config, project_root)
-        self.project_root = project_root
         self._model = None
 
     @property
@@ -68,11 +68,12 @@ class DataFinder(OCRAbstractWorker):
             sc = [p.semantic_clasification for p in polygons.values()]
 
             sc_eq = np.asarray([len(set(t)) for t in sc], dtype=np.int16)
-            forb_sc = np.asarray([any(c != 1 for c in s) for s in sc], dtype=np.int16)
+            forb_sc = np.asarray([any(c != SemantiClass.DESCRIPTIVE for c in s) for s in sc], dtype=np.int16)
 
             mask_sc = (sc_eq == 1) & (forb_sc == True)
             skip_idx = np.compress(mask_sc, all_idx)
-
+            assigned_fields: Set[int] = set()
+            
             for pid, poly in polygons.items():
                 if poly.poly_index in skip_idx:
                     # logger.info(f"{pid} Omitido: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
@@ -99,14 +100,18 @@ class DataFinder(OCRAbstractWorker):
                     continue
             
                 else:
-                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text.lower().encode('ascii'))
+                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text.lower().encode('ascii'), assigned_fields)
                     if not valid_results:
                         continue
-                    
+
+                    key_fields: List[int] = [results['key_field'] for results in valid_results]
+                    assigned_fields.update(key_fields)
+
                     logger.debug(f"VALID RESULTS: {valid_results}")
                     left_overs: List[str] = []
-                    if any(k['key_field'] == 6 for k in valid_results):
-                        key_field = [results['key_field'] for results in valid_results]
+                    
+                    if any(k['key_field'] == KeyField.header.value for k in valid_results):
+                        # key_field = [results['key_field'] for results in valid_results]
 
                         full_text = valid_results[0]['norm_ocr_text']
                         covered: List[Tuple[int, int]] = []
@@ -128,7 +133,7 @@ class DataFinder(OCRAbstractWorker):
                         if tail and len(tail) > 2:
                             left_overs.append(tail)
 
-                        polygon_updates[pid] = key_field + [6] * len(left_overs)
+                        polygon_updates[pid] = key_fields + [KeyField.header.value] * len(left_overs)
                         continue
                     else:
                         key_field = valid_results[0]['key_field']

@@ -7,9 +7,7 @@ from domain.data_formatter import DataFormatter
 from utils.image_utils import decolorate, is_binarized
 from utils.file_handler import load_images
 from services.output_service import save_croped_image
-from core.assets.assets import FECHA_CAPTURA
-
-_fecha_captura = FECHA_CAPTURA
+from domain.class_models import DataKeys
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +41,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             date_creation = f"{now.strftime('%Y%m%d')}"
             metadata: Dict[str, Any] = {
                 "image_name": image_name,
-                _fecha_captura: date_creation,
+                DataKeys.fecha_captura.value: date_creation,
                 "binary": binary
             }
             

@@ -6,6 +6,7 @@ from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 from domain.data_models import Polygons
 from services.output_service import save_text_debug
+from domain.class_models import KeyField
 
 logger = logging.getLogger(__name__)
 
@@ -172,8 +173,6 @@ class LinealReconstructor(VectorizationAbstractWorker):
             line_centroid = [(current_line_bbox[0] + current_line_bbox[2]) / 2, (current_line_bbox[1] + current_line_bbox[3]) / 2] if current_line_bbox else [0, 0]
             
             line_id = f"line_{line_counter:04d}"
-            # classified = fast_classfier(joined_text)
-            # scl = [p.semantic_clasification for p in current_line_polys]
             logger.debug("\n"f"{line_id}: '{joined_text}'")
 
             lines_info[line_id] = {
@@ -213,12 +212,12 @@ class LinealReconstructor(VectorizationAbstractWorker):
                 keys = key_field 
                 polygon_index = poly.poly_index
 
-                if 6 in keys:
+                if KeyField.header.value in keys:
                     logger.debug(f"Encabezado encontrado en: {poly_id}, idx: {polygon_index}")
                     headers.append(polygon_index)
                     continue
 
-                elif any(k in (1, 2) for k in keys):
+                elif any(k in (KeyField.total_doc.value, KeyField.total_art.value) for k in keys):
                     footer.append(polygon_index)
                     logger.debug(f"Pie de tabla TOTAL MONETARIO encontrado en: {poly_id}, idx: {polygon_index}, key_field: {key_field}")
                     continue

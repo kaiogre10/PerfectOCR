@@ -5,15 +5,11 @@ from functools import cached_property
 from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from utils.image_utils import configure_kernel
 from services.system_service import get_so
-from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS, IMGPREP_KEY, PREPRO_KEY, OCR_KEY, VECT_KEY
+from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
+from domain.class_models import DataKeys, StageKeys
 
 _kf_range = KF_RANGE
 _sc_range = SC_RANGE
-
-_keyimglo = IMGPREP_KEY
-_keypre = PREPRO_KEY
-_ocrkey = OCR_KEY
-_veckey = VECT_KEY
 
 _elemental_workers = ELEMENTAL_WORKER
 _det = DET
@@ -112,10 +108,6 @@ class ConfigValidator:
     def input_paths(self) -> Dict[str, List[str]]:
         input_paths = self._input_paths
         return {} if (not input_paths["input_dirs"] and not self.deploy_mode) else input_paths
-
-    @cached_property
-    def payload_request(self) -> Dict[str, Any]:
-        return self.user_requests.get("payload_request", {})
 
     @cached_property
     def workers_order(self) -> Dict[str, List[str]]:
@@ -301,10 +293,10 @@ class ConfigValidator:
     
     @cached_property
     def _img_prep_config(self):
-        image_workers = self.workers_order[_keyimglo]
+        image_workers = self.workers_order[StageKeys.IMGPREP_KEY]
         if "polygon_extractor" in image_workers:
             if not _det in image_workers:
-                self.workers_order[_keyimglo].remove("polygon_extractor")
+                self.workers_order[StageKeys.IMGPREP_KEY].remove("polygon_extractor")
                 
         _img_prep_config = self.modules_config.get("image_preparation", {})
         geometry_detect = _img_prep_config.get("geometry_detect", {})
@@ -323,7 +315,7 @@ class ConfigValidator:
             config_module = self._img_prep_config
             enabled_outputs = self.enabled_outputs.get("image_load_outputs", {})
             config_module.update(enabled_outputs)
-            return config_module, self.workers_order[_keyimglo]
+            return config_module, self.workers_order[StageKeys.IMGPREP_KEY]
             
     @cached_property
     def preprocessing_config(self)-> Tuple[Dict[str, Any], List[str]]:
@@ -333,7 +325,7 @@ class ConfigValidator:
             config_module = self.modules_config.get("preprocessing", {})
             enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {})
             config_module.update(enabled_outputs)
-            return config_module, self.workers_order[_keypre]
+            return config_module, self.workers_order[StageKeys.PREPRO_KEY]
             
     @cached_property
     def _ocr_config(self):
@@ -351,7 +343,7 @@ class ConfigValidator:
             config_module = self._ocr_config
             config_module.update(self.logs_debug)
             config_module.update(self.enabled_outputs.get("ocr_outputs"))
-            return config_module, self.workers_order[_ocrkey]
+            return config_module, self.workers_order[StageKeys.OCR_KEY]
     
     @cached_property
     def _vectorization_config(self) -> Dict[str, Any]:
@@ -360,10 +352,9 @@ class ConfigValidator:
         placeholder = collector.get("placeholder")
         if not placeholder or not isinstance(placeholder, str) or len(placeholder) !=1 or not placeholder.isascii() or placeholder.isalnum() or placeholder.isspace():
             basic_exc_logger(f"NO HAY SEPARADOR VÁLIDO")
-            return {}            
-        
-        all_cols_name = self.payload_request["payload_cols"]
-        _vectorization_config["math_max"] = {"dec_cols_name": frozenset(all_cols_name[:3])}
+            return {}
+
+        _vectorization_config["math_max"] = {"dec_cols_name": frozenset([DataKeys.cantidad_art.value, DataKeys.precio_unitario.value, DataKeys.costo_tran.value])}
         
         return _vectorization_config
     
@@ -376,7 +367,7 @@ class ConfigValidator:
             config_module = self._vectorization_config
             enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
             config_module.update(enabled_outputs)
-            return config_module, self.workers_order[_veckey]
+            return config_module, self.workers_order[StageKeys.VECT_KEY]
         
     @cached_property
     def stagers_config(self) -> Dict[str, Tuple[Dict[str, Any], List[str]]]:
@@ -386,10 +377,10 @@ class ConfigValidator:
         de los workers leerán directamente de la memoria RAM sin ejecutar código.
         """
         return {
-            _keyimglo: self.img_prep_config,
-            _keypre: self.preprocessing_config,
-            _ocrkey: self.ocr_config,
-            _veckey: self.vectorization_config
+            StageKeys.IMGPREP_KEY: self.img_prep_config,
+            StageKeys.PREPRO_KEY: self.preprocessing_config,
+            StageKeys.OCR_KEY: self.ocr_config,
+            StageKeys.VECT_KEY: self.vectorization_config
         }
 
     @property

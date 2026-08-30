@@ -5,5 +5,6 @@ def space_removal(text: str) -> str: """
 Normaliza espacios asumiendo UTF-8/ASCII garantizado de 1 byte por carácter.
 Cero objetos intermedios. Máxima velocidad de ejecución en C.
 """
+def bspace_removal(text: bytes) -> bytes: """"""
 def ngram_similarity(a: bytes, b: bytes) -> float: """Calcula la similitud suave entre dos n-gramas."""
 def length_penalty(a: int, b: int) -> float: """Penalización simétrica por diferencia de longitud."""

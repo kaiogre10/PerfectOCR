@@ -7,6 +7,7 @@ from domain.data_models import Polygons, Geometry
 from domain.abstract_worker import OCRAbstractWorker
 from utils.math_utils import fragment_geometry_horizontal
 from utils.compiled_utils.compiled_funcs import space_removal, validate_text
+from domain.class_models import SemantiClass
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class Fragmenter(OCRAbstractWorker):
                 
                 kf = polygon.key_field or None
                 sc: List[int]= polygon.semantic_clasification
-                if kf is not None and 0 in sc:
+                if kf is not None and SemantiClass.UNIQUE in sc:
                     # logger.info(f"'{poly_id}' con KEYFIELD '{kf}' no se fragmenta: '{polygon.ocr_text}'")
                     final_polygons.append(polygon)
                     continue
@@ -78,11 +79,12 @@ class Fragmenter(OCRAbstractWorker):
             for pid, pd in poly_debug.items():
                 text = pd.ocr_text or ""
                 sc = pd.semantic_clasification
-                kf = pd.key_field or None
-                congruency = len(text.split(" ")) == len(sc)
-                if not congruency:
-                    if 0 in sc and kf is not None:
+                
+                if not (text.count(" ") + 1) == len(sc):
+                    kf = pd.key_field or None
+                    if SemantiClass.UNIQUE in sc and kf is not None:
                         continue
+                        
                     logger.warning(f"{pid} INCONGRUENTE CON SC: TEXTO: '{text}' -> SC {sc}")
                     
             return True
@@ -98,7 +100,9 @@ class Fragmenter(OCRAbstractWorker):
         - Tokens con cls=2 se agrupan entre sí
         - Otros valores (3, 4, 5) van cada uno en su propio fragmento
         """
-        text: str = polygon.ocr_text or ""
+        text = polygon.ocr_text or ""
+        text = text.strip()
+        
         if not text:
             return [polygon]
 
@@ -121,7 +125,7 @@ class Fragmenter(OCRAbstractWorker):
         current_cls: int | None = None
         
         for _, (token, cls) in enumerate(zip(parts, sc)):
-            if cls in (1, 2):
+            if cls in (SemantiClass.DESCRIPTIVE, SemantiClass.UMD):
                 # Si la clase cambia o es la primera, cerrar fragmento anterior
                 if current_cls is not None and current_cls != cls:
                     if current_tokens:

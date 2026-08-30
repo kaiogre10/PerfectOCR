@@ -9,6 +9,7 @@ from core.assets.assets import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
 from core.assets.patterns import bad_title
 from utils.compiled_utils import validate_text
 from string import ascii_lowercase, ascii_uppercase
+from domain.class_models import SemantiClass
 
 _bad_title = bad_title
 numeric_corrections = NUMERIC_CORRECTIONS
@@ -48,7 +49,7 @@ class TextCorrector(OCRAbstractWorker):
             kf = polygon.key_field
             sc = polygon.semantic_clasification
             
-            if 0 in sc and kf is not None:
+            if SemantiClass.UNIQUE in sc and kf is not None:
                 # logger.info(f"'{poly_id}' con KEYFIELD ya no se CORRIJE: '{original_text}'")
                 final_polygons[poly_id] = {"text": original_text, "sc": sc, "cuant_chars": polygon.cuant_chars}
                 continue
@@ -130,27 +131,28 @@ class TextCorrector(OCRAbstractWorker):
         if not any(c.isalnum() for c in token):
             return ""
 
-        if len(token) == 1:
-            if semantic_clasification == 1 and "0" in token:
+        token_len = len(token)
+        if token_len == 1:
+            if semantic_clasification == SemantiClass.DESCRIPTIVE and "0" in token:
                 return token.replace("0", "O")
             return token
 
         if token.isdecimal():
             return token
 
-        if semantic_clasification in (4, 5):
+        if semantic_clasification in (SemantiClass.QUANTITATIVE, SemantiClass.NUMERIC):
             return self._correct_cuants(token)
             
-        if semantic_clasification in (1, 2):
+        if semantic_clasification in (SemantiClass.DESCRIPTIVE, SemantiClass.UMD):
             if token.endswith("m1"):
                 token = token.replace("1", "l")
                 
             token = correct_subfix(token)
             
-            if semantic_clasification == 1 and "0" in token:
+            if semantic_clasification == SemantiClass.DESCRIPTIVE and "0" in token:
                 token = token.replace("0", "O")
                 
-            if len(token) > 3 and token.isalpha() and token.endswith("Q"):
+            if token_len > 3 and token.isalpha() and token.endswith("Q"):
                 token = token.replace("Q", "O")
 
             return find_umd(token)
@@ -158,7 +160,7 @@ class TextCorrector(OCRAbstractWorker):
         # if token.isalpha():
         #     token = correct_subfix(token)
         #     return token
-        if semantic_clasification == 3:
+        if semantic_clasification == SemantiClass.CODE:
             if token.endswith("O"):
                 if token.startswith("1") :
                     token = token.replace("O", "0")

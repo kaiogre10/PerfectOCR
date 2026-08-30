@@ -65,7 +65,7 @@ class MappedMatrix:
 
             row_data = data[start:end][selected]
             sim_count += int(row_data.size)
-            sim_sum += float(np.sum(row_data, dtype=np.float64))
+            sim_sum += float(np.sum(row_data, dtype=np.float32))
 
         return sim_count, sim_sum
         
@@ -206,22 +206,23 @@ class MatrixFactory:
         
         pkl_path = config.get("pkl_path", "")
         model_pkl: Dict[str, Any] = load_pickle(pkl_path, 'rb')
-        if not isinstance(model_pkl, dict):
+        if not isinstance(model_pkl, dict): # type: ignore
             raise ValueError("El pickle no tiene el formato esperado (dict).")
             
         all_ngrams: Dict[bytes, Tuple[int, Dict[int, np.ndarray[Any, np.dtype[np.uint8]]]]] = model_pkl.get("all_ngrams", {})
         
         ball_ngrams: Dict[bytes, Tuple[int, Dict[int, List[bytes]]]] = {}
         for word, word_ngrams in all_ngrams.items():
-            array_grams: Dict[int, np.ndarray[Any, np.dtype[np.uint8]]] = {}
+            array_grams: Dict[int, List[bytes]] = {}
             
             for lens, ngrams in word_ngrams[1].items():
                 total_ngrmas = ngrams.shape[0]
                 list_ngrams: List[bytes] = []
+
                 for i in range(total_ngrmas):
                     plain_ngrams = ngrams[i].tobytes()
                     list_ngrams.append(plain_ngrams)
-                    # logger.info(f"{plain_ngrams}")
+                
                 array_grams[lens] = list_ngrams
                 # array_grams[lens] = np.frombuffer(plain_ngrams, dtype=np.uint8).reshape(len(ngrams), lens)
                 

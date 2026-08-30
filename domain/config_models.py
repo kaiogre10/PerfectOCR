@@ -240,13 +240,9 @@ class InputPaths(ConfigWithNumpy):
     input_dirs: List[str]
     images_names: List[str]
     skip_names: List[str]
-
-class PayloadRequest(ConfigWithNumpy):
-    payload_cols: List[str]
     
 class UserRequests(ConfigWithNumpy):
     input_paths: InputPaths
-    payload_request: PayloadRequest
 
 class SystemSetUp(ConfigWithNumpy):
     system_params: SystemParams

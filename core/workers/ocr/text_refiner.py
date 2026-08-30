@@ -7,6 +7,7 @@ from core.workers.ocr.fragmenter import Fragmenter
 from core.workers.ocr.text_corrector import TextCorrector
 from services.output_service import save_text_debug
 from utils.text_utils import clasify_words, get_cuants, contains_quantitative, find_key_data, find_umd, contains_umd
+from domain.class_models import SemantiClass, KeyField
 import logging
 import time
 
@@ -122,19 +123,19 @@ class Refiner(OCRAbstractWorker):
             kf = pd.key_field
             if kf is None:
                 continue
-            if 9 in kf:
+            if KeyField.date_doc.value in kf:
                 state[0] = True
-            if 7 in kf:
+            if KeyField.rfc_prov.value in kf:
                 state[1] = True
-            if 8 in kf:
+            if KeyField.monto_iva.value in kf:
                 state[2] = True
-            if 10 in kf:
+            if KeyField.telefonop.value in kf:
                 state[3] = True
-            if 11 in kf:
+            if KeyField.correop.value in kf:
                 state[4] = True
-            if 0 in kf:
+            if SemantiClass.UNIQUE in kf:
                 state[5] = True
-            if 12 in kf:
+            if KeyField.direcciónp.value in kf:
                 state[6] = True
 
         polygon_updates: Dict[str, List[int]] = {}
@@ -176,7 +177,7 @@ class Refiner(OCRAbstractWorker):
                 final_polygons[poly] = {"text": text}
                 continue
 
-            if 0 in sc and kf is not None:
+            if SemantiClass.UNIQUE in sc and kf is not None:
                 final_polygons[poly] = {"text": text}
                 continue
 

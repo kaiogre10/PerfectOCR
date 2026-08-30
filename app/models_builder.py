@@ -12,12 +12,7 @@ logger = logging.getLogger(__name__)
 class ModelsBuilder:
     _instance = None
     _lock = threading.Lock()
-    __slots__ = (
-        "_detection_engine",
-        "_recognition_engine",
-        "_shared_engine",
-        "_word_finder"
-    )
+    __slots__ = ("_detection_engine", "_recognition_engine", "_shared_engine", "_word_finder")
     def __init__(self):
         try:
             if ModelsBuilder._instance is not None:

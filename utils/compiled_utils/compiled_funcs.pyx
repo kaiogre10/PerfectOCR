@@ -1,7 +1,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 from cpython.version cimport PY_MAJOR_VERSION
 from libc.stdlib cimport malloc, free
-from cpython.unicode cimport PyUnicode_FromKindAndData, PyUnicode_KIND
+from cpython.unicode cimport PyUnicode_FromKindAndData, PyUnicode_KIND, PyUnicode_AsUTF8
 
 # Acceso directo a la estructura interna de CPython para strings ASCII/CompactBytes
 cdef extern from "Python.h":
@@ -191,3 +191,64 @@ cpdef str space_removal(str text):
     
     free(buffer)
     return result
+
+cpdef bytes bspace_removal(bytes text):
+    if text is None:
+        return b""
+    cdef Py_ssize_t n = len(text)
+    if n == 0:
+        return b""
+    cdef char* s = text  # conversión directa e implícita, sin función extra
+    
+    if n == 1:
+        return b"" if s[0] == 32 else text
+    
+    cdef Py_ssize_t i = 0
+    cdef bint has_changes = False
+    cdef bint in_space = False
+    if s[0] == 32:
+        has_changes = True
+    else:
+        while i < n:
+            if s[i] == 32:
+                if in_space or (i == n - 1):
+                    has_changes = True
+                    break
+                in_space = True
+            else:
+                in_space = False
+            i += 1
+    
+    if not has_changes:
+        return text
+    
+    cdef char* buffer = <char*>malloc(n * sizeof(char))
+    if buffer == NULL:
+        raise MemoryError()
+    cdef Py_ssize_t j = 0
+    in_space = False
+    i = 0
+    while i < n:
+        if s[i] == 32:
+            if j == 0 or in_space:
+                i += 1
+                continue
+            buffer[j] = 32
+            j += 1
+            in_space = True
+        else:
+            buffer[j] = s[i]
+            j += 1
+            in_space = False
+        i += 1
+    
+    if j > 0 and buffer[j - 1] == 32:
+        j -= 1
+    if j == 0:
+        free(buffer)
+        return b""
+    
+    cdef bytes result = buffer[:j]  # construcción directa desde char*
+    free(buffer)
+    return result
+    

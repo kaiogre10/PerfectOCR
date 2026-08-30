@@ -205,7 +205,7 @@ def count_and_plan(config: Dict[str, Any]) -> List[str]:
     """
     input_paths = config['input_dirs']
     skip_names = config.get("skip_names", {})
-    names_to_find = config.get('images_names', {})
+    names_to_find: Set[str] = config['images_names']
     if not names_to_find:
         if not input_paths:
             logger.error("No se proporcionaron rutas de entrada (input_dirs)")

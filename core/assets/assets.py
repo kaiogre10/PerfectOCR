@@ -3,28 +3,6 @@ from types import MappingProxyType
 import numpy as np
 from decimal import Decimal
 
-ID_CLIENTE = "id_cliente"
-NOMBRE_CLIENTE = "nombre_cliente"
-TOTAL_DOC = "total_doc"
-TOTAL_ART = "total_art"
-TOTAL_CAL = "total_cal"
-ART_CAL = "art_cal"
-ID_PROVEEDOR = "id_proveedor"
-GIRO = "giro"
-PROVEEDOR_NORM = "proveedor_norm"
-FECHA_CAPTURA = "fecha_captura"
-RFC_PROV = "rfc_prov"
-ID_REGISTRO = "id_registro"
-FOLIO_DOC = "folio_doc"
-DATE_DOC = "date_doc"
-MONTO_IVA = "monto_iva"
-SUBTOTAL = 'subtotal'
-
-CANTIDAD_ART = "cantidad_art"
-PRECIO_UNITARIO = "precio_unitario"
-COSTO_TRAN = "costo_tran"
-PRODUCT_NORM = "produc_norm"
-
 ZEROS_CUANT = ".00"
 ZERO = "0"
 ONE = "1"
@@ -259,16 +237,6 @@ FEATURES_NAME: List[str] = [
     "has_kf"
 ]
 
-SEMATIC_TYPES_MAP: Dict[str, int] = {
-    "noise": -1, # Ruido y caracteres especiales en general
-    "unique": 0, # Clasificación que se le da a ciertos strings con características especificas, sirve como difereciador, casi no los hay
-    "descriptive": 1, # Palabras en general, siglas aquí
-    "umd": 2, # Con str cortos que suelen informar el contenido de los productos
-    "code": 3, # Códigos generales tipo SKU, de identificación, contienen letras y números. Selen ser alfanuméricos
-    "quantitative": 4, # Cantidades monetarias, sub clasificación de numericos
-    "numeric": 5, # Strings numericos refernte a cantidades generales, no confudir con "isnumeric()"
-}
-
 UMD_CORRECTIONS: Dict[str, str] = {
     "o": "0",
     "O": "0"
@@ -316,6 +284,28 @@ CUANT_CHAR: FrozenSet[str] = frozenset(CHAR_NUM.union(VALID_CUANT_CHARS))
 alone_chars: FrozenSet[str] = frozenset(["a", "e", "y", "o", "A", "E", "Y", "O"])
 VALID_ALONE_CHARS: FrozenSet[str] = frozenset(CHAR_NUM.union(alone_chars))
 
+ID_CLIENTE = "id_cliente"
+NOMBRE_CLIENTE = "nombre_cliente"
+TOTAL_DOC = "total_doc"
+TOTAL_ART = "total_art"
+TOTAL_CAL = "total_cal"
+ART_CAL = "art_cal"
+ID_PROVEEDOR = "id_proveedor"
+GIRO = "giro"
+PROVEEDOR_NORM = "proveedor_norm"
+FECHA_CAPTURA = "fecha_captura"
+RFC_PROV = "rfc_prov"
+ID_REGISTRO = "id_registro"
+FOLIO_DOC = "folio_doc"
+DATE_DOC = "date_doc"
+MONTO_IVA = "monto_iva"
+SUBTOTAL = 'subtotal'
+
+CANTIDAD_ART = "cantidad_art"
+PRECIO_UNITARIO = "precio_unitario"
+COSTO_TRAN = "costo_tran"
+PRODUCT_NORM = "produc_norm"
+
 CONVERSION_KF: MappingProxyType[str, int] = MappingProxyType({
     TOTAL_DOC: 1, # 'MontoTotalDocumento'
     TOTAL_ART: 2, # TotalProductos
@@ -337,7 +327,7 @@ REPLACEMENT_MAP: MappingProxyType[str, str] = MappingProxyType({
 })
 
 KF_RANGE = (1, 13)
-SC_RANGE = tuple([0, 6])
+SC_RANGE = (0, 6)
 
 DENSITY_RANGE = (23.7, 103.7)
 MORPH_RANGE = (-0.297, 0.337)
@@ -354,8 +344,3 @@ ONE_DEC = Decimal(ONE + ZEROS_CUANT)
 ROW_TOL = Decimal("0.10")
 
 COMBINATIONS = 3
-
-IMGPREP_KEY = "image_preparation_stager"
-PREPRO_KEY = "preprocessing_stager"
-OCR_KEY = "ocr_stager"
-VECT_KEY = "vectorization_stager"

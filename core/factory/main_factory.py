@@ -8,16 +8,10 @@ from core.pipeline.preprocessing_stager import PreprocessingStager
 from core.pipeline.ocr_stager import OCRStager
 from core.pipeline.vectorization_stager import VectorizationStager
 from typing import Dict, Any, Tuple, List, Optional
-from core.assets.assets import IMGPREP_KEY, PREPRO_KEY, OCR_KEY, VECT_KEY
-
-_keyimglo = IMGPREP_KEY
-_keypre = PREPRO_KEY
-_ocrkey = OCR_KEY
-_veckey = VECT_KEY
+from domain.class_models import StageKeys
 
 class MainFactory:
     """Crea workers y ensambla stagers de forma uniforme."""
-    __slots__ = ("project_root", "modules_config")
     def __init__(self, project_root: str, modules_config: Dict[str, Tuple[Dict[str, Any], List[str]]]):
         self.project_root = project_root
         self.modules_config = modules_config
@@ -53,17 +47,17 @@ class MainFactory:
     def get_dicts(self) -> Tuple[Dict[str, Any],  Dict[str, Any]]:
         """"StagersDict, FactoriesDict"""
         factories_dict: Dict[str, Any] = {
-            _keyimglo: self.get_image_preparation_factory,
-            _keypre: self.get_preprocessing_factory,
-            _ocrkey: self.get_ocr_factory,
-            _veckey: self.get_vectorizing_factory,
+            StageKeys.IMGPREP_KEY: self.get_image_preparation_factory,
+            StageKeys.PREPRO_KEY: self.get_preprocessing_factory,
+            StageKeys.OCR_KEY: self.get_ocr_factory,
+            StageKeys.VECT_KEY: self.get_vectorizing_factory,
         }
 
         stagers_dict: Dict[str, Any] = {
-            _keyimglo: ImagePreparationStager,
-            _keypre: PreprocessingStager,
-            _ocrkey: OCRStager,
-            _veckey: VectorizationStager,
+            StageKeys.IMGPREP_KEY: ImagePreparationStager,
+            StageKeys.PREPRO_KEY: PreprocessingStager,
+            StageKeys.OCR_KEY: OCRStager,
+            StageKeys.VECT_KEY: VectorizationStager,
         }
         return stagers_dict, factories_dict
 

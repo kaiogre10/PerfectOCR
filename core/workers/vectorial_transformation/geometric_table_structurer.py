@@ -10,6 +10,7 @@ from domain.data_formatter import DataFormatter
 from utils.math_utils import alignment, euclidean_distance
 from utils.text_utils import format_cuant
 from services.output_service import save_debug_table
+from domain.class_models import SemantiClass, KeyField
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +214,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if poly_data and poly_data.geometry:
                     geom = poly_data.geometry
                     sc = poly_data.semantic_clasification
-                    ocr_text = format_cuant(poly_data.ocr_text or "") if (4 in sc) else poly_data.ocr_text
+                    ocr_text = format_cuant(poly_data.ocr_text or "") if (SemantiClass.QUANTITATIVE in sc) else poly_data.ocr_text
                     element: Dict[str, Any] = {
                         "polygon_id": poly_id,
                         "xmin": geom.bounding_box[0],
@@ -361,7 +362,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             for element in row_elements:
                 element_class = self._get_primary_semantic_class(element)
 
-                if element_class == 4:
+                if element_class == SemantiClass.QUANTITATIVE:
                     if current_block:
                         blocks.append(current_block)
                         current_block = []
@@ -394,18 +395,18 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Obtiene la clase semántica dominante del elemento.
         Prioriza SC=4 si existe en la lista.
         """
-        semantic_value = element['semantic_clasification']
+        semantic_value: List[int] = element['semantic_clasification']
         if isinstance(semantic_value, list):
             semantic_list = [int(v) for v in semantic_value if isinstance(v, (int, float, str))]
-            if 4 in semantic_list:
-                return 4
+            if SemantiClass.QUANTITATIVE in semantic_list:
+                return SemantiClass.QUANTITATIVE
             if semantic_list:
                 return semantic_list[0]
-            return 1
+            return SemantiClass.DESCRIPTIVE
         try:
             return int(semantic_value)
         except Exception:
-            return 1
+            return SemantiClass.DESCRIPTIVE
 
     def _case_b_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int, header_centroids: List[List[float]]) -> List[Dict[str, Any]]:
         """
@@ -557,7 +558,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             # Tipos que tienen restricciones (solo uno por celda)
-            restricted_types = {4}
+            restricted_types = {SemantiClass.QUANTITATIVE}
             current_semantics = set(element_semantic if isinstance(element_semantic, list) else [element_semantic])
             current_is_restricted = bool(current_semantics & restricted_types)
 
@@ -627,12 +628,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                         if poly:
                             poly_text = poly.ocr_text or ""
                             if poly.key_field is None:
-                                poly.key_field = [6]
+                                poly.key_field = [KeyField.header.value]
                                 h += 1
                             else:
                                 h += len(poly.key_field)
-                                if 6 not in poly.key_field:
-                                    poly.key_field.append(6)
+                                if KeyField.header.value not in poly.key_field:
+                                    poly.key_field.append(KeyField.header.value)
                                     h += 1
                             header_line_text.append(poly_text)
                                 
