@@ -6,7 +6,7 @@ from utils.math_utils import text_encode
 from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
 from core.assets.assets import VOWELS, REPLACEMENT_MAP, DENSITY_RANGE, MORPH_RANGE
 from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
-from domain.class_models import SemantiClass, KeyField, DataKeys
+from domain.class_models import SemantiClass, KeyField, DataKeys, NumberStr
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +174,7 @@ def find_umd(text: str) -> str:
 
             elif _numeric_fractions.fullmatch(tok):
                 tok = _correct_numbers(tok)
-                tok = tok.replace("7", "/", 1).strip()
+                tok = tok.replace(NumberStr.SEVEN, "/", 1).strip()
 
             elif bool(_umd_patterns.fullmatch(tok)):
                 tok = tok.strip()
@@ -263,7 +263,7 @@ def get_cuants(text: str) -> str:
             continue
 
         if bool(_valid_cuant_pattern.search(word)):
-            word = _valid_cuant_pattern.sub("5", word)
+            word = _valid_cuant_pattern.sub(NumberStr.FIVE, word)
             word = ("$" + word[1:].strip())
         else:
             word = word
@@ -321,7 +321,7 @@ def format_cuant(text: str) -> str:
         return text
     
     elif text.isdecimal():
-        return (text.strip() + ".00")
+        return (text.strip() + NumberStr.ZEROS_CUANT)
     
     text_0 = _clean_currency.sub("", text).strip()
     cuant_txt = _correct_numbers(text_0)
@@ -462,14 +462,14 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
 
     elif total_cuant == total_text:
         if total_text < 3:
-            if s == "0":
+            if s == NumberStr.ZERO:
                 # #  logger.info(f"NUMERIC 0: '{s}'")
                 return (SemantiClass.NUMERIC, total_cuant)
             else:
                 #  logger.info(f"CODE CONSOLACIÓN: '{s}'")
                 return (SemantiClass.CODE, total_cuant)
 
-        elif s.startswith("0"):
+        elif s.startswith(NumberStr.ZERO):
             if s.isalnum():
                 # logger.info(f"CODE por inicio 0: '{s}'")
                 return (SemantiClass.CODE, total_cuant)

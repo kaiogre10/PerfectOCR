@@ -4,7 +4,7 @@ import pandas as pd  # type: ignore
 from typing import Dict, Tuple, List, Any
 from psycopg2.extras import execute_values  # type: ignore
 from services.gateaway_service import ServiceGateaway
-from core.assets.assets import TOTAL_ART, TOTAL_DOC, DATE_DOC, RFC_PROV, CANTIDAD_ART, PRECIO_UNITARIO, COSTO_TRAN, PRODUCT_NORM, ID_PROVEEDOR, ID_CLIENTE, NOMBRE_CLIENTE, GIRO, PROVEEDOR_NORM, FECHA_CAPTURA, ART_CAL, TOTAL_CAL, ID_REGISTRO, FOLIO_DOC
+from core.assets.assets import TOTAL_ART, TOTAL_DOC, DATE_DOC, RFC_PROV, CANTIDAD_ART, PRECIO_UNITARIO, COSTO_TRAN, producto_norm, ID_PROVEEDOR, ID_CLIENTE, NOMBRE_CLIENTE, GIRO, PROVEEDOR_NORM, FECHA_CAPTURA, art_calc, TOTAL_CAL, ID_REGISTRO, FOLIO_DOC
 
 _folio_doc = FOLIO_DOC
 _date_doc = DATE_DOC
@@ -13,7 +13,7 @@ _total_art = TOTAL_ART
 _cantidad_art = CANTIDAD_ART
 _precio_unitario = PRECIO_UNITARIO
 _costo_tran = COSTO_TRAN
-_producto_norm = PRODUCT_NORM
+_producto_norm = producto_norm
 _id_proveedor = ID_PROVEEDOR
 _id_cliente= ID_CLIENTE
 _nombre_cliente = NOMBRE_CLIENTE
@@ -21,7 +21,7 @@ _giro = GIRO
 _proveedor_norm = PROVEEDOR_NORM
 _fecha_captura = FECHA_CAPTURA
 _total_cal = TOTAL_CAL
-_art_cal = ART_CAL
+_art_cal = art_calc
 _id_registro = ID_REGISTRO
 _rfc_prov = RFC_PROV
 
@@ -143,7 +143,7 @@ def insert_payload(payload: List[Tuple[pd.DataFrame, Dict[str, Any]]]):
                         cur,
                         "INSERT INTO registros_compra "
                         "(id_registro, id_cliente, folio_doc, date_doc, id_proveedor, "
-                        "total_doc, total_cal, total_art, art_cal, fecha_captura) "
+                        "total_doc, total_cal, total_art, art_calc, fecha_captura) "
                         "VALUES %s",
                         registros_records,
                     )

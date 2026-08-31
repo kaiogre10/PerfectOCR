@@ -7,10 +7,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 from services.log_service import get_caller_info
-from core.assets.assets import FECHA_CAPTURA
-from domain.class_models import SemantiClass
-
-_fecha_captura = FECHA_CAPTURA
+from domain.class_models import SemantiClass, DataKeys
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +36,7 @@ class DataFormatter:
             image_name=str(metadata.get("image_name", ""))
             metadata_obj = Metadata(
                 image_name=image_name,
-                fecha_captura=str(metadata.get(_fecha_captura, "")),
+                fecha_captura=str(metadata.get(DataKeys.fecha_captura.value, "")),
                 dpi=int(metadata.get("dpi", 0)),
                 img_dims = (0 , 0),
                 binary=metadata.get("binary", False)

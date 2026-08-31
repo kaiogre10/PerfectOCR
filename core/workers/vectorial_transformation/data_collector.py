@@ -9,7 +9,6 @@ from core.assets.patterns import umd_patterns
 from utils.math_utils import validate_df
 from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table
-from core.assets.assets import CONVERSION_KF
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 from domain.class_models import SemantiClass, KeyField, DataKeys
@@ -17,7 +16,6 @@ from domain.class_models import SemantiClass, KeyField, DataKeys
 logger = logging.getLogger(__name__)
 
 _umd_patterns = umd_patterns
-conversion_kf = CONVERSION_KF
 
 class FinalStructurer(VectorizationAbstractWorker):
     """"Recolecta los datos importantes y formatea el df dejando todo listo para ingresar a la db."""
@@ -67,7 +65,6 @@ class FinalStructurer(VectorizationAbstractWorker):
             
         date_creation = metadata.fecha_captura if metadata else ""
 
-        kf_map_inv: Dict[int, str] = {v: k for k, v in conversion_kf.items()}
 
         db_values: Dict[str, Any] = {}
         for poly_data in polygons.values():
@@ -85,10 +82,13 @@ class FinalStructurer(VectorizationAbstractWorker):
 
                     elif kf in (KeyField.total_doc.value, KeyField.total_art.value):
                         value = format_cuant(value)
-                    # Mapear el código numérico al nombre del campo
-                    field_name = kf_map_inv.get(kf)
-                    if field_name is not None:
-                        db_values[field_name] = value  # 'MontoTotalDocumento': '1024.12'
+                    
+                    try:
+                        field_name = KeyField(kf).name
+                    except ValueError:
+                        continue
+                    
+                    db_values[field_name] = value  # 'MontoTotalDocumento': '1024.12'
         
         id_prov = get_ids(image_name, DataKeys.id_proveedor.value)
 
@@ -109,7 +109,7 @@ class FinalStructurer(VectorizationAbstractWorker):
         mtl_col = df[DataKeys.costo_tran.value]
         c_col = df[DataKeys.cantidad_art.value]
         pu_col = df[DataKeys.precio_unitario.value]
-        product_col = df[DataKeys.product_norm.value]
+        product_col = df[DataKeys.producto_norm.value]
         df = pd.concat([c_col, product_col, pu_col, mtl_col], axis=1)
         df = self.clean_df(df, manager)
         idx = manager.workflow.IDRegistro if manager.workflow else ""
@@ -128,14 +128,14 @@ class FinalStructurer(VectorizationAbstractWorker):
             logger.error(f"Numeros deciales con ruido: '{e}'")
             raise
 
-        totals = {DataKeys.art_cal.value: str(total_prod), DataKeys.total_cal.value: str(total_total), DataKeys.id_registro.value: idx}
+        totals = {DataKeys.art_calc.value: str(total_prod), DataKeys.total_cal.value: str(total_total), DataKeys.id_registro.value: idx}
         
-        df.insert(loc=0, column=DataKeys.id_registro.value, value=idx, allow_duplicates=True)
+        # df.insert(loc=0, column=DataKeys.id_registro.value, value=idx, allow_duplicates=True)
         df = df.reset_index(drop=True)
         return df, totals
     
     def clean_df(self, df: pd.DataFrame, manager: DataFormatter) -> pd.DataFrame:
-        pro_idx = df.columns.get_loc(DataKeys.product_norm.value) if DataKeys.product_norm.value in df.columns else None # type: ignore
+        pro_idx = df.columns.get_loc(DataKeys.producto_norm.value) if DataKeys.producto_norm.value in df.columns else None # type: ignore
         c_idx = df.columns.get_loc(DataKeys.cantidad_art.value) if DataKeys.cantidad_art.value in df.columns else None # type: ignore
         if not manager or not manager.workflow:
             return pd.DataFrame()

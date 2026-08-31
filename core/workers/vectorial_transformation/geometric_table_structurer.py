@@ -10,14 +10,13 @@ from domain.data_formatter import DataFormatter
 from utils.math_utils import alignment, euclidean_distance
 from utils.text_utils import format_cuant
 from services.output_service import save_debug_table
-from domain.class_models import SemantiClass, KeyField
+from domain.class_models import SemantiClass, KeyField, GeoDict, DataMathDict
 
 logger = logging.getLogger(__name__)
 
 class GeometricTableStructurer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        self.project_root = project_root
         self.output = config.get("table_structured", False)
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
@@ -69,14 +68,14 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if manager.save_final_output(df, {}):
                     # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
                     cut_polygons = self.map_polygons_ids(polygons, df_copy)
-                    context["cut_polygons"] = cut_polygons
-                    context["df_copy"] = df_copy
-                    context["complete"] = False
-                    context["text_col_temp"] = []
+                    context[DataMathDict.CUT_POLYGONS.value] = cut_polygons
+                    context[DataMathDict.DF_COPY.value] = df_copy
+                    context[DataMathDict.COMPLETE.value] = False
+                    context[DataMathDict.TEXT_COL_TEMP.value] = []
                     rows_idx = np.arange(df.shape[0], dtype=np.uint8)
                     cols_idx = np.arange(df.shape[1], dtype=np.uint8)
-                    context["rows_idx"] = rows_idx
-                    context["cols_idx"] = cols_idx
+                    context[DataMathDict.ROWS_IDX.value] = rows_idx
+                    context[DataMathDict.COLS_IDX.value] = cols_idx
                     logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     if self.output:
                         file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
@@ -165,7 +164,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 B_k = len(semantic_blocks)
                 
                 # Inicializar fila de celdas vacías
-                row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+                row_cells: List[Dict[str, Any]] = [{GeoDict.WORDS.value: []} for _ in range(H)]
                 
                 if L_k == 0:
                     table_matrix.append(self._finalize_row_cells(row_cells, H))
@@ -214,22 +213,22 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 if poly_data and poly_data.geometry:
                     geom = poly_data.geometry
                     sc = poly_data.semantic_clasification
-                    ocr_text = format_cuant(poly_data.ocr_text or "") if (SemantiClass.QUANTITATIVE in sc) else poly_data.ocr_text
+                    ocr_text = format_cuant(poly_data.ocr_text or "") if (SemantiClass.QUANTITATIVE.value in sc) else poly_data.ocr_text
                     element: Dict[str, Any] = {
-                        "polygon_id": poly_id,
-                        "xmin": geom.bounding_box[0],
-                        "xmax": geom.bounding_box[2], 
-                        "cx": geom.centroid[0],
-                        "cy": geom.centroid[1],
-                        "ocr_text": ocr_text,
-                        "semantic_clasification": sc,
-                        "lineal_id": line_obj.lineal_id,
-                        "polygon_ids": line_obj.polygon_ids, 
+                        GeoDict.POLYGON_ID.value: poly_id,
+                        GeoDict.XMIN.value: geom.bounding_box[0],
+                        GeoDict.XMAX.value: geom.bounding_box[2], 
+                        GeoDict.CX.value: geom.centroid[0],
+                        GeoDict.CY.value: geom.centroid[1],
+                        GeoDict.OCR_TEXT.value: ocr_text,
+                        GeoDict.SEMANTIC_CLASIFICATION.value: sc,
+                        GeoDict.LINEAL_ID.value: line_obj.lineal_id,
+                        GeoDict.POLYGON_IDS.value: line_obj.polygon_ids, 
                     }
                     row_elements.append(element)
 
                     # Orden estable izquierda->derecha para soportar asignación secuencial.
-                    row_elements.sort(key=lambda element: float(element.get("cx", 0.0)))
+                    row_elements.sort(key=lambda element: float(element.get('cx', 0.0)))
                     
             return row_elements
         
@@ -240,9 +239,9 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
     def _case_exact_assignment(self, row_elements: List[Dict[str, Any]], H: int) -> List[Dict[str, Any]]:
         """CASO 0: L_k == H - Asignación secuencial 1 a 1 por orden horizontal."""
         try:
-            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+            row_cells: List[Dict[str, Any]] = [{GeoDict.WORDS.value: []} for _ in range(H)]
             for col_idx, element in enumerate(row_elements[:H]):
-                row_cells[col_idx]['words'] = [element]
+                row_cells[col_idx][GeoDict.WORDS.value] = [element]
 
             return row_cells
 
@@ -253,9 +252,9 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
     def _case_exact_assignment_by_blocks(self, semantic_blocks: List[List[Dict[str, Any]]], H: int) -> List[Dict[str, Any]]:
         """CASO 0 por bloques: B_k == H - Asignación secuencial 1 bloque por columna."""
         try:
-            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+            row_cells: List[Dict[str, Any]] = [{GeoDict.WORDS.value: []} for _ in range(H)]
             for col_idx, block in enumerate(semantic_blocks[:H]):
-                row_cells[col_idx]['words'] = block
+                row_cells[col_idx][GeoDict.WORDS.value] = block
             return row_cells
         except Exception as e:
             logger.error(f"Error en geometric: {e}", exc_info=True)
@@ -267,13 +266,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Calcula Δ_i = x_{i+1}^min - x_i^max y selecciona H-1 mayores espacios.
         """
         try:
-            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+            row_cells: List[Dict[str, Any]] = [{GeoDict.WORDS.value: []} for _ in range(H)]
 
             # 1. Calcular distancias horizontales Δ_i
             horizontal_distances: List[Tuple[float, float]] = []
             for i in range(L_k - 1):
-                x_i_max = float(row_elements[i].get('xmax', 0))
-                x_i1_min = float(row_elements[i + 1].get('xmin', 0))
+                x_i_max = float(row_elements[i].get(GeoDict.XMAX.value, 0))
+                x_i1_min = float(row_elements[i + 1].get(GeoDict.XMIN.value, 0))
                 delta_i = max(0.001, x_i1_min - x_i_max)
                 horizontal_distances.append((delta_i, i))
             
@@ -288,8 +287,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     end_idx = cut_indices[col_idx] + 1
                 else:
                     end_idx = L_k
-                    
-                row_cells[col_idx]['words'] = row_elements[start_idx:end_idx]
+                row_cells[col_idx][GeoDict.WORDS.value] = row_elements[start_idx:end_idx]
                 start_idx = end_idx
                 
                 if start_idx >= L_k:
@@ -307,7 +305,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Usa distancias horizontales entre bloques contiguos para elegir cortes.
         """
         try:
-            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+            row_cells: List[Dict[str, Any]] = [{GeoDict.WORDS.value: []} for _ in range(H)]
             if not semantic_blocks:
                 return row_cells
 
@@ -315,8 +313,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             for i in range(B_k - 1):
                 left_block = semantic_blocks[i]
                 right_block = semantic_blocks[i + 1]
-                left_xmax = max(float(elem.get('xmax', 0.0)) for elem in left_block)
-                right_xmin = min(float(elem.get('xmin', 0.0)) for elem in right_block)
+                left_xmax = max(float(elem.get(GeoDict.XMAX, 0.0)) for elem in left_block)
+                right_xmin = min(float(elem.get(GeoDict.XMIN, 0.0)) for elem in right_block)
                 delta_i = max(0.001, right_xmin - left_xmax)
                 horizontal_distances.append((delta_i, i))
 
@@ -333,7 +331,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 merged_words: List[Dict[str, Any]] = []
                 for block in semantic_blocks[start_idx:end_idx]:
                     merged_words.extend(block)
-                row_cells[col_idx]['words'] = merged_words
+                row_cells[col_idx][GeoDict.WORDS.value] = merged_words
                 start_idx = end_idx
 
                 if start_idx >= B_k:
@@ -362,7 +360,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             for element in row_elements:
                 element_class = self._get_primary_semantic_class(element)
 
-                if element_class == SemantiClass.QUANTITATIVE:
+                if element_class == SemantiClass.QUANTITATIVE.value:
                     if current_block:
                         blocks.append(current_block)
                         current_block = []
@@ -395,18 +393,18 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Obtiene la clase semántica dominante del elemento.
         Prioriza SC=4 si existe en la lista.
         """
-        semantic_value: List[int] = element['semantic_clasification']
+        semantic_value = element[GeoDict.SEMANTIC_CLASIFICATION.value]
         if isinstance(semantic_value, list):
             semantic_list = [int(v) for v in semantic_value if isinstance(v, (int, float, str))]
-            if SemantiClass.QUANTITATIVE in semantic_list:
-                return SemantiClass.QUANTITATIVE
+            if SemantiClass.QUANTITATIVE.value in semantic_list:
+                return SemantiClass.QUANTITATIVE.value
             if semantic_list:
                 return semantic_list[0]
-            return SemantiClass.DESCRIPTIVE
+            return SemantiClass.DESCRIPTIVE.value
         try:
             return int(semantic_value)
         except Exception:
-            return SemantiClass.DESCRIPTIVE
+            return SemantiClass.DESCRIPTIVE.value
 
     def _case_b_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int, header_centroids: List[List[float]]) -> List[Dict[str, Any]]:
         """
@@ -415,7 +413,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             # Inicializar celdas vacías
-            row_cells: List[Dict[str, Any]] = [{'words': []} for _ in range(H)]
+            row_cells: List[Dict[str, Any]] = [{GeoDict.WORDS.value: []} for _ in range(H)]
             
             # Si no hay elementos en la fila, devolver celdas vacías
             if not row_elements:
@@ -424,7 +422,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # Si no hay centroides de encabezado, asignar todos a la primera columna
             if not header_centroids:
                 for element in row_elements:
-                    row_cells[0]['words'].append(element)
+                    row_cells[0][GeoDict.WORDS.value].append(element)
                 logger.warning("No hay centroides de encabezado, asignando todos los elementos a la primera columna")
                 return row_cells
             
@@ -436,13 +434,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             # Asignar cada elemento a una celda según restricciones semánticas
             for element in row_elements:
-                element_centroid = [float(element.get('cx', 0)), float(element.get('cy', 0))]
-                element_semantic: List[int]= element['semantic_clasification']
+                element_centroid = [float(element.get(GeoDict.CX.value, 0)), float(element.get(GeoDict.CY.value, 0))]
+                element_semantic: List[int]= element[GeoDict.SEMANTIC_CLASIFICATION.value]
                 
                 # 1. Filtrar celdas semánticamente disponibles
                 available_columns: List[int] = []
                 for col_idx in range(H):
-                    cell_content = row_cells[col_idx]['words']
+                    cell_content = row_cells[col_idx][GeoDict.WORDS.value]
                     
                     # Verificar si la celda está semánticamente disponible
                     if self._is_semantically_available(cell_content, element_semantic):
@@ -454,7 +452,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     for col_idx in available_columns:
                         if col_idx < len(header_centroids):
                             header_centroid = header_centroids[col_idx]
-                            distance = euclidean_distance(element_centroid, header_centroid) # type: ignore
+                            distance = euclidean_distance(element_centroid, header_centroid)
                             distances.append((distance, col_idx))
                     
                     # Asignar a la columna con menor distancia si hay distancias calculadas
@@ -488,15 +486,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 best_col = int(max(0, min(best_col, H-1)))
                 
                 # Asignar elemento a la celda
-                row_cells[best_col]['words'].append(element)
-                
-                logger.debug(f"elemento: {element.get('ocr_text', '')}, semantica: {element_semantic}, columnas_disponibles: {available_columns}, asignación: {best_col}")
+                row_cells[best_col][GeoDict.WORDS.value].append(element)
 
             return row_cells
             
         except Exception as e:
             logger.error(f"Error en geometric: {e}", exc_info=True)
-            return [{'words': []} for _ in range(H)]
+            return [{GeoDict.WORDS.value: []} for _ in range(H)]
 
     def _finalize_row_cells(self, row_cells: List[Dict[str, Any]], H: int) -> List[Dict[str, Any]]:
         """
@@ -506,18 +502,18 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         final_row: List[Dict[str, Any]] = []
 
         for cell in row_cells[:H]:
-            cell_words = cell['words']
-            text = " ".join([elem.get('ocr_text', '') for elem in cell_words if elem.get('ocr_text')]).strip()
+            cell_words = cell[GeoDict.WORDS.value]
+            text = " ".join([elem.get(GeoDict.OCR_TEXT.value, '') for elem in cell_words if elem.get(GeoDict.OCR_TEXT.value)]).strip()
 
             polygon_ids: List[str] = []
             semantic_values: List[int] = []
 
             for elem in cell_words:
-                polygon_id = elem.get('polygon_id')
+                polygon_id = elem.get(GeoDict.POLYGON_ID.value)
                 if polygon_id and polygon_id not in polygon_ids:
                     polygon_ids.append(polygon_id)
 
-                semantic_value = elem['semantic_clasification']
+                semantic_value = elem[GeoDict.SEMANTIC_CLASIFICATION.value]
                 if isinstance(semantic_value, list):
                     semantic_list = cast(List[Any], semantic_value)
                     for value in semantic_list:
@@ -533,19 +529,19 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     semantic_values.append(int(semantic_value))
 
             final_row.append({
-                'text': text,
-                'polygon_ids': polygon_ids,
-                'semantic_clasification': semantic_values,
+                DataMathDict.TEXT.value: text,
+                GeoDict.POLYGON_IDS.value: polygon_ids,
+                DataMathDict.SEMANTIC_CLASIFICATION.value: semantic_values,
             })
 
         while len(final_row) < H:
             final_row.append({
-                'text': '',
-                'polygon_ids': [],
-                'semantic_clasification': [],
+                DataMathDict.TEXT.value: '',
+                GeoDict.POLYGON_IDS.value: [],
+                DataMathDict.SEMANTIC_CLASIFICATION.value: [],
             })
             
-        text = [row['text'] for row in final_row]
+        text = [row[DataMathDict.TEXT.value] for row in final_row]
         return final_row
 
     def _is_semantically_available(self, cell_content: List[Dict[str, Any]], element_semantic: List[int] | int) -> bool:
@@ -558,7 +554,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         """
         try:
             # Tipos que tienen restricciones (solo uno por celda)
-            restricted_types = {SemantiClass.QUANTITATIVE}
+            restricted_types = {SemantiClass.QUANTITATIVE.value}
             current_semantics = set(element_semantic if isinstance(element_semantic, list) else [element_semantic])
             current_is_restricted = bool(current_semantics & restricted_types)
 
@@ -566,7 +562,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             cell_has_restricted = False
             cell_has_non_restricted = False
             for existing_element in cell_content:
-                existing_semantic_val = existing_element['semantic_clasification']
+                existing_semantic_val = existing_element[GeoDict.SEMANTIC_CLASIFICATION.value]
                 existing_semantics = set(existing_semantic_val if isinstance(existing_semantic_val, list) else [existing_semantic_val]) # type: ignore
                 if existing_semantics & restricted_types:
                     cell_has_restricted = True
@@ -602,16 +598,18 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 text_val = ""
                 poly_ids: List[str] = []
                 if col_idx < row_len:
-                    text_val = row[col_idx].get("text", "")
-                    poly_ids = row[col_idx]["polygon_ids"]
+                    text_val = row[col_idx].get(DataMathDict.TEXT.value, "")
+                    poly_ids = row[col_idx][GeoDict.POLYGON_IDS.value]
 
                 row_values.append(text_val)
                 row_copy_values.append(poly_ids)
 
             rows.append(row_values)
             rows_copy.append(row_copy_values)
+
         df_main = pd.DataFrame(rows, columns=columns, dtype=str)
         df_copy = pd.DataFrame(rows_copy, columns=columns)
+
         return (df_main, df_copy)
 
     def calculate_h(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> int:
@@ -654,10 +652,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         for poly_id in poly_ids:
             if poly_id in polygons:
                 cut_polygons[poly_id] = {
-                    "text": polygons[poly_id].ocr_text or "",
-                    "semantic_clasification": polygons[poly_id].semantic_clasification,
+                    DataMathDict.TEXT.value: polygons[poly_id].ocr_text or "",
+                    DataMathDict.SEMANTIC_CLASIFICATION.value: polygons[poly_id].semantic_clasification,
                 }
                 polys_index.append(polygons[poly_id].poly_index)
         
-        cut_polygons["max_idx"] = max(polys_index)
+        cut_polygons[DataMathDict.MAX_IDX.value] = max(polys_index)
+        logger.debug(f"MAX ID: {max(polys_index)}")
         return cut_polygons
+    

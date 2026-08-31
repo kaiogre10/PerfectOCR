@@ -35,9 +35,9 @@ CREATE TABLE registros_compra (
     date_doc TEXT,
     id_proveedor VARCHAR(10) REFERENCES proveedores(id_proveedor),
     total_doc DECIMAL(12, 2), -- Total impreso en el documento
-    total_cal DECIMAL(12, 2) NOT NULL,
+    total_calc DECIMAL(12, 2) NOT NULL,
     total_art DECIMAL(12, 2),
-    art_cal DECIMAL(12, 2) NOT NULL,
+    art_calc DECIMAL(12, 2) NOT NULL,
     subtotal DECIMAL(12, 2),
     monto_iva DECIMAL(12, 2),
     auditate BOOLEAN DEFAULT FALSE,

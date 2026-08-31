@@ -34,7 +34,7 @@ class Refiner(OCRAbstractWorker):
         self.output = config.get("cleanned_text")
         self.seman_clas_log = config.get("seman_clas")
         self.refined_text = config.get("refined_text")
-        self.semantic_types_log = config.get("semantic_types_log", [])
+        self.semantic_types_log = config["semantic_types_log"]
         self.num_passes = worker_config.get("num_passes")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:

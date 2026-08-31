@@ -11,9 +11,9 @@ folio_doc,VARCHAR(50),Puede ser Nulo.,Folio/Número extraído del documento fís
 date_doc,TEXT,Puede ser Nulo.,Fecha principal extraída del documento (formato AAAAMMDD). Usada para generar IDRegistro.
 id_proveedor,VARCHAR(4),Llave Foránea (FK) a Proveedores.,Puede ser Nulo temporalmente. ID (AAAA-ZZZZ) del proveedor obtenido de Proveedores. Si es nuevo el script genera el siguiente ID y marca para revisión. Usado para generar IDRegistro.
 total_doc,"decimal(12, 2)",Puede ser Nulo.,Cantiadad total monetaria pagada impresa en el documento
-total_cal,"decimal(12, 2)",No Nulo,Suma aritmética de los costos_tran. Debería ser igual al total_doc en teoría
+total_calc,"decimal(12, 2)",No Nulo,Suma aritmética de los costos_tran. Debería ser igual al total_doc en teoría
 total_art,"decimal(12, 2)",Puede ser Nulo.,Cantidad impresa de artículos comprados del documento. Siempre positivo.
-art_cal,"decimal(12, 2)",No Nulo,Suma aritmética de la cantidad de productos 
+art_calc,"decimal(12, 2)",No Nulo,Suma aritmética de la cantidad de productos 
 subtotal,"decimal(12, 2)",Puede ser Nulo.,Monto de IVA total del documento original. Opcional.
 tasa_iva,"decimal(4, 2)",Puede ser Nulo.,Tasa de IVA general aplicable al documento original (ej. 0.16). Opcional.
 auditate,Booleano / BIT,No Nulo.,Indicador (VERDADERO/FALSO ó 1/0) si el registro requiere validación humana (nuevo proveedor posible coincidencia producto etc.).

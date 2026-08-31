@@ -1,31 +1,19 @@
-from typing import Dict, List, Any, FrozenSet, Set
-from types import MappingProxyType
 import numpy as np
+from typing import Dict, List, Any, FrozenSet, Set
 from decimal import Decimal
-
-ZEROS_CUANT = ".00"
-ZERO = "0"
-ONE = "1"
-TWO = "2"
-THREE = "3"
-FOUR = "4"
-FIVE = "5"
-SIX = "6"
-SEVEN = "7"
-EIGHT = "8"
-NINE = "9"
+from domain.class_models import NumberStr
 
 DENSITY_ENCODER: Dict[str, float] = {
-    "0": 0.0,
-    "1": 1.0,
-    "2": 2.0,
-    "3": 3.0,
-    "4": 4.0,
-    "5": 5.0,
-    "6": 6.0,
-    "7": 7.0,
-    "8": 8.0,
-    "9": 9.0,
+    NumberStr.ZERO.value: 0.0,
+    NumberStr.ONE.value: 1.0,
+    NumberStr.TWO.value: 2.0,
+    NumberStr.THREE.value: 3.0,
+    NumberStr.FOUR.value: 4.0,
+    NumberStr.FIVE.value: 5.0,
+    NumberStr.SIX.value: 6.0,
+    NumberStr.SEVEN.value: 7.0,
+    NumberStr.EIGHT.value: 8.0,
+    NumberStr.NINE.value: 9.0,
     "$": 10.0,
     ",": 11.0,
     ".": 12.0,
@@ -238,34 +226,34 @@ FEATURES_NAME: List[str] = [
 ]
 
 UMD_CORRECTIONS: Dict[str, str] = {
-    "o": "0",
-    "O": "0"
+    "o": NumberStr.ZERO.value,
+    "O": NumberStr.ZERO.value
 }
 
 NUMERIC_CORRECTIONS: Dict[str, str] = {
-    "Q": "0",
-    "D": "0",
-    "C": "6",
-    "(": "6",
-    "q": "9",
-    "O": "0",
-    "o": "0",
-    "I": "1",
-    "i": "1",
-    "|": "1",
-    "!": "1",
-    "¡": "1",
-    "l": "1",
-    "S": "5",
-    "s": "5",
-    "G": "6",
-    "g": "9",
-    "B": "8",
-    "Z": "2",
-    "z": "2",
-    "j": "9",
-    "/": "7",
-    "?": "2"
+    "Q": NumberStr.ZERO,
+    "D": NumberStr.ZERO,
+    "C": NumberStr.SIX,
+    "(": NumberStr.SIX,
+    "q": NumberStr.NINE,
+    "O": NumberStr.ZERO,
+    "o": NumberStr.ZERO,
+    "I": NumberStr.ONE,
+    "i": NumberStr.ONE,
+    "|": NumberStr.ONE,
+    "!": NumberStr.ONE,
+    "¡": NumberStr.ONE,
+    "l": NumberStr.ONE,
+    "S": NumberStr.FIVE,
+    "s": NumberStr.FIVE,
+    "G": NumberStr.SIX,
+    "g": NumberStr.NINE,
+    "B": NumberStr.EIGHT,
+    "Z": NumberStr.TWO,
+    "z": NumberStr.TWO,
+    "j": NumberStr.NINE,
+    "/": NumberStr.SEVEN,
+    "?": NumberStr.TWO
 }
 
 DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
@@ -277,54 +265,17 @@ DESCRIPTIVE_CORRECTIONS: Dict[str, str] = {
 VOWELS: FrozenSet[str] = frozenset(["A", "E", "I", "O", "U", "a", "e", "i", "o", "u"])
 
 VALID_CUANT_CHARS = {".", ",", "$"}
-CHAR_NUM = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
+CHAR_NUM = {NumberStr.ZERO, NumberStr.ONE, NumberStr.TWO, NumberStr.THREE, NumberStr.FOUR, NumberStr.FIVE, NumberStr.SIX, NumberStr.SEVEN, NumberStr.EIGHT, NumberStr.NINE}
 
 CUANT_CHAR: FrozenSet[str] = frozenset(CHAR_NUM.union(VALID_CUANT_CHARS))
 
 alone_chars: FrozenSet[str] = frozenset(["a", "e", "y", "o", "A", "E", "Y", "O"])
 VALID_ALONE_CHARS: FrozenSet[str] = frozenset(CHAR_NUM.union(alone_chars))
 
-ID_CLIENTE = "id_cliente"
-NOMBRE_CLIENTE = "nombre_cliente"
-TOTAL_DOC = "total_doc"
-TOTAL_ART = "total_art"
-TOTAL_CAL = "total_cal"
-ART_CAL = "art_cal"
-ID_PROVEEDOR = "id_proveedor"
-GIRO = "giro"
-PROVEEDOR_NORM = "proveedor_norm"
-FECHA_CAPTURA = "fecha_captura"
-RFC_PROV = "rfc_prov"
-ID_REGISTRO = "id_registro"
-FOLIO_DOC = "folio_doc"
-DATE_DOC = "date_doc"
-MONTO_IVA = "monto_iva"
-SUBTOTAL = 'subtotal'
-
-CANTIDAD_ART = "cantidad_art"
-PRECIO_UNITARIO = "precio_unitario"
-COSTO_TRAN = "costo_tran"
-PRODUCT_NORM = "produc_norm"
-
-CONVERSION_KF: MappingProxyType[str, int] = MappingProxyType({
-    TOTAL_DOC: 1, # 'MontoTotalDocumento'
-    TOTAL_ART: 2, # TotalProductos
-    SUBTOTAL: 3,
-    FOLIO_DOC: 4,
-    # "NombreCliente": 5 Se ajustará su eliminación ya que es innecesario
-    "HeaderWords": 6,
-    RFC_PROV: 7,
-    MONTO_IVA: 8,
-    DATE_DOC: 9,
-    "TelefonoP": 10,
-    "CorreoP": 11,
-    "DirecciónP": 12
-})
-
-REPLACEMENT_MAP: MappingProxyType[str, str] = MappingProxyType({
-    'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
-    'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9'
-})
+REPLACEMENT_MAP: Dict[str, str] = {
+    'zero': NumberStr.ZERO, 'one': NumberStr.ONE, 'two': NumberStr.TWO, 'three': NumberStr.THREE, 'four': NumberStr.FOUR,
+    'five': NumberStr.FIVE, 'six': NumberStr.SIX, 'seven': NumberStr.SEVEN, 'eight': NumberStr.EIGHT, 'nine': NumberStr.NINE
+}
 
 KF_RANGE = (1, 13)
 SC_RANGE = (0, 6)
@@ -339,8 +290,8 @@ FULL_OCR: FrozenSet[str] = frozenset(OCR_WORKERS.union(["data_finder"]))
 VECT_MIN = "lineal"     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
 MIN_WORKERS: FrozenSet[str] = frozenset(OCR_WORKERS.union(set([ELEMENTAL_WORKER]))) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
 
-ZERO_DEC = Decimal(ZERO + ZEROS_CUANT)
-ONE_DEC = Decimal(ONE + ZEROS_CUANT)
+ZERO_DEC = Decimal("0.00")
+ONE_DEC = Decimal("1.00")
 ROW_TOL = Decimal("0.10")
 
 COMBINATIONS = 3

@@ -238,11 +238,11 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     global_stats = calculate_global_stats(np.column_stack([width, height, area, perimeter, aspect_ratio, diagonal, angle]))
 
     # Funciones helpers para división segura igualando la lógica de "if x != 0 else 0.0"
-    def safe_div(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]):
-        return np.divide(a, b, out=np.zeros_like(a), where=b!=0)
+    def safe_div(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
+        return np.divide(a, b, out=np.zeros_like(a, dtype=np.float32), where=b!=0, dtype=np.float32)
     
-    def safe_dif(val: np.ndarray[Any, Any], med: np.ndarray[Any, Any]):
-        return np.where(med != 0, 1 - np.abs(val - med) / med, 0.0)
+    def safe_dif(val: np.ndarray[Any, Any], med: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
+        return np.where(med != 0, 1 - np.abs(val - med, dtype=np.float32) / med, 0.0)
 
     # Reemplazos con división segura
     bbox_height_inv = safe_div(height, global_stats[:, 8])
@@ -315,7 +315,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         with np.errstate(divide='ignore', invalid='ignore'):
             cosine = np.where(norms > 0, vec[:, 0] / norms, 0.0)
         
-        result = 1.0 - np.abs(cosine)
+        result = 1.0 - np.abs(cosine, dtype=np.float32)
         
         # Donde other_bbox es NaN (no existe línea), devolver 1.0 como indicaba "if not prev_bbox else 1.0"
         return np.where(np.isnan(other_bbox[:, idx]), 1.0, result)
@@ -346,10 +346,10 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         with np.errstate(divide='ignore', invalid='ignore'):
             cosine = np.where(norms > 0, vec[:, 0] / norms, 0.0)
         
-        result = 1.0 - np.abs(cosine)
+        result = 1.0 - np.abs(cosine, dtype=np.float32)
         
         # Donde other_c es NaN (no existe línea), devolver 1.0
-        return np.where(np.isnan(other_c[:, 0]), 1.0, result)
+        return np.where(np.isnan(other_c[:, 0]), 1.0, result,)
 
     # Aplicar corrección a centroides
     align_prev = _compute_centroid_align(centroids, prev_centroids)
@@ -465,10 +465,10 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     return textual_features
 
 # @njit(cache=True)
-def count_quantitative_tokens(values: List[int]) -> int:
+def count_quantitative_tokens(semantic_classification: List[int]) -> int:
     count = 0
-    for x in values:
-        if x == SemantiClass.DESCRIPTIVE or x == SemantiClass.CODE or x == SemantiClass.NUMERIC:
+    for x in semantic_classification:
+        if x == SemantiClass.DESCRIPTIVE or x == SemantiClass.NUMERIC or x == SemantiClass.CODE:
             continue
         if x == SemantiClass.UMD or x == SemantiClass.QUANTITATIVE:
             count += 1

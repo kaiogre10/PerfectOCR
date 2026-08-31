@@ -9,7 +9,7 @@ from core.assets.assets import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
 from core.assets.patterns import bad_title
 from utils.compiled_utils import validate_text
 from string import ascii_lowercase, ascii_uppercase
-from domain.class_models import SemantiClass
+from domain.class_models import SemantiClass, NumberStr
 
 _bad_title = bad_title
 numeric_corrections = NUMERIC_CORRECTIONS
@@ -133,8 +133,8 @@ class TextCorrector(OCRAbstractWorker):
 
         token_len = len(token)
         if token_len == 1:
-            if semantic_clasification == SemantiClass.DESCRIPTIVE and "0" in token:
-                return token.replace("0", "O")
+            if semantic_clasification == SemantiClass.DESCRIPTIVE and NumberStr.ZERO in token:
+                return token.replace(NumberStr.ZERO, "O")
             return token
 
         if token.isdecimal():
@@ -149,8 +149,8 @@ class TextCorrector(OCRAbstractWorker):
                 
             token = correct_subfix(token)
             
-            if semantic_clasification == SemantiClass.DESCRIPTIVE and "0" in token:
-                token = token.replace("0", "O")
+            if semantic_clasification == SemantiClass.DESCRIPTIVE and NumberStr.ZERO in token:
+                token = token.replace(NumberStr.ZERO, "O")
                 
             if token_len > 3 and token.isalpha() and token.endswith("Q"):
                 token = token.replace("Q", "O")
@@ -162,12 +162,12 @@ class TextCorrector(OCRAbstractWorker):
         #     return token
         if semantic_clasification == SemantiClass.CODE:
             if token.endswith("O"):
-                if token.startswith("1") :
-                    token = token.replace("O", "0")
+                if token.startswith(NumberStr.ONE) :
+                    token = token.replace("O", NumberStr.ZERO)
 
                 elif token.startswith("C7"):
-                    token = token.replace("7", "/")
-                    token = token.replace("O", "0")
+                    token = token.replace(NumberStr.SEVEN, "/")
+                    token = token.replace("O", NumberStr.ZERO)
             return token
             
         else:
