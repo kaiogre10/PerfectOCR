@@ -6,7 +6,7 @@ conda install paddlepaddle==2.6.2 --channel https://mirrors.tuna.tsinghua.edu.cn
 
 pip install paddleocr==2.8.1
 
-conda install pythran pydantic scikit-image python-dotenv psycopg2 -y
+conda install pythran pydantic scikit-image python-dotenv psycopg2 regex -y
 
 pip install bitmath # <-- Opcional, se puede gestionar la estimación del tamaño de los payloads de manera manual
 

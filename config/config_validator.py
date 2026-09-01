@@ -31,7 +31,7 @@ class ConfigValidator:
             self.config = self.config
 
     @cached_property
-    def elemental_params(self) -> bool:                         # Condición mínima necesaria para que pueda arrancar el sistema
+    def elemental_params(self) -> bool:
         return _elemental_workers in self.create_stager[0][1]
 
     @cached_property
