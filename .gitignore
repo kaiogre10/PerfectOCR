@@ -42,6 +42,7 @@ __pycache__/
 .aiassistant/
 .vs/
 build/
+opencv_dep/
 out/
 documentation/
 models/
@@ -52,6 +53,7 @@ output/
 bin/
 migrations/
 CMakeFiles/
+
 
 # secrets
 .env

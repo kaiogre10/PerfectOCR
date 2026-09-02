@@ -6,7 +6,7 @@
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
-    {
+    { 
       "name": "base-windows-oneapi",
       "inherits": "base-global",
       "hidden": true,
@@ -25,7 +25,7 @@
       "architecture": "x64",
       "toolset": "Intel C++ Compiler 2026"
     },
-    {
+    { 
       "name": "windows-oneapi-clion",
       "inherits": "base-windows-oneapi",
       "displayName": "Windows - OneAPI (CLion/Ninja)",

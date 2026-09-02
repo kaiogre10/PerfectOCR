@@ -12,3 +12,9 @@ pip install bitmath # <-- Opcional, se puede gestionar la estimación del tamañ
 
 conda install commentjson  # <-- Solo para desarrollo y similación de configuración externa
 python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython
+
+cd components/opencv_dep
+git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git opencv_dep/src
+
+cmake -B build -G Ninja
+cmake --build build --target install -j8

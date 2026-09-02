@@ -23,6 +23,7 @@ void push(std::vector<uint8_t>&& plain_payload) {
     std::lock_guard<std::mutex> lock(g_canal->mtx);
     g_canal->payload_container.push(std::move(plain_payload));
 }
+
 std::queue<std::vector<uint8_t>> drain() {
     std::queue<std::vector<uint8_t>> local;
     {
