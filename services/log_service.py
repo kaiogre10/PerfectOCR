@@ -5,22 +5,19 @@ from datetime import datetime
 import logging
 from core.assets.patterns import float_time
 import inspect
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 
 _float_time = float_time
-CONSOLE_LEVEL = 'WARNING'
-FILE_LEVEL = 'INFO'
-CONSOLE_FORMAT = "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
-FILE_FORMAT = "%(filename)s:%(lineno)d - %(message)s"
-DATE_FORMAT = "%H:%M:%S"
-TEMP_DATE_FORMAT = "%d/%m/%Y-%H:%M:%S"
-TEMP_PATH_FILE: str = "safe_temp"
+temp_date_format: str = ""
+DATE_FORMAT = ""
 TEMP_FILE: str
 EXTRA_FILE_LOGS = []
 
-def get_time_stamp(log: bool):
-    now = datetime.now()
-    return f"{now.strftime((DATE_FORMAT if log else TEMP_DATE_FORMAT))}"
+def now():
+    return datetime.now()
+
+def get_time_stamp(moment: Any, date_format: str):
+    return f"{moment.strftime((date_format if date_format else temp_date_format))}"
 
 def get_caller_info() -> Tuple[str, str]:
     """[nombre, linea]"""
@@ -28,38 +25,47 @@ def get_caller_info() -> Tuple[str, str]:
     return os.path.basename(frame[1]), str(frame[2])
 
 def get_logging_info(get_caller_info: Tuple[str, str]) -> str:
-    return f"{get_time_stamp(True)} - {get_caller_info[0]}:{get_caller_info[1]} "
+    return f"{get_time_stamp(now(), DATE_FORMAT)} - {get_caller_info[0]}:{get_caller_info[1]} "
 
-def setup_logging(project_root: str) -> None:
+def setup_logging(project_root: str, config: Dict[str, str]) -> None:
+    global DATE_FORMAT, temp_date_format
     """
     Inicializa los descriptores de archivo y la salida por consola.
     Debe invocarse antes de cualquier operación de registro en el sistema.
     """
+    console_level = config.get('console_level', "")
+    file_level = config.get('file_level', "")
+    console_format = config.get('console_format', "")
+    file_format = config.get('file_format', "")
+    DATE_FORMAT = config.get('date_format', "")
+    temp_date_format = config.get('temp_date_format', "")
+    temp_path_file = config.get("temp_path_file", "")
+    
     _log_root = logging.getLogger()
     if _log_root.hasHandlers():
         _log_root.handlers.clear()
 
-    file_formatter = logging.Formatter(fmt=FILE_FORMAT, datefmt=DATE_FORMAT)
-    console_formatter = logging.Formatter(fmt=CONSOLE_FORMAT, datefmt=DATE_FORMAT)
+    file_formatter = logging.Formatter(fmt=file_format, datefmt=DATE_FORMAT)
+    console_formatter = logging.Formatter(fmt=console_format, datefmt=DATE_FORMAT)
 
     # 1. Configurar Handler Principal en Disco
-    _add_file_handler(_log_root, project_root, "perfectocr.txt", FILE_LEVEL, file_formatter)
+    _add_file_handler(_log_root, project_root, "perfectocr.txt", file_level, file_formatter)
 
     # 2. Handlers adicionales si aplican
     for entry in EXTRA_FILE_LOGS: # type: ignore
         _add_file_handler(_log_root, project_root, entry["filename"], entry["level"], file_formatter) # type: ignore
 
-    TEMP_FILE = os.path.join(project_root, TEMP_PATH_FILE, "tmp_file.txt") # type: ignore
+    TEMP_FILE = os.path.join(project_root, temp_path_file, "tmp_file.txt") # type: ignore
     reset_temp_file(TEMP_FILE)
 
     # 3. Configurar Salida por Consola
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(console_formatter)
-    console_handler.setLevel(CONSOLE_LEVEL.upper())
+    console_handler.setLevel(console_level.upper())
     _log_root.addHandler(console_handler)
 
     # 4. Establecer el nivel global definitivo
-    _log_root.setLevel(FILE_LEVEL)
+    _log_root.setLevel(file_level)
 
 def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str, level: str, formatter: logging.Formatter) -> None:
     path = os.path.join(project_root, filename)

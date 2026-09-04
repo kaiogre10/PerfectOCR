@@ -142,7 +142,7 @@ class MatrixFactory:
         if not os.path.exists(self.kf_folder):
             raise FileNotFoundError(f"Ruta de KeyFields no localizada: '{self.kf_folder}'")
         
-        for dirnames in os.listdir(self.models_path):    
+        for _, dirnames in enumerate(os.listdir(self.models_path)):
             if self.matrix_path in dirnames:
                 for item in os.listdir(self.matrix_folder):
                     full_path: str = os.path.join(self.matrix_folder, item)

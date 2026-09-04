@@ -7,28 +7,19 @@ from dataclasses import dataclass
 @dataclass(slots=True)
 class CroppedImage:
     cropped_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
-            
-@dataclass(slots=True)
-class Geometry:
-    polygon_coords: List[int]  # shape: (n_points, 1, 4)
-    bounding_box: List[float]    # shape: (4,)
-    centroid: List[float]
-
+    
 @dataclass(slots=True)
 class Polygons:
     polygon_id: str
     poly_index: int
-    geometry: Geometry
+    polygon_coords: List[int]
+    bounding_box: List[float]
+    centroid: List[float]
     cropped_img: Optional[CroppedImage]
     ocr_text: Optional[str]
     key_field: Optional[List[int]]
     semantic_clasification: List[int]
     cuant_chars: int
-
-@dataclass(slots=True)
-class LineGeometry:
-    line_centroid: List[float]
-    line_bbox: List[float]
 
 @dataclass(slots=True)
 class AllLines:
@@ -37,7 +28,8 @@ class AllLines:
     text: str
     polygon_ids: List[str]
     polygons_index: List[int]
-    line_geometry: LineGeometry
+    line_centroid: List[float]
+    line_bbox: List[float]
     tabular_line: bool
     header_line: Optional[int]
     footer_line: Optional[int]
@@ -46,7 +38,6 @@ class AllLines:
 @dataclass(slots=True)
 class Metadata:
     image_name: str
-    fecha_captura: str
     dpi: Optional[int]
     img_dims: Tuple[int, int]
     binary: bool
@@ -62,7 +53,6 @@ class StructuredData:
 
 @dataclass(slots=True)
 class WorkflowData:
-    IDRegistro: Optional[str]
     full_img: Optional[FullImage]
     metadata: Optional[Metadata]
     polygons: Optional[Dict[str, Polygons]]

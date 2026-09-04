@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd # type: ignore
 from typing import List, Dict, Any, Tuple, cast
 from domain.abstract_worker import VectorizationAbstractWorker
-from domain.data_models import Polygons, AllLines
 from domain.data_formatter import DataFormatter
 from utils.math_utils import alignment, euclidean_distance
 from utils.text_utils import format_cuant
@@ -37,7 +36,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 return False
             
             tabular_line_ids = sorted([lid for lid, line_obj in all_lines.items() if line_obj.tabular_line])
-                
+            
             if not tabular_line_ids or not all_lines or not polygons:
                 logger.error("Faltan datos necesarios para estructuracion tabular")
                 return False
@@ -86,7 +85,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
         return False
 
-    def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], target_columns: int) -> List[List[float]]:
+    def _extract_header_centroids(self, header_line_id: str, all_lines: Dict[str, Any], polygons: Dict[str, Any], target_columns: int) -> List[List[float]]:
         """
         Extrae centroides de referencia c_j del encabezado H*.
         Si hay menos polígonos que columnas necesarias, subdivide los polígonos.
@@ -96,14 +95,14 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             header_line = all_lines[header_line_id]
             
             # Obtener polígonos del encabezado ordenados por x (izquierda a derecha)
-            header_polys: List[Tuple[str, Polygons]] = []
+            header_polys: List[Tuple[str, Any]] = []
             for poly_id in header_line.polygon_ids:
                 poly_data = polygons.get(poly_id)
-                if poly_data and poly_data.geometry:
+                if poly_data:
                     header_polys.append((poly_id, poly_data))
             
             # Ordenar por posición x (centroide en eje X)
-            header_polys.sort(key=lambda x: x[1].geometry.centroid[0])
+            header_polys.sort(key=lambda x: x[1].centroid[0])
             
             num_polys = len(header_polys)
             
@@ -112,8 +111,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             # Si tenemos suficientes polígonos, usar directamente sus centroides
             if num_polys >= target_columns:
-                for _, poly_data in header_polys[:target_columns]:
-                    centroid = poly_data.geometry.centroid
+                for _, _, poly_data in enumerate(header_polys[:target_columns]):
+                    centroid = poly_data.centroid
                     header_centroids.append(centroid)
             else:
                 # Necesitamos subdivider los polígonos
@@ -121,8 +120,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 remainder = target_columns % num_polys
                 
                 for idx, (poly_id, poly_data) in enumerate(header_polys):
-                    geom = poly_data.geometry
-                    bbox = geom.bounding_box
+                    bbox = poly_data.bounding_box
                     
                     # Determinar cuántas subdivisiones para este polígono
                     num_subdivisions = subdivisions_per_poly
@@ -131,7 +129,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     
                     # Calcular centroides de las subdivisiones
                     x_min, x_max = float(bbox[0]), float(bbox[2])
-                    y_centroid = float(geom.centroid[1])
+                    y_centroid = float(poly_data.centroid[1])
                     
                     # Dividir el ancho en partes iguales
                     segment_width = (x_max - x_min) / num_subdivisions
@@ -146,7 +144,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"Error extrayendo centroides: {e}", exc_info=True)
             return []
 
-    def _apply_geometric_assignment(self, selected_lines: List[str], all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons], header_centroids: List[List[float]], H: int) -> List[List[Dict[str, Any]]]:
+    def _apply_geometric_assignment(self, selected_lines: List[str], all_lines: Dict[str, Any], polygons: Dict[str, Any], header_centroids: List[List[float]], H: int) -> List[List[Dict[str, Any]]]:
         """
         Implementa el algoritmo geométrico de asignación a celdas T[k][j]
         según los Casos A y B del modelo matemático.
@@ -154,7 +152,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         try:
             table_matrix: List[List[Dict[str, Any]]] = []
             
-            for line_id in selected_lines:
+            for _, line_id in enumerate(selected_lines):
                 line_obj = all_lines[line_id]
                 
                 # Extraer elementos P_i de la fila S_k usando data classes
@@ -196,12 +194,12 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 table_matrix.append(self._finalize_row_cells(row_cells, H))
                 
             return table_matrix
-                
+            
         except Exception as e:
             logger.error(f"Error en geometric: {e}", exc_info=True)
             return []
 
-    def _extract_row_elements(self, line_obj: AllLines, polygons: Dict[str, Polygons]) -> List[Dict[str, Any]]:
+    def _extract_row_elements(self, line_obj: Any, polygons: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Extrae elementos P_i con atributos geométricos de una fila S_k.
         """
@@ -210,16 +208,15 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             for poly_id in line_obj.polygon_ids:
                 poly_data = polygons.get(poly_id)
-                if poly_data and poly_data.geometry:
-                    geom = poly_data.geometry
+                if poly_data and poly_data:
                     sc = poly_data.semantic_clasification
                     ocr_text = format_cuant(poly_data.ocr_text or "") if (SemantiClass.QUANTITATIVE.value in sc) else poly_data.ocr_text
                     element: Dict[str, Any] = {
                         GeoDict.POLYGON_ID.value: poly_id,
-                        GeoDict.XMIN.value: geom.bounding_box[0],
-                        GeoDict.XMAX.value: geom.bounding_box[2], 
-                        GeoDict.CX.value: geom.centroid[0],
-                        GeoDict.CY.value: geom.centroid[1],
+                        GeoDict.XMIN.value: poly_data.bounding_box[0],
+                        GeoDict.XMAX.value: poly_data.bounding_box[2],
+                        GeoDict.CX.value: poly_data.centroid[0],
+                        GeoDict.CY.value: poly_data.centroid[1],
                         GeoDict.OCR_TEXT.value: ocr_text,
                         GeoDict.SEMANTIC_CLASIFICATION.value: sc,
                         GeoDict.LINEAL_ID.value: line_obj.lineal_id,
@@ -357,7 +354,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             current_block: List[Dict[str, Any]] = []
             current_class: int | None = None
 
-            for element in row_elements:
+            for _, element in enumerate(row_elements):
                 element_class = self._get_primary_semantic_class(element)
 
                 if element_class == SemantiClass.QUANTITATIVE.value:
@@ -508,7 +505,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             polygon_ids: List[str] = []
             semantic_values: List[int] = []
 
-            for elem in cell_words:
+            for _, elem in enumerate(cell_words):
                 polygon_id = elem.get(GeoDict.POLYGON_ID.value)
                 if polygon_id and polygon_id not in polygon_ids:
                     polygon_ids.append(polygon_id)
@@ -612,7 +609,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
 
         return (df_main, df_copy)
 
-    def calculate_h(self, all_lines: Dict[str, AllLines], polygons: Dict[str, Polygons]) -> int:
+    def calculate_h(self, all_lines: Dict[str, Any], polygons: Dict[str, Any]) -> int:
         """Asignar key_field = 6 a todos los polígonos de la línea de encabezadoy calcular la cantidad de columnas (H) basado en los key_fields"""
         try:
             for line_id, line_data in all_lines.items():
@@ -642,7 +639,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             logger.error(f"ERROR CALCULANDO H: {e}", exc_info=True)
         return 0
     
-    def map_polygons_ids(self, polygons: Dict[str, Polygons], df_copy: pd.DataFrame) -> Dict[str, Any]:
+    def map_polygons_ids(self, polygons: Dict[str, Any], df_copy: pd.DataFrame) -> Dict[str, Any]:
         poly_ids: List[str] = []
         for cell in df_copy.to_numpy().ravel():
             poly_ids.extend(cell)

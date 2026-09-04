@@ -50,7 +50,7 @@ def set_output_config(project_root: str, config: Dict[str, Any]):
 def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], contours1: List[np.ndarray[Any, Any]], contours2: List[np.ndarray[Any, Any]]):
     """Guarda una imagen con los contornos marcados sobre ella"""
     try:
-        for path in OUTPUT_PATHS:
+        for _, path in enumerate(OUTPUT_PATHS):
             output_dir = os.path.join(path, image_name)
             file_name = f"{poly_id}.png"            # Dibuja todos los contornos sobre la imagen
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)      # type: ignore
@@ -149,7 +149,7 @@ def write_temp_log(payload_temp: Tuple[str, str]) -> bool:
     if not payload_temp[0] or not payload_temp[1]:
         raise TypeError("DATOS PARA REGISTRO VACIOS")
     
-    with open(TEMP_FILE, "a", encoding="utf-16") as file_temp:
+    with open(TEMP_FILE, "a", encoding="utf-16-le") as file_temp:
         # time = get_time_stamp(False)
         file_temp.write(f"{payload_temp[1]}\n")
         return True

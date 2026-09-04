@@ -1,6 +1,7 @@
 # PerfectOCR/core/workers/vectorial_transformation/data_collector.py
 import pandas as pd # type: ignore
 import logging
+from services.log_service import get_time_stamp, now
 import numpy as np
 from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, Tuple, List
@@ -24,6 +25,7 @@ class FinalStructurer(VectorizationAbstractWorker):
         worker_config = config.get('collector', {})
         self.placeholder = worker_config.get("placeholder", "")
         self.output = config.get("normalized_table")
+        self.date_id_format = worker_config.get("date_id_format")
         self.stack = config.get("stack")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
@@ -55,19 +57,20 @@ class FinalStructurer(VectorizationAbstractWorker):
             return (pd.DataFrame(), "")
 
         image_name = metadata.image_name if metadata else ""
-        df, totals = self.standarice_df(df, manager)
+        now_id = now()
+        date_creation = get_time_stamp(now_id, self.date_id_format)
+        idx = f"{image_name}_{date_creation}{now_id.microsecond:08d}"
+        
+        df, totals = self.standarice_df(df, manager, idx)
         if df.empty:
             return (pd.DataFrame(), "")
 
         polygons = manager.workflow.polygons if manager.workflow else {}
         if not polygons:
             return (pd.DataFrame(), "")
-            
-        date_creation = metadata.fecha_captura if metadata else ""
-
-
+        
         db_values: Dict[str, Any] = {}
-        for poly_data in polygons.values():
+        for _, poly_data in enumerate(polygons.values()):
             kf_list = poly_data.key_field
             value = poly_data.ocr_text or ""
             
@@ -105,14 +108,14 @@ class FinalStructurer(VectorizationAbstractWorker):
         manager.reset_data()
         return (df, image_name)
     
-    def standarice_df(self, df: pd.DataFrame, manager: DataFormatter) -> Tuple[pd.DataFrame, Dict[str, str]]:
+    def standarice_df(self, df: pd.DataFrame, manager: DataFormatter, idx: str) -> Tuple[pd.DataFrame, Dict[str, str]]:
         mtl_col = df[DataKeys.costo_tran.value]
         c_col = df[DataKeys.cantidad_art.value]
         pu_col = df[DataKeys.precio_unitario.value]
         product_col = df[DataKeys.producto_norm.value]
         df = pd.concat([c_col, product_col, pu_col, mtl_col], axis=1)
         df = self.clean_df(df, manager)
-        idx = manager.workflow.IDRegistro if manager.workflow else ""
+        
         if df.empty or not idx:
             return (pd.DataFrame(), {})
 

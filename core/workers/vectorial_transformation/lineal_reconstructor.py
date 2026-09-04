@@ -4,7 +4,6 @@ import time
 from typing import Dict, Any, List, Optional, Tuple
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
-from domain.data_models import Polygons
 from services.output_service import save_text_debug
 from domain.class_models import KeyField
 
@@ -64,17 +63,16 @@ class LinealReconstructor(VectorizationAbstractWorker):
                                             
         except Exception as e:
             logger.error(f"ERROR RECONSTRUYENDO LÍNEAS {e}", exc_info=True)
-            context = {}
         return False
         
-    def reconstruct_lines(self, polygons: Dict[str, Polygons], boundaries: Tuple[List[int], List[int]]) -> Optional[Tuple[Dict[str, Any], Tuple[Optional[int], Optional[int]]]]:
+    def reconstruct_lines(self, polygons: Dict[str, Any], boundaries: Tuple[List[int], List[int]]) -> Optional[Tuple[Dict[str, Any], Tuple[Optional[int], Optional[int]]]]:
         """
         Reconstruye líneas agrupando polígonos y devuelve un dict con la debug completa de cada línea,
         incluyendo los textos OCR concatenados.
         """
-        prepared_sorted = sorted(polygons.values(), key=lambda p: p.geometry.centroid[1])
+        prepared_sorted = sorted(polygons.values(), key=lambda p: p.centroid[1])
         lines_info: Dict[str, Any] = {}
-        current_line_polys: List[Polygons] = []
+        current_line_polys: List[Any] = []
         current_line_bbox: Optional[List[float]] = None
         line_counter = 0
         headers = set(boundaries[0])
@@ -86,7 +84,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         total_polys = len(prepared_sorted)
         cum_poly = 0
         for poly in prepared_sorted:
-            bbox = poly.geometry.bounding_box
+            bbox = poly.bounding_box
             if len(bbox) == 0:
                 total_polys -= 1
                 continue
@@ -106,7 +104,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
                 if overlap > self.overlap_threshold:
                     current_line_polys.append(poly)
-                    all_bboxes = [p.geometry.bounding_box for p in current_line_polys]
+                    all_bboxes = [p.bounding_box for p in current_line_polys]
                     if all_bboxes:
                         all_xs = [b[0] for b in all_bboxes] + [b[2] for b in all_bboxes]
                         all_y_mins = [b[1] for b in all_bboxes]
@@ -116,7 +114,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                         current_line_bbox = [min(all_xs), avg_y_min, max(all_xs), avg_y_max]
                         
                         # Antes de cerrar la línea, ordena los polígonos actuales de la línea por el eje X (centroide[0])
-                        current_line_polys.sort(key=lambda p: p.geometry.centroid[0])
+                        current_line_polys.sort(key=lambda p: p.centroid[0])
                 else:
                     close_line = True
 
@@ -197,14 +195,14 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
         return (lines_info, (header_idx if headers else None, footer_idx if footer_idx > header_idx and footers else None))
 
-    def find_tabular_lines(self, polygons: Dict[str, Polygons]) -> Tuple[List[int], List[int]]:
+    def find_tabular_lines(self, polygons: Dict[str, Any]) -> Tuple[List[int], List[int]]:
         """
         Método placeholder para encontrar líneas tabulares.
         """
         try:
             headers: List[int] = []
             footer: List[int] = []
-            for poly_id, poly in polygons.items():
+            for _, (poly_id, poly) in enumerate(polygons.items()):
                 key_field = poly.key_field
                 if key_field is None:
                     continue

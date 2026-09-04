@@ -42,9 +42,8 @@ class ProcessingBuilder:
         """Procesa una sola imagen usando el método execute() uniforme de cada stager"""
         total_images = len(query)
         images = 0
-        start_time = time.perf_counter()
         results: List[Tuple[str, str]] = []
-        
+        start_time = time.perf_counter()
         while query:
             images += 1
             image_data = query.pop(0)
@@ -72,7 +71,7 @@ class ProcessingBuilder:
             plain_text = manager.payload.payload if manager.payload else "NO_MANAGER" # type: ignore
             name = manager.payload.name if manager.payload else "NO_MANGER"  # type: ignore
             manager.reset_data()    # type: ignore
-            payload: Tuple[str, str] = tuple((name, plain_text))
+            payload: Tuple[str, str] = tuple([name, plain_text])
 
             if "NO_MANGER" == plain_text or "NO_MANGER" == name:
                 logger.info("PROCESO COMPLETADO, PRUEBA MOCK SE DEVUELVEN DATOS FALSOS")

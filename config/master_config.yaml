@@ -44,26 +44,36 @@ pipeline_secuence:
     - "table_structurer"
     - "math_max"
     - "collector"
-       
-log_debug:           # <-- Activar logs para consola
-  all_logs: False    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
-  text_ocr: False
-  text_del: False
-  frag_polys: False
-  text_clean: False
-  text_correct: False
-  refined_text: False
-  seman_clas: False
-  key_fields: False
-  lines: False
-  table_lines: False
-  table_geo: False
-  table_correct: False
-  time_stages_log: False
-  time_worker_log: False
-  
-  semantic_types_log: [2, 3, 4, 5, 6]   # Range [0, 5]
-  kf_list_log: [5] # Range [1, 12]
+
+log_config:
+  log_params:
+    console_level: 'INFO'
+    file_level: 'INFO'
+    console_format: "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
+    file_format: "%(filename)s:%(lineno)d - %(message)s"
+    date_format: "%H:%M:%S"
+    temp_date_format: "%d/%m/%Y-%H:%M:%S"
+    temp_path_file: "safe_temp"
+
+  logs_flags:           # <-- Activar logs para consola
+    all_logs: False    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
+    text_ocr: False
+    text_del: False
+    frag_polys: False
+    text_clean: False
+    text_correct: False
+    refined_text: False
+    seman_clas: False
+    key_fields: False
+    lines: False
+    table_lines: False
+    table_geo: False
+    table_correct: False
+    time_stages_log: False
+    time_worker_log: False
+    
+    semantic_types_log: [2, 3, 4, 5, 6]   # Range [0, 5]
+    kf_list_log: [5] # Range [1, 12]
 
 # Configuración de salida
 enabled_outputs:

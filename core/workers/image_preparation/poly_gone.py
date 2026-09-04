@@ -1,13 +1,11 @@
 # core/preprocessing/poly_gone.py
 import numpy as np
 import logging
-#import time
 import dataclasses
 from typing import Dict, Any
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from domain.data_models import Polygons
-from utils.image_utils import  make_contiguous, validate_image
+from utils.image_utils import make_contiguous, validate_image
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -29,11 +27,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.warning("PolygonExtractor: No hay workflow o polígonos para procesar.")
                 return False
 
-            polygons: Dict[str, Polygons] = manager.workflow.polygons
+            polygons = manager.workflow.polygons
 
             # 1. Recopilar Bounding Boxes y IDs
             poly_ids_order = list(polygons.keys())
-            all_bboxes = np.array([polygons[pid].geometry.bounding_box for pid in poly_ids_order], dtype=np.int32)
+            all_bboxes = np.array([polygons[pid].bounding_box for pid in poly_ids_order], dtype=np.int16)
 
             if all_bboxes.size < 1:
                 logger.warning("PolygonExtractor: No hay bboxes válidos para procesar.")
@@ -57,7 +55,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             full_img = make_contiguous(full_img)
 
             # 4. Bucle Único de Filtrado, Actualización y Re-indexado
-            new_polygons: Dict[str, Polygons] = {}
+            new_polygons = {}
             cropped_images_to_save: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]] = {}
             new_poly_idx = 0
 
@@ -84,15 +82,14 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 
                 # Actualizar geometría con las nuevas coordenadas (con padding)
                 original_poly = polygons[old_poly_id]
-                original_bbox = original_poly.geometry.bounding_box
-                new_geometry = dataclasses.replace(original_poly.geometry, bounding_box=original_bbox)
+                original_bbox = original_poly.bounding_box
 
                 # Crear el nuevo objeto Polygons actualizado y añadirlo al diccionario final
                 new_polygons[new_id] = dataclasses.replace(
                     original_poly,
                     polygon_id=new_id,
                     poly_index=new_poly_idx,
-                    geometry=new_geometry
+                    bounding_box=original_bbox
                 )
                 cropped_images_to_save[new_id] = cropped
                 new_poly_idx += 1

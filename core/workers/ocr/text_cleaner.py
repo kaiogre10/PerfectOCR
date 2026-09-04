@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from domain.data_formatter import DataFormatter
 from domain.abstract_worker import OCRAbstractWorker
 from utils.text_utils import remove_special_sequences, punct_strip, separate_punt, is_acronym
-from utils.compiled_utils import validate_text
+from utils.compiled_utils import validate_text, space_removal
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class TextCleaner(OCRAbstractWorker):
         final_polygons: Dict[str, Dict[str, Any]] = {}
         eliminated_count = 0
 
-        for poly_id, polygon in polygons_in.items():
+        for _, (poly_id, polygon) in enumerate(polygons_in.items()):
             kf = polygon.key_field or None
             sc = polygon.semantic_clasification
             text = polygon.ocr_text or ""
@@ -107,8 +107,8 @@ class TextCleaner(OCRAbstractWorker):
         words = text.split(' ')
         processed_words: List[str] = []
 
-        for token in words:
-            if token.isalnum() or token.isalpha() or token.isdecimal():
+        for _, token in enumerate(words):
+            if token.isalpha() or token.isalnum() or token.isdecimal():
                 processed_words.append(token)
                 continue
 
@@ -122,4 +122,4 @@ class TextCleaner(OCRAbstractWorker):
                 processed_words.append(clean_token)
                 continue
         
-        return ' '.join(processed_words).strip()
+        return space_removal(' '.join(processed_words))

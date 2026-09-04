@@ -174,7 +174,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             n_arith_cols = aritmetic_df.shape[1]
             array_votes = np.zeros(aritmetic_df.shape, dtype=np.int8, order='F')
 
-            for row_values in aritmetic_df.values:
+            for _, row_values in enumerate(aritmetic_df.values):
                 for c_idx, pu_idx, mtl_idx in permutations(range(n_arith_cols), 3):
                     c_col = row_values[c_idx]
                     pu_col = row_values[pu_idx]
@@ -439,7 +439,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         pu_idx = df.columns.get_loc(DataKeys.precio_unitario.value) if DataKeys.precio_unitario.value in df.columns else None # type: ignore
         mtl_idx = df.columns.get_loc(DataKeys.costo_tran.value) if DataKeys.costo_tran.value in df.columns else None # type: ignore
 
-        for r in incomplete_rows_id:
+        for _, r in enumerate(incomplete_rows_id):
             raw_c: str = str(df.iat[r, c_idx]) # type: ignore
             raw_pu: str = str(df.iat[r, pu_idx]) # type: ignore
             raw_mtl: str = str(df.iat[r, mtl_idx]) # type: ignore
@@ -499,7 +499,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         #  ##logger.info("INVDED:\n" + df.iloc[:, idx].to_string(index=True))
 
-        for r in relative_idx:
+        for _, r in enumerate(relative_idx):
             real_idx = rows_to_com[r]
             val_n = invaded_df.iat[r, 0]
             val_m = invaded_df.iat[r, 1]
@@ -649,8 +649,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         mixed_sc_ids = np.concatenate((rows_double, dec_cells[:, 0]))
         # logger.debug("\n"f"{rows_double}, {alone_doubles_rel}, {mixed_sc_ids}")
         #  ##logger.info("DOU:\n" + df.iloc[mixed_sc_ids].to_string(index=True))
-        for row in mixed_sc_ids:
-            mr = int(row)
+        for _, mr in enumerate(mixed_sc_ids):
 
             row_mixed_cols = np.nonzero(cuantiative_array[mr])[0]
             if len(row_mixed_cols) == 0:
@@ -737,11 +736,11 @@ class MatrixSolver(VectorizationAbstractWorker):
         dest_idx = int(text_idx[0])
         # logger.debug(f"closest: {closest_idx}")
 
-        for rr in alone_doubles_rel:
+        for _, rr in enumerate(alone_doubles_rel):
             r = rows_double[rr]
 
             row_text_cols = np.where(double_text[rr])[0]
-            intersect_cols_text_idx = np.intersect1d(row_text_cols, idx_decimal)
+            intersect_cols_text_idx = np.asarray(np.intersect1d(row_text_cols, idx_decimal), dtype=np.uint8)
 
             row_double_cols = np.where(double_cuant[rr])[0]
             if len(row_double_cols) == 0:
@@ -749,8 +748,6 @@ class MatrixSolver(VectorizationAbstractWorker):
             cur_double_col = int(row_double_cols[0])
 
             for c in intersect_cols_text_idx:
-                r = int(r)
-                c = int(c)
                 if c == dest_idx:
                     continue
 
@@ -785,12 +782,10 @@ class MatrixSolver(VectorizationAbstractWorker):
                     df_copy.iat[r, c] = []
 
             for dc in cols_idx:
-                dc = int(dc)
-                dr = int(r)
                 # logger.debug(f"COLUMN: {dc}")
-                dec_val: str = str(df.iat[dr, dc])
-                poly_vals: List[str] = df_copy.iat[dr, dc]
-                dest_polys = df_copy.iat[dr, closest_idx]
+                dec_val: str = str(df.iat[r, dc])
+                poly_vals: List[str] = df_copy.iat[r, dc]
+                dest_polys = df_copy.iat[r, closest_idx]
 
                 if dec_val == "" or not dec_val:
                     continue
@@ -802,18 +797,18 @@ class MatrixSolver(VectorizationAbstractWorker):
                         continue
                         
                     elif closest_idx < dc:
-                        df.iat[dr, closest_idx] = str(split_decimals[0])
-                        df.iat[dr, dc] = str(split_decimals[1])
+                        df.iat[r, closest_idx] = str(split_decimals[0])
+                        df.iat[r, dc] = str(split_decimals[1])
 
-                        df_copy.iat[dr, closest_idx] = dest_polys + [poly_vals[0]]
-                        df_copy.iat[dr, dc] = [poly_vals[1]] + dest_polys
+                        df_copy.iat[r, closest_idx] = dest_polys + [poly_vals[0]]
+                        df_copy.iat[r, dc] = [poly_vals[1]] + dest_polys
 
                     else:
-                        df.iat[dr, closest_idx] = str(split_decimals[1])
-                        df.iat[dr, dc] = str(split_decimals[0])
+                        df.iat[r, closest_idx] = str(split_decimals[1])
+                        df.iat[r, dc] = str(split_decimals[0])
 
-                        df_copy.iat[dr, closest_idx] = dest_polys + [poly_vals[1]]
-                        df_copy.iat[dr, dc] = [poly_vals[0]] + dest_polys
+                        df_copy.iat[r, closest_idx] = dest_polys + [poly_vals[1]]
+                        df_copy.iat[r, dc] = [poly_vals[0]] + dest_polys
 
         # logger.info("SEPARATED:\n" + df.to_string(index=True))
         return (df, df_copy)
@@ -830,13 +825,12 @@ class MatrixSolver(VectorizationAbstractWorker):
         c_target = df.columns.get_loc(DataKeys.producto_norm.value)
         empty_rows_idx = np.where(unique_cells)[0]
         # logger.info("DIRTY:\n" + df.to_string(index=True))
-        for r in empty_rows_idx[::-1]:
+        for _, r in enumerate(empty_rows_idx[::-1]):
             c_idx = np.nonzero(elements_array[r])[0]
             if len(c_idx) == 0:
                 continue
 
             c = int(c_idx[0])
-            c_target = int(c_target)
             r_target = int(r) - 1
             if r_target < 0:
                 continue
@@ -882,13 +876,12 @@ class MatrixSolver(VectorizationAbstractWorker):
         decimal_coords_abs = np.column_stack([decimal_rows, decimal_cols])
         # #logger.info("ABS_CORRDS:\n"f"{decimal_coords_abs}")
 
-        potencial_val = np.zeros(df.shape, np.uint8)
-        for r in non_empty_rows_idx:
-            r = int(r)
+        potencial_val = np.zeros(df.shape, dtype=np.uint8)
+        for _, r in enumerate(non_empty_rows_idx):
             dec_cells = decimal_coords_abs[decimal_coords_abs[:, 0] == r, 1]
 
-            val_a = Decimal(str(df.iat[r, dec_cells[0]]))
-            val_b = Decimal(str(df.iat[r, dec_cells[1]]))
+            val_a = Decimal(df.iat[r, dec_cells[0]])
+            val_b = Decimal(df.iat[r, dec_cells[1]])
 
 #            logger.debug(f"ROW {r} VALUES:\n"f"A: '{val_a}', B: '{val_b}'")
             a_int = val_a.to_integral_value()

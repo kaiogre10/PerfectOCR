@@ -146,7 +146,7 @@ def find_umd(text: str) -> str:
 
     result_parts: List[str] = []
 
-    for word in text.split(" "):
+    for _, word in enumerate(text.split(" ")):
         if not word:
             continue
 
@@ -225,7 +225,7 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
     
     if not activate_func[6] and bool(_cp_pattern.search(s)):
         activate_func[6] = True
-        return KeyField.direcciónp.value
+        return KeyField.direccionp.value
     return None
 
 def validate_quant_pattern(text: str) -> bool:
@@ -248,7 +248,7 @@ def get_cuants(text: str) -> str:
 
     words = text.strip().split(" ")
     result_parts: List[str] = []
-    for word in words:
+    for _, word in enumerate(words):
 
         if word.isalpha():
             result_parts.append(word)
@@ -377,7 +377,7 @@ def get_brands(text: str) -> bool:
 
 def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
     final_results: Dict[str, Tuple[List[int], int]] = {}
-    for pid, polygon in polygons.items():        
+    for _, (pid, polygon) in enumerate(polygons.items()):
         s = polygon.ocr_text or ""
         s = s.strip()
         if not s:
@@ -396,6 +396,7 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
         if total_token_cuants == 1:
             t_class, t_cuant = classify_token_cuant(tokens[0])
             final_results[pid] = ([t_class], t_cuant)
+            continue
     
         else:
             token_classes: List[int] = []

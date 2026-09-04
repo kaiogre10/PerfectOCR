@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from domain.data_models import WorkflowData, StructuredData, Geometry, Metadata, Polygons, CroppedImage, AllLines, LineGeometry, FullImage, Payload
+from domain.data_models import WorkflowData, StructuredData, Metadata, Polygons, CroppedImage, AllLines, FullImage, Payload
 import numpy as np
 import dataclasses
 import logging
@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 from services.log_service import get_caller_info
-from domain.class_models import SemantiClass, DataKeys
+from domain.class_models import SemantiClass
 
 logger = logging.getLogger(__name__)
 
@@ -29,27 +29,25 @@ class DataFormatter:
         self.workflow: Optional[WorkflowData] = None
         self.payload: Optional[Payload] = None
         
-    def create_workflow(self, IDRegistro: str, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
+    def create_workflow(self, gray_img: np.ndarray[Any, np.dtype[np.uint8]], metadata: Dict[str, Any]) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
         try:
-            full_image = FullImage(full_img=(gray_img))
             image_name=str(metadata.get("image_name", ""))
             metadata_obj = Metadata(
                 image_name=image_name,
-                fecha_captura=str(metadata.get(DataKeys.fecha_captura.value, "")),
                 dpi=int(metadata.get("dpi", 0)),
                 img_dims = (0 , 0),
                 binary=metadata.get("binary", False)
             )
+            full_image = FullImage(full_img = gray_img)
             self.workflow = WorkflowData(
-                IDRegistro=IDRegistro,
                 full_img=full_image,
                 metadata=metadata_obj,
                 polygons=None,
                 all_lines=None,
                 table_data=None,
             )
-            logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{IDRegistro}'")
+            logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{image_name}'")
             return True
             
         except Exception as e:
@@ -67,23 +65,17 @@ class DataFormatter:
             for pid, poly_data in results.items():
                 poly_id = pid
                 poly_index = poly_data["poly_index"]
-                # contours = poly_data["contours_count"] or 0
                 coords = poly_data["polygon_coords"]
                 bbox = poly_data["bounding_box"]
                 centroid = poly_data["centroid"]
-
-                # Crear objeto Geometry
-                geometry = Geometry(
-                    polygon_coords=coords,
-                    bounding_box=bbox,
-                    centroid=centroid
-                )
 
                 # Crear objeto Polygons y agregar al diccionario
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
                     poly_index=poly_index,
-                    geometry=geometry,
+                    polygon_coords = coords,
+                    bounding_box = bbox,
+                    centroid = centroid,
                     cropped_img=None,
                     ocr_text=None,
                     key_field=None,
@@ -171,13 +163,9 @@ class DataFormatter:
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
 
-                    cropped_image_obj = CroppedImage(normalice_image(img))
-
+                    cropped_image_obj = CroppedImage(img)
                     # Crear nuevo polígono con la imagen recortada y la geometría
-                    updated_polygon = dataclasses.replace(
-                        polygon,
-                        cropped_img=cropped_image_obj
-                    )
+                    updated_polygon = dataclasses.replace(polygon, cropped_img=cropped_image_obj)
                     self.workflow.polygons[poly_id] = updated_polygon
 
             logger.debug(f"Guardadas {len(cropped_images)} imágenes recortadas y geometría de recorte")
@@ -200,14 +188,17 @@ class DataFormatter:
                 
             reindexed_polygons: Dict[str, Polygons] = {}
             new_id = 0
-            for poly_id, res, in final_results.items():
+            for i, (poly_id, res), in enumerate(final_results.items()):
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
                     text=res.get("text", "")
+                    
                     if not text or text is None:
                         continue
-                    cuant_c=polygon.cuant_chars if not res.get("cuant_chars") else res.get("cuant_chars")
-                    sc = polygon.semantic_clasification if not res.get("sc") else res.get("sc")
+                        
+                    cuant_c=polygon.cuant_chars if not res.get("cuant_chars") else 0
+                    sc = polygon.semantic_clasification if not res.get("sc") else [SemantiClass.DESCRIPTIVE]
+                    
                     new_id += 1
                     new_idx = f"poly_{new_id:04d}"
                     updated_polygon = dataclasses.replace(
@@ -216,7 +207,7 @@ class DataFormatter:
                         poly_index=new_id,
                         ocr_text=text,
                         semantic_clasification=sc,
-                        cuant_chars=cuant_c    
+                        cuant_chars=cuant_c
                     )
                     reindexed_polygons[new_idx] = updated_polygon
                 else:
@@ -311,17 +302,14 @@ class DataFormatter:
 
             all_lines_dataclasses: Dict[str, AllLines] = {}
             for line_id, line_data in valid_lines.items():
-                line_geometry = LineGeometry(
-                    line_centroid=line_data["line_centroid"] or [0.0, 0.0],
-                    line_bbox=line_data["line_bbox"] or [0.0, 0.0, 0.0, 0.0],
-                )
                 all_lines_dataclasses[line_id] = AllLines(
                     lineal_id=line_id,
                     line_index=line_data.get("line_index"),
                     text=line_data.get("text", ""),
                     polygon_ids=line_data["polygon_ids"],
                     polygons_index=line_data["polygons_index"],
-                    line_geometry=line_geometry,
+                    line_centroid=line_data["line_centroid"] or [0.0, 0.0],
+                    line_bbox=line_data["line_bbox"] or [0.0, 0.0, 0.0, 0.0],
                     tabular_line=line_data["tabular_line"],
                     header_line=line_data["header_line"] or None,
                     footer_line=line_data["footer_line"] or None,

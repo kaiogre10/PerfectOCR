@@ -44,7 +44,7 @@ class TextCorrector(OCRAbstractWorker):
         final_polygons: Dict[str, Dict[str, Any]] = {}
         correced_count = 0
 
-        for poly_id, polygon in polygons_in.items():
+        for i, (poly_id, polygon) in enumerate(polygons_in.items()):
             original_text = polygon.ocr_text or ""
             kf = polygon.key_field
             sc = polygon.semantic_clasification

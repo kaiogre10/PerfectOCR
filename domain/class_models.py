@@ -21,7 +21,7 @@ class KeyField(IntEnum):
     date_doc = 9
     telefonop = 10
     correop = 11
-    direcciónp = 12
+    direccionp = 12
     
 class DataKeys(StrEnum):
     id_cliente = "id_cliente"

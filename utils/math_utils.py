@@ -141,7 +141,7 @@ def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float,
 #     h_clustering = HDBSCAN(min_samples=h_min_samples, metric=h_metric)
 #     return np.asarray(h_clustering.fit_predict(h_features), np.int16)
     
-def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions: Optional[Sequence[float]] = None) -> List[Dict[str, np.ndarray[Any, Any]]]:
+def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions: Optional[Sequence[float]] = None) -> List[Dict[str, List[Any]]]:
     """
     Fragmenta una geometría en segmentos horizontales (eje X) y devuelve nuevas geometrías
     ordenadas de izquierda a derecha.
@@ -150,10 +150,10 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
     - Si se provee `proportions`, debe tener longitud `num_fragments` y su suma debe ser > 0.
     """
     if num_fragments <= 1:
-        bbox = getattr(geometry, "bounding_box", None)
-        centroid = getattr(geometry, "centroid", None)
-        coords = getattr(geometry, "polygon_coords", None)
-        if bbox is None or centroid is None or coords is None:
+        bbox = getattr(geometry, "bounding_box", [])
+        centroid = getattr(geometry, "centroid", [])
+        coords = getattr(geometry, "polygon_coords", [])
+        if not bbox or not centroid or not coords:
             return []
         return [{"bounding_box": bbox, "centroid": centroid, "polygon_coords": coords}]
 
@@ -178,24 +178,21 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
             return []
         props = props / total
 
-    geoms: List[Dict[str, np.ndarray[Any, Any]]] = []
+    geoms: List[Dict[str, List[Any]]] = []
     current_x = xmin
 
     for i in range(num_fragments):
         frag_width = float(props[i]) * width
         new_xmax = xmax if i == (num_fragments - 1) else (current_x + frag_width)
 
-        new_bbox = np.asarray([current_x, ymin, new_xmax, ymax], dtype=np.float32)
-        new_centroid = np.asarray([(current_x + new_xmax) / 2.0, (ymin + ymax) / 2.0], dtype=np.float32)
-        new_coords = np.asarray(
-            [
+        new_bbox = [current_x, ymin, new_xmax, ymax]
+        new_centroid = [(current_x + new_xmax) / 2.0, (ymin + ymax) / 2.0]
+        new_coords = [
                 [new_bbox[0], new_bbox[1]],
                 [new_bbox[2], new_bbox[1]],
                 [new_bbox[2], new_bbox[3]],
                 [new_bbox[0], new_bbox[3]],
-            ],
-            dtype=np.float32,
-        )
+            ]
         geoms.append({"polygon_coords": new_coords, "bounding_box": new_bbox, "centroid": new_centroid})
 
         current_x = new_xmax
@@ -224,8 +221,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     total_size = total_width * total_height
     
     line_id = np.asarray([lid.line_index for lid in sorted_lines], dtype=np.float32)
-    geometry = [lid.line_geometry for lid in sorted_lines]
-    all_bboxes = np.asarray([geo.line_bbox for geo in geometry], np.float32)
+    all_bboxes = np.asarray([line.line_bbox for line in sorted_lines], dtype = np.float32)
     x, y, w, h = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
     width = (w - x)
     height = (h - y)
@@ -283,7 +279,7 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     main_centroid = np.tile([cw, ch], (line_id.shape[0], 1))
 
     # Coordenadas prev/next mediante slicing con padding NaN
-    centroids = np.asarray([geo.line_centroid for geo in geometry], np.float32)
+    centroids = np.asarray([c.line_centroid for c in sorted_lines], np.float32)
     prev_bboxes = np.vstack([np.full((1, 4), np.nan, dtype=np.float32), all_bboxes[:-1]])
     next_bboxes = np.vstack([all_bboxes[1:], np.full((1, 4), np.nan, dtype=np.float32)])
     prev_centroids = np.vstack([np.full((1, 2), np.nan, dtype=np.float32), centroids[:-1]])
@@ -400,11 +396,11 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     features = np.zeros((rows, 3), dtype=np.float32, order='C')
     
     for i, line_data in enumerate(sorted_lines):
-        sc_quant_count = 0
+        sc_quant_count = 0.0
         kf_total = 0
         # Cuenta tokens numéricos por línea
         poly_ids_line = line_data.polygons_index
-        for pid_idx in poly_ids_line:
+        for _, pid_idx in enumerate(poly_ids_line):
             pid_str = index_to_id_map.get(pid_idx)
             if pid_str and pid_str in polygons_dict:
                 poly = polygons_dict[pid_str]
@@ -415,9 +411,9 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
                 else:
                     kf_total += len(kf)
                 
-        features[i, 0] = sc_quant_count if kf_total < 1 else 0
-        features[i, 1] = 0 if kf_total > 0 else line_data.t_cuant
-        features[i, 2] = kf_total
+        features[i, 0] = sc_quant_count if kf_total < 1 else 0.0
+        features[i, 1] = 0.0 if kf_total > 0 else line_data.t_cuant
+        features[i, 2] = float(kf_total)
     
     if features.shape[0] == 0:
         return np.empty(0, dtype=np.float32)
@@ -441,7 +437,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
         has_kf = np.where(kf_count == 0, 1.0, -1.0)
     
     if max_sc_quant > 0:
-        num_count_norm = (2.0 * sc_quants / float(max_sc_quant)) - 1.0
+        num_count_norm = (2.0 * sc_quants / max_sc_quant) - 1.0
     else:
         num_count_norm = np.full_like(sc_quants, -1.0, dtype=np.float32)
     
@@ -465,15 +461,15 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     return textual_features
 
 # @njit(cache=True)
-def count_quantitative_tokens(semantic_classification: List[int]) -> int:
-    count = 0
+def count_quantitative_tokens(semantic_classification: List[int]) -> float:
+    count = 0.0
     for x in semantic_classification:
         if x == SemantiClass.DESCRIPTIVE or x == SemantiClass.NUMERIC or x == SemantiClass.CODE:
             continue
         if x == SemantiClass.UMD or x == SemantiClass.QUANTITATIVE:
-            count += 1
+            count += 1.0
         else:
-            return 0
+            return 0.0
     return count
 
 # def round_2_decimal_vals(amount_str: str) -> str:

@@ -48,16 +48,25 @@ class Refiner(OCRAbstractWorker):
             
             for _ in range(self.num_passes):
                 if self.cleaner:
-                    self.cleaner.transcribe(context, manager)
-                    self.classify_strings(manager)
+                    if not self.cleaner.transcribe(context, manager):
+                        return False
+                    
+                    if not self.classify_strings(manager):
+                        return False
 
                 if self.corrector:
-                    self.corrector.transcribe(context, manager)
-                    self.classify_strings(manager)
-                
+                    if not self.corrector.transcribe(context, manager):
+                        return False
+                    
+                    if not self.classify_strings(manager):
+                        return False
+                    
                 if self.fragmenter:
-                    self.fragmenter.transcribe(context, manager)
-                    self.classify_strings(manager)
+                    if not self.fragmenter.transcribe(context, manager):
+                        return False
+                    
+                    if not self.classify_strings(manager):
+                        return False
 
             if self.seman_clas_log or self.output:
                 logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
@@ -104,7 +113,7 @@ class Refiner(OCRAbstractWorker):
 
         except Exception as e:
             logger.warning(f"Error en el clasificador: {e}", exc_info=True)
-            return False
+        return False
             
     def get_early_data(self, manager: DataFormatter) -> bool:
         """Asigna key_field sobre texto OCR crudo antes de fragmentar/clasificar. Cada tipo de dato se marca como mucho una vez por documento (orden lectura: poly_index)."""
@@ -119,7 +128,7 @@ class Refiner(OCRAbstractWorker):
         # [fecha, rfc, iva] — ya satisfechos en el documento
         state: List[bool] = [False, False, False, False, False, False, False, False]
 
-        for _, pd in polygons.items():
+        for _, (_, pd) in enumerate(polygons.items()):
             kf = pd.key_field
             if kf is None:
                 continue
@@ -135,12 +144,12 @@ class Refiner(OCRAbstractWorker):
                 state[4] = True
             if SemantiClass.UNIQUE in kf:
                 state[5] = True
-            if KeyField.direcciónp.value in kf:
+            if KeyField.direccionp.value in kf:
                 state[6] = True
 
         polygon_updates: Dict[str, List[int]] = {}
 
-        for poly_id, poly_data in polygons.items():
+        for _, (poly_id, poly_data) in enumerate(polygons.items()):
             if poly_data.key_field is not None:
                 continue
 
@@ -169,7 +178,7 @@ class Refiner(OCRAbstractWorker):
         
         final_polygons: Dict[str, Dict[str, Any]] = {}
         
-        for poly, poly_data in polygons.items():
+        for _, (poly, poly_data) in enumerate(polygons.items()):
             text = poly_data.ocr_text or ""
             sc = poly_data.semantic_clasification
             kf = poly_data.key_field

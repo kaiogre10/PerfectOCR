@@ -74,7 +74,7 @@ class DataFinder(OCRAbstractWorker):
             skip_idx = np.compress(mask_sc, all_idx)
             assigned_fields: Set[int] = set()
             
-            for pid, poly in polygons.items():
+            for _, (pid, poly) in enumerate(polygons.items()):
                 if poly.poly_index in skip_idx:
                     # logger.info(f"{pid} Omitido: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     skipped_semantic += 1
@@ -83,7 +83,7 @@ class DataFinder(OCRAbstractWorker):
                 kf = poly.key_field or None
                 if kf is not None:
                     skipped_semantic += 1
-                    logger.error(f"KeyField redundante en WODR FINDER {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
+                    logger.debug(f"KeyField redundante: {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     continue
 
                 ocr_text = poly.ocr_text or ""

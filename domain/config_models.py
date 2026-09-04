@@ -32,7 +32,7 @@ class PipelineConfig(ConfigWithNumpy):
     vectorization_stager: Optional[List[str]] = None
     db_stage: Optional[List[str]] = None
 
-class DebugOutputs(ConfigWithNumpy):
+class LogsFlags(ConfigWithNumpy):
     all_logs: bool
     text_ocr: bool
     text_clean: bool
@@ -50,6 +50,19 @@ class DebugOutputs(ConfigWithNumpy):
     semantic_types_log: List[int]
     time_stages_log: bool
     time_worker_log: bool
+
+class LogParams(ConfigWithNumpy):
+    console_level: str
+    file_level: str
+    console_format: str
+    file_format: str
+    date_format: str
+    temp_date_format: str
+    temp_path_file: str
+
+class LogsConfig(ConfigWithNumpy):
+    logs_flags: LogsFlags
+    log_params: LogParams
 
 class ImgLoadOutputs(ConfigWithNumpy):
     full_img: bool
@@ -223,6 +236,7 @@ class CosineSimilarity(ConfigWithNumpy):
 
 class DataCollector(ConfigWithNumpy):
     placeholder: str
+    date_id_format: str
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
@@ -248,7 +262,7 @@ class SystemSetUp(ConfigWithNumpy):
     system_params: SystemParams
     deploy_settings: DeploySettings
     pipeline_secuence: PipelineConfig
-    log_debug: DebugOutputs
+    log_config: LogsConfig
     enabled_outputs: OutputFlags
     env_config: Dict[str, Any]
 
@@ -261,7 +275,7 @@ class MasterConfig(ConfigWithNumpy):
     system_params: SystemParams
     deploy_settings: DeploySettings
     pipeline_secuence: PipelineConfig
-    log_debug: DebugOutputs
+    log_config: LogsConfig
     enabled_outputs: OutputFlags
     models_config: ModelsConfig
     modules: ModulesConfig

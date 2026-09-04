@@ -3,7 +3,6 @@ import dataclasses
 import logging
 from typing import Dict, Any, List, Tuple
 from domain.data_formatter import DataFormatter
-from domain.data_models import Polygons, Geometry
 from domain.abstract_worker import OCRAbstractWorker
 from utils.math_utils import fragment_geometry_horizontal
 from utils.compiled_utils.compiled_funcs import space_removal, validate_text
@@ -18,17 +17,17 @@ class Fragmenter(OCRAbstractWorker):
         self.project_root = project_root
         self.log_output = config.get("frag_polys")
 
-    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool: 
+    def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("Fragmentador no tiene polígonos para procesar")
                 return False
             
-            polygons_in: Dict[str, Polygons] = manager.workflow.polygons            
+            polygons_in = manager.workflow.polygons
             
             fragmented_count = 0
-            final_polygons: List[Polygons] = []
-            for poly_id, polygon in polygons_in.items():
+            final_polygons = []
+            for _, (poly_id, polygon) in enumerate(polygons_in.items()):
                 
                 kf = polygon.key_field or None
                 sc: List[int]= polygon.semantic_clasification
@@ -50,7 +49,7 @@ class Fragmenter(OCRAbstractWorker):
                 #     continue
                 
                 semantic_frag = len(sc) > SemantiClass.DESCRIPTIVE and any(c > 0 for c in sc)
-                                    
+                
                 if semantic_frag:
                     logger.debug(f"Poligono {poly_id}: '{ocr_text} se fragmentará")
                     fragments = self.fragment_by_semantic_classification(polygon)
@@ -64,7 +63,7 @@ class Fragmenter(OCRAbstractWorker):
                 # Extender la lista final una sola vez con los fragmentos (o el polígono original si era 1 solo)
                 final_polygons.extend(fragments)
 
-            final_polygons_dict: Dict[str, Polygons] = {}
+            final_polygons_dict = {}
             for idx, poly_obj in enumerate(final_polygons):
                 new_id = f"poly_{idx:04d}"
                 new_index = idx
@@ -75,24 +74,24 @@ class Fragmenter(OCRAbstractWorker):
             if fragmented_count > 0 and self.log_output:
                 logger.info(f"Fragmenter: Se fragmentaron {fragmented_count} resultando en {len(final_polygons_dict)} polígonos totales.")
             
-            poly_debug: Dict[str, Polygons] = manager.workflow.polygons
-            for pid, pd in poly_debug.items():
-                text = pd.ocr_text or ""
-                sc = pd.semantic_clasification
-                
-                if not (text.count(" ") + 1) == len(sc):
-                    kf = pd.key_field or None
-                    if SemantiClass.UNIQUE in sc and kf is not None:
-                        continue
-                        
-                    logger.warning(f"{pid} INCONGRUENTE CON SC: TEXTO: '{text}' -> SC {sc}")
+                poly_debug = manager.workflow.polygons
+                for pid, pd in poly_debug.items():
+                    text = pd.ocr_text or ""
+                    sc = pd.semantic_clasification
+                    
+                    if not (text.count(" ") + 1) == len(sc):
+                        kf = pd.key_field or None
+                        if SemantiClass.UNIQUE in sc and kf is not None:
+                            continue
+                            
+                        logger.warning(f"{pid} INCONGRUENTE CON SC: TEXTO: '{text}' -> SC {sc}")
                     
             return True
         except Exception as e:
             logger.warning(f"Error fragmentando: {e}", exc_info=True)
         return False
 
-    def fragment_by_semantic_classification(self, polygon: Polygons) -> List[Polygons]:
+    def fragment_by_semantic_classification(self, polygon: Any) -> List[Any]:
         """
         Fragmenta un polígono según su clasificación semántica.
         Regla: agrupa tokens consecutivos del mismo tipo de clasificación.
@@ -161,9 +160,9 @@ class Fragmenter(OCRAbstractWorker):
         if total_chars == 0:
             return [polygon]
         
-        new_polys: List[Polygons] = []
+        new_polys = []
         proportions = [float(frag_len) / float(total_chars) for frag_len in frag_char_lengths]
-        geom_parts = fragment_geometry_horizontal(polygon.geometry, num_fragments = total_fragments, proportions=proportions)
+        geom_parts = fragment_geometry_horizontal(polygon, num_fragments = total_fragments, proportions=proportions)
         if not geom_parts:
             return [polygon]
             
@@ -173,15 +172,11 @@ class Fragmenter(OCRAbstractWorker):
             if not validate_text(frag_text):
                 continue
             
-            new_geom = Geometry(
-                polygon_coords=geom_part["polygon_coords"],
-                bounding_box=geom_part["bounding_box"],
-                centroid=geom_part["centroid"],
-            )
-            
             new_poly = dataclasses.replace(
                 polygon,
-                geometry=new_geom,
+                polygon_coords = geom_part["polygon_coords"],
+                bounding_box = geom_part["bounding_box"],
+                centroid =  geom_part["centroid"],
                 ocr_text=frag_text,
                 semantic_clasification=frag_scs
             )

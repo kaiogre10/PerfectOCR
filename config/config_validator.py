@@ -136,9 +136,17 @@ class ConfigValidator:
         
         return system_paths
 
+    @property
+    def log_config(self):
+        return self.config.get("log_config", {})
+
+    @property
+    def log_params(self) -> Dict[str, str]:
+        return self.log_config.get("log_params", {})
+
     @cached_property
     def _logs_debug(self):
-        _logs_debug = self.config.get("log_debug", {})
+        _logs_debug = self.log_config.get("logs_flags", {})
         def _max_min_vals(type_list: List[int], lenght: int, limits: Tuple[int, int]) -> List[int]:
             if -1 in type_list:
                 range_logs = limits
@@ -194,7 +202,7 @@ class ConfigValidator:
     def logs_debug(self) -> Dict[str, Any]:
         logs_debug = self._logs_debug
         if logs_debug.get("all_logs"):
-            for key, value in logs_debug.items():
+            for _, key, value in enumerate(logs_debug.items()):
                 if isinstance(value, bool):
                     logs_debug[key] = True
                 elif isinstance(value, list):

@@ -19,7 +19,7 @@ class MainFactory:
     def get_all_stagers(self, stagging: List[Tuple[str, Optional[List[str]]]]) -> List[Any]:
         stagers: List[Any] = []
         stagers_dict, factories_dict = self.get_dicts()
-        for (stage, workers) in stagging:
+        for _, (stage, workers) in enumerate(stagging):
             stage_config = self.modules_config.get(stage) # Configuración por etapa
             if workers is None or not workers or not stage or not stage_config:
                 continue

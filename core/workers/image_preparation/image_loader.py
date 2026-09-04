@@ -1,13 +1,11 @@
 import logging
 import os
-from datetime import datetime
 from typing import Dict, Any
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import decolorate, is_binarized
 from utils.file_handler import load_images
 from services.output_service import save_croped_image
-from domain.class_models import DataKeys
 
 logger = logging.getLogger(__name__)
 
@@ -37,22 +35,20 @@ class ImageLoader(ImagePrepAbstractWorker):
                 return False
             
             # Metadata: una sola llamada a datetime
-            now = datetime.now()
-            date_creation = f"{now.strftime('%Y%m%d')}"
+            
             metadata: Dict[str, Any] = {
-                "image_name": image_name, DataKeys.fecha_captura.value: date_creation, "binary": binary
+                "image_name": image_name,
+                "binary": binary
             }
             
-            id_registro = f"{image_name}_{date_creation}{now.microsecond:08d}"
-            
-            if manager.create_workflow(id_registro, full_img, metadata):
+            if manager.create_workflow(full_img, metadata):
                 logger.debug(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
+                del context["image_data"]
                 
                 if self.output:
                     worker_name = context.get("worker_name") or "loader"
                     save_croped_image(image_name, f"full_img_{image_name}_{worker_name}", full_img)
-                
-                del context["image_data"]
+                    
                 return True
         
         except Exception as e:

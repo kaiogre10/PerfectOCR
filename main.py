@@ -38,7 +38,7 @@ import services.output_service as output_service
 
 def main():
     os.environ.update(config_service.env_config)
-    log_service.setup_logging(PROJECT_ROOT)
+    log_service.setup_logging(PROJECT_ROOT, config_service.log_params)
     
     if config_service.handle_memory:
         storage_service.storage_config(system_paths) # type: ignore

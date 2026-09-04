@@ -33,7 +33,7 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
             return make_contiguous(img)
 
         try:
-            img_arr = np.asarray(img, dtype=np.uint8)
+            img_arr = np.asarray(img, dtype=np.uint8, order="C")
         except Exception as e:
             logger.error(f"normalice_image: no se pudo convertir a ndarray: {e}", exc_info=True)
             return None
@@ -376,8 +376,8 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Option
 #     logger.info(f"Tiempo extrayendo métricas VECTOROIZADAS: {time.perf_counter()-time0:.6f}'s")
 #     return valid_coords, metrics_array
 
-def is_binarized(img: np.ndarray[Any, Any]) -> bool:
-    """True si es una imagen binarizada"""
+def is_binarized(img: np.ndarray[Any, Any]):
+    """True si es una imagen está binarizada"""
     return np.all((img == 0) | (img == 255))
 
 def configure_kernel(x: int, y: int):
