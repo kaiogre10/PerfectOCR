@@ -15,8 +15,7 @@ extern "C" {
     void container_create(const int trigger) {
         if (trigger > 0 && g_canal == nullptr) 
             g_canal = new PayloadContainer(); // El contenedor nace vacío en el heap
-    };
-    uint8_t* create_storage_image()
+    }
 }
 
 void push(std::vector<uint8_t>&& plain_payload) {

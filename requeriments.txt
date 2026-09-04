@@ -15,6 +15,6 @@ python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython
 
 cd components/opencv_dep
 git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git opencv_dep/src
-
-cmake -B build -G Ninja
-cmake --build build --target install -j8
+cmake -C opencv_config.cmake -S src -B build -G Ninja
+cmake --build build --config Release
+cmake --install build

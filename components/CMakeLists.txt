@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(components LANGUAGES CXX)
+project(components LANGUAGES C CXX)
 
 if (POLICY CMP0141)
     cmake_policy(SET CMP0141 NEW)
@@ -12,18 +12,31 @@ option(BUILD_SHARED_LIBS "Fuerza la compilación de librerías dinámicas" ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
     message(STATUS "Intel OneAPI detectado. Activando optimización de arquitectura host.")
-
+    
     if (WIN32)
-        # Sintaxis MSVC requerida para el generador de Visual Studio
+        # Optimizaciones para icx-cl en Windows
         set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O3 /QxHost")
         set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O3 /QxHost")
+        
+        # ELIMINACIÓN OBLIGATORIA: Purga de /Qm64 y flags obsoletos de Intel clásico
+        foreach(flag_var 
+            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_RELWITHDEBINFO
+            CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO
+            CMAKE_EXE_LINKER_FLAGS CMAKE_EXE_LINKER_FLAGS_DEBUG CMAKE_EXE_LINKER_FLAGS_RELEASE
+            CMAKE_SHARED_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS_DEBUG CMAKE_SHARED_LINKER_FLAGS_RELEASE)
+            if(DEFINED ${flag_var})
+                string(REPLACE "/Qm64" "" ${flag_var} "${${flag_var}}")
+                string(REPLACE "-qm64" "" ${flag_var} "${${flag_var}}")
+                string(REPLACE "/Qnextgen" "" ${flag_var} "${${flag_var}}")
+                string(REPLACE "-qnextgen" "" ${flag_var} "${${flag_var}}")
+            endif()
+        endforeach()
     else ()
-        # Sintaxis GNU/Clang requerida para Ninja en Linux
+        # Sintaxis GNU/Clang para Linux
         set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -xHost")
         set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -xHost")
     endif ()
 endif ()
-
 # Preparamos una variable global con las librerías del kernel que requiere cada OS
 if (UNIX AND NOT APPLE)
     # Linux exige estas librerías para la memoria compartida (shm_open) y hilos
