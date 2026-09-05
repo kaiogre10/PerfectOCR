@@ -1,19 +1,20 @@
-#include <c_utils.hpp>
-#include <opencv4/opencv2/core.hpp>
-#include <opencv4/opencv2/imgproc.hpp>
+#include "c_utils.hpp"
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <vector>
 #include <iostream>
 
 namespace image_utils {
     void decolorate(cv::Mat& image) {
-        if (image.empty() || image.depth() != CV_8U) {
+        if (image.empty()) {
             return;
-        };
+        }
 
         int channels = image.channels();
         if (channels < 3 || channels > 4) {
+            image.release();
             return; // Solo soporta BGR o BGRA
-        };
+        }
 
         // Crear máscaras para píxeles negros y blancos
         std::vector<cv::Mat> bgr_planes;
@@ -24,11 +25,15 @@ namespace image_utils {
         cv::Mat white_condition = (bgr_planes[0] > 180) & (bgr_planes[1] > 180) & (bgr_planes[2] > 180);
         cv::Mat mask_valid = black_condition | white_condition;
 
-        // Rellenar píxeles no válidos con blanco
+                // Rellenar píxeles no válidos con blanco
         if (channels == 3) {
-            image.setTo(cv::Scalar(255, 255, 255), ~mask_valid);
+                image.setTo(cv::Scalar(255, 255, 255), ~mask_valid);
         } else { // channels == 4
-            image.setTo(cv::Scalar(255, 255, 255, 255), ~mask_valid);
+                image.setTo(cv::Scalar(255, 255, 255, 255), ~mask_valid);
+        }
+            
+        if (!validate_image(image)) {
+            image.release();
         }
     };
 
@@ -38,7 +43,8 @@ namespace image_utils {
             image = contiguous_image;
         };
     };
-    bool validate_image(const cv::Mat& image) {
+
+    bool validate_image(cv::Mat& image) {
         if (image.empty() || image.channels() != 1) {
             return false;
         }
@@ -47,12 +53,11 @@ namespace image_utils {
         double avg_brightness = mean_val[0];
 
         return (avg_brightness > 7.0 && avg_brightness < 251.0);
-    }
+    };
 
     void normalize_image(cv::Mat& image) {
         // Verificar si la imagen es válida
         if (image.empty()) {
-            std::cerr << "normalize_image: imagen vacía recibida" << std::endl;
             return;
         };
 
@@ -64,31 +69,34 @@ namespace image_utils {
             // Aplicar decolorate antes de convertir a gris
             decolorate(image);
 
+            if (image.empty()) {  // decolorate la vació si falló validate_image
+                return;
+            }
+
             // Convertir a gris
             cv::Mat gray_image;
             if (channels == 3) {
                 cv::cvtColor(image, gray_image, cv::COLOR_BGR2GRAY);
-            } else { // channels == 4
+            }
+            else { // channels == 4
                 cv::cvtColor(image, gray_image, cv::COLOR_BGRA2GRAY);
             }
             image = gray_image;
 
-        } else if (channels == 2) {
-            // Si tiene 2 canales, tomar solo el primer canal
+        }
+        else if (channels == 2) {
             std::vector<cv::Mat> planes;
-            cv::split(image, planes);
-            image = planes[0];
+            cv::extractChannel(image, image, 0); // más directo, sin copiar el canal alpha
+        }
 
-        } else if (channels != 1) {
-            // Si no es 1, 2, 3 o 4 canales, error
-            std::cerr << "normalize_image: número de canales no soportado: " << channels << std::endl;
+        else if (channels != 1) {
+            // Si no es 1, 2, 3 o 4 canales, 
             image.release();
             return;
         }
 
         // Ahora image debería tener 1 canal (gris)
         if (image.channels() != 1) {
-            std::cerr << "normalize_image: error al convertir a gris" << std::endl;
             image.release();
             return;
         }
@@ -100,19 +108,20 @@ namespace image_utils {
 
             if (max_val <= 1.0) {
                 // Escalar de [0,1] a [0,255]
-                image.convertTo(image, CV_8U, 255.0);
-            } else {
-                // Convertir a uint8 con clipping
-                image.convertTo(image, CV_8U);
+                image.convertTo(image, CV_8UC1, 255.0);
             }
-        } else if (depth != CV_8U) {
+            else {
+                // Convertir a uint8 con clipping
+                image.convertTo(image, CV_8UC1);
+            }
+        }
+        else if (depth != CV_8U) {
             // Convertir cualquier otro tipo a uint8
-            image.convertTo(image, CV_8U);
+            image.convertTo(image, CV_8UC1);
         }
 
         // Validar imagen
         if (!validate_image(image)) {
-            std::cerr << "normalize_image: imagen inválida (brillo fuera de rango)" << std::endl;
             image.release();
             return;
         }
@@ -120,5 +129,5 @@ namespace image_utils {
         // Asegurar que sea C-contigua
         make_contiguous(image);
         return;
-    }
+    };
 }
