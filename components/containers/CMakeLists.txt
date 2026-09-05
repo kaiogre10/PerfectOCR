@@ -1,8 +1,9 @@
-add_library(containers SHARED 
+add_library(containers SHARED
+	"image.hpp"
     "containers.h" 
     "containers.cpp"
-	"image_container.cpp"
-	"image_container.hpp"
+	"image_container.c"
+	"image_container.h"
 )
 
 target_include_directories(containers 

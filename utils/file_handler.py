@@ -13,7 +13,8 @@ from services.log_service import basic_exc_logger, log_simple
 def load_images(image_path: str):
     if not image_path or not os.path.isfile(image_path):
         raise FileNotFoundError(f"No se proporcionó una ruta de entrada válida: '{image_path}'")
-    return cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    image_name = os.path.splitext(os.path.basename(image_path))[0]
+    return image_name, cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
 
 def save_image(data: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_name: str):
     """Guarda una única imagen en disco."""

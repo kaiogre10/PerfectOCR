@@ -11,7 +11,7 @@ system_params:
 
 deploy_settings:
   postgre_local: False     # Habilitar el servicio local de postgre
-  handle_memory: False   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
+  handle_memory: True   # Interruptor para gestionar la memoria dinámica, exclusivamente para deploy
   test_config: False   # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
   clean_mode: False     # Modo de limpieza que solo ejecuta el módulo de limpieza de cache y datos basura
   update_model: False   # Modo de actualización de los valores de las matrices de Word Finder sin correr todo el sistema

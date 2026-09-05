@@ -138,5 +138,5 @@ def format_elapsed_time(seconds: float) -> str:
 #         return True
 
 def reset_temp_file(TEMP_FILE: str):
-    with open(TEMP_FILE, "w", encoding="utf-16"):
+    with open(TEMP_FILE, "w", encoding="utf-16-le"):
         pass

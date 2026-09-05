@@ -570,14 +570,14 @@ def _correct_numbers(text: str) -> str:
     """Solo corrije numeros, no borra caracteres"""
     return text if text.isdecimal() else _correct_cuants.sub(lambda match: _replacement_map[match.lastgroup], text) # type: ignore
 
-def noramalize_df(text: str, separator: str) -> str:
+def noramalize_df_text(text: str, placeholder: str) -> str:
     """Normaliza el texto para usar un separador único.
 
     Reemplaza los separadores existentes por espacios, elimina espacios
     duplicados y añade el separador configurado al final del texto.
     """
-    text = text.replace(separator, " ")
-    return space_removal(text + separator)
+    text = text.replace(placeholder, " ")
+    return space_removal(text + placeholder)
 
 def its_similar(word: str, suspect: str) -> bool:
     suspect_slice = suspect[:len(word)]

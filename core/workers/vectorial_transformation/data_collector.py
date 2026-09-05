@@ -5,9 +5,9 @@ from services.log_service import get_time_stamp, now
 import numpy as np
 from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, Tuple, List
-from utils.text_utils import format_cuant, get_rfc, get_ids, noramalize_df, its_similar, fast_classfier
+from utils.text_utils import format_cuant, get_rfc, get_ids, noramalize_df_text, its_similar, fast_classfier
 from core.assets.patterns import umd_patterns
-from utils.math_utils import validate_df
+from utils.math_utils import validate_df, check_full_df
 from utils.compiled_utils import validate_text
 from services.output_service import save_debug_table
 from domain.abstract_worker import VectorizationAbstractWorker
@@ -23,7 +23,7 @@ class FinalStructurer(VectorizationAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         worker_config = config.get('collector', {})
-        self.placeholder = worker_config.get("placeholder", "")
+        self.placeholder = worker_config.get("placeholder")
         self.output = config.get("normalized_table")
         self.date_id_format = worker_config.get("date_id_format")
         self.stack = config.get("stack")
@@ -214,11 +214,12 @@ class FinalStructurer(VectorizationAbstractWorker):
                             df.iat[i, pro_idx] = (orig_p_value + concat_val)
 
         if validate_df(df):
-            df = df.map(lambda x: noramalize_df(x, self.placeholder)) # type: ignore
-            logger.debug(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
-            return df
-        else:
-            return pd.DataFrame()
+            df = df.map(lambda x: noramalize_df_text(x, self.placeholder)) # type: ignore
+            if check_full_df(df):
+                logger.debug(f"DF NORMALIZADO:\n{df.to_string(index=True)}")
+                return df
+
+        return pd.DataFrame()
     
     def transform_data(self, df: pd.DataFrame) -> str:
         """Devuelve tamaño de cada fila y el df aplanado"""

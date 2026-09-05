@@ -1,6 +1,11 @@
 #pragma once
 #include <vector>
+#include <opencv2/imgcodecs.hpp>
 #include <cstdint>
+
+extern "C" {
+    void load_image(const char* filepath);
+}
 
 struct FullImage {
     std::vector<uint8_t> data;
@@ -8,7 +13,3 @@ struct FullImage {
     int height;
     bool success;
 };
-
-extern "C" {
-    void load_image(const char* filepath);
-}

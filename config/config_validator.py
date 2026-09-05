@@ -6,8 +6,10 @@ from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from utils.image_utils import configure_kernel
 from services.system_service import get_so
 from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
+from core.assets.patterns import PLACEHOLDER_PATTERN
 from domain.class_models import DataKeys, StageKeys
 
+_placeholder_pattern = PLACEHOLDER_PATTERN
 _kf_range = KF_RANGE
 _sc_range = SC_RANGE
 
@@ -358,7 +360,7 @@ class ConfigValidator:
         _vectorization_config: Dict[str, Any] = self.modules_config.get("vectorization", {})
         collector = _vectorization_config.get("collector", {})
         placeholder = collector.get("placeholder")
-        if not placeholder or not isinstance(placeholder, str) or len(placeholder) !=1 or not placeholder.isascii() or placeholder.isalnum() or placeholder.isspace():
+        if not isinstance(placeholder, str) or not _placeholder_pattern.search(placeholder):
             basic_exc_logger(f"NO HAY SEPARADOR VÁLIDO")
             return {}
 

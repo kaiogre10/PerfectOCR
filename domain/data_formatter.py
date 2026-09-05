@@ -1,5 +1,5 @@
 # core/domain/data_formatter.py
-from domain.data_models import WorkflowData, StructuredData, Metadata, Polygons, CroppedImage, AllLines, FullImage, Payload
+from domain.data_models import WorkflowData, StructuredData, Metadata, Polygons, CroppedImage, AllLines, FullImg, Payload
 import numpy as np
 import dataclasses
 import logging
@@ -35,10 +35,9 @@ class DataFormatter:
             image_name=str(metadata.get("image_name", ""))
             metadata_obj = Metadata(
                 image_name=image_name,
-                dpi=int(metadata.get("dpi", 0)),
                 img_dims = (0 , 0)
             )
-            full_image = FullImage(full_img = gray_img)
+            full_image = FullImg(full_img = gray_img)
             self.workflow = WorkflowData(
                 full_img=full_image,
                 metadata=metadata_obj,
@@ -93,7 +92,7 @@ class DataFormatter:
             logger.error(f"Error en create_polygon_dicts: {e}", exc_info=True)
         return False
             
-    def get_full_img(self) -> Optional[FullImage]:
+    def get_full_img(self) -> Optional[FullImg]:
         return self.workflow.full_img if self.workflow else None
         
     def delete_cropped_images(self):
@@ -128,7 +127,7 @@ class DataFormatter:
                     logger.critical(f"Error normalizando")
                     return False
                 # Wrap en la dataclass FullImage y actualizar workflow
-                full_image_obj = FullImage(img_arr)
+                full_image_obj = FullImg(img_arr)
                 self.workflow = dataclasses.replace(self.workflow, full_img=full_image_obj)
                 
                 up_img = self.workflow.full_img.full_img if self.workflow else None # type: ignore
@@ -187,7 +186,7 @@ class DataFormatter:
                 
             reindexed_polygons: Dict[str, Polygons] = {}
             new_id = 0
-            for i, (poly_id, res), in enumerate(final_results.items()):
+            for _, (poly_id, res), in enumerate(final_results.items()):
                 if poly_id in self.workflow.polygons:
                     polygon = self.workflow.polygons[poly_id]
                     text=res.get("text", "")
@@ -196,7 +195,7 @@ class DataFormatter:
                         continue
                         
                     cuant_c=polygon.cuant_chars if not res.get("cuant_chars") else 0
-                    sc = polygon.semantic_clasification if not res.get("sc") else [SemantiClass.DESCRIPTIVE]
+                    sc = polygon.semantic_clasification if not res.get("sc") else [0]
                     
                     new_id += 1
                     new_idx = f"poly_{new_id:04d}"

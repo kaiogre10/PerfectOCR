@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Dict, Any
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
@@ -19,11 +18,11 @@ class ImageLoader(ImagePrepAbstractWorker):
         """Carga la imagen y extrae metadatos."""
         try:
             input_path = context.get("image_data", "")
-            image_name = os.path.splitext(os.path.basename(input_path))[0]
-            full_image = load_images(input_path)
-            
             logger.info(f"IMAGEN: '{input_path}'")
             
+            del context["image_data"]
+            
+            image_name, full_image = load_images(input_path)
             full_img = normalice_image(full_image)
             if full_img is None:
                 raise TypeError(f"NO SE PUDO NORMALIZAR LA IMAGEN")
@@ -34,7 +33,6 @@ class ImageLoader(ImagePrepAbstractWorker):
             
             if manager.create_workflow(full_img, metadata):
                 logger.debug(f"IMAGEN: '{image_name}' cargada en workflow exitosamente")
-                del context["image_data"]
                 
                 if self.output:
                     worker_name = context.get("worker_name") or "loader"

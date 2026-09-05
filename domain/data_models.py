@@ -38,11 +38,10 @@ class AllLines:
 @dataclass(slots=True)
 class Metadata:
     image_name: str
-    dpi: Optional[int]
     img_dims: Tuple[int, int]
 
 @dataclass(slots=True)
-class FullImage:
+class FullImg:
     full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
 
 @dataclass(slots=True)
@@ -52,7 +51,7 @@ class StructuredData:
 
 @dataclass(slots=True)
 class WorkflowData:
-    full_img: Optional[FullImage]
+    full_img: Optional[FullImg]
     metadata: Optional[Metadata]
     polygons: Optional[Dict[str, Polygons]]
     all_lines: Optional[Dict[str, AllLines]]

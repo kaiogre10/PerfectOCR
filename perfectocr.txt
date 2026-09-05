@@ -1,0 +1,204 @@
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input/AAAA0006.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.012892's:
+cantidad_art           producto_norm precio_unitario costo_tran col_4
+           3 VINCI 25 AM LIM 50 C/10           85.50     256.50    12
+           5        PUNTILLAS PM 0.5            9.49      47.45    15
+           1     PASTA CTA SURT C/25          135.00     135.00    12
+           2      FOLDER CTA CR C/10           22.50      45.00     5
+           1   SOBRE C/ROND CTA C/10           49.80      49.80     7
+           2          CREPE NGO C/10           48.00      96.00     8
+           1          KM MED NG C/12           39.90      39.90     5
+           1         KM FINO NG C/12           42.30      42.30     6
+           3 CARTA DIAM CANARIO C/10           30.00      90.00     5
+          10      PLACA UNIC 25X25X1            2.98      29.76     5
+           1 PALO RED DELG 4X60 K 95           59.28      59.28     2
+           1      GLOBO 5 SURT C/100           34.93      34.93    50
+           2   CART FLUORESC AM C/10           49.10      98.20     8
+process_builder.py:85 - Procesadas: 1 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input/AAAA0053.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.012925's:
+cantidad_art                        producto_norm precio_unitario costo_tran
+           1           PP FINO CUER AMA NGO C/ 12           44.40      44.40
+           1                       PP MED RJ C/12           41.40      41.40
+           1 BLOCK SOLICITUD EMPLEO  CTA 25H C/3            42.60      42.60
+           1                        DIXON 21G C/4           69.93      69.93
+           2       BLOCK ALBANENE CTA 90/9 5 25H            39.90      79.80
+           1                       CREPE NAR C/10           49.80      49.80
+           1                    CREPE RS MEX C/10           49.80      49.80
+           1        LAPIZ MAPED TRIANG CJA  C/12            47.40      47.40
+process_builder.py:85 - Procesadas: 2 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input2/AAAA0040.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.003174's:
+ col_0 cantidad_art                         producto_norm precio_unitario costo_tran
+  CR17            2                   CREPE ROJO PAQ C/10           49.80      99.60
+   CRQ            1     CART OPALINA BCA CTA 225grs C/100          159.90     159.90
+PC2005            1 BLOCK SOLICITUD DE EMPLEO CTA 25H C/3           42.60      42.60
+   CB4            2                  CART BRISTOL RS C/10           36.96      73.93
+ DI830            1                     DLXON 8g PAQ C/30          190.80     190.80
+ DI214            2                         DIXON 21g Cl4           69.93     139.87
+   Cl1            1                    CART IRIS NGO C/10           99.60      99.60
+  XC10            1           COMPAS ESCOLAR TUBULAR C/10           84.98      84.98
+process_builder.py:85 - Procesadas: 3 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input2/AAAA0058.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.006990's:
+cantidad_art             producto_norm precio_unitario costo_tran
+           7           LLUVIA MOR C/10           17.70     123.90
+           1 FOLDER OFICIO CREMA C/1 0           24.90      24.90
+           1             DIXON 21G C/4           69.93      69.93
+process_builder.py:85 - Procesadas: 4 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input2/AAAA0038.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.015511's:
+  col_0 cantidad_art                       producto_norm precio_unitario costo_tran
+   PVD6            1 PELQTA DE VINIL 8 1/2 DECOR RED C/6           57.00      57.00
+    CRE            2               CREPE AZ REY PAQ C/10           49.80      99.60
+  MEB10            1       MICA ADHERIBLE TRF 50X65 C/10          149.91     149.91
+   SHD1            1   LAPIZ SHELLY DUO GRAFIT/CARM C/10           37.80      37.80
+   SHR1            1        LAPIZ SHELY ROJO CARMIN C/10           37.80      37.80
+   PL10            1          PLASTILINA MK DE CAJA C/10          111.00     111.00
+   AS12            1         ACUARELA D CARTON 12 SC PAQ          117.30     117.30
+  C5055            1        BLOCK ALBANENE CTA 50/55 25H           36.60      36.60
+   CB25            1               CART BRISTOL BCA C/25           81.60      81.60
+ CAS810            1                   CASCARON 1/8 C/10           49.00      49.00
+50501 6            6                PLACA UNICEL 50X50X1            6.08      36.45
+   FC31            1                   FOMY CTA BCO Cl24           34.50      34.50
+   FT26            1            FOMY CTA DIAM AZ CL C/10           36.00      36.00
+    HC1            1      HOJA CTA CANARIO 09 DIEM C/100           67.97      67.97
+  100T1            1                      KM MED NG C/12           39.60      39.60
+  50.10            1          SILICON BARRA DELGADO C/10           21.93      21.93
+process_builder.py:85 - Procesadas: 5 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input2/AAAC0030.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.005065's:
+cantidad_art        producto_norm precio_unitario costo_tran
+           3 GRAPA MARVEL C/500 0           26.50      79.50
+process_builder.py:85 - Procesadas: 6 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input2/AAAA0079.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.008258's:
+col_0 cantidad_art                      producto_norm precio_unitario costo_tran
+ FT34            2             FOMY CTA DIAM NGO C/10           34.50      69.00
+HA500            2 HOJA BLANCA CTA SCOOL AZ PAQ C/500           94.50     189.00
+ LM12            1        LAPIZ MAPED TRIANG CJA C/12           47.40      47.40
+  CR1            3              CREPE AM CAN PAQ C/10           49.80     149.40
+ BBM1            1                    BIC MED NG C/12           41.94      41.94
+ PV23            1       PINT VINCI 25ml SURTIDA C/16           90.50      90.50
+process_builder.py:85 - Procesadas: 7 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input2/AAAA0059.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.010440's:
+cantidad_art                        producto_norm precio_unitario costo_tran
+           1        PINT VINCI 25ML SURTIDA C/10            90.50      90.50
+           1 BLOCK MILIMETRICO BOND  CTA 5OH C/3            95.85      95.85
+           1               CINTA TRANSP 44X4O C/6           75.50      75.50
+           1        LAPIZ MAPED TRIANG CJA  C/12            47.40      47.40
+           1                    CASCARON 1/8 C/10           40.38      40.38
+           2                   HOJA CTA MOR C/100           69.30     138.60
+process_builder.py:85 - Procesadas: 8 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input2/AAAC0037.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.029095's:
+cantidad_art                                                     producto_norm precio_unitario costo_tran
+           1                                     SILICON BARRA DEL GADO JUMBO           150.00     150.00
+           1                                            PINCEL COLOR GRUE  SO            70.00      70.00
+           1 ACLLP #2 C/1000 Pl NGUI  FOAMY FOAMY T/C V BANDE V 34.00 RA C/24            62.00      62.00
+           3                                  HOJA BLANCA FOTQB OND T7C C/500           101.00     303.00
+          25                                                  CARTULINA BLANCA            2.56      64.00
+          10                                        PROFESIONAL KID C-5 C/100            18.50     185.00
+          10                                         PROFESIONALKID C-7 C/100            18.50     185.00
+           3                                                 32ACUACOLOR ROJO            10.50      31.50
+           3                                                  ACUACOLOR FIUSHA           10.50      31.50
+           3                                             JACUACOLOR AMARILL O            10.50      31.50
+           3                                                 ACUACOLOR BANDERA           10.50      31.50
+           1                                   l 9LAPIZ DUO CUATITO  S C/10+2            37.00      37.00
+           1                                I ROJO CARMINSHELY  CON GOMA C/10            37.00      37.00
+           1                                      I ROJO CARMIN SHELY  C/10+2            37.00      37.00
+          12                                                       LAPIZ MAPED            4.08      48.96
+           5                                                   PLASTILINA CAFE            6.80      34.00
+           5                                           PLASTILINA AZUL C IELO             6.80      34.00
+           5                                           S PLASTILINA NARANJ  A             6.80      34.00
+           5                                                  PLASTILINA CARME            6.80      34.00
+           5                                         PLASTILINA VERDE BANDERA             6.80      34.00
+           1                                      PLUMA AZOR FINO C  /12 AZUL            37.00      37.00
+           1                                      PLUMA AZOR FINO C  /12 ROJO            37.00      37.00
+           1                                     I PLUMA AZOR MED C/ 12 NEGRO            32.00      32.00
+process_builder.py:85 - Procesadas: 9 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input2/AAAA0015.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.019753's:
+cantidad_art                      producto_norm precio_unitario costo_tran
+           1                PEGAM BCO 30G C/104           39.90      39.90
+           1                 PEGAM BCO 60G C/10           45.90      45.90
+           2                   CASCARON 1/4 C/5           33.48      66.96
+           1             MASK JNE 12X50 1/2 C/3           43.25      43.25
+           1            ACETATO TRANSP CTA C/25           52.50      52.50
+           1             MASK LDR 18X50 3/4 C/3           54.00      54.00
+           3                    CREPE LILA C/10           48.00     144.00
+           1 CINTA CANELA CINTA CANELA 4440 C/6           53.65      53.65
+           1               SOBRE C/ROND CTA /10           49.80      49.80
+           1               DIUREX 12X10 PAQ /10           22.50      22.50
+           1                      DLXON 8G C/10           66.90      66.90
+           1                    DLXON 21G Cy4 g           69.93      69.93
+           1                 LAPIZ SHE DUO C/10           37.95      37.95
+           1                LAPIZ SHE ROJO C/10           37.95      37.95
+           1                   BIC FINO NG C/12           42.90      42.90
+           3                    PP FINO RJ C/12           44.40    133.207
+           1                 CORTADOR DE UNICEE          120.00     120.00
+           5                 VINCI 25 AM MED 51            9.05      45.25
+           1                FOMY C AM HUEVO C/Z           30.00      30.00
+           1             FOMY C DIA AM IRIS C/1           30.00      30.00
+           1                 PEGAM BCO 125G C/5           36.90      36.90
+           1                 PEGAM BCO 250G C/5           51.60      51.60
+process_builder.py:85 - Procesadas: 10 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input3/AAAC0043.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.018453's:
+cantidad_art                    producto_norm precio_unitario costo_tran
+           6           GIS BLANCO C/12 B ACO            10.00      60.00
+           6            GIS COLOR C/12 BA CO            11.00      66.00
+           1              CINTA METRICA C/1 2           45.00      45.00
+           2         LIMPIAPIPAS MATE  MEGRO            22.00      44.00
+           6                  ILUSTRACION 1/4           10.00      60.00
+          10                  ILUSTRACION 1/8            5.00      50.00
+           1         SUJETA DOCUMENTOS  41MM            37.50      37.50
+           1     LAPIZ DUO CUATITO  s C/10+2            37.00      37.00
+          10       CARTULINA PASTEL AMARILLA             3.50      35.00
+          10           CARTULINA PASTEL Azul             3.50      35.00
+          10           CARTULINA PASTEL ROSA             3.50      35.00
+          10 CARTULINA NEON R OSA GRAFICOLOR             4.90      49.00
+          10                 CARTONCILLO NEGR            3.50      35.00
+process_builder.py:85 - Procesadas: 11 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input3/AAAC0010.png'
+math_max.py:48 - SE DEVOLVIÓ DATA FRAME VACÍO
+vectorization_stager.py:25 - 'MatrixSolver' falló, tiempo: 0.009579's
+process_builder.py:62 - Falla en 'VectorizationStager', tiempo: 0.013052's
+NoneType: None
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input3/AAAB0002.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.002742's:
+cantidad_art              producto_norm precio_unitario costo_tran
+          46      CUADFR P SCRIBE C/100           21.00     966.18
+           1 HOJA l OTOBO TIC C/500 C10          684.40     684.40
+process_builder.py:85 - Procesadas: 13 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input3/AAAC0025.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.005614's:
+cantidad_art      producto_norm precio_unitario costo_tran
+           1 PAPEL PICADO C/10T           78.00      78.00
+process_builder.py:85 - Procesadas: 14 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input3/AAAA0061.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.012283's:
+cantidad_art                       producto_norm precio_unitario costo_tran
+           1 HOJA CTA CA  NARIO 09 DI  EM C/100            69.30      69.30
+           1            CINTA TRANS P 44X40 C/6            75.50      75.50
+           1                 CHINA AM CA N C/50            54.90      54.90
+           1                       VALVULA C/1 0           21.60      21.60
+           1          TIJERA P RO MA ECON C/1  0           69.90      69.90
+          30             PAPEL FANTA SIA COUCHE             5.22     156.60
+process_builder.py:85 - Procesadas: 15 de '16' imágenes
+image_loader.py:21 - IMAGEN: '/home/kaiogre05/PerfectOCR/input3/AAAC0034.png'
+math_max.py:52 - DataFrame RECONSTRUIDO en 0.009661's:
+cantidad_art                       producto_norm precio_unitario costo_tran
+           1     BOLSA PAPEL MEDIAN A LISA C/10            89.00      89.00
+           1 BOLSA PAPEL MEDIAN A PATRONES C/10            89.00      89.00
+           1    BOL$APAPEL GRANDE PATRONES C/10           104.00     104.00
+           6                          FOAMY TIRA           26.00     156.00
+           1                       BOLSA MEDIANA           15.00      15.00
+           7                       BOLSA GRANDE            20.00     140.00
+process_builder.py:85 - Procesadas: 16 de '16' imágenes
+process_builder.py:92 - '15 de 16' Archivos Digitalizados CORRECTAMENTE en: 36.56580061299974, promedio: 2.2853625383124836's / documento
+process_builder.py:32 - PAYLOAD GUARDADO EN MEMORIA: '9984B', Y EN ARCHIVO DE SEGURIDAD
+main_builder.py:91 - TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN Tiempo: 36.56642807299977, promedio: 2.285402's
+main_builder.py:100 - SIZE/SENDED: 9984.0 B / 15
+main_builder.py:48 - Tiempo: 37.13288280699999 total en completar el proceso de tranformación de imagenes

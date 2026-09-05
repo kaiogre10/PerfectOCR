@@ -250,4 +250,5 @@ _correct_ocr = (
 )
 correct_cuants = re.compile(_correct_ocr)
 
+PLACEHOLDER_PATTERN = re.compile(r'^[^\s0-9a-zA-Z]$')
 # paddle_silene = re.compile(r".*OMP_NUM_THREADS.*|.*PLEASE USE OMP_NUM_THREADS WISELY.*")

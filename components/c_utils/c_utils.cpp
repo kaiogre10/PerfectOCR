@@ -1,8 +1,13 @@
 #include "c_utils.hpp"
-#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <vector>
-#include <iostream>
+
+namespace {
+    const int black_thr = 160;
+    const int white_thr = 180;
+    const inline cv::Scalar three_channels = cv::Scalar(255, 255, 255);
+    const inline cv::Scalar four_channels = cv::Scalar(255, 255, 255, 255);
+};
 
 namespace image_utils {
     void decolorate(cv::Mat& image) {
@@ -15,34 +20,33 @@ namespace image_utils {
             image.release();
             return; // Solo soporta BGR o BGRA
         }
-
         // Crear máscaras para píxeles negros y blancos
         std::vector<cv::Mat> bgr_planes;
         cv::split(image, bgr_planes);
 
         // Para BGR: bgr_planes[0]=B, [1]=G, [2]=R
-        cv::Mat black_condition = (bgr_planes[0] < 160) & (bgr_planes[1] < 160) & (bgr_planes[2] < 160);
-        cv::Mat white_condition = (bgr_planes[0] > 180) & (bgr_planes[1] > 180) & (bgr_planes[2] > 180);
+        cv::Mat black_condition = (bgr_planes[0] < black_thr) & (bgr_planes[1] < black_thr) & (bgr_planes[2] < black_thr);
+        cv::Mat white_condition = (bgr_planes[0] > white_thr) & (bgr_planes[1] > white_thr) & (bgr_planes[2] > white_thr);
         cv::Mat mask_valid = black_condition | white_condition;
 
-                // Rellenar píxeles no válidos con blanco
+        // Rellenar píxeles no válidos con blanco
         if (channels == 3) {
-                image.setTo(cv::Scalar(255, 255, 255), ~mask_valid);
+                image.setTo(three_channels, ~mask_valid);
         } else { // channels == 4
-                image.setTo(cv::Scalar(255, 255, 255, 255), ~mask_valid);
+                image.setTo(four_channels, ~mask_valid);
         }
             
         if (!validate_image(image)) {
             image.release();
-        }
-    };
+        };
+    }
 
     void make_contiguous(cv::Mat& image) {
         if (!image.isContinuous()) {
             cv::Mat contiguous_image = image.clone();
             image = contiguous_image;
         };
-    };
+    }
 
     bool validate_image(cv::Mat& image) {
         if (image.empty() || image.channels() != 1) {
@@ -53,13 +57,13 @@ namespace image_utils {
         double avg_brightness = mean_val[0];
 
         return (avg_brightness > 7.0 && avg_brightness < 251.0);
-    };
+    }
 
     void normalize_image(cv::Mat& image) {
         // Verificar si la imagen es válida
         if (image.empty()) {
             return;
-        };
+        }
 
         int channels = image.channels();
         int depth = image.depth();
@@ -72,9 +76,9 @@ namespace image_utils {
             if (image.empty()) {  // decolorate la vació si falló validate_image
                 return;
             }
-
             // Convertir a gris
             cv::Mat gray_image;
+
             if (channels == 3) {
                 cv::cvtColor(image, gray_image, cv::COLOR_BGR2GRAY);
             }
@@ -82,8 +86,8 @@ namespace image_utils {
                 cv::cvtColor(image, gray_image, cv::COLOR_BGRA2GRAY);
             }
             image = gray_image;
-
         }
+
         else if (channels == 2) {
             std::vector<cv::Mat> planes;
             cv::extractChannel(image, image, 0); // más directo, sin copiar el canal alpha
@@ -115,19 +119,15 @@ namespace image_utils {
                 image.convertTo(image, CV_8UC1);
             }
         }
-        else if (depth != CV_8U) {
+        else if (depth != CV_8UC1) {
             // Convertir cualquier otro tipo a uint8
             image.convertTo(image, CV_8UC1);
         }
 
-        // Validar imagen
         if (!validate_image(image)) {
             image.release();
             return;
         }
-
-        // Asegurar que sea C-contigua
         make_contiguous(image);
-        return;
-    };
+    }
 }

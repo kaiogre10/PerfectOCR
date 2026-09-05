@@ -1,7 +1,6 @@
 #pragma once
-#include <cstdint>
-#include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+// #include <opencv2/core.hpp>
 
 namespace image_utils {
     // 1. Sin parámetros extra: Estiramiento lineal de contraste a rango completo [0, 255]
@@ -15,4 +14,4 @@ namespace image_utils {
 
     // 4. Con parámetros específicos: Corrección Gamma (curva de iluminación no lineal)
     void normalize_image(cv::Mat& image);
-};
+}

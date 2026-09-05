@@ -164,12 +164,11 @@ def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], blo
 
 def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro."""
-    channels = full_img.shape[2]
     mask_black = np.all(full_img[:, :, :3] < 160, axis=2)
     mask_white = np.all(full_img[:, :, :3] > 180, axis=2)
     mask_valid = mask_black | mask_white
 
-    fill = [255, 255, 255, 255] if channels == 4 else [255, 255, 255]
+    fill = [255, 255, 255, 255] if full_img.shape[2] == 4 else [255, 255, 255]
     full_img[~mask_valid] = fill
     
     return full_img
