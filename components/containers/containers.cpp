@@ -25,8 +25,7 @@ void push(std::vector<uint8_t>&& plain_payload) {
 }
 
 std::queue<std::vector<uint8_t>> drain() {
-    std::queue<std::vector<uint8_t>> local;
-    {
+    std::queue<std::vector<uint8_t>> local; {
         std::lock_guard<std::mutex> lock(g_canal->mtx);
         // El consumidor se lleva TODOS los lotes acumulados hasta el momento de golpe
         g_canal->payload_container.swap(local);

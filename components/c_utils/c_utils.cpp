@@ -1,0 +1,124 @@
+#include <c_utils.hpp>
+#include <opencv4/opencv2/core.hpp>
+#include <opencv4/opencv2/imgproc.hpp>
+#include <vector>
+#include <iostream>
+
+namespace image_utils {
+    void decolorate(cv::Mat& image) {
+        if (image.empty() || image.depth() != CV_8U) {
+            return;
+        };
+
+        int channels = image.channels();
+        if (channels < 3 || channels > 4) {
+            return; // Solo soporta BGR o BGRA
+        };
+
+        // Crear máscaras para píxeles negros y blancos
+        std::vector<cv::Mat> bgr_planes;
+        cv::split(image, bgr_planes);
+
+        // Para BGR: bgr_planes[0]=B, [1]=G, [2]=R
+        cv::Mat black_condition = (bgr_planes[0] < 160) & (bgr_planes[1] < 160) & (bgr_planes[2] < 160);
+        cv::Mat white_condition = (bgr_planes[0] > 180) & (bgr_planes[1] > 180) & (bgr_planes[2] > 180);
+        cv::Mat mask_valid = black_condition | white_condition;
+
+        // Rellenar píxeles no válidos con blanco
+        if (channels == 3) {
+            image.setTo(cv::Scalar(255, 255, 255), ~mask_valid);
+        } else { // channels == 4
+            image.setTo(cv::Scalar(255, 255, 255, 255), ~mask_valid);
+        }
+    };
+
+    void make_contiguous(cv::Mat& image) {
+        if (!image.isContinuous()) {
+            cv::Mat contiguous_image = image.clone();
+            image = contiguous_image;
+        };
+    };
+    bool validate_image(const cv::Mat& image) {
+        if (image.empty() || image.channels() != 1) {
+            return false;
+        }
+
+        cv::Scalar mean_val = cv::mean(image);
+        double avg_brightness = mean_val[0];
+
+        return (avg_brightness > 7.0 && avg_brightness < 251.0);
+    }
+
+    void normalize_image(cv::Mat& image) {
+        // Verificar si la imagen es válida
+        if (image.empty()) {
+            std::cerr << "normalize_image: imagen vacía recibida" << std::endl;
+            return;
+        };
+
+        int channels = image.channels();
+        int depth = image.depth();
+
+        // Si la imagen tiene 3 o 4 canales, decolorar primero
+        if (channels == 3 || channels == 4) {
+            // Aplicar decolorate antes de convertir a gris
+            decolorate(image);
+
+            // Convertir a gris
+            cv::Mat gray_image;
+            if (channels == 3) {
+                cv::cvtColor(image, gray_image, cv::COLOR_BGR2GRAY);
+            } else { // channels == 4
+                cv::cvtColor(image, gray_image, cv::COLOR_BGRA2GRAY);
+            }
+            image = gray_image;
+
+        } else if (channels == 2) {
+            // Si tiene 2 canales, tomar solo el primer canal
+            std::vector<cv::Mat> planes;
+            cv::split(image, planes);
+            image = planes[0];
+
+        } else if (channels != 1) {
+            // Si no es 1, 2, 3 o 4 canales, error
+            std::cerr << "normalize_image: número de canales no soportado: " << channels << std::endl;
+            image.release();
+            return;
+        }
+
+        // Ahora image debería tener 1 canal (gris)
+        if (image.channels() != 1) {
+            std::cerr << "normalize_image: error al convertir a gris" << std::endl;
+            image.release();
+            return;
+        }
+
+        // Convertir a uint8 si es necesario
+        if (depth == CV_32F || depth == CV_64F) {
+            double min_val, max_val;
+            cv::minMaxLoc(image, &min_val, &max_val);
+
+            if (max_val <= 1.0) {
+                // Escalar de [0,1] a [0,255]
+                image.convertTo(image, CV_8U, 255.0);
+            } else {
+                // Convertir a uint8 con clipping
+                image.convertTo(image, CV_8U);
+            }
+        } else if (depth != CV_8U) {
+            // Convertir cualquier otro tipo a uint8
+            image.convertTo(image, CV_8U);
+        }
+
+        // Validar imagen
+        if (!validate_image(image)) {
+            std::cerr << "normalize_image: imagen inválida (brillo fuera de rango)" << std::endl;
+            image.release();
+            return;
+        }
+
+        // Asegurar que sea C-contigua
+        make_contiguous(image);
+        return;
+    }
+}

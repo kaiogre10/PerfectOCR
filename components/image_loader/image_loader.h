@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 #include <vector>
 #include <cstdint>
 
@@ -11,5 +10,5 @@ struct FullImage {
 };
 
 extern "C" {
-    FullImage load_and_clean_image(const std::string& filepath);
+    void load_image(const char* filepath);
 }

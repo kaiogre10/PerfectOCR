@@ -2,24 +2,17 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include "../opencv_dep/install/include/opencv2/opencv.hpp"
-
-// Estructura de salida expuesta a Python
-struct FullImage {
-    uint8_t* data;
-    int32_t width;
-    int32_t height;
-    int32_t channels; // Siempre 1 tras normalización
-};
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+#include <vector>
 
 extern "C" {
-
-    FullImage* load_and_normalize(const std::string& filepath) {
-        if (!filepath) return nullptr;
+    void load_image(const char* filepath) {
+        if (!filepath) return;
 
         // 1. Carga multiformato sin alterar canales originales (IMREAD_UNCHANGED)
         cv::Mat raw = cv::imread(filepath, cv::IMREAD_UNCHANGED);
-        if (raw.empty()) return nullptr;
+        if (raw.empty()) return;
 
         cv::Mat normalized_gray;
 
@@ -41,7 +34,7 @@ extern "C" {
         }
         else {
             // Formatos atípicos o no soportados
-            return nullptr;
+            return;
         }
 
         // 3. Asegurar profundidad de 8 bits (uint8)
@@ -60,7 +53,7 @@ extern "C" {
         // 5. Asignación manual del búfer Heap en C
         size_t total_bytes = continuous_mat.total() * sizeof(uint8_t);
         uint8_t* heap_data = static_cast<uint8_t*>(std::malloc(total_bytes));
-        if (!heap_data) return nullptr;
+        if (!heap_data) return;
 
         std::memcpy(heap_data, continuous_mat.data, total_bytes);
 
@@ -68,7 +61,7 @@ extern "C" {
         FullImage* result = static_cast<FullImage*>(std::malloc(sizeof(FullImage)));
         if (!result) {
             std::free(heap_data);
-            return nullptr;
+            return;
         }
 
         result->data = heap_data;
@@ -76,7 +69,7 @@ extern "C" {
         result->height = continuous_mat.rows;
         result->channels = 1;
 
-        return result;
+        return;
     };
 
     void free_image_buffer(FullImage* buf) {

@@ -1,11 +1,10 @@
 # core/workers/image_preparation/geometry_detector.py
 import logging
-import time
 from typing import Dict, Any, Optional, List
 from app.models_builder import ModelsBuilder
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.image_utils import binarice_img, morph_operations # get_contours_values
+from utils.image_utils import binarice_img, morph_operations
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -52,16 +51,8 @@ class GeometryDetector(ImagePrepAbstractWorker):
             if full_imag is None:
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
-                
-            metadata = manager.workflow.metadata if manager.workflow else None
-            if metadata is None:
-                logger.error(f"NO HAY METADATA EN GEOMETRY DETECTOR")
-                return False
             
-            if metadata.binary:
-                bin_img = full_imag
-            else:
-                bin_img = binarice_img(full_imag, {})
+            bin_img = binarice_img(full_imag, {})
 
             img = morph_operations(bin_img, self.kernel, self.iterations)
 

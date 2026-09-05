@@ -46,7 +46,7 @@ opencv_dep/build/
 src/
 install/
 out/
-documentation/
+#documentation/
 models/
 input/
 input2/

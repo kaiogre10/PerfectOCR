@@ -36,8 +36,7 @@ class DataFormatter:
             metadata_obj = Metadata(
                 image_name=image_name,
                 dpi=int(metadata.get("dpi", 0)),
-                img_dims = (0 , 0),
-                binary=metadata.get("binary", False)
+                img_dims = (0 , 0)
             )
             full_image = FullImage(full_img = gray_img)
             self.workflow = WorkflowData(

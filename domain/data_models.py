@@ -40,7 +40,6 @@ class Metadata:
     image_name: str
     dpi: Optional[int]
     img_dims: Tuple[int, int]
-    binary: bool
 
 @dataclass(slots=True)
 class FullImage:

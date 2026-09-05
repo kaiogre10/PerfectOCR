@@ -47,7 +47,7 @@ pipeline_secuence:
 
 log_config:
   log_params:
-    console_level: 'INFO'
+    console_level: 'WARNING'
     file_level: 'INFO'
     console_format: "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
     file_format: "%(filename)s:%(lineno)d - %(message)s"

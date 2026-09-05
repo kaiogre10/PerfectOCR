@@ -3,7 +3,7 @@ import os
 from typing import Dict, Any
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.image_utils import decolorate, is_binarized
+from utils.image_utils import normalice_image
 from utils.file_handler import load_images
 from services.output_service import save_croped_image
 
@@ -24,21 +24,12 @@ class ImageLoader(ImagePrepAbstractWorker):
             
             logger.info(f"IMAGEN: '{input_path}'")
             
-            if is_binarized(full_image):
-                binary = True
-                full_img = full_image
-            else:
-                full_img = decolorate(full_image)
-                binary = False
-            
-            if full_img.size < 1 or full_img is None:  # type: ignore
-                return False
-            
-            # Metadata: una sola llamada a datetime
+            full_img = normalice_image(full_image)
+            if full_img is None:
+                raise TypeError(f"NO SE PUDO NORMALIZAR LA IMAGEN")
             
             metadata: Dict[str, Any] = {
-                "image_name": image_name,
-                "binary": binary
+                "image_name": image_name
             }
             
             if manager.create_workflow(full_img, metadata):
@@ -52,5 +43,5 @@ class ImageLoader(ImagePrepAbstractWorker):
                 return True
         
         except Exception as e:
-            logger.error(f"Error cargando: {e}", exc_info = True)
+            logger.error(f"Error cargando imagen: {e}", exc_info = True)
         return False

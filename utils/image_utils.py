@@ -9,12 +9,10 @@ import time
 logger = logging.getLogger(__name__)
 
 def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(img_arr, np.uint8)
+    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(img_arr, dtype=np.uint8)
 
 def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
     """
-    Normaliza una imagen de entrada:
-    - Asegura que sea ndarray
     - Convierte BGR->GRAY si viene con 3/4 canales
     - Convierte a dtype uint8 (escala floats en [0,1] a 0-255)
     - Garantiza que el array sea C-contiguo
@@ -25,65 +23,50 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
             logger.error("normalice_image: imagen None recibida")
             return None
         
-        if not validate_image(img):
-            logger.debug("Imagen blanca/negra completamente")
-            return None
-            
-        if is_binarized(img):
-            return make_contiguous(img)
-
-        try:
-            img_arr = np.asarray(img, dtype=np.uint8, order="C")
-        except Exception as e:
-            logger.error(f"normalice_image: no se pudo convertir a ndarray: {e}", exc_info=True)
-            return None
-
         # Si llega en color, convertir a gris (BGR->GRAY)
-        if img_arr.ndim == 3 and img_arr.shape[2] in (3, 4):
-            try:
-                img_arr = cv2.cvtColor(img_arr, cv2.COLOR_BGR2GRAY)
-                logger.debug("normalice_image: convertida imagen BGR->GRAY")
-            except cv2.error as e:
-                logger.warning(f"normalice_image: no se pudo convertir BGR->GRAY: {e}", exc_info=True)
+        dims = img.ndim
 
-        # Asegurar dtype uint8 (flotantes se escalan si están en [0,1], otros se recortan)
+        if dims == 2:
+            channels = 1
+        elif dims == 3:
+            channels = img.shape[2]
+        else:
+            return None
+        
+        if channels > 2:
+            image_arr = decolorate(img)
+        
+            if image_arr is None:
+                return None
+        
+            elif channels == 4:
+                img_arr = cv2.cvtColor(image_arr, cv2.COLOR_BGRA2GRAY)
+
+            else:
+                img_arr = cv2.cvtColor(image_arr, cv2.COLOR_BGR2GRAY)
+        
+        elif channels == 2:
+            img_arr = img[:, :, 0]
+        
+        else:  # channels == 1
+            img_arr = img
+            
         if img_arr.dtype != np.uint8:
-            try:
-                if np.issubdtype(img_arr.dtype, np.floating):
-                    mx = float(img_arr.max()) if img_arr.size > 0 else 0.0
-                    if mx <= 1.0:
-                        img_arr = (img_arr * 255.0).round().astype(np.uint8)
-                        
-                    else:
-                        img_arr = np.clip(img_arr, 0, 255).round().astype(np.uint8)
-                    logger.info("normalice_image: convertida imagen float->uint8 (escalada si hizo falta)")
+            if np.issubdtype(img_arr.dtype, np.floating):
+                mx = float(img_arr.max()) if img_arr.size > 0 else 0.0
+                if mx <= 1.0:
+                    img_arr = (img_arr * 255.0).round().astype(np.uint8, copy=False)
                     
                 else:
-                    img_arr = img_arr.astype(np.uint8, copy=False)
-                    logger.info("normalice_image: casteada imagen a uint8")
-                    
-            except TypeError as e:
-                logger.error(f"normalice_image: fallo al convertir dtype: {e}", exc_info=True)
+                    img_arr = np.clip(img_arr, 0, 255).round().astype(np.uint8, copy=False)
                 
-                try:
-                    img_arr = np.array(img_arr, dtype=np.uint8)
-                except TypeError:
-                    return None
-
-        # 
-        # Logueo detallado para trazabilidad
-        # try:
-        #     vmin = int(img_arr.min()); vmax = int(img_arr.max()); vmean = float(img_arr.mean())
-        # except Exception:
-        #     vmin = vmax = None; vmean = None
-
-        # logger.debug(
-        #     "normalice_image: id=%d shape=%s dtype=%s min=%s max=%s mean=%s",
-        #     id(img_arr), getattr(img_arr, "shape", None), getattr(img_arr, "dtype", None),
-        #     vmin, vmax, f"{vmean:.2f}" if vmean is not None else None
-        # )
-    
-        return make_contiguous(img_arr)
+            else:
+                img_arr = img_arr.astype(np.uint8, copy=False)
+                
+        if not validate_image(img_arr):
+            return None
+            
+        return np.require(img_arr, dtype=np.uint8, requirements=['C', 'A', 'W', 'O', 'E'])
         
     except Exception  as e:
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)
@@ -97,13 +80,13 @@ def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any,
     return []
 
 def validate_image(img: Optional[np.ndarray[Any, Any]]) -> bool:
-    return bool(7 < int(np.mean(img)) < 251) if img is not None else False
+    return False if img is None else (7.0 < np.mean(img) < 251.0)
 
 def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:
     return make_contiguous(cv2.bilateralFilter(img, d, sigma_color, sigma_space))
 
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
-    return float(np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float32))
+    return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float32)
 
 def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     if is_binarized(cropped_img):
@@ -144,20 +127,20 @@ def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) ->
     Analiza la imagen en escala de grises (histograma, std) para
     decidir el mejor método de binarización.
     """
-    std = np.std(cropped_img)
+    std = np.std(cropped_img, dtype=np.float32)
     if std == 0: return "adaptive_mean"
     hist = cv2.calcHist([cropped_img], [0], None, [255], [0, 255]).flatten()
-    peaks = np.sum((hist[1:-1] > hist[:-2]) & (hist[1:-1] > hist[2:]))
-    prob = hist / np.sum(hist)
+    peaks = np.sum((hist[1:-1] > hist[:-2]) & (hist[1:-1] > hist[2:]), dtype=np.float32)
+    prob = hist / np.sum(hist, dtype=np.float32)
     entropy = -np.sum(prob * np.log2(prob + 1e-8))
 
-    if peaks > 1 and std > 30:
+    if peaks > 1.0 and std > 30.0:
         return "otsu"  # Alto contraste, bimodal
 
-    elif std > 20 and entropy > 5.0:
+    elif std > 20.0 and entropy > 5.0:
         return "adaptive_gaussian"  # Contraste variable
 
-    elif std > 10:
+    elif std > 10.0:
         return "sauvola"  # Texto sobre fondo no uniforme
 
     else:
@@ -179,32 +162,17 @@ def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)))
 
-def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro."""
-    if is_binarized(full_img):
-        logger.error(f"IMAGEN BINARIA EN EL INICIO")
-        return make_contiguous(full_img) 
-        
-    full_img = make_contiguous(full_img)
-    # Máscara para píxeles negros (todos los canales <= threshold_black)
-    mask_black = np.all(full_img < 160, axis=2)
-    
-    # Máscara para píxeles blancos (todos los canales >= threshold_white)
-    mask_white = np.all(full_img > 180, axis=2)
-    
-    # Máscara de píxeles válidos (negro o blanco)
+    channels = full_img.shape[2]
+    mask_black = np.all(full_img[:, :, :3] < 160, axis=2)
+    mask_white = np.all(full_img[:, :, :3] > 180, axis=2)
     mask_valid = mask_black | mask_white
-    
-    # Reemplaza los píxeles de color (no válidos) por blanco
-    full_img[~mask_valid] = [255, 255, 255]
 
-    # Convierte a escala de grises para continuar el flujo normal
-    gray = normalice_image(full_img)
-    if gray is None or not validate_image(gray):
-        logger.warning("Normalice IMG devolvío imagen, Imagen en grises de cv2")
-        return make_contiguous(cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY))
-    else:
-        return make_contiguous(gray)
+    fill = [255, 255, 255, 255] if channels == 4 else [255, 255, 255]
+    full_img[~mask_valid] = fill
+    
+    return full_img
 
 # def get_conected_comps_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]):
 #     # img_bin: imagen binaria (uint8, valores 0/255)
@@ -242,11 +210,7 @@ def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.ui
 def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Optional[bool] = False) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
     """Calcula UNICAMENTE los features de OPEN CV"""
     time0 = time.perf_counter()
-    if binary or is_binarized(img):
-        logger.info("Imagen ya binaria")
-        bin_img = img
-    else:
-        bin_img = binarice_img(img, {})
+    bin_img = binarice_img(img, {})
 
     contours_hierarchy = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = contours_hierarchy[0]

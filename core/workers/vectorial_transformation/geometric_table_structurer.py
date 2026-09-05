@@ -111,7 +111,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             # Si tenemos suficientes polígonos, usar directamente sus centroides
             if num_polys >= target_columns:
-                for _, _, poly_data in enumerate(header_polys[:target_columns]):
+                for _, (_, poly_data) in enumerate(header_polys[:target_columns]):
                     centroid = poly_data.centroid
                     header_centroids.append(centroid)
             else:
@@ -208,7 +208,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             
             for poly_id in line_obj.polygon_ids:
                 poly_data = polygons.get(poly_id)
-                if poly_data and poly_data:
+                if poly_data:
                     sc = poly_data.semantic_clasification
                     ocr_text = format_cuant(poly_data.ocr_text or "") if (SemantiClass.QUANTITATIVE.value in sc) else poly_data.ocr_text
                     element: Dict[str, Any] = {
