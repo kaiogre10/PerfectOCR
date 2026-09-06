@@ -82,7 +82,7 @@ class ProcessingBuilder:
                 logger.error("NO SE PUDO GENERAR ARCHIVO DE SEGURIDAD")
                 continue
                 
-            logger.warning(f"Procesadas: {images} de '{total_images}' imágenes")
+            logger.warning(f"Procesadas: {images} de '{total_images}' imagenes")
             results.append(payload)
             continue
             

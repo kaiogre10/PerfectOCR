@@ -144,8 +144,6 @@ class ModelsConfig(ConfigWithNumpy):
     models_paths: ModelsPaths
 
 class InkConfig(ConfigWithNumpy):
-    white: List[int]
-    black: List[int]
     aspect_ratio_range: List[float]
     angle_threshold: float
     thr: float

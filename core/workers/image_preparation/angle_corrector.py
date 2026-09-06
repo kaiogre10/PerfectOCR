@@ -1,5 +1,4 @@
 # PerfectOCR/core/workers/image_preparation/angle_corrector.py
-import cv2
 import time
 import numpy as np
 import logging
@@ -7,7 +6,7 @@ import math
 from typing import Dict, Any, Tuple
 from domain.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.image_utils import make_contiguous
+from utils.image_utils import make_contiguous, get_rotation_matrix, get_image_lines, rotate_matrix
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -15,8 +14,6 @@ logger = logging.getLogger(__name__)
 class AngleCorrector(ImagePrepAbstractWorker):
     """Worker especializado en detectar y corregir el ángulo de inclinación de una imagen"""
     __slots__ = (
-        # "project_root",
-        "white",
         "min_angle",
         "canny_thresholds",
         "hough_threshold",
@@ -29,7 +26,6 @@ class AngleCorrector(ImagePrepAbstractWorker):
         super().__init__(config, project_root)
         # self.project_root = project_root
         worker_config = config.get("angle_corrector", {})
-        self.white = worker_config["white"]
         self.min_angle_for_correction = worker_config.get('min_angle_for_correction')
         self.canny_thresholds = worker_config['canny_thresholds']
         self.hough_threshold = worker_config.get('hough_threshold')
@@ -81,8 +77,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             center = w // 2, h // 2
             min_len = min(w // 3, self.hough_min_line_length_cap_px)
             
-            edges = cv2.Canny(full_img, self.canny_thresholds[0], self.canny_thresholds[1])
-            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=self.hough_threshold, minLineLength=min_len, maxLineGap=self.hough_max_line_gap_px)
+            lines = get_image_lines(full_img, self.canny_thresholds, self.hough_threshold, min_len, self.hough_max_line_gap_px)
                 
             if lines is None or len(lines) == 0: # type: ignore
                # logger.warning(f"No se detectaron líneas para la corrección de inclinación")
@@ -97,7 +92,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
 
             angle = np.median(filtered_angles)
             if abs(angle) > self.min_angle_for_correction:
-                rotation_matrix = make_contiguous(cv2.getRotationMatrix2D(center, float(angle), 1.0))
+                rotation_matrix = get_rotation_matrix(center, angle)
             
             # Calcular nuevas dimensiones
                 cos = np.abs(rotation_matrix[0, 0])
@@ -110,7 +105,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 rotation_matrix[1, 2] += (new_h / 2) - center[1]
                 
                 logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos en {time.perf_counter() - total_time:.6f}s")
-                return make_contiguous(cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=self.white)), True
+                return make_contiguous(rotate_matrix(full_img, rotation_matrix, new_w, new_h)), True
             else:             
                 logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
                 return full_img, False

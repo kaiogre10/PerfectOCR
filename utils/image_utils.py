@@ -3,8 +3,11 @@ import cv2
 import numpy as np
 from typing import Any, Optional, List, Dict, Tuple
 import logging
-from skimage.filters import threshold_sauvola #type: ignore
+from skimage.filters import threshold_sauvola, unsharp_mask #type: ignore
 import time
+from core.assets.assets import WHITE
+
+_white = WHITE
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,7 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
         if channels > 2:
             image_arr = decolorate(img)
         
-            if image_arr is None:
+            if image_arr.size < 2:
                 return None
         
             elif channels == 4:
@@ -79,14 +82,24 @@ def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any,
         logger.critical(f"Error añadiendo dimensiones a la imagen: {e}", exc_info=True)
     return []
 
-def validate_image(img: Optional[np.ndarray[Any, Any]]) -> bool:
+def validate_image(img: Optional[np.ndarray[Any, Any]]):
     return False if img is None else (7.0 < np.mean(img) < 251.0)
 
 def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:
     return make_contiguous(cv2.bilateralFilter(img, d, sigma_color, sigma_space))
 
-def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int) -> float:
+def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int):
     return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float32)
+
+def get_rotation_matrix(center: Tuple[int, int], angle: float):
+    return cv2.getRotationMatrix2D(center, angle, 1.0)
+
+def get_image_lines(full_img: np.ndarray[Any, Any], canny_thresholds: Tuple[int, int], hough_threshold: int, min_len: int, hough_max_line_gap_px: int):
+    edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
+    return cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold, minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
+
+def rotate_matrix(full_img: np.ndarray[Any, Any], rotation_matrix: np.ndarray[Any, Any], new_w: int, new_h: int):
+    return cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=_white)
 
 def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     if is_binarized(cropped_img):
@@ -155,9 +168,20 @@ def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_si
 
 def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
-    thresh_sauvola = threshold_sauvola(image=cropped_img, window_size=adaptive_block_size) 
+    thresh_sauvola = threshold_sauvola(image=cropped_img, window_size=adaptive_block_size)
     bin_bool = (cropped_img > thresh_sauvola)
     return make_contiguous(bin_bool * 255)
+
+def apply_clahe_correction(original_img: np.ndarray[Any, np.dtype[np.uint8]], clip_limit: float, grid_size: Tuple[ Any, ...]) -> np.ndarray[Any, Any]:
+    """Aplica el filtro CLAHE a una imagen."""
+    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
+    return clahe.apply(original_img)
+
+def apply_sharpening_correction(cropped_img_np: np.ndarray[Any, np.dtype[np.uint8]], radius: float, amount: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    """Aplica el filtro unsharp_mask a una imagen."""
+    sharpened_float = unsharp_mask(cropped_img_np, radius=radius, amount=amount)
+    # unsharp_mask devuelve un float en [0, 1], se debe convertir de vuelta a uint8 [0, 255]
+    return make_contiguous(np.clip(sharpened_float, 0, 1) * 255)
 
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)))
@@ -168,7 +192,7 @@ def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     mask_white = np.all(full_img[:, :, :3] > 180, axis=2)
     mask_valid = mask_black | mask_white
 
-    fill = [255, 255, 255, 255] if full_img.shape[2] == 4 else [255, 255, 255]
+    fill = [255, 255, 255, 255] if full_img.shape[2] == 4 else _white
     full_img[~mask_valid] = fill
     
     return full_img
@@ -206,7 +230,7 @@ def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
 #     cv2.waitKey(0)
 #     cv2.destroyAllWindows()
 
-def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]], binary: Optional[bool] = False) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
+def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
     """Calcula UNICAMENTE los features de OPEN CV"""
     time0 = time.perf_counter()
     bin_img = binarice_img(img, {})

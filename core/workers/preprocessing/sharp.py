@@ -2,11 +2,9 @@
 import numpy as np
 import logging
 from typing import Dict, Any, List
-from skimage.filters import unsharp_mask # type: ignore
 from domain.abstract_worker import PreprocessingAbstractWorker
 from domain.data_formatter import DataFormatter
-from domain.data_models import Polygons
-from utils.image_utils import use_sobel
+from utils.image_utils import use_sobel, apply_sharpening_correction
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -27,7 +25,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
         de forma vectorizada y la aplica in-place.
         """
         try:
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            polygons = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
 
@@ -73,7 +71,7 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
                 radius = radii[idx]
                 amount = amounts[idx]
 
-                corrected_img = self._apply_sharpening_correction(cropped_img_np, radius, amount)
+                corrected_img = apply_sharpening_correction(cropped_img_np, radius, amount)
                 polygon.cropped_img.cropped_img = corrected_img
                 
                 if self.output:
@@ -102,9 +100,3 @@ class SharpeningEnhancer(PreprocessingAbstractWorker):
             logger.warning(f"OpenCV Sobel falló durante el análisis de nitidez: {e}. Se omite la imagen.")
             return {}
 
-    def _apply_sharpening_correction(self, cropped_img_np: np.ndarray[Any, np.dtype[np.uint8]], radius: float, amount: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        """Aplica el filtro unsharp_mask a una imagen."""
-        sharpened_float: np.ndarray[Any, np.dtype[np.float32]] = unsharp_mask(cropped_img_np, radius=radius, amount=amount)
-        # unsharp_mask devuelve un float en [0, 1], se debe convertir de vuelta a uint8 [0, 255]
-        corrected_img = (np.clip(sharpened_float, 0, 1) * 255).astype(np.uint8)
-        return corrected_img

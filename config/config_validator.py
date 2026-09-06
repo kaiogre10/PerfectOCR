@@ -204,7 +204,7 @@ class ConfigValidator:
     def logs_debug(self) -> Dict[str, Any]:
         logs_debug = self._logs_debug
         if logs_debug.get("all_logs"):
-            for _, key, value in enumerate(logs_debug.items()):
+            for key, value in logs_debug.items():
                 if isinstance(value, bool):
                     logs_debug[key] = True
                 elif isinstance(value, list):
@@ -310,11 +310,9 @@ class ConfigValidator:
                 
         _img_prep_config = self.modules_config.get("image_preparation", {})
         geometry_detect = _img_prep_config.get("geometry_detect", {})
-        ink_enh = _img_prep_config.get("ink_enhancement", {})
         
         morph_kernel = geometry_detect["morph_kernel"]
         _img_prep_config["geometry_detect"]["morph_kernel"] = configure_kernel(morph_kernel[0], morph_kernel[1])
-        _img_prep_config["angle_corrector"]["white"] = ink_enh["white"]
         return _img_prep_config
     
     @cached_property

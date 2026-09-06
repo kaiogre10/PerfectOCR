@@ -3,12 +3,11 @@ import pandas as pd # type: ignore
 import logging
 from services.log_service import get_time_stamp, now
 import numpy as np
-from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, Tuple, List
 from utils.text_utils import format_cuant, get_rfc, get_ids, noramalize_df_text, its_similar, fast_classfier
 from core.assets.patterns import umd_patterns
-from utils.math_utils import validate_df, check_full_df
-from utils.compiled_utils import validate_text
+from utils.math_utils import validate_df, check_full_df, decimalice_df
+from utils.compiled_utils import validate_text, space_removal
 from services.output_service import save_debug_table
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
@@ -59,7 +58,7 @@ class FinalStructurer(VectorizationAbstractWorker):
         image_name = metadata.image_name if metadata else ""
         now_id = now()
         date_creation = get_time_stamp(now_id, self.date_id_format)
-        idx = f"{image_name}_{date_creation}{now_id.microsecond:08d}"
+        idx = f"{image_name}{date_creation}{now_id.microsecond:08d}"
         
         df, totals = self.standarice_df(df, manager, idx)
         if df.empty:
@@ -121,16 +120,15 @@ class FinalStructurer(VectorizationAbstractWorker):
 
         mtl_col = df[DataKeys.costo_tran.value]
         c_col = df[DataKeys.cantidad_art.value]
-        try:
-            mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
-            c_col_dec = c_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
-            
-            total_total = Decimal(str(sum(mtl_col_dec)))
-            total_prod = Decimal(str(sum(c_col_dec)))
-        except InvalidOperation as e:
-            logger.error(f"Numeros deciales con ruido: '{e}'")
-            raise
-
+        
+        mtl_col_dec = decimalice_df(mtl_col)
+        # mtl_col_dec = mtl_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
+        c_col_dec = decimalice_df(c_col)
+        # c_col_dec = c_col.map(lambda x: Decimal(x[0:-1])) # type: ignore
+        
+        total_total = str(sum(mtl_col_dec))
+        total_prod = str(sum(c_col_dec))
+        
         totals = {DataKeys.art_calc.value: str(total_prod), DataKeys.total_cal.value: str(total_total), DataKeys.id_registro.value: idx}
         
         # df.insert(loc=0, column=DataKeys.id_registro.value, value=idx, allow_duplicates=True)
@@ -172,14 +170,15 @@ class FinalStructurer(VectorizationAbstractWorker):
             p_values = str(df.iat[i, pro_idx]) # type: ignore
             cant_values = str(df.iat[i, c_idx]) # type: ignore
             cant_split = cant_values.split(" ")
+
             if its_similar(cant_split[-1], p_values):
                 p_values = p_values[len(cant_split[-1]):]
                 p_split = p_values.split(" ")
                 if not validate_text(p_split[0]):
                     p_split.remove(p_split[0])
-                    df.iat[i, pro_idx] = " ".join(p_split).strip()
+                    df.iat[i, pro_idx] = space_removal(" ".join(p_split))
 
-                df.iat[i, pro_idx] = " ".join(p_split).strip()
+                df.iat[i, pro_idx] = space_removal(" ".join(p_split))
 
         if tabular_lines.size != lineal_ids_df.size:
  #           for i, tab_line in enumerate(tabular_lines):
@@ -200,7 +199,7 @@ class FinalStructurer(VectorizationAbstractWorker):
 
                         p_end = orig_p_value_list[-1]
                         con_beg = con_split_values[0]
-                        concat_p_text = (p_end + " " + con_beg)
+                        concat_p_text = space_removal(p_end + " " + con_beg)
 
         #                logger.info(f"LISTS:    '{orig_p_value_list}' | '{con_split_values}'")
          #               logger.info(f"CONCAT:   '{concat_p_text}' = '{p_end}' + '{con_beg}'")
@@ -211,7 +210,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                         if po == SemantiClass.QUANTITATIVE or pm == SemantiClass.QUANTITATIVE:
                             continue
                         if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == SemantiClass.UMD and pm == SemantiClass.NUMERIC):
-                            df.iat[i, pro_idx] = (orig_p_value + concat_val)
+                            df.iat[i, pro_idx] = space_removal(orig_p_value + concat_val)
 
         if validate_df(df):
             df = df.map(lambda x: noramalize_df_text(x, self.placeholder)) # type: ignore

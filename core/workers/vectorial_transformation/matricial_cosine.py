@@ -5,7 +5,7 @@ import logging
 from typing import Dict, Any, List, Tuple, Optional
 from domain.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.math_utils import get_cosine_similarity, density_cluster, calculate_features, cosine_similarity_matrix, mean_cosine_per_row
+from utils.math_utils import get_cosine_similarity, calculate_features, cosine_similarity_matrix, mean_cosine_per_row
 from services.output_service import save_table_values, serialize_arrays
 
 logger = logging.getLogger(__name__)
@@ -90,9 +90,9 @@ class MatricialCusine(VectorizationAbstractWorker):
                         return new_tabular_lines, (None if not self.training_data else analysis[tabular_array])
             else:
                 tabular_array = self.cosine_dummies(analysis, all_idxs)
-                if tabular_array.size < 1:
+                # if tabular_array.size < 1:
                     # logger.info("Sin lineas tabulares, DBSCAN como soporte")
-                    return self.scanner_clustering(analysis, manager), (None if not self.training_data else analysis[tabular_array])
+                    # return self.scanner_clustering(analysis, manager), (None if not self.training_data else analysis[tabular_array])
 
                 new_tabular_idx = tabular_array.tolist()
                 return [line_ids[i] for i in new_tabular_idx], (None if not self.training_data else analysis[tabular_array])
@@ -194,72 +194,72 @@ class MatricialCusine(VectorizationAbstractWorker):
         else:
             return []
          
-    def scanner_clustering(self, features_array: np.ndarray[Any, Any], manager: DataFormatter) -> List[str]:
-        """Aplica DBSCAN para agrupar líneas similares"""
-        logger.warning("DBSCAN PARA FALLBACK")
-        all_lines = manager.workflow.all_lines if manager.workflow else {}
-        if not all_lines:
-            return [
+    # def scanner_clustering(self, features_array: np.ndarray[Any, Any], manager: DataFormatter) -> List[str]:
+    #     """Aplica DBSCAN para agrupar líneas similares"""
+    #     logger.warning("DBSCAN PARA FALLBACK")
+    #     all_lines = manager.workflow.all_lines if manager.workflow else {}
+    #     if not all_lines:
+    #         return [
                 
-            ]
-        int_line_ids = features_array[:, 0].astype(np.int8)
-        features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
+    #         ]
+    #     int_line_ids = features_array[:, 0].astype(np.int8)
+    #     features_for_clustering = np.ascontiguousarray(features_array[:, 1:], dtype=np.float32)
 
-        # Crear un diccionario que mapea line_index (int) a line_id (str)
-        index_to_id: Dict[int, str] = {}
-        for line_id, line_obj in all_lines.items():
-            # Extraer número de "line_X"
-            idx = line_obj.line_index  # Esto ya es un int
-            index_to_id[idx] = line_id
+    #     # Crear un diccionario que mapea line_index (int) a line_id (str)
+    #     index_to_id: Dict[int, str] = {}
+    #     for line_id, line_obj in all_lines.items():
+    #         # Extraer número de "line_X"
+    #         idx = line_obj.line_index  # Esto ya es un int
+    #         index_to_id[idx] = line_id
         
-        # Obtener line_ids correspondientes
-        line_ids = [index_to_id.get(int(idx), f"line_{int(idx)}") for idx in int_line_ids]
-        # timedbscan = time.perf_counter()
-        labels: np.ndarray[Any, Any] = density_cluster(features_for_clustering, self.eps, self.min_cluster, self.metric)
-        # logger.debug(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
+    #     # Obtener line_ids correspondientes
+    #     line_ids = [index_to_id.get(int(idx), f"line_{int(idx)}") for idx in int_line_ids]
+    #     # timedbscan = time.perf_counter()
+    #     labels: np.ndarray[Any, Any] = density_cluster(features_for_clustering, self.eps, self.min_cluster, self.metric)
+    #     # logger.debug(f"Tiempo de DBSCAN: {time.perf_counter() - timedbscan:.6f}'s")
         
-        unique_labels: List[int] = [l for l in set(labels) if l != -1]
-        if not unique_labels:
-            logger.warning("DBSCAN: No se encontraron clusters validos.")
-            return []
+    #     unique_labels: List[int] = [l for l in set(labels) if l != -1]
+    #     if not unique_labels:
+    #         logger.warning("DBSCAN: No se encontraron clusters validos.")
+    #         return []
                 
-        cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
-        best_label = None
-        best_score = -1e9
-        best_density = -1.0
-        for label in unique_labels:
-            idxs = [i for i, lab in enumerate(labels) if lab == label]
-            if not idxs:
-                continue
-            idxs.sort()
-            span = (idxs[-1] - idxs[0] + 1)
-            density = len(idxs) / span
-            # “tabularidad” esperada: mayor = mejor (si tabular ~ 1 y no-tabular ~ -1)
-            score = np.mean(features_for_clustering[idxs])
-            if (score > best_score) or (score == best_score and density > best_density):
-                best_label = label
-                best_score = score
-                best_density = density
-        main_cluster = best_label
+    #     cluster_sizes: Dict[int, int] = {label: list(labels).count(label) for label in unique_labels}
+    #     best_label = None
+    #     best_score = -1e9
+    #     best_density = -1.0
+    #     for label in unique_labels:
+    #         idxs = [i for i, lab in enumerate(labels) if lab == label]
+    #         if not idxs:
+    #             continue
+    #         idxs.sort()
+    #         span = (idxs[-1] - idxs[0] + 1)
+    #         density = len(idxs) / span
+    #         # “tabularidad” esperada: mayor = mejor (si tabular ~ 1 y no-tabular ~ -1)
+    #         score = np.mean(features_for_clustering[idxs])
+    #         if (score > best_score) or (score == best_score and density > best_density):
+    #             best_label = label
+    #             best_score = score
+    #             best_density = density
+    #     main_cluster = best_label
 
-        table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
-        logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
-        selected_indices = [all_lines[line_id].line_index for line_id in table_line_ids if line_id in all_lines]
+    #     table_line_ids: List[str] = [line_ids[i] for i, label in enumerate(labels) if label == main_cluster]
+    #     logger.info(f"DBSCAN: cluster_sizes={cluster_sizes}, main_cluster={main_cluster}, table_lines: {table_line_ids}")
+    #     selected_indices = [all_lines[line_id].line_index for line_id in table_line_ids if line_id in all_lines]
 
-        if not selected_indices:
-            logger.error("No se encontraron indices para table_line_ids.")
-            return table_line_ids
+    #     if not selected_indices:
+    #         logger.error("No se encontraron indices para table_line_ids.")
+    #         return table_line_ids
 
-        # Paso 2: Calcular el rango
-        min_idx, max_idx = min(selected_indices), max(selected_indices)
+    #     # Paso 2: Calcular el rango
+    #     min_idx, max_idx = min(selected_indices), max(selected_indices)
 
-        # Paso 3: Generar todos los índices en ese rango
-        full_range_indices = range(min_idx, max_idx + 1)
+    #     # Paso 3: Generar todos los índices en ese rango
+    #     full_range_indices = range(min_idx, max_idx + 1)
 
-        # Paso 4: Mapear de vuelta a line_id (str)
-        full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
+    #     # Paso 4: Mapear de vuelta a line_id (str)
+    #     full_range_line_ids = [index_to_id.get(idx, f"line_{idx:04d}") for idx in full_range_indices]
 
-        logger.warning(f"DBSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
+    #     logger.warning(f"DBSCAN: Rango de líneas tabulares: {full_range_line_ids}, total: {len(full_range_line_ids)}")
 
-        return full_range_line_ids
+    #     return full_range_line_ids
         

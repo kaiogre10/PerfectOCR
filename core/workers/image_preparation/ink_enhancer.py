@@ -9,6 +9,10 @@ from domain.data_formatter import DataFormatter
 from utils.image_utils import make_contiguous, get_contours_values
 from utils.math_utils import soft_histogram
 from services.output_service import save_shapes
+from core.assets.assets import WHITE, BLACK
+
+_white = WHITE
+_black = BLACK
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +23,6 @@ class InkCorrector(ImagePrepAbstractWorker):
         self.project_root = project_root
         worker_config = config.get('ink_enhancement', {})
         self.metric = worker_config.get("manhattan", "manhattan")
-        self.white = worker_config["white"]
-        self.black = worker_config["black"]
         self.aspect_ratio_range = worker_config["aspect_ratio_range"]
         self.angle_threshold = worker_config.get("angle_threshold")
         self.thr = worker_config.get("thr")
@@ -119,7 +121,7 @@ class InkCorrector(ImagePrepAbstractWorker):
         outlier_cont: List[np.ndarray[Any, np.dtype[np.int32]]] = []
         for idx, cont_coords in cont_coords_list:
             if idx in id:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                cv2.drawContours(grey_img, [cont_coords], -1, _white, thickness=cv2.FILLED)
                 outlier_cont.append(cont_coords)
                 lines_correct += 1
                 continue
@@ -203,13 +205,13 @@ class InkCorrector(ImagePrepAbstractWorker):
         try:
             for idx, cont_coords in cont_coords_list:
                 if idx in outlier_idx:
-                    cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)
+                    cv2.drawContours(grey_img, [cont_coords], -1, _white, thickness=cv2.FILLED)
                     outlier_cont.append(cont_coords)
                     lines_correct += 1
                     continue
                 # elif idx in group_outliers:
                 #     cont = cont_coords[idx]
-                #     cv2.drawContours(grey_img, cont, -1, self.white, thickness=cv2.FILLED)
+                #     cv2.drawContours(grey_img, cont, -1, _white, thickness=cv2.FILLED)
                 #     outlier_cont.append(cont_coords)
                 #     lines_correct += 1
                 # outlier_cont2.append(cont_coords)
@@ -267,12 +269,12 @@ class InkCorrector(ImagePrepAbstractWorker):
 
         for idx, cont_coords in cont_coords_list:
             if idx in noise_idx1:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.black, thickness=cv2.FILLED)  # Rojo
+                cv2.drawContours(grey_img, [cont_coords], -1, _black, thickness=cv2.FILLED)  # Rojo
                 outlier_cont.append(cont_coords)
                 lines_correct += 1
 
             elif idx in noise_idx:
-                cv2.drawContours(grey_img, [cont_coords], -1, self.white, thickness=cv2.FILLED)   # Azul
+                cv2.drawContours(grey_img, [cont_coords], -1, _white, thickness=cv2.FILLED)   # Azul
                 outlier_cont2.append(cont_coords)
                 lines_correct += 1
         

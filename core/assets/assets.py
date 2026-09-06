@@ -295,3 +295,6 @@ ONE_DEC = Decimal("1.00")
 ROW_TOL = Decimal("0.10")
 
 COMBINATIONS = 3
+
+WHITE = [255, 255, 255]
+BLACK = [0, 0, 0]

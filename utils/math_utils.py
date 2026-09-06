@@ -3,12 +3,14 @@ import numpy as np
 import logging
 import time
 import pandas as pd
-from decimal import Decimal, InvalidOperation
+from pandas import Series
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import List, Any, Optional, Tuple, Dict, Sequence
-from sklearn.cluster import DBSCAN
-from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF
+from utils.compiled_utils import validate_quant_chars
+from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF, ZERO_DEC
 from domain.class_models import SemantiClass, DataKeys
 
+_zero = ZERO_DEC
 dummie_vect = VECTOR_DUMMIE
 density_encoder = DENSITY_ENCODER
 _cuant_char = CUANT_CHAR
@@ -133,9 +135,9 @@ def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
     # Inicia la recursión
     return _recursive_cleanup(metrics, 0, 1)
 
-def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int, metric: str) -> np.ndarray[Any, np.dtype[np.int16]]:
-    clustering = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
-    return np.asarray(clustering.fit_predict(features), np.int16)
+# def density_cluster(features: np.ndarray[Any, np.dtype[np.float32]], eps: float, min_samples: int, metric: str) -> np.ndarray[Any, np.dtype[np.int16]]:
+#     clustering = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
+#     return np.asarray(clustering.fit_predict(features), np.int16)
 
 # def h_density_cluster(h_features: np.ndarray[Any, np.dtype[np.float32]], h_min_samples: int, h_metric: str) -> np.ndarray[Any, np.dtype[np.int16]]:
 #     h_clustering = HDBSCAN(min_samples=h_min_samples, metric=h_metric)
@@ -512,3 +514,20 @@ def validate_df(df: pd.DataFrame) -> bool:
 def check_full_df(df: pd.DataFrame) -> bool:
     """Devuelve true si todas las celdas tienen strings válidos"""
     return not (df.isnull().values.any() or (df == "").values.any())
+
+def decimalice_df(df: pd.DataFrame | Series):
+    """Pasa a decimal todos los Valores de un DataFrame"""
+    try:
+        decimalf = df.map(lambda x: Decimal(x))
+    except InvalidOperation as e:
+        logger.error(f"DF con datos intrusos: {e}:\n" + df.to_string(index=True), exc_info=True)
+        return pd.DataFrame()
+    return decimalf
+
+def decimalice(val: str):
+    if not val or not validate_quant_chars(val):
+        return _zero
+    return Decimal(val)
+
+def round_vals(result: Decimal):
+    return result.to_integral_value(rounding=ROUND_HALF_UP)

@@ -1,11 +1,10 @@
 # PerfectOCR/core/workers/preprocessing/clahe.py
-import cv2
 import numpy as np
 import logging
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 from domain.abstract_worker import PreprocessingAbstractWorker
 from domain.data_formatter import DataFormatter
-from domain.data_models import Polygons
+from utils.image_utils import apply_clahe_correction
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
         vectorizada y la aplica in-place.
         """
         try:
-            polygons: Dict[str, Polygons] = manager.workflow.polygons if manager.workflow else {}
+            polygons = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 return False
 
@@ -56,8 +55,8 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
             stds = np.array([res['std'] for res in analysis_results], dtype=np.float32)
             variances = np.array([res['var'] for res in analysis_results], dtype=np.float32)
             dyn_ranges = np.array([res['dyn_range'] for res in analysis_results], dtype=np.float32)
-            heights = np.array([res['h'] for res in analysis_results], dtype=np.int32)
-            widths = np.array([res['w'] for res in analysis_results], dtype=np.int32)
+            heights = np.array([res['h'] for res in analysis_results], dtype=np.uint16)
+            widths = np.array([res['w'] for res in analysis_results], dtype=np.uint16)
 
             dynamic_intervals = np.maximum(30.0, variances * 0.6)
             adaptive_thresholds = np.where(dyn_ranges > self.contrast_threshold, dynamic_intervals, 20.0)
@@ -87,7 +86,7 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
 
                 # logger.debug(f"Poly '{poly_id}': Aplicando CLAHE (Grid: {grid_size}, Clip: {clip_limit:.2f})")
 
-                corrected_img = self._apply_clahe_correction(original_img, clip_limit, grid_size)
+                corrected_img = apply_clahe_correction(original_img, clip_limit, grid_size)
                 polygon.cropped_img.cropped_img = corrected_img # type: ignore
                 
                 if self.output:
@@ -111,8 +110,4 @@ class ClaherEnhancer(PreprocessingAbstractWorker):
             "var": np.var(cropped_img),
             "dyn_range": np.max(cropped_img) - np.min(cropped_img)
         }
-
-    def _apply_clahe_correction(self, original_img: np.ndarray[Any, np.dtype[np.uint8]], clip_limit: float, grid_size: Tuple[ Any, ...]) -> np.ndarray[Any, Any]:
-        """Aplica el filtro CLAHE a una imagen."""
-        clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
-        return clahe.apply(original_img)
+    

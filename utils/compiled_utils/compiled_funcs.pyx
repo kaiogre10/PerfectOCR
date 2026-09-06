@@ -1,12 +1,13 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 from cpython.version cimport PY_MAJOR_VERSION
 from libc.stdlib cimport malloc, free
-from cpython.unicode cimport PyUnicode_FromKindAndData, PyUnicode_KIND, PyUnicode_AsUTF8
+from cpython.unicode cimport PyUnicode_AsUTF8, PyUnicode_FromStringAndSize
 
 # Acceso directo a la estructura interna de CPython para strings ASCII/CompactBytes
 cdef extern from "Python.h":
     char* PyUnicode_AsUTF8(object o) except NULL
     object PyUnicode_FromStringAndSize(const char *v, Py_ssize_t len)
+    bytes PyBytes_FromString(char *v) except NULL
 
 cdef inline bint _is_alpha_char(char char_code) nogil:
     """Check if char is alpha (65-90: A-Z, 97-122: a-z)"""
