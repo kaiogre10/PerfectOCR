@@ -10,13 +10,15 @@ from services import log_service
 from config.config_api import ConfigAPI
 from services import system_service
 
+system_service.init_system(PROJECT_ROOT)
+
 config_service = ConfigAPI(PROJECT_ROOT)
 if config_service.test_config:
     log_service.log_simple("TESTING CONFIG FINALIZANDO")
     sys.exit()
 
 system_paths = config_service.system_paths
-system_service.set_system_config(PROJECT_ROOT, system_paths)
+system_service.set_system_config(system_paths)
 if config_service.compile_cython:
     from config import setup
     setup.build_extensions(PROJECT_ROOT, system_paths)

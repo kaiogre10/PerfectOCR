@@ -50,20 +50,23 @@ else ()
     set(OS_FRONTIER_LIBS "")
 endif ()
 
-# 1. Definición de la ruta de destino global
-set(GLOBAL_DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../bin")
+# 1. Definición de la ruta de destino para los componentes
+set(LIBRARIES_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libraries")
 
 # Configuraciones base para generadores mono-configuración (Ninja/Makefiles)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${GLOBAL_DESTINATION}")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${GLOBAL_DESTINATION}")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${GLOBAL_DESTINATION}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
+
+set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libs")
+set(OPENCV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/opencv_dep/install/include/opencv4")
 
 # Desactivar subcarpetas por configuración en generadores multi-configuración (Visual Studio)
 set(CMAKE_MAP_IMPORTED_CONFIG_MINSIZEREL "MinSizeRel") # Requerido por consistencia interna
 foreach(OUTPUT_TYPE RUNTIME LIBRARY ARCHIVE)
     foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
         string(TOUPPER ${CONFIG} CONFIG_UPPER)
-        set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${GLOBAL_DESTINATION}")
+        set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${LIBRARIES_OUTPUT_DIR}")
     endforeach()
 endforeach()
 

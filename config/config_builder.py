@@ -4,10 +4,10 @@ from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from functools import cached_property
 from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from utils.image_utils import configure_kernel
-from services.system_service import get_so
+from services.system_service import SO
 from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
 from core.assets.patterns import PLACEHOLDER_PATTERN
-from domain.class_models import DataKeys, StageKeys
+from domain.class_models import DataKeys, StageKeys, OSModels
 
 _placeholder_pattern = PLACEHOLDER_PATTERN
 _kf_range = KF_RANGE
@@ -138,12 +138,12 @@ class ConfigBuilder:
 
             if self.handle_memory:
                 buffer_handler = _components[0]
-                extension = get_so()
-                buffer_path = os.path.join(self.project_root, libs_path, (buffer_handler + extension))
+                buffer_path = os.path.join(self.project_root, libs_path, (buffer_handler + SO))
                 
                 if not os.path.isfile(buffer_path):
-                    self.handle_memory = False
                     basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
+                    self.handle_memory = False
+
                 _system_paths["buffer_handler"] = buffer_path
             
             if self.compile_cython:
@@ -289,7 +289,6 @@ class ConfigBuilder:
             "kf_idx": os.path.join(wf_path, kf_idx_name),
             "pkl_path": os.path.join(wf_path, pkl_path_name),
             "index_dict": os.path.join(wf_path, index_dict),
-            # "train_data": os.path.join(self.project_root, "core", "assets", "data.npy"),
             "matrix_folder": os.path.join(wf_path, matrix_path),
             "kf_folder": os.path.join(wf_path, kf_path),
             "test_wf_model": self.test_wf_model,

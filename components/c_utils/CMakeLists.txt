@@ -1,21 +1,20 @@
 add_library(c_utils STATIC
-	"c_utils.cpp"
-	"c_utils.hpp"
+	src/c_utils.cpp
 )
 
-set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../opencv_dep/build")
-if(NOT EXISTS "${OpenCV_DIR}/OpenCVConfig.cmake")
-    set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/opencv_dep/install/include/opencv2")
-endif()
-
-find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
+set_target_properties(c_utils PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(c_utils PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${OpenCV_INCLUDE_DIRS}
+    "${OPENCV_INCLUDE_DIR}"
+)
+
+target_link_directories(c_utils PRIVATE
+    "${LIBS_DIR}"
 )
 
 target_link_libraries(c_utils PRIVATE
-    ${OpenCV_LIBS}
+    opencv_core
+    opencv_imgproc
     ${OS_FRONTIER_LIBS}
 )

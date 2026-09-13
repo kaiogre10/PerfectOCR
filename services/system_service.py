@@ -3,11 +3,11 @@ import shutil
 import os
 import logging
 import platform
-from typing import Set, Tuple, Optional, FrozenSet
+from typing import Set, Tuple, Optional, List, Dict, Any
 #from psycopg2 import sql
-from typing import List, Dict, Any
 from services.log_service import basic_exc_logger
 from core.assets.patterns import extension_suffix
+from domain.class_models import OSModels
 
 _extension_suffix = extension_suffix
 PROJECT_ROOT: str = ""
@@ -19,12 +19,17 @@ cache_dirs = ["__pycache__", ".pytest_cache", "build"]
 excluded_dirs = ["components", "bin", "documentation", "models", "safe_temp"]
 no_del: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")
 all_files_types: Set[str] = set(invalid_extensions).union(valid_img_ext, trash_ext, no_del)
+SO: str = ""
 
 logger = logging.getLogger(__name__)
 
-def set_system_config(project_root: str, config: Dict[str, List[str]]):
-    global PROJECT_ROOT, output_paths
-    PROJECT_ROOT = project_root # type: ignore
+def init_system(project_root: str):
+    global PROJECT_ROOT, SO
+    PROJECT_ROOT = project_root  # type: ignore
+    SO = SO if SO else get_so()
+
+def set_system_config(config: Dict[str, List[str]]):
+    global output_paths
     if config:
         output_paths = config["output_paths"]
         # output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in output_path]
@@ -37,6 +42,7 @@ def _can_delete_entry(path: str) -> bool:
     """
     if path.endswith(no_del):
         return False
+
     parent = os.path.dirname(path) or "."
     return os.access(parent, os.W_OK | os.X_OK)
 
@@ -97,11 +103,10 @@ def clear_output_folders():
             continue
 
     logger.debug("Limpieza Inicial: Vaciando carpetas de salida")
-    for folder_path in (output_paths or cache_dirs or specific_files):
+    for folder_path in (output_paths or cache_dirs):
         if not os.path.isdir(folder_path):
-            if folder_path not in specific_files:
-                continue
-        
+            continue
+
         for item_name in os.listdir(folder_path):
             item_path = os.path.join(folder_path, item_name)
             try:
@@ -137,13 +142,13 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
     if specific_files is not None and specific_files:
         specific_set: Set[str] = set(path for path in specific_files if os.path.isfile(path))
         if specific_set:
-            specific_files_set: FrozenSet[str] = frozenset(os.path.basename(path) for path in specific_set)
+            specific_files_set: Tuple[str, ...] = tuple(os.path.basename(path) for path in specific_set)
         else:
-            specific_files_set = frozenset()
+            specific_files_set = tuple()
     else:
-        specific_files_set = frozenset()
+        specific_files_set = tuple()
         specific_set = set()
-        
+
     try:
         for dirpath, dirnames, filenames in os.walk(PROJECT_ROOT):
             for ed in excluded_dirs:
@@ -164,16 +169,17 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
                         continue
             try:
                 for filename in filenames:
-                    if filename.endswith(trash_ext) or (False if not specific_files_set else filename in specific_files_set):
+                    if filename.endswith(trash_ext) or (False if not specific_files_set else (filename in specific_files_set or filename.endswith(SO))):
                         file_path: str = os.path.join(dirpath, filename)
                         os.remove(file_path)
                         if file_path in specific_set:
                             specific_set.remove(file_path)
                             basic_exc_logger(f"ARCHIVO TARGET ELIMINADO: '{file_path}'")
                             continue
+
                         basic_exc_logger(f"Eliminado archivo de caché: '{file_path}'")
                         continue
-                        
+
             except FileNotFoundError as e:
                 basic_exc_logger(f"Error eliminando '{filenames}': {e}", exc_info=True)
                 raise
@@ -288,13 +294,14 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
     return files_name_dir if not files_in_dir else files_in_dir
 
 def get_so() -> str:
-    if platform.system() == "Windows":
-        return ".dll"
-    elif platform.system() == "Linux":
-        return ".so"
+    global SO
+    if platform.system() == OSModels.WINDOWS.capitalize():
+        SO = OSModels.WINDOWS.value
+    elif platform.system() == OSModels.LINUX.capitalize():
+        SO = OSModels.LINUX.value
     else:
-        # MacOS
-        return ".dylib"
+        SO = OSModels.MACOS.value
+    return SO
     
 def cleanup_project(specific_files: Optional[List[str]] = None, aditional_dirs: Optional[List[str]] = None):
     clear_output_folders()

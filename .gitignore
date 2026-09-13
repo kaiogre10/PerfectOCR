@@ -21,6 +21,8 @@
 *.prof
 *.npy
 *.npz
+*.a
+*ini
 
 # Ignorar archivos especificos
 perfectocr.txt
@@ -40,9 +42,10 @@ __pycache__/
 .github/chatmodes/
 .aiassistant/
 .vs/
+.junie/
 build/
 opencv_dep/build/
-src/
+third_party/opencv_dep/src/
 install/
 out/
 documentation/
@@ -51,11 +54,12 @@ input/
 input2/
 input3/
 output/
-bin/
 migrations/
 CMakeFiles/
 utils/compiled_utils/compiled_funcs.c
 utils/compiled_services/image.cpp
+cmake-*/
+
 
 # secrets
 .env

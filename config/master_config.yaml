@@ -4,7 +4,7 @@ system_params:
 
   system_paths:
     output_paths: ["output"]
-    libs_path: "bin"
+    bin_dirs: ["libraries", "libs", "third_party"]
     components: ["buffer_handler", "image_loader", "image_container", "file_handler", "payload_container", "c_utils"]
     temp_path: ["safe_temp", "tmp_file.txt"]
     compile_command: ["setup.py", "build_ext", "--inplace"]
@@ -20,7 +20,7 @@ deploy_settings:
   update_model: False   # Modo de actualización de los valores de las matrices de Word Finder sin correr todo el sistema
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
   test_wf_model: False
-  compile_cython: False
+  compile_cython: True
 
 pipeline_secuence:
   image_preparation_stager:

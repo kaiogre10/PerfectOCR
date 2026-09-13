@@ -96,6 +96,11 @@ class TypeModels(StrEnum):
     ASCII = "ascii"
     UTF8 = "utf-8"
     UTF16_CSHARP = "utf-16-le"
+
+class OSModels(StrEnum):
+    WINDOWS = ".dll"
+    LINUX = ".so"
+    MACOS = ".dylib"
     
 class StringsModels(StrEnum):
     NO_MANGER = "NO_MANGER"

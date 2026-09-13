@@ -1,5 +1,5 @@
 if(WIN32 OR CMAKE_HOST_WIN32)
-    # Compiladores Intel oneAPI en Windows
+    # ─── Intel oneAPI en Windows ───
     set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
     set(CMAKE_CXX_COMPILER "icx" CACHE STRING "" FORCE)
 
@@ -7,18 +7,41 @@ if(WIN32 OR CMAKE_HOST_WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2" CACHE STRING "" FORCE)
 
     set(OpenCV_RUNTIME "vc18" CACHE STRING "" FORCE)
-    set(OpenCV_ARCH "x64" CACHE STRING "" FORCE)
+    set(OpenCV_ARCH "x64"  CACHE STRING "" FORCE)
+
 else()
-    # Compiladores Intel oneAPI en Linux
+    # ─── Intel oneAPI en Linux ───
     set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
     set(CMAKE_CXX_COMPILER "icpx" CACHE STRING "" FORCE)
 
-    set(CONDA_ENV "/home/kaiogre05/miniforge3/envs/intel")
-    set(GCC_INSTALL_PATH "${CONDA_ENV}/lib/gcc/x86_64-conda-linux-gnu/15.2.0")
+    # 1. Descubrir CONDA_ENV del entorno (no hardcodear)
+    if(NOT DEFINED CONDA_ENV)
+        if(DEFINED ENV{CONDA_PREFIX})
+            set(CONDA_ENV "$ENV{CONDA_PREFIX}")
+        else()
+            message(FATAL_ERROR
+                "CONDA_ENV no definido y CONDA_PREFIX no está en el entorno. "
+                "Activa el env con `conda activate intel`.")
+        endif()
+    endif()
 
-    # Banderas de compilación y enlace
+    # 2. Descubrir GCC install dir dinámicamente
+    file(GLOB GCC_VERSIONS "${CONDA_ENV}/lib/gcc/x86_64-conda-linux-gnu/*")
+    if(GCC_VERSIONS)
+        list(SORT GCC_VERSIONS ORDER DESCENDING)
+        list(GET GCC_VERSIONS 0 GCC_INSTALL_PATH)
+        message(STATUS "GCC install dir: ${GCC_INSTALL_PATH}")
+    else()
+        message(FATAL_ERROR
+            "No se encontró GCC en ${CONDA_ENV}/lib/gcc/x86_64-conda-linux-gnu/. "
+            "Verifica que el env de conda tenga gcc instalado.")
+    endif()
+
+    # 3. Flags de compilación
     set(CMAKE_C_FLAGS "-mavx2 -mfma --gcc-install-dir=${GCC_INSTALL_PATH} -L${CONDA_ENV}/lib" CACHE STRING "" FORCE)
     set(CMAKE_CXX_FLAGS "-mavx2 -mfma --gcc-install-dir=${GCC_INSTALL_PATH} -L${CONDA_ENV}/lib" CACHE STRING "" FORCE)
+
+    # 4. Flags de enlace
     set(CMAKE_EXE_LINKER_FLAGS "-L${CONDA_ENV}/lib -Wl,-rpath,${CONDA_ENV}/lib" CACHE STRING "" FORCE)
     set(CMAKE_SHARED_LINKER_FLAGS "-L${CONDA_ENV}/lib -Wl,-rpath,${CONDA_ENV}/lib" CACHE STRING "" FORCE)
 endif()
@@ -39,9 +62,10 @@ set(BUILD_LIST "core,imgproc,imgcodecs" CACHE STRING "" FORCE)
 set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 
 # Optimizaciones de hardware Intel
+set(WITH_IPP ON CACHE BOOL "" FORCE)
 set(WITH_TBB ON CACHE BOOL "" FORCE)
 set(WITH_OPENMP OFF CACHE BOOL "" FORCE)
-set(WITH_IPP ON CACHE BOOL "" FORCE)
+
 
 # Códecs
 set(BUILD_PNG ON CACHE BOOL "" FORCE)
