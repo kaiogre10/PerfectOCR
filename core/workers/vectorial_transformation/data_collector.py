@@ -1,7 +1,7 @@
 # PerfectOCR/core/workers/vectorial_transformation/data_collector.py
 import pandas as pd # type: ignore
 import logging
-from services.log_service import get_time_stamp, now
+from services.log_service import get_time_stamp, _now
 import numpy as np
 from typing import Dict, Any, Tuple, List
 from utils.text_utils import format_cuant, get_rfc, get_ids, noramalize_df_text, its_similar, fast_classfier
@@ -56,7 +56,7 @@ class FinalStructurer(VectorizationAbstractWorker):
             return pd.DataFrame()
 
         image_name = metadata.image_name if metadata else ""
-        now_id = now()
+        now_id = _now()
         date_creation = get_time_stamp(now_id, self.date_id_format)
         idx = f"{image_name}{date_creation}{now_id.microsecond:08d}"
         

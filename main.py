@@ -21,7 +21,7 @@ system_paths = config_service.system_paths
 system_service.set_system_config(system_paths)
 if config_service.compile_cython:
     from config import setup
-    setup.build_extensions(PROJECT_ROOT, system_paths)
+    setup.build_extensions(system_paths)
     sys.exit()
     
 if config_service.clean_project:

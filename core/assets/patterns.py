@@ -1,5 +1,5 @@
 # PerfectOCR/core/utils/patterns.py
-import regex as re
+import re
 from typing import List, Pattern
 
 _currency_variants = r"[$Ss]"
@@ -74,7 +74,7 @@ _los_typos_regex = (
 )
 los_suffix_pattern = re.compile(_los_typos_regex)
 
-extension_suffix = re.compile(r'\.([A-Za-z]+)$', re.IGNORECASE)
+extension_suffix = re.compile(r'(.[A-Za-z]+)$')
 has_digit_pattern = re.compile(r"\d", re.IGNORECASE)
 swap_term_cuant = re.compile(r'^[A-Za-z]+\$$')
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)

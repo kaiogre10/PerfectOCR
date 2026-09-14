@@ -16,7 +16,7 @@ valid_img_ext = frozenset([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".w
 invalid_extensions: List[str] = [".txt", ".webp"]
 trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".log", ".prof")
 cache_dirs = ["__pycache__", ".pytest_cache", "build"]
-excluded_dirs = ["components", "bin", "documentation", "models", "safe_temp", "libraries", "libs", "third_party"]
+excluded_dirs = ["components", ".git", ".vscode", ".idea", "documentation", "models", "safe_temp", "libraries", "libs", "third_party"]
 no_del: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")
 all_files_types: Set[str] = set(invalid_extensions).union(valid_img_ext, trash_ext, no_del)
 SO: Tuple[str, ...] = ()
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 def init_system(project_root: str):
     global PROJECT_ROOT, SO
     PROJECT_ROOT = project_root  # type: ignore
-    SO = SO if SO else get_so()
+    SO = get_so()
 
 def set_system_config(config: Dict[str, List[str]]):
     global output_paths

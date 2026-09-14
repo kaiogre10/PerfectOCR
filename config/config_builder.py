@@ -4,6 +4,7 @@ from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from functools import cached_property
 from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from utils.image_utils import configure_kernel
+from utils.paths import set_projet_root, build_from_dir
 from services.system_service import SO
 from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
 from core.assets.patterns import PLACEHOLDER_PATTERN
@@ -29,8 +30,8 @@ class ConfigBuilder:
         if not self._validate_config():
             self.config = {}
             del self.config
-        else:
-            self.config = self.config
+
+        set_projet_root(self.project_root)
 
     @cached_property
     def elemental_params(self) -> bool:
@@ -132,13 +133,13 @@ class ConfigBuilder:
             return _system_paths
         
         else:
-            _components = _system_paths["components"]
+            _components: List[str] = _system_paths["components"]
             _bin_dirs = _system_paths["bin_dirs"]
             bin_dirs = [os.path.join(self.project_root, path) for path in _bin_dirs]
 
             if self.handle_memory:
                 buffer_handler = _components[0]
-                buffer_path = os.path.join(self.project_root, bin_dirs[1], (buffer_handler + SO))
+                buffer_path = os.path.join(self.project_root, bin_dirs[1], (buffer_handler + SO[0]))
                 
                 if not os.path.isfile(buffer_path):
                     basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
@@ -147,14 +148,15 @@ class ConfigBuilder:
                 _system_paths["buffer_handler"] = buffer_path
             
             if self.compile_cython:
-                components_dir = os.path.join(self.project_root, "components")  # /components
+                components_dir = [self.project_root, "components"]
                 
                 _opencv_path = _system_paths["opencv_libs"]
 
                 libraries_path = bin_dirs[0]
                 static_libraries_path = bin_dirs[1]
                 opencv_include_path = os.path.join(self.project_root, *_opencv_path)
-                components_paths = [os.path.join(components_dir, folder, "include") for folder in _components[2:]]
+
+                components_paths = build_from_dir(parent=components_dir, objetives=tuple(["include"]), skip_names=tuple(_components[:2]))    # type: ignore
                 components_paths.append(opencv_include_path)
 
                 _system_paths["components_paths"] = components_paths
@@ -175,8 +177,7 @@ class ConfigBuilder:
                 # log_simple(f"PATH: {comp_services_path}: IS DIR: {os.path.isdir(comp_services_path)}")
                 _system_paths["comp_services_file"] = os.path.join(comp_services_path, "image.pyx")
                 _system_paths["comp_services_path"] = comp_services_path
-                
-                
+
                 _system_paths["components"] = _components[1:]
                 
         return _system_paths

@@ -5,6 +5,7 @@ from setuptools import setup, Extension
 import numpy as np
 from Cython.Build import cythonize
 from typing import Dict, Any
+from utils.paths import build_from_dir
 
 extra_compile_args = [
     "-std=c++20",
@@ -12,8 +13,7 @@ extra_compile_args = [
     "-mfma",
 ]
 
-
-def build_extensions(PROJECT_ROOT: str, config: Dict[str, Any]):
+def build_extensions(config: Dict[str, Any]):
     utils_file = config.get("comp_funcs_file", "")
     image_file = config.get("comp_services_file", "")
     prune_workspace(config["build_path"], image_file, utils_file)
