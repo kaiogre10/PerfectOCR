@@ -7,7 +7,7 @@ from utils.image_utils import configure_kernel
 from services.system_service import SO
 from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
 from core.assets.patterns import PLACEHOLDER_PATTERN
-from domain.class_models import DataKeys, StageKeys, OSModels
+from domain.class_models import DataKeys, StageKeys
 
 _placeholder_pattern = PLACEHOLDER_PATTERN
 _kf_range = KF_RANGE
@@ -133,12 +133,12 @@ class ConfigBuilder:
         
         else:
             _components = _system_paths["components"]
-            _libs_path = _system_paths.get("libs_path", "")
-            libs_path = os.path.join(self.project_root, _libs_path) # /bin
+            _bin_dirs = _system_paths["bin_dirs"]
+            bin_dirs = [os.path.join(self.project_root, path) for path in _bin_dirs]
 
             if self.handle_memory:
                 buffer_handler = _components[0]
-                buffer_path = os.path.join(self.project_root, libs_path, (buffer_handler + SO))
+                buffer_path = os.path.join(self.project_root, bin_dirs[1], (buffer_handler + SO))
                 
                 if not os.path.isfile(buffer_path):
                     basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
@@ -149,15 +149,22 @@ class ConfigBuilder:
             if self.compile_cython:
                 components_dir = os.path.join(self.project_root, "components")  # /components
                 
-                _install_dirs = _system_paths["install_dirs"]   # include, lib
-                _opencv_path = _system_paths["opencv_path"]
-                
-                components_paths = [os.path.join(components_dir, folder) for folder in _components[1:3]]
-                components_paths.append(os.path.join(components_dir, *_opencv_path, _install_dirs[0], "opencv4"))
+                _opencv_path = _system_paths["opencv_libs"]
+
+                libraries_path = bin_dirs[0]
+                static_libraries_path = bin_dirs[1]
+                opencv_include_path = os.path.join(self.project_root, *_opencv_path)
+                components_paths = [os.path.join(components_dir, folder, "include") for folder in _components[2:]]
+                components_paths.append(opencv_include_path)
+
                 _system_paths["components_paths"] = components_paths
-                
-                _system_paths["libs_path"] = [libs_path, os.path.join(components_dir, *_opencv_path, _install_dirs[1])]
-                
+                _system_paths["build_path"] = os.path.join(self.project_root, "build")
+                _system_paths["libs_path"] = libraries_path
+                _system_paths["library_dirs"] = [static_libraries_path, libraries_path]
+                _system_paths["runtime_library_dirs"] = [libraries_path, static_libraries_path]
+                _opencv_libs = _system_paths["opencv_libs"]
+                _system_paths["libraries"] = [*_components[2:], *_opencv_libs]
+                                
                 _comp_funcs_file = _system_paths["comp_funcs_file"]
 
                 _system_paths["comp_funcs_name"] = ".".join(_comp_funcs_file)[:-4]

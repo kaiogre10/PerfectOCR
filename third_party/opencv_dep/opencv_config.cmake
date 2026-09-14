@@ -1,5 +1,5 @@
+# third_party/opencv_dep/opencv_config.cmake
 if(WIN32 OR CMAKE_HOST_WIN32)
-    # ─── Intel oneAPI en Windows ───
     set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
     set(CMAKE_CXX_COMPILER "icx" CACHE STRING "" FORCE)
 
@@ -10,10 +10,6 @@ if(WIN32 OR CMAKE_HOST_WIN32)
     set(OpenCV_ARCH "x64"  CACHE STRING "" FORCE)
 
 else()
-    # ─── Intel oneAPI en Linux ───
-    set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
-    set(CMAKE_CXX_COMPILER "icpx" CACHE STRING "" FORCE)
-
     # 1. Descubrir CONDA_ENV del entorno (no hardcodear)
     if(NOT DEFINED CONDA_ENV)
         if(DEFINED ENV{CONDA_PREFIX})
@@ -65,7 +61,6 @@ set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 set(WITH_IPP ON CACHE BOOL "" FORCE)
 set(WITH_TBB ON CACHE BOOL "" FORCE)
 set(WITH_OPENMP OFF CACHE BOOL "" FORCE)
-
 
 # Códecs
 set(BUILD_PNG ON CACHE BOOL "" FORCE)

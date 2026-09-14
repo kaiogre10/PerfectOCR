@@ -1,8 +1,6 @@
 {
-  "version": 3,
-  "include": [
-    "../cmake/presets/base.json",
-    "../cmake/presets/windows.json",
-    "../cmake/presets/linux.json"
+  "version": 4,
+    "include": [
+      "../cmake/presets/presets.json"
   ]
 }

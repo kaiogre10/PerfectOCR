@@ -14,6 +14,7 @@ class SystemPaths(ConfigWithNumpy):
     comp_funcs_file: List[str]
     opencv_path: List[str]
     install_dirs: List[str]
+    opencv_libs: List[str]
     
 class SystemParams(ConfigWithNumpy):
     system_paths: SystemPaths

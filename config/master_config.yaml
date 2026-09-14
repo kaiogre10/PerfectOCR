@@ -4,12 +4,17 @@ system_params:
 
   system_paths:
     output_paths: ["output"]
-    bin_dirs: ["libraries", "libs", "third_party"]
-    components: ["buffer_handler", "image_loader", "image_container", "file_handler", "payload_container", "c_utils"]
+    bin_dirs: ["libs", "libraries"]
+
+    components: ["buffer_handler", "payload_container", "image_loader", "image_container", "file_handler", "c_utils"]
+
     temp_path: ["safe_temp", "tmp_file.txt"]
+
     compile_command: ["setup.py", "build_ext", "--inplace"]
     comp_funcs_file: ["utils", "compiled_utils", "compiled_funcs.pyx"]
-    opencv_path: ["opencv_dep", "install"]
+    
+    opencv_path: ["third_party", "opencv_dep", "install", "include", "opencv4"]
+    opencv_libs: ["opencv_core", "opencv_imgproc", "opencv_imgcodecs"]
     install_dirs: ["include", "lib"]
 
 deploy_settings:

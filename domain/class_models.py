@@ -1,4 +1,4 @@
-from enum import IntEnum, StrEnum
+from enum import IntEnum, StrEnum, Enum
 
 class SemantiClass(IntEnum):
     NOISE = -1 # Ruido y caracteres especiales en general
@@ -97,10 +97,11 @@ class TypeModels(StrEnum):
     UTF8 = "utf-8"
     UTF16_CSHARP = "utf-16-le"
 
-class OSModels(StrEnum):
-    WINDOWS = ".dll"
-    LINUX = ".so"
-    MACOS = ".dylib"
+class OSModels(Enum):
+    """[0]Bibliotecas, [1] Librerias"""
+    WINDOWS = (".dll", "lib")
+    LINUX = (".so", "a")
+    MACOS = (".dylib", ".a")
     
 class StringsModels(StrEnum):
     NO_MANGER = "NO_MANGER"

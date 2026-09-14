@@ -16,10 +16,10 @@ valid_img_ext = frozenset([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".w
 invalid_extensions: List[str] = [".txt", ".webp"]
 trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".log", ".prof")
 cache_dirs = ["__pycache__", ".pytest_cache", "build"]
-excluded_dirs = ["components", "bin", "documentation", "models", "safe_temp"]
+excluded_dirs = ["components", "bin", "documentation", "models", "safe_temp", "libraries", "libs", "third_party"]
 no_del: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")
 all_files_types: Set[str] = set(invalid_extensions).union(valid_img_ext, trash_ext, no_del)
-SO: str = ""
+SO: Tuple[str, ...] = ()
 
 logger = logging.getLogger(__name__)
 
@@ -293,11 +293,12 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
     files_in_dir = ["".join(name) for name in split_names if name[0] in files_to_find]
     return files_name_dir if not files_in_dir else files_in_dir
 
-def get_so() -> str:
+def get_so() -> Tuple[str, ...]:
+    """[0]Bibliotecas, [1]Librerias"""
     global SO
-    if platform.system() == OSModels.WINDOWS.capitalize():
+    if platform.system() == OSModels.WINDOWS.name.capitalize():
         SO = OSModels.WINDOWS.value
-    elif platform.system() == OSModels.LINUX.capitalize():
+    elif platform.system() == OSModels.LINUX.name.capitalize():
         SO = OSModels.LINUX.value
     else:
         SO = OSModels.MACOS.value

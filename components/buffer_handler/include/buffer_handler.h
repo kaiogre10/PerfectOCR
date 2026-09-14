@@ -1,8 +1,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include "../image_container/image.hpp"
+#include "image.hpp"
 
 #ifdef __cplusplus
 extern "C" {

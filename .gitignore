@@ -47,6 +47,7 @@ build/
 opencv_dep/build/
 third_party/opencv_dep/src/
 install/
+libs/
 out/
 documentation/
 models/
