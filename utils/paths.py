@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional, Tuple, Set
+from typing import List, Optional, Tuple
 import logging
 from core.assets.patterns import extension_suffix
 
@@ -12,29 +12,39 @@ def set_projet_root(PROJECT_ROOT: str):
     global project_root
     project_root = PROJECT_ROOT
 
-def build_from_dir(parent: List[str], objetives: Tuple[str, ...], with_extensions: Optional[bool] = None, skip_names: Optional[Tuple[str, ...]] = None):
+def build_from_dir(objetives: List[str], parent_include: Optional[bool] = None, parent: Optional[List[str]] = None, with_extensions: Optional[bool] = None, skip_names: Optional[List[str]] = None) -> List[str]:
     """
     Busca recursivamente los objetivos dentro de parent y devuelve sus rutas. Asume que paren esta en project_root
     Si extensions es True, objectives se interpreta como extensiones de archivo.
     """
-    if not objetives or len(parent) < 2:
+    if not objetives:
         logger.warning(f"SIN OBJETIVOS")
         return []
 
-    search_dir: str = os.path.join(project_root, *parent)
+    if isinstance(objetives, list):
+        objetives = tuple(objetives)
+
+    if parent is None:
+        search_dir: str = project_root
+    else:
+        search_dir: str = os.path.join(project_root, *parent)
+
     if not os.path.isdir(search_dir):
         logger.warning(f"RUTA INVALIDA: {search_dir}")
         return []
 
-    skip_names = tuple() if skip_names is None else skip_names
+    if skip_names is not None and skip_names:
+        if isinstance(skip_names, list):
+            skip_names = tuple(skip_names)
+    else:
+        skip_names = tuple()
 
     skip_paf, skip_ext, extensions = _get_exceptions_state(objetives, skip_names, with_extensions)
-    logger.warning(f"{skip_paf}, {skip_ext}, {extensions}")
     if skip_paf and skip_ext:
         logger.warning(f"MISMO ESTAOD")
         return []
 
-    valid_dirs: Set[str] = set()
+    valid_dirs: List[str] = []
     for dirpath, dirnames, filenames in os.walk(search_dir):
         if not extensions:
             for dir in skip_names:
@@ -44,7 +54,7 @@ def build_from_dir(parent: List[str], objetives: Tuple[str, ...], with_extension
 
             for d in dirnames:
                 if d in objetives:
-                    valid_dirs.add(os.path.join(dirpath, d))
+                    valid_dirs.append(os.path.join(dirpath, d))
 
         for filename in filenames:
             if skip_paf and filename in skip_names:
@@ -57,15 +67,18 @@ def build_from_dir(parent: List[str], objetives: Tuple[str, ...], with_extension
 
             if extensions:
                 if filename.endswith(objetives):
-                    valid_dirs.add(os.path.join(dirpath, filename))
+                    valid_dirs.append(os.path.join(dirpath, filename))
 
             elif filename in objetives:
-                valid_dirs.add(os.path.join(dirpath, filename))
+                valid_dirs.append(os.path.join(dirpath, filename))
 
             else:
                 continue
 
-    return list(valid_dirs)
+    valid_dirs.reverse()
+    if parent_include is not None and parent_include != project_root:
+        valid_dirs.append(search_dir)
+    return valid_dirs
 
 def _get_exceptions_state(objetives: Tuple[str, ...], skip_names: Tuple[str, ...], with_extensions: Optional[bool] = None):
     """Decide si hay que filtrar archivos si hay que hacerlo cuales filtrar. Returns: (skip_paf, skip_ext, extensions)"""
@@ -73,7 +86,6 @@ def _get_exceptions_state(objetives: Tuple[str, ...], skip_names: Tuple[str, ...
     if skip_names:       # Si hay que hacer excepciones paths and files
         skip = all(_extension_suffix.fullmatch(ext) for ext in skip_names)  # Si las excepciones de extensiones son validas, pasa a ser formato de documento.
         if extensions:           # Hay que trabajar con extensiones
-            logger.warning(extensions)
             if not extensions:
                 if not skip:
                     skip_paf = True

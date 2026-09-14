@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <utility>
 #include <cstdint>
+#include <cstddef>
 
 class Image {
 private:
@@ -33,7 +34,7 @@ public:
 
     // === MOVE SEMANTICS (TÚ decides ceder el ownership) ===
     // Esto permite: Image img2 = std::move(img1);
-    Image(Image&& other) noexcept: ptr(std::move(other.ptr)) {}
+    Image(Image&& other) noexcept : ptr(std::move(other.ptr)) {}
 
     Image& operator=(Image&& other) noexcept {
         if (this != &other) {
@@ -61,4 +62,9 @@ public:
         return image_get_size(ptr.get());
     }
 };
+
+// Helper para Cython
+inline void destroy_image(Image* img) noexcept {
+    delete img;
+}
 #endif

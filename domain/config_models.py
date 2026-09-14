@@ -131,17 +131,13 @@ class WordFinderConfig(ConfigWithNumpy):
     pkl_path: str
     matrix_path: str
     kf_path: str
-    kf_idx: str
     ngrams_name: str
     matrix_name: str
-    index_dict: str
 
 class ModelsPaths(ConfigWithNumpy):
     models_dir: str
     paddle_path: str
     word_finder_path: str
-    det_model: str
-    rec_model: str
     
 class ModelsConfig(ConfigWithNumpy):
     wf_config: WordFinderConfig

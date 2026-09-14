@@ -68,27 +68,19 @@ class MappedMatrix:
             sim_sum += float(np.sum(row_data, dtype=np.float32))
 
         return sim_count, sim_sum
-        
+
 class KeyFields:
     """Carga los arrays de los KeyFields"""
     __slots__ = ("kf_matrix", "kf_ngrams")
     def __init__(self, kf_path: str, file_type: List[str]):
         self.kf_matrix = np.load(os.path.join(kf_path, file_type[0]), mmap_mode='r', allow_pickle=False)
         self.kf_ngrams = np.load(os.path.join(kf_path, file_type[1]), mmap_mode='r', allow_pickle=False)
-    
-class KFIndex:
-    """kf[:, 0], kw[:, 1], offset[:, -1]"""
-    __slots__ = ("idx_matrix")
-    def __init__(self, idx_path: str):
-        self.idx_matrix = np.load(idx_path, mmap_mode='r', allow_pickle=False)
-        
+
 class MatrixFactory:
     """Componente centralizado que gestiona y mantiene en memoria persistente las matrices de control segmentadas por longitud."""
     __slots__ = (
         "models_path",
         "pkl_path",
-        "idx_path",
-        "idx_folder",
         "matrix_folder",
         "matrix_path",
         "kf_folder",
@@ -96,10 +88,7 @@ class MatrixFactory:
         "matrix_registry",
         "kf_registry",
         "model_pkl",
-        "index_matrix",
-        "files_list",
-        "index_dict_path",
-        "index_dict"
+        "files_list"
     )
     def __init__(self, config: Dict[str, Any]):
         self.models_path: str = config.get("wf_path", "")
@@ -110,8 +99,6 @@ class MatrixFactory:
         self.files_list = [matrix_name, ngrams_name]
         
         self.pkl_path = config.get("pkl_path", "")
-        self.idx_path = config.get("kf_idx", "")
-        self.index_dict_path = config.get("index_dict", "")
         
         self.matrix_path = config.get("matrix_path", "")
         self.matrix_folder: str = config.get("matrix_folder", "")
@@ -125,11 +112,6 @@ class MatrixFactory:
         
         self.model_pkl = {}
         self._load_model()
-        
-        self.index_matrix = np.asarray([])
-        self.index_dict: Dict[bytes, np.ndarray[Any, np.dtype[np.uint8]]] = {}
-        """kf[:, 0], kw[:, 1], offset[:, -1]"""
-        self._load_index()
     
     def _load_matrixes(self):
         """
@@ -175,35 +157,9 @@ class MatrixFactory:
             raise ModuleNotFoundError("ERROR EN LA CARGA DEL PICKLE")
         if not isinstance(self.model_pkl, dict):
             raise ValueError("El pickle no tiene el formato esperado (dict).")
-        
-    def _load_index(self):
-        """kf[:, 0], kw[:, 1], offset[:, -1]"""
-        if not os.path.isfile(self.idx_path):
-            raise FileNotFoundError(f"Indices no encontrados en: '{self.idx_path}'")
-        self.index_matrix = KFIndex(self.idx_path)
-        
-        if not os.path.exists(self.index_dict_path):
-            raise FileNotFoundError(f"Modelo no encontrado en {self.index_dict_path}")
-        self.index_dict = np.load(self.index_dict_path, mmap_mode='r', allow_pickle=False)
-    
+
     @staticmethod
     def edit_pickle_vals(config: Dict[str, Any]):
-        # idx_path = config.get("kf_idx", "")
-        # index_dict = config.get("index_dict", "")
-        # idx_matrix = np.load(idx_path)
-        #
-        # idx_word = idx_matrix[1:, :2]
-        # key_words = idx_matrix[1:, 2:24]
-        #
-        # ends = key_words[:, -1]
-        # mapped_words: Dict[bytes, np.ndarray[Any, np.dtype[np.uint8]]] = {}
-        # for i in range(key_words.shape[0]):
-        #     bkw = key_words[i, :ends[i]].tobytes()
-        #     byteword = bkw.decode('ascii')
-        #     mapped_words[byteword] = idx_word[i]
-        #
-        # # np.savez(index_dict, **mapped_words)
-        
         pkl_path = config.get("pkl_path", "")
         model_pkl: Dict[str, Any] = load_pickle(pkl_path, 'rb')
         if not isinstance(model_pkl, dict): # type: ignore
@@ -227,24 +183,7 @@ class MatrixFactory:
                 # array_grams[lens] = np.frombuffer(plain_ngrams, dtype=np.uint8).reshape(len(ngrams), lens)
                 
             ball_ngrams[word] = (word_ngrams[0], array_grams)
-            
-        # logger.info("\n"f"{all_ngrams}")
-        # logger.info("\n"f"{ball_ngrams}")
-        
-        # model_pkl["ball_ngrams"] = ball_ngrams
-        # del model_pkl["all_ngrams"]
-        # index_dict = np.load(index_dict_path, mmap_mode='r')
-        #
-        # bindex_dict: Dict[bytes, np.ndarray[Any, np.dtype[np.uint8]]] = {}
-        # for name, matrix in index_dict.items():
-        #     bname = name.encode('ascii')
-        #     logger.info(f"{bname}: {matrix}")
-        #     bindex_dict[bname] = matrix
-        #
-        # logger.info(f"\n"f"{bindex_dict}")
-        # np.savez(index_dict_path, bindex_dict)
-        # # model_pkl["ball_ngrams"] = ball_ngrams
-        #
+
         # try:
         #     save_pickle(model_pkl, pkl_path, 'wb')
         # except Exception as e:

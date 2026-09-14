@@ -25,14 +25,14 @@ deploy_settings:
   update_model: False   # Modo de actualización de los valores de las matrices de Word Finder sin correr todo el sistema
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
   test_wf_model: False
-  compile_cython: True
+  compile_cython: False
 
 pipeline_secuence:
   image_preparation_stager:
      - "image_loader"
      - "angle_corrector"
     # - "ink_enhancement"
-     - "geometry_detector"
+#     - "geometry_detector"
      - "polygon_extractor"
 
   preprocessing_stager:
@@ -57,7 +57,7 @@ pipeline_secuence:
 log_config:
   log_params:
     console_level: 'WARNING'
-    file_level: 'INFO'
+    file_level: 'DEBUG'
     console_format: "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
     file_format: "%(filename)s:%(lineno)d - %(message)s"
     date_format: "%H:%M:%S"
@@ -87,7 +87,7 @@ log_config:
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
-    full_img: False
+    full_img: True
     bin_full_img: False
     angle_corrected: False
     cropped_img: False

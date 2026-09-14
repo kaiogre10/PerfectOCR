@@ -38,7 +38,6 @@ class Metadata:
 class StructuredData:
     df_table: Optional[pd.DataFrame]
     global_data: Dict[str, Any]
-    # ptr_addr: int
 
 @dataclass(slots=True)
 class WorkflowData:

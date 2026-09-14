@@ -16,14 +16,16 @@ extra_compile_args = [
 def build_extensions(config: Dict[str, Any]):
     utils_file = config.get("comp_funcs_file", "")
     image_file = config.get("comp_services_file", "")
-    prune_workspace(config["build_path"], image_file, utils_file)
-    
+    build_path = config["build_path"]
+
+    prune_workspace(build_path, image_file, utils_file)
+    runtime_library_dirs = config["bin_dirs"]
+    library_dirs = [runtime_library_dirs[1], runtime_library_dirs[0]]
+
     comp_utils_name = config.get("comp_funcs_name", "")
     compiled_services_path = config["comp_services_path"]
     include_dirs = [*config["components_paths"], np.get_include()] # type: ignore
-    library_dirs = config["library_dirs"]
     libraries = config["libraries"]
-    runtime_library_dirs = config["runtime_library_dirs"]
 
     extensions = [
         Extension(
@@ -38,7 +40,7 @@ def build_extensions(config: Dict[str, Any]):
             library_dirs=library_dirs,
             libraries=libraries,
             extra_compile_args=extra_compile_args,
-            runtime_library_dirs=runtime_library_dirs,
+            runtime_library_dirs=runtime_library_dirs
         ),
     ]
 
@@ -57,7 +59,7 @@ def build_extensions(config: Dict[str, Any]):
     finally:
         sys.argv = old_argv
 
-    prune_workspace(config["build_path"], "", "")
+    prune_workspace(build_path, "", "")
     
 def prune_workspace(build_path: str, image_file: str, utils_file: str):
     if not image_file:

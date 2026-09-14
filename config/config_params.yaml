@@ -3,8 +3,6 @@ models_config:
     models_dir: "models"
     word_finder_path: "wf"
     paddle_path: "paddle"
-    det_model: "det"
-    rec_model: "rec"
 
   paddle_config:
     use_angle_cls: False
@@ -21,24 +19,18 @@ models_config:
     table: False
     max_text_length: 20
     return_word_box: False
-#    det_model_dir: ["models", "paddle", "det", "es"]
-#    rec_model_dir: ["models", "paddle", "rec", "es"]
 
   wf_config:
     char_ngrams: [2, 3]
     threshold_similarity: 0.901
     global_filter_threshold: 0.6105
-#    forb_match: 0.876
     window_flexibility: 3
 
-    kf_idx: "kf_idx.npy"
     pkl_path: "wf_model.pkl"
-    
     matrix_path: "matrixes"
     kf_path: "key_words"
     ngrams_name: "ngrams.npy"
     matrix_name: "matrix.npz"
-    index_dict: "index_dict.npz"
   
 modules:
   image_preparation:

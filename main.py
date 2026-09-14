@@ -14,6 +14,7 @@ system_service.init_system(PROJECT_ROOT)
 
 config_service = ConfigAPI(PROJECT_ROOT)
 if config_service.test_config:
+    config_service.system_paths  # type: ignore
     log_service.log_simple("TESTING CONFIG FINALIZANDO")
     sys.exit()
 

@@ -126,7 +126,7 @@ class ConfigBuilder:
         output_paths = _system_paths["output_paths"]
         temp_path = _system_paths["temp_path"]
         
-        _system_paths["output_paths"] = [os.path.join(self.project_root, folder) for folder in output_paths]
+        _system_paths["output_paths"] = build_from_dir(output_paths)
         _system_paths["temp_path"] = os.path.join(self.project_root, *temp_path)
 
         if not self.handle_memory and not self.compile_cython:
@@ -135,7 +135,8 @@ class ConfigBuilder:
         else:
             _components: List[str] = _system_paths["components"]
             _bin_dirs = _system_paths["bin_dirs"]
-            bin_dirs = [os.path.join(self.project_root, path) for path in _bin_dirs]
+            bin_dirs = build_from_dir(objetives=_bin_dirs)
+            _system_paths["bin_dirs"] = bin_dirs
 
             if self.handle_memory:
                 buffer_handler = _components[0]
@@ -148,22 +149,16 @@ class ConfigBuilder:
                 _system_paths["buffer_handler"] = buffer_path
             
             if self.compile_cython:
-                components_dir = [self.project_root, "components"]
                 
-                _opencv_path = _system_paths["opencv_libs"]
-
-                libraries_path = bin_dirs[0]
-                static_libraries_path = bin_dirs[1]
+                _opencv_path = _system_paths["opencv_path"]
                 opencv_include_path = os.path.join(self.project_root, *_opencv_path)
 
-                components_paths = build_from_dir(parent=components_dir, objetives=tuple(["include"]), skip_names=tuple(_components[:2]))    # type: ignore
+                components_paths = build_from_dir(objetives=["include"], parent=["components"], skip_names=_components[:2])
                 components_paths.append(opencv_include_path)
-
                 _system_paths["components_paths"] = components_paths
+
                 _system_paths["build_path"] = os.path.join(self.project_root, "build")
-                _system_paths["libs_path"] = libraries_path
-                _system_paths["library_dirs"] = [static_libraries_path, libraries_path]
-                _system_paths["runtime_library_dirs"] = [libraries_path, static_libraries_path]
+
                 _opencv_libs = _system_paths["opencv_libs"]
                 _system_paths["libraries"] = [*_components[2:], *_opencv_libs]
                                 
@@ -174,12 +169,11 @@ class ConfigBuilder:
                 
                 comp_services_path = os.path.join(self.project_root, _comp_funcs_file[0], "compiled_services")
 
-                # log_simple(f"PATH: {comp_services_path}: IS DIR: {os.path.isdir(comp_services_path)}")
                 _system_paths["comp_services_file"] = os.path.join(comp_services_path, "image.pyx")
                 _system_paths["comp_services_path"] = comp_services_path
 
-                _system_paths["components"] = _components[1:]
-                
+            _system_paths["components"] = _components[2:]
+
         return _system_paths
 
     @cached_property
@@ -269,36 +263,30 @@ class ConfigBuilder:
         models_paths: Dict[str, str] = _models_config.get("models_paths", {})
         
         _models_dir = models_paths.get("models_dir", "")
-        models_dir = os.path.join(self.project_root, _models_dir)
-        
-        det_model = models_paths.get("det_model", "")
-        rec_model = models_paths.get("rec_model", "")
         paddle_path = models_paths.get("paddle_path", "")
         lang = paddle_config.get("lang", "")
-        
+
+        paddle_paths = build_from_dir(objetives=[lang], parent=[_models_dir, paddle_path], skip_names=["cls"])
+
         paddle_config.update({
-            "det_model_dir": os.path.join(models_dir, paddle_path, det_model, lang),
-            "rec_model_dir": os.path.join(models_dir, paddle_path, rec_model, lang),
+            "det_model_dir": paddle_paths[0],
+            "rec_model_dir": paddle_paths[1],
             "activate_rec": True,
             "activate_det": True,
         })
         
         matrix_path = wf_config.get("matrix_path", "")
         kf_path = wf_config.get("kf_path", "")
-        index_dict = wf_config.get("index_dict", "")
-        
-        kf_idx_name = wf_config.get("kf_idx", "")
         pkl_path_name = wf_config.get("pkl_path", "")
-        
         _wf_path = models_paths.get("word_finder_path", "")
-        wf_path = os.path.join(models_dir, _wf_path)
+
+        wf_paths = build_from_dir(objetives=[pkl_path_name, matrix_path, kf_path], parent_include=True, parent=[_models_dir, _wf_path])
+
         wf_config.update({
-            "wf_path": wf_path,
-            "kf_idx": os.path.join(wf_path, kf_idx_name),
-            "pkl_path": os.path.join(wf_path, pkl_path_name),
-            "index_dict": os.path.join(wf_path, index_dict),
-            "matrix_folder": os.path.join(wf_path, matrix_path),
-            "kf_folder": os.path.join(wf_path, kf_path),
+            "wf_path": wf_paths[-1],
+            "pkl_path": wf_paths[0],
+            "matrix_folder": wf_paths[1],
+            "kf_folder": wf_paths[2],
             "test_wf_model": self.test_wf_model,
         })
         del _models_config["models_paths"]
@@ -479,13 +467,13 @@ class ConfigBuilder:
             log_simple("ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
             return False
         
-        elif not self.deploy_mode and not self.handle_memory:
-            log_simple("ACTIVAR MEMORIA DINÁMICA")
-            return False
-
         elif self.no_activate_modules:
             log_active_areas(msg + " 'SOLO MODULOS DE ALTO NIVEL'") # type: ignore
             return True
+
+        elif not self.deploy_mode and not self.handle_memory:
+            log_simple("ACTIVAR MEMORIA DINÁMICA")
+            return False
 
         elif self.deploy_mode:
             log_active_areas((msg + " Modulos:"), self.create_stager) # type: ignore
