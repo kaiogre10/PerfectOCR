@@ -3,10 +3,10 @@ from typing import List, Optional, Tuple
 import logging
 from core.assets.patterns import extension_suffix
 
-logger = logging.getLogger(__name__)
-
 _extension_suffix = extension_suffix
 project_root: str = ""
+
+logger = logging.getLogger(__name__)
 
 def set_projet_root(PROJECT_ROOT: str):
     global project_root
@@ -22,10 +22,11 @@ def build_from_dir(objetives: List[str], parent_include: Optional[bool] = None, 
         return []
 
     if isinstance(objetives, list):
-        objetives = tuple(objetives)
+        objetives: Tuple[str, ...] = tuple(objetives)
 
     if parent is None:
         search_dir: str = project_root
+
     else:
         search_dir: str = os.path.join(project_root, *parent)
 
@@ -35,9 +36,9 @@ def build_from_dir(objetives: List[str], parent_include: Optional[bool] = None, 
 
     if skip_names is not None and skip_names:
         if isinstance(skip_names, list):
-            skip_names = tuple(skip_names)
+            skip_names: Tuple[str, ...] = tuple(skip_names)
     else:
-        skip_names = tuple()
+        skip_names: Tuple[str, ...] = tuple()
 
     skip_paf, skip_ext, extensions = _get_exceptions_state(objetives, skip_names, with_extensions)
     if skip_paf and skip_ext:
@@ -76,8 +77,9 @@ def build_from_dir(objetives: List[str], parent_include: Optional[bool] = None, 
                 continue
 
     valid_dirs.reverse()
-    if parent_include is not None and parent_include != project_root:
+    if parent_include is not None and parent_include:
         valid_dirs.append(search_dir)
+
     return valid_dirs
 
 def _get_exceptions_state(objetives: Tuple[str, ...], skip_names: Tuple[str, ...], with_extensions: Optional[bool] = None):

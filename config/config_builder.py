@@ -78,11 +78,7 @@ class ConfigBuilder:
     @cached_property
     def db_local(self) -> bool:
         return bool(self.deploy_settings.get("postgre_local"))
-    
-    @property
-    def compile_cython(self) -> bool:
-        return bool(self.deploy_settings.get("compile_cython"))
-    
+        
     @cached_property
     def no_activate_modules(self) -> bool: # Parametro automátizado que permite arrancar el sistema para testear parametros de alto nivel sin crear objetos pesados de manera innecesaria
         """(deploy_mode == True) and (elemental_params == False)"""
@@ -129,50 +125,16 @@ class ConfigBuilder:
         _system_paths["output_paths"] = build_from_dir(output_paths)
         _system_paths["temp_path"] = os.path.join(self.project_root, *temp_path)
 
-        if not self.handle_memory and not self.compile_cython:
+        if not self.handle_memory:
             return _system_paths
         
         else:
-            _components: List[str] = _system_paths["components"]
-            _bin_dirs = _system_paths["bin_dirs"]
-            bin_dirs = build_from_dir(objetives=_bin_dirs)
-            _system_paths["bin_dirs"] = bin_dirs
+            buffer_path = os.path.join(self.project_root, "libraries", ("buffer_handler" + SO[0]))
+            if not os.path.isfile(buffer_path):
+                basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
+                self.handle_memory = False
 
-            if self.handle_memory:
-                buffer_handler = _components[0]
-                buffer_path = os.path.join(self.project_root, bin_dirs[1], (buffer_handler + SO[0]))
-                
-                if not os.path.isfile(buffer_path):
-                    basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
-                    self.handle_memory = False
-
-                _system_paths["buffer_handler"] = buffer_path
-            
-            if self.compile_cython:
-                
-                _opencv_path = _system_paths["opencv_path"]
-                opencv_include_path = os.path.join(self.project_root, *_opencv_path)
-
-                components_paths = build_from_dir(objetives=["include"], parent=["components"], skip_names=_components[:2])
-                components_paths.append(opencv_include_path)
-                _system_paths["components_paths"] = components_paths
-
-                _system_paths["build_path"] = os.path.join(self.project_root, "build")
-
-                _opencv_libs = _system_paths["opencv_libs"]
-                _system_paths["libraries"] = [*_components[2:], *_opencv_libs]
-                                
-                _comp_funcs_file = _system_paths["comp_funcs_file"]
-
-                _system_paths["comp_funcs_name"] = ".".join(_comp_funcs_file)[:-4]
-                _system_paths["comp_funcs_file"] = os.path.join(self.project_root, *_comp_funcs_file)
-                
-                comp_services_path = os.path.join(self.project_root, _comp_funcs_file[0], "compiled_services")
-
-                _system_paths["comp_services_file"] = os.path.join(comp_services_path, "image.pyx")
-                _system_paths["comp_services_path"] = comp_services_path
-
-            _system_paths["components"] = _components[2:]
+            _system_paths["buffer_handler"] = buffer_path
 
         return _system_paths
 
@@ -190,7 +152,8 @@ class ConfigBuilder:
 
     @cached_property
     def _logs_debug(self):
-        _logs_debug = self.log_config.get("logs_flags", {})
+        _logs_debug = self.log_config.get("logs_debug", {})
+        
         def _max_min_vals(type_list: List[int], lenght: int, limits: Tuple[int, int]) -> List[int]:
             if -1 in type_list:
                 range_logs = limits

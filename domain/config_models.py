@@ -7,15 +7,10 @@ class ConfigWithNumpy(BaseModel):
 
 class SystemPaths(ConfigWithNumpy):
     output_paths: List[str]
-    bin_dirs: List[str]
-    components: List[str]
     temp_path: List[str]
     compile_command: List[str]
     comp_funcs_file: List[str]
-    opencv_path: List[str]
-    install_dirs: List[str]
-    opencv_libs: List[str]
-    
+
 class SystemParams(ConfigWithNumpy):
     system_paths: SystemPaths
     payloads_size: int
@@ -28,7 +23,6 @@ class DeploySettings(ConfigWithNumpy):
     handle_memory: bool
     update_model: bool
     test_wf_model: bool
-    compile_cython: bool
 
 class PipelineConfig(ConfigWithNumpy):
     image_preparation_stager: Optional[List[str]] = None
@@ -37,7 +31,7 @@ class PipelineConfig(ConfigWithNumpy):
     vectorization_stager: Optional[List[str]] = None
     db_stage: Optional[List[str]] = None
 
-class LogsFlags(ConfigWithNumpy):
+class LogsDebug(ConfigWithNumpy):
     all_logs: bool
     text_ocr: bool
     text_clean: bool
@@ -66,7 +60,7 @@ class LogParams(ConfigWithNumpy):
     temp_path_file: str
 
 class LogsConfig(ConfigWithNumpy):
-    logs_flags: LogsFlags
+    logs_debug: LogsDebug
     log_params: LogParams
 
 class ImgLoadOutputs(ConfigWithNumpy):

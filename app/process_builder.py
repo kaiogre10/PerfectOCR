@@ -94,5 +94,5 @@ class ProcessingBuilder:
             
         total_processing_time = time.perf_counter() - start_time
         
-        logger.warning(f"'{len(results)} de {total_images}' Archivos Digitalizados CORRECTAMENTE en: {total_processing_time}, promedio: {total_processing_time / total_images}'s / documento")
+        logger.warning(f"'{len(results)} de {total_images}' Archivos Digitalizados CORRECTAMENTE en: {total_processing_time}, promedio: {total_processing_time / total_images}'s por documento")
         return results

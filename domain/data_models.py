@@ -41,7 +41,6 @@ class StructuredData:
 
 @dataclass(slots=True)
 class WorkflowData:
-    full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
     metadata: Optional[Metadata]
     polygons: Optional[Dict[str, Polygons]]
     all_lines: Optional[Dict[str, AllLines]]
@@ -51,3 +50,26 @@ class WorkflowData:
 class Payload:
     payload: Optional[str]
     buff_size: int
+
+class FullImageKey:
+    img_ptr: Optional[int] = None  
+
+    def __new__(cls, img_ptr: int):
+        # Bloquea floats (1.0), strings ("1"), y explícitamente booleanos (True/False).
+        if type(img_ptr) is not int:
+            raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(img_ptr).__name__}'.")
+            
+        # 2. VALIDACIÓN DE NEGATIVOS: Un puntero de memoria real no puede ser menor a cero.
+        if img_ptr < 0:
+            raise TypeError("Validación fallida: El puntero no puede ser un entero negativo.")
+
+        # Guarda el entero en el namespace de la clase
+        cls.img_ptr = img_ptr
+        
+        # Evita crear instancias en memoria
+        return None 
+
+    @classmethod
+    def clear(cls) -> None:
+        """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
+        cls.img_ptr = None

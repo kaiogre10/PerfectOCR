@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import cv2
 import pandas as pd # type: ignore
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Optional
 from services.log_service import get_caller_info
 from utils.file_handler import save_image, save_yaml, save_table
 from domain.class_models import TypeModels

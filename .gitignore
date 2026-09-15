@@ -58,7 +58,7 @@ output/
 migrations/
 CMakeFiles/
 utils/compiled_utils/compiled_funcs.c
-utils/compiled_services/image.cpp
+components/compiled/image.cpp
 cmake-*/
 
 

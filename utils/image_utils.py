@@ -22,6 +22,7 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
     - Garantiza que el array sea C-contiguo
     Retorna ndarray uint8 o None si ocurre un error / imagen vacía.
     """
+    return img
     try:
         if img is None:
             logger.error("normalice_image: imagen None recibida")
@@ -69,8 +70,8 @@ def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[
                 
         if not validate_image(img_arr):
             return None
-            
-        return np.require(img_arr, dtype=np.uint8, requirements=['C', 'A', 'W', 'O', 'E'])
+        return img_arr
+        # return np.require(img_arr, dtype=np.uint8, requirements=['C', 'A', 'W', 'E'])
         
     except Exception  as e:
         logger.error(f"Error normalizando imagen: {e}", exc_info=True)

@@ -4,18 +4,9 @@ system_params:
 
   system_paths:
     output_paths: ["output"]
-    bin_dirs: ["libs", "libraries"]
-
-    components: ["buffer_handler", "payload_container", "image_loader", "image_container", "file_handler", "c_utils"]
-
     temp_path: ["safe_temp", "tmp_file.txt"]
-
     compile_command: ["setup.py", "build_ext", "--inplace"]
     comp_funcs_file: ["utils", "compiled_utils", "compiled_funcs.pyx"]
-    
-    opencv_path: ["third_party", "opencv_dep", "install", "include", "opencv4"]
-    opencv_libs: ["opencv_core", "opencv_imgproc", "opencv_imgcodecs"]
-    install_dirs: ["include", "lib"]
 
 deploy_settings:
   postgre_local: False     # Habilitar el servicio local de postgre
@@ -25,14 +16,13 @@ deploy_settings:
   update_model: False   # Modo de actualización de los valores de las matrices de Word Finder sin correr todo el sistema
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
   test_wf_model: False
-  compile_cython: False
 
 pipeline_secuence:
   image_preparation_stager:
      - "image_loader"
      - "angle_corrector"
     # - "ink_enhancement"
-#     - "geometry_detector"
+     - "geometry_detector"
      - "polygon_extractor"
 
   preprocessing_stager:
@@ -64,8 +54,8 @@ log_config:
 #    temp_date_format: "%d/%m/%Y-%H:%M:%S"
     temp_path_file: "safe_temp"
 
-  logs_flags:           # <-- Activar logs para consola
-    all_logs: False    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
+  logs_debug:           # <-- Activar logs para consola
+    all_logs: True    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
     text_ocr: False
     text_del: False
     frag_polys: False
@@ -87,7 +77,7 @@ log_config:
 # Configuración de salida
 enabled_outputs:
   image_load_outputs:
-    full_img: True
+    full_img: False
     bin_full_img: False
     angle_corrected: False
     cropped_img: False

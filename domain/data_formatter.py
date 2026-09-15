@@ -1,6 +1,5 @@
 # core/domain/data_formatter.py
-from domain.data_models import WorkflowData, StructuredData, Metadata, Polygons, AllLines, Payload
-# from utils.compiled_services.image import FullImg
+from domain.data_models import WorkflowData, StructuredData, Metadata, Polygons, AllLines, Payload, FullImageKey
 import numpy as np
 import dataclasses
 import logging
@@ -9,6 +8,8 @@ from utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass, StringsModels
+from domain.fullimage import FullImage
+from components.compiled.image import release
 
 logger = logging.getLogger(__name__)
 
@@ -30,27 +31,31 @@ class DataFormatter:
         self.workflow = None
         self.payload = None
         
-    def create_workflow(self, gray_img: np.ndarray[Any, np.dtype[np.uint8]], image_name: str) -> bool:
+    def create_workflow(self, img_ptr: int, image_name: str) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
         try:
             metadata_obj = Metadata(
                 image_name=image_name,
                 img_dims = (0 , 0)
             )
-
             self.workflow = WorkflowData(
-                full_img=gray_img,
                 metadata=metadata_obj,
                 polygons=None,
                 all_lines=None,
                 table_data=None,
             )
             logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{image_name}'")
-            return True
-            
         except Exception as e:
             logger.error(f"No se pudo crear el workflowDict: {e}", exc_info=True)
-        return False
+            return False
+        
+        try:
+            FullImageKey(img_ptr=img_ptr)
+        except TypeError as e:
+            logger.info(f"No se pudo almacenar el puntero")
+            return False
+    
+        return True    
     
     def create_polygon_dicts(self, results: List[Dict[str, Any]]) -> bool:
         """Refactorizado para usar validación + dataclasses"""
@@ -90,8 +95,30 @@ class DataFormatter:
         return False
             
     def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
-        return self.workflow.full_img if self.workflow else None
         
+        if not FullImageKey.img_ptr:
+            return None
+
+        ptr = FullImageKey.img_ptr
+        if not isinstance(ptr, int):    # type:  ignore
+            return None
+        
+        full_img = FullImage(ptr)
+        return full_img.data
+
+    def delete_full_img(self) -> bool:
+        try:
+            if not FullImageKey.img_ptr:
+                return False
+            
+            ptr = FullImageKey.img_ptr
+            release(ptr_addr=ptr)
+        except RuntimeError as e:
+            logger.info(f"ERROR ELIMINANDO LA FULL IMG: {e}", exc_info=True)
+            return False
+
+        return True
+
     def delete_cropped_images(self):
         """Libera todas las imágenes recortadas de los polígonos para ahorrar memoria."""
         if not self.workflow or not self.workflow.polygons:
@@ -112,8 +139,7 @@ class DataFormatter:
                 
             if full_img is None and not corrected:
                 # Medir dims de la imagen real almacenada antes de liberar memoria
-                self.workflow.full_img = None
-                self.workflow = dataclasses.replace(self.workflow, full_img=None)
+                FullImage == None
                 logger.debug("Full image liberada")
                 return True
             

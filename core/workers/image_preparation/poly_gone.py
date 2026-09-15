@@ -52,7 +52,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.error("No se pudo obtener full_img del Formatter.")
                 return False
                 
-            full_img = make_contiguous(full_img)
+            # full_img = make_contiguous(full_img)
 
             # 4. Bucle Único de Filtrado, Actualización y Re-indexado
             new_polygons = {}

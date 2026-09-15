@@ -36,10 +36,6 @@ class ConfigAPI:
         return self.validated_config.clean_project
     
     @property
-    def compile_cython(self) -> bool:
-        return self.validated_config.compile_cython
-
-    @property
     def log_params(self) -> Dict[str, str]:
         """Parametros de configuracion logger"""
         return self.validated_config.log_params

@@ -2,46 +2,22 @@ import os
 import sys
 from services.system_service import cleanup_project
 from setuptools import setup, Extension
-import numpy as np
-from Cython.Build import cythonize
+from Cython.Build import cythonize # type: ignore
 from typing import Dict, Any
-from utils.paths import build_from_dir
-
-extra_compile_args = [
-    "-std=c++20",
-    "-mavx2",
-    "-mfma",
-]
 
 def build_extensions(config: Dict[str, Any]):
     utils_file = config.get("comp_funcs_file", "")
-    image_file = config.get("comp_services_file", "")
     build_path = config["build_path"]
 
-    prune_workspace(build_path, image_file, utils_file)
-    runtime_library_dirs = config["bin_dirs"]
-    library_dirs = [runtime_library_dirs[1], runtime_library_dirs[0]]
+    prune_workspace(build_path, "", utils_file)
 
     comp_utils_name = config.get("comp_funcs_name", "")
-    compiled_services_path = config["comp_services_path"]
-    include_dirs = [*config["components_paths"], np.get_include()] # type: ignore
-    libraries = config["libraries"]
 
     extensions = [
         Extension(
             name=comp_utils_name,
             sources=[utils_file],
-        ),
-        Extension(
-            name="utils.compiled_services.image",
-            sources=[image_file],
-            language="c++",
-            include_dirs=include_dirs,  # type: ignore
-            library_dirs=library_dirs,
-            libraries=libraries,
-            extra_compile_args=extra_compile_args,
-            runtime_library_dirs=runtime_library_dirs
-        ),
+        )
     ]
 
     command = config["compile_command"]
@@ -49,11 +25,9 @@ def build_extensions(config: Dict[str, Any]):
     sys.argv = command
     try:
         setup(
-            name="compiled_services",
             ext_modules=cythonize(
                 extensions,
-                compiler_directives={"language_level": "3"},
-                include_path=[compiled_services_path]
+                compiler_directives={"language_level": "3"}
             )
         )
     finally:
