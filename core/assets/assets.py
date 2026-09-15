@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Dict, List, Any, FrozenSet, Set
+from typing import Dict, List, Any, FrozenSet, Set, Tuple
 from decimal import Decimal
 from domain.class_models import NumberStr
 
@@ -120,35 +120,6 @@ DENSITY_ENCODER: Dict[str, float] = {
     "a": 113.0,
     " ": 114.0
 }
-
-CHAR_FRECUENCY = np.asarray(
-  [[1100589.0, 1.6773916e+01], #'a'
-    [799520.0, 1.2185368e+01], #'e'
-    [631299.0, 9.6215363e+00], #'r'
-    [574065.0, 8.7492409e+00], #'s'
-    [521553.0, 7.9489136e+00], #'i':
-    [426607.0, 6.5018549e+00], #'o':
-    [414107.0, 6.3113441e+00], #'n':
-    [284463.0, 4.3354588e+00], #'c':
-    [264671.0, 4.0338120e+00], #'t':
-    [235861.0, 3.5947230e+00], #'l':
-    [235854.0, 3.5946164e+00], #'m':
-    [209819.0, 3.1978209e+00], #'d':
-    [173974.0, 2.6515124e+00], #'u':
-    [144072.0, 2.1957803e+00], #'b':
-    [141022.0, 2.1492958e+00], #'p':
-    [90359.0,  1.3771484e+00], #'g':
-    [62033.0,  9.4543594e-01], #'h':
-    [61667.0,  9.3985778e-01], #'z':
-    [57838.0,  8.8150054e-01], #'f':
-    [50633.0,  7.7169013e-01], #'v':
-    [38096.0,  5.8061558e-01], #'j':
-    [24330.0,  3.7081000e-01], #'q':
-    [9540.0,   1.4539775e-01], #'x':
-    [8678.0,   1.3226013e-01], #'y':
-    [578.0,    8.8092135e-03], #'k':
-    [84.0,     1.2802318e-03]] #'w'
-, dtype=np.float32, order='C')
 
 VECT_REF = np.asarray([1.0, 0.0], dtype=np.float32) # eje X positivo
 
@@ -301,3 +272,15 @@ BLACK = [0, 0, 0]
 
 PI_DIV = (180.0 / np.pi)
 SMALL_NUM = 1e-8
+
+VALID_IMG_EXT = frozenset([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2"])
+
+INVALID_EXTENSIONS: List[str] = [".txt", ".webp"]
+
+TRASH_EXT: Tuple[str, ...] = (".pyc", ".pyo", ".log", ".prof")
+CACHE_DIRS = ["__pycache__", ".pytest_cache", "build"]
+
+EXCLUDED_DIRS = ["components", ".git", ".vscode", ".idea", "documentation", "models", "safe_temp", "libraries", "libs", "third_party"]
+NO_DEL: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")
+
+ALL_FILES_TYPES: Set[str] = set(INVALID_EXTENSIONS).union(VALID_IMG_EXT, TRASH_EXT, NO_DEL)

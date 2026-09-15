@@ -12,10 +12,10 @@ _white = WHITE
 
 logger = logging.getLogger(__name__)
 
-def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:  # lista
     return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(img_arr, dtype=np.uint8)
 
-def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
+def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:  # Lista
     """
     - Convierte BGR->GRAY si viene con 3/4 canales
     - Convierte a dtype uint8 (escala floats en [0,1] a 0-255)
@@ -84,7 +84,7 @@ def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any,
         logger.critical(f"Error añadiendo dimensiones a la imagen: {e}", exc_info=True)
     return []
 
-def validate_image(img: Optional[np.ndarray[Any, Any]]):
+def validate_image(img: Optional[np.ndarray[Any, Any]]):    # Listo
     return False if img is None else (7.0 < np.mean(img) < 251.0)
 
 def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:

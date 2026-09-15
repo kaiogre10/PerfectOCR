@@ -7,19 +7,22 @@ from typing import Set, Tuple, Optional, List, Dict, Any
 #from psycopg2 import sql
 from services.log_service import basic_exc_logger
 from core.assets.patterns import extension_suffix
+from core.assets.assets import VALID_IMG_EXT, INVALID_EXTENSIONS, TRASH_EXT, CACHE_DIRS, EXCLUDED_DIRS, NO_DEL, ALL_FILES_TYPES
 from domain.class_models import OSModels
 
 _extension_suffix = extension_suffix
 PROJECT_ROOT: str = ""
 output_paths: List[str] = []
-valid_img_ext = frozenset([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2"])
-invalid_extensions: List[str] = [".txt", ".webp"]
-trash_ext: Tuple[str, ...] = (".pyc", ".pyo", ".log", ".prof")
-cache_dirs = ["__pycache__", ".pytest_cache", "build"]
-excluded_dirs = ["components", ".git", ".vscode", ".idea", "documentation", "models", "safe_temp", "libraries", "libs", "third_party"]
-no_del: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")
-all_files_types: Set[str] = set(invalid_extensions).union(valid_img_ext, trash_ext, no_del)
-SO: Tuple[str, ...] = ()
+
+valid_img_ext = VALID_IMG_EXT
+invalid_extensions = INVALID_EXTENSIONS
+trash_ext = TRASH_EXT
+cache_dirs = CACHE_DIRS
+excluded_dirs = EXCLUDED_DIRS
+no_del = NO_DEL
+all_files_types = ALL_FILES_TYPES
+
+SO = tuple()
 
 logger = logging.getLogger(__name__)
 

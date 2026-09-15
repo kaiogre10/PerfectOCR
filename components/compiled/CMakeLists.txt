@@ -69,7 +69,7 @@ endif()
 target_include_directories(image PRIVATE
     ${Python3_INCLUDE_DIRS}
     "${NUMPY_INCLUDE_DIR}"
-    "${CMAKE_SOURCE_DIR}/image_loader/include"
+    "${CMAKE_SOURCE_DIR}/workers/image_preparation/include"
     "${CMAKE_SOURCE_DIR}/image_container/include"
     "${CMAKE_SOURCE_DIR}/file_handler/include"
     "${CMAKE_SOURCE_DIR}/c_utils/include"

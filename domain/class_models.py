@@ -107,3 +107,16 @@ class StringsModels(StrEnum):
     NO_MANGER = "NO_MANGER"
     TIME_MASK = "Tiempo: "
     POLYS_IDS = "poly_"
+
+class Metrics(StrEnum):
+    code = 'code' 
+    comment = 'comment' 
+    blank = 'blank'
+    total = 'total'
+    functions = 'functions'
+    files = 'files'
+    python = 'python'
+    yaml = 'yaml'
+    cplusplus = 'cplusplus'
+    cython = 'cython'
+    sql = "sql"

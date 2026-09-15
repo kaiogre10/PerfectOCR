@@ -49,7 +49,7 @@ third_party/opencv_dep/src/
 install/
 libs/
 out/
-documentation/
+# documentation/
 models/
 input/
 input2/
@@ -60,7 +60,6 @@ CMakeFiles/
 utils/compiled_utils/compiled_funcs.c
 components/compiled/image.cpp
 cmake-*/
-
 
 # secrets
 .env

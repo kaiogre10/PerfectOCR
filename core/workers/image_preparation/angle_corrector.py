@@ -49,10 +49,8 @@ class AngleCorrector(ImagePrepAbstractWorker):
 
                 if self.output and corrected:
                     image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    worker_name = context.get("worker_name") or "angle_corrector"
-                    img_id = f"full_img_{image_name}_{worker_name}"
+                    img_id = f"full_img_{image_name}"
                     save_croped_image(image_name, img_id, full_img)
-            
             return True
             
         except Exception as e:
@@ -60,11 +58,8 @@ class AngleCorrector(ImagePrepAbstractWorker):
         return True
 
     def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[np.ndarray[Any, np.dtype[np.uint8]], bool]:
-        """
-        Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no).
-        """
+        """Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no)."""
         try:
-            
             h =  full_img.shape[0]
             w =  full_img.shape[1]
             
@@ -78,9 +73,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 return full_img, False
 
             angles = np.degrees(np.arctan2(lines[:, 0, 3] - lines[:, 0, 1], lines[:, 0, 2] - lines[:, 0, 0]))
-
             filtered_angles = angles[(angles > self.hough_angle_filter_range_degrees[0]) & (angles < self.hough_angle_filter_range_degrees[1])]
-            
             if filtered_angles.size == 0:
                # logger.warning(f"Ninguna línea detectada en el rango de ángulos para corrección")
                 return full_img, False

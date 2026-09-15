@@ -82,7 +82,7 @@ add_subdirectory(image_container)
 add_subdirectory(payload_container)
 
 # 2. Interfaces de Exportación (Compilación SHARED)
-add_subdirectory(image_loader)
+add_subdirectory(workers)
 add_subdirectory(buffer_handler)
 
 # 3. Bindings Python (Cython)

@@ -1,6 +1,6 @@
 #ifndef IMAGE_HPP
 #define IMAGE_HPP
-#include "image_container.h"
+#include "../../image_container/include/image_container.h"
 #include <memory>
 #include <stdexcept>
 #include <utility>

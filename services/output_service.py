@@ -79,6 +79,7 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], cont
 def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any]): 
     """Guarda una imagen de depuración si la salida está habilitada."""
     worker_name = get_caller_info()[0]
+    img_id = f"{img_id}_{worker_name}"
     for path in OUTPUT_PATHS:
         output_dir = os.path.join(path, image_name)
         file_name = f"{img_id}.png"
