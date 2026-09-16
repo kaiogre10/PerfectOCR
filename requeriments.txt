@@ -1,19 +1,19 @@
 source /opt/intel/oneapi/setvars.sh <-- OneAPI Linux
 "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"   <-- OneAPI Windows
 
-conda create -n intel --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python=3.12 numpy=1.26.4 pip conda scipy intel-opencl-rt ipp dpcpp-cpp-rt cython mkl onednn ocl-icd-system icc_rt mkl-dpcpp numexpr tbb4py scikit-image
+conda create -n intel --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python=3.12.5 numpy=1.26.4 pip conda scipy intel-opencl-rt ipp dpcpp-cpp-rt cython mkl ocl-icd-system icc_rt mkl-dpcpp numexpr tbb4py scikit-image
 
-conda install python-lmdb fire fonttools beautifulsoup4 soupsieve lmdb matplotlib contourpy cycler kiwisolver pyparsing pyclipper python-docx lxml rapidfuzz shapely termcolor pythran pydantic <-- ganarle a paddleocr las librerias y reducir las variaciones
+conda install python-lmdb fire fonttools beautifulsoup4 soupsieve lmdb matplotlib contourpy cycler kiwisolver pyparsing pyclipper python-docx lxml rapidfuzz shapely termcolor pythran pydantic<-- ganarle a paddleocr las librerias y reducir las variaciones
 
 conda install -c conda-forge opencv=4.11.0 -y
 
-conda install imgaug=0.4.0
+conda install imgaug=0.4.0 pyaml -y
 
 conda install paddlepaddle==2.6.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -y
 
 pip install paddleocr==2.8.1 --no-deps
 
-conda install pandas python-dotenv psycopg2 regex pyaml -y
+conda install pandas python-dotenv psycopg2 regex cmake-y
 
 pip install bitmath # <-- Opcional, se puede gestionar la estimación del tamaño de los payloads de manera manual
 
@@ -22,13 +22,15 @@ conda install commentjson  # <-- Solo para desarrollo y similación de configura
 python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython
 
 # Compilar opencv
-cd components/opencv_dep
-rm -rf build install
+cd third_party/opencv_dep
+rm -rf build install	<-- Linux
+rmdir /s /q build install	<-- Windows
+
 git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git src
-cmake -C opencv_config.cmake -S src -B build -G Ninja
+cmake -C opencv_config.cmake -S src -B build -G Ninja <---- Ninja es el generador como "Visual Studio 18 2026", tiene que ser compatible con lo que está en el CMakePresets.json
 cmake --build build --config Release -j
 cmake --install build
 
-cd components
-cmake --preset linux-oneapi
-cmake --build --preset linux-oneapi-release
+cd ../../components
+cmake --preset windows-oneapi-vs
+cmake --build --preset win-oneapi-vs-release  <-- Estos son los nombres del CMakePresets.json

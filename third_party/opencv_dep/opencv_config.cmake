@@ -1,7 +1,10 @@
 # third_party/opencv_dep/opencv_config.cmake
 if(WIN32 OR CMAKE_HOST_WIN32)
-    set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
-    set(CMAKE_CXX_COMPILER "icx" CACHE STRING "" FORCE)
+    # 🌟 PARCHE: Si venimos desde el preset de Visual Studio, NO forzamos "icx" a mano
+    if(NOT CMAKE_GENERATOR MATCHES "Visual Studio")
+        set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
+        set(CMAKE_CXX_COMPILER "icx" CACHE STRING "" FORCE)
+    endif()
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:AVX2" CACHE STRING "" FORCE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2" CACHE STRING "" FORCE)

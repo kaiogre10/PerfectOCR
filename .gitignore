@@ -23,6 +23,9 @@
 *.npz
 *.a
 *ini
+*.pkl
+*.pdmodel
+inference.*
 
 # Ignorar archivos especificos
 perfectocr.txt
@@ -50,7 +53,7 @@ install/
 libs/
 out/
 # documentation/
-models/
+# models/
 input/
 input2/
 input3/

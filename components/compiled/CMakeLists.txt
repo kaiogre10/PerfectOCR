@@ -2,17 +2,17 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
 
 # ─── Verificar Cython (via Python) ───
 execute_process(
-    COMMAND ${Python3_EXECUTABLE} -c "import Cython; print(Cython.__version__)"
+    COMMAND ${Python3_EXECUTABLE} -c "import cython; print(cython.__version__)"
     OUTPUT_VARIABLE CYTHON_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_QUIET
 )
 
 if(NOT CYTHON_VERSION)
-    message(FATAL_ERROR "Cython no está instalado en ${Python3_EXECUTABLE}. Instálalo con: pip install cython")
+    message(FATAL_ERROR "cython no está instalado en ${Python3_EXECUTABLE}. Instálalo con: pip install cython")
 endif()
 
-message(STATUS "Cython version: ${CYTHON_VERSION}")
+message(STATUS "cython version: ${CYTHON_VERSION}")
 
 # ─── Obtener EXT_SUFFIX y NumPy include ───
 execute_process(
@@ -76,7 +76,6 @@ target_include_directories(image PRIVATE
     "${CMAKE_SOURCE_DIR}/../third_party/opencv_dep/install/include/opencv4"
 )
 
-# ─── Link ───
 target_link_directories(image PRIVATE
     "${CMAKE_SOURCE_DIR}/../libraries"
     "${CMAKE_SOURCE_DIR}/../libs"
@@ -92,7 +91,6 @@ target_link_libraries(image PRIVATE
     opencv_imgcodecs
 )
 
-# ─── Flags por OS ───
 if(WIN32)
     target_compile_options(image PRIVATE /std:c++20 /arch:AVX2 /O2)
 else()
