@@ -6,6 +6,12 @@ if (POLICY CMP0141)
     set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif ()
 
+get_filename_component(_root_name "${CMAKE_SOURCE_DIR}" NAME)
+
+if(NOT ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}" AND "${_root_name}" STREQUAL "${PROJECT_NAME}"))
+    message(FATAL_ERROR "ERROR: SOURCE DIR, CURRENT SOURCE DIR Y PROJECT_NAME NO SON IGUALES ENTRE SI, REVISAR CACHE Y/O ESTABLECER EL ROOT DEL PROYECTO A LA CARPETA DE ESTE SCRIPT")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -51,7 +57,7 @@ else ()
 endif ()
 
 # 1. Definición de la ruta de destino para los componentes
-set(LIBRARIES_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries")
+set(LIBRARIES_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/libraries")
 
 set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
@@ -62,11 +68,11 @@ else()
 endif()
 
 # Desactivar subcarpetas por configuración en generadores multi-configuración (Visual Studio)
-set(CMAKE_MAP_IMPORTED_CONFIG_MINSIZEREL "MinSizeRel") # Requerido por consistencia interna
 foreach(OUTPUT_TYPE RUNTIME LIBRARY ARCHIVE)
-    foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+    foreach(CONFIG DEBUG RELEASE)
         string(TOUPPER ${CONFIG} CONFIG_UPPER)
         set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${LIBRARIES_OUTPUT_DIR}")
+#/opt/clion-2026.1.3/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=/opt/clion-2026.1.3/bin/ninja/linux/x64/ninja -G Ninja -S /home/kaiogre05/PerfectOCR -B /home/kaiogre05/PerfectOCR/cmake-build-release
     endforeach()
 endforeach()
 
@@ -75,5 +81,5 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_IMPORT_LIBRARY_PREFIX "")
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-add_subdirectory(components)
 add_subdirectory(third_party)
+add_subdirectory(components)

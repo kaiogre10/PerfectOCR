@@ -1,6 +1,5 @@
 # third_party/opencv_dep/opencv_config.cmake
 if(WIN32 OR CMAKE_HOST_WIN32)
-    # 🌟 PARCHE: Si venimos desde el preset de Visual Studio, NO forzamos "icx" a mano
     if(NOT CMAKE_GENERATOR MATCHES "Visual Studio")
         set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
         set(CMAKE_CXX_COMPILER "icx" CACHE STRING "" FORCE)
@@ -15,24 +14,25 @@ if(WIN32 OR CMAKE_HOST_WIN32)
 else()
     # 1. Descubrir CONDA_ENV del entorno (no hardcodear)
     if(NOT DEFINED CONDA_ENV)
+		message("AMBIENTE DE CONDA ENCONTRADO: '${CONDA_ENV}'")
         if(DEFINED ENV{CONDA_PREFIX})
             set(CONDA_ENV "$ENV{CONDA_PREFIX}")
         else()
             message(FATAL_ERROR
-                "CONDA_ENV no definido y CONDA_PREFIX no está en el entorno. "
+                "CONDA_ENV no definido y CONDA_PREFIX no está en el entorno "
                 "Activa el env con `conda activate intel`.")
         endif()
     endif()
 
     # 2. Descubrir GCC install dir dinámicamente
-    file(GLOB GCC_VERSIONS "${CONDA_ENV}/lib/gcc/x86_64-conda-linux-gnu/*")
+    file(GLOB GCC_VERSIONS '"${CONDA_ENV}/gcc-*/'")
     if(GCC_VERSIONS)
         list(SORT GCC_VERSIONS ORDER DESCENDING)
         list(GET GCC_VERSIONS 0 GCC_INSTALL_PATH)
-        message(STATUS "GCC install dir: ${GCC_INSTALL_PATH}")
+        message(STATUS "GCC install dir: '${GCC_INSTALL_PATH}'")
     else()
         message(FATAL_ERROR
-            "No se encontró GCC en ${CONDA_ENV}/lib/gcc/x86_64-conda-linux-gnu/. "
+            "No se encontró GCC en' ${GCC_INSTALL_PATH} '"
             "Verifica que el env de conda tenga gcc instalado.")
     endif()
 
@@ -45,7 +45,6 @@ else()
     set(CMAKE_SHARED_LINKER_FLAGS "-L${CONDA_ENV}/lib -Wl,-rpath,${CONDA_ENV}/lib" CACHE STRING "" FORCE)
 endif()
 
-set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}/install" CACHE PATH "" FORCE)
 set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 
 # Vectorización estricta AVX2 sin generación dinámica de variantes

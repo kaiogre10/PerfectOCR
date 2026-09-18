@@ -47,9 +47,9 @@ __pycache__/
 .vs/
 .junie/
 build/
-opencv_dep/build/
-third_party/opencv_dep/src/
-install/
+# opencv_dep/build/
+# third_party/opencv_dep/src/
+# install/
 libs/
 out/
 # documentation/

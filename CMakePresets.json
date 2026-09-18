@@ -1,20 +1,21 @@
 {
   "version": 4,
   "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 23,
-    "patch": 0
+    "major": 4,
+    "minor": 2,
+    "patch": 3
   },
   "configurePresets": [
     {
-      "name": "base-global",
-      "hidden": true,
+      "name": "default",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
-      "name": "base-windows-oneapi",
-      "inherits": "base-global",
+      "name": "base-windows",
       "hidden": true,
+      "inherits": "default",
+      "architecture": "x64",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -23,26 +24,23 @@
     },
     {
       "name": "windows-oneapi-vs",
-      "inherits": "base-windows-oneapi",
-      "displayName": "Windows - OneAPI (Visual Studio)",
-      "description": "Usa MSBuild y Toolset de Intel en VS 2026",
-      "generator": "Visual Studio 18 2026",
-      "architecture": "x64",
+      "inherits": "base-windows",
+      "displayName": "Windows - OneAPI",
+      "description": "Usa Ninja con OneAPI",
       "toolset": "Intel C++ Compiler 2026"
     },
     {
       "name": "windows-oneapi-clion",
-      "inherits": "base-windows-oneapi",
+      "inherits": "base-windows",
       "displayName": "Windows - OneAPI (CLion/Ninja)",
       "description": "Usa Ninja y compiladores icx nativos en CLion",
-      "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "icx"
       }
     },
     {
       "name": "windows-msvc",
-      "inherits": "base-global",
+      "inherits": "default",
       "displayName": "Windows - MSVC Nativo (x64)",
       "description": "Respaldo estándar de Windows",
       "generator": "Visual Studio 18 2026",
@@ -55,27 +53,16 @@
       }
     },
     {
-      "name": "linux-oneapi",
-      "inherits": "base-global",
-      "displayName": "Linux - Intel OneAPI",
-      "description": "Usa icx/icpx en Linux mediante Ninja",
-      "generator": "Ninja",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
-      },
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "icx",
-        "CMAKE_CXX_COMPILER": "icpx"
-      }
+      "name": "linux-base",
+      "inherits": "default",
+      "displayName": "Linux",
+      "description": "Entorno base de Linux"
     },
     {
       "name": "linux-gcc",
-      "inherits": "base-global",
-      "displayName": "Linux - GCC Nativo",
-      "description": "Respaldo estándar de Linux mediante Ninja",
-      "generator": "Ninja",
+      "inherits": "linux-base",
+      "displayName": "Linux (GCC)",
+      "description": "Entorno Linux GCC",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -84,6 +71,17 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++"
+      }
+    },
+    {
+      "name": "linux-oneapi",
+      "inherits": "linux-base",
+      "displayName": "Linux (OneAPI)",
+      "description": "Entorno Linux OneAPI",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
       }
     }
   ],
@@ -101,12 +99,6 @@
       "configuration": "Debug"
     },
     {
-      "name": "win-oneapi-vs-relwithdebinfo",
-      "displayName": "RelWithDebInfo (VS OneAPI)",
-      "configurePreset": "windows-oneapi-vs",
-      "configuration": "RelWithDebInfo"
-    },
-    {
       "name": "win-oneapi-clion-release",
       "displayName": "Release (CLion OneAPI)",
       "configurePreset": "windows-oneapi-clion",
@@ -117,12 +109,6 @@
       "displayName": "Debug (CLion OneAPI)",
       "configurePreset": "windows-oneapi-clion",
       "configuration": "Debug"
-    },
-    {
-      "name": "win-oneapi-clion-relwithdebinfo",
-      "displayName": "RelWithDebInfo (CLion OneAPI)",
-      "configurePreset": "windows-oneapi-clion",
-      "configuration": "RelWithDebInfo"
     },
     {
       "name": "win-msvc-debug",
@@ -137,18 +123,6 @@
       "configuration": "Release"
     },
     {
-      "name": "linux-oneapi-debug",
-      "displayName": "Debug (Linux OneAPI)",
-      "configurePreset": "linux-oneapi",
-      "configuration": "Debug"
-    },
-    {
-      "name": "linux-oneapi-release",
-      "displayName": "Release (Linux OneAPI)",
-      "configurePreset": "linux-oneapi",
-      "configuration": "Release"
-    },
-    {
       "name": "linux-gcc-release",
       "displayName": "Release (Linux GCC)",
       "configurePreset": "linux-gcc",
@@ -158,6 +132,18 @@
       "name": "linux-gcc-debug",
       "displayName": "Debug (Linux GCC)",
       "configurePreset": "linux-gcc",
+      "configuration": "Debug"
+    },
+        {
+      "name": "linux-oneapi-release",
+      "displayName": "Release (Linux OneAPI)",
+      "configurePreset": "linux-oneapi",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-oneapi-debug",
+      "displayName": "Debug (Linux OneAPI)",
+      "configurePreset": "linux-oneapi",
       "configuration": "Debug"
     }
   ]

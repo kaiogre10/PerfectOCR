@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
-project(opencv_dep CXX)
-
+# Aplicar config ANTES de project()
 include("${CMAKE_CURRENT_SOURCE_DIR}/opencv_config.cmake")
+project(opencv_dep CXX)
 add_subdirectory(src)
-
-#set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../libs")
 
 add_custom_target(copy_opencv_to_libs ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory "${LIBS_DIR}"
