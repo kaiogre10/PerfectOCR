@@ -99,9 +99,9 @@ class TypeModels(StrEnum):
 
 class OSModels(Enum):
     """[0]Bibliotecas, [1] Librerias"""
-    WINDOWS = (".dll", "lib")
-    LINUX = (".so", "a")
-    MACOS = (".dylib", ".a")
+    WINDOWS=  {".dll": "lib"}
+    LINUX = {".so": "a"}
+    MACOS = {".dylib": ".a"}
     
 class StringsModels(StrEnum):
     NO_MANGER = "NO_MANGER"

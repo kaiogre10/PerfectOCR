@@ -59,17 +59,7 @@ extern "C" {
         buffer_ptr = nullptr;
         buffer_size = 0;
     }
-
-    bool release_image(ImageContainer* image_ptr) {
-        if (!image_ptr) {
-            return false;
-        }
-        delete_image(image_ptr);
-        if (image_ptr != nullptr) {
-            return false;
-        }
-        return true;
-    }
+}
     // void send_payloads(int trigger) {
     //     if (trigger > 0) {
     //         try {

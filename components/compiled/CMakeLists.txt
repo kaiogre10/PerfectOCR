@@ -1,6 +1,5 @@
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
 
-# ─── Verificar Cython (via Python) ───
 execute_process(
     COMMAND ${Python3_EXECUTABLE} -c "import cython; print(cython.__version__)"
     OUTPUT_VARIABLE CYTHON_VERSION

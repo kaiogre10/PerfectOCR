@@ -72,7 +72,6 @@ foreach(OUTPUT_TYPE RUNTIME LIBRARY ARCHIVE)
     foreach(CONFIG DEBUG RELEASE)
         string(TOUPPER ${CONFIG} CONFIG_UPPER)
         set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${LIBRARIES_OUTPUT_DIR}")
-#/opt/clion-2026.1.3/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=/opt/clion-2026.1.3/bin/ninja/linux/x64/ninja -G Ninja -S /home/kaiogre05/PerfectOCR -B /home/kaiogre05/PerfectOCR/cmake-build-release
     endforeach()
 endforeach()
 
@@ -81,5 +80,5 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_IMPORT_LIBRARY_PREFIX "")
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-add_subdirectory(third_party)
+#add_subdirectory(third_party)
 add_subdirectory(components)

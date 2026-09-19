@@ -14,25 +14,25 @@ if(WIN32 OR CMAKE_HOST_WIN32)
 else()
     # 1. Descubrir CONDA_ENV del entorno (no hardcodear)
     if(NOT DEFINED CONDA_ENV)
-		message("AMBIENTE DE CONDA ENCONTRADO: '${CONDA_ENV}'")
-        if(DEFINED ENV{CONDA_PREFIX})
-            set(CONDA_ENV "$ENV{CONDA_PREFIX}")
+		message("AMBIENTE DE CONDA ENCONTRADO: ${CONDA_ENV}")
+        if(DEFINED CONDA_PREFIX)
+            set(CONDA_ENV CONDA_PREFIX)
         else()
             message(FATAL_ERROR
-                "CONDA_ENV no definido y CONDA_PREFIX no está en el entorno "
+                "${CONDA_ENV} no definido y ${CONDA_PREFIX} no está en el entorno "
                 "Activa el env con `conda activate intel`.")
         endif()
     endif()
 
     # 2. Descubrir GCC install dir dinámicamente
-    file(GLOB GCC_VERSIONS '"${CONDA_ENV}/gcc-*/'")
+    file(GLOB GCC_VERSIONS "$ENV{CONDA_PREFIX}/bin/gcc")
     if(GCC_VERSIONS)
         list(SORT GCC_VERSIONS ORDER DESCENDING)
         list(GET GCC_VERSIONS 0 GCC_INSTALL_PATH)
-        message(STATUS "GCC install dir: '${GCC_INSTALL_PATH}'")
+        message(STATUS "GCC install dir: ${GCC_INSTALL_PATH} ")
     else()
         message(FATAL_ERROR
-            "No se encontró GCC en' ${GCC_INSTALL_PATH} '"
+            "No se encontró GCC en: $ENV{CONDA_PREFIX}/bin/gcc"
             "Verifica que el env de conda tenga gcc instalado.")
     endif()
 

@@ -1,15 +1,22 @@
 {
   "version": 4,
   "cmakeMinimumRequired": {
-    "major": 4,
-    "minor": 2,
-    "patch": 3
+    "major": 3,
+    "minor": 23,
+    "patch": 0
   },
   "configurePresets": [
     {
       "name": "default",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CONDA_ENV": "$ENV{CONDA_DEFAULT_ENV}",
+        "CONDA_PREFIX": "$ENV{CONDA_PREFIX}",
+        "Python3_ROOT_DIR": "$ENV{CONDA_PREFIX}",
+        "Python3_EXECUTABLE": "$ENV{CONDA_PREFIX}/python"
+      }
     },
     {
       "name": "base-windows",
@@ -54,6 +61,7 @@
     },
     {
       "name": "linux-base",
+      "hidden": true,
       "inherits": "default",
       "displayName": "Linux",
       "description": "Entorno base de Linux"
@@ -69,8 +77,8 @@
         "rhs": "Linux"
       },
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "gcc",
-        "CMAKE_CXX_COMPILER": "g++"
+        "CMAKE_C_COMPILER": "/usr/bin/gcc",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++"
       }
     },
     {
@@ -82,6 +90,9 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "icx"
       }
     }
   ],
@@ -129,22 +140,10 @@
       "configuration": "Release"
     },
     {
-      "name": "linux-gcc-debug",
-      "displayName": "Debug (Linux GCC)",
-      "configurePreset": "linux-gcc",
-      "configuration": "Debug"
-    },
-        {
       "name": "linux-oneapi-release",
       "displayName": "Release (Linux OneAPI)",
       "configurePreset": "linux-oneapi",
       "configuration": "Release"
-    },
-    {
-      "name": "linux-oneapi-debug",
-      "displayName": "Debug (Linux OneAPI)",
-      "configurePreset": "linux-oneapi",
-      "configuration": "Debug"
     }
   ]
 }

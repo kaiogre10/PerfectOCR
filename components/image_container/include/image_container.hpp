@@ -1,6 +1,6 @@
-#ifndef IMAGE_HPP
-#define IMAGE_HPP
-#include "../../image_container/include/image_container.h"
+#ifndef IMAGE_CONTAINER_HHP
+#define IMAGE_CONTAINER_HHP
+#include "image_container.h"
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -63,8 +63,4 @@ public:
     }
 };
 
-// Helper para Cython
-inline void destroy_image(Image* img) noexcept {
-    delete img;
-}
 #endif

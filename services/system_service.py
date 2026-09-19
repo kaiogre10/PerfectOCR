@@ -22,7 +22,7 @@ excluded_dirs = EXCLUDED_DIRS
 no_del = NO_DEL
 all_files_types = ALL_FILES_TYPES
 
-SO = tuple()
+SO = {}
 
 logger = logging.getLogger(__name__)
 
@@ -299,13 +299,17 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
 def get_so() -> Tuple[str, ...]:
     """[0]Bibliotecas, [1]Librerias"""
     global SO
-    if platform.system() == OSModels.WINDOWS.name.capitalize():
-        SO = OSModels.WINDOWS.value
-    elif platform.system() == OSModels.LINUX.name.capitalize():
-        SO = OSModels.LINUX.value
+    SO = platform.system()
+    logger.warning(f"'{OSModels.LINUX.name.capitalize()}' -> {SO}")
+    if SO == OSModels.WINDOWS.name.capitalize:
+        return OSModels.WINDOWS.value
+
+    elif SO == OSModels.LINUX.name.capitalize():
+        val = OSModels.LINUX.value
+        logger.warning(f"' VAL: {val}'")
+        return val
     else:
-        SO = OSModels.MACOS.value
-    return SO
+        return SO
     
 def cleanup_project(specific_files: Optional[List[str]] = None, aditional_dirs: Optional[List[str]] = None):
     clear_output_folders()

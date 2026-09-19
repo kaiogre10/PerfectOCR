@@ -2,7 +2,7 @@
 #include <opencv2/core.hpp>
 #include "c_utils.hpp"
 #include "file_handler.hpp"
-#include "image.hpp"
+#include "image_container.hpp"
 
 Image* load_image(const char* filepath) {
     if (!filepath) {

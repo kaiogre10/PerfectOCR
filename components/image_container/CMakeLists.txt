@@ -1,7 +1,8 @@
 add_library(image_container STATIC
 	src/image_container.c
+	src/image_container.cpp
 	include/image_container.h
-    include/image.hpp
+	include/image_container.hpp
 )
 
 set_target_properties(image_container PROPERTIES POSITION_INDEPENDENT_CODE ON)

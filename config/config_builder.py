@@ -129,7 +129,7 @@ class ConfigBuilder:
             return _system_paths
         
         else:
-            buffer_path = os.path.join(self.project_root, "libraries", ("buffer_handler" + SO[0]))
+            buffer_path = os.path.join(self.project_root, "libraries", ("buffer_handler" + str(SO.keys())))
             if not os.path.isfile(buffer_path):
                 basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
                 self.handle_memory = False

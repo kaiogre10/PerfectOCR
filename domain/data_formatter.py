@@ -8,7 +8,7 @@ from utils.image_utils import normalice_image
 import pandas as pd #type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass, StringsModels
-from domain.fullimage import FullImage
+# from domain.fullimage import FullImage
 from components.compiled.image import release
 
 logger = logging.getLogger(__name__)

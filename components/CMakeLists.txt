@@ -10,5 +10,5 @@ add_subdirectory(payload_container)
 add_subdirectory(workers)
 add_subdirectory(buffer_handler)
 
-# 3. Bindings Python (Cython)
-add_subdirectory(compiled)
+## 3. Bindings Python (Cython)
+#add_subdirectory(compiled)
