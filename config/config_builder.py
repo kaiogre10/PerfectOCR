@@ -7,10 +7,11 @@ from utils.image_utils import configure_kernel
 from utils.paths import set_projet_root, build_from_dir
 from services.system_service import SO
 from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
-from core.assets.patterns import PLACEHOLDER_PATTERN
+from core.assets.patterns import PLACEHOLDER_PATTERN, extension_suffix
 from domain.class_models import DataKeys, StageKeys
 
 _placeholder_pattern = PLACEHOLDER_PATTERN
+_extension_suffix = extension_suffix
 _kf_range = KF_RANGE
 _sc_range = SC_RANGE
 
@@ -78,6 +79,10 @@ class ConfigBuilder:
     @cached_property
     def db_local(self) -> bool:
         return bool(self.deploy_settings.get("postgre_local"))
+
+    @property
+    def compile_cython(self) -> bool:
+        return bool(self.deploy_settings.get("compile_cython"))
         
     @cached_property
     def no_activate_modules(self) -> bool: # Parametro automátizado que permite arrancar el sistema para testear parametros de alto nivel sin crear objetos pesados de manera innecesaria
@@ -125,9 +130,19 @@ class ConfigBuilder:
         _system_paths["output_paths"] = build_from_dir(output_paths)
         _system_paths["temp_path"] = os.path.join(self.project_root, *temp_path)
 
-        if not self.handle_memory:
+        if self.compile_cython:
+            _comp_funcs_file = _system_paths["comp_funcs_file"]
+            comp_funcs_name = ".".join(_comp_funcs_file)
+
+            _comp_funcs_file = os.path.join(self.project_root, *_comp_funcs_file)
+            comp_funcs_name = _extension_suffix.sub("", comp_funcs_name)
+
+            _system_paths["comp_funcs_name"] = comp_funcs_name
+            _system_paths["comp_funcs_file"] = _comp_funcs_file
+
+        elif not self.handle_memory:
             return _system_paths
-        
+
         else:
             buffer_path = os.path.join(self.project_root, "libraries", ("buffer_handler" + str(SO.keys())))
             if not os.path.isfile(buffer_path):

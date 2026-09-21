@@ -24,6 +24,11 @@ if config_service.clean_project:
     log_service.log_simple("CLEAN UP ACTIVADO, FINALIZANDO")
     system_service.cleanup_project()
     sys.exit()
+
+if config_service.compile_cython:
+    from config import setup
+    setup.build_extensions(system_paths)
+    sys.exit()
     
 if config_service.test_wf_model:
     from testing.test_wf import TestingManger

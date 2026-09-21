@@ -153,6 +153,7 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
         specific_set = set()
 
     try:
+        so = tuple(s for s in SO.keys())
         for dirpath, dirnames, filenames in os.walk(PROJECT_ROOT):
             for ed in excluded_dirs:
                 if ed in dirnames:
@@ -172,7 +173,7 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
                         continue
             try:
                 for filename in filenames:
-                    if filename.endswith(trash_ext) or (False if not specific_files_set else (filename in specific_files_set or filename.endswith(SO))):
+                    if filename.endswith(trash_ext) or (False if not specific_files_set else (filename in specific_files_set or filename.endswith(so))):
                         file_path: str = os.path.join(dirpath, filename)
                         os.remove(file_path)
                         if file_path in specific_set:
@@ -306,10 +307,9 @@ def get_so() -> Tuple[str, ...]:
 
     elif SO == OSModels.LINUX.name.capitalize():
         val = OSModels.LINUX.value
-        logger.warning(f"' VAL: {val}'")
         return val
     else:
-        return SO
+        return OSModels.MACOS.value
     
 def cleanup_project(specific_files: Optional[List[str]] = None, aditional_dirs: Optional[List[str]] = None):
     clear_output_folders()

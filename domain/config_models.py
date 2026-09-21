@@ -23,6 +23,7 @@ class DeploySettings(ConfigWithNumpy):
     handle_memory: bool
     update_model: bool
     test_wf_model: bool
+    compile_cython: bool
 
 class PipelineConfig(ConfigWithNumpy):
     image_preparation_stager: Optional[List[str]] = None

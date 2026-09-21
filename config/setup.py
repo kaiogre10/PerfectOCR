@@ -7,15 +7,15 @@ from typing import Dict, Any
 
 def build_extensions(config: Dict[str, Any]):
     utils_file = config.get("comp_funcs_file", "")
-    build_path = config["build_path"]
+    build_path = "build"
 
     prune_workspace(build_path, "", utils_file)
 
-    comp_utils_name = config.get("comp_funcs_name", "")
+    comp_funcs_name = config.get("comp_funcs_name", "")
 
     extensions = [
         Extension(
-            name=comp_utils_name,
+            name=comp_funcs_name,
             sources=[utils_file],
         )
     ]
