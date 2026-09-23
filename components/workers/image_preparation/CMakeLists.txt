@@ -1,7 +1,7 @@
 # Manteniendo la declaración exacta de tu componente original, sin alterar enlazados ficticios
 add_library(image_preparation
     src/image_loader.cpp
-    src/angle_corrector.cpp
+#    src/angle_corrector.cpp
 )
 
 set_target_properties(image_preparation PROPERTIES POSITION_INDEPENDENT_CODE ON)

@@ -51,9 +51,10 @@ opencv_dep/build/
 third_party/opencv_dep/src/
 install/
 libs/
+libraries/
 out/
 # documentation/
-# models/
+models/
 input/
 input2/
 input3/

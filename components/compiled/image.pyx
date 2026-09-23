@@ -1,6 +1,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 from libc.stdint cimport uint8_t
-from image_container cimport Image
+from libc.stddef cimport size_t
+from image cimport Image, destroy_image
 from image_loader cimport load_image
 import numpy as np
 cimport numpy as np

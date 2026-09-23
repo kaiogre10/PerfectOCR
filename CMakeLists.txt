@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.20)
+# PerfectOCR/CMakeLists.txt
+cmake_minimum_required(VERSION 3.23)
 project(PerfectOCR LANGUAGES C CXX)
 
 if (POLICY CMP0141)
@@ -57,21 +58,25 @@ else ()
 endif ()
 
 # 1. Definición de la ruta de destino para los componentes
-set(LIBRARIES_OUTPUT_DIR "${CMAKE_SOURCE_DIR}/libraries")
+get_filename_component(LIBRARIES_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries" ABSOLUTE)
+
+if(NOT EXISTS "${LIBRARIES_OUTPUT_DIR}")
+    file(MAKE_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
+endif()
 
 set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
 if (WIN32)
-    set(OPENCV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencv_dep/install/include/opencv2")
+    set(OPENCV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencv_dep/install/include")
 else()
     set(OPENCV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencv_dep/install/include/opencv4")
 endif()
 
-# Desactivar subcarpetas por configuración en generadores multi-configuración (Visual Studio)
+# Desactivar subcarpetas por configuración en generadores multi-configuración
 foreach(OUTPUT_TYPE RUNTIME LIBRARY ARCHIVE)
-    foreach(CONFIG DEBUG RELEASE)
-        string(TOUPPER ${CONFIG} CONFIG_UPPER)
-        set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${LIBRARIES_OUTPUT_DIR}")
+    set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
+    foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+        set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY_${CONFIG} "${LIBRARIES_OUTPUT_DIR}")
     endforeach()
 endforeach()
 

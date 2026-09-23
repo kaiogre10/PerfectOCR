@@ -31,6 +31,7 @@ add_custom_command(
     OUTPUT  "${CMAKE_CURRENT_SOURCE_DIR}/image.cpp"
     COMMAND ${Python3_EXECUTABLE} -m cython
             --cplus -3
+            -I "${CMAKE_CURRENT_SOURCE_DIR}"
             "${CMAKE_CURRENT_SOURCE_DIR}/image.pyx"
             -o "${CMAKE_CURRENT_SOURCE_DIR}/image.cpp"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/image.pyx"
@@ -40,9 +41,9 @@ add_custom_command(
     VERBATIM
 )
 
-# ─── Módulo Python ───
 add_library(image MODULE
     "${CMAKE_CURRENT_SOURCE_DIR}/image.cpp"
+    "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/src/image_loader.cpp"
 )
 
 set_target_properties(image PROPERTIES
@@ -50,38 +51,37 @@ set_target_properties(image PROPERTIES
     SUFFIX "${PYTHON_EXT_SUFFIX}"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+
 foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
     string(TOUPPER ${CONFIG} CONFIG_UPPER)
     set_target_properties(image PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_CURRENT_SOURCE_DIR}"
     )
 endforeach()
-# ─── RPATH (Linux) ───
+
 if(UNIX)
     set_target_properties(image PROPERTIES
-        BUILD_RPATH   "${CMAKE_SOURCE_DIR}/../libs;${CMAKE_SOURCE_DIR}/../libraries"
-        INSTALL_RPATH "${CMAKE_SOURCE_DIR}/../libs;${CMAKE_SOURCE_DIR}/../libraries"
+        BUILD_RPATH "${CMAKE_SOURCE_DIR}/libs;${CMAKE_SOURCE_DIR}/libraries"
+        INSTALL_RPATH "${CMAKE_SOURCE_DIR}/libs;${CMAKE_SOURCE_DIR}/libraries"
     )
 endif()
 
-# ─── Includes ───
 target_include_directories(image PRIVATE
     ${Python3_INCLUDE_DIRS}
     "${NUMPY_INCLUDE_DIR}"
-    "${CMAKE_SOURCE_DIR}/workers/image_preparation/include"
-    "${CMAKE_SOURCE_DIR}/image_container/include"
-    "${CMAKE_SOURCE_DIR}/file_handler/include"
-    "${CMAKE_SOURCE_DIR}/c_utils/include"
-    "${CMAKE_SOURCE_DIR}/../third_party/opencv_dep/install/include/opencv4"
+    "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/include"
+    "${CMAKE_SOURCE_DIR}/components/image_container/include"
+    "${CMAKE_SOURCE_DIR}/components/file_handler/include"
+    "${CMAKE_SOURCE_DIR}/components/c_utils/include"
+    "${CMAKE_SOURCE_DIR}/third_party/opencv_dep/install/include/opencv4"
 )
 
 target_link_directories(image PRIVATE
-    "${CMAKE_SOURCE_DIR}/../libraries"
-    "${CMAKE_SOURCE_DIR}/../libs"
+    "${CMAKE_SOURCE_DIR}/libraries"
+    "${CMAKE_SOURCE_DIR}/libs"
 )
 
 target_link_libraries(image PRIVATE
-    image_loader
     image_container
     file_handler
     c_utils
@@ -93,5 +93,5 @@ target_link_libraries(image PRIVATE
 if(WIN32)
     target_compile_options(image PRIVATE /std:c++20 /arch:AVX2 /O2)
 else()
-    target_compile_options(image PRIVATE -std=c++20 -mavx2 -mfma)
+    target_compile_options(image PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
 endif()

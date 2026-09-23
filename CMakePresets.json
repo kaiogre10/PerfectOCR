@@ -11,7 +11,9 @@
       "generator": "Ninja",
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/libraries",
       "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CONDA_ENV": "$ENV{CONDA_DEFAULT_ENV}",
         "CONDA_PREFIX": "$ENV{CONDA_PREFIX}",
         "Python3_ROOT_DIR": "$ENV{CONDA_PREFIX}",
@@ -92,7 +94,8 @@
         "rhs": "Linux"
       },
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "icx"
+        "CMAKE_C_COMPILER": "icx",
+        "CMAKE_CXX_COMPILER": "icpx"
       }
     }
   ],

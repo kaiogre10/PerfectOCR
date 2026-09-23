@@ -10,7 +10,7 @@ namespace {
     size_t buffer_size = 0;
 }
 
-namespace {
+namespace flatten_storage {
     void storage_batch_flat(uint8_t* buffer_ptr, size_t buffer_size) {
         if (!buffer_ptr || !buffer_size) return;
         printf("[BUFFER HANDLER LOG] ptr: %p, size: %zu\n", buffer_ptr, buffer_size);
@@ -50,7 +50,7 @@ extern "C" {
 
     void commit_buffer() {
         try {
-            storage_batch_flat(buffer_ptr, buffer_size);
+            flatten_storage::storage_batch_flat(buffer_ptr, buffer_size);
             delete[] buffer_ptr;
         }
         catch (...) {
@@ -71,7 +71,7 @@ extern "C" {
     //         }
     //     }
     // }
-}
+// }
 
 // size_t offset_view = 0;
 

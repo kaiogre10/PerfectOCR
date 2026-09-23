@@ -27,10 +27,6 @@ rm -rf build install	<-- Linux
 rmdir /s /q build install	<-- Windows
 
 git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git src
-cmake -C opencv_config.cmake -S src -B build -G Ninja <---- Ninja es el generador como "Visual Studio 18 2026", tiene que ser compatible con lo que está en el CMakePresets.json
-cmake --build build --config Release -j
-cmake --install build
 
-cd ../../components
-cmake --preset windows-oneapi-vs
-cmake --build --preset win-oneapi-vs-release  <-- Estos son los nombres del CMakePresets.json
+cd PerfectOCR/third_party
+cmake -S . -B build_orquestador

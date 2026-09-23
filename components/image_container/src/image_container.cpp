@@ -12,7 +12,7 @@ extern "C" {
         }
     }
 
-    void destroy_image(Image* img) {
+    void destroy_image_c(Image* img) {
         delete img;
     }
 

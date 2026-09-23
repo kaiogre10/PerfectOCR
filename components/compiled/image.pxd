@@ -2,7 +2,7 @@
 from libc.stdint cimport uint8_t
 from libc.stddef cimport size_t
 
-cdef extern from "image.hpp":
+cdef extern from "image_container.hpp":
     cppclass Image:
         Image(int width, int height, int channels) except +
         uint8_t* data()
