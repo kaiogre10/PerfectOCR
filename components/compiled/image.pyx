@@ -16,9 +16,10 @@ def get_array(size_t ptr_addr):
     cdef Image* img = <Image*>ptr_addr
     cdef int h = img.height()
     cdef int w = img.width()
-    cdef uint8_t* data = img.data()
-    return np.asarray(<np.uint8_t[:h, :w]> data)
-
+    cdef uint8_t* data = <uint8_t*>img.data()
+    cdef np.uint8_t[:, ::1] view = <np.uint8_t[:h, :w]> data
+    return np.ascontiguousarray(np.asarray(view))
+    
 def release(size_t ptr_addr):
     if ptr_addr == 0:
         return

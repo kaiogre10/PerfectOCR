@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Any, Tuple
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.image_utils import make_contiguous, get_rotation_matrix, get_image_lines, rotate_matrix
+from utils.image_utils import get_rotation_matrix, get_image_lines, rotate_matrix
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -40,17 +40,17 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
             logger.debug("Full_img obtenida con éxito")
             
-            full_image = make_contiguous(full_image)
+            # full_image = make_contiguous(full_image)
 
             full_img, corrected = self.correct_angle(full_image)
 
-            if manager.update_full_img(corrected, full_img):
-                logger.debug(f"Imagen rotada actuallizada con éxito.")
+            # if manager.update_full_img(corrected, full_img):
+            logger.debug(f"Imagen rotada actuallizada con éxito.")
 
-                if self.output and corrected:
-                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                    img_id = f"full_img_{image_name}"
-                    save_croped_image(image_name, img_id, full_img)
+            if self.output and corrected:
+                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                img_id = f"full_img_{image_name}"
+                save_croped_image(image_name, img_id, full_img)
             return True
             
         except Exception as e:
@@ -93,7 +93,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 rotation_matrix[1, 2] += (new_h / 2) - center[1]
                 
                 logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos")
-                return make_contiguous(rotate_matrix(full_img, rotation_matrix, new_w, new_h)), True
+                return rotate_matrix(full_img, rotation_matrix, new_w, new_h), True
             else:             
                 logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
                 return full_img, False

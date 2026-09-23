@@ -52,7 +52,7 @@ set_target_properties(image PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO)
     string(TOUPPER ${CONFIG} CONFIG_UPPER)
     set_target_properties(image PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -82,6 +82,7 @@ target_link_directories(image PRIVATE
 )
 
 target_link_libraries(image PRIVATE
+    Python3::Module 
     image_container
     file_handler
     c_utils

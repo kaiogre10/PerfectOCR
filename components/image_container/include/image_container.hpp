@@ -62,7 +62,8 @@ public:
         return image_get_size(ptr.get());
     }
 };
-#endif
-extern "C" {
-    void destroy_image(Image* img) noexcept;
+
+inline void destroy_image(Image* img) noexcept {
+    delete img;
 }
+#endif

@@ -75,7 +75,7 @@ endif()
 # Desactivar subcarpetas por configuración en generadores multi-configuración
 foreach(OUTPUT_TYPE RUNTIME LIBRARY ARCHIVE)
     set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
-    foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+    foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO)
         set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY_${CONFIG} "${LIBRARIES_OUTPUT_DIR}")
     endforeach()
 endforeach()

@@ -5,7 +5,7 @@ import dataclasses
 from typing import Dict, Any
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.image_utils import make_contiguous, validate_image
+from utils.image_utils import validate_image
 from services.output_service import save_croped_image
 from domain.class_models import StringsModels
 
@@ -97,7 +97,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 if self.output:
                     self.save_debug(cropped, manager, "all_valid", new_id)
 
-            manager.update_full_img(corrected=False, full_img=None)
+            # manager.update_full_img(corrected=False, full_img=None)
             # 5. Actualización Final y Limpia en el Manager
             if not new_polygons:
                 logger.warning("PolygonExtractor: Ningún polígono superó los filtros.")

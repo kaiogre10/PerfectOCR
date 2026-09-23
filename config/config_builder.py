@@ -247,8 +247,8 @@ class ConfigBuilder:
         paddle_paths = build_from_dir(objetives=[lang], parent=[_models_dir, paddle_path], skip_names=["cls"])
 
         paddle_config.update({
-            "det_model_dir": paddle_paths[0],
-            "rec_model_dir": paddle_paths[1],
+            "det_model_dir": paddle_paths[1],
+            "rec_model_dir": paddle_paths[0],
             "activate_rec": True,
             "activate_det": True,
         })

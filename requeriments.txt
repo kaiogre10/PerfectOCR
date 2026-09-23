@@ -29,4 +29,8 @@ rmdir /s /q build install	<-- Windows
 git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git src
 
 cd PerfectOCR/third_party
-cmake -S . -B build_orquestador
+cmake -S . -B build -G Ninja
+
+cd ../
+cmake -S . --preset windows-oneapi-clion    <-- Omitir VS
+cmake --build --preset win-oneapi-clion-release

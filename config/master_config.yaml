@@ -16,7 +16,7 @@ deploy_settings:
   update_model: False   # Modo de actualización de los valores de las matrices de Word Finder sin correr todo el sistema
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
   test_wf_model: False
-  compile_cython: True
+  compile_cython: False
 
 pipeline_secuence:
   image_preparation_stager:

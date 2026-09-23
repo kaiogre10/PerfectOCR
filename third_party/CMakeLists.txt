@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.23)
 project(third_party CXX)
 
 set(OCV_DEP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/opencv_dep")
-set(OCV_SRC     "${OCV_DEP_DIR}/src")
-set(OCV_BUILD   "${OCV_DEP_DIR}/build")
+set(OCV_SRC "${OCV_DEP_DIR}/src")
+set(OCV_BUILD "${OCV_DEP_DIR}/build")
 set(OCV_INSTALL "${OCV_DEP_DIR}/install")
-set(OCV_CONFIG  "${OCV_DEP_DIR}/opencv_config.cmake")
+set(OCV_CONFIG "${OCV_DEP_DIR}/opencv_config.cmake")
 
 get_filename_component(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libs" ABSOLUTE)
 
@@ -19,15 +19,14 @@ if(NOT EXISTS "${OCV_SRC}/CMakeLists.txt")
     message(FATAL_ERROR
         "No existe ${OCV_SRC}/CMakeLists.txt.\n"
         "Ejecute primero:\n"
-        "  cd ${OCV_DEP_DIR}\n"
-        "  git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git src")
+        "cd ${OCV_DEP_DIR}\n"
+        "git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git src")
 endif()
 
 if(NOT DEFINED ENV{CONDA_PREFIX})
     message(FATAL_ERROR "No hay entorno Conda activo. Actívelo antes de continuar.")
 endif()
 
-# --- 1. ¿Ya está compilado e instalado? Entonces no hagas nada ---
 set(_need_build TRUE)
 
 foreach(_lib core imgproc imgcodecs)
@@ -93,18 +92,37 @@ set(_deployed 0)
 
 if(WIN32)
     foreach(_lib core imgproc imgcodecs)
+        # Runtime DLLs: opencv_core4110.dll -> opencv_core.dll
         file(GLOB _dlls "${OCV_INSTALL}/bin/opencv_${_lib}*.dll")
         foreach(_f ${_dlls})
-            file(COPY "${_f}" DESTINATION "${LIBS_DIR}")
             get_filename_component(_name "${_f}" NAME)
-            message(STATUS "  → ${_name} (runtime)")
+            string(REGEX REPLACE "^opencv_${_lib}[0-9]*\\.dll$"
+                                 "opencv_${_lib}.dll" _norm "${_name}")
+            if(NOT _name STREQUAL _norm)
+                file(COPY "${_f}" DESTINATION "${LIBS_DIR}")
+                file(RENAME "${LIBS_DIR}/${_name}" "${LIBS_DIR}/${_norm}")
+                message(STATUS "  → ${_norm} (runtime, desde ${_name})")
+            else()
+                file(COPY "${_f}" DESTINATION "${LIBS_DIR}")
+                message(STATUS "  → ${_name} (runtime)")
+            endif()
             math(EXPR _deployed "${_deployed} + 1")
         endforeach()
-        file(GLOB _imps "${OCV_INSTALL}/lib/opencv_${_lib}[0-9]*.lib")
+
+        # Import libs: opencv_core4110.lib -> opencv_core.lib
+        file(GLOB _imps "${OCV_INSTALL}/lib/opencv_${_lib}*.lib")
         foreach(_f ${_imps})
-            file(COPY "${_f}" DESTINATION "${LIBS_DIR}")
             get_filename_component(_name "${_f}" NAME)
-            message(STATUS "  → ${_name} (import lib)")
+            string(REGEX REPLACE "^opencv_${_lib}[0-9]*\\.lib$"
+                                 "opencv_${_lib}.lib" _norm "${_name}")
+            if(NOT _name STREQUAL _norm)
+                file(COPY "${_f}" DESTINATION "${LIBS_DIR}")
+                file(RENAME "${LIBS_DIR}/${_name}" "${LIBS_DIR}/${_norm}")
+                message(STATUS "  → ${_norm} (import lib, desde ${_name})")
+            else()
+                file(COPY "${_f}" DESTINATION "${LIBS_DIR}")
+                message(STATUS "  → ${_name} (import lib)")
+            endif()
             math(EXPR _deployed "${_deployed} + 1")
         endforeach()
     endforeach()

@@ -23,8 +23,14 @@
     {
       "name": "base-windows",
       "hidden": true,
-      "inherits": "default",
-      "architecture": "x64",
+      "inherits": "default"
+    },
+    {
+      "name": "windows-oneapi-vs",
+      "inherits": "base-windows",
+      "displayName": "Windows - OneAPI",
+      "description": "Usa Ninja con OneAPI",
+      "toolset": "Intel C++ Compiler 2026",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -32,19 +38,19 @@
       }
     },
     {
-      "name": "windows-oneapi-vs",
-      "inherits": "base-windows",
-      "displayName": "Windows - OneAPI",
-      "description": "Usa Ninja con OneAPI",
-      "toolset": "Intel C++ Compiler 2026"
-    },
-    {
       "name": "windows-oneapi-clion",
       "inherits": "base-windows",
       "displayName": "Windows - OneAPI (CLion/Ninja)",
       "description": "Usa Ninja y compiladores icx nativos en CLion",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "icx"
+        "CMAKE_CXX_COMPILER": "icx",
+        "CMAKE_C_COMPILER": "icx",
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -117,12 +123,6 @@
       "displayName": "Release (CLion OneAPI)",
       "configurePreset": "windows-oneapi-clion",
       "configuration": "Release"
-    },
-    {
-      "name": "win-oneapi-clion-debug",
-      "displayName": "Debug (CLion OneAPI)",
-      "configurePreset": "windows-oneapi-clion",
-      "configuration": "Debug"
     },
     {
       "name": "win-msvc-debug",

@@ -297,17 +297,15 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
     files_in_dir = ["".join(name) for name in split_names if name[0] in files_to_find]
     return files_name_dir if not files_in_dir else files_in_dir
 
-def get_so() -> Tuple[str, ...]:
+def get_so() -> Dict[str, str]:
     """[0]Bibliotecas, [1]Librerias"""
     global SO
-    SO = platform.system()
-    logger.warning(f"'{OSModels.LINUX.name.capitalize()}' -> {SO}")
+    SO = platform.system() # type: ignore
     if SO == OSModels.WINDOWS.name.capitalize:
         return OSModels.WINDOWS.value
 
     elif SO == OSModels.LINUX.name.capitalize():
-        val = OSModels.LINUX.value
-        return val
+        return OSModels.LINUX.value
     else:
         return OSModels.MACOS.value
     

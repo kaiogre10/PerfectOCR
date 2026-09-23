@@ -13,7 +13,7 @@ _white = WHITE
 logger = logging.getLogger(__name__)
 
 def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:  # lista
-    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(img_arr, dtype=np.uint8)
+    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(np.asarray(img_arr), dtype=np.uint8)
 
 def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:  # Lista
     """
@@ -374,4 +374,5 @@ def configure_kernel(x: int, y: int):
     return cv2.getStructuringElement(cv2.MORPH_CROSS, (x, y))
 
 def morph_operations(img: np.ndarray[Any, Any], kernel: Any, iterations: int) -> np.ndarray[Any, Any]:
-    return make_contiguous(cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations))
+    arr = make_contiguous(cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations))
+    return cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)

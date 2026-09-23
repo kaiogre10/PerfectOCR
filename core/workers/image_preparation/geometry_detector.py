@@ -51,7 +51,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.error(f"No Hay full_img en el Formatter")
                 return False
             
-            bin_img = binarice_img(full_imag, {})
+            bin_img = binarice_img(full_imag.copy(order='C'), {})
 
             img = morph_operations(bin_img, self.kernel, self.iterations)
 
