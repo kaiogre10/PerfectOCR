@@ -4,12 +4,10 @@ import numpy as np
 import dataclasses
 import logging
 from typing import Dict, Any, Optional, List, Tuple
-from utils.image_utils import normalice_image
-import pandas as pd #type: ignore
+import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass, StringsModels
-from domain.fullimage import FullImage
-from components.compiled.image import release
+from domain.full_image import FullImage
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +36,7 @@ class DataFormatter:
                 image_name=image_name,
                 img_dims = (0 , 0)
             )
+
             self.workflow = WorkflowData(
                 metadata=metadata_obj,
                 polygons=None,
@@ -52,10 +51,11 @@ class DataFormatter:
         try:
             FullImageKey(img_ptr=img_ptr)
         except TypeError as e:
-            logger.info(f"No se pudo almacenar el puntero")
+            logger.error("No se pudo almacenar el puntero")
             return False
-    
-        return True    
+        
+        logger.info(f"PUNTERO ALMACENADO: '{img_ptr}'")
+        return True
     
     def create_polygon_dicts(self, results: List[Dict[str, Any]]) -> bool:
         """Refactorizado para usar validación + dataclasses"""
@@ -95,26 +95,37 @@ class DataFormatter:
         return False
             
     def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
-        
         if not FullImageKey.img_ptr:
             return None
-
+        
         ptr = FullImageKey.img_ptr
-        if not isinstance(ptr, int):    # type:  ignore
+        if not isinstance(ptr, int): # type: ignore
             return None
         
         full_img = FullImage(ptr)
         return full_img.data
 
     def delete_full_img(self) -> bool:
+
+        if not FullImageKey.img_ptr:
+            return False
+        
+        ptr = FullImageKey.img_ptr
+
+        if not ptr or ptr is None: # type: ignore
+            logger.info(f"PUNTERO '{ptr}' LIBERADO ANTERIORMENTE")
+            return True
+
+        if not isinstance(ptr, int): # type: ignore
+            logger.error(f"ERROR DE TIPOS DE PUNTERO")
+            return False
+
         try:
-            if not FullImageKey.img_ptr:
-                return False
-            
-            ptr = FullImageKey.img_ptr
-            release(ptr_addr=ptr)
+            FullImageKey.clear()
+            logger.info(f"PUNTERO LIBERADO: '{ptr}'")
+
         except RuntimeError as e:
-            logger.info(f"ERROR ELIMINANDO LA FULL IMG: {e}", exc_info=True)
+            logger.error(f"ERROR ELIMINANDO LA FULL IMG: {e}", exc_info=True)
             return False
 
         return True
@@ -129,46 +140,6 @@ class DataFormatter:
             updated_polygon = dataclasses.replace(polygon, cropped_img=None)
             self.workflow.polygons[poly_id] = updated_polygon
         logger.debug("Todas las imágenes recortadas han sido liberadas de memoria")
-
-    def update_full_img(self, corrected: bool, full_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]=None) -> bool:
-        """Actualiza o vacía la imagen completa en el workflow"""
-        try:
-            if not self.workflow:
-                logger.error("No hay workflow inicializado para actualizar full_img.")
-                return False
-                
-            if full_img is None and not corrected:
-                # Medir dims de la imagen real almacenada antes de liberar memoria
-                FullImage == None
-                logger.debug("Full image liberada")
-                return True
-            
-            if corrected or full_img is not None:
-                # Normalizar si se recibe la dataclass FullImage corregida
-                img_arr = normalice_image(full_img)
-                if img_arr is None:
-                    logger.critical(f"Error normalizando")
-                    return False
-                # Wrap en la dataclass FullImage y actualizar workflow
-                self.workflow = dataclasses.replace(self.workflow, full_img=img_arr)
-                
-                up_img = self.workflow.full_img if self.workflow else None
-                if up_img is None:
-                    return True
-                
-                h = up_img.shape[0]
-                w = up_img.shape[1]
-                dims = (h, w)
-
-                self.workflow.metadata.img_dims = dims
-
-                logger.debug("Imagen actualizada con éxito.")
-                return True
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error actualizando full_img: {e}", exc_info=True)
-            return False
                         
     def save_cropped_images(self, cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]]) -> bool:
         """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""

@@ -25,3 +25,13 @@ def release(size_t ptr_addr):
         return
     cdef Image* img = <Image*>ptr_addr
     destroy_image(img)
+
+def send_array_data(tuple metadata, size_t ptr_addr):
+    cdef Image* img = <Image*>ptr_addr
+    cdef uint8_t* img_data = <uint8_t*>img.data()
+    cdef void* arr_data = metadata[0]
+    cdef size_t ndim = metadata[1]
+    cdef size_t width = metadata[2]
+    cdef size_t height = metadata[3]
+    cdef size_t itemsize = metadata[4]
+    crop_polygons(img_data, arr_data, ndim, width, height, itemsize)

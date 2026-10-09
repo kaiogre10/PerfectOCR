@@ -100,7 +100,7 @@ class TypeModels(StrEnum):
 class OSModels(Enum):
     """[0]Bibliotecas, [1] Librerias"""
     WINDOWS=  {".dll": "lib"}
-    LINUX = {".so": "a"}
+    LINUX = {".so": ".a"}
     MACOS = {".dylib": ".a"}
     
 class StringsModels(StrEnum):

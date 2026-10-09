@@ -55,7 +55,7 @@ modules:
       iterations: 2
 
     polygon_extractor:
-      cropping_padding: 1.0
+      cropping_padding: 1
 
   preprocessing:
     moire:

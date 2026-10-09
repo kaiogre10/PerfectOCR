@@ -40,11 +40,8 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
             logger.debug("Full_img obtenida con éxito")
             
-            # full_image = make_contiguous(full_image)
-
             full_img, corrected = self.correct_angle(full_image)
 
-            # if manager.update_full_img(corrected, full_img):
             logger.debug(f"Imagen rotada actuallizada con éxito.")
 
             if self.output and corrected:

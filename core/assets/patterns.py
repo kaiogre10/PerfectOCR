@@ -5,6 +5,7 @@ from typing import List, Pattern
 _currency_variants = r"[$Ss]"
 _punt_quant_chars = r'[.,]'
 _diagonal_variants = r'[7\/]'
+_diagonal_variants2 = r'[\\/]'
 _digit_pattern = r"[0-9OQo]"
 _base_date_num_str = r'[012OQo][0-9OQo]'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)'
@@ -12,7 +13,7 @@ _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|j
 # _standar_size_den = r'(2|4|8|16|32)'
 _c_variants = r"[Cc]"
 _cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
-_bic_variants = r'\b(B(1C|lC|\|C|¡C|!C))\b'
+_bic_variants = r"\b(B(1C|lC|\|C|¡C|!C))\b"
 space_pattern: Pattern[bytes] = re.compile(rb"\s+", re.IGNORECASE)
 
 _digits_base = r'0123456789'
@@ -74,7 +75,10 @@ _los_typos_regex = (
 )
 los_suffix_pattern = re.compile(_los_typos_regex)
 
-extension_suffix = re.compile(r'(\.[A-Za-z]+)$')
+_extension_str = r'\.[A-Za-z]+'
+file_name_pattern = re.compile(rf"(?<={_diagonal_variants2})[\w.-]+{_extension_str}$")
+extension_suffix = re.compile(rf"{_extension_str}$")
+
 has_digit_pattern = re.compile(r"\d", re.IGNORECASE)
 swap_term_cuant = re.compile(r'^[A-Za-z]+\$$')
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)

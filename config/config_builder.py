@@ -5,7 +5,7 @@ from functools import cached_property
 from services.log_service import log_active_areas, log_simple, basic_exc_logger
 from utils.image_utils import configure_kernel
 from utils.paths import set_projet_root, build_from_dir
-from services.system_service import SO
+from services import system_service
 from core.assets.assets import KF_RANGE, SC_RANGE, ELEMENTAL_WORKER, DET, OCR_WORKERS, FULL_OCR, VECT_MIN, MIN_WORKERS
 from core.assets.patterns import PLACEHOLDER_PATTERN, extension_suffix
 from domain.class_models import DataKeys, StageKeys
@@ -14,7 +14,6 @@ _placeholder_pattern = PLACEHOLDER_PATTERN
 _extension_suffix = extension_suffix
 _kf_range = KF_RANGE
 _sc_range = SC_RANGE
-
 _elemental_workers = ELEMENTAL_WORKER
 _det = DET
 _ocr_workers = OCR_WORKERS
@@ -144,7 +143,7 @@ class ConfigBuilder:
             return _system_paths
 
         else:
-            buffer_path = os.path.join(self.project_root, "libraries", ("buffer_handler" + str(SO.keys())))
+            buffer_path = os.path.join(self.project_root, "libraries", ("buffer_handler" + next(iter(system_service.SO.keys()))))
             if not os.path.isfile(buffer_path):
                 basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
                 self.handle_memory = False
@@ -162,11 +161,24 @@ class ConfigBuilder:
         return self.config.get("log_config", {})
 
     @property
-    def log_params(self) -> Dict[str, str]:
-        return self.log_config.get("log_params", {})
+    def _all_logs(self) -> bool:
+        return self.log_config.get("all_logs")
+
+    @property
+    def _log_params(self) -> Dict[str, str]:
+        _log_params = self.log_config.get("log_params", {})
+        if self._all_logs:
+            _log_params["console_level"] = 'DEBUG'
+            _log_params["file_level"] = 'DEBUG'
+
+        return _log_params
 
     @cached_property
-    def _logs_debug(self):
+    def log_params(self) -> Dict[str, str]:
+        return self._log_params
+
+    @property
+    def _logs_debug(self) -> Dict[str, bool | List[int]]:
         _logs_debug = self.log_config.get("logs_debug", {})
         
         def _max_min_vals(type_list: List[int], lenght: int, limits: Tuple[int, int]) -> List[int]:
@@ -196,7 +208,7 @@ class ConfigBuilder:
         log_sc_size = len(semantic_types_log)
         log_kf_size = len(kf_list_log)
         
-        if not _logs_debug.get("all_logs"):
+        if not self._all_logs:
             if not _logs_debug["key_fields"]:
                 kf_range_logs = []
                 
@@ -223,7 +235,7 @@ class ConfigBuilder:
     @cached_property
     def logs_debug(self) -> Dict[str, Any]:
         logs_debug = self._logs_debug
-        if logs_debug.get("all_logs"):
+        if self._all_logs:
             for key, value in logs_debug.items():
                 if isinstance(value, bool):
                     logs_debug[key] = True
@@ -331,7 +343,7 @@ class ConfigBuilder:
     @cached_property
     def img_prep_config(self) -> Tuple[Dict[str, Any], List[str]]:
         if self.no_activate_modules or not self.create_stager[0][1]:
-            return ({}, [])
+            return {}, []
         else:
             config_module = self._img_prep_config
             enabled_outputs = self.enabled_outputs.get("image_load_outputs", {})
@@ -341,7 +353,7 @@ class ConfigBuilder:
     @cached_property
     def preprocessing_config(self)-> Tuple[Dict[str, Any], List[str]]:
         if self.no_activate_modules or not self.create_stager[1][1] or not self.active_full_ocr:
-            return ({}, [])
+            return {}, []
         else:
             config_module = self.modules_config.get("preprocessing", {})
             enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {})
@@ -359,11 +371,11 @@ class ConfigBuilder:
     @cached_property
     def ocr_config(self) -> Tuple[Dict[str, Any], List[str]]:
         if self.no_activate_modules or not self.create_stager[2][1] or not self.active_full_ocr:
-            return ({}, [])
+            return {}, []
         else:
             config_module = self._ocr_config
             config_module.update(self.logs_debug)
-            config_module.update(self.enabled_outputs.get("ocr_outputs"))
+            config_module.update(self.enabled_outputs.get("ocr_outputs", {}))
             return config_module, self.workers_order[StageKeys.OCR_KEY]
     
     @cached_property
@@ -383,7 +395,7 @@ class ConfigBuilder:
     def vectorization_config(self) -> Tuple[Dict[str, Any], List[str]]:
         vect_stage = self.create_stager[3][1]
         if self.no_activate_modules or not vect_stage or not _vect_min in vect_stage or not self.active_full_ocr:
-            return ({}, [])
+            return {}, []
         else:
             config_module = self._vectorization_config
             enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
@@ -434,7 +446,7 @@ class ConfigBuilder:
         return frozenset(all_workers)
     
     def _validate_config(self) -> bool:
-        mode = (f'{"DEPLOY" if self.deploy_mode else "PRODUCTION"}') if not self.no_activate_modules else ("CONFIG TESTING" if self.test_config else "NO MODULES")
+        mode = f'{"DEPLOY" if self.deploy_mode else "PRODUCTION"}' if not self.no_activate_modules else ("CONFIG TESTING" if self.test_config else "NO MODULES")
         msg: str = f"Modo: '{mode}', Validación: '{"COMPLETA" if not self.deploy_mode else "MÍNIMA"}' de la configuración."
         
         if not self.input_paths:

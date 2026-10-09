@@ -5,7 +5,7 @@ from typing import List, Tuple, Dict, Any, Optional
 from utils.math_utils import text_encode
 from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
 from core.assets.assets import VOWELS, REPLACEMENT_MAP, DENSITY_RANGE, MORPH_RANGE
-from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant
+from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant, file_name_pattern
 from domain.class_models import SemantiClass, KeyField, DataKeys, NumberStr
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,7 @@ _morph_range = MORPH_RANGE
 
 _numeric_fractions = numeric_fractions
 _has_digit_pattern = has_digit_pattern
+_file_name_pattern = file_name_pattern
 _extension_suffix = extension_suffix
 _correct_cuants = correct_cuants
 _all_cuants = all_cuants
@@ -551,16 +552,23 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
 
 def get_ids(id_registro: str, id_need: str):
     """
-    Extrae datos relevantes en el ID Registro
+    Extrae datos relevantes en el ID Registro o en algun path
     prov: id proveedor
-    name: nombre de la imagen sin extensión
+    name: nombre de la imagen sin extensión, elimina el path, suple a os.path.basename
     """
     try:
         if id_need == DataKeys.id_proveedor.value:
             matches = list(_id_prov_pattern.finditer(id_registro))
             return [match.group() for match in matches if _id_prov_pattern.fullmatch(match.group())][0]
+        
         elif id_need =="name":
-            return _extension_suffix.sub("", id_registro)
+            match = _file_name_pattern.search(id_registro)
+            if match:
+                basename = match.group(0)
+                return _extension_suffix.sub("", basename)
+            
+            else:
+                return ""
         else:
             return id_registro
     except ValueError as e:

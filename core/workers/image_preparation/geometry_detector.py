@@ -56,7 +56,8 @@ class GeometryDetector(ImagePrepAbstractWorker):
             img = morph_operations(bin_img, self.kernel, self.iterations)
 
             if self.output:
-                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                metadata = manager.workflow.metadata if manager.workflow else None
+                image_name = metadata.image_name if metadata else ""
                 # imag_id = f"opened_{image_name}_{worker_name}"
                 img_id = f"bin_img_{image_name}"
                 save_croped_image(image_name, img_id, img)
@@ -70,7 +71,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.critical("No hay polygonos detectados")
                 return False
             
-            pts = np.asarray(polygons, dtype=np.int16)          # (N, 4, 2)
+            pts = np.asarray(polygons, dtype=np.int16, order='C')          # (N, 4, 2)
 
             xs = pts[:, :, 0]                                     # (N, 4)
             ys = pts[:, :, 1]                                     # (N, 4)
@@ -79,10 +80,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
             centroids = np.stack([xs.mean(axis=1, dtype=np.float_), ys.mean(axis=1, dtype=np.float_)], axis=1, dtype=np.float_) # (N, 2)
 
             polygons_list: List[Dict[str, Any]] = [{
-                    "bounding_box": bboxes[i].tolist(),
-                    "centroid": centroids[i].tolist(),
-                }
-                for i in range(pts.shape[0])
+                "bounding_box": bboxes[i].tolist(),
+                "centroid": centroids[i].tolist()
+            }
+            for i in range(pts.shape[0])
             ]
 
             # ind = np.arange(total_conts)

@@ -23,8 +23,8 @@ def get_caller_info() -> Tuple[str, str]:
     frame = inspect.stack()[2]
     return os.path.basename(frame[1]), str(frame[2])
 
-def get_logging_info(get_caller_info: Tuple[str, str]) -> str:
-    return f"{get_time_stamp(_now(), DATE_FORMAT)} {get_caller_info[0]}:{get_caller_info[1]} -"
+def get_logging_info(get_caller_inf: Tuple[str, str]) -> str:
+    return f"{get_time_stamp(_now(), DATE_FORMAT)} {get_caller_inf[0]}:{get_caller_inf[1]} -"
 
 def setup_logging(project_root: str, config: Dict[str, str]) -> None:
     global DATE_FORMAT

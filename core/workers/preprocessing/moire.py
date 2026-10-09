@@ -39,8 +39,6 @@ class MoireDenoiser(PreprocessingAbstractWorker):
                 return False
             logger.debug("Full_img obtenida con éxito")
 
-            # full_img = normalice_image(full_img)
-
             # if full_img is None:
             #     return False
 
@@ -63,12 +61,6 @@ class MoireDenoiser(PreprocessingAbstractWorker):
         """
         Detecta y corrige patrones de moiré en una imagen.
         """
-        # 1) Asegurar escala de grises (2D)
-        # if full_img.ndim == 3:
-        #     full_gray = cv2.cvtColor(full_img, cv2.COLOR_BGR2GRAY)
-        # else:
-        #     full_gray = full_img
-
         height, width = full_gray.shape  # (y, x)
         max_dim = max(height, width)
 

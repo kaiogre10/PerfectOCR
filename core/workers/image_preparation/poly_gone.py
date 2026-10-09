@@ -22,7 +22,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae, filtra y actualiza polígonos en un solo paso, optimizando el proceso."""
-        #start_time = time.perf_counter()
         try:
             if not manager.workflow or not manager.workflow.polygons:
                 logger.warning("PolygonExtractor: No hay workflow o polígonos para procesar.")
@@ -32,46 +31,62 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # 1. Recopilar Bounding Boxes y IDs
             poly_ids_order = list(polygons.keys())
-            all_bboxes = np.array([polygons[pid].bounding_box for pid in poly_ids_order], dtype=np.int16)
+            all_bboxes = np.asarray([polygons[pid].bounding_box for pid in poly_ids_order], dtype=np.int32, order='C').reshape(-1, 4, order='C')
 
-            if all_bboxes.size < 1:
+            if all_bboxes.size < 1 or all_bboxes.size % 4 != 0:
                 logger.warning("PolygonExtractor: No hay bboxes válidos para procesar.")
                 return False
 
-            # 2. Calcular Coordenadas de Recorte con Padding (Vectorizado)
-            img_h, img_w = manager.workflow.metadata.img_dims if manager.workflow.metadata else (0, 0)
-            x1, y1, x2, y2 = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
-            px1 = np.maximum(0, x1 - self.padding)
-            py1 = np.maximum(0, y1 - self.padding)
-            px2 = np.minimum(img_w, x2 + self.padding)
-            py2 = np.minimum(img_h, y2 + self.padding)
-
-            # 3. Obtener Imagen y Liberar Memoria del Manager
             full_img = manager.get_full_img()
             if full_img is None:
                 logger.error("No se pudo obtener full_img del Formatter.")
                 return False
-                
-            # full_img = make_contiguous(full_img)
 
-            # 4. Bucle Único de Filtrado, Actualización y Re-indexado
-            new_polygons = {}
+            if full_img.size < 2:
+                logger.error("SIZE MENOR A 1")
+                return False
+
+            # 2. Calcular Coordenadas de Recorte con Padding
+            img_h, img_w = full_img.shape[:2]
+            x1, y1, x2, y2 = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
+
+            # size_bbox = np.asarray((x2 - x1) * (y2 - y1), dtype=np.int32, order='C',)
+            # bboxes = np.column_stack((all_bboxes, size_bbox))
+            # logger.info(f"\n{np.array2string(bboxes)}")
+            # arr_ptr = bboxes.ctypes.data
+            # arr_dims = bboxes.ndim
+            # arr_shape = bboxes.shape
+            # arr_size = bboxes.size
+            # arr_itemsize = bboxes.itemsize
+            # arr_metadata = (arr_ptr, arr_dims, arr_shape, arr_size, arr_itemsize)
+
+            px1 = np.maximum(0, x1 - self.padding, dtype=np.int32)
+            py1 = np.maximum(0, y1 - self.padding, dtype=np.int32)
+            px2 = np.minimum(img_w, x2 + self.padding, dtype=np.int32)
+            py2 = np.minimum(img_h, y2 + self.padding, dtype=np.int32)
+
+            valid_bbox_mask = (px2 > px1) & (py2 > py1)
+            valid_bbox_indices = np.flatnonzero(valid_bbox_mask)
+
+            for invalid_idx in np.flatnonzero(~valid_bbox_mask):
+                logger.debug(f"POLÍGONO INVÁLIDO: {poly_ids_order[invalid_idx]}")
+
+            # 3. Bucle Único de Filtrado, Actualización y Re-indexado
+            new_polygons: Dict[str, Any] = {}
             cropped_images_to_save: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]] = {}
             new_poly_idx = 0
 
-            for idx, old_poly_id in enumerate(poly_ids_order):
-                # Filtrar por dimensiones válidas
-                if not ((px2[idx] > px1[idx]) and (py2[idx] > py1[idx])):
-                    # logger.info(f"POLÍGONO INVÁLIDO: {old_poly_id}")
-                    continue
+            for idx in valid_bbox_indices:
+                old_poly_id = poly_ids_order[idx] # type: ignore
+                crop_x1, crop_y1 = px1[idx], py1[idx]
+                crop_x2, crop_y2 = px2[idx], py2[idx]
 
                 # Recortar la imagen
-                crop_x1, crop_y1, crop_x2, crop_y2 = int(px1[idx]), int(py1[idx]), int(px2[idx]), int(py2[idx])
-                cropped = np.ascontiguousarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy(), dtype=np.uint8)
+                cropped = np.ascontiguousarray(np.asarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy(), order='C'), dtype=np.uint8)
 
                 # Filtrar por intervalo de color
                 if not validate_image(cropped):
-                    # logger.info(f"FILTRADO POR MEDIA DE COLOR: {old_poly_id}")
+                    logger.debug(f"FILTRADO POR MEDIA DE COLOR: {old_poly_id}")
                     if self.disoutput:
                         pid = f"{old_poly_id}_B/N"
                         self.save_debug(cropped, manager, "bn_discarded", pid)
@@ -97,8 +112,12 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 if self.output:
                     self.save_debug(cropped, manager, "all_valid", new_id)
 
-            # manager.update_full_img(corrected=False, full_img=None)
-            # 5. Actualización Final y Limpia en el Manager
+            if manager.delete_full_img():
+                logger.info("FULL IMAGE LIBERADA")
+            else:
+                logger.error("NO SE PUDO LIBERAR FULL IMAGE")
+
+            # 4. Actualización Final y Limpia en el Manager
             if not new_polygons:
                 logger.warning("PolygonExtractor: Ningún polígono superó los filtros.")
                 manager.workflow.polygons = {}
@@ -110,11 +129,11 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 logger.error("No se pudieron guardar las imágenes recortadas en el manager")
                 return False
 
-            # logger.info(f"'{len(new_polygons)}' polígonos extraídos y filtrados en {time.perf_counter() - start_time:.6f}s.")
+            # logger.debug(f"'{len(new_polygons)}' polígonos extraídos y filtrados en {time.perf_counter() - start_time:.6f}s.")
 
             if self.filtered_ouputs:
                 for poly_id, polygon in new_polygons.items():
-                    if polygon.cropped_img and polygon.cropped_img is not None:
+                    if polygon.cropped_img is not None:
                         self.save_debug(polygon.cropped_img, manager, "filtered_final", poly_id)
             return True
 
@@ -123,6 +142,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             return False
     
     def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter, status: str, id: str):
-        image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+        metadata = manager.workflow.metadata if manager.workflow else None
+        image_name = metadata.image_name if metadata else ""
         img_id = f"{status}_{id}_close"
         save_croped_image(image_name, img_id, polygon)

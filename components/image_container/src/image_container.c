@@ -33,7 +33,7 @@ void delete_image(ImageContainer* img) {
     if (img) {
         // El orden de liberación es CRÍTICO.
         if (img->data) {
-            free(img->data);   // 1. Liberas los píxeles
+            free(img->data);   // 1. Liberar los píxeles
             img->data = NULL;  // 2. (Opcional) Marcas como nulo para evitar doble free
         }
         free(img);             // 3. Liberar el contenedor

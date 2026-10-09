@@ -271,6 +271,7 @@ WHITE = [255, 255, 255]
 BLACK = [0, 0, 0]
 
 PI_DIV = (180.0 / np.pi)
+PI_DIV_INV = np.pi/180
 SMALL_NUM = 1e-8
 
 VALID_IMG_EXT = frozenset([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2"])

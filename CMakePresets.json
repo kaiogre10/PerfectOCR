@@ -101,7 +101,8 @@
       },
       "cacheVariables": {
         "CMAKE_C_COMPILER": "icx",
-        "CMAKE_CXX_COMPILER": "icpx"
+        "CMAKE_CXX_COMPILER": "icpx",
+        "CMAKE_BUILD_TYPE": "Release"
       }
     }
   ],

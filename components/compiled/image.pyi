@@ -23,6 +23,6 @@ def release(ptr_addr: int) -> None:
     """Libera la imagen apuntada por ptr_addr.
 
     Warning:
-        Llamar dos veces con el mismo puntero es undefined behavior.
+        Llamar dos veces con el mismo puntero es Segmentation Fault.
         Llamar mientras un array de get_array() sigue vivo es undefined behavior.
     """

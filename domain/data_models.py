@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
+from components.compiled.image import release
     
 @dataclass(slots=True)
 class Polygons:
@@ -72,4 +73,5 @@ class FullImageKey:
     @classmethod
     def clear(cls) -> None:
         """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
+        release(ptr_addr=cls.img_ptr) # type: ignore
         cls.img_ptr = None

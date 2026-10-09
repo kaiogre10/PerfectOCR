@@ -33,7 +33,6 @@ class PipelineConfig(ConfigWithNumpy):
     db_stage: Optional[List[str]] = None
 
 class LogsDebug(ConfigWithNumpy):
-    all_logs: bool
     text_ocr: bool
     text_clean: bool
     text_del: bool
@@ -63,6 +62,7 @@ class LogParams(ConfigWithNumpy):
 class LogsConfig(ConfigWithNumpy):
     logs_debug: LogsDebug
     log_params: LogParams
+    all_logs: bool
 
 class ImgLoadOutputs(ConfigWithNumpy):
     full_img: bool
@@ -160,7 +160,7 @@ class DeskewConfig(ConfigWithNumpy):
     hough_angle_filter_range_degrees: List[float]
 
 class CuttingConfig(ConfigWithNumpy):
-    cropping_padding: float
+    cropping_padding: int
     
 class ImagePreparation(ConfigWithNumpy):
     ink_enhancement: InkConfig

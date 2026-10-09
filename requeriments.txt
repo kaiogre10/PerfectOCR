@@ -23,7 +23,7 @@ python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython
 
 # Compilar opencv
 cd third_party/opencv_dep
-rm -rf build install	<-- Linux
+rm -rf build install libraries	<-- Linux
 rmdir /s /q build install	<-- Windows
 
 git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git src

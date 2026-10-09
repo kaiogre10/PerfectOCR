@@ -5,77 +5,17 @@ from typing import Any, Optional, List, Dict, Tuple
 import logging
 from skimage.filters import threshold_sauvola, unsharp_mask #type: ignore
 import time
-from core.assets.assets import WHITE, SMALL_NUM
+from core.assets.assets import WHITE, SMALL_NUM, PI_DIV_INV
 
 _small_num = SMALL_NUM
 _white = WHITE
+_four_white = _white + [_white[0]]
+_pi_div_inv = PI_DIV_INV
 
 logger = logging.getLogger(__name__)
 
-def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:  # lista
-    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(np.asarray(img_arr), dtype=np.uint8)
-
-def normalice_image(img: Optional[np.ndarray[Any, Any]]) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:  # Lista
-    """
-    - Convierte BGR->GRAY si viene con 3/4 canales
-    - Convierte a dtype uint8 (escala floats en [0,1] a 0-255)
-    - Garantiza que el array sea C-contiguo
-    Retorna ndarray uint8 o None si ocurre un error / imagen vacía.
-    """
-    return img
-    try:
-        if img is None:
-            logger.error("normalice_image: imagen None recibida")
-            return None
-        
-        # Si llega en color, convertir a gris (BGR->GRAY)
-        dims = img.ndim
-
-        if dims == 2:
-            channels = 1
-        elif dims == 3:
-            channels = img.shape[2]
-        else:
-            return None
-        
-        if channels > 2:
-            image_arr = decolorate(img)
-        
-            if image_arr.size < 2:
-                return None
-        
-            elif channels == 4:
-                img_arr = cv2.cvtColor(image_arr, cv2.COLOR_BGRA2GRAY)
-
-            else:
-                img_arr = cv2.cvtColor(image_arr, cv2.COLOR_BGR2GRAY)
-        
-        elif channels == 2:
-            img_arr = img[:, :, 0]
-        
-        else:  # channels == 1
-            img_arr = img
-            
-        if img_arr.dtype != np.uint8:
-            if np.issubdtype(img_arr.dtype, np.floating):
-                mx = float(img_arr.max()) if img_arr.size > 0 else 0.0
-                if mx <= 1.0:
-                    img_arr = (img_arr * 255.0).round().astype(np.uint8, copy=False)
-                    
-                else:
-                    img_arr = np.clip(img_arr, 0, 255).round().astype(np.uint8, copy=False)
-                
-            else:
-                img_arr = img_arr.astype(np.uint8, copy=False)
-                
-        if not validate_image(img_arr):
-            return None
-        return img_arr
-        # return np.require(img_arr, dtype=np.uint8, requirements=['C', 'A', 'W', 'E'])
-        
-    except Exception  as e:
-        logger.error(f"Error normalizando imagen: {e}", exc_info=True)
-    return None
+def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(np.asarray(img_arr, order='C'), dtype=np.uint8)
 
 def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any, Any]]:
     try:
@@ -84,7 +24,7 @@ def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any,
         logger.critical(f"Error añadiendo dimensiones a la imagen: {e}", exc_info=True)
     return []
 
-def validate_image(img: Optional[np.ndarray[Any, Any]]):    # Listo
+def validate_image(img: Optional[np.ndarray[Any, Any]]):
     return False if img is None else (7.0 < np.mean(img) < 251.0)
 
 def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:
@@ -93,12 +33,12 @@ def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int):
     return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float32)
 
-def get_rotation_matrix(center: Tuple[int, int], angle: np.float_):
+def get_rotation_matrix(center: Tuple[int, int], angle: float):
     return cv2.getRotationMatrix2D(center, angle, 1.0)
 
 def get_image_lines(full_img: np.ndarray[Any, Any], canny_thresholds: Tuple[int, int], hough_threshold: int, min_len: int, hough_max_line_gap_px: int):
     edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
-    return cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_threshold, minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
+    return cv2.HoughLinesP(edges, 1, _pi_div_inv, threshold=hough_threshold, minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
 
 def rotate_matrix(full_img: np.ndarray[Any, Any], rotation_matrix: np.ndarray[Any, Any], new_w: int, new_h: int):
     return cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=_white)
@@ -162,8 +102,8 @@ def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) ->
         return "adaptive_mean"  # Bajo contraste, imagen "plana"
 
 def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    resultis = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return make_contiguous(resultis[1])
+    results = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return make_contiguous(results[1])
 
 def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value))
@@ -194,7 +134,7 @@ def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     mask_white = np.all(full_img[:, :, :3] > 180, axis=2)
     mask_valid = mask_black | mask_white
 
-    fill = [255, 255, 255, 255] if full_img.shape[2] == 4 else _white
+    fill = _four_white if full_img.shape[2] == 4 else _white
     full_img[~mask_valid] = fill
     
     return full_img
@@ -243,7 +183,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         return [], np.empty(0)
     
     total_conts = len(contours)
-    contours = [np.array(cont.reshape(-1, 2), np.int32) for cont in contours]
+    contours = [np.asarray(cont.reshape(-1, 2), np.int32) for cont in contours]
     # logger.info(f"{total_conts} Contornos encontrados")
 
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
