@@ -1,4 +1,4 @@
-# core/domain/data_formatter.py
+# domain/data_formatter.py
 from domain.data_models import WorkflowData, StructuredData, Metadata, Polygons, AllLines, Payload, FullImageKey
 import numpy as np
 import dataclasses
@@ -20,7 +20,7 @@ class DataFormatter:
         
         self.text_ocr_log = logs_config.get("text_ocr", False)
         self.key_fields_log = logs_config.get("key_fields", False)
-        self.kf_list_log = logs_config.get("kf_list_log", [])
+        self.kf_list_log = logs_config["kf_list_log"]
         self.lines_log = logs_config.get("lines", False)
         self.table_lines_log = logs_config.get("table_lines", False)
         self.table_correct_log = logs_config.get("table_correct", False)
@@ -106,7 +106,6 @@ class DataFormatter:
         return full_img.data
 
     def delete_full_img(self) -> bool:
-
         if not FullImageKey.img_ptr:
             return False
         
@@ -121,6 +120,11 @@ class DataFormatter:
             return False
 
         try:
+            full_img = FullImage(ptr)
+            image_dimensions = full_img.shape
+            if self.workflow and self.workflow.metadata:
+                self.workflow.metadata = dataclasses.replace(self.workflow.metadata, img_dims=image_dimensions) # type: ignore
+
             FullImageKey.clear()
             logger.info(f"PUNTERO LIBERADO: '{ptr}'")
 

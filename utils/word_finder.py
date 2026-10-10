@@ -2,13 +2,14 @@ import logging
 import numpy as np
 from typing import List, Any, Dict, Tuple, Set, FrozenSet
 from core.assets.patterns import space_pattern
+from core.assets.assets import KF_LIST
 from core.factory.model_factory import MatrixFactory
 from utils.compiled_utils import ngram_similarity, length_penalty
 from domain.class_models import KeyField
 
 logger = logging.getLogger(__name__)
 
-_kf_list = tuple([4, 6, 3, 2, 1])
+_kf_list = KF_LIST
 _space_pattern = space_pattern
 
 class WordFinder:

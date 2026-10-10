@@ -8,6 +8,7 @@ from config.config_api import ConfigAPI
 import logging
 import bitmath # type: ignore
 from domain.class_models import StringsModels
+from utils.text_utils import get_ids
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ class MainBuilder:
             success_images = [name for name in payloads_list[0]]
             payload_sizes = [bitmath.Byte(sizes) for sizes in payloads_list[1]]
             mean_process = f"{(total_processing_time / total_images):.6f}"
-            failed_images = {names.replace("\\", "/").split("/")[-1].split(".")[0] for names in workflow_report}.difference(set(success_images))
+            failed_images = {get_ids(names, "file_name") for names in workflow_report}.difference(set(success_images))
             total_fails = len(failed_images)
             
             if total_fails == 0:

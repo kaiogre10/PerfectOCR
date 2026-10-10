@@ -248,6 +248,7 @@ REPLACEMENT_MAP: Dict[str, str] = {
     'five': NumberStr.FIVE, 'six': NumberStr.SIX, 'seven': NumberStr.SEVEN, 'eight': NumberStr.EIGHT, 'nine': NumberStr.NINE
 }
 
+KF_LIST = tuple([4, 6, 3, 2, 1])
 KF_RANGE = (1, 13)
 SC_RANGE = (0, 6)
 

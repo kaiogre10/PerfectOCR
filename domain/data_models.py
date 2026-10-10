@@ -29,16 +29,16 @@ class AllLines:
     tabular_line: bool
     header_line: Optional[int]
     footer_line: Optional[int]
-    
-@dataclass(slots=True)
-class Metadata:
-    image_name: str
-    img_dims: Tuple[int, int]
 
 @dataclass(slots=True)
 class StructuredData:
     df_table: Optional[pd.DataFrame]
     global_data: Dict[str, Any]
+
+@dataclass(slots=True)
+class Metadata:
+    image_name: str
+    img_dims: Tuple[int, int]
 
 @dataclass(slots=True)
 class WorkflowData:

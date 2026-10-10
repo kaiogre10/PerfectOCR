@@ -1,4 +1,4 @@
-# services/config_validator.py
+# config/config_builder.py
 import os
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from functools import cached_property
@@ -92,13 +92,27 @@ class ConfigBuilder:
     def not_run_system(self) -> bool:
         """(self.deploy_mode == False) and (self.elemental_params == False)"""
         return (self.deploy_mode == False) and (self.elemental_params == False)
+
+    from typing import Dict
+
+    @cached_property
+    def _enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
+        _enabled_outputs = self.config.get("enabled_outputs", {})
+
+        if self._auditate_process:
+            log_simple("AUDITORIA DE PROCESO COMPLETA ACTIVADA")
+            for category in _enabled_outputs.values():
+                for subkey in category:
+                    category[subkey] = True
+
+        return _enabled_outputs
     
     @cached_property
     def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
         if not self.system_paths["output_paths"] or self.no_activate_modules:
             return {}
         else:
-            return self.config.get("enabled_outputs", {})
+            return self._enabled_outputs
         
     @property
     def user_requests(self):
@@ -161,8 +175,12 @@ class ConfigBuilder:
         return self.config.get("log_config", {})
 
     @property
+    def _auditate_process(self):
+        return self.log_config.get("auditate_process")
+
+    @property
     def _all_logs(self) -> bool:
-        return self.log_config.get("all_logs")
+        return self._auditate_process if self._auditate_process else self.log_config.get("all_logs")
 
     @property
     def _log_params(self) -> Dict[str, str]:
@@ -225,8 +243,8 @@ class ConfigBuilder:
             else:
                 sc_range_logs =  _max_min_vals(semantic_types_log, log_sc_size, _sc_range)
         else:
-            sc_range_logs = list(range(_kf_range[0], _kf_range[1]))
-            kf_range_logs = list(range(_sc_range[0], _sc_range[1]))
+             kf_range_logs= list(range(_kf_range[0], _kf_range[1]))
+             sc_range_logs = list(range(_sc_range[0], _sc_range[1]))
             
         _logs_debug["kf_list_log"] = kf_range_logs
         _logs_debug["semantic_types_log"] = sc_range_logs
@@ -364,8 +382,8 @@ class ConfigBuilder:
     def _ocr_config(self):
         _ocr_config = self.modules_config.get("ocr", {})
         text_refine = _ocr_config.get("text_refine", {})
-        num_passes = text_refine.get("num_passes", {})
-        _ocr_config["text_refine"]["create_refiners"] = bool(num_passes > 0)
+        num_passes = text_refine.get("num_passes", 0)
+        _ocr_config["text_refine"]["create_refiners"] = (num_passes > 0)
         return _ocr_config
         
     @cached_property

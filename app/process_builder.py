@@ -6,6 +6,7 @@ from domain.data_formatter import DataFormatter
 from services.storage_service import storage_data
 from services.output_service import write_temp_log
 from domain.class_models import StringsModels
+from utils.text_utils import get_ids
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class ProcessingBuilder:
             return None
 
         names = [text[0] for text in results]
+        logger.error(f"IMAGENES EXITOSAS: {names}")
         
         if self.memory:
             plain_text = [text[1] for text in results]
@@ -32,7 +34,7 @@ class ProcessingBuilder:
             if buff_size is not None:
                 logger.warning(f"PAYLOAD GUARDADO EN MEMORIA: '{sum(buff_size)}B', Y EN ARCHIVO DE SEGURIDAD")
                 return names, buff_size
-            logger.error(f"ERROR GUARDANDO EN MEMORIA")
+            logger.error("ERROR GUARDANDO EN MEMORIA")
             return None
         else:
             logger.debug("NO SE ACTIVO MEMORIA DINÁMICA, SE REGRESAN LOS BYTES ESTIMADOS SOLAMENTE")
@@ -70,7 +72,7 @@ class ProcessingBuilder:
                 continue
             
             buff_size = manager.payload.buff_size if manager.payload else 0
-            name = image_data.replace("\\", "/").split("/")[-1].split(".")[0]
+            name = get_ids(image_data, "file_name")
             
             if self.memory:
                 plain_text = manager.payload.payload if manager.payload else StringsModels.NO_MANGER.value

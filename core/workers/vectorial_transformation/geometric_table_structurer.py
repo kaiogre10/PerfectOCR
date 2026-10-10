@@ -63,7 +63,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # 5. Validar y loggear estructura generada
             if table_matrix:
                 df, df_copy = self._table_matrix_to_dataframe(table_matrix, H)
-                logger.debug(f"DataFrame generado:\n{df.to_string(index=True)}")
+                logger.info(f"DataFrame generado:\n{df.to_string(index=True)}")
                 if manager.save_final_output(df, {}):
                     # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
                     cut_polygons = self.map_polygons_ids(polygons, df_copy)

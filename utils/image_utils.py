@@ -31,7 +31,7 @@ def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma
     return make_contiguous(cv2.bilateralFilter(img, d, sigma_color, sigma_space))
 
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int):
-    return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float32)
+    return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float64)
 
 def get_rotation_matrix(center: Tuple[int, int], angle: float):
     return cv2.getRotationMatrix2D(center, angle, 1.0)
@@ -314,5 +314,5 @@ def configure_kernel(x: int, y: int):
     return cv2.getStructuringElement(cv2.MORPH_CROSS, (x, y))
 
 def morph_operations(img: np.ndarray[Any, Any], kernel: Any, iterations: int) -> np.ndarray[Any, Any]:
-    arr = make_contiguous(cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations))
+    arr = make_contiguous(cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations)) # type: ignore
     return cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)

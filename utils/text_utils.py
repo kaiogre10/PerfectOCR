@@ -554,14 +554,14 @@ def get_ids(id_registro: str, id_need: str):
     """
     Extrae datos relevantes en el ID Registro o en algun path
     prov: id proveedor
-    name: nombre de la imagen sin extensión, elimina el path, suple a os.path.basename
+    file_name: nombre de la imagen sin extensión, elimina el path, suple a os.path.basename
     """
     try:
         if id_need == DataKeys.id_proveedor.value:
             matches = list(_id_prov_pattern.finditer(id_registro))
             return [match.group() for match in matches if _id_prov_pattern.fullmatch(match.group())][0]
         
-        elif id_need =="name":
+        elif id_need == "file_name":
             match = _file_name_pattern.search(id_registro)
             if match:
                 basename = match.group(0)

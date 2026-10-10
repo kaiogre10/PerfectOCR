@@ -23,7 +23,7 @@ class ImageLoader(ImagePrepAbstractWorker):
             if not ptr or not isinstance(ptr, int): # type: ignore
                 raise TypeError("ERROR DE PUNTEROS")
 
-            image_name = get_ids(input_path, "name")
+            image_name = get_ids(input_path, "file_name")
 
             if not image_name:
                 logger.error("No se encontró ninguna coincidencia.")

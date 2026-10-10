@@ -63,6 +63,7 @@ class LogsConfig(ConfigWithNumpy):
     logs_debug: LogsDebug
     log_params: LogParams
     all_logs: bool
+    auditate_process: bool
 
 class ImgLoadOutputs(ConfigWithNumpy):
     full_img: bool

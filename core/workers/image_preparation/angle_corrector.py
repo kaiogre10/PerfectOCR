@@ -79,7 +79,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             if np.abs(angle) > self.min_angle_for_correction:
                 rotation_matrix = get_rotation_matrix(center, angle)
             
-            # Calcular nuevas dimensiones
+                # Calcular nuevas dimensiones
                 cos = np.abs(rotation_matrix[0, 0])
                 sin = np.abs(rotation_matrix[0, 1])
                 new_w = int((h * sin) + (w * cos))

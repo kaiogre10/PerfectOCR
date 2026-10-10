@@ -7,7 +7,7 @@ import numpy as np
 cimport numpy as np
 
 def load(str filepath):
-    cdef Image* img = load_image(filepath.encode('utf-8'))
+    cdef Image* img = load_image(filepath.encode('utf-8')) # type: ignore
     if img == NULL:
         raise RuntimeError(f"Fallo al cargar imagen: {filepath}")
     return <size_t>img
@@ -17,7 +17,7 @@ def get_array(size_t ptr_addr):
     cdef int h = img.height()
     cdef int w = img.width()
     cdef uint8_t* data = <uint8_t*>img.data()
-    cdef np.uint8_t[:, ::1] view = <np.uint8_t[:h, :w]> data
+    cdef np.uint8_t[:, ::1] view = <np.uint8_t[:h, :w]> data # type: ignore
     return np.ascontiguousarray(np.asarray(view))
     
 def release(size_t ptr_addr):
@@ -34,4 +34,4 @@ def send_array_data(tuple metadata, size_t ptr_addr):
     cdef size_t width = metadata[2]
     cdef size_t height = metadata[3]
     cdef size_t itemsize = metadata[4]
-    crop_polygons(img_data, arr_data, ndim, width, height, itemsize)
+    crop_polygons(img_data, arr_data, ndim, width, height, itemsize) # type: ignore
