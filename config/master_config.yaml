@@ -39,7 +39,7 @@ pipeline_secuence:
     - "data_finder"
     
   vectorization_stager:
-#    - "lineal"
+    - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
@@ -47,7 +47,7 @@ pipeline_secuence:
 
 log_config:
   auditate_process: False  # ACTIVA TODOS LOS LOGS Y OUTPUTS PARATRAZADO COMPLETO
-  all_logs: False    # <-- Modo Que cambia tosdos los logs a True para trazabilidad
+  all_logs: False    # Modo Que cambia tosdos los logs a True para trazabilidad
 
   log_params:
     console_level: 'WARNING'
@@ -66,7 +66,7 @@ log_config:
     text_correct: False
     refined_text: False
     seman_clas: False
-    key_fields: True
+    key_fields: False
     lines: False
     table_lines: False
     table_geo: False
