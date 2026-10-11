@@ -25,3 +25,7 @@ def release(size_t ptr_addr):
         return
     cdef Image* img = <Image*>ptr_addr
     destroy_image(img)
+
+def create_buffer(int new_w, int new_h):
+    cdef int h = new_h
+    cdef int w = new_w

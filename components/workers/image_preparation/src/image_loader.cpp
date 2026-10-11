@@ -4,6 +4,12 @@
 #include "file_handler.hpp"
 #include "image_container.hpp"
 
+namespace buffer_creator {
+    Image* get_buffer(int width, int height, int channels);
+    Image* image = new Image(width, height, channels);
+    return image
+}
+
 Image* load_image(const char* filepath) {
     if (!filepath) {
         return nullptr;
