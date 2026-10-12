@@ -1,11 +1,11 @@
 # PerfectOCR/core/workers/image_preparation/angle_corrector.py
 import numpy as np
 import logging
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.image_utils import get_rotation_matrix, get_image_lines, rotate_matrix
-from services.output_service import save_croped_image
+from utils.image_utils import get_image_lines
+from components.compiled.image import rotate
 
 logger = logging.getLogger(__name__)
 
@@ -40,22 +40,24 @@ class AngleCorrector(ImagePrepAbstractWorker):
             
             logger.debug("Full_img obtenida con éxito")
             
-            full_img, corrected = self.correct_angle(full_image)
+            new_ptr, corrected = self.correct_angle(full_image, manager)
 
             logger.debug(f"Imagen rotada actuallizada con éxito.")
 
-            if self.output and corrected:
-                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
-                img_id = f"full_img_{image_name}"
-                save_croped_image(image_name, img_id, full_img)
-            return True
+            if corrected:
+                if new_ptr is not None and manager.update_image(new_ptr):
+                    logger.debug(f"Imagen rotada con éxito.")
+                    return True
+                
+                return False
             
         except Exception as e:
             logger.error(f"Error angular; {e}", exc_info=True)
         return True
 
-    def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[np.ndarray[Any, np.dtype[np.uint8]], bool]:
+    def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter) -> Tuple[Optional[int], bool]:
         """Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no)."""
+        corrected = False
         try:
             h =  full_img.shape[0]
             w =  full_img.shape[1]
@@ -67,57 +69,54 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 
             if lines is None or len(lines) == 0: # type: ignore
                # logger.warning(f"No se detectaron líneas para la corrección de inclinación")
-                return full_img, False
+                return None, corrected
 
             angles = np.degrees(np.arctan2(lines[:, 0, 3] - lines[:, 0, 1], lines[:, 0, 2] - lines[:, 0, 0]))
             filtered_angles = angles[(angles > self.hough_angle_filter_range_degrees[0]) & (angles < self.hough_angle_filter_range_degrees[1])]
             if filtered_angles.size == 0:
                # logger.warning(f"Ninguna línea detectada en el rango de ángulos para corrección")
-                return full_img, False
+                return None, corrected
 
             angle = np.median(filtered_angles)
             if np.abs(angle) > self.min_angle_for_correction:
-                rotation_matrix = get_rotation_matrix(center, angle)
+                img_ptr = manager.get_img_ptr()
+                if not img_ptr:
+                    logger.error(f"PUNTERO INEXISTENTE: {img_ptr}")
+                    return None, corrected
+                 
+                new_ptr = rotate(img_ptr, angle, center[0], center[1]) # type: ignore
+                if not new_ptr:
+                    logger.error(f"PUNTERO ROTADO CON ERROR: {img_ptr}")
+                    return None, corrected
+
+                return new_ptr, True
             
-                # Calcular nuevas dimensiones
-                cos = np.abs(rotation_matrix[0, 0])
-                sin = np.abs(rotation_matrix[0, 1])
-                new_w = int((h * sin) + (w * cos))
-                new_h = int((h * cos) + (w * sin))
-                
-                # Ajustar traslación para centrar
-                rotation_matrix[0, 2] += (new_w / 2) - center[0]
-                rotation_matrix[1, 2] += (new_h / 2) - center[1]
-                
-                logger.debug(f"Imagen rotada '{angle:.4f}°' ángulos")
-                return rotate_matrix(full_img, rotation_matrix, new_w, new_h), True
-            else:             
-                logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
-                return full_img, False
+            logger.debug(f"Ángulo de inclinación '{angle}°' insignificante. No se aplica corrección")
+            return None, corrected
                 
         except Exception as e:
             logger.error(f"ERRROR; {e}", exc_info=True)
-        return full_img, False
+        return None, corrected
 
-    def rotate_and_crop(self, img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-        try:
-            # Si la imagen es RGB, conviértela a escala de grises para el recorte
-            if img.ndim == 3:
-                mask = img < self.border_cutt
-                #  = np.where(cond, img)
-            else:
-                mask = img < self.border_cutt
+    # def rotate_and_crop(self, img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    #     try:
+    #         # Si la imagen es RGB, conviértela a escala de grises para el recorte
+    #         if img.ndim == 3:
+    #             mask = img < self.border_cutt
+    #             #  = np.where(cond, img)
+    #         else:
+    #             mask = img < self.border_cutt
 
-            coords = np.column_stack(np.where(~mask))
-            if coords.size == 0:
-                return img  # No hay contenido, retorna original
+    #         coords = np.column_stack(np.where(~mask))
+    #         if coords.size == 0:
+    #             return img  # No hay contenido, retorna original
 
-            y_min = coords[:, 0].min()
-            y_max = coords[:, 0].max()
-            x_min = coords[:, 1].min()
-            x_max = coords[:, 1].max()
+    #         y_min = coords[:, 0].min()
+    #         y_max = coords[:, 0].max()
+    #         x_min = coords[:, 1].min()
+    #         x_max = coords[:, 1].max()
 
-            return img[y_min:y_max+1, x_min:x_max+1].astype(np.uint8)
-        except Exception as e:
-            logger.info(f"Error recortando: {e}", exc_info=True)
-        return img
+    #         return img[y_min:y_max+1, x_min:x_max+1].astype(np.uint8)
+    #     except Exception as e:
+    #         logger.info(f"Error recortando: {e}", exc_info=True)
+    #     return img

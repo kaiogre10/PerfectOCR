@@ -33,8 +33,8 @@ def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int):
     return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float64)
 
-def get_rotation_matrix(center: Tuple[int, int], angle: float):
-    return cv2.getRotationMatrix2D(center, angle, 1.0)
+def get_rotation_matrix(center: Tuple[int, int], angle: np.float_):
+    return cv2.getRotationMatrix2D(center, angle, 1.0)  # type: ignore
 
 def get_image_lines(full_img: np.ndarray[Any, Any], canny_thresholds: Tuple[int, int], hough_threshold: int, min_len: int, hough_max_line_gap_px: int):
     edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])

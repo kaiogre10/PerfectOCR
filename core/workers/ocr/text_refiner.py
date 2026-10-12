@@ -85,7 +85,7 @@ class Refiner(OCRAbstractWorker):
                             logger.info(f"{poly}: '{text}', clas: {s_clas} | t_cuant: {poly_data.cuant_chars}")
 
                 if self.output:
-                    file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                    file_name: str = manager.workflow.image_name if manager.workflow else ""
                     save_text_debug(poly_output, file_name)
 
             return True

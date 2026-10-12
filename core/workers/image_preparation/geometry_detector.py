@@ -56,8 +56,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             img = morph_operations(bin_img, self.kernel, self.iterations)
 
             if self.output:
-                metadata = manager.workflow.metadata if manager.workflow else None
-                image_name = metadata.image_name if metadata else ""
+                image_name = manager.workflow.image_name if manager.workflow else ""
                 # imag_id = f"opened_{image_name}_{worker_name}"
                 img_id = f"bin_img_{image_name}"
                 save_croped_image(image_name, img_id, img)
@@ -180,7 +179,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
     #         # contours2.extend(bboxes)
 
     #         if self.output:
-    #             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+    #             image_name = manager.workflow.image_name if manager.workflow else ""
     #             # save_shapes(image_name, "not_valid", full_img, context["output_paths"], contours1, min_bboxes)
     #         return polygons_list
     #     except ValueError as e:

@@ -26,3 +26,6 @@ def release(ptr_addr: int) -> None:
         Llamar dos veces con el mismo puntero es Segmentation Fault.
         Llamar mientras un array de get_array() sigue vivo es undefined behavior.
     """
+
+def rotate(ptr_addr: int, angle: float, center_x: int, center_y: int) -> int:
+    """Manda a rotar la imagen y recibe puntero de la imagen actualizada"""

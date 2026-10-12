@@ -34,7 +34,7 @@ class FinalStructurer(VectorizationAbstractWorker):
                 return False
             
             if self.output or self.stack:
-                file_name = manager.workflow.metadata.image_name if manager.workflow else "" # type: ignore
+                file_name = manager.workflow.image_name if manager.workflow else "" # type: ignore
                 save_debug_table(df, file_name, self.output, self.stack)
                 
             payload, buff_size = self.transform_data(df)
@@ -51,11 +51,11 @@ class FinalStructurer(VectorizationAbstractWorker):
             return pd.DataFrame()
         
         df = structured_data.df_table
-        metadata = manager.workflow.metadata if manager.workflow else None
-        if df is None or df.empty or metadata is None:
-            return pd.DataFrame()
 
-        image_name = metadata.image_name if metadata else ""
+        image_name = manager.workflow.image_name if manager.workflow else ""
+        if df is None or df.empty or not image_name:
+            return pd.DataFrame()
+        
         now_id = _now()
         date_creation = get_time_stamp(now_id, self.date_id_format)
         idx = f"{image_name}{date_creation}{now_id.microsecond:08d}"

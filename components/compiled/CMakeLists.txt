@@ -44,6 +44,7 @@ add_custom_command(
 add_library(image MODULE
     "${CMAKE_CURRENT_SOURCE_DIR}/image.cpp"
     "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/src/image_loader.cpp"
+    "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/src/angle_corrector.cpp"
 )
 
 set_target_properties(image PROPERTIES

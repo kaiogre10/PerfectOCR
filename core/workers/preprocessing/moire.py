@@ -47,7 +47,7 @@ class MoireDenoiser(PreprocessingAbstractWorker):
             logger.info(f"Valor de corrected: {corrected}")
 
             if self.output and corrected:
-                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                image_name = manager.workflow.image_name if manager.workflow else ""
                 worker_name = context.get("worker_name") or "moire"
                 img_id = f"full_img_{image_name}_{worker_name}"
                 save_croped_image(image_name, img_id, full_image, worker_name)

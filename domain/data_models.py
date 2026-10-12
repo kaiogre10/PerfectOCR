@@ -1,7 +1,7 @@
 # domain/data_models.py
 import numpy as np
 import pandas as pd # type: ignore
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from components.compiled.image import release
     
@@ -36,13 +36,8 @@ class StructuredData:
     global_data: Dict[str, Any]
 
 @dataclass(slots=True)
-class Metadata:
-    image_name: str
-    img_dims: Tuple[int, int]
-
-@dataclass(slots=True)
 class WorkflowData:
-    metadata: Optional[Metadata]
+    image_name: str
     polygons: Optional[Dict[str, Polygons]]
     all_lines: Optional[Dict[str, AllLines]]
     table_data: Optional[StructuredData]

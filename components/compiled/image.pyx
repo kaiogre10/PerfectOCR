@@ -2,7 +2,7 @@
 from libc.stdint cimport uint8_t
 from libc.stddef cimport size_t
 from image cimport Image, destroy_image
-from image_loader cimport load_image
+from image_loader cimport load_image, rotate_image
 import numpy as np
 cimport numpy as np
 
@@ -26,6 +26,14 @@ def release(size_t ptr_addr):
     cdef Image* img = <Image*>ptr_addr
     destroy_image(img)
 
-def create_buffer(int new_w, int new_h):
-    cdef int h = new_h
-    cdef int w = new_w
+def rotate(size_t ptr_addr, double angle, int center_x, int center_y):
+    cdef Image* source = <Image*>ptr_addr
+    cdef Image* rotated
+
+    if source == NULL:
+        return None
+
+    rotated = rotate_image(source, angle, center_x, center_y)
+    if rotated == NULL:
+        return None
+    return <size_t>rotated

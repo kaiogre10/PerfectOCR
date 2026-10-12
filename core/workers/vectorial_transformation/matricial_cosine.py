@@ -35,7 +35,7 @@ class MatricialCusine(VectorizationAbstractWorker):
                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                return True
 
-            table_line_ids, array_table = self._compare_vectors(manager)
+            table_line_ids, array_table = self._compare_vectors(manager, context)
             if table_line_ids:
                 if manager.save_tabular_lines(table_line_ids):
                     logger.debug(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s")
@@ -47,15 +47,16 @@ class MatricialCusine(VectorizationAbstractWorker):
             logger.error(f"Error en matriz coseno: '{e}'", exc_info=True)
         return True
 
-    def _compare_vectors(self, manager: DataFormatter) -> Tuple[List[str], Optional[np.ndarray[Any, np.dtype[np.float32]]]]:
+    def _compare_vectors(self, manager: DataFormatter, context: Dict[str, Any]) -> Tuple[List[str], Optional[np.ndarray[Any, np.dtype[np.float32]]]]:
         try:
             polygons_dict = manager.workflow.polygons if manager.workflow else {}
             all_lines_dict = manager.workflow.all_lines if manager.workflow else {}
             if not polygons_dict or not all_lines_dict:
                 return [], None
             
-            metadata = manager.workflow.metadata if manager.workflow else None
-            img_dims: Tuple[int, int] = metadata.img_dims if metadata is not None else (0, 0)
+            # metadata = manager.workflow if manager.workflow else None
+            # img_dims: Tuple[int, int] = metadata.img_dims if metadata is not None else (0, 0)
+            img_dims = context["img_dims"]
             
             line_ids = sorted(all_lines_dict.keys())
             sorted_lines = [all_lines_dict[k] for k in line_ids]

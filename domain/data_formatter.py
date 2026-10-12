@@ -1,5 +1,5 @@
 # domain/data_formatter.py
-from domain.data_models import WorkflowData, StructuredData, Metadata, Polygons, AllLines, Payload, FullImageKey
+from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey
 import numpy as np
 import dataclasses
 import logging
@@ -31,27 +31,30 @@ class DataFormatter:
         
     def create_workflow(self, img_ptr: int, image_name: str) -> bool:
         """Crea un nuevo workflow usando dataclasses"""
-        try:
-            metadata_obj = Metadata(
-                image_name=image_name,
-                img_dims = (0 , 0)
-            )
+        if not self.create_image(img_ptr):
+            raise RuntimeError("ERROR ALMACENANDO IMAGEN EN MEMORIA")
 
+        try:
             self.workflow = WorkflowData(
-                metadata=metadata_obj,
+                image_name=image_name,
                 polygons=None,
                 all_lines=None,
                 table_data=None,
             )
             logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{image_name}'")
+            return True
+
         except Exception as e:
             logger.error(f"No se pudo crear el workflowDict: {e}", exc_info=True)
-            return False
-        
+        return False
+
+    def create_image(self, img_ptr: int) -> bool:
+        if not isinstance(img_ptr, int): # type: ignore
+            raise TypeError("TYPO INCORRECTO")
         try:
             FullImageKey(img_ptr=img_ptr)
         except TypeError as e:
-            logger.error("No se pudo almacenar el puntero")
+            logger.error(f"No se pudo almacenar el puntero: {e}", exc_info=True)
             return False
         
         logger.info(f"PUNTERO ALMACENADO: '{img_ptr}'")
@@ -93,6 +96,16 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error en create_polygon_dicts: {e}", exc_info=True)
         return False
+
+    def get_img_ptr(self) -> Optional[int]:
+        if not FullImageKey.img_ptr:
+            return None
+        
+        ptr = FullImageKey.img_ptr
+        if not isinstance(ptr, int): # type: ignore
+            return None
+        
+        return ptr
             
     def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
         if not FullImageKey.img_ptr:
@@ -120,16 +133,27 @@ class DataFormatter:
             return False
 
         try:
-            full_img = FullImage(ptr)
-            image_dimensions = full_img.shape
-            if self.workflow and self.workflow.metadata:
-                self.workflow.metadata = dataclasses.replace(self.workflow.metadata, img_dims=image_dimensions) # type: ignore
-
             FullImageKey.clear()
             logger.info(f"PUNTERO LIBERADO: '{ptr}'")
 
         except RuntimeError as e:
             logger.error(f"ERROR ELIMINANDO LA FULL IMG: {e}", exc_info=True)
+            return False
+
+        return True
+
+    def update_image(self, new_ptr: int) -> bool:
+        try:
+            try:
+                self.delete_full_img()
+            except RuntimeError as e:
+                logger.error(f"ERROR ELIMINANDO LA IMAGEN VIEJA, {e}", exc_info=True)
+
+            if not self.create_image(new_ptr):
+                raise ReferenceError("ERROR CREANDO BUFFER ACTUALIZADO")
+            
+        except Exception as e:
+            logger.error(f"ERROR ACTUALIZANDO LA IMAGEN, {e}", exc_info=True)
             return False
 
         return True
@@ -232,7 +256,7 @@ class DataFormatter:
                 # Actualizar semantic_clasification
                 updated_polygon = dataclasses.replace(polygon, semantic_clasification=semantic_type[0], cuant_chars=semantic_type[1])
                 self.workflow.polygons[poly_id] = updated_polygon
-                    
+
             return True
             
         except Exception as e:

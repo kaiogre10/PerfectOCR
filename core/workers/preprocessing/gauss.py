@@ -68,7 +68,7 @@ class GaussianDenoiser(PreprocessingAbstractWorker):
                 
                 if self.output:
                     worker_name = context.get("worker_name") or "gauss"
-                    image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                    image_name = manager.workflow.image_name if manager.workflow else ""
                     output_paths = context["output_paths"]
                     save_croped_image(image_name, poly_id, corrected_img, output_paths, worker_name)
 

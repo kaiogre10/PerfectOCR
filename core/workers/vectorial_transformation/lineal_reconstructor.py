@@ -58,7 +58,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
                     context["table_range"] = []
                     
                 if self.output:
-                    file_name = manager.workflow.metadata.image_name if manager.workflow else "" # type: ignore
+                    file_name = manager.workflow.image_name if manager.workflow else "" # type: ignore
                     save_text_debug(lines_info, file_name)
 
                 return True

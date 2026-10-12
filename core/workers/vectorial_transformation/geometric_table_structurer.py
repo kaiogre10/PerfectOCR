@@ -77,7 +77,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     context[DataMathDict.COLS_IDX.value] = cols_idx
                     logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     if self.output:
-                        file_name: str = manager.workflow.metadata.image_name if manager.workflow else ""
+                        file_name: str = manager.workflow.image_name if manager.workflow else ""
                         save_debug_table(df, file_name, None, None)
                     return True
 

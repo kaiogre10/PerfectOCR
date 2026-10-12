@@ -50,7 +50,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             if manager.save_final_output(corrected_df, {}):
                 logger.info(f"DataFrame RECONSTRUIDO en {time.perf_counter() - start_time:.6f}'s:\n{corrected_df.to_string(index=False)}")
                 if self.output:
-                    file_name = manager.workflow.metadata.image_name if manager.workflow.metadata else ""
+                    file_name = manager.workflow.image_name if manager.workflow else ""
                     save_debug_table(corrected_df, file_name, None, None)
                 return True
 

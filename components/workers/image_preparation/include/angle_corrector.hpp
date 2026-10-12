@@ -1,4 +1,8 @@
-#ifndef PERFECTOCR_ANGLE_CORRECTOR_HPP
-#define PERFECTOCR_ANGLE_CORRECTOR_HPP
+#ifndef ANGLE_CORRECTOR_HPP
+#define ANGLE_CORRECTOR_HPP
+#pragma once
+#include "image_container.hpp"
 
-#endif //PERFECTOCR_ANGLE_CORRECTOR_HPP
+Image* rotate_image(Image* source, double angle, int center_x, int center_y);
+
+#endif

@@ -48,6 +48,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # 2. Calcular Coordenadas de Recorte con Padding
             img_h, img_w = full_img.shape[:2]
+            context["img_dims"] = full_img.shape[:2]
             x1, y1, x2, y2 = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
 
             # size_bbox = np.asarray((x2 - x1) * (y2 - y1), dtype=np.int32, order='C',)
@@ -142,7 +143,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             return False
     
     def save_debug(self, polygon: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter, status: str, id: str):
-        metadata = manager.workflow.metadata if manager.workflow else None
-        image_name = metadata.image_name if metadata else ""
+        image_name = manager.workflow.image_name if manager.workflow else ""
         img_id = f"{status}_{id}_close"
         save_croped_image(image_name, img_id, polygon)

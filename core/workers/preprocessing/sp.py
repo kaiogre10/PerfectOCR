@@ -96,7 +96,7 @@ class DoctorSaltPepper(PreprocessingAbstractWorker):
                
             if self.output:
                 worker_name = context.get("worker_name") or "sp"
-                image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                image_name = manager.workflow.image_name if manager.workflow else ""
                 polygons = manager.workflow.polygons if manager.workflow else {}
                 for poly_id, polygon in polygons.items():
                     corrected_img = polygon.cropped_img.cropped_img if polygon.cropped_img else None

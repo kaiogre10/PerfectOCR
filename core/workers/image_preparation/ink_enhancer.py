@@ -35,7 +35,7 @@
 #         """Detecta y restaura texto con tinta gastada."""
 #         # start_time = time.perf_counter()
 #         try:
-#             image_name = manager.workflow.metadata.image_name if manager.workflow else ""
+#             image_name = manager.workflow.image_name if manager.workflow else ""
 #             context["image_name"]= image_name
 #             img_obj = manager.get_full_img()
 #             full_img = img_obj.full_img if img_obj is not None else None

@@ -54,7 +54,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 if manager.update_ocr_results(final_results):
                     logger.debug(f"Batch OCR completado. {len(final_results)} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
                     if self.output:
-                        file_name = manager.workflow.metadata.image_name if manager.workflow else ""
+                        file_name = manager.workflow.image_name if manager.workflow else ""
                         save_text_debug(final_results, file_name)
                     return True
 
