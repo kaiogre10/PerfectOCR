@@ -85,5 +85,4 @@ set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_IMPORT_LIBRARY_PREFIX "")
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-#add_subdirectory(third_party)
 add_subdirectory(components)
