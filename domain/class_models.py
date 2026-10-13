@@ -10,8 +10,8 @@ class SemantiClass(IntEnum):
     NUMERIC = 5 # Strings numericos refernte a cantidades generales, no confudir con "isnumeric()"
 
 class KeyField(IntEnum):
-    total_doc = 1 
-    total_art = 2 
+    total_doc = 1
+    total_art = 2
     subtotal = 3
     folio_doc = 4
     # "nombrecliente": 5 se ajustará su eliminación ya que es innecesario
@@ -22,14 +22,14 @@ class KeyField(IntEnum):
     telefonop = 10
     correop = 11
     direccionp = 12
-    
+
 class DataKeys(StrEnum):
     id_cliente = "id_cliente"
     nombre_cliente = "nombre_cliente"
     total_doc = "total_doc"
     total_art = "total_art"
     total_cal = "total_cal"
-    art_calc = "art_calc" # 
+    art_calc = "art_calc" #
     id_proveedor = "id_proveedor"
     giro = "giro"
     proveedor_norm = "proveedor_norm"
@@ -40,7 +40,7 @@ class DataKeys(StrEnum):
     date_doc = "date_doc"
     monto_iva = "monto_iva"
     subtotal = 'subtotal'
-    
+
     cantidad_art = "cantidad_art"
     precio_unitario = "precio_unitario"
     costo_tran = "costo_tran"
@@ -91,7 +91,7 @@ class DataMathDict(StrEnum):
     TEXT_COL = "text_col"
     SEMANTIC_CLASIFICATION = "semantic_clasification"
     MAX_IDX = "max_idx"
-    
+
 class TypeModels(StrEnum):
     ASCII = "ascii"
     UTF8 = "utf-8"
@@ -102,11 +102,15 @@ class OSModels(Enum):
     WINDOWS=  {".dll": ".lib"}
     LINUX = {".so": ".a"}
     MACOS = {".dylib": ".a"}
-    
+
 class StringsModels(StrEnum):
     NO_MANGER = "NO_MANGER"
     TIME_MASK = "Tiempo: "
     POLYS_IDS = "poly_"
+    OTSU = "otsu"
+    ADAPTATIVE_GAUSS = "adaptative_gauss"
+    SAUVOLA = "sauvola"
+    ADAPTATIVE_MEAN = "adaptative_mean"
 
 class Metrics(StrEnum):
     code = 'code' 

@@ -209,10 +209,11 @@ class FinalStructurer(VectorizationAbstractWorker):
          #               logger.info(f"CONCAT:   '{concat_p_text}' = '{p_end}' + '{con_beg}'")
 
                         sc, _ = fast_classfier(concat_p_text)
+                        if SemantiClass.QUANTITATIVE in sc:
+                            continue
+
                         po = sc[0]
                         pm = sc[1]   # Texto solitario
-                        if po == SemantiClass.QUANTITATIVE or pm == SemantiClass.QUANTITATIVE:
-                            continue
                         if po == pm or _umd_patterns.fullmatch(concat_p_text) or (po == SemantiClass.UMD and pm == SemantiClass.NUMERIC):
                             df.iat[i, pro_idx] = space_removal(orig_p_value + concat_val)
 
@@ -237,7 +238,7 @@ class FinalStructurer(VectorizationAbstractWorker):
         for _, row in enumerate(df.itertuples(index=False, name=None)):
             row = list(row)
             string_row = "".join(row)
-            buff_size += len(string_row.encode(TypeModels.UTF16_CSHARP.value, 'replace'))
+            buff_size += len(string_row.encode(TypeModels.ASCII.value, 'replace'))
             plain_df.append(string_row)
 
         plain_text = "".join(plain_df)

@@ -33,37 +33,35 @@ class AngleCorrector(ImagePrepAbstractWorker):
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
-            full_image = manager.get_full_img()
-            if full_image is None:
-                logger.error(f"No Hay full_img en el Formatter")
-                return False
-            
-            logger.debug("Full_img obtenida con éxito")
-            
-            new_ptr, corrected = self.correct_angle(full_image, manager)
+            new_ptr, corrected = self.correct_angle(manager)
 
             logger.debug(f"Imagen rotada actuallizada con éxito.")
-
-            if corrected:
-                if new_ptr is not None and manager.update_image(new_ptr):
+            if corrected and new_ptr:
+                if manager.update_image(new_ptr):
                     logger.debug(f"Imagen rotada con éxito.")
                     return True
-                
-                return False
+                else:
+                    return False
             
         except Exception as e:
             logger.error(f"Error angular; {e}", exc_info=True)
+            return False
+
         return True
 
-    def correct_angle(self, full_img: np.ndarray[Any, np.dtype[np.uint8]], manager: DataFormatter) -> Tuple[Optional[int], bool]:
-        """Aplica deskew a la imagen si es necesario y retorna la imagen (corregida o no)."""
+    def correct_angle(self, manager: DataFormatter) -> Tuple[Optional[int], bool]:
+        """Aplica deskew a la imagen si es necesario retornando el puntero de la imagen corregida)"""
         corrected = False
         try:
-            h =  full_img.shape[0]
-            w =  full_img.shape[1]
-            
-            center = w // 2, h // 2
-            min_len = min(w // 3, self.hough_min_line_length_cap_px)
+            full_img = manager.get_full_img()
+            if full_img is None:
+                logger.error(f"No Hay full_img en el Formatter")
+                return None, corrected
+
+            h = full_img.shape[0]
+            w = full_img.shape[1]
+
+            min_len = min(w / 3.0, self.hough_min_line_length_cap_px)
             
             lines = get_image_lines(full_img, self.canny_thresholds, self.hough_threshold, min_len, self.hough_max_line_gap_px)
                 
@@ -83,8 +81,9 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 if not img_ptr:
                     logger.error(f"PUNTERO INEXISTENTE: {img_ptr}")
                     return None, corrected
-                 
-                new_ptr = rotate(img_ptr, angle, center[0], center[1]) # type: ignore
+
+                center = (w / 2.0, h / 2.0)
+                new_ptr = rotate(img_ptr, angle, center[0], center[1])
                 if not new_ptr:
                     logger.error(f"PUNTERO ROTADO CON ERROR: {img_ptr}")
                     return None, corrected
@@ -96,7 +95,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
                 
         except Exception as e:
             logger.error(f"ERRROR; {e}", exc_info=True)
-        return None, corrected
+            return None, corrected
 
     # def rotate_and_crop(self, img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     #     try:

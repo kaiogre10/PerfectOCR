@@ -5,7 +5,12 @@ from typing import Any, Optional, List, Dict, Tuple
 import logging
 from skimage.filters import threshold_sauvola, unsharp_mask #type: ignore
 import time
-from core.assets.assets import WHITE, SMALL_NUM, PI_DIV_INV
+from core.assets.assets import WHITE, SMALL_NUM, PI_DIV_INV, C_VALUE, HEIGHT_THRESHOLDS, BLOCK_SIZES_MAP
+from domain.class_models import StringsModels
+
+_c_value = C_VALUE
+_height_thresholds = HEIGHT_THRESHOLDS
+_block_sizes_map = BLOCK_SIZES_MAP
 
 _small_num = SMALL_NUM
 _white = WHITE
@@ -33,38 +38,27 @@ def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int):
     return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float64)
 
-def get_rotation_matrix(center: Tuple[int, int], angle: np.float_):
-    return cv2.getRotationMatrix2D(center, angle, 1.0)  # type: ignore
-
-def get_image_lines(full_img: np.ndarray[Any, Any], canny_thresholds: Tuple[int, int], hough_threshold: int, min_len: int, hough_max_line_gap_px: int):
+def get_image_lines(full_img: np.ndarray[Any, np.dtype[np.uint8]], canny_thresholds: Tuple[float, float], hough_threshold: int, min_len: float, hough_max_line_gap_px: float):
     edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
-    return cv2.HoughLinesP(edges, 1, _pi_div_inv, threshold=hough_threshold, minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
+    return cv2.HoughLinesP(edges, 1.0, _pi_div_inv, threshold=hough_threshold, minLineLength=min_len, maxLineGap=hough_max_line_gap_px)
 
-def rotate_matrix(full_img: np.ndarray[Any, Any], rotation_matrix: np.ndarray[Any, Any], new_w: int, new_h: int):
-    return cv2.warpAffine(full_img, rotation_matrix, (new_w, new_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=_white)
-
-def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], worker_config: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    if is_binarized(cropped_img):
+def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
+    if np.all((cropped_img == 0) | (cropped_img == 255)): # VALIDAR SI LA IMAGEN ES BINARIA
         return make_contiguous(cropped_img)
-        
-    c_value: int = worker_config.get('c_value', 7)
-    height_thresholds: List[int] = worker_config.get('height_thresholds_px', [100, 800, 1500, 2500])
-    block_sizes_map: List[int] = worker_config.get('block_sizes_map', [15, 21, 25, 35, 41])
+
     height = int(cropped_img.shape[0])
 
-    block = get_adaptive_block_size(height, height_thresholds, block_sizes_map)
+    block = get_adaptive_block_size(height, _height_thresholds, _block_sizes_map)
     mode: str = measure_polygon_quality(cropped_img)
 
-    cropped_img = make_contiguous(cropped_img)
-
-    if mode == "otsu":
+    if mode == StringsModels.OTSU.value:
         bin_img = otsu_binarize(cropped_img)
-    elif mode == "adaptive_gaussian":
-        bin_img = adaptive_binarize(cropped_img, block, c_value)
-    elif mode == "sauvola":
+    elif mode == StringsModels.ADAPTATIVE_GAUSS.value:
+        bin_img = adaptive_binarize(cropped_img, block, _c_value)
+    elif mode == StringsModels.SAUVOLA.value:
         bin_img = sauvola_binarize(cropped_img, block)
     else:
-        bin_img = adaptive_mean_fallback(cropped_img, block, c_value)
+        bin_img = adaptive_mean_fallback(cropped_img, block, _c_value)
 
     return make_contiguous(cv2.bitwise_not(bin_img))
    
@@ -83,23 +77,25 @@ def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) ->
     decidir el mejor método de binarización.
     """
     std = np.std(cropped_img, dtype=np.float32)
-    if std == 0: return "adaptive_mean"
-    hist = cv2.calcHist([cropped_img], [0], None, [255], [0, 255]).flatten()
+    if std < _small_num:
+        return StringsModels.ADAPTATIVE_MEAN.value
+
+    hist = cv2.calcHist([cropped_img], [0], None, [255], [0, 255]).flatten(order='C')
     peaks = np.sum((hist[1:-1] > hist[:-2]) & (hist[1:-1] > hist[2:]), dtype=np.float32)
     prob = hist / np.sum(hist, dtype=np.float32)
     entropy = -np.sum(prob * np.log2(prob + _small_num))
 
     if peaks > 1.0 and std > 30.0:
-        return "otsu"  # Alto contraste, bimodal
+        return StringsModels.OTSU.value  # Alto contraste, bimodal
 
     elif std > 20.0 and entropy > 5.0:
-        return "adaptive_gaussian"  # Contraste variable
+        return StringsModels.ADAPTATIVE_GAUSS.value  # Contraste variable
 
     elif std > 10.0:
-        return "sauvola"  # Texto sobre fondo no uniforme
+        return StringsModels.SAUVOLA.value  # Texto sobre fondo no uniforme
 
     else:
-        return "adaptive_mean"  # Bajo contraste, imagen "plana"
+        return StringsModels.ADAPTATIVE_MEAN.value  # Bajo contraste, imagen "plana"
 
 def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     results = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -127,17 +123,6 @@ def apply_sharpening_correction(cropped_img_np: np.ndarray[Any, np.dtype[np.uint
 
 def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)))
-
-def decolorate(full_img: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
-    """Elimina colores (rayones, resaltados, etc.) de la imagen, dejando solo blanco y negro."""
-    mask_black = np.all(full_img[:, :, :3] < 160, axis=2)
-    mask_white = np.all(full_img[:, :, :3] > 180, axis=2)
-    mask_valid = mask_black | mask_white
-
-    fill = _four_white if full_img.shape[2] == 4 else _white
-    full_img[~mask_valid] = fill
-    
-    return full_img
 
 # def get_conected_comps_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]):
 #     # img_bin: imagen binaria (uint8, valores 0/255)
@@ -305,10 +290,6 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
 #     # logger.info(f"METRICS LIST: {metrics_array.shape}")
 #     logger.info(f"Tiempo extrayendo métricas VECTOROIZADAS: {time.perf_counter()-time0:.6f}'s")
 #     return valid_coords, metrics_array
-
-def is_binarized(img: np.ndarray[Any, Any]):
-    """True si es una imagen está binarizada"""
-    return np.all((img == 0) | (img == 255))
 
 def configure_kernel(x: int, y: int):
     return cv2.getStructuringElement(cv2.MORPH_CROSS, (x, y))

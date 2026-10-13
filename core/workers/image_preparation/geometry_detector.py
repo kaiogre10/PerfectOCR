@@ -46,12 +46,12 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.error("PaddleOCR no inicializado.")
                 return False
 
-            full_imag = manager.get_full_img()
-            if full_imag is None:
-                logger.error(f"No Hay full_img en el Formatter")
+            copy_ptr, full_imag = manager.get_img_copy()
+            if full_imag is None or copy_ptr is None:
+                logger.error(f"No se pudo sacar la copia en el Formatter")
                 return False
             
-            bin_img = binarice_img(full_imag.copy(order='C'), {})
+            bin_img = binarice_img(full_imag)
 
             img = morph_operations(bin_img, self.kernel, self.iterations)
 
@@ -64,7 +64,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 
             # paddle_time = time.perf_counter()
             polygons: Optional[list[list[list[int]]]] = engine.ocr(img=img, det=True, cls=False, rec=False)[0]
-            del img
+
+            if not manager.free_copy(copy_ptr):
+                raise RuntimeError("ERROR LIBERANDO COPIA EN MANAGER")
+            
             # logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
             if not polygons:
                 logger.critical("No hay polygonos detectados")

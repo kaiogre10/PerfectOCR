@@ -9,19 +9,17 @@ from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
 from utils.compiled_utils import validate_text
 from core.assets.patterns import cleaner_pattern
+from core.assets.assets import KF_REALOCATABLES, KF_IGNORED
 from domain.class_models import SemantiClass, KeyField
 
 _cleaner_pattern = cleaner_pattern
-kf_decimals = {1, 2, 3, 4, 8}
-kf_relocatables = set(kf_decimals.union({7}))
-kf_ignored = {6, 9}
-sc_forb = {-1, 0, 2, 4, 5}
+_kf_relocatables = KF_REALOCATABLES
+_kf_ignored = KF_IGNORED
 
 logger = logging.getLogger(__name__)
 
 class DataFinder(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
-        __slots__ = ("_model")
         super().__init__(config, project_root)
         self._model = None
 
@@ -89,7 +87,7 @@ class DataFinder(OCRAbstractWorker):
 
                 if not ocr_text.isalpha():
                     ocr_text = _cleaner_pattern.sub("", ocr_text).strip()
-                
+
                 if not validate_text(ocr_text):
                     logger.debug(f"Texto INVÁLIDO: '{ocr_text}' | sc: {poly.semantic_clasification}")
                     continue
@@ -157,9 +155,11 @@ class DataFinder(OCRAbstractWorker):
             poly_kf = poly.key_field or []
             if not poly_kf:
                 continue
-            if any(kf in kf_ignored for kf in poly_kf):
+
+            if any(kf in _kf_ignored for kf in poly_kf):
                 continue
-            if any(kf in kf_relocatables for kf in poly_kf):
+
+            if any(kf in _kf_relocatables for kf in poly_kf):
                 if pid not in updates_to_validate:
                     updates_to_validate[pid] = poly_kf
 
@@ -218,19 +218,19 @@ class DataFinder(OCRAbstractWorker):
             if not kf_list:
                 continue
 
-            if any(kf in kf_ignored for kf in kf_list):
+            if any(kf in _kf_ignored for kf in kf_list):
                 new_updates[poly_id] = kf_list
                 continue
 
             poly_obj = polygons.get(poly_id)
             if not poly_obj:
-                neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in kf_list]
+                neg_kf = [-abs(kf) if kf in _kf_relocatables else kf for kf in kf_list]
                 new_updates[poly_id] = neg_kf
                 # logger.info(f"KF SIN POLÍGONO ORIGEN, REASIGNADO A NEGATIVO: {poly_id} -> {neg_kf}")
                 continue
 
             poly_idx = poly_obj.poly_index
-            should_relocate = any(kf in kf_relocatables for kf in kf_list)
+            should_relocate = any(kf in _kf_relocatables for kf in kf_list)
 
             if not should_relocate:
                 new_updates[poly_id] = kf_list
@@ -239,7 +239,7 @@ class DataFinder(OCRAbstractWorker):
 
             target_id = ""
             for kf_value in kf_list:
-                if kf_value in kf_relocatables:
+                if kf_value in _kf_relocatables:
                     target_id = _find_neighbor(poly_idx, kf_value)
                     if target_id:
                         break
@@ -250,17 +250,17 @@ class DataFinder(OCRAbstractWorker):
                 target_poly = polygons.get(target_id)
                 target_text = ((target_poly.ocr_text or "") if target_poly else "").strip()
                 source_existing_kf = poly_obj.key_field or []
-                if any(kf in kf_relocatables for kf in source_existing_kf):
-                    source_neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in source_existing_kf]
+                if any(kf in _kf_relocatables for kf in source_existing_kf):
+                    source_neg_kf = [-abs(kf) if kf in _kf_relocatables else kf for kf in source_existing_kf]
                     new_updates[poly_id] = source_neg_kf
                 logger.debug(
                     f"KF REUBICADO: {poly_id} -> {target_id} | {kf_list} | "
                     f"TEXTO ORIGEN: '{source_text}' | TEXTO DESTINO: '{target_text}'"
                 )
-                if any(kf in kf_relocatables for kf in source_existing_kf):
+                if any(kf in _kf_relocatables for kf in source_existing_kf):
                     logger.info(f"KF ORIGEN MARCADO NEGATIVO TRAS REUBICACIÓN: {poly_id} -> {new_updates[poly_id]}")
             else:
-                neg_kf = [-abs(kf) if kf in kf_relocatables else kf for kf in kf_list]
+                neg_kf = [-abs(kf) if kf in _kf_relocatables else kf for kf in kf_list]
                 new_updates[poly_id] = neg_kf
                 source_text = (poly_obj.ocr_text or "").strip()
                 logger.debug(

@@ -7,7 +7,7 @@ namespace {
     const int white_thr = 180;
     const cv::Scalar three_channels = cv::Scalar(255, 255, 255);
     const cv::Scalar four_channels = cv::Scalar(255, 255, 255, 255);
-};
+}
 
 namespace image_utils {
     void decolorate(cv::Mat& image) {

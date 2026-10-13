@@ -154,10 +154,10 @@ class GeometryDetect(ConfigWithNumpy):
 
 class DeskewConfig(ConfigWithNumpy):
     min_angle_for_correction: float
-    canny_thresholds: List[int]
+    canny_thresholds: List[float]
     hough_threshold: int
-    hough_min_line_length_cap_px: int
-    hough_max_line_gap_px: int
+    hough_min_line_length_cap_px: float
+    hough_max_line_gap_px: float
     hough_angle_filter_range_degrees: List[float]
 
 class CuttingConfig(ConfigWithNumpy):

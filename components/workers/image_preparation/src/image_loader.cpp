@@ -25,7 +25,7 @@ Image* load_image(const char* filepath) {
     const int width = image_temp.cols;    // Número de columnas = ancho
     const int height = image_temp.rows;   // Número de filas = alto
 
-    Image* image = new Image(image_temp.cols, image_temp.rows, channels);
+    Image* image = new Image(width, height, channels);
 
     const size_t total_bytes = image_temp.total() * image_temp.elemSize();
     if (total_bytes != image->size()) {

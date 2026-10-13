@@ -27,5 +27,11 @@ def release(ptr_addr: int) -> None:
         Llamar mientras un array de get_array() sigue vivo es undefined behavior.
     """
 
-def rotate(ptr_addr: int, angle: float, center_x: int, center_y: int) -> int:
+def rotate(ptr_addr: int, angle: float, center_x: float, center_y: float) -> int:
     """Manda a rotar la imagen y recibe puntero de la imagen actualizada"""
+
+def copy_image(ptr_addr: int) -> int:
+    """Crea una copia independiente de la imagen y devuelve su handle opaco.
+
+    La copia conserva sus propios bytes y debe liberarse con release().
+    """

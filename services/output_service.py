@@ -148,13 +148,18 @@ def to_serializable(obj: Any) -> Any:
         return obj
         
 def write_temp_log(payload_temp: str) -> bool:
-    if not payload_temp:
-        raise TypeError("DATOS PARA REGISTRO VACIOS")
-    
-    with open(TEMP_FILE, "a", encoding=TypeModels.UTF16_CSHARP.value) as file_temp:
-        # time = get_time_stamp(False)
-        file_temp.write(f"{payload_temp}\n")
-        return True
+    try:
+        if not payload_temp:
+            raise TypeError("DATOS PARA REGISTRO VACIOS")
+
+        with open(TEMP_FILE, "a", encoding=TypeModels.ASCII.value) as file_temp:
+            # time = get_time_stamp(False)
+            file_temp.write(f"{payload_temp}\n")
+            return True
+
+    except IOError as e:
+        logger.error(f"NO SE PUDO SERIALIZAR COPIA FALLBACK: {e}", exc_info=True)
+        return False
 
 def serialize_arrays(array_input: np.ndarray[Any, Any]):
     logger.info(f"ARRAY INPUT:\n"f"{array_input.shape}")

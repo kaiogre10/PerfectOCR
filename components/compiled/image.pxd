@@ -13,4 +13,3 @@ cdef extern from "image_container.hpp":
         size_t size() const
 
     void destroy_image(Image* img) noexcept
-    

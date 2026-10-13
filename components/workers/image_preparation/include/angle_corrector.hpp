@@ -3,6 +3,6 @@
 #pragma once
 #include "image_container.hpp"
 
-Image* rotate_image(Image* source, double angle, int center_x, int center_y);
+Image* rotate_image(Image* source, double angle, double center_x, double center_y);
 
 #endif

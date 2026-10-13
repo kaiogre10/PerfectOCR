@@ -1,6 +1,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 from libc.stdint cimport uint8_t
 from libc.stddef cimport size_t
+from libc.string cimport memcpy
 from image cimport Image, destroy_image
 from image_loader cimport load_image, rotate_image
 import numpy as np
@@ -26,7 +27,7 @@ def release(size_t ptr_addr):
     cdef Image* img = <Image*>ptr_addr
     destroy_image(img)
 
-def rotate(size_t ptr_addr, double angle, int center_x, int center_y):
+def rotate(size_t ptr_addr, double angle, double center_x, double center_y):
     cdef Image* source = <Image*>ptr_addr
     cdef Image* rotated
 
@@ -37,3 +38,15 @@ def rotate(size_t ptr_addr, double angle, int center_x, int center_y):
     if rotated == NULL:
         return None
     return <size_t>rotated
+
+def copy_image(size_t ptr_addr):
+    cdef Image* image
+    cdef Image* copy
+
+    if ptr_addr == 0:
+        raise ValueError("El puntero de la imagen no puede ser nulo")
+
+    image = <Image*>ptr_addr
+    copy = new Image(image.width(), image.height(), image.channels())
+    memcpy(copy.data(), image.data(), image.size())
+    return <size_t>copy

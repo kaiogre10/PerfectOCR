@@ -117,6 +117,7 @@ def correct_subfix(text: str) -> str:
 
     elif not bool(_los_search_patt.search(text)) and bool(_los_suffix_pattern.search(text)):
         return _los_suffix_pattern.sub(_los_str, text)
+
     elif bool(_swap_term_cuant.fullmatch(text)):
         return text.replace("$", "S")
     else:

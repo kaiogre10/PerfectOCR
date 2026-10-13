@@ -8,6 +8,7 @@ import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass, StringsModels
 from domain.full_image import FullImage
+from components.compiled.image import copy_image, release
 
 logger = logging.getLogger(__name__)
 
@@ -47,18 +48,6 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"No se pudo crear el workflowDict: {e}", exc_info=True)
         return False
-
-    def create_image(self, img_ptr: int) -> bool:
-        if not isinstance(img_ptr, int): # type: ignore
-            raise TypeError("TYPO INCORRECTO")
-        try:
-            FullImageKey(img_ptr=img_ptr)
-        except TypeError as e:
-            logger.error(f"No se pudo almacenar el puntero: {e}", exc_info=True)
-            return False
-        
-        logger.info(f"PUNTERO ALMACENADO: '{img_ptr}'")
-        return True
     
     def create_polygon_dicts(self, results: List[Dict[str, Any]]) -> bool:
         """Refactorizado para usar validación + dataclasses"""
@@ -97,6 +86,18 @@ class DataFormatter:
             logger.error(f"Error en create_polygon_dicts: {e}", exc_info=True)
         return False
 
+    def create_image(self, img_ptr: int) -> bool:
+        if not isinstance(img_ptr, int): # type: ignore
+            raise TypeError("TYPO INCORRECTO")
+        try:
+            FullImageKey(img_ptr=img_ptr)
+        except TypeError as e:
+            logger.error(f"No se pudo almacenar el puntero: {e}", exc_info=True)
+            return False
+        
+        logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
+        return True
+
     def get_img_ptr(self) -> Optional[int]:
         if not FullImageKey.img_ptr:
             return None
@@ -106,6 +107,28 @@ class DataFormatter:
             return None
         
         return ptr
+
+    def get_img_copy(self):
+        """Devuelve imagen copiada y su puntero para futuras liberaciones"""
+        ptr = self.get_img_ptr()
+        if not ptr or not isinstance(ptr, int): # type: ignore
+            return None, None
+        
+        copy_ptr = copy_image(ptr)
+        
+        full_img = FullImage(copy_ptr)
+        return copy_ptr, full_img.data
+
+    def free_copy(self, copy_ptr: int):
+        try:
+            release(ptr_addr=copy_ptr)
+            del copy_ptr
+        except RuntimeError as e:
+            logger.error(f"ERROR ELIMINANDO LA COPIA: {e}", exc_info=True)
+            return False
+        
+        logger.warning("COPIA LIBERADA ÉXITOSAMENTE")
+        return True
             
     def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
         if not FullImageKey.img_ptr:
@@ -134,7 +157,7 @@ class DataFormatter:
 
         try:
             FullImageKey.clear()
-            logger.info(f"PUNTERO LIBERADO: '{ptr}'")
+            logger.debug(f"PUNTERO LIBERADO: '{ptr}'")
 
         except RuntimeError as e:
             logger.error(f"ERROR ELIMINANDO LA FULL IMG: {e}", exc_info=True)

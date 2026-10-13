@@ -136,5 +136,5 @@ def format_elapsed_time(seconds: float) -> str:
 #         return True
 
 def reset_temp_file(TEMP_FILE: str):
-    with open(TEMP_FILE, "w", encoding=TypeModels.UTF16_CSHARP.value):
+    with open(TEMP_FILE, "w", encoding=TypeModels.ASCII.value):
         pass

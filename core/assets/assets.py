@@ -121,7 +121,7 @@ DENSITY_ENCODER: Dict[str, float] = {
     " ": 114.0
 }
 
-VECT_REF = np.asarray([1.0, 0.0], dtype=np.float32) # eje X positivo
+VECT_REF = np.asarray([1.0, 0.0], dtype=np.float32, order='C') # eje X positivo
 
 VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.asarray([
     0.997321218,
@@ -157,7 +157,7 @@ VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.asarray([
     0.836353079,
     1.0,
     1.0
-], dtype=np.float32, order='C').reshape(1, -1)
+], dtype=np.float32, order='C').reshape((1, -1), order='C')
 
 FEATURES_NAME: List[str] = [
     "line_id",
@@ -248,6 +248,8 @@ REPLACEMENT_MAP: Dict[str, str] = {
     'five': NumberStr.FIVE, 'six': NumberStr.SIX, 'seven': NumberStr.SEVEN, 'eight': NumberStr.EIGHT, 'nine': NumberStr.NINE
 }
 
+KF_REALOCATABLES = set([1, 2, 3, 4, 7, 8])
+KF_IGNORED = set([6, 9])
 KF_LIST = tuple([4, 6, 3, 2, 1])
 KF_RANGE = (1, 13)
 SC_RANGE = (0, 6)
@@ -286,3 +288,7 @@ EXCLUDED_DIRS = ["components", ".git", ".vscode", ".idea", "documentation", "mod
 NO_DEL: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")
 
 ALL_FILES_TYPES: Set[str] = set(INVALID_EXTENSIONS).union(VALID_IMG_EXT, TRASH_EXT, NO_DEL)
+
+C_VALUE: int = 7
+HEIGHT_THRESHOLDS: List[int] = [100, 800, 1500, 2500]
+BLOCK_SIZES_MAP: List[int] = [15, 21, 25, 35, 41]

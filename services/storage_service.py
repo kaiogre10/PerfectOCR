@@ -33,7 +33,7 @@ def storage_data(texts: List[str]) -> Optional[List[int]]:
         if not raw_payload:
             raise EncodingWarning("ERROR CONVIRTIENDO BYTES")
         
-        len_bytes = len(raw_payload) * 2
+        len_bytes = len(raw_payload)
         
         if len_bytes < len(plain_texts):
             raise ArithmeticError("ERROR TAMAÑO BYTES")
@@ -42,7 +42,7 @@ def storage_data(texts: List[str]) -> Optional[List[int]]:
         if not ptr:
             raise ctypes.ArgumentError("ERROR DE PUNTEROS")
             
-        ctypes.memmove(ptr, raw_payload.decode(TypeModels.ASCII.value).encode(TypeModels.UTF16_CSHARP.value), len_bytes) # Guardar bytes typados
+        ctypes.memmove(ptr, raw_payload.decode(TypeModels.ASCII.value).encode(TypeModels.ASCII.value), len_bytes) # Guardar bytes typados
         LIB.commit_buffer() # Avisar que ya están guardados
         buffers.append(len_bytes)
 

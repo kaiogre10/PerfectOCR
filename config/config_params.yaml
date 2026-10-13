@@ -44,10 +44,10 @@ modules:
       
     angle_corrector:
       min_angle_for_correction: 0.9
-      canny_thresholds: [70, 120]
+      canny_thresholds: [70.0, 120.0]
       hough_threshold: 150
-      hough_min_line_length_cap_px: 250
-      hough_max_line_gap_px: 20
+      hough_min_line_length_cap_px: 250.0
+      hough_max_line_gap_px: 20.0
       hough_angle_filter_range_degrees: [-22.5, 22.5]
       
     geometry_detect:

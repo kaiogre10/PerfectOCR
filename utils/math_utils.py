@@ -29,13 +29,13 @@ def alignment(ref_c: List[float], other_c: List[float]) -> float:
     if not other_c:
         return 1.0
     
-    ref_point = np.asarray([ref_c[0], 0.0], dtype=np.float32)
-    vec_to_other = np.asarray([other_c[0] - ref_point[0], other_c[1] - ref_point[1]], dtype=np.float32)
-    
-    if np.linalg.norm(vec_to_other) == 0.0:
+    ref_point = np.asarray([ref_c[0], 0.0], dtype=np.float32, order='C')
+    vec_to_other = np.asarray([other_c[0] - ref_point[0], other_c[1] - ref_point[1]], dtype=np.float32, order='C')
+    norm_other = np.linalg.norm(vec_to_other)
+    if norm_other < _small_num:
         return 1.0
     
-    cosine = np.dot(vec_to_other, _ref_vec) / (np.linalg.norm(vec_to_other))
+    cosine = np.dot(vec_to_other, _ref_vec) / norm_other
     return 1.0 - abs(cosine)
 
 def get_morphological_encode(text: str) -> float:
@@ -47,7 +47,6 @@ def get_morphological_encode(text: str) -> float:
             counter += 1
 
     return counter if counter != 0.0 else _small_num
-    # return sum(map(lambda ch: 1.0 if ch in _cuant_char else -1.0 if ch.isalpha() else 0.0, text))
 
 def encode_text(text: str, encoder: Dict[str, float]) -> float:
     return sum([encoder.get(char, " ") for char in text])   # type: ignore
@@ -215,8 +214,8 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     total_height = img_dims[0] or 0.0
     total_size = total_width * total_height
     
-    line_id = np.asarray([lid.line_index for lid in sorted_lines], dtype=np.float32)
-    all_bboxes = np.asarray([line.line_bbox for line in sorted_lines], dtype = np.float32)
+    line_id = np.asarray([lid.line_index for lid in sorted_lines], dtype=np.float32, order='C')
+    all_bboxes = np.asarray([line.line_bbox for line in sorted_lines], dtype = np.float32, order='C')
     x, y, w, h = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
     
     width = (w - x)
@@ -430,14 +429,14 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     has_digit = np.where(dec_chars > 1.0, 1.0, -1.0)
     
     if np.all(kf_count < 1):
-        has_kf = np.zeros((kf_count.size), dtype=np.float32)
+        has_kf = np.zeros((kf_count.size), dtype=np.float32, order='C')
     else:
         has_kf = np.where(kf_count == 0, 1.0, -1.0)
     
     if max_sc_quant > 0:
         num_count_norm = (2.0 * sc_quants / max_sc_quant) - 1.0
     else:
-        num_count_norm = np.full_like(sc_quants, -1.0, dtype=np.float32)
+        num_count_norm = np.full_like(sc_quants, -1.0, dtype=np.float32, order='C')
     
     if max_digit > 0:
         digit_char_frec = (2.0 * dec_chars / float(max_digit)) - 1.0
@@ -445,8 +444,8 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
         dig_marg = (dec_chars - dec_mean) / (max_digit / 2.0)
         dig_margin = np.clip(dig_marg, -1.0, 1.0, dtype=np.float32)
     else:
-        digit_char_frec = np.full_like(dec_chars, -1.0, dtype=np.float32)
-        dig_margin = np.zeros_like(dec_chars, np.float32)
+        digit_char_frec = np.full_like(dec_chars, -1.0, dtype=np.float32, order='C')
+        dig_margin = np.zeros_like(dec_chars, np.float32, order='C')
         
     has_quant = np.where(sc_quants > 0, 1.0, -1.0)
     
