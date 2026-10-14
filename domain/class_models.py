@@ -99,12 +99,12 @@ class TypeModels(StrEnum):
 
 class OSModels(Enum):
     """[0]Bibliotecas, [1] Librerias"""
-    WINDOWS=  {".dll": ".lib"}
+    WINDOWS = {".dll": ".lib"}
     LINUX = {".so": ".a"}
     MACOS = {".dylib": ".a"}
 
 class StringsModels(StrEnum):
-    NO_MANGER = "NO_MANGER"
+    NO_MANGER = "NO_MANAGER"
     TIME_MASK = "Tiempo: "
     POLYS_IDS = "poly_"
     OTSU = "otsu"
@@ -124,3 +124,21 @@ class Metrics(StrEnum):
     cplusplus = 'cplusplus'
     cython = 'cython'
     sql = "sql"
+
+class Params(StrEnum):
+    CHAR_NGRAMS = "char_ngrams"
+    WF_PATH = "wf_path"
+    NGRAMS_NAME = "ngrams_name"
+    MATRIX_NAME = "matrix_name"
+    PKL_PATH = "pkl_path"
+    MATRIX_PATH = "matrix_path"
+    MATRIX_FOLDER = "matrix_folder"
+    KF_PATH = "kf_path"
+    KF_FOLDER = "kf_folder"
+    KEY_FIELD = "key_field"
+    KEY_WORD = "key_word"
+    SIMILARITY = "similarity"
+    TEXT = "text"
+    NORM_OCR_TEXT = "norm_ocr_text"
+    START = "start"
+    END = "end"

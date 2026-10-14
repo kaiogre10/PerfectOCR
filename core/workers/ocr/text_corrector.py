@@ -90,7 +90,6 @@ class TextCorrector(OCRAbstractWorker):
             return True
         
     def _apply_corrections(self, text: str, semantic_clasification: List[int]) -> str:
-        text = text.strip()
         if " " in text:
             if bool(_bad_title.fullmatch(text)):
                 text = text.replace(" ", "").strip()

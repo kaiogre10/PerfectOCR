@@ -26,7 +26,7 @@ def save_image(data: np.ndarray[Any, np.dtype[np.uint8]], output_dir: str, file_
     except Exception as e:
         basic_exc_logger(f"Error guardando '{file_name}' imagen: {e}")
     
-def load_pickle(pkl_path: str, mode: str):
+def load_pickle(pkl_path: str, mode: str) -> Dict[str, Any]:
     """Carga pickle"""
     if not os.path.exists(pkl_path):
         raise FileNotFoundError(f"Pickle no encontrado en {pkl_path}")

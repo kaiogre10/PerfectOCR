@@ -123,7 +123,7 @@ DENSITY_ENCODER: Dict[str, float] = {
 
 VECT_REF = np.asarray([1.0, 0.0], dtype=np.float32, order='C') # eje X positivo
 
-VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.asarray([
+VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.ascontiguousarray(np.asarray([
     0.997321218,
     0.969818993,
     1.011409402,
@@ -157,7 +157,9 @@ VECTOR_DUMMIE: np.ndarray[Any, np.dtype[np.float32]] = np.asarray([
     0.836353079,
     1.0,
     1.0
-], dtype=np.float32, order='C').reshape((1, -1), order='C')
+], dtype=np.float32, order='C').reshape((1, -1)))
+
+DUMMY_NORM = np.linalg.norm(VECTOR_DUMMIE)
 
 FEATURES_NAME: List[str] = [
     "line_id",
@@ -274,7 +276,7 @@ WHITE = [255, 255, 255]
 BLACK = [0, 0, 0]
 
 PI_DIV = (180.0 / np.pi)
-PI_DIV_INV = np.pi/180
+PI_DIV_INV = (np.pi / 180)
 SMALL_NUM = 1e-8
 
 VALID_IMG_EXT = frozenset([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".pbm", ".pgm", ".ppm", ".jp2"])

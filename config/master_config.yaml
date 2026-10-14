@@ -5,7 +5,7 @@ system_params:
   system_paths:
     output_paths: ["output"]
     temp_path: ["safe_temp", "tmp_file.txt"]
-    compile_command: ["setup.py", "build_ext", "--inplace"]
+    compile_command: ["setup.py", "build_ext", "--inplace", "--verbose"]
     comp_funcs_file: ["utils", "compiled_utils", "compiled_funcs.pyx"]
 
 deploy_settings:
@@ -112,7 +112,7 @@ enabled_outputs:
     stack: False
 
 env_config:
-  'OMP_NUM_THREADS': '4'
+  'OMP_NUM_THREADS': '1'
   'MKL_NUM_THREADS': '4'
   'FLAGS_use_mkldnn': '1'
   'MKL_DYNAMIC': 'TRUE'
@@ -121,3 +121,5 @@ env_config:
   'OPENBLAS_NUM_THREADS': '1'
   'NUMEXPR_NUM_THREADS': '1'
   'MKL_DISABLE_FAST_MM': '0'
+  'CC': 'icx'
+  'CXX': 'icpx'

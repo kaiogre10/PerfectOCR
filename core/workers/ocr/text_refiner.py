@@ -202,7 +202,7 @@ class Refiner(OCRAbstractWorker):
                 qtext = get_cuants(text)
                 # logger.info(f"POTENCIAL CUANTS: '{text}' -> '{qtext}'")
                 if qtext != text and self.refined_text:
-                    logger.info(f"CUANT ENCONTRADO: '{poly}' | Texy: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
+                    logger.info(f"CUANT ENCONTRADO: '{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
                 text = qtext
 
             if contains_umd(text):

@@ -48,7 +48,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # 2. Calcular Coordenadas de Recorte con Padding
             img_h, img_w = full_img.shape[:2]
-            context["img_dims"] = full_img.shape[:2]
             x1, y1, x2, y2 = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
 
             # size_bbox = np.asarray((x2 - x1) * (y2 - y1), dtype=np.int32, order='C',)
@@ -113,9 +112,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 if self.output:
                     self.save_debug(cropped, manager, "all_valid", new_id)
 
-            if manager.delete_full_img():
-                logger.info("FULL IMAGE LIBERADA")
-            else:
+            if not manager.free_buffer():
                 logger.error("NO SE PUDO LIBERAR FULL IMAGE")
 
             # 4. Actualización Final y Limpia en el Manager

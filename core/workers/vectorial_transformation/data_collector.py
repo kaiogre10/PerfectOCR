@@ -57,6 +57,7 @@ class FinalStructurer(VectorizationAbstractWorker):
             return pd.DataFrame()
         
         now_id = _now()
+
         date_creation = get_time_stamp(now_id, self.date_id_format)
         idx = f"{image_name}{date_creation}{now_id.microsecond:08d}"
         

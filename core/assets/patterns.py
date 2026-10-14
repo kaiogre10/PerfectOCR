@@ -14,7 +14,6 @@ _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|j
 _c_variants = r"[Cc]"
 _cp_letters = r'(?:C\.?\s*P\.?|C\s+P|CP)'
 _bic_variants = r"\b(B(1C|lC|\|C|¡C|!C))\b"
-space_pattern: Pattern[bytes] = re.compile(rb"\s+", re.IGNORECASE)
 
 _digits_base = r'0123456789'
 _zero_base = r'OQoD'
@@ -31,7 +30,9 @@ _nine_base = r'qg'
 _all_zeros = rf"[0{_zero_base}]"
 _extended_digits = rf"[{_digits_base}{_zero_base}{_one_base}{_two_base}{_four_base}{_five_base}{_six_base}{_seven_base}{_eight_base}{_nine_base}]"   # [0-9OQoD|liI!¡Zz?A$SsG/Bqg]
 
-cleaner_pattern = re.compile(r"[^a-zA-Z\s]", re.IGNORECASE)
+cleaner_pattern = re.compile(rb"[^a-zA-Z\s]", re.IGNORECASE)
+space_pattern: Pattern[bytes] = re.compile(rb"\s+", re.IGNORECASE)
+
 float_time = re.compile(r"Tiempo:\s*(\d+\.\d)\b")
 _stick_chars = r'[!1lIi¡]'
 _stick_set = _stick_chars[1:-1]
@@ -75,9 +76,9 @@ _los_typos_regex = (
 )
 los_suffix_pattern = re.compile(_los_typos_regex)
 
-_extension_str = r'\.[A-Za-z]+'
-file_name_pattern = re.compile(rf"(?<={_diagonal_variants2})[\w.-]+{_extension_str}$")
-extension_suffix = re.compile(rf"{_extension_str}$")
+_extension_str = r'\.[A-Za-z]+$'
+file_name_pattern = re.compile(rf"(?<={_diagonal_variants2})[\w.-]+{_extension_str}")
+extension_suffix = re.compile(rf"{_extension_str}")
 
 has_digit_pattern = re.compile(r"\d", re.IGNORECASE)
 swap_term_cuant = re.compile(r'^[A-Za-z]+\$$')

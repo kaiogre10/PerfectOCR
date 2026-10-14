@@ -6,6 +6,8 @@ from typing import Dict, Any, Optional
 from utils.word_finder import WordFinder
 from paddleocr import PaddleOCR # type: ignore
 from core.factory.model_factory import MatrixFactory
+from domain.class_models import Params
+from utils.paths import validate_files
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +124,11 @@ class ModelsBuilder:
 
     def _activate_wf(self, config: Dict[str, Any]) -> bool:
         try:
+            matrix_folder = config.get(Params.MATRIX_FOLDER, "")
+            kf_folder = config.get(Params.KF_FOLDER, "")
+            if not validate_files([matrix_folder, kf_folder]):
+                return False
+
             factory = self.get_factory(config)
             if factory is None:
                 self._word_finder = None

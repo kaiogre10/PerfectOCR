@@ -8,7 +8,7 @@ import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass, StringsModels
 from domain.full_image import FullImage
-from components.compiled.image import copy_image, release
+from components.compiled.image import copy_image, release, create_buffer_array
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +31,26 @@ class DataFormatter:
         self.payload = None
         
     def create_workflow(self, img_ptr: int, image_name: str) -> bool:
-        """Crea un nuevo workflow usando dataclasses"""
+        """Crea un nuevo Workflow"""
         if not self.create_image(img_ptr):
             raise RuntimeError("ERROR ALMACENANDO IMAGEN EN MEMORIA")
 
         try:
+            ptr = FullImageKey.img_ptr
+            if not isinstance(ptr, int): # type: ignore
+                return False
+            
+            full_img = FullImage(ptr)
+            img_dims = full_img.shape
+
+        except RuntimeError as e:
+            logger.error(f"ERROR ASIGNANDO LAS DIMENSIONES DE LA IMAGEN: {e}", exc_info=True)
+            return False
+
+        try:
             self.workflow = WorkflowData(
                 image_name=image_name,
+                img_dims=img_dims, # type: ignore
                 polygons=None,
                 all_lines=None,
                 table_data=None,
@@ -50,7 +63,6 @@ class DataFormatter:
         return False
     
     def create_polygon_dicts(self, results: List[Dict[str, Any]]) -> bool:
-        """Refactorizado para usar validación + dataclasses"""
         try:
             if self.workflow is None:
                 return False
@@ -98,6 +110,23 @@ class DataFormatter:
         logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
+    def get_array_buffer(self, rows: int, cols: int, n_sc: int) -> Optional[int]:
+        arr_ptr = create_buffer_array(n_sc, rows, cols) # <-- COLOCAR PRIMERO EL N_SC A PROPOSITO PARA QUE TENGAMOS LA MISMA ESTRUCTURA QUE EN MATH MAX
+
+        if not arr_ptr or not isinstance(arr_ptr, int): # type: ignore
+            raise RuntimeError("POSIBLE MEMMORY LEAK")
+
+        arr = FullImage(arr_ptr)
+        
+        if arr.data is None:
+            logger.error("BUFFER ARRAY ES NONE")
+            return None
+
+        if arr.data.dtype != np.uint8:
+            raise TypeError("ARRAY NO ES UINT8")
+    
+        return arr_ptr
+
     def get_img_ptr(self) -> Optional[int]:
         if not FullImageKey.img_ptr:
             return None
@@ -119,17 +148,43 @@ class DataFormatter:
         full_img = FullImage(copy_ptr)
         return copy_ptr, full_img.data
 
-    def free_copy(self, copy_ptr: int):
-        try:
-            release(ptr_addr=copy_ptr)
-            del copy_ptr
-        except RuntimeError as e:
-            logger.error(f"ERROR ELIMINANDO LA COPIA: {e}", exc_info=True)
-            return False
+    def free_buffer(self, copy_ptr: Optional[int] = None):
+        if copy_ptr:
+            try:
+                release(ptr_addr=copy_ptr)
+                copy_ptr = None
+                del copy_ptr
+            except RuntimeError as e:
+                logger.error(f"ERROR ELIMINANDO LA COPIA: {e}", exc_info=True)
+                return False
         
-        logger.warning("COPIA LIBERADA ÉXITOSAMENTE")
-        return True
+            logger.debug("COPIA LIBERADA ÉXITOSAMENTE")
+            return True
+
+        else:
+            if not FullImageKey.img_ptr:
+                return False
             
+            ptr = FullImageKey.img_ptr
+    
+            if not ptr or ptr is None: # type: ignore
+                logger.info(f"PUNTERO '{ptr}' LIBERADO ANTERIORMENTE")
+                return True
+    
+            if not isinstance(ptr, int): # type: ignore
+                logger.error(f"ERROR DE TIPOS DE PUNTERO")
+                return False
+    
+            try:
+                FullImageKey.clear()
+                logger.debug(f"PUNTERO LIBERADO: '{ptr}'")
+    
+            except RuntimeError as e:
+                logger.error(f"ERROR ELIMINANDO LA FULL IMG: {e}", exc_info=True)
+                return False
+    
+            return True
+                    
     def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
         if not FullImageKey.img_ptr:
             return None
@@ -141,36 +196,10 @@ class DataFormatter:
         full_img = FullImage(ptr)
         return full_img.data
 
-    def delete_full_img(self) -> bool:
-        if not FullImageKey.img_ptr:
-            return False
-        
-        ptr = FullImageKey.img_ptr
-
-        if not ptr or ptr is None: # type: ignore
-            logger.info(f"PUNTERO '{ptr}' LIBERADO ANTERIORMENTE")
-            return True
-
-        if not isinstance(ptr, int): # type: ignore
-            logger.error(f"ERROR DE TIPOS DE PUNTERO")
-            return False
-
-        try:
-            FullImageKey.clear()
-            logger.debug(f"PUNTERO LIBERADO: '{ptr}'")
-
-        except RuntimeError as e:
-            logger.error(f"ERROR ELIMINANDO LA FULL IMG: {e}", exc_info=True)
-            return False
-
-        return True
-
     def update_image(self, new_ptr: int) -> bool:
-        try:
-            try:
-                self.delete_full_img()
-            except RuntimeError as e:
-                logger.error(f"ERROR ELIMINANDO LA IMAGEN VIEJA, {e}", exc_info=True)
+        try:    
+            if not self.free_buffer():
+                raise RuntimeError(f"ERROR ELIMINANDO LA IMAGEN VIEJA")
 
             if not self.create_image(new_ptr):
                 raise ReferenceError("ERROR CREANDO BUFFER ACTUALIZADO")

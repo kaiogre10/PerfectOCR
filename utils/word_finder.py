@@ -1,15 +1,17 @@
 import logging
 import numpy as np
-from typing import List, Any, Dict, Tuple, Set, FrozenSet
+from typing import List, Any, Dict, Tuple, Set
 from core.assets.patterns import space_pattern
-from core.assets.assets import KF_LIST
+from core.assets.assets import KF_LIST, SMALL_NUM
 from core.factory.model_factory import MatrixFactory
 from utils.compiled_utils import ngram_similarity, length_penalty
-from domain.class_models import KeyField
+from utils.text_utils import set_results
+from domain.class_models import KeyField, Params
 
 logger = logging.getLogger(__name__)
 
 _kf_list = KF_LIST
+_small_num = SMALL_NUM
 _space_pattern = space_pattern
 
 class WordFinder:
@@ -23,30 +25,23 @@ class WordFinder:
         "threshold",
         "ngrams_len",
         "window_flex",
-        "_all_kf_idx"
+        "all_kf_idx"
     )
     def __init__(self, config: Dict[str, Any], motor: MatrixFactory):
         self.motor = motor
-        _model: Dict[str, Any] = self.motor.model_pkl
+        _model = self.motor.model_pkl
         
         self.noise_cands: List[Tuple[bytes, Dict[int, List[bytes]]]] = _model["bnoise_cands"]
         self.all_ngrams: Dict[bytes, Tuple[int, Dict[int, List[bytes]]]] = _model.get("ball_ngrams", {})
-        self.global_words: FrozenSet[bytes] = frozenset(_model["bglobal_words"])
-        self.noise_words: FrozenSet[bytes] = frozenset(_model["bnoise_words"])
+        self.global_words: Set[bytes] = _model["bglobal_words"]
+        self.noise_words: Set[bytes] = _model["bnoise_words"]
         
         self.global_filter_threshold: float = config.get("global_filter_threshold")
         self.threshold: float = config.get("threshold_similarity")
-        self.ngrams_len = config["char_ngrams"]
+        self.ngrams_len = config[Params.CHAR_NGRAMS]
         self.window_flex: int = config.get("window_flexibility")
-        self._all_kf_idx = None
-    
-    @property
-    def all_kf_idx(self):
-        if self._all_kf_idx is None:
-            return np.arange(((2 + self.ngrams_len[1]) - self.ngrams_len[0]), dtype=np.uint8)
-        else:
-            return self._all_kf_idx
-        
+        self.all_kf_idx = config["all_kf_idx"]
+            
     def get_sparse_cross_stats(self, n: int, row_indices: np.ndarray[Any, Any], col_indices: np.ndarray[Any, Any]) -> Tuple[int, float]:
         matrix = self.motor.matrix_registry[n]
         return matrix.sum_cross_points(row_indices=row_indices, col_indices=col_indices)
@@ -73,7 +68,7 @@ class WordFinder:
             key = self.all_ngrams.get(text) # type: ignore
             if key and key[0] > 0:
                 # logger.info(f"MATCH TEMPRANO: '{text}'")
-                return [self._set_results(key[0], text, 1.0, text, text, 0, len(text))]
+                return [set_results(key[0], text, 1.0, text, text, 0, len(text))]
         
         single = False
         if isinstance(text, bytes):
@@ -113,7 +108,7 @@ class WordFinder:
                 if key and 0 < key[0]:
                     start = text.find(q) # type: ignore
                     end = start + word_len
-                    found_matches_for_s.append(self._set_results(key[0], text, 1.0, text, q, start, end))   # type: ignore
+                    found_matches_for_s.append(set_results(key[0], text, 1.0, text, q, start, end))   # type: ignore
                     continue
             
             arr_q = np.frombuffer(q, dtype=np.uint8)
@@ -147,7 +142,7 @@ class WordFinder:
                     # logger.info(f"MATCH TEMPRANO: '{q}'")
                     start = text.find(q)    # type: ignore
                     end = start + word_len
-                    found_matches_for_s.append(self._set_results(key_field, q, 1.0, text, q, start, end))
+                    found_matches_for_s.append(set_results(key_field, q, 1.0, text, q, start, end))
                     continue
                     
                 cand_len = len(key_cand)
@@ -196,17 +191,17 @@ class WordFinder:
         
                             if final_score > best_score_for_cand:
                                 best_score_for_cand = final_score
-                                best_sub_details = {"start": start, "end": end}
+                                best_sub_details = {Params.START: start, Params.END: end}
         
                 if best_score_for_cand > self.threshold:
-                    found_matches_for_s.append(self._set_results(key_field, key_cand, best_score_for_cand, text, q, best_sub_details["start"], best_sub_details["end"]))
+                    found_matches_for_s.append(set_results(key_field, key_cand, best_score_for_cand, text, q, best_sub_details[Params.START], best_sub_details[Params.END]))
                     
             # Después de comprobar todos los candidatos, agrupar y seleccionar el mejor por campo
             if found_matches_for_s:
                 best_match_by_field: Dict[int, Dict[str, Any]] = {}
         
                 for match in found_matches_for_s:
-                    field = match["key_field"]
+                    field = match[Params.KEY_FIELD]
         
                     if field not in best_match_by_field:
                         best_match_by_field[field] = match
@@ -226,8 +221,8 @@ class WordFinder:
                     best_match = final_matches[0]
                     results.append(best_match)
         
-                    start = best_match.get("start")
-                    end = best_match.get("end")
+                    start = best_match.get(Params.START)
+                    end = best_match.get(Params.END)
         
                     if start or end:
                         left_part = q[:start].strip()
@@ -245,7 +240,7 @@ class WordFinder:
 
         if single:
             if results:
-                logger.debug(f"RESULTS: {text}: {[kf["key_word"] for kf in results]}")
+                logger.debug(f"RESULTS: {text}: {[kf[Params.KEY_WORD] for kf in results]}")
             return results if results else []
         return results
 
@@ -257,8 +252,8 @@ class WordFinder:
             return matches
 
         for i, match in enumerate(matches):
-            norm_ocr_text = match['norm_ocr_text']
-            word_found = match['key_word']
+            norm_ocr_text = match[Params.NORM_OCR_TEXT]
+            word_found = match[Params.KEY_WORD]
             len_ocr = len(norm_ocr_text)
             len_word = len(word_found)
             grams_text = self._build_query_grams(norm_ocr_text, len_ocr)
@@ -277,15 +272,15 @@ class WordFinder:
 
             logger.debug(
                 "EMPATE: Match #%d: campo: %s, palabra: '%s' | score de desempate: %.6f | texto: '%s'",
-                i, match.get("key_field"), word_found, match['score_final'], norm_ocr_text
+                i, match.get(Params.KEY_FIELD), word_found, match['score_final'], norm_ocr_text
             )
 
         # Encontrar el mejor match usando max() en lugar de sort()
-        best_match = max(matches, key=lambda x: (x['score_final'], len(x['key_word'])))
+        best_match = max(matches, key=lambda x: (x['score_final'], len(x[Params.KEY_WORD])))
 
         logger.debug(
             "DESEMPATE: texto '%s': campo: %s, palabra: '%s', score_final: %.6f",
-            best_match.get("text"), best_match.get("key_field"), best_match.get("key_word"),
+            best_match.get(Params.TEXT), best_match.get(Params.KEY_FIELD), best_match.get(Params.KEY_WORD),
             best_match.get("score_final")
         )
         return [best_match]
@@ -479,34 +474,12 @@ class WordFinder:
 
     def _update_best_match(self, current_best: Dict[str, Any], match: Dict[str, Any]) -> Dict[str, Any]:
         """Decide si el nuevo match es mejor que el actual según las reglas de similitud y longitud."""
-        if match["similarity"] > current_best["similarity"]:
+        if match[Params.SIMILARITY] > current_best[Params.SIMILARITY]:
             return match
-        elif abs(match["similarity"] - current_best["similarity"]) < 0.000009:
-            if len(match["key_word"]) > len(current_best["key_word"]):
+        elif abs(match[Params.SIMILARITY] - current_best[Params.SIMILARITY]) < _small_num:
+            if len(match[Params.KEY_WORD]) > len(current_best[Params.KEY_WORD]):
                 return match
         return current_best
-
-    def _set_results(self, key_field: int, key_word: bytes, similarity :float, text: bytes | List[bytes], norm_ocr_text: bytes, start: int, end: int) -> Dict[str, Any]:
-        """
-        Construye un diccionario con los resultados de la búsqueda de palabra clave.
-        Parámetros:
-            key_field (int): Identificador del campo clave.
-            key_word (bytes): Palabra clave encontrada.
-            similarity (float): Puntaje de similitud calculado.
-            text (bytes): Texto original procesado.
-            norm_ocr_text (bytes): Texto normalizado de OCR.
-            start (int): Índice de inicio de la coincidencia en el texto.
-            end (int): Índice de fin de la coincidencia en el texto.
-        """
-        return {
-            "key_field": key_field,
-            "key_word": key_word,
-            "similarity": similarity,
-            "text": text,
-            "norm_ocr_text": norm_ocr_text,
-            "start": start,
-            "end": end
-        }
 
     def get_hits_pos(self, cand: np.ndarray[Any, np.dtype[np.uint8]], q_int: np.ndarray[Any, np.dtype[np.uint8]]) -> List[int]:
         total_nrmas = 0

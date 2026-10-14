@@ -111,4 +111,4 @@ modules:
 
     collector:
       placeholder: "_"
-      date_id_format: '%Y%m%d'
+      date_id_format: "%Y%m%d"

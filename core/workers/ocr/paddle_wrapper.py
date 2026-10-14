@@ -100,9 +100,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 
                 else:
                     if text.isascii():
-                        # if " " not in text:
-                        #     norm_text = text
-                        # else:
                         norm_text = space_removal(text)
                     else:
                         norm_text = normalice_text(text)

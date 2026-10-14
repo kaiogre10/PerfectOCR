@@ -5,8 +5,8 @@ from datetime import datetime
 import logging
 from core.assets.patterns import float_time
 import inspect
-from typing import List, Tuple, Optional, Dict, Any
-from domain.class_models import TypeModels
+from typing import Tuple, Optional, Dict, Any
+from domain.class_models import TypeModels, StringsModels
 
 _float_time = float_time
 DATE_FORMAT = ""
@@ -75,16 +75,6 @@ def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str
     handler.setLevel(level.upper())
     log_root.addHandler(handler)
 
-def log_active_areas(message: str, manager_config: Optional[List[Tuple[str, List[str]]]] = None) -> str:
-    caller_info = get_caller_info()
-    message = f"{get_logging_info(caller_info)} {message}"
-    if manager_config:
-        stages_list = [stager[0].removesuffix("_stage").title() for stager in manager_config if stager and stager[1]]
-        msg = f"{', '.join(stages_list) if stages_list else 'SOLO BUILDERS'}"
-        return (f"{message} '{msg}'")
-    else:
-        return (f"{message}")
-
 def basic_exc_logger(message: str, exc_info: Optional[bool] = False) -> None:
     caller_info = get_caller_info()
     message = f"{get_logging_info(caller_info)} {message}"
@@ -107,9 +97,8 @@ class TiempoFilter(logging.Filter):
             matches = _float_time.finditer(msg)
             if matches:
                 text_float = [(match.group()[7:]) for match in matches if match.group()][0].strip()
-                record.msg = f"Total: {format_elapsed_time(float(text_float))}"
+                record.msg = f"{StringsModels.TIME_MASK.value}{format_elapsed_time(float(text_float))}"
                 record.args = ()
-
         return True
 
 def format_elapsed_time(seconds: float) -> str:

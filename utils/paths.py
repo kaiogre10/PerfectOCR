@@ -8,14 +8,35 @@ project_root: str = ""
 
 logger = logging.getLogger(__name__)
 
-def set_projet_root(PROJECT_ROOT: str):
+def set_project_root(PROJECT_ROOT: str):
     global project_root
     project_root = PROJECT_ROOT
 
 def build_from_dir(objetives: List[str], parent_include: Optional[bool] = None, parent: Optional[List[str]] = None, with_extensions: Optional[bool] = None, skip_names: Optional[List[str]] = None) -> List[str]:
     """
-    Busca recursivamente los objetivos dentro de parent y devuelve sus rutas. Asume que paren esta en project_root
-    Si extensions es True, objectives se interpreta como extensiones de archivo.
+    Busca recursivamente archivos o directorios y devuelve sus rutas.
+
+    La búsqueda parte de ``project_root`` cuando ``parent`` es ``None``;
+    de lo contrario, ``parent`` se interpreta como una secuencia de
+    componentes relativos a ``project_root``. Cada elemento de ``objetives``
+    se compara por nombre exacto, excepto cuando ``with_extensions`` es
+    verdadero y todos los objetivos tienen formato de extensión; en ese caso
+    se comparan como sufijos de archivo, por ejemplo ``[".py"]``.
+
+    Los resultados se devuelven en orden inverso al recorrido de
+    ``os.walk``. Si ``parent_include`` es verdadero, la ruta del directorio
+    de búsqueda se agrega al final. Por ello, las llamadas que desempaquetan
+    posiciones concretas deben conservar el orden de ``objetives`` y la
+    estructura esperada del árbol
+
+    ``skip_names`` cambia el modo de exclusión según su contenido:
+
+    * nombres de archivos o directorios: se excluyen durante el recorrido;
+    * extensiones: se excluyen los archivos cuyo nombre termina con alguna
+      de esas extensiones.
+
+    Si la ruta inicial no existe, los objetivos están vacíos o la combinación
+    de filtros es inválida, registra una advertencia y devuelve ``[]``.
     """
     if not objetives:
         logger.warning(f"SIN OBJETIVOS")
@@ -117,3 +138,6 @@ def _get_exceptions_state(objetives: Tuple[str, ...], skip_names: Tuple[str, ...
         skip_ext = False
 
     return skip_paf, skip_ext, extensions
+
+def validate_files(paths: List[str]):
+    return all(os.path.exists(dir) for dir in paths)

@@ -2,7 +2,6 @@
 #include "payload_container.hpp"
 #include <vector>
 #include <cstdint>
-#include <mutex>
 #include <iostream>
 
 namespace {
@@ -12,7 +11,9 @@ namespace {
 
 namespace flatten_storage {
     void storage_batch_flat(uint8_t* buffer_ptr, size_t buffer_size) {
-        if (!buffer_ptr || !buffer_size) return;
+        if (!buffer_ptr || !buffer_size) {
+            return;
+        }
         printf("[BUFFER HANDLER LOG] ptr: %p, size: %zu\n", buffer_ptr, buffer_size);
         std::vector<uint8_t> plain_payload(buffer_ptr, buffer_ptr + buffer_size);
         for (uint8_t byte : plain_payload) {

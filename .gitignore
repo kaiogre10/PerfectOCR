@@ -53,7 +53,7 @@ install/
 libs/
 libraries/
 out/
-# documentation/
+documentation/
 models/
 input/
 input2/

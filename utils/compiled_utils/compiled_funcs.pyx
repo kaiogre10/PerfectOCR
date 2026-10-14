@@ -19,13 +19,7 @@ cdef inline bint _is_cuant_char(uint8_t char_code) noexcept nogil:
     """Check if char is cuantitative (44: ,, 46: ., 36: $)"""
     return _is_decimal_char(char_code) or (char_code == 44) or (char_code == 46) or (char_code == 36)
 
-def validate_quant_chars(str text) -> bool:
-    """Valida todos si todos los caracteres de un string son cuantitativos y hay por lo menos un decimal"""
-    if not text:
-        return False
-
-    cdef Py_ssize_t text_len = PyUnicode_GET_LENGTH(text)
-    cdef const uint8_t* s = <const uint8_t*>PyUnicode_1BYTE_DATA(text)
+cdef inline bint _validate_quant_chars_c(const uint8_t* s, Py_ssize_t text_len) noexcept nogil:
     cdef Py_ssize_t i
     cdef uint8_t char_code
     cdef bint valid = 0
@@ -40,13 +34,27 @@ def validate_quant_chars(str text) -> bool:
 
     return valid
 
-def count_cuants(str text) -> int:
-    """Cuenta caracteres cuantitativos (0-9, ',', '.', '$') y devuelve 0 si no existe ningún dígito."""
+def validate_quant_chars(str text) -> bool:
+    """Valida todos si todos los caracteres de un string son cuantitativos y hay por lo menos un decimal"""
     if not text:
-        return 0
+        return False
 
     cdef Py_ssize_t text_len = PyUnicode_GET_LENGTH(text)
     cdef const uint8_t* s = <const uint8_t*>PyUnicode_1BYTE_DATA(text)
+
+    return _validate_quant_chars_c(s, text_len)
+
+def validate_quant_bytes(bytes text) -> bool:
+    """Valida si todos los bytes son cuantitativos y hay por lo menos un decimal."""
+    if not text:
+        return False
+
+    cdef Py_ssize_t text_len = PyBytes_GET_SIZE(text)
+    cdef const uint8_t* s = <const uint8_t*>PyBytes_AS_STRING(text)
+
+    return _validate_quant_chars_c(s, text_len)
+
+cdef inline int _count_cuants_c(const uint8_t* s, Py_ssize_t text_len) noexcept nogil:
     cdef Py_ssize_t i
     cdef uint8_t char_code
     cdef int total_cuants = 0
@@ -61,6 +69,26 @@ def count_cuants(str text) -> int:
             total_cuants += 1
 
     return total_cuants if has_decimal else 0
+
+def count_cuants(str text) -> int:
+    """Cuenta caracteres cuantitativos (0-9, ',', '.', '$') y devuelve 0 si no existe ningún dígito."""
+    if not text:
+        return 0
+
+    cdef Py_ssize_t text_len = PyUnicode_GET_LENGTH(text)
+    cdef const uint8_t* s = <const uint8_t*>PyUnicode_1BYTE_DATA(text)
+
+    return _count_cuants_c(s, text_len)
+
+def count_cuant_bytes(bytes text) -> int:
+    """Cuenta bytes cuantitativos (0-9, ',', '.', '$') y devuelve 0 si no existe ningún dígito."""
+    if not text:
+        return 0
+
+    cdef Py_ssize_t text_len = PyBytes_GET_SIZE(text)
+    cdef const uint8_t* s = <const uint8_t*>PyBytes_AS_STRING(text)
+
+    return _count_cuants_c(s, text_len)
 
 cdef inline float _ngram_similarity(const unsigned char* a, const unsigned char* b, Py_ssize_t length) noexcept nogil:
     cdef Py_ssize_t i
@@ -83,12 +111,21 @@ def ngram_similarity(bytes a, bytes b) -> float:
 cdef inline float _length_penalty_c(int a, int b) noexcept nogil:
     cdef int num_min = a if a < b else b
     cdef int num_max = b if a < b else a
-    
+
     return <float>num_min / <float>num_max
 
 def length_penalty(int a, int b) -> float:
     """Penalización simétrica por diferencia de longitud."""
     return _length_penalty_c(a, b)
+
+cdef inline bint _validate_text_c(const uint8_t* s, Py_ssize_t text_len) noexcept nogil:
+    cdef Py_ssize_t i
+
+    for i in range(text_len):
+        if _is_alnum_char(s[i]):
+            return 1
+
+    return 0
 
 def validate_text(str text) -> bool:
     """Valida que un string contenga caracteres válidos y que no esté vacío"""
@@ -97,15 +134,18 @@ def validate_text(str text) -> bool:
 
     cdef Py_ssize_t text_len = PyUnicode_GET_LENGTH(text)
     cdef const uint8_t* s = <const uint8_t*>PyUnicode_1BYTE_DATA(text)
-    cdef Py_ssize_t i
-    cdef bint is_valid = 0
 
-    for i in range(text_len):
-        if _is_alnum_char(s[i]):
-            is_valid = 1
-            break
+    return _validate_text_c(s, text_len)
 
-    return is_valid
+def validate_bytes(bytes text) -> bool:
+    """Valida que bytes ASCII contengan caracteres válidos y que no estén vacíos."""
+    if not text:
+        return False
+
+    cdef Py_ssize_t text_len = PyBytes_GET_SIZE(text)
+    cdef const uint8_t* s = <const uint8_t*>PyBytes_AS_STRING(text)
+
+    return _validate_text_c(s, text_len)
 
 def space_removal(str text) -> str:
     """Normaliza espacios asumiendo UTF-8/ASCII garantizado de 1 byte por carácter"""

@@ -47,7 +47,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
 
             copy_ptr, full_imag = manager.get_img_copy()
-            if full_imag is None or copy_ptr is None:
+            if full_imag is None or not copy_ptr:
                 logger.error(f"No se pudo sacar la copia en el Formatter")
                 return False
             
@@ -65,7 +65,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             # paddle_time = time.perf_counter()
             polygons: Optional[list[list[list[int]]]] = engine.ocr(img=img, det=True, cls=False, rec=False)[0]
 
-            if not manager.free_copy(copy_ptr):
+            if not manager.free_buffer(copy_ptr):
                 raise RuntimeError("ERROR LIBERANDO COPIA EN MANAGER")
             
             # logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")

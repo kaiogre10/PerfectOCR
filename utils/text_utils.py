@@ -6,7 +6,7 @@ from utils.math_utils import text_encode
 from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
 from core.assets.assets import VOWELS, REPLACEMENT_MAP, DENSITY_RANGE, MORPH_RANGE
 from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant, file_name_pattern
-from domain.class_models import SemantiClass, KeyField, DataKeys, NumberStr
+from domain.class_models import SemantiClass, KeyField, DataKeys, NumberStr, TypeModels, Params
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +72,11 @@ def normalice_text(s: str) -> str:
     if not norm_text:
         return ""
     
-    hard_bytes = unicodedata.normalize('NFKD', norm_text).encode('ascii', 'replace')
+    hard_bytes = unicodedata.normalize('NFKD', norm_text).encode(TypeModels.ASCII.value, 'replace')
     if b"?" in hard_bytes:
         hard_bytes.replace(b"?", b" ")
         
-    return space_removal(hard_bytes.decode('ascii'))
+    return space_removal(hard_bytes.decode(TypeModels.ASCII.value))
     
 def get_rfc(s: str) -> str:
     if not s:
@@ -611,6 +611,28 @@ def its_similar(word: str, suspect: str) -> bool:
     else:
         suspect_slice = _correct_numbers(suspect_slice)
         return suspect_slice.isdecimal() and word == suspect_slice
+
+def set_results(key_field: int, key_word: bytes, similarity :float, text: bytes | List[bytes], norm_ocr_text: bytes, start: int, end: int) -> Dict[str, Any]:
+    """
+    Construye un diccionario con los resultados de la búsqueda de palabra clave.
+    Parámetros:
+        key_field (int): Identificador del campo clave.
+        key_word (bytes): Palabra clave encontrada.
+        similarity (float): Puntaje de similitud calculado.
+        text (bytes): Texto original procesado.
+        norm_ocr_text (bytes): Texto normalizado de OCR.
+        start (int): Índice de inicio de la coincidencia en el texto.
+        end (int): Índice de fin de la coincidencia en el texto.
+    """
+    return {
+        Params.KEY_FIELD: key_field,
+        Params.KEY_WORD: key_word,
+        Params.SIMILARITY: similarity,
+        Params.TEXT: text,
+        Params.NORM_OCR_TEXT: norm_ocr_text,
+        Params.START: start,
+        Params.END: end
+    }
 
 # def classify_special(s: str) -> Tuple[str, Optional[int]]:
 #     date_matches = list(_date_patterns.finditer(s))

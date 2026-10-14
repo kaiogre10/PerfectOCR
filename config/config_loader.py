@@ -26,5 +26,6 @@ def load_config(PROJECT_ROOT: str):
     
     pams_yaml.update(config_json) # type: ignore
     config_params = ConfigParams.model_validate(obj=pams_yaml, strict=True, extra='forbid', from_attributes=True, by_name=True).model_dump()
-    system_set_up = SystemSetUp.model_validate(obj=setup_yaml, strict=True, extra='forbid', from_attributes=True, by_name=True).model_dump()
-    return system_set_up, config_params
+    master_config = SystemSetUp.model_validate(obj=setup_yaml, strict=True, extra='forbid', from_attributes=True, by_name=True).model_dump()
+    master_config.update(config_params)
+    return master_config

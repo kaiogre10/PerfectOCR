@@ -41,7 +41,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            corrected_df = self.solve(df, context)
+            corrected_df = self.solve(df, context, manager)
             del context
             if corrected_df.empty:
                 logger.error("SE DEVOLVIÓ DATA FRAME VACÍO")
@@ -58,7 +58,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.error(f"Error en MatrixSolver.vectorize: '{e}'", exc_info=True)
         return False
 
-    def solve(self, df: pd.DataFrame, context: Dict[str, Any]) -> pd.DataFrame:
+    def solve(self, df: pd.DataFrame, context: Dict[str, Any], manager: DataFormatter) -> pd.DataFrame:
         df, context = self.get_decimal_df(df, context)
         if not context or df.empty:
             logger.error(f"DATA FRAME CON DATOS INSUFICIENTES O MUCHO RUIDO")
@@ -110,6 +110,8 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         # logger.info("RENAMED:\n" + df.to_string(index=True))
         df = self.correct_df(df, context)
+        # arr_ptr = context["arr_ptr"]
+        # manager.free_buffer(arr_ptr)
         if not check_full_df(df):
             return pd.DataFrame()
         else:
@@ -117,15 +119,31 @@ class MatrixSolver(VectorizationAbstractWorker):
 
     def get_arrays_table(self, context: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """"Devuelve los arrays 'total[0], textual[1], umd[2], code[3], cuantitative[4], numeric[5]'"""
-        df_copy = context[DataMathDict.DF_COPY.value]
-        cut_polygons: Dict[str, Dict[str, Any]] = context[DataMathDict.CUT_POLYGONS.value]
-        r = df_copy.shape[0]
-        h = df_copy.shape[1]
+        # arr_ptr = context["arr_ptr"]
+        # arr_full = FullImage(arr_ptr)
 
-        matrix_array = np.zeros(shape=(_total_sc, r, h), dtype=np.uint8)
+        # matrix_array = arr_full.data
+        # dims = arr_full.shape
+
+        # if matrix_array is None:
+        #     raise AttributeError(f"MATRIZ ES NONE")
+        
+        # if len(dims) != 3:
+        #     raise AttributeError(f"MATIZ DIMENSIONES ERRONEAS: {dims}, {matrix_array.shape}")
+        
+        df_copy = context[DataMathDict.DF_COPY.value]
+        r = df_copy.shape[0]
+        c = df_copy.shape[1]
+        
+        matrix_array = np.zeros(shape=(_total_sc, r, c), dtype=np.uint8)
+
+        # logger.info(f"ARRAY C++:\n"f"{dims} | {atrix_array.shape}")
+
+        cut_polygons: Dict[str, Dict[str, Any]] = context[DataMathDict.CUT_POLYGONS.value]
+                
         for row_id in range(r):
-            for i in range(h):
-                cell_poly_ids: List[str] = df_copy.iat[row_id, i] if i < h else []
+            for i in range(c):
+                cell_poly_ids: List[str] = df_copy.iat[row_id, i] if i < c else []
 
                 if not cell_poly_ids:
                     continue
@@ -246,6 +264,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         """Selecciona filas/columnas con densidad decimal suficiente para inferencia."""
         cols_idx = context[DataMathDict.COLS_IDX.value]
         arrays_table = self.get_arrays_table(context)
+        # logger.info(f"ARRAYS TABLE: \n"f"{arrays_table}")
+
         elements_array, textual_array, umd_array, matrix_decimal, matrix_quantity = arrays_table[0], arrays_table[SemantiClass.DESCRIPTIVE], arrays_table[SemantiClass.UMD], arrays_table[SemantiClass.QUANTITATIVE], arrays_table[SemantiClass.NUMERIC]
         full_rows_mask = np.count_nonzero(elements_array, axis=1)
         full_idx = np.where(full_rows_mask==cols_idx.size)[0]               # índices columnas originales sin celdas vacías
@@ -344,6 +364,8 @@ class MatrixSolver(VectorizationAbstractWorker):
         desc_idx = context[DataMathDict.TEXT_COL.value]
 
         tables_array = self.get_arrays_table(context)
+        # logger.info(f"ARRAYS TABLE: \n"f"{tables_array}")
+
         textual_array = tables_array[SemantiClass.DESCRIPTIVE] + tables_array[SemantiClass.UMD]
 
         if desc_idx.size < 1 or not desc_idx:

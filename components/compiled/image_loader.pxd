@@ -6,3 +6,6 @@ cdef extern from "image_loader.hpp":
 
 cdef extern from "angle_corrector.hpp":
     Image* rotate_image(Image* source, double angle, double center_x, double center_y) except +
+
+cdef extern from "buffer_handler.hpp":
+    

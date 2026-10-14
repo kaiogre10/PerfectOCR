@@ -300,7 +300,7 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
 def get_so() -> Dict[str, str]:
     """[0]Bibliotecas, [1]Librerias"""
     so = platform.system() # type: ignore
-    if so == OSModels.WINDOWS.name.capitalize:
+    if so == OSModels.WINDOWS.name.capitalize():
         return OSModels.WINDOWS.value
 
     elif so == OSModels.LINUX.name.capitalize():

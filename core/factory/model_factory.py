@@ -3,6 +3,8 @@ import numpy as np
 import logging
 from typing import Dict, Any, List, Tuple
 from utils.file_handler import load_pickle
+from utils.paths import build_from_dir
+from domain.class_models import Params
 
 logger = logging.getLogger(__name__)
 
@@ -91,21 +93,20 @@ class MatrixFactory:
         "files_list"
     )
     def __init__(self, config: Dict[str, Any]):
-        self.models_path: str = config.get("wf_path", "")
-        
-        ngrams_name = config.get("ngrams_name", "")
-        matrix_name = config.get("matrix_name", "")
+        self.models_path: str = config.get(Params.WF_PATH, "")
+        ngrams_name = config.get(Params.NGRAMS_NAME, "")
+        matrix_name = config.get(Params.MATRIX_NAME, "")
         
         self.files_list = [matrix_name, ngrams_name]
         
-        self.pkl_path = config.get("pkl_path", "")
-        
-        self.matrix_path = config.get("matrix_path", "")
-        self.matrix_folder: str = config.get("matrix_folder", "")
-        
-        self.kf_path = config.get("kf_path", "")
-        self.kf_folder: str = config.get("kf_folder", "")
-        
+        self.pkl_path = config.get(Params.PKL_PATH, "")
+
+        self.matrix_path = config.get(Params.MATRIX_PATH, "")
+        self.matrix_folder: str = config.get(Params.MATRIX_FOLDER, "")
+
+        self.kf_path = config.get(Params.KF_PATH, "")
+        self.kf_folder: str = config.get(Params.KF_FOLDER, "")
+
         self.matrix_registry: Dict[int, Any] = {}
         self.kf_registry: Dict[int, Any] = {}
         self._load_matrixes()
@@ -118,27 +119,24 @@ class MatrixFactory:
         Escanea el directorio físico resuelto y consolida los mapas de memoria
         dentro del estado interno del objeto.
         """
-        if not os.path.exists(self.matrix_folder):
-            raise FileNotFoundError(f"Ruta de almacenamiento no localizada: '{self.matrix_folder}'")
-        
-        if not os.path.exists(self.kf_folder):
-            raise FileNotFoundError(f"Ruta de KeyFields no localizada: '{self.kf_folder}'")
-        
         for _, dirnames in enumerate(os.listdir(self.models_path)):
             if self.matrix_path in dirnames:
                 for item in os.listdir(self.matrix_folder):
                     full_path: str = os.path.join(self.matrix_folder, item)
                     # Identificación de la nomenclatura jerárquica 'longitud_{key}'
-                    if os.path.isdir(full_path) and item.endswith(f"{self.matrix_path}"):
-                        key_len = int(item.replace(f"_{self.matrix_path}", ""))
+                    if os.path.isdir(full_path) and item.endswith(self.matrix_path):
+                        # key_len = int(item.replace(f"_{self.matrix_path}", ""))
+                        key_len = int(item[0])
                         self.matrix_registry[key_len] = MappedMatrix(full_path, self.files_list)
                         continue
         
             elif self.kf_path in dirnames:
                 for item in os.listdir(self.kf_folder):
                     full_path: str = os.path.join(self.kf_folder, item)
-                    if os.path.isdir(full_path) and item.endswith(f"{self.kf_path}"):
-                        key_len = int(item.replace(f"_{self.kf_path}", ""))
+
+                    if os.path.isdir(full_path) and item.endswith(self.kf_path):
+                        # key_len = int(item.replace(f"_{self.kf_path}", ""))
+                        key_len = int(item[0])
                         self.kf_registry[key_len] = KeyFields(full_path, self.files_list)
                         continue
             else:
@@ -146,13 +144,11 @@ class MatrixFactory:
                 
         self.matrix_registry
         self.kf_registry
-        
+
     def _load_model(self):
         if not os.path.exists(self.pkl_path):
             raise FileNotFoundError(f"Modelo no encontrado en {self.pkl_path}")
         self.model_pkl = load_pickle(self.pkl_path, 'rb')
-        # with open(self.pkl_path, "rb") as f:
-        #     self.model_pkl = pickle.load(f)
         if not self.model_pkl:
             raise ModuleNotFoundError("ERROR EN LA CARGA DEL PICKLE")
         if not isinstance(self.model_pkl, dict):
@@ -160,33 +156,45 @@ class MatrixFactory:
 
     @staticmethod
     def edit_pickle_vals(config: Dict[str, Any]):
-        pkl_path = config.get("pkl_path", "")
-        model_pkl: Dict[str, Any] = load_pickle(pkl_path, 'rb')
-        if not isinstance(model_pkl, dict): # type: ignore
-            raise ValueError("El pickle no tiene el formato esperado (dict).")
-            
-        all_ngrams: Dict[bytes, Tuple[int, Dict[int, np.ndarray[Any, np.dtype[np.uint8]]]]] = model_pkl.get("all_ngrams", {})
-        
-        ball_ngrams: Dict[bytes, Tuple[int, Dict[int, List[bytes]]]] = {}
-        for word, word_ngrams in all_ngrams.items():
-            array_grams: Dict[int, List[bytes]] = {}
-            
-            for lens, ngrams in word_ngrams[1].items():
-                total_ngrmas = ngrams.shape[0]
-                list_ngrams: List[bytes] = []
+        matrix_name = config.get(Params.MATRIX_NAME, "")
+        models_path = config.get(Params.WF_PATH, "")
+        matrix_path = config.get(Params.MATRIX_PATH, "")
 
-                for i in range(total_ngrmas):
-                    plain_ngrams = ngrams[i].tobytes()
-                    list_ngrams.append(plain_ngrams)
-                
-                array_grams[lens] = list_ngrams
-                # array_grams[lens] = np.frombuffer(plain_ngrams, dtype=np.uint8).reshape(len(ngrams), lens)
-                
-            ball_ngrams[word] = (word_ngrams[0], array_grams)
+        numpydicts = build_from_dir([matrix_name, "mtx_shape.npy"], parent=[models_path, matrix_path, "4_" + matrix_path])
+        logger.info(f"{numpydicts}")
+        numpy_file = np.load(numpydicts[0])
+        logger.info(f"{numpy_file.get("data")}")
+        logger.info(f"{np.load(numpydicts[1])}")
+        logger.info(f"{numpy_file.get("shape")}")
+        # logger.info(f"{np.load(numpydicts[1]).shape}")
+        return True
 
-        # try:
-        #     save_pickle(model_pkl, pkl_path, 'wb')
-        # except Exception as e:
+        # model_pkl: Dict[str, Any] = load_pickle(pkl_path, 'rb')
+        # if not isinstance(model_pkl, dict): # type: ignore
+        #     raise ValueError("El pickle no tiene el formato esperado (dict).")
+        #
+        # all_ngrams: Dict[bytes, Tuple[int, Dict[int, np.ndarray[Any, np.dtype[np.uint8]]]]] = model_pkl.get("all_ngrams", {})
+        #
+        # ball_ngrams: Dict[bytes, Tuple[int, Dict[int, List[bytes]]]] = {}
+        # for word, word_ngrams in all_ngrams.items():
+        #     array_grams: Dict[int, List[bytes]] = {}
+        #
+        #     for lens, ngrams in word_ngrams[1].items():
+        #         total_ngrmas = ngrams.shape[0]
+        #         list_ngrams: List[bytes] = []
+        #
+        #         for i in range(total_ngrmas):
+        #             plain_ngrams = ngrams[i].tobytes()
+        #             list_ngrams.append(plain_ngrams)
+        #
+        #         array_grams[lens] = list_ngrams
+        #         # array_grams[lens] = np.frombuffer(plain_ngrams, dtype=np.uint8).reshape(len(ngrams), lens)
+        #
+        #     ball_ngrams[word] = (word_ngrams[0], array_grams)
+        #
+        # # try:
+        # #     save_pickle(model_pkl, pkl_path, 'wb')
+        # # except Exception as e:
         #     logger.error(f"ERROR GUARDADNO PICKLE: {e}", exc_info=True)
         #     return False
         

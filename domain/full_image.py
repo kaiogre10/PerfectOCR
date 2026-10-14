@@ -11,17 +11,19 @@ class FullImage:
         self._shape: Optional[Tuple[int, ...]] = None
 
     @property
-    def data(self) ->  Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
+    def data(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
         if self._data is None:
             if not isinstance(self._img_ptr, int):  # type: ignore
-                raise ValueError("Se requiere 'img_ptr' o 'data' para obtener el arreglo.")
+                raise ValueError("Se requiere 'img_ptr' o 'data' para obtener el arreglo.")        
             self._data = get_array(self._img_ptr)
+            # if self._data.shape[2] == 1 or np.any(self._data > 0):
+            #     self._data = get_array(self._img_ptr)
         return self._data
 
     @property
     def shape(self) -> Tuple[int, ...]:
         if self._shape is None:
-            self._shape = self.data.shape
+            self._shape = self.data.shape # type: ignore
         return self._shape
 
     @property

@@ -25,6 +25,8 @@ if config_service.clean_project:
     system_service.cleanup_project()
     sys.exit()
 
+os.environ.update(config_service.env_config)
+
 if config_service.compile_cython:
     from config import setup
     setup.build_extensions(system_paths)
@@ -44,7 +46,6 @@ from app.main_builder import MainBuilder
 import services.output_service as output_service
 
 def main():
-    os.environ.update(config_service.env_config)
     log_service.setup_logging(PROJECT_ROOT, config_service.log_params)
     
     if config_service.handle_memory:

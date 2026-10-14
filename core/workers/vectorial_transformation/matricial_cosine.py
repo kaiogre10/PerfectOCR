@@ -35,39 +35,39 @@ class MatricialCusine(VectorizationAbstractWorker):
                logger.warning("No hay features disponibles para procesar por que ya se detectaron lineas tabulares")
                return True
 
-            table_line_ids, array_table = self._compare_vectors(manager, context)
+            table_line_ids, array_table = self._compare_vectors(manager)
             if table_line_ids:
                 if manager.save_tabular_lines(table_line_ids):
                     logger.debug(f"{len(table_line_ids)} líneas tab encontradas en: {time.perf_counter() - timw9:.6f}'s")
                     if self.training_data:
-                        serialize_arrays(array_table[:, 1:])
+                        serialize_arrays(array_table[:, 1:]) # type: ignore
                     return True
                 return False
         except Exception as e:
             logger.error(f"Error en matriz coseno: '{e}'", exc_info=True)
+            return False
+            
         return True
 
-    def _compare_vectors(self, manager: DataFormatter, context: Dict[str, Any]) -> Tuple[List[str], Optional[np.ndarray[Any, np.dtype[np.float32]]]]:
+    def _compare_vectors(self, manager: DataFormatter) -> Tuple[List[str], Optional[np.ndarray[Any, np.dtype[np.float32]]]]:
         try:
             polygons_dict = manager.workflow.polygons if manager.workflow else {}
             all_lines_dict = manager.workflow.all_lines if manager.workflow else {}
             if not polygons_dict or not all_lines_dict:
                 return [], None
             
-            # metadata = manager.workflow if manager.workflow else None
-            # img_dims: Tuple[int, int] = metadata.img_dims if metadata is not None else (0, 0)
-            img_dims = context["img_dims"]
+            img_dims: Tuple[int, int] = manager.workflow.img_dims if manager.workflow else (0, 0)
             
             line_ids = sorted(all_lines_dict.keys())
             sorted_lines = [all_lines_dict[k] for k in line_ids]
 
             analysis = calculate_features(sorted_lines, polygons_dict, img_dims)
-            all_idxs = np.asarray(np.arange(len(line_ids), dtype=np.uint8), dtype=np.uint8)
+            all_idxs = np.asarray(np.arange(len(line_ids), dtype=np.uint8), dtype=np.uint8, order='C')
             if self.output_features:
-                line_id = np.array([id.lineal_id for id in all_lines_dict.values()], np.str_)
-                features_to_ind = analysis[:, 1:].astype(np.str_)
+                line_id = np.array([id.lineal_id for id in all_lines_dict.values()], dtype=np.str_, order='C')
+                features_to_ind = np.array(analysis.shape[0], dtype=np.str_)
                 features_id = np.column_stack([line_id, features_to_ind])
-                file_name = metadata.image_name if metadata is not None else ""
+                file_name = manager.workflow.image_name if manager.workflow is not None else ""
                 save_table_values(file_name, features_id)
                 
             tabular_lines = [line.lineal_id for line in sorted_lines if line.lineal_id in line_ids and line.tabular_line]
@@ -109,12 +109,12 @@ class MatricialCusine(VectorizationAbstractWorker):
 
         features_all = analysis[line_idx]
         # Ordenamos las filas según el índice original para estar alineados con tabular_indices
-        features_all = features_all[features_all[:, 0].argsort()]
+        # features_all = features_all[features_all[:, 0].argsort(order='C')]
                 
-        features = np.ascontiguousarray(features_all[:, 1:], dtype=np.float32)
+        # features = np.ascontiguousarray(np.asarray(features_all[:, 1:], dtype=np.float32, order='C'))
                 
         # timecos1 = time.perf_counter()
-        sims_mat_dense = cosine_similarity_matrix(features)
+        sims_mat_dense = cosine_similarity_matrix(features_all)
         # logger.info(f"Matriz NUMPY obtenida en: {time.perf_counter()-timecos1:.10f}'s")
 
         # para cada fila, calcular similitud media con las demás
@@ -126,7 +126,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         """Compara todas las líneas del documento contra vectores DUMMIE, usando una similitud ponderada para encontrar el mejor cluster de líneas tabulares."""
         # t0 = time.perf_counter()
         analysis = analysis[line_ids]
-        analysis = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
+        # analysis = np.ascontiguousarray(analysis[:, 1:], dtype=np.float32)
         sims_final = get_cosine_similarity(analysis)
         # logger.debug(f"Tiempo: {time.perf_counter() - t0}")
         # logger.info("SIMILITUD DUMMIE:\n"f"{np.array2string(np.column_stack([line_ids, sims_final]), precision=4)}")

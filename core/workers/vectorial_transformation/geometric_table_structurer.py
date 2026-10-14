@@ -66,15 +66,21 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 logger.debug(f"DataFrame generado:\n{df.to_string(index=True)}")
                 if manager.save_final_output(df, {}):
                     # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
+                    rows = df.shape[0]
+                    cols = df.shape[1]
+                    
                     cut_polygons = self.map_polygons_ids(polygons, df_copy)
                     context[DataMathDict.CUT_POLYGONS.value] = cut_polygons
                     context[DataMathDict.DF_COPY.value] = df_copy
                     context[DataMathDict.COMPLETE.value] = False
                     context[DataMathDict.TEXT_COL_TEMP.value] = []
-                    rows_idx = np.arange(df.shape[0], dtype=np.uint8)
-                    cols_idx = np.arange(df.shape[1], dtype=np.uint8)
+                    rows_idx = np.arange(rows, dtype=np.uint8)
+                    cols_idx = np.arange(cols, dtype=np.uint8)
                     context[DataMathDict.ROWS_IDX.value] = rows_idx
                     context[DataMathDict.COLS_IDX.value] = cols_idx
+                    # arr_ptr = manager.get_array_buffer(rows, cols, SC_RANGE[1])
+                    # context["arr_ptr"] = arr_ptr
+
                     logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     if self.output:
                         file_name: str = manager.workflow.image_name if manager.workflow else ""

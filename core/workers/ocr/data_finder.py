@@ -7,10 +7,10 @@ from core.contracts.abstract_worker import OCRAbstractWorker
 from domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
-from utils.compiled_utils import validate_text
+from utils.compiled_utils import validate_bytes
 from core.assets.patterns import cleaner_pattern
 from core.assets.assets import KF_REALOCATABLES, KF_IGNORED
-from domain.class_models import SemantiClass, KeyField
+from domain.class_models import SemantiClass, KeyField, TypeModels, Params
 
 _cleaner_pattern = cleaner_pattern
 _kf_relocatables = KF_REALOCATABLES
@@ -57,20 +57,19 @@ class DataFinder(OCRAbstractWorker):
             if not polygons:
                 logger.error("No hay polygons para procesar")
                 return {}
-        
-            polygon_updates: Dict[str, List[int]] = {}
 
-            all_idx = np.asarray([p.poly_index for p in polygons.values()], np.int16)
+            all_idx = np.array([p.poly_index for p in polygons.values()], dtype=np.int16)
 
             sc = [p.semantic_clasification for p in polygons.values()]
 
-            sc_eq = np.asarray([len(set(t)) for t in sc], dtype=np.int16)
-            forb_sc = np.asarray([any(c != SemantiClass.DESCRIPTIVE for c in s) for s in sc], dtype=np.int16)
+            sc_eq = np.array([len(set(t)) for t in sc], dtype=np.int16)
+            forb_sc = np.array([any(c != SemantiClass.DESCRIPTIVE for c in s) for s in sc], dtype=np.int16)
 
             mask_sc = (sc_eq == 1) & (forb_sc == True)
             skip_idx = np.compress(mask_sc, all_idx)
+
             assigned_fields: Set[int] = set()
-            
+            polygon_updates: Dict[str, List[int]] = {}
             for _, (pid, poly) in enumerate(polygons.items()):
                 if poly.poly_index in skip_idx:
                     continue
@@ -80,36 +79,37 @@ class DataFinder(OCRAbstractWorker):
                     logger.debug(f"KeyField redundante: {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
                     continue
 
-                ocr_text = poly.ocr_text or ""
+                ocr_txt = poly.ocr_text or ""
 
-                if len(ocr_text) < 2:
+                if len(ocr_txt) < 2:
                     continue
 
+                ocr_text = ocr_txt.lower().encode(TypeModels.ASCII.value)
                 if not ocr_text.isalpha():
-                    ocr_text = _cleaner_pattern.sub("", ocr_text).strip()
+                    ocr_text = _cleaner_pattern.sub(b"", ocr_text).strip()
 
-                if not validate_text(ocr_text):
-                    logger.debug(f"Texto INVÁLIDO: '{ocr_text}' | sc: {poly.semantic_clasification}")
+                if not validate_bytes(ocr_text):
+                    logger.info(f"Texto INVÁLIDO: '{ocr_text}' | sc: {poly.semantic_clasification}")
                     continue
             
                 else:
-                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text.lower().encode('ascii'), assigned_fields)
+                    valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text, assigned_fields)
                     if not valid_results:
                         continue
 
-                    key_fields: List[int] = [results['key_field'] for results in valid_results]
+                    key_fields: List[int] = [results[Params.KEY_FIELD] for results in valid_results]
                     assigned_fields.update(key_fields)
 
                     logger.debug(f"VALID RESULTS: {valid_results}")
                     left_overs: List[str] = []
                     
-                    if any(k['key_field'] == KeyField.header.value for k in valid_results):
-                        # key_field = [results['key_field'] for results in valid_results]
+                    if any(k[Params.KEY_FIELD] == KeyField.header.value for k in valid_results):
+                        # key_field = [results[Params.KEY_FIELD] for results in valid_results]
 
-                        full_text = valid_results[0]['norm_ocr_text']
+                        full_text = valid_results[0][Params.NORM_OCR_TEXT]
                         covered: List[Tuple[int, int]] = []
                         for results in valid_results:
-                            piece = results['norm_ocr_text'][results['start']:results['end']]
+                            piece = results[Params.NORM_OCR_TEXT][results[Params.START]:results[Params.END]]
                             pos = full_text.find(piece)
                             if pos != -1:
                                 covered.append((pos, pos + len(piece)))
@@ -129,7 +129,7 @@ class DataFinder(OCRAbstractWorker):
                         polygon_updates[pid] = key_fields + [KeyField.header.value] * len(left_overs)
                         continue
                     else:
-                        key_field = valid_results[0]['key_field']
+                        key_field = valid_results[0][Params.KEY_FIELD]
                         polygon_updates[pid] = [key_field]
                         continue
                         

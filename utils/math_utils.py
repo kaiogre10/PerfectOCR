@@ -7,13 +7,14 @@ from pandas import Series
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from utils.compiled_utils import validate_quant_chars
-from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF, ZERO_DEC, PI_DIV, SMALL_NUM
+from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF, ZERO_DEC, PI_DIV, SMALL_NUM, DUMMY_NORM
 from domain.class_models import SemantiClass, DataKeys
 
 _small_num = SMALL_NUM
 _pi_div = PI_DIV
 _zero = ZERO_DEC
 dummie_vect = VECTOR_DUMMIE
+dummy_norm = DUMMY_NORM
 density_encoder = DENSITY_ENCODER
 _cuant_char = CUANT_CHAR
 _ref_vec = VECT_REF
@@ -64,7 +65,6 @@ def get_cosine_similarity(X: np.ndarray[Any, np.dtype[np.float32]]) -> np.ndarra
         raise ValueError("X debe ser una matriz bidimensional")
 
     x_norms = np.linalg.norm(X, axis=1, keepdims=True)
-    dummy_norm = np.linalg.norm(dummie_vect)
 
     denominators = x_norms * dummy_norm
 
@@ -194,7 +194,7 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
     return geoms
 
 def calculate_features(sorted_lines: List[Any], polygons_dict: Dict[str, Any], img_dims: Tuple[int, int]) -> np.ndarray[Any, Any]:
-    """Calcula features geométricos + alineación tabular por cada línea."""    
+    """Calcula features geométricos + alineación tabular por cada línea."""
     t0 = time.perf_counter()
     all_features = calculate_math_features(sorted_lines, img_dims)
     textual_features = calculate_textual_line_features(sorted_lines, polygons_dict)
@@ -213,68 +213,72 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     total_width = img_dims[1] or 0.0
     total_height = img_dims[0] or 0.0
     total_size = total_width * total_height
-    
-    line_id = np.asarray([lid.line_index for lid in sorted_lines], dtype=np.float32, order='C')
-    all_bboxes = np.asarray([line.line_bbox for line in sorted_lines], dtype = np.float32, order='C')
-    x, y, w, h = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
-    
-    width = (w - x)
-    height = (h - y)
-    area = (width * height)
+
+    # 1. Convertimos directamente a array (evitamos overhead)
+    all_bboxes = np.array([line.line_bbox for line in sorted_lines], dtype=np.float32, order='C')
+
+    # 2. Operamos directamente sobre las columnas del array original sin desempaquetar en variables x, y, w, h
+    # Esto ahorra búsquedas en el scope de Python y mejora la legibilidad para el compilador de NumPy
+    width  = all_bboxes[:, 2] - all_bboxes[:, 0]  # w - x
+    height = all_bboxes[:, 3] - all_bboxes[:, 1]  # h - y
+
+    # 3. Operaciones vectorizadas (Ya eran óptimas, se quedan igual)
+    area = width * height
     perimeter = 2.0 * (width + height)
     aspect_ratio = (height / width) * 100.0
     diagonal = np.hypot(width, height)
     angle = np.arctan2(height, width) * _pi_div
-    
+
     global_stats = calculate_global_stats(np.column_stack([width, height, area, perimeter, aspect_ratio, diagonal, angle]))
 
     # Funciones helpers para división segura igualando la lógica de "if x != 0 else 0.0"
     def safe_div(a: np.ndarray[Any, Any], b: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
         return np.divide(a, b, out=np.zeros_like(a, dtype=np.float32), where=b!=0, dtype=np.float32)
-    
+
     def safe_dif(val: np.ndarray[Any, Any], med: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.float32]]:
         return np.where(med != 0, 1 - np.abs(val - med, dtype=np.float32) / med, 0.0)
 
     # Reemplazos con división segura
     bbox_height_inv = safe_div(height, global_stats[:, 8])
     bbox_h_dif = safe_dif(height, global_stats[:, 8])
-    
+
     bbox_width_inv = safe_div(width, global_stats[:, 7])
     bbox_w_dif = safe_dif(width, global_stats[:, 7])
-    
+
     norm_wid = safe_div(width, global_stats[:, 0])
     width_rel = safe_div(width, total_width) #type: ignore
-    
+
     area_norm = safe_div(area, global_stats[:, 2])
     ratio_area = safe_div(area, total_size) #type: ignore
-    
+
     area_inv = safe_div(area, global_stats[:, 9])
     area_dif = safe_dif(area, global_stats[:, 9])
-    
+
     max_ratio = safe_div(global_stats[:, 2], total_size) #type: ignore
     ratio_area_norm = safe_div(ratio_area, max_ratio)
-    
+
     # aspect_ratio = geoline_features[:, 5]
     aspcrat_inv_norm = 1 - safe_div(np.abs(aspect_ratio), global_stats[:, 4]) # Nota: vectorize usa abs(ar/max)
-    
+
     perimeter_norm = safe_div(perimeter, global_stats[:, 3])
     perimeter_inv = safe_div(perimeter, global_stats[:, 10])
     perimeter_dif = safe_dif(perimeter, global_stats[:, 10])
-    
+
     diag_inv = safe_div(diagonal, global_stats[:, 12])
     diag_dif = safe_dif(diagonal, global_stats[:, 12])
-    
+
     angle_inv = safe_div(angle, global_stats[:, 13])
     diag_norm = safe_div(diagonal, global_stats[:, 5])
-    
+
     compact = safe_div((perimeter ** 2.0), area) / 100.0
-    
+
     cw = (total_width / 2.0)
     ch = (total_height / 2.0)
+    line_id = np.asarray([lid.line_index for lid in sorted_lines], dtype=np.float32, order='C')
     main_centroid = np.tile([cw, ch], (line_id.shape[0], 1))
 
     # Coordenadas prev/next mediante slicing con padding NaN
-    centroids = np.asarray([c.line_centroid for c in sorted_lines], np.float32)
+    centroids = np.array([c.line_centroid for c in sorted_lines], np.float32)
 
     prev_bboxes = np.vstack([np.full((1, 4), np.nan, dtype=np.float32), all_bboxes[:-1]])
     next_bboxes = np.vstack([all_bboxes[1:], np.full((1, 4), np.nan, dtype=np.float32)])
@@ -282,8 +286,8 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     next_centroids = np.vstack([centroids[1:], np.full((1, 2), np.nan, dtype=np.float32)])
 
     # Coordenadas xmin/xmax actuales
-    current_xmin = x
-    current_xmax = w
+    current_xmin = all_bboxes[:, 0]
+    current_xmax = all_bboxes[:, 2]
 
     def _compute_bbox_align(curr_coord: np.ndarray[Any, np.dtype[np.float32]], other_bbox: np.ndarray[Any, np.dtype[np.float32]], idx: int) -> np.ndarray[Any, np.dtype[np.float32]]:
         """
@@ -292,23 +296,23 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         """
         if other_bbox.shape[0] == 0 or np.all(np.isnan(other_bbox[:, 0])):
             return np.ones_like(curr_coord, dtype=np.float32)
-        
+
         # Calculamos diferencias al estilo ref_point = [curr_coord, 0.0]
         dx = other_bbox[:, idx] - curr_coord
         dy = other_bbox[:, 1] - 0.0  # El y de la otra caja menos 0.0 (fiel a alineación original)
-        
+
         # Vector: [diferencia en X, diferencia en Y desde 0]
         vec = np.column_stack([dx, dy])
-        
+
         # Norma del vector (magnitud para dividir en el coseno)
         norms = np.linalg.norm(vec, axis=1)
-        
+
         # El ref_vec es siempre [1.0, 0.0], por lo que el dot product de vec y ref_vec siempre es igual a vec[:, 0] (el componente X). La norma de [1,0] es 1.
         with np.errstate(divide='ignore', invalid='ignore'):
             cosine = np.where(norms > 0, vec[:, 0] / norms, 0.0)
-        
+
         result = 1.0 - np.abs(cosine, dtype=np.float32)
-        
+
         # Donde other_bbox es NaN (no existe línea), devolver 1.0 como indicaba "if not prev_bbox else 1.0"
         return np.where(np.isnan(other_bbox[:, idx]), 1.0, result)
 
@@ -325,23 +329,23 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         """
         if other_c.shape[0] == 0 or np.all(np.isnan(other_c[:, 0])):
             return np.ones(ref_c.shape[0], np.float32)
-        
+
         # Vector al estilo ref_point = [ref_c[0], 0.0]
         dx = other_c[:, 0] - ref_c[:, 0]
         dy = other_c[:, 1] - 0.0
-        
+
         vec = np.column_stack([dx, dy])
         # Norma del vector
         norms = np.linalg.norm(vec, axis=1)
-        
+
         # Al igual que arriba, el dot product contra [1, 0] es igual al componente X.
         with np.errstate(divide='ignore', invalid='ignore'):
             cosine = np.where(norms > 0, vec[:, 0] / norms, 0.0)
-        
+
         result = 1.0 - np.abs(cosine, dtype=np.float32)
-        
+
         # Donde other_c es NaN (no existe línea), devolver 1.0
-        return np.where(np.isnan(other_c[:, 0]), 1.0, result,)
+        return np.where(np.isnan(other_c[:, 0]), 1.0, result)
 
     # Aplicar corrección a centroides
     align_prev = _compute_centroid_align(centroids, prev_centroids)
@@ -349,7 +353,6 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
     center_align = _compute_centroid_align(centroids, main_centroid)
 
     all_features = np.column_stack([
-        line_id,             # [0] Índice de línea
         bbox_height_inv,     # [1] height normalized/inverse median
         bbox_h_dif,          # [2] diferencia de height vs mediana
         bbox_width_inv,      # [3] width normalized/inverse median
@@ -357,12 +360,10 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         norm_wid,            # [5] ancho normalizado respecto a máximo
         width_rel,           # [6] ancho relativo al total de imagen
         area_norm,           # [7] area normalizada al máximo
-
         area_inv,            # [9] area normalizada/inversa de la mediana
         area_dif,            # [10] diferencia de area vs mediana
         center_align,        # [11] alineación con el centroide del documento
         ratio_area_norm,     # [12] ratio relativo a máximo ratio
-
         aspcrat_inv_norm,    # [14] cuán diferente aspect_ratio vs máximo
         perimeter_norm,      # [15] perímetro normalizado al máximo
         perimeter_inv,       # [16] perímetro inversa/mediana
@@ -371,14 +372,12 @@ def calculate_math_features(sorted_lines: List[Any], img_dims: Tuple[int, int])-
         diag_dif,            # [19] diferencia de diagonal vs mediana
         angle_inv,           # [20] ángulo inversa/mediana
         diag_norm,           # [21] diagonal normalizada al máximo
-        compact,             # [22] medida de compactación 
-        # slope_inv,          # [23] slope inverso/mediana
-        # slope_dif,                     # [24] diferencia de slope vs mediana
-        prev_xmin_align,     # [25] 
-        prev_xmax_align,     # [26] 
+        compact,             # [22] medida de compactación
+        prev_xmin_align,     # [25]
+        prev_xmax_align,     # [26]
         next_xmin_align,     # [27]
-        next_xmax_align,     # [28] 
-        align_prev,          # [29] 
+        next_xmax_align,     # [28]
+        align_prev,          # [29]
         align_next           # [30]
     ])
     # logger.info(f"Todas Las features culculadas en: {time.perf_counter() - timeall:.6}")
@@ -388,7 +387,7 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
     """Devuelve features textuales ajustadas a la lógica de vectorize.py (-1.0/1.0 y conteos correctos)."""
     index_to_id_map = {p.poly_index: p.polygon_id for p in polygons_dict.values()}
     features = np.zeros((len(sorted_lines), 3), dtype=np.float32, order='C')
-    
+
     for i, line_data in enumerate(sorted_lines):
         sc_quant_count = 0
         kf_total = 0
@@ -408,47 +407,47 @@ def calculate_textual_line_features(sorted_lines: List[Any], polygons_dict: Dict
                     sc_quant_count += count_quantitative_tokens(sc)
                 else:
                     kf_total += len(kf)
-                
+
         features[i, [0, 1]] = 0.0 if kf_total > 0 else sc_quant_count, t_cuant
         features[i, 2] = kf_total
-    
+
     if features.shape[0] == 0:
         return np.empty(0, dtype=np.float32)
-    
+
     maximus = np.max(features, axis=0)
     # logger.info("\n"f"{np.column_stack([np.arange(len(sorted_lines)), features])}")
     # logger.info("MAX VALUES:\n"f"{maximus}")
     max_sc_quant, max_digit = maximus[0], maximus[1]
-    
+
     sc_quants, dec_chars, kf_count = features[:, 0], features[:, 1], features[:, 2]
-    
+
     # Evitar división por cero
     dec_mean = np.mean([sc_quants, dec_chars], axis=0, dtype=np.float32)[1]
-                
+
     digit_above = np.where(dec_chars > dec_mean, 1.0, -1.0)
     has_digit = np.where(dec_chars > 1.0, 1.0, -1.0)
-    
+
     if np.all(kf_count < 1):
         has_kf = np.zeros((kf_count.size), dtype=np.float32, order='C')
     else:
         has_kf = np.where(kf_count == 0, 1.0, -1.0)
-    
+
     if max_sc_quant > 0:
         num_count_norm = (2.0 * sc_quants / max_sc_quant) - 1.0
     else:
         num_count_norm = np.full_like(sc_quants, -1.0, dtype=np.float32, order='C')
-    
+
     if max_digit > 0:
         digit_char_frec = (2.0 * dec_chars / float(max_digit)) - 1.0
-        
+
         dig_marg = (dec_chars - dec_mean) / (max_digit / 2.0)
         dig_margin = np.clip(dig_marg, -1.0, 1.0, dtype=np.float32)
     else:
         digit_char_frec = np.full_like(dec_chars, -1.0, dtype=np.float32, order='C')
         dig_margin = np.zeros_like(dec_chars, np.float32, order='C')
-        
+
     has_quant = np.where(sc_quants > 0, 1.0, -1.0)
-    
+
     # logger.info(f"Features textuales calculadas en: {time.perf_counter() - timef:.6f}'s")
     textual_features = np.column_stack([dig_margin, has_quant, num_count_norm, digit_above, digit_char_frec, has_digit, has_kf])
     # headers = ["dig_margin", "has_quant", "numeric_count_norm", "digit_above", "digit_char_frec", "has_digit", "has_kf"]

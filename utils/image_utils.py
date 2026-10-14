@@ -1,11 +1,11 @@
 # PerfectOCR/core/utils/image_utils.py
 import cv2
 import numpy as np
-from typing import Any, Optional, List, Dict, Tuple
+from typing import Any, Optional, List, Tuple
 import logging
 from skimage.filters import threshold_sauvola, unsharp_mask #type: ignore
 import time
-from core.assets.assets import WHITE, SMALL_NUM, PI_DIV_INV, C_VALUE, HEIGHT_THRESHOLDS, BLOCK_SIZES_MAP
+from core.assets.assets import SMALL_NUM, PI_DIV_INV, C_VALUE, HEIGHT_THRESHOLDS, BLOCK_SIZES_MAP
 from domain.class_models import StringsModels
 
 _c_value = C_VALUE
@@ -13,8 +13,6 @@ _height_thresholds = HEIGHT_THRESHOLDS
 _block_sizes_map = BLOCK_SIZES_MAP
 
 _small_num = SMALL_NUM
-_white = WHITE
-_four_white = _white + [_white[0]]
 _pi_div_inv = PI_DIV_INV
 
 logger = logging.getLogger(__name__)
@@ -291,8 +289,10 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
 #     logger.info(f"Tiempo extrayendo métricas VECTOROIZADAS: {time.perf_counter()-time0:.6f}'s")
 #     return valid_coords, metrics_array
 
-def configure_kernel(x: int, y: int):
-    return cv2.getStructuringElement(cv2.MORPH_CROSS, (x, y))
+def configure_kernel(x: int, y: int, is_arr: Optional[bool] = None):
+    if not is_arr:
+        return cv2.getStructuringElement(cv2.MORPH_CROSS, (x, y))
+    return np.arange(((2 + x) - y), dtype=np.uint8)
 
 def morph_operations(img: np.ndarray[Any, Any], kernel: Any, iterations: int) -> np.ndarray[Any, Any]:
     arr = make_contiguous(cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations)) # type: ignore
