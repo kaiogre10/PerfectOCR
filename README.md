@@ -1,5 +1,7 @@
 # PerfectOCR
 
+Esta desactualizado como toda la mayoría de la documentacion, y fue mala idea poner a la IA a relaalizarla, así que lo haré eventualmente
+
 PerfectOCR es un pipeline OCR para digitalizar imágenes de documentos, extraer texto, reconstruir líneas, estructurar tablas de compra y, opcionalmente, insertar el resultado en PostgreSQL.
 
 El proyecto está organizado como una cadena configurable de *stagers* y *workers*: carga/preparación de imagen, preprocesamiento opcional, OCR, vectorización/estructuración y persistencia.
