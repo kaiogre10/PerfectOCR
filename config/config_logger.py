@@ -11,19 +11,19 @@ class ConfigLogger:
         self.config: Dict[str, Any] = config
         
     @property
-    def _log_config(self):
+    def log_config(self):
         return self.config.get("log_config", {})
     
     @property
     def _auditate_process(self):
-        return self._log_config.get("auditate_process")
+        return self.log_config.get("auditate_process")
     
     @property
     def _all_logs(self) -> bool:
-        return self._auditate_process if self._auditate_process else self._log_config.get("all_logs")
+        return self._auditate_process if self._auditate_process else self.log_config.get("all_logs")
         
     @cached_property
-    def _enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
+    def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
         _enabled_outputs = self.config.get("enabled_outputs", {})
         if self._auditate_process:
             log_simple("AUDITORIA DE PROCESO COMPLETA ACTIVADA")
@@ -34,17 +34,16 @@ class ConfigLogger:
         return _enabled_outputs
 
     @property
-    def _log_params(self) -> Dict[str, str]:
-        _log_params = self._log_config.get("log_params", {})
+    def log_params(self) -> Dict[str, str]:
+        _log_params = self.log_config.get("log_params", {})
         if self._all_logs:
             _log_params["console_level"] = 'DEBUG'
             _log_params["file_level"] = 'DEBUG'
-
         return _log_params
 
-    @property
-    def _logs_debug(self) -> Dict[str, bool | List[int]]:
-        _logs_debug = self._log_config.get("logs_debug", {})
+    @cached_property
+    def logs_debug(self) -> Dict[str, bool | List[int]]:
+        _logs_debug = self.log_config.get("logs_debug", {})
         
         def _max_min_vals(type_list: List[int], lenght: int, limits: Tuple[int, int]) -> List[int]:
             if -1 in type_list:

@@ -11,7 +11,7 @@ def load(filepath: str) -> int:
         RuntimeError: Si la imagen no se puede cargar o no es de 1 canal.
     """
 
-def get_array(ptr_addr: int) -> np.ndarray[Any, np.dtype[np.uintp]]:
+def get_image_array(ptr_addr: int) -> np.ndarray[Any, np.dtype[np.uintp]]:
     """Devuelve un array NumPy de la imagen.
 
     Warning:
@@ -35,8 +35,8 @@ def copy_image(ptr_addr: int) -> int:
 
     La copia conserva sus propios bytes y debe liberarse con release().
     """
-def get_new_array(arr_ptr: int) -> np.ndarray[Any, np.dtype[np.uintp]]:
+def get_new_array(arr_ptr: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Devueve los datos sobre la vista del array"""
 
-def create_buffer_array(rows: int, cols: int, n_sc: int)-> int:
+def create_image_array(rows: int, cols: int, channels: int) -> int:
     """Reserva un buffer C y devuelve su handle/puntero"""

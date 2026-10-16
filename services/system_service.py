@@ -9,6 +9,7 @@ from services.log_service import basic_exc_logger
 from core.assets.patterns import extension_suffix
 from core.assets.assets import VALID_IMG_EXT, INVALID_EXTENSIONS, TRASH_EXT, CACHE_DIRS, EXCLUDED_DIRS, NO_DEL, ALL_FILES_TYPES
 from domain.class_models import OSModels
+from utils.paths import build_from_dir
 
 _extension_suffix = extension_suffix
 PROJECT_ROOT: str = ""
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 def init_system(project_root: str):
     global PROJECT_ROOT, SO
     PROJECT_ROOT = project_root  # type: ignore
-    SO = get_so()
+    SO = get_so() # type: ignore
 
 def set_system_config(config: Dict[str, List[str]]):
     global output_paths
@@ -143,7 +144,7 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
         cache_dirs.extend(aditional_dirs)
     
     if specific_files is not None and specific_files:
-        specific_set: Set[str] = set(path for path in specific_files if os.path.isfile(path))
+        specific_set: Set[str] = set(file for file in specific_files if os.path.isfile(file))
         if specific_set:
             specific_files_set: Tuple[str, ...] = tuple(os.path.basename(path) for path in specific_set)
         else:
@@ -308,6 +309,38 @@ def get_so() -> Dict[str, str]:
     else:
         return OSModels.MACOS.value
     
-def cleanup_project(specific_files: Optional[List[str]] = None, aditional_dirs: Optional[List[str]] = None):
-    clear_output_folders()
-    cleanup_project_cache(specific_files, aditional_dirs)
+def cleanup_project(specific_files: Optional[List[str]] = None, aditional_dirs: Optional[List[str]] = None, execp: Optional[Tuple[List[str], List[str]]] = None):
+    try:
+        if execp:
+            prune_project(execp[0], execp[1])
+        clear_output_folders()
+        cleanup_project_cache(specific_files, aditional_dirs)
+    except Exception as e:
+        logger.warning(f"ERROR LIMPIANDO CACHE: {e}", exc_info=True)
+
+def prune_project(target_dirs: List[str], target_files: List[str]):
+    try:
+        if all(os.path.isfile(file) for file in target_files) and all(os.path.join(dir) for dir in target_dirs):
+            for dir in target_dirs:
+                try:
+                    shutil.rmtree(dir)
+                    logger.warning(f"DIRECTORIO ELIMINADO: {dir}")
+                except PermissionError as e:
+                    raise(f"ERROR DE PERMISO AL PURGAR {dir}: {e}")
+                except OSError as e:
+                    raise(f"ERROR EN EL SISTEMA AL PURGAR {dir}: {e}")
+
+            for file in target_files:
+                try:
+                    os.remove(file)
+                    logger.warning(f"ARCHIVO ELIMINADO. {file}")
+                except PermissionError as e:
+                    raise(f"ERROR DE PERMISOS AL PURGAR ARCHIVO: {file}: {e}")
+                except OSError as e:
+                    raise(f"ERROR EN EL SISTEMA AL PURGAR ARCHIVO: {file}: {e}")
+        else:
+            logger.warning(f"VALIDE MANUALMENTE QUE TODOS LOS ARCHIVOS Y RUTAS A ELIMINAR SEAN VÁLIDOS")
+            return
+
+    except Exception as e:
+        logger.error(f"ERROR EN LA LIMPIEZA DE ARCHIVOS: {e}", exc_info=True)

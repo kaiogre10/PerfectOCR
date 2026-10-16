@@ -117,7 +117,7 @@ def _get_exceptions_state(objetives: Tuple[str, ...], skip_names: Tuple[str, ...
                     skip_paf = True
                     skip_ext = True
                 else:
-                    logger.warning(f"TODAS ALFANETICAS")
+                    logger.warning(f"TODAS ALFABETICAS")
                     skip_paf = False
                     skip_ext = True
                     extensions = True

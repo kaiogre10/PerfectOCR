@@ -21,8 +21,8 @@ class Image {
         std::unique_ptr<ImageContainer, Deleter> ptr;
 
     public:
-        explicit Image(int width, int height, int channels)
-            : ptr(create_img_buffer(width, height, channels)) {
+        explicit Image(int width, int height, int channels, size_t dtype)
+            : ptr(create_img_buffer(width, height, channels, dtype)) {
             if (!ptr) {
                 throw std::runtime_error("Error creando Image");
             }
@@ -43,10 +43,10 @@ class Image {
             return *this;
         }
         // === EXPOSICIÓN DE DATOS (Acceso directo a los bytes) cualquiera puede escribir en esta memoria.
-        uint8_t* data() {
+        void* data() {
             return image_get_data(ptr.get());
         }
-        const uint8_t* data() const {
+        const void* data() const {
             return image_get_data_const(ptr.get());
         }
         int width() const {

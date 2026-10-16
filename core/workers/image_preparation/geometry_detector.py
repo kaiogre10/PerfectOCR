@@ -45,7 +45,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             if engine is None:
                 logger.error("PaddleOCR no inicializado.")
                 return False
-
+            
             copy_ptr, full_imag = manager.get_img_copy()
             if full_imag is None or not copy_ptr:
                 logger.error(f"No se pudo sacar la copia en el Formatter")

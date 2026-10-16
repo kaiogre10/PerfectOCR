@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Dict, List, Any, FrozenSet, Set, Tuple
 from decimal import Decimal
-from domain.class_models import NumberStr
+from domain.class_models import NumberStr, Workers
 
 DENSITY_ENCODER: Dict[str, float] = {
     NumberStr.ZERO.value: 0.0,
@@ -259,12 +259,11 @@ SC_RANGE = (0, 6)
 DENSITY_RANGE = (23.7, 103.7)
 MORPH_RANGE = (-0.297, 0.337)
 
-ELEMENTAL_WORKER = "image_loader"
-DET = "geometry_detector"
-OCR_WORKERS: Set[str] = set(["polygon_extractor", "paddle_wrapper", DET])
-FULL_OCR: FrozenSet[str] = frozenset(OCR_WORKERS.union(["data_finder"]))
-VECT_MIN = "lineal"     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
-MIN_WORKERS: FrozenSet[str] = frozenset(OCR_WORKERS.union(set([ELEMENTAL_WORKER]))) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
+ELEMENTAL_WORKER = Workers.IMAGE_LOADER
+
+OCR_WORKERS: Set[str] = set([Workers.POLYGON_EXTRACTOR, Workers.PADDLE_WRAPPER, Workers.GEOMETRY_DETECTOR])
+FULL_OCR = OCR_WORKERS.union([Workers.DATA_FINDER])
+MIN_WORKERS: FrozenSet[str] = frozenset(FULL_OCR.union([Workers.IMAGE_LOADER])) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
 
 ZERO_DEC = Decimal("0.00")
 ONE_DEC = Decimal("1.00")

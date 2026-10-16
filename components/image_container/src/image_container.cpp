@@ -4,9 +4,9 @@
 
 extern "C" {
     typedef struct Image Image;
-    Image* create_image_c(int width, int height, int channels) {
+    Image* create_image_c(int width, int height, int channels, size_t dtype) {
         try {
-            return new Image(width, height, channels);
+            return new Image(width, height, channels, dtype);
         } catch (...) {
             return nullptr;
         }
@@ -16,11 +16,11 @@ extern "C" {
         delete img;
     }
 
-    uint8_t* image_get_data_c(Image* img) {
+    void* image_get_data_c(Image* img) {
         return img->data();
     }
 
-    const uint8_t* image_get_data_const_c(const Image* img) {
+    const void* image_get_data_const_c(const Image* img) {
         return img->data();
     }
 

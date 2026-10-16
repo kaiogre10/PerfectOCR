@@ -7,8 +7,8 @@ from typing import Dict, Any, Optional, List, Tuple
 import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass, StringsModels
-from domain.full_image import FullImage
-from components.compiled.image import copy_image, release, create_buffer_array
+from domain.buffer_handler import ImageBuffer
+from components.compiled.image import copy_image, release, create_image_array, 
 
 logger = logging.getLogger(__name__)
 
@@ -40,17 +40,16 @@ class DataFormatter:
             if not isinstance(ptr, int): # type: ignore
                 return False
             
-            full_img = FullImage(ptr)
-            img_dims = full_img.shape
-
+            full_img = ImageBuffer(ptr)
         except RuntimeError as e:
             logger.error(f"ERROR ASIGNANDO LAS DIMENSIONES DE LA IMAGEN: {e}", exc_info=True)
             return False
 
         try:
+            img_dims = full_img.shape
             self.workflow = WorkflowData(
                 image_name=image_name,
-                img_dims=img_dims, # type: ignore
+                img_dims=img_dims,
                 polygons=None,
                 all_lines=None,
                 table_data=None,
@@ -110,21 +109,20 @@ class DataFormatter:
         logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
-    def get_array_buffer(self, rows: int, cols: int, n_sc: int) -> Optional[int]:
-        arr_ptr = create_buffer_array(n_sc, rows, cols) # <-- COLOCAR PRIMERO EL N_SC A PROPOSITO PARA QUE TENGAMOS LA MISMA ESTRUCTURA QUE EN MATH MAX
+    def get_array_buffer(self, rows: int, cols: int, channels: int) -> Optional[int]:
+        """Solicita un buffer de memoria a C. Devuelve puntero"""
+            
+        arr_ptr = create_image_array(rows, cols, channels)
 
         if not arr_ptr or not isinstance(arr_ptr, int): # type: ignore
             raise RuntimeError("POSIBLE MEMMORY LEAK")
 
-        arr = FullImage(arr_ptr)
+        arr = ImageBuffer(arr_ptr)
         
         if arr.data is None:
             logger.error("BUFFER ARRAY ES NONE")
             return None
-
-        if arr.data.dtype != np.uint8:
-            raise TypeError("ARRAY NO ES UINT8")
-    
+            
         return arr_ptr
 
     def get_img_ptr(self) -> Optional[int]:
@@ -142,10 +140,11 @@ class DataFormatter:
         ptr = self.get_img_ptr()
         if not ptr or not isinstance(ptr, int): # type: ignore
             return None, None
+
         
         copy_ptr = copy_image(ptr)
         
-        full_img = FullImage(copy_ptr)
+        full_img = ImageBuffer(copy_ptr)
         return copy_ptr, full_img.data
 
     def free_buffer(self, copy_ptr: Optional[int] = None):
@@ -190,14 +189,12 @@ class DataFormatter:
             return None
         
         ptr = FullImageKey.img_ptr
-        if not isinstance(ptr, int): # type: ignore
-            return None
         
-        full_img = FullImage(ptr)
+        full_img = ImageBuffer(ptr)
         return full_img.data
 
-    def update_image(self, new_ptr: int) -> bool:
-        try:    
+    def update_image(self, new_ptr: int, ) -> bool:
+        try:
             if not self.free_buffer():
                 raise RuntimeError(f"ERROR ELIMINANDO LA IMAGEN VIEJA")
 
@@ -221,7 +218,7 @@ class DataFormatter:
             self.workflow.polygons[poly_id] = updated_polygon
         logger.debug("Todas las imágenes recortadas han sido liberadas de memoria")
                         
-    def save_cropped_images(self, cropped_images: Dict[str, np.ndarray[Any, np.dtype[np.uint8]]]) -> bool:
+    def save_cropped_images(self, cropped_images: Dict[str, Any]) -> bool:
         """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""
         try:
             if not self.workflow or not self.workflow.polygons:
@@ -230,11 +227,16 @@ class DataFormatter:
 
             logger.debug(f"'{len(cropped_images)}' imágenes recortadas recibidas para guardar.")
 
-            for poly_id, img in cropped_images.items():
+            reindexed_polygons: Dict[str, Polygons] = {}
+            for i, (poly_id, crop) in enumerate(cropped_images.items()):
                 polygon = self.workflow.polygons[poly_id]
+                new_idx = f"{StringsModels}{i:04d}"
                 # Crear nuevo polígono con la imagen recortada y la geometría
-                updated_polygon = dataclasses.replace(polygon, cropped_img=img)
-                self.workflow.polygons[poly_id] = updated_polygon
+                updated_polygon = dataclasses.replace(polygon, polygon_id=new_idx, cropped_img=crop)
+
+                reindexed_polygons[new_idx] = updated_polygon
+
+            self.workflow.polygons = reindexed_polygons
 
             logger.debug(f"Guardadas imágenes recortadas y geometría de recorte")
             return True
@@ -258,29 +260,27 @@ class DataFormatter:
             new_id = 0
             
             for _, (poly_id, res), in enumerate(final_results.items()):
-                if poly_id in self.workflow.polygons:
-                    polygon = self.workflow.polygons[poly_id]
-                    text=res.get("text", "")
+                polygon = self.workflow.polygons[poly_id]
+                text=res.get("text", "")
+                
+                if not text or text is None:
+                    continue
                     
-                    if not text or text is None:
-                        continue
-                        
-                    cuant_c=polygon.cuant_chars if not res.get("cuant_chars") else 0
-                    sc = polygon.semantic_clasification if not res.get("sc") else [0]
-                    
-                    new_id += 1
-                    new_idx = f"{StringsModels}{new_id:04d}"
-                    updated_polygon = dataclasses.replace(
-                        polygon,
-                        polygon_id=new_idx,
-                        poly_index=new_id,
-                        ocr_text=text,
-                        semantic_clasification=sc,
-                        cuant_chars=cuant_c
-                    )
-                    reindexed_polygons[new_idx] = updated_polygon
-                else:
-                    logger.warning(f"Polígono {poly_id} no encontrado en workflow polygons")
+                cuant_c=polygon.cuant_chars if not res.get("cuant_chars") else 0
+                sc = polygon.semantic_clasification if not res.get("sc") else [0]
+                
+                new_id += 1
+                new_idx = f"{StringsModels}{new_id:04d}"
+                updated_polygon = dataclasses.replace(
+                    polygon,
+                    polygon_id=new_idx,
+                    poly_index=new_id,
+                    ocr_text=text,
+                    semantic_clasification=sc,
+                    cuant_chars=cuant_c
+                )
+                reindexed_polygons[new_idx] = updated_polygon
+
             self.workflow.polygons = reindexed_polygons
 
             if self.text_ocr_log and (worker == "PaddleOCRWrapper" or worker == "paddle_wrapper"):

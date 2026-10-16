@@ -49,7 +49,7 @@ class MappedMatrix:
         if np.any(cols < 0) or np.any(cols >= total_cols):
             raise IndexError("col_indices fuera de rango para la matriz dispersa.")
 
-        col_mask = np.zeros(total_cols, dtype=bool)
+        col_mask = np.zeros(total_cols, dtype=bool, order='C')
         col_mask[cols] = True
 
         sim_count = 0

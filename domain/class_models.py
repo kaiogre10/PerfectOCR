@@ -1,7 +1,7 @@
 from enum import IntEnum, StrEnum, Enum
 
 class SemantiClass(IntEnum):
-    NOISE = -1 # Ruido y caracteres especiales en general
+    NOISE = 1 # Ruido y caracteres especiales en general
     UNIQUE = 0 # Clasificación que se le da a ciertos strings con características especificas, sirve como difereciador, casi no los hay
     DESCRIPTIVE = 1 # Palabras en general
     UMD = 2 # Con str cortos que suelen informar el contenido de los productos
@@ -94,8 +94,8 @@ class DataMathDict(StrEnum):
 
 class TypeModels(StrEnum):
     ASCII = "ascii"
-    UTF8 = "utf-8"
-    UTF16_CSHARP = "utf-16-le"
+    UTF8 = "utf8"
+    UTF16_CSHARP = "utf16le"
 
 class OSModels(Enum):
     """[0]Bibliotecas, [1] Librerias"""
@@ -142,3 +142,23 @@ class Params(StrEnum):
     NORM_OCR_TEXT = "norm_ocr_text"
     START = "start"
     END = "end"
+
+class Workers(StrEnum):
+    IMAGE_LOADER = "image_loader"
+    ANGLE_CORRECTOR = "angle_corrector"
+    INK_ENHANCEMENT = "ink_enhancement"
+    GEOMETRY_DETECTOR = "geometry_detector"
+    POLYGON_EXTRACTOR = "polygon_extractor"
+    MOIRE = "moire"
+    SP = "sp"
+    GAUSS = "gauss"
+    CLAHE = "clahe"
+    SHARP = "sharp"
+    PADDLE_WRAPPER = "paddle_wrapper"
+    TEXT_REFINER = "text_refiner"
+    DATA_FINDER = "data_finder"
+    LINEAL = "lineal"
+    COS_SIM = "cos_sim"
+    TABLE_STRUCTURER = "table_structurer"
+    MATH_MAX = "math_max"
+    COLLECTOR = "collector"

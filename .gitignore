@@ -61,8 +61,8 @@ input3/
 output/
 migrations/
 CMakeFiles/
-utils/compiled_utils/compiled_funcs.c
-components/compiled/image.cpp
+utils/compiled_utils/*.c
+components/compiled/*.cpp
 cmake-*/
 
 # secrets

@@ -26,8 +26,9 @@ Image* rotate_image(Image* source, double angle, double center_x, double center_
 
     rotation_matrix.at<double>(0, 2) += (new_width / 2.0) - center_x;
     rotation_matrix.at<double>(1, 2) += (new_height / 2.0) - center_y;
+    const uint8_t dims = 1;
 
-    Image* rotated = new Image(new_width, new_height, channels);
+    Image* rotated = new Image(new_width, new_height, channels, dims);
     static int cv_type = CV_MAKETYPE(CV_8UC1, channels);
     cv::Mat source_view(height, width, cv_type, source->data());
     cv::Mat destination_view(new_height, new_width, cv_type, rotated->data());

@@ -1,5 +1,6 @@
 # domain/data_models.py
 import numpy as np
+from numpy import typing, dtypes
 import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
@@ -38,7 +39,7 @@ class StructuredData:
 @dataclass(slots=True)
 class WorkflowData:
     image_name: str
-    img_dims: Tuple[int, int]
+    img_dims: Tuple[int, ...]
     polygons: Optional[Dict[str, Polygons]]
     all_lines: Optional[Dict[str, AllLines]]
     table_data: Optional[StructuredData]
@@ -49,10 +50,10 @@ class Payload:
     buff_size: int
 
 class FullImageKey:
-    img_ptr: Optional[int] = None  
+    img_ptr: Optional[int] = None
 
     def __new__(cls, img_ptr: int):
-        # Bloquea floats (1.0), strings ("1"), y explícitamente booleanos (True/False).
+        # Bloquea floats (1.0), strings ("1"), y explícitamente booleanos (True/False).        
         if type(img_ptr) is not int:
             raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(img_ptr).__name__}'.")
             
@@ -64,7 +65,7 @@ class FullImageKey:
         cls.img_ptr = img_ptr
         
         # Evita crear instancias en memoria
-        return None 
+        return None
 
     @classmethod
     def clear(cls) -> None:

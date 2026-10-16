@@ -6,11 +6,15 @@ struct ImageContainer {
     int width;
     int height;
     int channels;
-    size_t total_bytes;
-    uint8_t* data;  // <- El puntero a los píxeles
+    size_t total_bytes; // Tipo estándar para representar tamaños de memoria y argumentos de malloc.
+    void* data;  // <- El puntero a los datos
 };
 
-ImageContainer* create_img_buffer(int width, int height, int channels) {
+ImageContainer* create_img_buffer(int width, int height, int channels, size_t dtype) {
+    if (dtype != 1) {   // EL dtype es un entero con valor de 1, pero de tamaño del tipo que solicitamos el buffer para contabilidad con numpy y python
+        return NULL;
+    }
+    
     ImageContainer* img = (ImageContainer*)malloc(sizeof(ImageContainer));
     if (!img) {
         return NULL;
@@ -19,8 +23,8 @@ ImageContainer* create_img_buffer(int width, int height, int channels) {
     img->width = width;
     img->height = height;
     img->channels = channels;
-    img->total_bytes = (size_t)width * height * channels;
-    img->data = (uint8_t*)malloc(img->total_bytes);
+    img->total_bytes = (size_t)width * height * channels * dtype;
+    img->data = malloc(img->total_bytes);
 
     if (!img->data) {
         free(img);
@@ -42,10 +46,10 @@ void delete_image(ImageContainer* img) {
 
 // EXPOSICIÓN TOTAL de los datos.
 // Cualquiera con el puntero puede escribir donde quiera.
-uint8_t* image_get_data(ImageContainer* img) {
+void* image_get_data(ImageContainer* img) {
     return img->data;
 }
-const uint8_t* image_get_data_const(const ImageContainer* img) {
+const void* image_get_data_const(const ImageContainer* img) {
     return img->data;
 }
 int image_get_width(const ImageContainer* img) {

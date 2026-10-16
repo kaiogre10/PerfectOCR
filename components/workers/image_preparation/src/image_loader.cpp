@@ -24,10 +24,12 @@ Image* load_image(const char* filepath) {
     // En este punto la imagen ya está en escala de grises normalizada a uint8
     const int width = image_temp.cols;    // Número de columnas = ancho
     const int height = image_temp.rows;   // Número de filas = alto
-
-    Image* image = new Image(width, height, channels);
+    const uint8_t dtype = 1;
+    
+    Image* image = new Image(width, height, channels, dtype);
 
     const size_t total_bytes = image_temp.total() * image_temp.elemSize();
+
     if (total_bytes != image->size()) {
         delete image;
         return nullptr;

@@ -83,7 +83,8 @@ class AngleCorrector(ImagePrepAbstractWorker):
                     return None, corrected
 
                 center = (w / 2.0, h / 2.0)
-                new_ptr = rotate(img_ptr, angle, center[0], center[1])
+                
+                new_ptr = rotate(img_ptr, angle, center[0], center[1]) # type: ignore
                 if not new_ptr:
                     logger.error(f"PUNTERO ROTADO CON ERROR: {img_ptr}")
                     return None, corrected

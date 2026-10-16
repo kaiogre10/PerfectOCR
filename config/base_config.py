@@ -18,169 +18,166 @@ class BaseConfig:
             del self.config
 
     @cached_property
-    def _elemental_params(self) -> bool:
-        return _elemental_workers in self._create_stager[0][1]
+    def elemental_params(self) -> bool:
+        return _elemental_workers in self.create_stager[0][1]
 
     @cached_property
-    def _active_full_ocr(self):
-        return _ocr_workers.issubset(self._all_workers)
+    def active_full_ocr(self):
+        return _ocr_workers.issubset(self.all_workers)
 
     @property
-    def _system_params(self):
+    def system_params(self):
         return self.config.get("system_params", {})
 
     @property
-    def _deploy_settings(self) -> Dict[str, bool]:
+    def deploy_settings(self) -> Dict[str, bool]:
         return self.config.get("deploy_settings", {})
 
     @property
-    def _clean_project(self) -> bool:
-        return bool(self._deploy_settings.get("clean_mode"))
+    def clean_project(self) -> bool:
+        return bool(self.deploy_settings.get("clean_mode"))
 
     @cached_property
-    def _handle_memory(self) -> bool:
-        return bool(self._deploy_settings.get("handle_memory"))
+    def handle_memory(self) -> bool:
+        return bool(self.deploy_settings.get("handle_memory"))
 
     @property
-    def _deploy_mode(self) -> bool:
-        return bool(self._deploy_settings.get("deploy_mode"))
+    def deploy_mode(self) -> bool:
+        return bool(self.deploy_settings.get("deploy_mode"))
 
     @property
-    def _test_config(self) -> bool:
-        return bool(self._deploy_settings.get("test_config"))
+    def test_config(self) -> bool:
+        return bool(self.deploy_settings.get("test_config"))
 
     @cached_property
-    def _update_model(self) -> bool:
-        return bool(self._deploy_settings.get("update_model"))
-
-    @property
-    def _log_config(self):
-        return self.config.get("log_config", {})
+    def update_model(self) -> bool:
+        return bool(self.deploy_settings.get("update_model"))
 
     @cached_property
-    def _test_wf_model(self) -> bool:
-        test_wf_model = bool(self._deploy_settings.get("test_wf_model"))
-        self._update_model = False if test_wf_model else self._update_model
+    def test_wf_model(self) -> bool:
+        test_wf_model = bool(self.deploy_settings.get("test_wf_model"))
+        self.update_model = False if test_wf_model else self.update_model
         return test_wf_model
 
     @property
-    def _db_local(self) -> bool:
-        return bool(self._deploy_settings.get("postgre_local"))
+    def db_local(self) -> bool:
+        return bool(self.deploy_settings.get("postgre_local"))
 
     @property
-    def _compile_cython(self) -> bool:
-        return bool(self._deploy_settings.get("compile_cython"))
+    def compile_cython(self) -> bool:
+        return bool(self.deploy_settings.get("compile_cython"))
 
     @cached_property
-    def _no_activate_modules(self) -> bool: # Parametro automátizado que permite arrancar el sistema para testear parametros de alto nivel sin crear objetos pesados de manera innecesaria
+    def no_activate_modules(self) -> bool: # Parametro automátizado que permite arrancar el sistema para testear parametros de alto nivel sin crear objetos pesados de manera innecesaria
         """(deploy_mode == True) and (elemental_params == False)"""
-        return (self._deploy_mode == True) and (self._elemental_params == False)
+        return (self.deploy_mode == True) and (self.elemental_params == False)
 
     @cached_property
-    def _not_run_system(self) -> bool:
-        """(self._deploy_mode == False) and (self._elemental_params == False)"""
-        return (self._deploy_mode == False) and (self._elemental_params == False)
+    def not_run_system(self) -> bool:
+        """(self.deploy_mode == False) and (self.elemental_params == False)"""
+        return (self.deploy_mode == False) and (self.elemental_params == False)
 
     @property
-    def _enabled_outputs(self):
-        return self.config.get("enabled_outputs", {})
-
-    @property
-    def _env_config(self) -> Dict[str, Any]:
+    def env_config(self) -> Dict[str, Any]:
         return self.config.get("env_config", {})
 
     @property
-    def _user_requests(self) -> Dict[str, Dict[str, Any]]:
+    def user_requests(self) -> Dict[str, Dict[str, Any]]:
         return self.config.get("user_requests", {})
 
     @cached_property
-    def _workers_order(self) -> Dict[str, List[str]]:
+    def workers_order(self) -> Dict[str, List[str]]:
         return self.config.get("pipeline_secuence", {})
 
     @property
-    def _modules_config(self):
-        return self.config.get("modules", {})
+    def log_config(self) -> Dict[str, Any]:
+        return self.config.get("log_config", {})
+
+    @property
+    def enabled_outputs(self) -> Dict[str, bool]:
+        return self.config.get("enabled_outputs", {})
 
     @cached_property
-    def _input_paths(self):
-        _input_paths = self._user_requests.get("input_paths", {})
+    def input_paths(self) -> Dict[str, Any]:
+        _input_paths = self.user_requests.get("input_paths", {})
+        if not _input_paths["input_dirs"] and not self.deploy_mode:
+            return {}
         _input_paths["images_names"] = set(_input_paths["images_names"])
         _input_paths["skip_names"] = set(_input_paths["skip_names"])
         return _input_paths
 
     @cached_property
-    def input_paths(self) -> Dict[str, List[str]]:
-        input_paths = self._input_paths
-        return {} if (not input_paths["input_dirs"] and not self._deploy_mode) else input_paths
-
-    @cached_property
-    def _models_config(self) -> Dict[str, Any]:
+    def models_config(self) -> Dict[str, Any]:
         return self.config.get("models_config", {})
 
     @cached_property
-    def _create_stager(self) -> List[Tuple[str, List[str]]]:
+    def modules_config(self) -> Dict[str, Any]:
+        return {} if self.no_activate_modules else self.config.get("modules", {})
+
+    @cached_property
+    def create_stager(self) -> List[Tuple[str, List[str]]]:
         full_stage: List[Tuple[str, List[str]]] = []
-        for stage_workers in self._workers_order.items():
+        for stage_workers in self.workers_order.items():
             full_stage.append(stage_workers)
         return full_stage
 
     @cached_property
-    def _all_workers(self) -> FrozenSet[str]:
-        img_prep = self._create_stager[0][1]
+    def all_workers(self) -> FrozenSet[str]:
+        img_prep = self.create_stager[0][1]
         all_workers: Set[str] = set(img_prep)
 
-        if self._create_stager[1][1]:
-            prep = self._create_stager[1][1]
+        if self.create_stager[1][1]:
+            prep = self.create_stager[1][1]
             all_workers.update(prep)
 
-        if self._create_stager[2][1]:
-            ocr = self._create_stager[2][1]
+        if self.create_stager[2][1]:
+            ocr = self.create_stager[2][1]
             all_workers.update(ocr)
 
-        if self._create_stager[3][1]:
-            vect = self._create_stager[3][1]
+        if self.create_stager[3][1]:
+            vect = self.create_stager[3][1]
             all_workers.update(vect)
         return frozenset(all_workers)
 
     def _validate_config(self) -> bool:
-        mode = f'{"DEPLOY" if self._deploy_mode else "PRODUCTION"}' if not self._no_activate_modules else ("CONFIG TESTING" if self._test_config else "NO MODULES")
-        msg: str = f"Modo: '{mode}', Validación: '{"COMPLETA" if not self._deploy_mode else "MÍNIMA"}' de la configuración."
+        mode = f'{"DEPLOY" if self.deploy_mode else "PRODUCTION"}' if not self.no_activate_modules else ("CONFIG TESTING" if self.test_config else "NO MODULES")
+        msg: str = f"Modo: '{mode}', Validación: '{"COMPLETA" if not self.deploy_mode else "MÍNIMA"}' de la configuración."
 
         if not self.input_paths:
             log_simple("No hay rutas input")
             return False
 
-        elif self._not_run_system:
+        elif self.not_run_system:
             log_simple("ERROR CRÍTICO, NO HAY IMAGE LOADER PARA PRODUCCIÓN")
             return False
 
-        elif self._no_activate_modules:
+        elif self.no_activate_modules:
             ConfigLogger.log_active_areas(msg + " 'SOLO MODULOS DE ALTO NIVEL'")
             return True
 
-        elif not self._deploy_mode and not self._handle_memory:
+        elif not self.deploy_mode and not self.handle_memory:
             log_simple("ACTIVAR MEMORIA DINÁMICA")
             return False
 
-        elif self._deploy_mode:
-            ConfigLogger.log_active_areas((msg + " Modulos:"), self._create_stager)
+        elif self.deploy_mode:
+            ConfigLogger.log_active_areas((msg + " Modulos:"), self.create_stager)
             return True
 
-        elif not self._no_activate_modules and self._validate_min_workers():
-            ConfigLogger.log_active_areas((msg + "Stages Activas:"), self._create_stager)
+        elif not self.no_activate_modules and self.validate_min_workers():
+            ConfigLogger.log_active_areas((msg + "Stages Activas:"), self.create_stager)
             return True
 
         else:
             log_simple(f"Error de configuración")
             return False
 
-    def _validate_min_workers(self) -> bool:
-        if not self._workers_order:
+    def validate_min_workers(self) -> bool:
+        if not self.workers_order:
             log_simple("ERROR: No hay configuración de workers disponible")
             return False
-        elif _min_workers.issubset(self._all_workers):
+        elif _min_workers.issubset(self.all_workers):
             return True
         else:
-            workers_missing = _min_workers - self._all_workers
+            workers_missing = _min_workers - self.all_workers
             log_simple(f"Faltan: {workers_missing} de los '{len(_min_workers)}' workers mínimos para el pipeline")
             return False

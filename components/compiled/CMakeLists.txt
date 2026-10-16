@@ -92,8 +92,40 @@ target_link_libraries(image PRIVATE
     opencv_imgcodecs
 )
 
+add_custom_command(
+    OUTPUT  "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
+    COMMAND ${Python3_EXECUTABLE} -m cython
+            --cplus -3
+            -I "${CMAKE_CURRENT_SOURCE_DIR}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
+            -o "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
+            "${CMAKE_CURRENT_SOURCE_DIR}/image.pxd"
+    COMMENT "Cython: arrays.pyx → arrays.cpp"
+    VERBATIM
+)
+
+add_library(arrays MODULE "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp")
+set_target_properties(arrays PROPERTIES
+    PREFIX ""
+    SUFFIX "${PYTHON_EXT_SUFFIX}"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_include_directories(arrays PRIVATE
+    ${Python3_INCLUDE_DIRS}
+    "${NUMPY_INCLUDE_DIR}"
+    "${CMAKE_SOURCE_DIR}/components/image_container/include"
+)
+target_link_directories(arrays PRIVATE
+    "${CMAKE_SOURCE_DIR}/libraries"
+    "${CMAKE_SOURCE_DIR}/libs"
+)
+target_link_libraries(arrays PRIVATE Python3::Module image_container)
+
 if(WIN32)
     target_compile_options(image PRIVATE /std:c++20 /arch:AVX2 /O2)
+    target_compile_options(arrays PRIVATE /std:c++20 /arch:AVX2 /O2)
 else()
     target_compile_options(image PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
+    target_compile_options(arrays PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
 endif()

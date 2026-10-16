@@ -1,12 +1,11 @@
 # image.pxd
-from libc.stdint cimport uint8_t
 from libc.stddef cimport size_t
 
 cdef extern from "image_container.hpp":
     cppclass Image:
-        Image(int width, int height, int channels) except +
-        uint8_t* data()
-        const uint8_t* data() const
+        Image(int width, int height, int channels, size_t dtype) except +
+        void* data()
+        const void* data() const
         int width() const
         int height() const
         int channels() const

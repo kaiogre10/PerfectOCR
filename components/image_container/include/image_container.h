@@ -10,13 +10,13 @@ extern "C" {
     typedef struct ImageContainer ImageContainer;
 
     // 2. FUNCIONES DE CICLO DE VIDA
-    ImageContainer* create_img_buffer(int width, int height, int channels);
+    ImageContainer* create_img_buffer(int width, int height, int channels, size_t dtype);
     void delete_image(ImageContainer* img);
 
     // 3. EXPOSICIÓN DE MEMORIA (Acceso directo a los bytes)
     //    Cualquiera con el puntero puede leer/escribir aquí.
-    uint8_t* image_get_data(ImageContainer* img);
-    const uint8_t* image_get_data_const(const ImageContainer* img);
+    void* image_get_data(ImageContainer* img);
+    const void* image_get_data_const(const ImageContainer* img);
 
     // 4. METADATOS (Solo lectura)
     int image_get_width(const ImageContainer* img);

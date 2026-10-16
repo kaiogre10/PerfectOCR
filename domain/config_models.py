@@ -19,6 +19,7 @@ class DeploySettings(ConfigWithNumpy):
     deploy_mode: bool
     test_config: bool
     clean_mode: bool
+    purge_system: bool
     postgre_local: bool
     handle_memory: bool
     update_model: bool
@@ -162,6 +163,7 @@ class DeskewConfig(ConfigWithNumpy):
 
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
+    bboxes_type: str
     
 class ImagePreparation(ConfigWithNumpy):
     ink_enhancement: InkConfig

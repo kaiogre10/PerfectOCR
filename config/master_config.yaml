@@ -17,14 +17,15 @@ deploy_settings:
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
   test_wf_model: False
   compile_cython: False
+  purge_system: False   # MODO DE LIMPIEZA TOTAL, TODOS LOS ARCHIVOS QUE SEAN CACHE, DEBUG, BUILD, BINARIOS COMPILADOS VAN A SER ELIMINADOS. POR SEGURIDAD SIEMPRE SE ESTABLECERÁ A FALSE EN CADA INICIO, AVISANDO SI SE ACTIVO POR ERROR PARA DESACTIVACIÓN MANUAL FORZADA
 
 pipeline_secuence:
   image_preparation_stager:
-     - "image_loader"
-     - "angle_corrector"
+    - "image_loader"
+    - "angle_corrector"
     # - "ink_enhancement"
-     - "geometry_detector"
-     - "polygon_extractor"
+    - "geometry_detector"
+    - "polygon_extractor"
 
   preprocessing_stager:
     # - "moire"

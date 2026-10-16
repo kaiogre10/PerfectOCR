@@ -12,32 +12,32 @@ class ConfigAPI:
 
     @property
     def test_wf_model(self) -> bool:
-        return self.validated_config.config._test_wf_model
-    
+        return self.validated_config.config.test_wf_model
+
     @property
     def test_config(self) -> bool:
-        return self.validated_config.config._test_config
+        return self.validated_config.config.test_config
 
     @property
     def no_activate_modules(self) -> bool:
-        return self.validated_config.config._no_activate_modules
+        return self.validated_config.config.no_activate_modules
 
     @property
     def handle_memory(self) -> bool:
-        return self.validated_config.config._handle_memory
+        return self.validated_config.config.handle_memory
 
     @property
-    def clean_project(self) -> bool:
-        return self.validated_config.config._clean_project
+    def cleanup_project(self) -> bool:
+        return self.validated_config.config.clean_project
 
     @property
     def compile_cython(self) -> bool:
-        return self.validated_config.config._compile_cython
+        return self.validated_config.config.compile_cython
 
     @property
     def log_params(self) -> Dict[str, str]:
         """Parametros de configuracion logger"""
-        return self.validated_config.config_logging._log_params
+        return self.validated_config.log_params
 
     @property
     def logs_debug(self) -> Dict[str, Any]:
@@ -47,7 +47,7 @@ class ConfigAPI:
     @property
     def system_paths(self) -> Dict[str, List[str]]:
         """Devuelve las rutas internas de archivos relevantes del sistema"""
-        return self.validated_config._system_paths
+        return self.validated_config.system_paths
 
     @property
     def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
@@ -65,13 +65,17 @@ class ConfigAPI:
 
     @property
     def create_stager(self) -> List[Tuple[str, List[str]]]:
-        return self.validated_config.config._create_stager
+        return self.validated_config.config.create_stager
     
     # Configuración optimizada para desarrollo ajustada a mi Pc (LATITUDE 5591, 32GB DE RAM, INTEL i5 H8400 DE 4 NÚCLEOS)
     @property
     def env_config(self) -> Dict[str, Any]:
-        return self.validated_config.config._env_config
+        return self.validated_config.config.env_config
 
     @property
     def input_paths(self) -> Dict[str, List[str]]:
-        return self.validated_config.config._input_paths
+        return self.validated_config.config.input_paths
+
+    @property
+    def specific_deletes(self) -> Tuple[List[str], List[str]]:
+        return self.validated_config.specific_deletes
