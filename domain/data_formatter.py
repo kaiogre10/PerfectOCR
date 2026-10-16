@@ -1,14 +1,15 @@
 # domain/data_formatter.py
 from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey
 import numpy as np
+from numpy import typing
 import dataclasses
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass, StringsModels
-from domain.buffer_handler import ImageBuffer
-from components.compiled.image import copy_image, release, create_image_array, 
+from domain.buffer_handler import ImageBuffer, ArrayBuffer
+from components.compiled import image, arrays
 
 logger = logging.getLogger(__name__)
 
@@ -109,15 +110,15 @@ class DataFormatter:
         logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
-    def get_array_buffer(self, rows: int, cols: int, channels: int) -> Optional[int]:
+    def get_array_buffer(self, rows: int, cols: int, channels: int, dtype: typing.DTypeLike, dims: int) -> Optional[int]:
         """Solicita un buffer de memoria a C. Devuelve puntero"""
             
-        arr_ptr = create_image_array(rows, cols, channels)
+        arr_ptr = arrays.create_new_array(rows, cols, channels, dtype)
 
         if not arr_ptr or not isinstance(arr_ptr, int): # type: ignore
             raise RuntimeError("POSIBLE MEMMORY LEAK")
 
-        arr = ImageBuffer(arr_ptr)
+        arr = ArrayBuffer(arr_ptr, dims)
         
         if arr.data is None:
             logger.error("BUFFER ARRAY ES NONE")
@@ -141,8 +142,7 @@ class DataFormatter:
         if not ptr or not isinstance(ptr, int): # type: ignore
             return None, None
 
-        
-        copy_ptr = copy_image(ptr)
+        copy_ptr = image.copy_image(ptr)
         
         full_img = ImageBuffer(copy_ptr)
         return copy_ptr, full_img.data
@@ -150,7 +150,7 @@ class DataFormatter:
     def free_buffer(self, copy_ptr: Optional[int] = None):
         if copy_ptr:
             try:
-                release(ptr_addr=copy_ptr)
+                image.release_img(ptr_addr=copy_ptr)
                 copy_ptr = None
                 del copy_ptr
             except RuntimeError as e:

@@ -7,7 +7,7 @@ from core.contracts.abstract_worker import OCRAbstractWorker
 from domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
-from utils.compiled_utils import validate_bytes
+from utils.compiled_utils import validate_text
 from core.assets.patterns import cleaner_pattern
 from core.assets.assets import KF_REALOCATABLES, KF_IGNORED
 from domain.class_models import SemantiClass, KeyField, TypeModels, Params
@@ -58,40 +58,37 @@ class DataFinder(OCRAbstractWorker):
                 logger.error("No hay polygons para procesar")
                 return {}
 
-            all_idx = np.array([p.poly_index for p in polygons.values()], dtype=np.int16)
+            polygons = manager.workflow.polygons if manager.workflow else {}
+            if not polygons:
+                logger.error("No hay polygons para procesar")
+                return {}
 
-            sc = [p.semantic_clasification for p in polygons.values()]
+            polys = [p for p in polygons.values()]
+            sc = [p.semantic_clasification for p in polys]
 
-            sc_eq = np.array([len(set(t)) for t in sc], dtype=np.int16)
-            forb_sc = np.array([any(c != SemantiClass.DESCRIPTIVE for c in s) for s in sc], dtype=np.int16)
+            has_kf = [(p.key_field != None) for p in polys]
+            valid_text = [validate_text(p.ocr_text) for p in polys]
+            forb_sc = [any(c != SemantiClass.DESCRIPTIVE for c in s) for s in sc]
+            text_len = [len(p.ocr_text or "") > 2 for p in polys]
+            sc_eq = [len(set(t)) == 1 for t in sc]
 
-            mask_sc = (sc_eq == 1) & (forb_sc == True)
-            skip_idx = np.compress(mask_sc, all_idx)
+            true_array = np.array([has_kf, valid_text, forb_sc, text_len, sc_eq], dtype=np.bool_, order='C')
+
+            skip_idx = np.where(np.all(true_array, axis=1))[0]
+
+            polyons = [p for p in polys if p.poly_index not in skip_idx]
 
             assigned_fields: Set[int] = set()
             polygon_updates: Dict[str, List[int]] = {}
-            for _, (pid, poly) in enumerate(polygons.items()):
-                if poly.poly_index in skip_idx:
-                    continue
 
-                kf = poly.key_field or None
-                if kf is not None:
-                    logger.debug(f"KeyField redundante: {pid}: '{poly.ocr_text}' | sc: {poly.semantic_clasification}")
-                    continue
+            for _, poly in enumerate(polyons):
+                pid = poly.polygon_id
+        
+                ocr_text = poly.ocr_text.lower().encode(TypeModels.ASCII.value)
 
-                ocr_txt = poly.ocr_text or ""
-
-                if len(ocr_txt) < 2:
-                    continue
-
-                ocr_text = ocr_txt.lower().encode(TypeModels.ASCII.value)
                 if not ocr_text.isalpha():
                     ocr_text = _cleaner_pattern.sub(b"", ocr_text).strip()
 
-                if not validate_bytes(ocr_text):
-                    logger.info(f"Texto INVÁLIDO: '{ocr_text}' | sc: {poly.semantic_clasification}")
-                    continue
-            
                 else:
                     valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text, assigned_fields)
                     if not valid_results:

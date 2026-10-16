@@ -6,7 +6,7 @@ from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import validate_image
 from services.output_service import save_croped_image
-# from domain.buffer_handler import ImageBuffer
+from domain.buffer_handler import ArrayBuffer
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         self.output = config.get("cropped_img", False)
         self.filtered_ouputs = config.get("final_polys", False)
         self.disoutput = config.get("discarded_polys", False)
+        self.dims = 2
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae, filtra y actualiza polígonos en un solo paso, optimizando el proceso."""
@@ -31,20 +32,21 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # 1. Recopilar Bounding Boxes y IDs
             poly_ids_order: List[str] = list(polygons.keys())
-            # total_bboxes = len(poly_ids_order)
+            total_bboxes = len(poly_ids_order)
+            logger.info(f"TOTAL BBOXES: {total_bboxes}")
 
-            # img_ptr = manager.get_array_buffer(rows=total_bboxes, cols=4, channels=1, dtype=self.bboxes_type)
-            # if not img_ptr:
-            #     logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
-            #     return False
-                
-            # buffer_bboxes = ImageBuffer(img_ptr)
-            # logger.warning(f"{buffer_bboxes.dtype}")
+            bbxes_ptr = manager.get_array_buffer(rows=total_bboxes, cols=4, channels=1, dtype=self.bboxes_type, dims=self.dims)
+            if not bbxes_ptr:
+                logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
+                return False
+            
+            bboxes = np.array([polygons[pid].bounding_box for pid in poly_ids_order], dtype=np.int32).reshape(-1, 4, order='C')
+            all_bboxes = ArrayBuffer(bbxes_ptr, self.dims).data
 
-            all_bboxes = np.array([polygons[pid].bounding_box for pid in poly_ids_order], dtype=self.bboxes_type).reshape(-1, 4, order='C')
-            # np.copyto(dst=buffer_bboxes.data, src=all_bboxes, casting='no')
+            np.copyto(dst=all_bboxes, src=bboxes, casting='no')
+            del bboxes
 
-            if all_bboxes.size < 1 or all_bboxes.size % 4 != 0:
+            if all_bboxes.size < 3 or all_bboxes.size % 4 != 0:
                 logger.warning("PolygonExtractor: No hay bboxes válidos para procesar.")
                 return False
 
@@ -63,7 +65,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
 
-            valid_bbox_indices = np.compress(valid_bbox_mask, all_bboxes, axis=0)
+            # valid_bbox_indices = np.compress(valid_bbox_mask, all_bboxes, axis=0)
             # crops = np.empty(all_bboxes.shape, dtype=np.uint8, order='C')
             # np.array_split(full_img[all_bboxes[:, 1]:all_bboxes[:, 3], all_bboxes[:, 0]:all_bboxes[:, 2]].copy(order='C'))
             # crops = np.select(condlist=valid_bbox_mask, choicelist=full_img[all_bboxes[:, 1]:all_bboxes[:, 3], all_bboxes[:, 0]:all_bboxes[:, 2]].copy())

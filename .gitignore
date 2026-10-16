@@ -62,7 +62,8 @@ output/
 migrations/
 CMakeFiles/
 utils/compiled_utils/*.c
-components/compiled/*.cpp
+components/compiled/arrays/*.cpp
+components/compiled/image/*.cpp
 cmake-*/
 
 # secrets

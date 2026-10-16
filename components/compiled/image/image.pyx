@@ -1,19 +1,9 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 from libc.stdint cimport uint8_t
-from libc.stddef cimport size_t
 from libc.string cimport memcpy
-from image cimport Image, destroy_image
+from image cimport Image, destroy_image, new_buffer, get_image_ptr
 from image_loader cimport load_image, rotate_image
 import numpy as _numpy
-cimport numpy as cnp
-
-cdef inline Image* new_buffer(int width, int height, int channels, size_t dtype) except *:
-    return new Image(width, height, channels, dtype) # type: ignore
-
-cdef inline Image* get_image_ptr(size_t ptr_addr) noexcept:
-    if ptr_addr == 0:
-        return NULL
-    return <Image*>ptr_addr
 
 def load(str filepath):
     cdef Image* img = load_image(filepath.encode('utf-8')) # type: ignore
@@ -27,13 +17,10 @@ def get_image_array(size_t ptr_addr):
     cdef int h = img.height()
     cdef int w = img.width()
     cdef uint8_t* data = <uint8_t*> img.data()
-    cdef cnp.uint8_t[:, ::1] view = <cnp.uint8_t[:h, :w]> data
+    cdef uint8_t[:, ::1] view = <uint8_t[:h, :w]> data
     return _numpy.asarray(view)
     
-def release(size_t ptr_addr):
-    if ptr_addr == 0:
-        return
-
+def release_img(size_t ptr_addr):
     cdef Image* img = get_image_ptr(ptr_addr)
     destroy_image(img)
 

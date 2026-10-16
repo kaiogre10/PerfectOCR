@@ -5,7 +5,7 @@ from typing import Dict, Any, Tuple, Optional
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import get_image_lines
-from components.compiled.image import rotate
+from components.compiled.image.image import rotate
 
 logger = logging.getLogger(__name__)
 

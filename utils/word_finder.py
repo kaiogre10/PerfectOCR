@@ -78,16 +78,18 @@ class WordFinder:
             queue: List[bytes] = text
         
         results: List[Dict[str, Any]] = []
+
+        # edited = False
         
         while queue:
             q = queue.pop(0)
             if not q:
                 continue
-        
+
             if q in self.noise_words:
                 # logger.info(f"Ruido temprano 2: '{list(self.noise_words).pop(list(self.noise_words).index(q))}'")
                 continue
-            
+
             if not self._is_potential_keyword(q):
                 # logger.info(f"Texto no paso filtro global: '{q}'")
                 continue
@@ -95,13 +97,19 @@ class WordFinder:
             # ELIMINACIÓN DE RUIDO: No usa assigned_fields
             q_clean, removed_noise = self._remove_noise_substrings(q)
             if removed_noise:
+                if len(q_clean) < self.ngrams_len[0]:
+                    continue
+
                 if not self._is_potential_keyword(q_clean):
                     continue
-        
+
                 q = q_clean
+
+            word_len = len(q)
+            if word_len < self.ngrams_len[0]:
+                continue
             
             found_matches_for_s: List[Dict[str, Any]] = []
-            word_len = len(q)
             
             if q in self.global_words:
                 key = self.all_ngrams.get(q)
@@ -233,6 +241,7 @@ class WordFinder:
                             
                         if left_part:
                             queue.append(left_part)
+
                         if right_part:
                             queue.append(right_part)
         

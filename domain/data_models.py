@@ -1,10 +1,9 @@
 # domain/data_models.py
 import numpy as np
-from numpy import typing, dtypes
 import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
-from components.compiled.image import release
+from components.compiled import image
     
 @dataclass(slots=True)
 class Polygons:
@@ -70,5 +69,5 @@ class FullImageKey:
     @classmethod
     def clear(cls) -> None:
         """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
-        release(ptr_addr=cls.img_ptr) # type: ignore
+        image.release_img(ptr_addr=cls.img_ptr) # type: ignore
         cls.img_ptr = None

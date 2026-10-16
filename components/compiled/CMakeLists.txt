@@ -26,106 +26,54 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-# ─── Cython: image.pyx → image.cpp ───
-add_custom_command(
-    OUTPUT  "${CMAKE_CURRENT_SOURCE_DIR}/image.cpp"
-    COMMAND ${Python3_EXECUTABLE} -m cython
-            --cplus -3
-            -I "${CMAKE_CURRENT_SOURCE_DIR}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/image.pyx"
-            -o "${CMAKE_CURRENT_SOURCE_DIR}/image.cpp"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/image.pyx"
-            "${CMAKE_CURRENT_SOURCE_DIR}/image.pxd"
-            "${CMAKE_CURRENT_SOURCE_DIR}/image_loader.pxd"
-    COMMENT "Cython: image.pyx → image.cpp"
-    VERBATIM
-)
-
-add_library(image MODULE
-    "${CMAKE_CURRENT_SOURCE_DIR}/image.cpp"
-    "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/src/image_loader.cpp"
-    "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/src/angle_corrector.cpp"
-)
-
-set_target_properties(image PROPERTIES
-    PREFIX ""
-    SUFFIX "${PYTHON_EXT_SUFFIX}"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO)
-    string(TOUPPER ${CONFIG} CONFIG_UPPER)
-    set_target_properties(image PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER} "${CMAKE_CURRENT_SOURCE_DIR}"
-    )
-endforeach()
-
-if(UNIX)
-    set_target_properties(image PROPERTIES
-        BUILD_RPATH "${CMAKE_SOURCE_DIR}/libs;${CMAKE_SOURCE_DIR}/libraries"
-        INSTALL_RPATH "${CMAKE_SOURCE_DIR}/libs;${CMAKE_SOURCE_DIR}/libraries"
-    )
-endif()
-
-target_include_directories(image PRIVATE
-    ${Python3_INCLUDE_DIRS}
-    "${NUMPY_INCLUDE_DIR}"
-    "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/include"
-    "${CMAKE_SOURCE_DIR}/components/image_container/include"
-    "${CMAKE_SOURCE_DIR}/components/file_handler/include"
-    "${CMAKE_SOURCE_DIR}/components/c_utils/include"
-    "${CMAKE_SOURCE_DIR}/third_party/opencv_dep/install/include/opencv4"
-)
-
-target_link_directories(image PRIVATE
-    "${CMAKE_SOURCE_DIR}/libraries"
-    "${CMAKE_SOURCE_DIR}/libs"
-)
-
-target_link_libraries(image PRIVATE
-    Python3::Module 
-    image_container
-    file_handler
-    c_utils
-    opencv_core
-    opencv_imgproc
-    opencv_imgcodecs
-)
-
-add_custom_command(
-    OUTPUT  "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
-    COMMAND ${Python3_EXECUTABLE} -m cython
-            --cplus -3
-            -I "${CMAKE_CURRENT_SOURCE_DIR}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
-            -o "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
-            "${CMAKE_CURRENT_SOURCE_DIR}/image.pxd"
-    COMMENT "Cython: arrays.pyx → arrays.cpp"
-    VERBATIM
-)
-
-add_library(arrays MODULE "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp")
-set_target_properties(arrays PROPERTIES
-    PREFIX ""
-    SUFFIX "${PYTHON_EXT_SUFFIX}"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-target_include_directories(arrays PRIVATE
-    ${Python3_INCLUDE_DIRS}
-    "${NUMPY_INCLUDE_DIR}"
+set(COMPILED_PYTHON_EXT_SUFFIX "${PYTHON_EXT_SUFFIX}")
+set(COMPILED_NUMPY_INCLUDE_DIR "${NUMPY_INCLUDE_DIR}")
+set(COMPILED_PYTHON_INCLUDE_DIRS "${Python3_INCLUDE_DIRS}")
+set(COMPILED_IMAGE_CONTAINER_INCLUDE_DIR
     "${CMAKE_SOURCE_DIR}/components/image_container/include"
 )
-target_link_directories(arrays PRIVATE
-    "${CMAKE_SOURCE_DIR}/libraries"
-    "${CMAKE_SOURCE_DIR}/libs"
-)
-target_link_libraries(arrays PRIVATE Python3::Module image_container)
 
-if(WIN32)
-    target_compile_options(image PRIVATE /std:c++20 /arch:AVX2 /O2)
-    target_compile_options(arrays PRIVATE /std:c++20 /arch:AVX2 /O2)
-else()
-    target_compile_options(image PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
-    target_compile_options(arrays PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
-endif()
+function(configure_compiled_target target)
+    set_target_properties(${target} PROPERTIES
+        PREFIX ""
+        SUFFIX "${COMPILED_PYTHON_EXT_SUFFIX}"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+
+    foreach(CONFIG DEBUG RELEASE RELWITHDEBINFO)
+        string(TOUPPER "${CONFIG}" CONFIG_UPPER)
+        set_target_properties(${target} PROPERTIES
+            LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER}
+            "${CMAKE_CURRENT_SOURCE_DIR}"
+        )
+    endforeach()
+
+    if(UNIX)
+        set_target_properties(${target} PROPERTIES
+            BUILD_RPATH "${CMAKE_SOURCE_DIR}/libs;${CMAKE_SOURCE_DIR}/libraries"
+            INSTALL_RPATH "${CMAKE_SOURCE_DIR}/libs;${CMAKE_SOURCE_DIR}/libraries"
+        )
+    endif()
+
+    target_include_directories(${target} PRIVATE
+        ${COMPILED_PYTHON_INCLUDE_DIRS}
+        "${COMPILED_NUMPY_INCLUDE_DIR}"
+        "${COMPILED_IMAGE_CONTAINER_INCLUDE_DIR}"
+    )
+
+    target_link_directories(${target} PRIVATE
+        "${CMAKE_SOURCE_DIR}/libraries"
+        "${CMAKE_SOURCE_DIR}/libs"
+    )
+
+    if(WIN32)
+        target_compile_options(${target} PRIVATE /std:c++20 /arch:AVX2 /O2)
+    else()
+        target_compile_options(${target} PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
+    endif()
+endfunction()
+
+add_subdirectory(image)
+add_subdirectory(arrays)
+
+add_dependencies(image arrays)

@@ -2,7 +2,7 @@ import logging
 from typing import Dict, Any
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
-from components.compiled.image import load
+from components.compiled.image.image import load
 from utils.text_utils import get_ids
 
 logger = logging.getLogger(__name__)

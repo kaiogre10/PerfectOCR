@@ -11,10 +11,6 @@ struct ImageContainer {
 };
 
 ImageContainer* create_img_buffer(int width, int height, int channels, size_t dtype) {
-    if (dtype != 1) {   // EL dtype es un entero con valor de 1, pero de tamaño del tipo que solicitamos el buffer para contabilidad con numpy y python
-        return NULL;
-    }
-    
     ImageContainer* img = (ImageContainer*)malloc(sizeof(ImageContainer));
     if (!img) {
         return NULL;
