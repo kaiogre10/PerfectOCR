@@ -1,6 +1,6 @@
 # config/config_builder.py
-import os
-from typing import Dict, Any, List, Tuple
+import os 
+from typing import Dict, Any, List, Tuple, Optional
 from functools import cached_property
 from services.log_service import basic_exc_logger
 from utils.image_utils import configure_kernel
@@ -17,12 +17,12 @@ _extension_suffix = extension_suffix
 _full_ocr = FULL_OCR
 
 class ConfigBuilder:
-    """Valida de los parametros de configuración"""
+    """Construye de los parametros de configuración"""
     def __init__(self, project_root: str):
         self.project_root = project_root
-        self._config = None
-        if not self.config.validate_min_workers():
-            self.config = {} # type: ignore
+        self._config: Optional[BaseConfig] = None
+        if not self.config.validate_config():
+            self.config = {}
             del self.config
 
         self.so = next(iter(system_service.SO.keys()))
@@ -30,6 +30,10 @@ class ConfigBuilder:
 
     @cached_property
     def config(self):
+        if self._config is not None and not self._config:
+            self.config = {}
+            return None
+        
         if self._config is None:
             self._config = BaseConfig(self.project_root)
         return self._config

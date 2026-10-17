@@ -6,4 +6,5 @@ namespace image_utils {
     void make_contiguous(cv::Mat& image);
     bool validate_image(cv::Mat& image);
     void normalize_image(cv::Mat& image);
+    void norm_dims(cv::Mat& image);
 }

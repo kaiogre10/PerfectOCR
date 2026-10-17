@@ -43,5 +43,5 @@ def copy_image(size_t ptr_addr):
     cdef size_t dtype = sizeof(uint8_t)
 
     copy = new_buffer(image.width(), image.height(), image.channels(), dtype)
-    memcpy(copy.data(), image.data(), image.size()) # type: ignore
+    memcpy(copy.data(), image.data(), image.size())
     return <size_t>copy

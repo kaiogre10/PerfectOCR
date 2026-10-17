@@ -110,7 +110,7 @@ class DataFormatter:
         logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
-    def get_array_buffer(self, rows: int, cols: int, channels: int, dtype: typing.DTypeLike, dims: int) -> Optional[int]:
+    def get_array_buffer(self, rows: int, cols: int, channels: int, dtype: typing.DTypeLike, dims: Optional[int] = None) -> Optional[int]:
         """Solicita un buffer de memoria a C. Devuelve puntero"""
             
         arr_ptr = arrays.create_new_array(rows, cols, channels, dtype)

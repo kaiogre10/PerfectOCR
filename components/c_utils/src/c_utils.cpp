@@ -56,17 +56,29 @@ namespace image_utils {
         if (image.empty()) {
             return false;
         }
-
         cv::Scalar mean_val = cv::mean(image);
         double avg_brightness = mean_val[0];
         return (avg_brightness > 7.0 && avg_brightness < 251.0);
+    }
+
+    void norm_dims(cv::Mat &image) {
+        // Si ambos ya son pares, no hay nada que hacer
+        if (image.cols % 2 == 0 && image.rows % 2 == 0) {
+            return;
+        }
+
+        int new_cols = (image.cols % 2 != 0) ? image.cols + 1 : image.cols;
+        int new_rows = (image.rows % 2 != 0) ? image.rows + 1 : image.rows;
+
+        cv::Mat padded;
+        cv::copyMakeBorder(image, padded, 0, new_rows - image.rows, 0, new_cols - image.cols, cv::BORDER_REPLICATE);
+        image = padded;
     }
 
     void normalize_image(cv::Mat& image) {
         if (image.empty()) {
             return;
         }
-
         int channels = image.channels();
         int depth = image.depth();
 

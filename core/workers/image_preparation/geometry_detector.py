@@ -7,23 +7,20 @@ from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import binarice_img, morph_operations
 from services.output_service import save_croped_image
+from domain.buffer_handler import ArrayBuffer
 
 logger = logging.getLogger(__name__)
 
 class GeometryDetector(ImagePrepAbstractWorker):
     """Detecta geometría con PaddleOCR"""
-    __slots__ = (
-        "kernel",
-        "iterations",
-        "output",
-        "_engine"
-    )
+    __slots__ = ("kernel", "iterations", "output", "_engine", "bboxes_type")
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         worker_config = config.get("geometry_detect", {})
         self.kernel = worker_config["morph_kernel"]
         self.iterations = worker_config.get("iterations")
         self.output = config.get("opened")
+        self.bboxes_type = config.get("bboxes_type")
         self._engine = None
             
     @property
@@ -51,32 +48,38 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.error(f"No se pudo sacar la copia en el Formatter")
                 return False
             
-            bin_img = binarice_img(full_imag)
+            full_imag = binarice_img(full_imag)
 
-            img = morph_operations(bin_img, self.kernel, self.iterations)
+            full_imag = morph_operations(full_imag, self.kernel, self.iterations)
 
             if self.output:
                 image_name = manager.workflow.image_name if manager.workflow else ""
                 # imag_id = f"opened_{image_name}_{worker_name}"
                 img_id = f"bin_img_{image_name}"
-                save_croped_image(image_name, img_id, img)
+                save_croped_image(image_name, img_id, full_imag)
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
             # paddle_time = time.perf_counter()
-            polygons: Optional[list[list[list[int]]]] = engine.ocr(img=img, det=True, cls=False, rec=False)[0]
+            polygons: list[list[list[float]]] = engine.ocr(img=full_imag, det=True, cls=False, rec=False)[0]
 
             if not manager.free_buffer(copy_ptr):
                 raise RuntimeError("ERROR LIBERANDO COPIA EN MANAGER")
-            
-            # logger.info(f"Tiempo de detección de paddle: {time.perf_counter() - paddle_time:.6f}'s")
+
             if not polygons:
                 logger.critical("No hay polygonos detectados")
                 return False
-            
-            pts = np.asarray(polygons, dtype=np.int16, order='C')          # (N, 4, 2)
 
-            xs = pts[:, :, 0]                                     # (N, 4)
-            ys = pts[:, :, 1]                                     # (N, 4)
+            # bbxes_ptr = manager.get_array_buffer(rows=len(polygons), cols=len(polygons[0]), channels=len(polygons[0][0]), dtype=self.bboxes_type)
+            # if not bbxes_ptr:
+            #     logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
+            #     return False
+
+            # list_bboxes = ArrayBuffer(bbxes_ptr).data
+
+            list_bboxes = np.asarray(polygons, dtype=np.int16, order='C')          # (N, 4, 2)
+
+            xs = list_bboxes[:, :, 0]                                     # (N, 4)
+            ys = list_bboxes[:, :, 1]                                     # (N, 4)
 
             bboxes = np.stack([xs.min(axis=1), ys.min(axis=1), xs.max(axis=1), ys.max(axis=1)], axis=1, dtype=np.int_)   # (N, 4)
             centroids = np.stack([xs.mean(axis=1, dtype=np.float_), ys.mean(axis=1, dtype=np.float_)], axis=1, dtype=np.float_) # (N, 2)
@@ -85,7 +88,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 "bounding_box": bboxes[i].tolist(),
                 "centroid": centroids[i].tolist()
             }
-            for i in range(pts.shape[0])
+            for i in range(list_bboxes.shape[0])
             ]
 
             # ind = np.arange(total_conts)
@@ -98,7 +101,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 raise
 
             else:
-                # logger.info(f"{len(final_polygons)} poligonos válidos detectados en: {time.perf_counter()-start_time:.6f}s")
+                logger.info(f"{len(polygons_list)} poligonos válidos")
                 return True
         
         except Exception as e:

@@ -13,7 +13,7 @@ class BaseConfig:
     def __init__(self, project_root: str):
         self.config = load_config(project_root)
 
-        if not self._validate_config():
+        if not self.validate_config():
             self.config = {}
             del self.config
 
@@ -139,7 +139,7 @@ class BaseConfig:
             all_workers.update(vect)
         return frozenset(all_workers)
 
-    def _validate_config(self) -> bool:
+    def validate_config(self) -> bool:
         mode = f'{"DEPLOY" if self.deploy_mode else "PRODUCTION"}' if not self.no_activate_modules else ("CONFIG TESTING" if self.test_config else "NO MODULES")
         msg: str = f"Modo: '{mode}', Validación: '{"COMPLETA" if not self.deploy_mode else "MÍNIMA"}' de la configuración."
 

@@ -78,8 +78,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     cols_idx = np.arange(cols, dtype=np.uint8)
                     context[DataMathDict.ROWS_IDX.value] = rows_idx
                     context[DataMathDict.COLS_IDX.value] = cols_idx
-                    # arr_ptr = manager.get_array_buffer(rows, cols, 6, np.uint8)
-                    # context["arr_ptr"] = arr_ptr
 
                     logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     if self.output:

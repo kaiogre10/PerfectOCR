@@ -1,12 +1,14 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True
 from libc.stddef cimport size_t
 from libc.stdint cimport int32_t, uint8_t
-from libc.string cimport memset
+from libc.string cimport memset, memcpy
 from image cimport Image, destroy_image, new_buffer, get_image_ptr
 import numpy as _numpy
 
-cdef inline void _set_array_vals(size_t ptr_addr) except *:
-    cdef Image* image  = get_image_ptr(ptr_addr)
+cdef inline int _list_len(list py_list) except *:
+    return len(py_list)
+
+cdef inline void _set_array_vals(Image* image) except *:
     memset(image.data(), 0, image.size())
 
 cdef inline size_t _get_arr_dtype(object dtype_raw) except *:
@@ -66,3 +68,7 @@ def get_3d_array(size_t arr_ptr):
 def release_array(size_t ptr_addr):
     cdef Image* img = get_image_ptr(ptr_addr)
     destroy_image(img)
+
+def reset_vals(size_t ptr_addr):
+    cdef Image* image = get_image_ptr(ptr_addr)
+    _set_array_vals(image)

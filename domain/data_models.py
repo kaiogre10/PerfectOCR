@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
-from components.compiled import image
+from components.compiled import image, arrays
     
 @dataclass(slots=True)
 class Polygons:
@@ -71,3 +71,32 @@ class FullImageKey:
         """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
         image.release_img(ptr_addr=cls.img_ptr) # type: ignore
         cls.img_ptr = None
+
+class ArrayKey:
+    arr_ptr: Optional[int] = None
+    dims: Optional[int] = None
+    
+    def __new__(cls, arr_ptr: int, dims: int):
+        if type(arr_ptr) is not int:
+            raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(arr_ptr).__name__}'.")
+            
+        # 2. VALIDACIÓN DE NEGATIVOS: Un puntero de memoria real no puede ser menor a 
+        if arr_ptr < 1:
+            raise TypeError("Validación fallida: El puntero no puede ser un entero negativo.")
+
+        if 3 < dims or dims < 1:
+            raise ValueError("IDENTIFICADORES DIMS INVALIDAS")
+
+        # Guarda el entero en el namespace de la clase
+        cls.img_ptr = arr_ptr
+        cls.dims = dims
+        
+        # Evita crear instancias en memoria
+        return None
+
+    @classmethod
+    def clear(cls) -> None:
+        """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
+        arrays.release_array(ptr_addr=cls.arr_ptr) # type: ignore
+        cls.img_ptr = None
+        cls.dims = None

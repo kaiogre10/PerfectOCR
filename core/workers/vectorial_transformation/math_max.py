@@ -12,6 +12,8 @@ from utils.math_utils import check_full_df, decimalice_df, round_vals, decimalic
 from core.assets.assets import ONE_DEC, ZERO_DEC, ROW_TOL, SC_RANGE
 from services.output_service import save_debug_table
 from domain.class_models import SemantiClass, DataKeys, DataMathDict, StringsModels
+from domain.buffer_handler import ArrayBuffer
+from components.compiled.arrays import reset_vals
 
 _row_tol = ROW_TOL
 _one = ONE_DEC
@@ -30,6 +32,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         worker_config = config.get('math_max', {})
         self.dec_cols_name = worker_config["dec_cols_name"]
         self.output = config.get("math_max_corrected")
+        self.sc_matrix_type = config.get("sc_matrix_type")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         start_time = time.perf_counter()
@@ -40,6 +43,11 @@ class MatrixSolver(VectorizationAbstractWorker):
             if df is None or df.empty:
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
+
+            arr_ptr = manager.get_array_buffer(_total_sc, df.shape[0], df.shape[1], self.sc_matrix_type, dims=3) # El valor maximo de SC_RANGE siempre va al incio. porque representa las se individualemne
+
+            logger.info(f"PUNTERO A BUFFER 3D:{arr_ptr}")
+            context["arr_ptr"] = arr_ptr
 
             corrected_df = self.solve(df, context, manager)
             del context
@@ -110,8 +118,8 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         # logger.info("RENAMED:\n" + df.to_string(index=True))
         df = self.correct_df(df, context)
-        # arr_ptr = context["arr_ptr"]
-        # manager.free_buffer(arr_ptr)
+        arr_ptr = context["arr_ptr"]
+        manager.free_buffer(arr_ptr)
         if not check_full_df(df):
             return pd.DataFrame()
         else:
@@ -119,25 +127,26 @@ class MatrixSolver(VectorizationAbstractWorker):
 
     def get_arrays_table(self, context: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """"Devuelve los arrays 'total[0], textual[1], umd[2], code[3], cuantitative[4], numeric[5]'"""
-        # arr_ptr = context["arr_ptr"]
-        # arr_full = FullImage(arr_ptr)
+        arr_ptr = context["arr_ptr"]
+        reset_vals(arr_ptr)
+        arr_full = ArrayBuffer(arr_ptr, 3)
 
-        # matrix_array = arr_full.data
-        # dims = arr_full.shape
+        matrix_array = arr_full.data
+        shp = arr_full.shape
 
-        # if matrix_array is None:
-        #     raise AttributeError(f"MATRIZ ES NONE")
+        if matrix_array is None:
+            raise AttributeError(f"MATRIZ ES NONE")
         
-        # if len(dims) != 3:
-        #     raise AttributeError(f"MATIZ DIMENSIONES ERRONEAS: {dims}, {matrix_array.shape}")
+        if len(shp) != 3:
+            raise AttributeError(f"MATIZ DIMENSIONES ERRONEAS: {shp}, {matrix_array.shape}")
         
         df_copy = context[DataMathDict.DF_COPY.value]
         r = df_copy.shape[0]
         c = df_copy.shape[1]
         
-        matrix_array = np.zeros(shape=(_total_sc, r, c), dtype=np.uint8)
+        atrix_array = np.zeros(shape=(_total_sc, r, c), dtype=np.uint8)
 
-        # logger.info(f"ARRAY C++:\n"f"{dims} | {atrix_array.shape}")
+        logger.info(f"ARRAY C++:\n"f"{shp}, SHAPE: {atrix_array.shape}")
 
         cut_polygons: Dict[str, Dict[str, Any]] = context[DataMathDict.CUT_POLYGONS.value]
                 

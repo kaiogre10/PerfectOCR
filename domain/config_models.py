@@ -152,6 +152,7 @@ class InkConfig(ConfigWithNumpy):
 class GeometryDetect(ConfigWithNumpy):
     morph_kernel: List[int]
     iterations: int
+    bboxes_type: str
 
 class DeskewConfig(ConfigWithNumpy):
     min_angle_for_correction: float
@@ -163,7 +164,6 @@ class DeskewConfig(ConfigWithNumpy):
 
 class CuttingConfig(ConfigWithNumpy):
     cropping_padding: int
-    bboxes_type: str
     
 class ImagePreparation(ConfigWithNumpy):
     ink_enhancement: InkConfig
@@ -234,6 +234,7 @@ class CosineSimilarity(ConfigWithNumpy):
 class DataCollector(ConfigWithNumpy):
     placeholder: str
     date_id_format: str
+    sc_matrix_type: str
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal

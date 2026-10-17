@@ -22,7 +22,7 @@ def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[n
 
 def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any, Any]]:
     try:
-        return [make_contiguous(cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)) for img in image_list]
+        return [make_contiguous(cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR, dst=img)) for img in image_list]
     except cv2.error as e:
         logger.critical(f"Error añadiendo dimensiones a la imagen: {e}", exc_info=True)
     return []
@@ -30,11 +30,11 @@ def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any,
 def validate_image(img: Optional[np.ndarray[Any, Any]]):
     return False if img is None else (7.0 < np.mean(img) < 251.0)
 
-def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, np.dtype[np.uint8]]:
-    return make_contiguous(cv2.bilateralFilter(img, d, sigma_color, sigma_space))
+def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma_color: int, sigma_space: int)-> np.ndarray[Any, Any]:
+    return cv2.bilateralFilter(img, d, sigma_color, sigma_space, dst=img)
 
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int):
-    return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, ksize=ksize)), dtype=np.float64)
+    return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, dst=img, ksize=ksize)), dtype=np.float64)
 
 def get_image_lines(full_img: np.ndarray[Any, np.dtype[np.uint8]], canny_thresholds: Tuple[float, float], hough_threshold: int, min_len: float, hough_max_line_gap_px: float):
     edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
@@ -42,7 +42,7 @@ def get_image_lines(full_img: np.ndarray[Any, np.dtype[np.uint8]], canny_thresho
 
 def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     if np.all((cropped_img == 0) | (cropped_img == 255)): # VALIDAR SI LA IMAGEN ES BINARIA
-        return make_contiguous(cropped_img)
+        return cropped_img
 
     height = int(cropped_img.shape[0])
 
@@ -58,7 +58,7 @@ def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray
     else:
         bin_img = adaptive_mean_fallback(cropped_img, block, _c_value)
 
-    return make_contiguous(cv2.bitwise_not(bin_img))
+    return make_contiguous(cv2.bitwise_not(src=bin_img, dst=bin_img))
    
 def get_adaptive_block_size(height: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
     """Calcula el tamaño de bloque adaptativo basado en la altura del polígono."""
@@ -95,32 +95,31 @@ def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) ->
     else:
         return StringsModels.ADAPTATIVE_MEAN.value  # Bajo contraste, imagen "plana"
 
-def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    results = cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return make_contiguous(results[1])
+def otsu_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, Any]:
+    return cv2.threshold(cropped_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU, dst=cropped_img)[1]
 
-def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value))
+def adaptive_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, Any]:
+    return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, c_value, dst=cropped_img)
 
 def sauvola_binarize(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], adaptive_block_size: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Sauvola thresholding producing uint8 mask with text as foreground (0) and background (255)"""
     thresh_sauvola = threshold_sauvola(image=cropped_img, window_size=adaptive_block_size)
     bin_bool = (cropped_img > thresh_sauvola)
-    return make_contiguous(bin_bool * 255)
+    return (bin_bool * 255)
+
+def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, Any]:
+    return cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2),  dst=cropped_img)
 
 def apply_clahe_correction(original_img: np.ndarray[Any, np.dtype[np.uint8]], clip_limit: float, grid_size: Tuple[ Any, ...]) -> np.ndarray[Any, Any]:
     """Aplica el filtro CLAHE a una imagen."""
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=grid_size)
-    return clahe.apply(original_img)
+    return clahe.apply(src=original_img, dst=original_img)
 
 def apply_sharpening_correction(cropped_img_np: np.ndarray[Any, np.dtype[np.uint8]], radius: float, amount: float) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Aplica el filtro unsharp_mask a una imagen."""
     sharpened_float = unsharp_mask(cropped_img_np, radius=radius, amount=amount)
     # unsharp_mask devuelve un float en [0, 1], se debe convertir de vuelta a uint8 [0, 255]
     return make_contiguous(np.clip(sharpened_float, 0, 1) * 255)
-
-def adaptive_mean_fallback(cropped_img: np.ndarray[Any, np.dtype[np.uint8]], block_size: int, c_value: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    return make_contiguous(cv2.adaptiveThreshold(cropped_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, max(1, c_value - 2)))
 
 # def get_conected_comps_metrics(img: np.ndarray[Any, np.dtype[np.uint8]]):
 #     # img_bin: imagen binaria (uint8, valores 0/255)
@@ -295,5 +294,5 @@ def configure_kernel(x: int, y: int, is_arr: Optional[bool] = None):
     return np.arange(((2 + x) - y), dtype=np.uint8)
 
 def morph_operations(img: np.ndarray[Any, Any], kernel: Any, iterations: int) -> np.ndarray[Any, Any]:
-    arr = make_contiguous(cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel, iterations)) # type: ignore
-    return cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
+    img = cv2.morphologyEx(src=img, op=cv2.MORPH_CLOSE, kernel=kernel, dst=img, iterations=iterations)
+    return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR, dst=img)

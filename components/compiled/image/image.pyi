@@ -19,7 +19,7 @@ def get_image_array(ptr_addr: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
         el array siga vivo. Haz una copia con .copy() si necesitas independencia.
     """
 
-def release(ptr_addr: int) -> None:
+def release_img(ptr_addr: int) -> None:
     """Libera la imagen apuntada por ptr_addr.
 
     Warning:
