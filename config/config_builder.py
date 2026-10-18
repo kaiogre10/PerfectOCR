@@ -78,6 +78,10 @@ class ConfigBuilder:
             _comp_funcs_file = _system_paths["comp_funcs_file"]
             comp_funcs_name = ".".join(_comp_funcs_file)
 
+            del_buils = os.path.join(self.project_root, "build")
+            del_path = os.path.join(self.project_root, *_comp_funcs_file[:-1])
+            _system_paths["del_files"] = [[self.so, ".c"], [del_path], [del_buils]]
+
             _comp_funcs_file = os.path.join(self.project_root, *_comp_funcs_file)
             comp_funcs_name = _extension_suffix.sub("", comp_funcs_name)
 
@@ -220,7 +224,7 @@ class ConfigBuilder:
             return {}, []
         else:
             config_module = self._img_prep_config
-            enabled_outputs = self.enabled_outputs.get("image_load_outputs", {})
+            enabled_outputs = self.enabled_outputs.get("image_preparation_outputs", {})
             config_module.update(enabled_outputs)
             return config_module, self.config.workers_order[StageKeys.IMGPREP_KEY]
             

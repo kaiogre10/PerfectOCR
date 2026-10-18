@@ -1,27 +1,29 @@
 # domain/data_formatter.py
+import logging
 from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey
 import numpy as np
 from numpy import typing
 import dataclasses
-import logging
 from typing import Dict, Any, Optional, List, Tuple
 import pandas as pd # type: ignore
 from services.log_service import get_caller_info
-from domain.class_models import SemantiClass, StringsModels
+from domain.class_models import SemantiClass
 from domain.buffer_handler import ImageBuffer, ArrayBuffer
 from components.compiled import image, arrays
+from utils.text_utils import set_ids
 
 logger = logging.getLogger(__name__)
 
 class DataFormatter:
     """Válvula de entrada/salida para todas las operaciones del workflow."""
-    __slots__ = ("workflow", "payload", "text_ocr_log", "key_fields_log", "kf_list_log", "lines_log", "table_lines_log", "table_correct_log")
+    __slots__ = ("workflow", "payload", "text_ocr_log", "key_fields_log", "kf_list_log", "lines_log", "table_lines_log", "table_correct_log", "refined_text")
     def __init__(self, logs_config: Dict[str, Any]):
         self.workflow: Optional[WorkflowData] = None
         self.payload: Optional[Payload] = None
         
         self.text_ocr_log = logs_config.get("text_ocr", False)
-        self.key_fields_log = logs_config.get("key_fields", False)
+        self.key_fields_log = logs_config.get("text_keyfields", False)
+        self.refined_text = logs_config.get("text_refined")
         self.kf_list_log = logs_config["kf_list_log"]
         self.lines_log = logs_config.get("lines", False)
         self.table_lines_log = logs_config.get("table_lines", False)
@@ -69,15 +71,15 @@ class DataFormatter:
             
             polygons_dataclass: Dict[str, Polygons] = {}
             
-            for new_idx, poly_data in enumerate(results):
-                poly_id = f"{StringsModels.POLYS_IDS.value}{new_idx:04d}"
+            for idx, poly_data in enumerate(results):
+                poly_id = set_ids(idx)
                 bbox = poly_data["bounding_box"]
                 centroid = poly_data["centroid"]
 
                 # Crear objeto Polygons y agregar al diccionario
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
-                    poly_index=new_idx,
+                    poly_index=idx,
                     bounding_box = bbox,
                     centroid = centroid,
                     cropped_img=None,
@@ -218,21 +220,25 @@ class DataFormatter:
             self.workflow.polygons[poly_id] = updated_polygon
         logger.debug("Todas las imágenes recortadas han sido liberadas de memoria")
                         
-    def save_cropped_images(self, cropped_images: Dict[str, Any]) -> bool:
+    def save_cropped_images(self, cropped_images: Dict[str, Any], reindex: bool) -> bool:
         """Guarda imágenes recortadas y geometría de recorte en los polígonos de las dataclasses"""
         try:
             if not self.workflow or not self.workflow.polygons:
                 logger.error("No hay workflow inicializado para guardar imágenes recortadas.")
                 return False
-
             logger.debug(f"'{len(cropped_images)}' imágenes recortadas recibidas para guardar.")
-
             reindexed_polygons: Dict[str, Polygons] = {}
             for i, (poly_id, crop) in enumerate(cropped_images.items()):
+
                 polygon = self.workflow.polygons[poly_id]
-                new_idx = f"{StringsModels}{i:04d}"
-                # Crear nuevo polígono con la imagen recortada y la geometría
-                updated_polygon = dataclasses.replace(polygon, polygon_id=new_idx, cropped_img=crop)
+                if not reindex:
+
+                    new_idx = poly_id
+                    updated_polygon = dataclasses.replace(polygon, cropped_img=crop)
+                else:
+                    new_idx = set_ids(i)
+                    # Crear nuevo polígono con la imagen recortada
+                    updated_polygon = dataclasses.replace(polygon, polygon_id=new_idx, poly_index=i, cropped_img=crop)
 
                 reindexed_polygons[new_idx] = updated_polygon
 
@@ -257,24 +263,24 @@ class DataFormatter:
                 return False
                 
             reindexed_polygons: Dict[str, Polygons] = {}
-            new_id = 0
+            idx = 0
             
             for _, (poly_id, res), in enumerate(final_results.items()):
                 polygon = self.workflow.polygons[poly_id]
                 text=res.get("text", "")
                 
-                if not text or text is None:
+                if not text:
                     continue
                     
-                cuant_c=polygon.cuant_chars if not res.get("cuant_chars") else 0
+                cuant_c = polygon.cuant_chars if not res.get("cuant_chars") else 0
                 sc = polygon.semantic_clasification if not res.get("sc") else [0]
                 
-                new_id += 1
-                new_idx = f"{StringsModels}{new_id:04d}"
+                new_idx = set_ids(idx)
+                idx += 1
                 updated_polygon = dataclasses.replace(
                     polygon,
                     polygon_id=new_idx,
-                    poly_index=new_id,
+                    poly_index=idx,
                     ocr_text=text,
                     semantic_clasification=sc,
                     cuant_chars=cuant_c
@@ -283,7 +289,7 @@ class DataFormatter:
 
             self.workflow.polygons = reindexed_polygons
 
-            if self.text_ocr_log and (worker == "PaddleOCRWrapper" or worker == "paddle_wrapper"):
+            if self.text_ocr_log and (worker == "PaddleOCRWrapper" or worker == "paddle_wrapper.py"):
                 polys = self.workflow.polygons if self.workflow else None
                 if polys:
                     
@@ -303,7 +309,7 @@ class DataFormatter:
                 logger.error("No hay workflow inicializado para actualizar resultados OCR.")
                 return False
 
-            for poly_id, semantic_type in final_results.items():
+            for _, (poly_id, semantic_type) in enumerate(final_results.items()):
                 polygon = self.workflow.polygons[poly_id]
                 # Actualizar semantic_clasification
                 updated_polygon = dataclasses.replace(polygon, semantic_clasification=semantic_type[0], cuant_chars=semantic_type[1])

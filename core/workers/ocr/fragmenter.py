@@ -5,8 +5,9 @@ from typing import Dict, Any, List, Tuple
 from domain.data_formatter import DataFormatter
 from core.contracts.abstract_worker import OCRAbstractWorker
 from utils.math_utils import fragment_geometry_horizontal
+from utils.text_utils import set_ids
 from utils.compiled_utils.compiled_funcs import space_removal, validate_text
-from domain.class_models import SemantiClass, StringsModels
+from domain.class_models import SemantiClass
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class Fragmenter(OCRAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
         self.project_root = project_root
-        self.log_output = config.get("frag_polys")
+        self.log_output = config.get("text_frag")
 
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
@@ -65,9 +66,8 @@ class Fragmenter(OCRAbstractWorker):
 
             final_polygons_dict = {}
             for idx, poly_obj in enumerate(final_polygons):
-                new_id = f"{StringsModels.POLYS_IDS}{idx:04d}"
-                new_index = idx
-                final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=new_index)
+                new_id = set_ids(idx)
+                final_poly_obj = dataclasses.replace(poly_obj, polygon_id=new_id, poly_index=idx)
                 final_polygons_dict[new_id] = final_poly_obj
                 
             manager.workflow.polygons = final_polygons_dict

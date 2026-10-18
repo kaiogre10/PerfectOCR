@@ -156,9 +156,6 @@ class TextCorrector(OCRAbstractWorker):
 
             return find_umd(token)
             
-        # if token.isalpha():
-        #     token = correct_subfix(token)
-        #     return token
         if semantic_clasification == SemantiClass.CODE:
             if token.endswith("O"):
                 if token.startswith(NumberStr.ONE) :
@@ -197,7 +194,9 @@ class TextCorrector(OCRAbstractWorker):
             
             if total_uppers > total_lowers or total_lowers < 0.1:
                 return text.upper()
+            
             elif total_lowers > total_uppers or total_uppers < 0.1:
                 return text.lower()
+            
             else:
                 return text.title()

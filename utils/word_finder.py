@@ -64,7 +64,6 @@ class WordFinder:
             return []
         
         elif text in self.global_words:
-            # noinspection PyUnhashable
             key = self.all_ngrams.get(text) # type: ignore
             if key and key[0] > 0:
                 # logger.info(f"MATCH TEMPRANO: '{text}'")
@@ -78,8 +77,6 @@ class WordFinder:
             queue: List[bytes] = text
         
         results: List[Dict[str, Any]] = []
-
-        # edited = False
         
         while queue:
             q = queue.pop(0)
@@ -97,8 +94,8 @@ class WordFinder:
             # ELIMINACIÓN DE RUIDO: No usa assigned_fields
             q_clean, removed_noise = self._remove_noise_substrings(q)
             if removed_noise:
-                if len(q_clean) < self.ngrams_len[0]:
-                    continue
+                # if len(q_clean) < self.ngrams_len[0]:
+                #     continue
 
                 if not self._is_potential_keyword(q_clean):
                     continue
@@ -106,8 +103,8 @@ class WordFinder:
                 q = q_clean
 
             word_len = len(q)
-            if word_len < self.ngrams_len[0]:
-                continue
+            # if word_len < self.ngrams_len[0]:
+            #     continue
             
             found_matches_for_s: List[Dict[str, Any]] = []
             
@@ -414,8 +411,6 @@ class WordFinder:
             total_soft_score_vect += num_match
             all_indices = np.arange(num_input, dtype=np.intp)
             no_match_indices = np.setdiff1d(all_indices, input_idx, assume_unique=True)
-            
-            # all_kf_idx = np.arange(matrix_keywords.shape[1], dtype=np.uint8)
             
             # logger.info(f"N{n}:\n"f"{all_kf_idx}\n"f"NEW: {self.all_kf_idx[:n]}")
             no_match_kf_idx = np.setdiff1d(self.all_kf_idx[:n], matches_mask, assume_unique=True)

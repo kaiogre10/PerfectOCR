@@ -32,8 +32,9 @@ class Refiner(OCRAbstractWorker):
         self.fragmenter = fragmenter
         self.corrector = corrector
         self.output = config.get("cleanned_text")
-        self.seman_clas_log = config.get("seman_clas")
-        self.refined_text = config.get("refined_text")
+
+        self.seman_clas_log = config.get("text_class")
+        self.refined_text = config.get("text_refined")
         self.semantic_types_log = config["semantic_types_log"]
         self.num_passes = worker_config.get("num_passes")
 
@@ -68,25 +69,29 @@ class Refiner(OCRAbstractWorker):
                     if not self.classify_strings(manager):
                         return False
 
-            if self.seman_clas_log or self.output:
+            if self.seman_clas_log or self.output or self.refined_text:
                 logger.info(f"Tiempo de refinado: {time.perf_counter() - t0:.6f}")
                 polygons = manager.workflow.polygons if manager.workflow else {}
                 if polygons is None:
                     logger.error(f"NO HAY POLÍGONOS DESPUÉS DE REFINAMINTO TEXTUAL")
                     return False
 
+                file_name: str = manager.workflow.image_name if manager.workflow else ""
                 poly_output: Dict[str, Any]= {}
                 for poly, poly_data in polygons.items():
                     text = poly_data.ocr_text or ""
                     s_clas = poly_data.semantic_clasification
-                    poly_output[poly] = {"text": text, "sc": s_clas}
+
                     if self.seman_clas_log:
                         if any(sc in self.semantic_types_log for sc in s_clas):
                             logger.info(f"{poly}: '{text}', clas: {s_clas} | t_cuant: {poly_data.cuant_chars}")
 
-                if self.output:
-                    file_name: str = manager.workflow.image_name if manager.workflow else ""
-                    save_text_debug(poly_output, file_name)
+                    elif self.refined_text:
+                        logger.info(f"{poly}: '{text}'")
+
+                    else:
+                        poly_output[poly] = {"text": text, "sc": s_clas}
+                        save_text_debug(poly_output, file_name)
 
             return True
         except Exception as e:
@@ -200,14 +205,19 @@ class Refiner(OCRAbstractWorker):
                 
             if contains_quantitative(text):
                 qtext = get_cuants(text)
-                # logger.info(f"POTENCIAL CUANTS: '{text}' -> '{qtext}'")
+                if self.refined_text:
+                    logger.info(f"POTENCIAL CUANTS: '{text}' -> '{qtext}'")
+                    
                 if qtext != text and self.refined_text:
                     logger.info(f"CUANT ENCONTRADO: '{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(qtext.split(" ")))}' → '{qtext}'")
                 text = qtext
 
             if contains_umd(text):
                 umd_text = find_umd(text)
-                # logger.info(f"POTENCIAL UMDS: {umd_text != text} -> '{text}'")
+
+                if self.refined_text:
+                    logger.info(f"POTENCIAL UMDS: {umd_text != text} -> '{text}'")
+
                 if umd_text != text:
                     if self.refined_text:
                         logger.info(f"UMD ENCONTRADA:'{poly}' | Text: '{text}' -> '{set(text.split(" ")).difference(set(umd_text.split(" ")))}' → '{umd_text}'")

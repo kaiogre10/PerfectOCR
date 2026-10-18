@@ -82,7 +82,6 @@ class ArrayBuffer:
 
     @property
     def depth(self) -> int:
-        # Los arreglos de NumPy no tienen atributo .channels
         return self.shape[2]
 
     @property

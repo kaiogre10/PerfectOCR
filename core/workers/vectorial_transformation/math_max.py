@@ -9,11 +9,11 @@ from core.contracts.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.compiled_utils import validate_quant_chars, space_removal
 from utils.math_utils import check_full_df, decimalice_df, round_vals, decimalice
+from utils.text_utils import set_ids
 from core.assets.assets import ONE_DEC, ZERO_DEC, ROW_TOL, SC_RANGE
 from services.output_service import save_debug_table
-from domain.class_models import SemantiClass, DataKeys, DataMathDict, StringsModels
+from domain.class_models import SemantiClass, DataKeys, DataMathDict
 from domain.buffer_handler import ArrayBuffer
-from components.compiled.arrays import reset_vals
 
 _row_tol = ROW_TOL
 _one = ONE_DEC
@@ -93,7 +93,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             text_col: str = cols_list[int(text_col_idx[0])]
             df.rename(columns={text_col: DataKeys.producto_norm.value}, inplace = True)
             if check_full_df(df):
-                logger.debug("DF PERFECTO")
+                logger.info("DF PERFECTO")
                 return df
         else:
             if df.shape == (arithmetical_rows.size, arithmetical_cols.size):
@@ -116,7 +116,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             logger.warning("SIN HIPOTESIS VÁLIDA")
             return pd.DataFrame()
 
-        # logger.info("RENAMED:\n" + df.to_string(index=True))
+        logger.debug("RENAMED:\n" + df.to_string(index=True))
         df = self.correct_df(df, context)
         arr_ptr = context["arr_ptr"]
         manager.free_buffer(arr_ptr)
@@ -127,29 +127,24 @@ class MatrixSolver(VectorizationAbstractWorker):
 
     def get_arrays_table(self, context: Dict[str, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
         """"Devuelve los arrays 'total[0], textual[1], umd[2], code[3], cuantitative[4], numeric[5]'"""
-        arr_ptr = context["arr_ptr"]
-        reset_vals(arr_ptr)
-        arr_full = ArrayBuffer(arr_ptr, 3)
+        df_copy = context[DataMathDict.DF_COPY.value]
+        cut_polygons: Dict[str, Dict[str, Any]] = context[DataMathDict.CUT_POLYGONS.value]
 
+        arr_ptr = context["arr_ptr"]
+        arr_full = ArrayBuffer(arr_ptr, 3)
         matrix_array = arr_full.data
-        shp = arr_full.shape
+        matrix_dims = arr_full.shape
+        r = matrix_dims[1]
+        c = matrix_dims[2]
 
         if matrix_array is None:
             raise AttributeError(f"MATRIZ ES NONE")
-        
-        if len(shp) != 3:
-            raise AttributeError(f"MATIZ DIMENSIONES ERRONEAS: {shp}, {matrix_array.shape}")
-        
-        df_copy = context[DataMathDict.DF_COPY.value]
-        r = df_copy.shape[0]
-        c = df_copy.shape[1]
-        
-        atrix_array = np.zeros(shape=(_total_sc, r, c), dtype=np.uint8)
 
-        logger.info(f"ARRAY C++:\n"f"{shp}, SHAPE: {atrix_array.shape}")
+        matrix_array[:] = 0
+        
+        if len(matrix_dims) != 3:
+            raise AttributeError(f"MATIZ DIMENSIONES ERRONEAS: {matrix_dims}, {matrix_array.shape}")
 
-        cut_polygons: Dict[str, Dict[str, Any]] = context[DataMathDict.CUT_POLYGONS.value]
-                
         for row_id in range(r):
             for i in range(c):
                 cell_poly_ids: List[str] = df_copy.iat[row_id, i] if i < c else []
@@ -964,7 +959,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         artificial_polys: List[str] = []
         for idx in range(max_idx, new_inserts):
-            new_poly_id = f"{StringsModels.POLYS_IDS.value}{idx:04d}"
+            new_poly_id = set_ids(idx)
             cut_polygons[new_poly_id] = {}
             artificial_polys.append(new_poly_id)
 

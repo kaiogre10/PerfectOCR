@@ -37,10 +37,10 @@ pipeline_secuence:
   ocr_stager:
     - "paddle_wrapper"
     - "text_refiner"
-    - "data_finder"
+#    - "data_finder"
     
   vectorization_stager:
-    - "lineal"
+#    - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
@@ -48,7 +48,13 @@ pipeline_secuence:
 
 log_config:
   auditate_process: False  # ACTIVA TODOS LOS LOGS Y OUTPUTS PARATRAZADO COMPLETO
-  all_logs: False    # Modo Que cambia tosdos los logs a True para trazabilidad
+  all_logs: False   # Modo Que cambia tosdos los logs a True para trazabilidad
+  
+  auditate_areas:   # Audita areas completas
+    image_preparation: False
+    preprocessing: False
+    ocr: False
+    vectorization: False
 
   log_params:
     console_level: 'WARNING'
@@ -62,25 +68,27 @@ log_config:
   logs_debug:           # <-- Activar logs para consola
     text_ocr: False
     text_del: False
-    frag_polys: False
+    text_frag: False
     text_clean: False
     text_correct: False
-    refined_text: False
-    seman_clas: False
-    key_fields: False
+    text_refined: True
+    text_class: True
+    text_keyfields: False
+
     lines: False
     table_lines: False
     table_geo: False
     table_correct: False
+    
     time_stages_log: False
     time_worker_log: False
     
-    semantic_types_log: [2, 3, 4, 5, 6]   # Range [0, 5]
-    kf_list_log: [1, 6] # Range [1, 12]
+    semantic_types_log: [4]   # Range [0, 5]
+    kf_list_log: [-1] # Range [1, 12]
 
 # Configuración de salida
 enabled_outputs:
-  image_load_outputs:
+  image_preparation_outputs:
     full_img: False
     bin_full_img: False
     angle_corrected: False

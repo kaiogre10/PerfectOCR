@@ -30,6 +30,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         self.min_confidence = worker_config.get("min_confidence")
         self.output = config.get("ocr_raw")
         self.del_output_log = config.get("text_del")
+        self.text_ocr_log = config.get("text_ocr")
         self._engine = None
         
     @property
@@ -39,9 +40,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             self._engine = paddle_manager.recognition_engine
             
             if self._engine is None:
-                logger.error("PaddleOCRWrapper: Motor de reconocimiento no disponible en PaddleManager")
+                raise ModuleNotFoundError("Motor de reconocimiento no disponible en PaddleManager")
             else:
-                logger.debug("PaddleOCRWrapper: Motor de reconocimiento obtenido del PaddleManager")
+                logger.debug("Motor de reconocimiento obtenido del PaddleManager")
         
         return self._engine
         
@@ -85,17 +86,22 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             del image_list
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
+
             for idx, (text, confidence) in enumerate(batch_result[0]):
+                if self.text_ocr_log:
+                    logger.info(f"TEXTO CRUDO: '{text}' | CONF: {confidence*100}:.6f")
+
+                poly_id = polygon_ids[idx]
                 if not text:
-                    deleted.append([polygon_ids[idx], text])
+                    deleted.append([poly_id, text])
                     if self.del_output_log:
-                        logger.info(f"INVÁLIDO: {polygon_ids[idx]} '{text}'")
+                        logger.info(f"INVÁLIDO: {poly_id} '{text}'")
                     continue
                 
                 elif confidence < self.min_confidence:
-                    deleted.append([polygon_ids[idx], text])
+                    deleted.append([poly_id, text])
                     if self.del_output_log:
-                        logger.info(f"BAJA CONFIANZA: {polygon_ids[idx]} | '{text}' | '{(confidence*100.0):.4f}%' ")
+                        logger.info(f"BAJA CONFIANZA: {poly_id} | '{text}' | '{(confidence*100.0)}:.6f%' ")
                     continue
                 
                 else:
@@ -106,10 +112,10 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         
                     if not norm_text or not validate_text(norm_text):
                         if self.del_output_log:
-                            logger.info(f"TEXTO INVALIDO: {polygon_ids[idx]}: '{text}' -> '{norm_text}', CONF: {confidence*100.0} %")
+                            logger.info(f"TEXTO INVALIDO: {poly_id}: '{text}' -> '{norm_text}', CONF: {confidence*100.0}:.6f%")
                         continue
 
-                    raw_map[polygon_ids[idx]] = {"text": norm_text}
+                    raw_map[poly_id] = {"text": norm_text}
                     continue
 
             # logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")

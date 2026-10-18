@@ -38,14 +38,17 @@ class LogsDebug(ConfigWithNumpy):
     text_clean: bool
     text_del: bool
     text_correct: bool
-    frag_polys: bool
-    refined_text: bool
-    seman_clas: bool
-    key_fields: bool
+    text_frag: bool
+    text_refined: bool
+    text_clean: bool
+    text_keyfields: bool
+    text_class: bool
+
     lines: bool
     table_lines: bool
     table_geo: bool
     table_correct: bool
+    
     kf_list_log: List[int]
     semantic_types_log: List[int]
     time_stages_log: bool
@@ -60,9 +63,16 @@ class LogParams(ConfigWithNumpy):
     # temp_date_format: str
     temp_path_file: str
 
+class AuditateAreas(ConfigWithNumpy):
+    image_preparation: bool
+    preprocessing: bool
+    ocr: bool
+    vectorization: bool
+
 class LogsConfig(ConfigWithNumpy):
     logs_debug: LogsDebug
     log_params: LogParams
+    auditate_areas: AuditateAreas
     all_logs: bool
     auditate_process: bool
 
@@ -99,7 +109,7 @@ class VectorizingOutputs(ConfigWithNumpy):
     stack: bool
 
 class OutputFlags(ConfigWithNumpy):
-    image_load_outputs: ImgLoadOutputs
+    image_preparation_outputs: ImgLoadOutputs
     preprocessing_outputs: PreprocessingOutputs
     ocr_outputs: OCROutputs
     vectorization_outputs: VectorizingOutputs

@@ -1,6 +1,6 @@
 from typing import Dict, Any, List, Tuple, Optional
 from functools import cached_property
-from services.log_service import log_simple, get_caller_info, get_logging_info
+from services.log_service import get_caller_info, get_logging_info
 from core.assets.assets import KF_RANGE, SC_RANGE
 
 _kf_range = KF_RANGE
@@ -9,26 +9,44 @@ _sc_range = SC_RANGE
 class ConfigLogger:
     def __init__(self, config: Dict[str, Any]):
         self.config: Dict[str, Any] = config
+        self._auditate_areas
         
     @property
     def log_config(self):
         return self.config.get("log_config", {})
     
     @property
-    def _auditate_process(self):
+    def _auditate_process(self) -> bool:
         return self.log_config.get("auditate_process")
     
     @property
     def _all_logs(self) -> bool:
-        return self._auditate_process if self._auditate_process else self.log_config.get("all_logs")
+        auditate_process = self._auditate_process
+        return auditate_process if auditate_process else self.log_config.get("all_logs")
+
+    @property
+    def _auditate_areas(self) -> Dict[str, bool]:
+        _auditate_areas: Dict[str, bool] = self.log_config.get("auditate_areas", {})
+        if self._auditate_process:
+            for key, _ in _auditate_areas.items():
+                _auditate_areas[key] = True
+                
+        return _auditate_areas
+
+    @cached_property
+    def _active_auditate_area(self):
+        return all((val == False) for val in self._auditate_areas.values())
         
     @cached_property
     def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
-        _enabled_outputs = self.config.get("enabled_outputs", {})
-        if self._auditate_process:
-            log_simple("AUDITORIA DE PROCESO COMPLETA ACTIVADA")
-            for category in _enabled_outputs.values():
-                for subkey in category:
+        _enabled_outputs: Dict[str, Dict[str, bool]] = self.config.get("enabled_outputs", {})
+        if not self._active_auditate_area:
+            return _enabled_outputs
+        
+        for area, active in self._auditate_areas.items():
+            if active:
+                category = area + "_outputs"
+                for subkey, category in _enabled_outputs.items():
                     category[subkey] = True
 
         return _enabled_outputs
@@ -41,9 +59,36 @@ class ConfigLogger:
             _log_params["file_level"] = 'DEBUG'
         return _log_params
 
+    @property
+    def _logs_debug(self) -> Dict[str, bool | List[int]]:
+        _logs_debug: Dict[str, bool | List[int]] = self.log_config.get("logs_debug", {})
+        _logs_keys = _logs_debug.keys()
+
+        if self._all_logs:
+            values_true = _logs_keys
+
+        elif self._auditate_areas.get('ocr'):
+            values_true = [key for key in _logs_keys if key.startswith('text_')]
+
+        elif self._auditate_areas.get("vectorization"):
+            values_true = [key for key in _logs_keys if key.startswith('table_') or key == "lineal"]
+
+        else:
+            values_true = [key for key in _logs_debug.values() if key == True]
+
+        for key, value in _logs_debug.items():
+            if key in values_true:
+                if isinstance(value, bool):
+                    _logs_debug[key] = True
+                
+                elif isinstance(value, list):
+                    continue
+
+        return _logs_debug
+    
     @cached_property
     def logs_debug(self) -> Dict[str, bool | List[int]]:
-        _logs_debug = self.log_config.get("logs_debug", {})
+        _logs_debug = self._logs_debug
         
         def _max_min_vals(type_list: List[int], lenght: int, limits: Tuple[int, int]) -> List[int]:
             if -1 in type_list:
@@ -73,7 +118,7 @@ class ConfigLogger:
         log_kf_size = len(kf_list_log)
         
         if not self._all_logs:
-            if not _logs_debug["key_fields"]:
+            if not _logs_debug["text_keyfields"]:
                 kf_range_logs = []
                 
             elif log_kf_size == 1 and kf_list_log[0] != -1:
@@ -81,7 +126,7 @@ class ConfigLogger:
             else:
                 kf_range_logs = _max_min_vals(kf_list_log, log_kf_size, _kf_range)
             
-            if not _logs_debug["seman_clas"]:
+            if not _logs_debug["text_class"]:
                 sc_range_logs = []
                 
             elif log_sc_size == 1 and semantic_types_log[0] != -1:
@@ -89,15 +134,9 @@ class ConfigLogger:
             else:
                 sc_range_logs =  _max_min_vals(semantic_types_log, log_sc_size, _sc_range)
         else:
-             kf_range_logs= list(range(_kf_range[0], _kf_range[1] + 1))
-             sc_range_logs = list(range(_sc_range[0], _sc_range[1]))
-            
-             for key, value in _logs_debug.items():
-                if isinstance(value, bool):
-                    _logs_debug[key] = True
-                elif isinstance(value, list):
-                    continue
-            
+            kf_range_logs= list(range(_kf_range[0], _kf_range[1] + 1))
+            sc_range_logs = list(range(_sc_range[0], _sc_range[1] + 1))
+
         _logs_debug["kf_list_log"] = kf_range_logs
         _logs_debug["semantic_types_log"] = sc_range_logs
         return _logs_debug

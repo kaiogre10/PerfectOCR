@@ -49,7 +49,7 @@ class MappedMatrix:
         if np.any(cols < 0) or np.any(cols >= total_cols):
             raise IndexError("col_indices fuera de rango para la matriz dispersa.")
 
-        col_mask = np.zeros(total_cols, dtype=bool, order='C')
+        col_mask = np.zeros(total_cols, dtype=bool)
         col_mask[cols] = True
 
         sim_count = 0
@@ -119,14 +119,20 @@ class MatrixFactory:
         Escanea el directorio físico resuelto y consolida los mapas de memoria
         dentro del estado interno del objeto.
         """
+        if not os.path.exists(self.matrix_folder):
+            raise FileNotFoundError(f"Ruta de almacenamiento no localizada: '{self.matrix_folder}'")
+        
+        if not os.path.exists(self.kf_folder):
+            raise FileNotFoundError(f"Ruta de KeyFields no localizada: '{self.kf_folder}'")
+
         for _, dirnames in enumerate(os.listdir(self.models_path)):
             if self.matrix_path in dirnames:
                 for item in os.listdir(self.matrix_folder):
                     full_path: str = os.path.join(self.matrix_folder, item)
                     # Identificación de la nomenclatura jerárquica 'longitud_{key}'
-                    if os.path.isdir(full_path) and item.endswith(self.matrix_path):
-                        # key_len = int(item.replace(f"_{self.matrix_path}", ""))
-                        key_len = int(item[0])
+                    if os.path.isdir(full_path) and item.endswith(f"{self.matrix_path}"):
+                        key_len = int(item.replace(f"_{self.matrix_path}", ""))
+                        # key_len = int(item[0])
                         self.matrix_registry[key_len] = MappedMatrix(full_path, self.files_list)
                         continue
         
@@ -134,9 +140,9 @@ class MatrixFactory:
                 for item in os.listdir(self.kf_folder):
                     full_path: str = os.path.join(self.kf_folder, item)
 
-                    if os.path.isdir(full_path) and item.endswith(self.kf_path):
-                        # key_len = int(item.replace(f"_{self.kf_path}", ""))
-                        key_len = int(item[0])
+                    if os.path.isdir(full_path) and item.endswith(f"{self.kf_path}"):
+                        key_len = int(item.replace(f"_{self.kf_path}", ""))
+                        # key_len = int(item[0])
                         self.kf_registry[key_len] = KeyFields(full_path, self.files_list)
                         continue
             else:

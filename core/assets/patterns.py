@@ -1,6 +1,5 @@
 # PerfectOCR/core/utils/patterns.py
 import regex as re
-from typing import List, Pattern
 
 _currency_variants = r"[$Ss]"
 _punt_quant_chars = r'[.,]'
@@ -31,7 +30,7 @@ _all_zeros = rf"[0{_zero_base}]"
 _extended_digits = rf"[{_digits_base}{_zero_base}{_one_base}{_two_base}{_four_base}{_five_base}{_six_base}{_seven_base}{_eight_base}{_nine_base}]"   # [0-9OQoD|liI!¡Zz?A$SsG/Bqg]
 
 cleaner_pattern = re.compile(rb"[^a-zA-Z\s]", re.IGNORECASE)
-space_pattern: Pattern[bytes] = re.compile(rb"\s+", re.IGNORECASE)
+space_pattern = re.compile(rb"\s+", re.IGNORECASE)
 
 float_time = re.compile(r"Tiempo:\s*(\d+\.\d)\b")
 _stick_chars = r'[!1lIi¡]'
@@ -84,17 +83,17 @@ has_digit_pattern = re.compile(r"\d", re.IGNORECASE)
 swap_term_cuant = re.compile(r'^[A-Za-z]+\$$')
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)
 # _dixon_variants = rf'(D(1X|LX{_zeros_to_sub}N'
-labels_pattern: Pattern[str] = re.compile(_bic_variants, re.IGNORECASE)
+labels_pattern = re.compile(_bic_variants, re.IGNORECASE)
 
 # Patrón que extrae los IDS del documento
 id_prov_pattern = re.compile(r'^[A-Z]{4}')
 
 # Patrón para secuencias especiales de 2 o más caracteres no alfanuméricos (excluyendo espacio, $, /,)
-secuence_pattern: Pattern[str] = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECASE)
-sequence_middle_pattern: Pattern[str] = re.compile(r'(?<=[a-zA-Z0-9$/])[^a-zA-Z0-9\s$/]{2,}(?=[a-zA-Z0-9$/])', re.IGNORECASE)
+secuence_pattern = re.compile(r'[^a-zA-Z0-9\s/$]{2,}', re.IGNORECASE)
+sequence_middle_pattern = re.compile(r'(?<=[a-zA-Z0-9$/])[^a-zA-Z0-9\s$/]{2,}(?=[a-zA-Z0-9$/])', re.IGNORECASE)
 
-hour_pattern: Pattern[str] = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
-punt_split_pattern: Pattern[str] = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
+hour_pattern = re.compile(rf'\b{_base_date_num_str}:[0-5O][0-9O](?::[0-5O][0-9O])?\b', re.IGNORECASE)
+punt_split_pattern = re.compile(r"[*_'=.,:;&]", re.IGNORECASE)
 _edge_chars = punt_split_pattern.pattern[:-1] + r"\-]"
 edge_punt_pattern = re.compile(rf'^({_edge_chars}+)|({_edge_chars}+)$', re.IGNORECASE)
 
@@ -102,24 +101,24 @@ edge_punt_pattern = re.compile(rf'^({_edge_chars}+)|({_edge_chars}+)$', re.IGNOR
 _acronim = r'(?:[A-Za-z]\.)+[A-Za-z]\.?'
 acromin_currency_pattern = re.compile(r"(?:\d[\d,.]*)?\s*m\s*\.?\s*n\.?", re.IGNORECASE)
 
-acronym_pattern: Pattern[str] = re.compile(rf'^({_acronim}|sa|cv|mn)[:;,.]?$', re.IGNORECASE)
-bad_title: Pattern[str] = re.compile(r'^\S(?:\s+\S)+\s*$', re.IGNORECASE)
+acronym_pattern = re.compile(rf'^({_acronim}|sa|cv|mn)[:;,.]?$', re.IGNORECASE)
+bad_title = re.compile(r'^\S(?:\s+\S)+\s*$', re.IGNORECASE)
 
 # Datos Globales
 _phone_str = r'^(cel|tel)((?:\:|\s))'
 phone_number = re.compile(rf"(((?:{_phone_str}){_digit_pattern}{{10}})|(^{_digit_pattern}{{10}}))(?:$|(?=\s))", re.IGNORECASE)
 mail_pattern = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.?(?:com|[a-zA-Z0-9]+)\b', re.IGNORECASE)
-cp_pattern: Pattern[str] = re.compile(rf'\b{_cp_letters}\s*{_digit_pattern}{{5}}\b')
-numeric_code: Pattern[str] = re.compile(rf"(?<=\s){_all_zeros}{_digit_pattern}+$")
+cp_pattern = re.compile(rf'\b{_cp_letters}\s*{_digit_pattern}{{5}}\b')
+numeric_code = re.compile(rf"(?<=\s){_all_zeros}{_digit_pattern}+$")
 
-_rfc_acronyms: Pattern[str] = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
-rfc_key_pattern: Pattern[str] = re.compile(r'([A-Z]{3,4}\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3})', re.IGNORECASE)
+_rfc_acronyms = re.compile(r'\b(R\.?F\.?C\.?)\b', re.IGNORECASE)
+rfc_key_pattern = re.compile(r'([A-Z]{3,4}\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])[A-Z0-9]{3})', re.IGNORECASE)
 
-rfc_patterns: Pattern[str] = re.compile("|".join(p.pattern for p in [rfc_key_pattern, _rfc_acronyms]), re.IGNORECASE)
+rfc_patterns = re.compile("|".join(p.pattern for p in [rfc_key_pattern, _rfc_acronyms]), re.IGNORECASE)
 
-iva_patterns: Pattern[str] = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
+iva_patterns = re.compile(r'\b(I\.?V\.?A\.?)\b', re.IGNORECASE)
 
-_date_patterns_list: List[Pattern[str]] = [
+_date_patterns_list = [
     # Día + mes en letras + año en un solo string OCR (ej. "21 mar 2023")
     re.compile(rf'\b(?:{_month_name_str}|{_base_date_num_str}\s+{_month_name_str}(?:\s*\.?\s*(?:19\d{{2}}|20\d{{2}}|\d{{2}}))?)\b'),
     # Fechas completas y día/mes: Usa el bloque base para evitar confundirse con fracciones/cuantitativos
@@ -168,7 +167,7 @@ amount_fract = re.compile(
 
 fraction_pattern = re.compile("|".join(p.pattern for p in [_extended_fraction_pattern, _full_fraction_pattern, c_dash_fraction_pattern, amount_fract, measure_fractions, numeric_fractions, semi_c_fraction, _semifraction_pattern]), re.IGNORECASE)
 
-_umd_paterns_list: List[Pattern[str]] = [
+_umd_paterns_list = [
     re.compile(r'(?<![A-Za-z0-9])\d{1,4}\s*m(?:l|1|\||!)(?=$|[^A-Za-z0-9])', re.IGNORECASE),
     re.compile(rf'\b\d+\s*(?:{_unities.pattern})\b', re.IGNORECASE),
     re.compile(rf'((?<!\w)(?:\d+\s*)?(?:{measure_unities.pattern}))\b', re.IGNORECASE),
@@ -179,7 +178,7 @@ _umd_paterns_list: List[Pattern[str]] = [
 ]
 
 _umd_generals = re.compile("|".join(p.pattern for p in _umd_paterns_list), re.IGNORECASE)
-umd_patterns = re.compile("|".join(p.pattern for p in [fraction_pattern, _umd_generals]), re.IGNORECASE)
+umd_patterns = re.compile("|".join(p.pattern for p in [fraction_pattern, _umd_generals]))
 
 _clean_currency_str = rf"^(?:{_currency_variants})|,"
 clean_currency = re.compile(_clean_currency_str)
@@ -217,7 +216,7 @@ _multi_pattern = rf"^(?:\s*{_currency_variants}\s*{_amount_body_pattern}\s*){{2,
 _multi = re.compile(_multi_pattern, re.IGNORECASE)
 
 # Patrón: Decimales grandes tipo 1,230.50 (sin $)
-_decimal = re.compile(rf"^\d{{1,3}}(?:{_punt_quant_chars}\d{{3}})*{_punt_quant_chars}\d{{2,}}$")
+_decimal = re.compile(rf"^\d\{{1,3}}(?:{_punt_quant_chars}\d\{{3}})*{_punt_quant_chars}\d\{{2,}}$")
 
 quant_runs_patterns = re.compile("|".join(p.pattern for p in [_decimal, _start, _middle, _multi]), re.IGNORECASE)
 
@@ -257,3 +256,4 @@ correct_cuants = re.compile(_correct_ocr)
 
 PLACEHOLDER_PATTERN = re.compile(r'^[^\s0-9a-zA-Z]$')
 # paddle_silene = re.compile(r".*OMP_NUM_THREADS.*|.*PLEASE USE OMP_NUM_THREADS WISELY.*")
+POLY_TEMPLATE = "poly_{idx:04d}"

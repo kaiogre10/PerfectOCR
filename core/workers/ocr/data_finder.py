@@ -7,7 +7,7 @@ from core.contracts.abstract_worker import OCRAbstractWorker
 from domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
-from utils.compiled_utils import validate_text
+from utils.compiled_utils import validate_bytes
 from core.assets.patterns import cleaner_pattern
 from core.assets.assets import KF_REALOCATABLES, KF_IGNORED
 from domain.class_models import SemantiClass, KeyField, TypeModels, Params
@@ -64,17 +64,15 @@ class DataFinder(OCRAbstractWorker):
                 return {}
 
             polys = [p for p in polygons.values()]
-            sc = [p.semantic_clasification for p in polys]
 
-            has_kf = [(p.key_field != None) for p in polys]
-            valid_text = [validate_text(p.ocr_text) for p in polys]
-            forb_sc = [any(c != SemantiClass.DESCRIPTIVE for c in s) for s in sc]
-            text_len = [len(p.ocr_text or "") > 2 for p in polys]
-            sc_eq = [len(set(t)) == 1 for t in sc]
+            has_kf = [(p.key_field != None) for p in polys] # Que el KF exista
+            forb_sc = [any(c != SemantiClass.DESCRIPTIVE for c in s.semantic_clasification) for s in polys] # Que contengandiferente clasificacion semantica a 1
+            text_len = [len(p.ocr_text or "") < 3 for p in polys] # longitud textual de mas de 1
+            sc_eq = [len(set(t.semantic_clasification)) != 1 for t in polys] # mas de una clasificacion por poligono
 
-            true_array = np.array([has_kf, valid_text, forb_sc, text_len, sc_eq], dtype=np.bool_, order='C')
+            true_array = np.array([has_kf, forb_sc, text_len, sc_eq], dtype=np.bool_, order='C')
 
-            skip_idx = np.where(np.all(true_array, axis=1))[0]
+            skip_idx = np.where(np.any(true_array, axis=0))[0]
 
             polyons = [p for p in polys if p.poly_index not in skip_idx]
 
@@ -84,10 +82,14 @@ class DataFinder(OCRAbstractWorker):
             for _, poly in enumerate(polyons):
                 pid = poly.polygon_id
         
-                ocr_text = poly.ocr_text.lower().encode(TypeModels.ASCII.value)
+                ocr_text = poly.ocr_text.lower().encode(TypeModels.ASCII.value) # type: ignore
 
                 if not ocr_text.isalpha():
                     ocr_text = _cleaner_pattern.sub(b"", ocr_text).strip()
+
+                if not validate_bytes(ocr_text):
+                    logger.debug(f"{pid} invalido: {ocr_text}")
+                    continue
 
                 else:
                     valid_results: List[Dict[str, Any]] = self.model.find_keywords(ocr_text, assigned_fields)

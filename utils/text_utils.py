@@ -3,9 +3,9 @@ import logging
 import unicodedata
 from typing import List, Tuple, Dict, Any, Optional
 from utils.math_utils import text_encode
-from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal
+from utils.compiled_utils import validate_quant_chars, count_cuants, space_removal, space_removal_bytes
 from core.assets.assets import VOWELS, REPLACEMENT_MAP, DENSITY_RANGE, MORPH_RANGE
-from core.assets.patterns import numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant, file_name_pattern
+from core.assets.patterns import POLY_TEMPLATE, numeric_fractions, has_digit_pattern, extension_suffix, correct_cuants, all_cuants, universal_money_regex, cant_frac_pattern, rfc_key_pattern, numeric_code, acronym_pattern, acromin_currency_pattern, cion_search_patt, suffix_pattern, cion_str, con_suffix_pattern, con_search_patt, con_str, umd_patterns, date_patterns, amount_fract, fraction_pattern, rfc_patterns, iva_patterns, phone_number, mail_pattern, cp_pattern, quant_runs_patterns, valid_cuant_pattern, monetary_pattern, clean_currency, edge_punt_pattern, hour_pattern, punt_split_pattern, sequence_middle_pattern, secuence_pattern, labels_pattern, size_pattern, id_prov_pattern, los_str, los_search_patt, los_suffix_pattern, swap_term_cuant, file_name_pattern
 from domain.class_models import SemantiClass, KeyField, DataKeys, NumberStr, TypeModels, Params
 
 logger = logging.getLogger(__name__)
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 _density_range = DENSITY_RANGE
 _morph_range = MORPH_RANGE
 
+_poly_template = POLY_TEMPLATE
 _numeric_fractions = numeric_fractions
 _has_digit_pattern = has_digit_pattern
 _file_name_pattern = file_name_pattern
@@ -75,8 +76,9 @@ def normalice_text(s: str) -> str:
     hard_bytes = unicodedata.normalize('NFKD', norm_text).encode(TypeModels.ASCII.value, 'replace')
     if b"?" in hard_bytes:
         hard_bytes.replace(b"?", b" ")
-        
-    return space_removal(hard_bytes.decode(TypeModels.ASCII.value))
+
+    hard_bytes = space_removal_bytes(hard_bytes)
+    return hard_bytes.decode(TypeModels.ASCII.value)
     
 def get_rfc(s: str) -> str:
     if not s:
@@ -252,11 +254,10 @@ def contains_quantitative(text: str) -> bool:
 
 def get_cuants(text: str) -> str:
     """Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto). Si ya están separados por espacios, no modifica el texto."""
-    text = text.strip()
     if len(text) < 3 or text.isdecimal() or text.isalpha():
         return text
     
-    words = text.split(" ")
+    words = text.strip().split(" ")
     result_parts: List[str] = []
     for _, word in enumerate(words):
 
@@ -293,11 +294,17 @@ def get_cuants(text: str) -> str:
                 ctok = tok[(quan_idx + 1):].strip() if quan_idx >= 0 else tok[1:]
                 ctok = ("$" + _correct_numbers(ctok))
                 tok = ctok
-
             else:
                 tok = tok
-            # Caso clave: cuantitativo válido pegado a letras (ej. "93v", "v93")
-            if is_quantitative(tok):
+
+            if is_quantitative(tok):  # Caso clave: cuantitativo válido pegado a letras (ej. "93v", "v93")
+            #     tok_len = len(tok)
+            #     sub_matches = _monetary_pattern.findall(tok)
+            #     total_submatches = len(sub_matches)
+            #     if total_submatches > 1:
+            #         subtok = m.group(0).strip()
+            #         start, end = m.span()
+
                 needs_left_space = start > 0 and (result[start - 1].isalpha() or not result[start - 1].isdecimal())
                 needs_right_space = end < len(result) and (result[end].isalpha() or not result[end].isdecimal())
 
@@ -310,7 +317,7 @@ def get_cuants(text: str) -> str:
         result_parts.append(result)
         continue
 
-    clean_quants =  space_removal(" ".join(result_parts))
+    clean_quants = space_removal(" ".join(result_parts))
     cuant_cheks = clean_quants.split(" ")
     cheks = len(cuant_cheks)
     
@@ -322,7 +329,8 @@ def get_cuants(text: str) -> str:
         
         if len(potencial_noise) < 3 and not is_quantitative(potencial_noise):
             cuant_cheks.pop(-1)
-            clean_quants =  " ".join(cuant_cheks)
+            clean_quants =  " ".join(cuant_cheks).strip()
+
         return space_removal(clean_quants)
     
     else:
@@ -405,12 +413,11 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
             # logger.info(f"Poligono {pid} con {polygon.key_field} keyfield existente, no se clasifica '{polygon.ocr_text or ""}'")
             final_results[pid] = ([SemantiClass.UNIQUE], 0)
             continue
-        
-        tokens = s.split(" ")
-        total_token_cuants = len(tokens) # Cantidad de tokens
 
-        if total_token_cuants == 1:
-            t_class, t_cuant = classify_token_cuant(tokens[0])
+        tokens = s.split(" ")
+
+        if len(tokens) == 1:
+            t_class, t_cuant = classify_token(tokens[0])
             final_results[pid] = ([t_class], t_cuant)
             continue
     
@@ -419,7 +426,7 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
             poly_total_cuant = 0
             for t in tokens:
 
-                t_class, t_cuant = classify_token_cuant(t)
+                t_class, t_cuant = classify_token(t)
                 token_classes.append(t_class)
                 poly_total_cuant += t_cuant
                 
@@ -428,9 +435,9 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
 
     return final_results
 
-def classify_token_cuant(s: str) -> Tuple[int, int]:
+def classify_token(s: str) -> Tuple[int, int]:
+    """Devuelve: Clasificacion Semantica[0], Cantidad de cuantitativos[1]"""
     total_text = len(s)
-    total_cuant = count_cuants(s)
     if not s:
         #  logger.info(f"VACIO 3RO: {s}")
         return (SemantiClass.NOISE, 0)
@@ -448,34 +455,36 @@ def classify_token_cuant(s: str) -> Tuple[int, int]:
     
     elif s.isdecimal():
         if bool(_numeric_code.fullmatch(s)):
-            return (SemantiClass.CODE, total_cuant)
+            return (SemantiClass.CODE, count_cuants(s))
         else:
-            return (SemantiClass.NUMERIC, total_cuant)
+            return (SemantiClass.NUMERIC, count_cuants(s))
+
+    total_cuant = count_cuants(s)
     
     if total_cuant == 0:
         if not any(c.isalpha() for c in s):
-            return (SemantiClass.NOISE, 0)
+            return (SemantiClass.NOISE, total_cuant)
         
         elif bool(_fraction_pattern.search(s)):
             # logger.info(f"UMD por regex: '{s}'")
-            return (SemantiClass.UMD, 0)
+            return (SemantiClass.UMD, total_cuant)
 
         elif is_acronym(s):
             if bool(_acromin_currency_pattern.search(s)):
                 # logger.info(f"ACRONIMO DEC: '{s}'")
-                return (SemantiClass.UNIQUE, 0)
+                return (SemantiClass.UNIQUE, total_cuant)
             else:
-                return (SemantiClass.DESCRIPTIVE, 0)
+                return (SemantiClass.DESCRIPTIVE, total_cuant)
 
         if not any(c in vowels for c in s):
             if _cant_frac_pattern.search(s):
-                return (SemantiClass.UMD, 0)
+                return (SemantiClass.UMD, total_cuant)
 
             elif 2 < total_text:
-                return (SemantiClass.CODE, 0)
+                return (SemantiClass.CODE, total_cuant)
             
         # logger.info(f"DESC por sobrante: '{s}'")
-        return (SemantiClass.DESCRIPTIVE, 0)
+        return (SemantiClass.DESCRIPTIVE, total_cuant)
 
     elif total_cuant == total_text:
         if total_text < 3:
@@ -585,7 +594,7 @@ def fast_classfier(text: str) -> Tuple[List[int], int]:
     semantic_classes: List[int] = []
     tokens = text.split(" ")
     for t in tokens:
-        t_class, t_cuant = classify_token_cuant(t)
+        t_class, t_cuant = classify_token(t)
         semantic_classes.append(t_class)
         total_cuants += t_cuant
     
@@ -612,7 +621,7 @@ def its_similar(word: str, suspect: str) -> bool:
         suspect_slice = _correct_numbers(suspect_slice)
         return suspect_slice.isdecimal() and word == suspect_slice
 
-def set_results(key_field: int, key_word: bytes, similarity :float, text: bytes | List[bytes], norm_ocr_text: bytes, start: int, end: int) -> Dict[str, Any]:
+def set_results(key_field: int, key_word: bytes, similarity: float, text: bytes | List[bytes], norm_ocr_text: bytes, start: int, end: int) -> Dict[str, Any]:
     """
     Construye un diccionario con los resultados de la búsqueda de palabra clave.
     Parámetros:
@@ -633,6 +642,11 @@ def set_results(key_field: int, key_word: bytes, similarity :float, text: bytes 
         Params.START: start,
         Params.END: end
     }
+
+def set_ids(idx: int, template: Optional[str] = None) -> str:
+    if template is None:
+        template = _poly_template
+    return template.format(idx=idx)
 
 # def classify_special(s: str) -> Tuple[str, Optional[int]]:
 #     date_matches = list(_date_patterns.finditer(s))

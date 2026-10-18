@@ -11,6 +11,7 @@ from domain.class_models import TypeModels, StringsModels
 _float_time = float_time
 DATE_FORMAT = ""
 EXTRA_FILE_LOGS = []
+project_root: str
 
 def _now():
     return datetime.now()
@@ -26,7 +27,11 @@ def get_caller_info() -> Tuple[str, str]:
 def get_logging_info(get_caller_inf: Tuple[str, str]) -> str:
     return f"{get_time_stamp(_now(), DATE_FORMAT)} {get_caller_inf[0]}:{get_caller_inf[1]} -"
 
-def setup_logging(project_root: str, config: Dict[str, str]) -> None:
+def set_project_root(PROJECT_ROOT: str):
+    global project_root
+    project_root = PROJECT_ROOT
+
+def setup_logging(config: Dict[str, str]) -> None:
     global DATE_FORMAT
     """
     Inicializa los descriptores de archivo y la salida por consola.

@@ -5,8 +5,11 @@ import sys
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+    os.environ.update()
     
 from services import log_service
+log_service.set_project_root(PROJECT_ROOT)
+
 from config.config_api import ConfigAPI
 from services import system_service
 
@@ -46,7 +49,7 @@ from app.main_builder import MainBuilder
 import services.output_service as output_service
 
 def main():
-    log_service.setup_logging(PROJECT_ROOT, config_service.log_params)
+    log_service.setup_logging(config_service.log_params)
     
     if config_service.handle_memory:
         storage_service.storage_config(system_paths) # type: ignore

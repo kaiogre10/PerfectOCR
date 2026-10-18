@@ -320,7 +320,7 @@ def cleanup_project(specific_files: Optional[List[str]] = None, aditional_dirs: 
 
 def prune_project(target_dirs: List[str], target_files: List[str]):
     try:
-        if all(os.path.isfile(file) for file in target_files) and all(os.path.join(dir) for dir in target_dirs):
+        if all(os.path.isfile(file) for file in target_files if target_files) and all(os.path.join(dir) for dir in target_dirs if target_dirs):
             for dir in target_dirs:
                 try:
                     shutil.rmtree(dir)

@@ -105,7 +105,7 @@ def soft_histogram(metrics: np.ndarray[Any, Any]) -> Tuple[int, float]:
         
         # logger.info(f"HIST iteración {iteration}: {hist}, elementos: {current_count}")
 
-        hist_rever = hist[::-1].astype(np.int32)
+        hist_rever = hist[::-1].astype(np.int32, order='C')
         cutting = np.where(hist_rever > 1)[0]
         idx_orig = hist.size - 1 - cutting[0] if cutting.size > 0 else -1
         outliers_indx = np.nonzero(hist == 1)[0]

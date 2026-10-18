@@ -4,21 +4,19 @@ import numpy as np
 from typing import Any, Optional, List, Tuple
 import logging
 from skimage.filters import threshold_sauvola, unsharp_mask #type: ignore
-import time
 from core.assets.assets import SMALL_NUM, PI_DIV_INV, C_VALUE, HEIGHT_THRESHOLDS, BLOCK_SIZES_MAP
 from domain.class_models import StringsModels
 
 _c_value = C_VALUE
 _height_thresholds = HEIGHT_THRESHOLDS
 _block_sizes_map = BLOCK_SIZES_MAP
-
 _small_num = SMALL_NUM
 _pi_div_inv = PI_DIV_INV
 
 logger = logging.getLogger(__name__)
 
 def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
-    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(np.asarray(img_arr, order='C'), dtype=np.uint8)
+    return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(np.asarray(img_arr, dtype=np.uint8, order='C'), dtype=np.uint8)
 
 def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any, Any]]:
     try:
@@ -34,7 +32,7 @@ def use_bilateral_filter(img: np.ndarray[Any, np.dtype[np.uint8]], d: int, sigma
     return cv2.bilateralFilter(img, d, sigma_color, sigma_space, dst=img)
 
 def use_sobel(img: np.ndarray[Any, np.dtype[np.uint8]], ksize: int):
-    return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, dst=img, ksize=ksize)), dtype=np.float64)
+    return np.mean(np.abs(cv2.Sobel(src=img, ddepth=cv2.CV_64F, dx=1, dy=1, dst=img, ksize=ksize)), dtype=np.float32)
 
 def get_image_lines(full_img: np.ndarray[Any, np.dtype[np.uint8]], canny_thresholds: Tuple[float, float], hough_threshold: int, min_len: float, hough_max_line_gap_px: float):
     edges = cv2.Canny(full_img, canny_thresholds[0], canny_thresholds[1])
@@ -66,6 +64,7 @@ def get_adaptive_block_size(height: float, height_thresholds: List[int], block_s
         if height < threshold:
             block_size = block_sizes_map[min(i, len(block_sizes_map) - 1)]
             return max(3, block_size if block_size % 2 != 0 else block_size + 1)
+    
     final_block_size = block_sizes_map[-1]
     return max(3, final_block_size if final_block_size % 2 != 0 else final_block_size + 1)
 
@@ -81,7 +80,7 @@ def measure_polygon_quality(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) ->
     hist = cv2.calcHist([cropped_img], [0], None, [255], [0, 255]).flatten(order='C')
     peaks = np.sum((hist[1:-1] > hist[:-2]) & (hist[1:-1] > hist[2:]), dtype=np.float32)
     prob = hist / np.sum(hist, dtype=np.float32)
-    entropy = -np.sum(prob * np.log2(prob + _small_num))
+    entropy = -np.sum(prob * np.log2(prob + _small_num), dtype=np.float32)
 
     if peaks > 1.0 and std > 30.0:
         return StringsModels.OTSU.value  # Alto contraste, bimodal
@@ -156,8 +155,7 @@ def apply_sharpening_correction(cropped_img_np: np.ndarray[Any, np.dtype[np.uint
 
 def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]], np.ndarray[Any, Any]]:
     """Calcula UNICAMENTE los features de OPEN CV"""
-    time0 = time.perf_counter()
-    bin_img = binarice_img(img, {})
+    bin_img = binarice_img(img)
 
     contours_hierarchy = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = contours_hierarchy[0]
@@ -170,7 +168,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
 
     cont_coords_list: List[Tuple[int, np.ndarray[Any, np.dtype[np.int32]]]] = []
     cols = 16
-    metrics_array_new = np.zeros((total_conts, cols), dtype=np.float32, order='F')
+    metrics_array_new = np.zeros((total_conts, cols), dtype=np.float32, order='C')
     # single_mask = bin_img.copy()
     # single_mask[:] = 0
 
@@ -236,8 +234,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     if valid_contours != matrix_size:
         logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
         return [], np.empty((0, 5))
-        
-    logger.info(f"Tiempo calculando features de {valid_contours} contornos: {time.perf_counter()-time0:.6f}'s")
+    
     return cont_coords_list, contours_features_array
 
 # def calculate_complementary_feats(metrics_array_new: np.ndarray[Any, Any]):

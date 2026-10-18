@@ -31,6 +31,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
             # 1. Recopilar Bounding Boxes y IDs
             poly_ids_order: List[str] = list(polygons.keys())
+            total_polys = len(polygons)
 
             # bbxes_ptr = manager.get_array_buffer(rows=total_bboxes, cols=4, channels=1, dtype=self.bboxes_type, dims=self.dims)
             # if not bbxes_ptr:
@@ -76,18 +77,18 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 cropped = np.ascontiguousarray(np.asarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy(), order='C'), dtype=np.uint8)
 
                 # Filtrar por intervalo de color
-                old_poly_id = poly_ids_order[idx] # type: ignore
+                poly_id = poly_ids_order[idx] # type: ignore
                 if not validate_image(cropped):
-                    logger.debug(f"FILTRADO POR MEDIA DE COLOR: {old_poly_id}")
+                    logger.debug(f"FILTRADO POR MEDIA DE COLOR: {poly_id}")
                     if self.disoutput:
-                        pid = f"{old_poly_id}_B/N"
+                        pid = f"{poly_id}_B/N"
                         self.save_debug(cropped, manager, "bn_discarded", pid)
                     continue
 
                 if self.output:
-                    self.save_debug(cropped, manager, "all_valid", old_poly_id) # type: ignore
+                    self.save_debug(cropped, manager, "all_valid", poly_id) # type: ignore
 
-                final_polygons[old_poly_id] = cropped
+                final_polygons[poly_id] = cropped
 
             if not manager.free_buffer():
                 logger.error("NO SE PUDO LIBERAR FULL IMAGE")
@@ -99,7 +100,12 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 manager.workflow.polygons = {}
                 return False
             
-            if not manager.save_cropped_images(final_polygons):
+            if len(final_polygons) != total_polys:
+                reindex = False
+            else:
+                reindex = True
+            
+            if not manager.save_cropped_images(final_polygons, reindex):
                 logger.error("No se pudieron guardar las imágenes recortadas en el manager")
                 return False
 

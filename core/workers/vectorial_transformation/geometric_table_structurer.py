@@ -63,9 +63,8 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # 5. Validar y loggear estructura generada
             if table_matrix:
                 df, df_copy = self._table_matrix_to_dataframe(table_matrix, H)
-                logger.debug(f"DataFrame generado:\n{df.to_string(index=True)}")
+                logger.info(f"DataFrame generado:\n{df.to_string(index=True)}")
                 if manager.save_final_output(df, {}):
-                    # Publicar estructura rica en contexto para workers posteriores (ej. Math Max)
                     rows = df.shape[0]
                     cols = df.shape[1]
                     
@@ -79,11 +78,13 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     context[DataMathDict.ROWS_IDX.value] = rows_idx
                     context[DataMathDict.COLS_IDX.value] = cols_idx
 
-                    logger.debug(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
+                    logger.info(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
                     if self.output:
                         file_name: str = manager.workflow.image_name if manager.workflow else ""
                         save_debug_table(df, file_name, None, None)
                     return True
+                
+            return False
 
         except Exception as e:
             logger.error(f"Error en estructuración geométrica: {e}", exc_info=True)
@@ -214,7 +215,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 poly_data = polygons.get(poly_id)
                 if poly_data:
                     sc = poly_data.semantic_clasification
-                    ocr_text = format_cuant(poly_data.ocr_text or "") if (SemantiClass.QUANTITATIVE.value in sc) else poly_data.ocr_text
+                    ocr_text = format_cuant(poly_data.ocr_text or "") if (SemantiClass.QUANTITATIVE in sc) else poly_data.ocr_text
                     element: Dict[str, Any] = {
                         GeoDict.POLYGON_ID.value: poly_id,
                         GeoDict.XMIN.value: poly_data.bounding_box[0],
@@ -229,7 +230,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     row_elements.append(element)
 
                     # Orden estable izquierda->derecha para soportar asignación secuencial.
-                    row_elements.sort(key=lambda element: float(element.get('cx', 0.0)))
+                    row_elements.sort(key=lambda element: float(element.get(GeoDict.CX.value, 0.0)))
                     
             return row_elements
         
@@ -401,11 +402,11 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                 return SemantiClass.QUANTITATIVE.value
             if semantic_list:
                 return semantic_list[0]
-            return SemantiClass.DESCRIPTIVE.value
+            return SemantiClass.DESCRIPTIVE
         try:
             return int(semantic_value)
         except Exception:
-            return SemantiClass.DESCRIPTIVE.value
+            return SemantiClass.DESCRIPTIVE
 
     def _case_b_assignment(self, row_elements: List[Dict[str, Any]], H: int, L_k: int, header_centroids: List[List[float]]) -> List[Dict[str, Any]]:
         """
@@ -636,7 +637,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                                     h += 1
                             header_line_text.append(poly_text)
                                 
-                    logger.debug(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
+                    logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
                     return h
 
         except Exception as e:

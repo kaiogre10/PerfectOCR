@@ -1,7 +1,7 @@
 from enum import IntEnum, StrEnum, Enum
 
 class SemantiClass(IntEnum):
-    NOISE = 1 # Ruido y caracteres especiales en general
+    NOISE = -1 # Ruido y caracteres especiales en general
     UNIQUE = 0 # Clasificación que se le da a ciertos strings con características especificas, sirve como difereciador, casi no los hay
     DESCRIPTIVE = 1 # Palabras en general
     UMD = 2 # Con str cortos que suelen informar el contenido de los productos
@@ -106,7 +106,6 @@ class OSModels(Enum):
 class StringsModels(StrEnum):
     NO_MANGER = "NO_MANAGER"
     TIME_MASK = "Tiempo: "
-    POLYS_IDS = "poly_"
     OTSU = "otsu"
     ADAPTATIVE_GAUSS = "adaptative_gauss"
     SAUVOLA = "sauvola"
