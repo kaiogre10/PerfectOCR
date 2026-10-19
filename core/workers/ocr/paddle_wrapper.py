@@ -1,7 +1,6 @@
 # PerfectOCR/core/workflow/ocr/paddle_wrapper.py
 import logging
-import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from domain.data_formatter import DataFormatter
 from core.contracts.abstract_worker import OCRAbstractWorker
 from app.models_builder import ModelsBuilder
@@ -47,13 +46,12 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         return self._engine
         
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        start_time = time.perf_counter()
         try:
             final_results = self.recognize_text_from_batch(manager)
 
             if final_results:
                 if manager.update_ocr_results(final_results):
-                    logger.debug(f"Batch OCR completado. {len(final_results)} polígonos procesados en {time.perf_counter() - start_time:.6f}s.")
+                    logger.debug(f"Batch OCR completado. {len(final_results)} polígonos")
                     if self.output:
                         file_name = manager.workflow.image_name if manager.workflow else ""
                         save_text_debug(final_results, file_name)
@@ -67,7 +65,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         """Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead."""
         if self.engine is None:
             return {}
-        # time0 = time.perf_counter()
         try:
             polygons = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
@@ -77,21 +74,21 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img is not None]
             img_list = [p.cropped_img for p in polygons.values() if p.polygon_id in polygon_ids]
-            image_list = elevate_dims(img_list)
             manager.delete_cropped_images()
+            image_list = elevate_dims(img_list)
             
             # time_t = time.perf_counter()
-            batch_result = self.engine.ocr(image_list, cls=False, det=False, rec=True)
+            batch_result: List[List[Tuple[str, float]]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
             # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
             del image_list
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
-            for idx, (text, confidence) in enumerate(batch_result[0]):
-                if self.text_ocr_log:
-                    logger.info(f"TEXTO CRUDO: '{text}' | CONF: {confidence*100}:.6f")
-
+            for idx, (text, confidence) in enumerate(batch_result):
                 poly_id = polygon_ids[idx]
+                if self.text_ocr_log:
+                    logger.info(f"TEXTO CRUDO: {poly_id} | '{text}' | CONF: {confidence*100}:.6f%")
+
                 if not text:
                     deleted.append([poly_id, text])
                     if self.del_output_log:
@@ -106,7 +103,10 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 
                 else:
                     if text.isascii():
-                        norm_text = space_removal(text)
+                        if not " " in text:
+                            norm_text = text
+                        else:
+                            norm_text = space_removal(text)
                     else:
                         norm_text = normalice_text(text)
                         

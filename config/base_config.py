@@ -84,18 +84,25 @@ class BaseConfig:
     @cached_property
     def _env_config(self) -> Dict[str, str]:
         _env_config = self.config.get("env_config", {})
-        if ".dll" in system_service.SO.keys():
-            _env_config['CXX'] = 'icx'
-            if self.compile_cython:
-                oneapi_root = os.environ.get('ONEAPI_ROOT', "")
-                if os.path.isdir(oneapi_root):
-                    compiler_intel_win = os.path.join(oneapi_root, "compiler", "latest", "bin", "icx-cl")
+        oneapi_root = os.environ.get('ONEAPI_ROOT', "")
+
+        _env_config['TBBROOT'] = os.path.join("tbb", "latest", "bin")
+        _env_config['IPPROOT'] = os.path.join("ipp", "latest", "bin")
+
+        if self.compile_cython:
+            compiler_path = os.path.join("compiler", "latest", "bin")
+            if os.path.isdir(oneapi_root) and os.path.isdir(compiler_path):
+                if ".dll" in system_service.SO.keys():
+                    compiler_intel_win = os.path.join(compiler_path, "icx-cl")
                     _env_config['CC'] = compiler_intel_win
                     _env_config['CXX'] = compiler_intel_win
                     _env_config['LDSHARED'] = f'{compiler_intel_win} /LD'
-                
+                else:
+                    _env_config['CC'] = os.path.join(compiler_path, "icx")
+                    _env_config['CXX'] = os.path.join(compiler_path, "icpx")
+
                 _env_config['DISTUTILS_USE_SDK'] = '1'
-                
+
         return _env_config
 
     @property

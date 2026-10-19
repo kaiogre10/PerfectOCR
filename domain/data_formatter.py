@@ -2,13 +2,12 @@
 import logging
 from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey
 import numpy as np
-from numpy import typing
 import dataclasses
 from typing import Dict, Any, Optional, List, Tuple
 import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass
-from domain.buffer_handler import ImageBuffer, ArrayBuffer
+from domain.buffer_handler import ImageBuffer
 from components.compiled import image, arrays
 from utils.text_utils import set_ids
 
@@ -112,19 +111,15 @@ class DataFormatter:
         logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
-    def get_array_buffer(self, rows: int, cols: int, channels: int, dtype: typing.DTypeLike, dims: Optional[int] = None) -> Optional[int]:
+    def get_array_buffer(self, rows: int, cols: int, channels: int, dtype: str) -> Optional[int]:
         """Solicita un buffer de memoria a C. Devuelve puntero"""
-            
+        if not dtype:
+            raise TypeError("NO SE INGRESO TYPO DE ARRAY")
+        
         arr_ptr = arrays.create_new_array(rows, cols, channels, dtype)
 
         if not arr_ptr or not isinstance(arr_ptr, int): # type: ignore
             raise RuntimeError("POSIBLE MEMMORY LEAK")
-
-        arr = ArrayBuffer(arr_ptr, dims)
-        
-        if arr.data is None:
-            logger.error("BUFFER ARRAY ES NONE")
-            return None
             
         return arr_ptr
 
@@ -150,16 +145,23 @@ class DataFormatter:
         return copy_ptr, full_img.data
 
     def free_buffer(self, copy_ptr: Optional[int] = None):
+        worker, _ = get_caller_info()
         if copy_ptr:
             try:
                 image.release_img(ptr_addr=copy_ptr)
-                copy_ptr = None
-                del copy_ptr
             except RuntimeError as e:
-                logger.error(f"ERROR ELIMINANDO LA COPIA: {e}", exc_info=True)
-                return False
-        
-            logger.debug("COPIA LIBERADA ÉXITOSAMENTE")
+                logger.error(f"ERROR DE '{worker}' LIBERANDO COPIA: {e}")
+                
+                try:
+                    logger.warning(f"SEGUNDO INTENTO PARA LIBERAR: {copy_ptr}")
+                    arrays.release_array(ptr_addr=copy_ptr)
+                except RuntimeError as e:
+                    logger.error(f"ERROR DE '{worker}' LIBERANDO ARRAY: {e}", exc_info=True)
+                    return False
+            
+            copy_ptr = None
+            del copy_ptr
+            logger.info(f"'{worker}' LIBERO COPIA")
             return True
 
         else:
@@ -169,21 +171,21 @@ class DataFormatter:
             ptr = FullImageKey.img_ptr
     
             if not ptr or ptr is None: # type: ignore
-                logger.info(f"PUNTERO '{ptr}' LIBERADO ANTERIORMENTE")
+                logger.info(f"'{worker}' INTENTO LIBERAR: '{ptr}' PERO LIBERADO ANTERIORMENTE")
                 return True
     
             if not isinstance(ptr, int): # type: ignore
-                logger.error(f"ERROR DE TIPOS DE PUNTERO")
+                logger.error(f"ERROR DE TIPOS DE PUNTERO {type(ptr)}")
                 return False
     
             try:
                 FullImageKey.clear()
-                logger.debug(f"PUNTERO LIBERADO: '{ptr}'")
-    
+                
             except RuntimeError as e:
-                logger.error(f"ERROR ELIMINANDO LA FULL IMG: {e}", exc_info=True)
+                logger.error(f"ERROR DE '{worker}' ELIMINANDO LA FULL IMG: {e}", exc_info=True)
                 return False
-    
+
+            logger.info(f"'{worker}' LIBERO IMAGEN")
             return True
                     
     def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:

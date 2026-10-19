@@ -53,7 +53,9 @@ class ProcessingBuilder:
             # Crear instancia fresca de DataFormatter para esta imagen
             manager = DataFormatter(self.logs_debug)
             # Crear contexto para esta ejecución
-            context: Dict[str, Any] = {"image_data": image_data}
+            image_name = get_ids(image_data, "file_name")
+            context: Dict[str, Any] = {"image_data": image_data, "image_name": image_name}
+            
             for _, stager in enumerate(self.all_stagers):
                 stager_name = stager.__class__.__name__
                 
@@ -62,7 +64,7 @@ class ProcessingBuilder:
                 stager_time = time.perf_counter() - stager_init
                 
                 if manager is None:
-                    logger.error(f"Falla en '{stager_name}', tiempo: {stager_time:.6f}'s", exc_info=True)
+                    logger.error(f"'{image_name}' fallo en '{stager_name}', tiempo: {stager_time:.6f}'s", exc_info=True)
                     continue
             
                 if self.time_stages_log:
@@ -72,7 +74,6 @@ class ProcessingBuilder:
                 continue
             
             buff_size = manager.payload.buff_size if manager.payload else 0
-            name = get_ids(image_data, "file_name")
             
             if self.memory:
                 plain_text = manager.payload.payload if manager.payload else StringsModels.NO_MANGER.value
@@ -86,11 +87,11 @@ class ProcessingBuilder:
                     logger.error("NO SE PUDO GENERAR ARCHIVO DE SEGURIDAD")
                     continue
                 else:
-                    results.append([name, plain_text, buff_size])
+                    results.append([image_name, plain_text, buff_size])
             
             else:
                 manager.reset_data()
-                results.append([name, "", buff_size])
+                results.append([image_name, "", buff_size])
                 
             logger.warning(f"Procesadas: {images} de '{total_images}' imagenes")
             

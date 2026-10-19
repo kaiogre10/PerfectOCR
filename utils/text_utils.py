@@ -74,17 +74,20 @@ def normalice_text(s: str) -> str:
         return ""
     
     hard_bytes = unicodedata.normalize('NFKD', norm_text).encode(TypeModels.ASCII.value, 'replace')
+    if not hard_bytes:
+        return ""
+    
     if b"?" in hard_bytes:
         hard_bytes.replace(b"?", b" ")
 
-    hard_bytes = space_removal_bytes(hard_bytes)
-    return hard_bytes.decode(TypeModels.ASCII.value)
+    return space_removal_bytes(hard_bytes).decode(TypeModels.ASCII.value)
     
 def get_rfc(s: str) -> str:
+    s = s.strip()
     if not s:
         return ""
     
-    match = _rfc_key_pattern.search(s.strip())
+    match = _rfc_key_pattern.search(s)
     return match.group(0) if match else ""
 
 def is_code(s: str) -> bool:
@@ -131,10 +134,10 @@ def contains_umd(text: str) -> bool:
 
 def find_umd(text: str) -> str:
     """Aísla UMD/fracciones pegadas a texto y corrige fracciones OCR como C710 -> C/10 o 172 -> 1/2."""
+    text = text.strip()
     if not text:
         return ""
 
-    text = text.strip()
     word_len = len(text)
     if word_len < 2:
         return text
@@ -350,7 +353,7 @@ def format_cuant(text: str) -> str:
     cuant_txt = _correct_numbers(text_0)
     if not cuant_txt.replace(".", "").isdecimal() or len(cuant_txt) > len(text):
         
-        logger.warning(f"CARACTER INTRUSO EN '{text}' NO SE PUDO FORMATEAR")
+        logger.warning(f"CARACTER INTRUSO EN '{text_0}' NO SE PUDO FORMATEAR")
         return text
     else:
         return cuant_txt

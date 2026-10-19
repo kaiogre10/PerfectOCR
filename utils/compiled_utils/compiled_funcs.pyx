@@ -4,6 +4,9 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.unicode cimport PyUnicode_GET_LENGTH, PyUnicode_1BYTE_DATA, PyUnicode_FromStringAndSize
 from cpython.bytes cimport PyBytes_GET_SIZE, PyBytes_AS_STRING
 
+cdef inline bint _is_space_char(uint8_t char_code) noexcept nogil:
+    return (char_code == 32)
+
 cdef inline bint _is_alpha_char(uint8_t char_code) noexcept nogil:
     """Check if char is alpha (65-90: A-Z, 97-122: a-z)"""
     return (65 <= char_code <= 90) or (97 <= char_code <= 122)
@@ -17,12 +20,12 @@ cdef inline bint _is_decimal_char(uint8_t char_code) noexcept nogil:
     return (48 <= char_code <= 57)
 
 cdef inline bint _is_cuant_spec(uint8_t char_code) noexcept nogil:
-    """Check if char is cuantitative (44: ,, 46: ., 36: $)"""
-    return (char_code == 44) or (char_code == 46) or (char_code == 36)
+    """Check if char is cuantitative (44: ',', 46: '.', 36: '$')"""
+    return (char_code == 46) or (char_code == 36) or (char_code == 44)
 
 cdef inline bint _is_cuant_char(uint8_t char_code) noexcept nogil:
     """Check if char is cuantitative (44: ,, 46: ., 36: $, decimal)"""
-    return _is_cuant_spec(char_code) or _is_decimal_char(char_code)
+    return _is_decimal_char(char_code) or _is_cuant_spec(char_code)
 
 cdef inline bint _validate_quant_chars_c(const uint8_t* s, Py_ssize_t text_len) noexcept nogil:
     cdef Py_ssize_t i
@@ -67,10 +70,10 @@ cdef inline int _count_cuants_c(const uint8_t* s, Py_ssize_t text_len) noexcept 
 
     for i in range(text_len):
         char_code = s[i]
-        if 48 <= char_code <= 57:
+        if _is_decimal_char(char_code):
             has_decimal = 1
             total_cuants += 1
-        elif char_code == 44 or char_code == 46 or char_code == 36:
+        elif _is_cuant_spec(char_code):
             total_cuants += 1
 
     return total_cuants if has_decimal else 0
@@ -162,13 +165,13 @@ cdef Py_ssize_t _space_removal_core(const uint8_t* s, Py_ssize_t n, char* out) n
     cdef Py_ssize_t orig_len = n
 
     if n == 1:
-        if s[0] == 32:
+        if _is_space_char(s[0]):
             return 0
         out[0] = <char>s[0]
         return 1
 
     # Recortar espacios iniciales
-    while n > 0 and s[0] == 32:
+    while n > 0 and _is_space_char(s[0]):
         s += 1
         n -= 1
 
@@ -187,7 +190,7 @@ cdef Py_ssize_t _space_removal_core(const uint8_t* s, Py_ssize_t n, char* out) n
         c = s[i]
         out[j] = <char>c
         j += 1
-        if c == 32:
+        if _is_space_char(c):
             while i + 1 < n and s[i + 1] == 32:
                 i += 1
         i += 1
@@ -198,9 +201,11 @@ def space_removal_bytes(bytes text) -> bytes:
     """Wrapper para bytes (ASCII garantizado)."""
     if not text:
         return b""
+    
     cdef Py_ssize_t n = len(text)
     if n == 1:
-        return b"" if text[0] == 32 else text
+        return text if _is_space_char(text[0]) else b""
+    
     cdef const uint8_t* s = <const uint8_t*>text
     cdef char* out = <char*>PyMem_Malloc(n + 1)
     if out == NULL:
@@ -214,7 +219,6 @@ def space_removal_bytes(bytes text) -> bytes:
     finally:
         PyMem_Free(out)
 
-
 def space_removal(str text) -> str:
     """Wrapper para str (ASCII garantizado, 1 byte por carácter)."""
     if not text:
@@ -222,10 +226,13 @@ def space_removal(str text) -> str:
     cdef Py_ssize_t orig_len = PyUnicode_GET_LENGTH(text)
     if orig_len == 0:
         return ""
+
     if orig_len == 1:
-        return "" if text == " " else text
+        return text if text != " " else ""
+    
     cdef const uint8_t* s = <const uint8_t*>PyUnicode_1BYTE_DATA(text)
     cdef char* out = <char*>PyMem_Malloc(orig_len + 1)
+    
     if out == NULL:
         raise MemoryError()
     cdef Py_ssize_t j

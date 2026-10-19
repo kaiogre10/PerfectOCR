@@ -44,26 +44,24 @@ class ImageBuffer:
     
 class ArrayBuffer:
     """Contenedor de direcciones en memoria para estructuras de datos en buffer de C"""
-    __slots__ = ('_arr_ptr', '_data', '_shape', "_dims")
-    def __init__(self, arr_ptr: int, dims: Optional[int] = None):
+    __slots__ = ('_arr_ptr', '_data', '_shape', "_dims", "_dtype")
+    def __init__(self, arr_ptr: int, dims: Optional[int] = None, dtype: Optional[str] = None):
         self._arr_ptr: int = arr_ptr
-        self._dims: Optional[int] = dims
+        self._dims = dims if dims else 0
+        self._dtype = dtype if dtype else 'uint8'
         self._data: Optional[np.ndarray[Any, Any]] = None
         self._shape: Optional[Tuple[int, ...]] = None
 
     @property
-    def data(self) -> Optional[np.ndarray[Any, Any]]:
+    def data(self) -> np.ndarray[Any, Any]:
         if self._data is None:
             if not isinstance(self._arr_ptr, int):  # type: ignore
                 raise ValueError("Se requiere 'arr_ptr' o 'data' para obtener el arreglo.")
             
-            if self._dims is None or self._dims == 3:
-                self._data = arrays.get_3d_array(self._arr_ptr)
-                
-            elif self._dims == 2:
-                self._data = arrays.get_2d_array(self._arr_ptr)
+            self._data = arrays.get_array(self._arr_ptr, self._dtype, self._dims)
+            if self._dims == 2 or self._dims == 0:
                 self._shape = self._data.shape[:2]
-
+                
         return self._data
 
     @property

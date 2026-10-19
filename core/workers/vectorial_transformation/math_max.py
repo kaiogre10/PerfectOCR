@@ -12,7 +12,7 @@ from utils.math_utils import check_full_df, decimalice_df, round_vals, decimalic
 from utils.text_utils import set_ids
 from core.assets.assets import ONE_DEC, ZERO_DEC, ROW_TOL, SC_RANGE
 from services.output_service import save_debug_table
-from domain.class_models import SemantiClass, DataKeys, DataMathDict
+from domain.class_models import SemantiClass, DataKeys, DataMathDict, Workers
 from domain.buffer_handler import ArrayBuffer
 
 _row_tol = ROW_TOL
@@ -31,30 +31,31 @@ class MatrixSolver(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         worker_config = config.get('math_max', {})
         self.dec_cols_name = worker_config["dec_cols_name"]
+        self.sc_matrix_type = worker_config.get("sc_matrix_type")
         self.output = config.get("math_max_corrected")
-        self.sc_matrix_type = config.get("sc_matrix_type")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):
         start_time = time.perf_counter()
         try:
             if not manager.workflow:
                 return False
+            
             df = manager.workflow.table_data.df_table if manager.workflow.table_data is not None else pd.DataFrame(dtype=str)
             if df is None or df.empty:
                 logger.error("No hay table_matrix en contexto para procesar")
                 return False
 
-            arr_ptr = manager.get_array_buffer(_total_sc, df.shape[0], df.shape[1], self.sc_matrix_type, dims=3) # El valor maximo de SC_RANGE siempre va al incio. porque representa las se individualemne
-
-            logger.info(f"PUNTERO A BUFFER 3D:{arr_ptr}")
+            arr_ptr = manager.get_array_buffer(rows=_total_sc, cols=df.shape[0],channels=df.shape[1], dtype=self.sc_matrix_type) # El valor maximo de SC_RANGE siempre va al incio. porque representa las se individualemne
             context["arr_ptr"] = arr_ptr
 
             corrected_df = self.solve(df, context, manager)
             del context
             if corrected_df.empty:
+                manager.free_buffer(arr_ptr)
                 logger.error("SE DEVOLVIÓ DATA FRAME VACÍO")
                 return False
 
+            manager.free_buffer(arr_ptr)
             if manager.save_final_output(corrected_df, {}):
                 logger.debug(f"DataFrame RECONSTRUIDO en {time.perf_counter() - start_time:.6f}'s:\n{corrected_df.to_string(index=False)}")
                 if self.output:
@@ -93,7 +94,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             text_col: str = cols_list[int(text_col_idx[0])]
             df.rename(columns={text_col: DataKeys.producto_norm.value}, inplace = True)
             if check_full_df(df):
-                logger.info("DF PERFECTO")
+                logger.debug("DF PERFECTO")
                 return df
         else:
             if df.shape == (arithmetical_rows.size, arithmetical_cols.size):
@@ -118,8 +119,6 @@ class MatrixSolver(VectorizationAbstractWorker):
 
         logger.debug("RENAMED:\n" + df.to_string(index=True))
         df = self.correct_df(df, context)
-        arr_ptr = context["arr_ptr"]
-        manager.free_buffer(arr_ptr)
         if not check_full_df(df):
             return pd.DataFrame()
         else:
@@ -131,7 +130,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         cut_polygons: Dict[str, Dict[str, Any]] = context[DataMathDict.CUT_POLYGONS.value]
 
         arr_ptr = context["arr_ptr"]
-        arr_full = ArrayBuffer(arr_ptr, 3)
+        arr_full = ArrayBuffer(arr_ptr, dims=3)
         matrix_array = arr_full.data
         matrix_dims = arr_full.shape
         r = matrix_dims[1]
@@ -185,7 +184,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         arithmetical_cols = context[DataMathDict.ARITH_COLS_IDS.value]
         arithmetical_rows = context[DataMathDict.DEC_ROWS_IDS.value]
 
-        sliced_df = df.iloc[arithmetical_rows, arithmetical_cols]    
+        sliced_df = df.iloc[arithmetical_rows, arithmetical_cols]
         aritmetic_df = decimalice_df(sliced_df)
         
         try:
@@ -254,7 +253,7 @@ class MatrixSolver(VectorizationAbstractWorker):
             context[DataMathDict.TEXT_COL.value] = np.empty(0, dtype=np.uint8)
             
         else:
-            logger.error(f"NO SE ENCONTRARON TODAS LAS COLUMNAS DECIMALES: {[df.columns.get_loc(name) for name in df.columns]}")
+            logger.error(f"NO SE ENCONTRARON TODAS LAS COLUMNAS DECIMALES: {[df.columns.get_loc(name) for name in df.columns]}:\n"f"{df.to_string(index=True)}")
             return pd.DataFrame(), {}
         
         context[DataMathDict.DEC_COLS.value] = dec_cols
@@ -286,7 +285,7 @@ class MatrixSolver(VectorizationAbstractWorker):
                 context[DataMathDict.TEXT_COL_TEMP.value] = []
                 return df, context
             else:
-                return (pd.DataFrame(), {})
+                return pd.DataFrame(), {}
 
         sums = np.sum(full_dec==1, axis=1, dtype=np.uint8)
         max_decs = np.max(sums)
@@ -501,21 +500,32 @@ class MatrixSolver(VectorizationAbstractWorker):
         tables_array = self.get_arrays_table(context)
         full_dec = tables_array[SemantiClass.QUANTITATIVE]
         descriptive_idx = context[DataMathDict.TEXT_COL.value]
-        cols_idx = context[DataMathDict.COLS_IDX.value]
 
         descript_num = full_dec[:, descriptive_idx]          # Array decimal con las columnas textuales
         rows_to_com = np.where(descript_num)[0]              # índices absolutos de Filas con decimales en donde van textuales
-        relative_idx = np.arange(rows_to_com.size)
+        total_rows_incomplete = rows_to_com.size
 
+        if total_rows_incomplete < 1:
+            logger.debug("SIN FILAS, NO SE NECESITA AISLAR")
+            df_copy = context[DataMathDict.DF_COPY.value]
+            return (df, df_copy)
+
+        cols_idx = context[DataMathDict.COLS_IDX.value]
         two_decimals = full_dec[rows_to_com]
         two_cols_ids = np.count_nonzero(two_decimals, axis=0) == two_decimals.shape[0]
         idx = cols_idx[two_cols_ids]
+        df_copy: pd.DataFrame = context[DataMathDict.DF_COPY.value]
+        
+        if idx.size < 1:
+            logger.debug("SIN COLUMNAS, NO SE NECESITA AISLAR")
+            return (df, df_copy)
 
         invaded_df: pd.DataFrame = df.iloc[rows_to_com, idx]
         invaded_df = decimalice_df(invaded_df)
-        df_copy: pd.DataFrame = context[DataMathDict.DF_COPY.value]
 
-        #  ##logger.info("INVDED:\n" + df.iloc[:, idx].to_string(index=True))
+        # logger.info(f"INVDED: {total_rows_incomplete}, {idx}\n" + invaded_df.to_string(index=True))
+
+        relative_idx = np.arange(total_rows_incomplete, dtype=np.uint8)
 
         for _, r in enumerate(relative_idx):
             real_idx = rows_to_com[r]

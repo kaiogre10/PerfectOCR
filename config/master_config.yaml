@@ -80,8 +80,8 @@ log_config:
     table_geo: False
     table_correct: False
     
-    time_stages_log: True
-    time_worker_log: True
+    time_stages_log: False
+    time_worker_log: False
     
     semantic_types_log: [4]   # Range [0, 5]
     kf_list_log: [-1] # Range [1, 12]
@@ -121,8 +121,7 @@ enabled_outputs:
     stack: False
 
 env_config:
-  'OMP_NUM_THREADS': '1'
-  'MKL_NUM_THREADS': '4'
+  'MKL_NUM_THREADS': '3'
   'FLAGS_use_mkldnn': '1'
   'MKL_DYNAMIC': 'TRUE'
   'KMP_AFFINITY': 'granularity=fine, compact, 1, 0'
@@ -130,5 +129,9 @@ env_config:
   'OPENBLAS_NUM_THREADS': '1'
   'NUMEXPR_NUM_THREADS': '1'
   'MKL_DISABLE_FAST_MM': '0'
+  'PYTHONUNBUFFERED': '1'
+  'MKL_CBWR': 'AVX2'
+  'MKL_ENABLE_INSTRUCTIONS': 'AVX2'
+  "TBB_NUM_THREADS": "3"
   'CC': 'icx'
   'CXX': 'icpx'

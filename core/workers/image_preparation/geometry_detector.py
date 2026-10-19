@@ -19,8 +19,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
         worker_config = config.get("geometry_detect", {})
         self.kernel = worker_config["morph_kernel"]
         self.iterations = worker_config.get("iterations")
+        self.bboxes_type = worker_config.get("bboxes_type", "")
+
         self.output = config.get("opened")
-        self.bboxes_type = config.get("bboxes_type")
         self._engine = None
             
     @property
@@ -59,7 +60,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 save_croped_image(image_name, img_id, full_imag)
                 # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
                 
-            # paddle_time = time.perf_counter()
             polygons: list[list[list[float]]] = engine.ocr(img=full_imag, det=True, cls=False, rec=False)[0]
 
             if not manager.free_buffer(copy_ptr):
@@ -69,27 +69,32 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.critical("No hay polygonos detectados")
                 return False
 
-            # bbxes_ptr = manager.get_array_buffer(rows=len(polygons), cols=len(polygons[0]), channels=len(polygons[0][0]), dtype=self.bboxes_type)
-            # if not bbxes_ptr:
-            #     logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
-            #     return False
+            bbxes_ptr = manager.get_array_buffer(rows=len(polygons), cols=len(polygons[0]), channels=len(polygons[0][0]), dtype=self.bboxes_type)
+            if not bbxes_ptr:
+                logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
+                return False
 
-            # list_bboxes = ArrayBuffer(bbxes_ptr).data
+            list_bboxes = ArrayBuffer(bbxes_ptr, 3, self.bboxes_type).data
+            np.copyto(dst=list_bboxes, src=polygons, casting='unsafe')
+            # logger.info("\n"f"SHAPE: {list_bboxes.shape} | TYPE: {list_bboxes.dtype} | Size: {list_bboxes.size}\n"f"{list_bboxes}")
+            # manager.free_buffer(bbxes_ptr)
 
-            list_bboxes = np.asarray(polygons, dtype=np.int16, order='C')          # (N, 4, 2)
+            # list_bboxes = np.asarray(polygons, dtype=np.int16, order='C')          # (N, 4, 2)
+            # logger.info("\n"f"{list_bboxes}")
 
             xs = list_bboxes[:, :, 0]                                     # (N, 4)
             ys = list_bboxes[:, :, 1]                                     # (N, 4)
 
-            bboxes = np.stack([xs.min(axis=1), ys.min(axis=1), xs.max(axis=1), ys.max(axis=1)], axis=1, dtype=np.int_)   # (N, 4)
-            centroids = np.stack([xs.mean(axis=1, dtype=np.float_), ys.mean(axis=1, dtype=np.float_)], axis=1, dtype=np.float_) # (N, 2)
+            bboxes = np.stack([xs.min(axis=1), ys.min(axis=1), xs.max(axis=1), ys.max(axis=1)], axis=1, dtype=self.bboxes_type).tolist()   # (N, 4)
+            centroids = np.stack([xs.mean(axis=1, dtype=np.float32), ys.mean(axis=1, dtype=np.float32)], axis=1, dtype=np.float32).tolist() # (N, 2)
 
             polygons_list: List[Dict[str, Any]] = [{
-                "bounding_box": bboxes[i].tolist(),
-                "centroid": centroids[i].tolist()
+                "bounding_box": bboxes[i],
+                "centroid": centroids[i]
             }
             for i in range(list_bboxes.shape[0])
             ]
+            manager.free_buffer(bbxes_ptr)
 
             # ind = np.arange(total_conts)
             # logger.info("POLYS ARRAY:\n"f"{np.array2string(np.column_stack([ind, geometry_array]), suppress_small=True)}")

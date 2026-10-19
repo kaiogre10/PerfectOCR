@@ -4,7 +4,7 @@ import logging
 import time
 import pandas as pd
 from pandas import Series
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax, InvalidOperation
 from typing import List, Any, Optional, Tuple, Dict, Sequence
 from utils.compiled_utils import validate_quant_chars
 from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF, ZERO_DEC, PI_DIV, SMALL_NUM, DUMMY_NORM
@@ -500,10 +500,10 @@ def validate_df(df: pd.DataFrame) -> bool:
             pu_col.map(lambda x: Decimal(x)) # type: ignore
             mtl_col.map(lambda x: Decimal(x)) # type: ignore
             c_col.map(lambda x: Decimal(x)) # type: ignore
-            return True
-        except InvalidOperation as e:
-            logger.error(f"DF con datos intrusos: {e}:\n" + df.to_string(index=True), exc_info=True)
-        return False
+        except ConversionSyntax as e:
+            logger.error(f"DF con datos intrusos: {e}:\n" + df.to_string(index=True))
+            return False
+        return True
             
 def check_full_df(df: pd.DataFrame) -> bool:
     """Devuelve true si todas las celdas tienen strings válidos"""
@@ -514,13 +514,15 @@ def decimalice_df(df: pd.DataFrame | Series):
     try:
         decimalf = df.map(lambda x: Decimal(x))  # type: ignore
     except InvalidOperation as e:
-        logger.error(f"DF con datos intrusos: {e}:\n" + df.to_string(index=True), exc_info=True)
+        logger.error(f"DF con datos intrusos: {e}:\n" + df.to_string(index=True))
         return pd.DataFrame()
     return decimalf
 
 def decimalice(val: str):
     if not val or not validate_quant_chars(val):
+        logger.warning("VALOR DE RETORNO = 0")
         return _zero
+    
     return Decimal(val)
 
 def round_vals(result: Decimal):

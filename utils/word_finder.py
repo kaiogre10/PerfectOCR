@@ -112,7 +112,7 @@ class WordFinder:
                 key = self.all_ngrams.get(q)
                 if key and 0 < key[0]:
                     start = text.find(q) # type: ignore
-                    end = start + word_len
+                    end = start + word_len # type: ignore
                     found_matches_for_s.append(set_results(key[0], text, 1.0, text, q, start, end))   # type: ignore
                     continue
             
@@ -146,8 +146,8 @@ class WordFinder:
                 if q == key_cand:
                     # logger.info(f"MATCH TEMPRANO: '{q}'")
                     start = text.find(q)    # type: ignore
-                    end = start + word_len
-                    found_matches_for_s.append(set_results(key_field, q, 1.0, text, q, start, end))
+                    end = start + word_len # type: ignore
+                    found_matches_for_s.append(set_results(key_field, q, 1.0, text, q, start, end)) # type: ignore
                     continue
                     
                 cand_len = len(key_cand)

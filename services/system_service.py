@@ -31,7 +31,7 @@ def init_system(project_root: str):
     PROJECT_ROOT = project_root  # type: ignore
     SO = get_so() # type: ignore
 
-def set_system_config(config: Dict[str, List[str]]):
+def set_system_paths(config: Dict[str, List[str]]):
     global output_paths
     if config:
         output_paths = config["output_paths"]

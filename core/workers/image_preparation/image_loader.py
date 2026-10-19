@@ -3,7 +3,6 @@ from typing import Dict, Any
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from components.compiled.image.image import load
-from utils.text_utils import get_ids
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +22,13 @@ class ImageLoader(ImagePrepAbstractWorker):
             if not ptr or not isinstance(ptr, int): # type: ignore
                 raise TypeError("ERROR DE PUNTEROS")
 
-            image_name = get_ids(input_path, "file_name")
-
+            image_name = context.get("image_name", "")
             if not image_name:
                 logger.error("No se encontró ninguna coincidencia.")
                 return False
 
             if manager.create_workflow(ptr, image_name):
-                logger.info(f"IMAGEN: '{image_name}' cargada exitosamente, Direccion en memoria: '{hex(ptr)}'")
+                logger.debug(f"IMAGEN: '{image_name}' cargada exitosamente, Direccion en memoria: '{ptr}'")
                 return True
         
         except Exception as e:

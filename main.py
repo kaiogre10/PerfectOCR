@@ -5,7 +5,6 @@ import sys
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-    os.environ.update()
     
 from services import log_service
 log_service.set_project_root(PROJECT_ROOT)
@@ -23,7 +22,7 @@ if config_service.test_config:
     sys.exit()
 
 os.environ.update(config_service.env_config)
-system_service.set_system_config(system_paths)
+system_service.set_system_paths(system_paths)
 if config_service.cleanup_project:
     system_service.cleanup_project(execp=config_service.specific_deletes)
     log_service.log_simple("CLEAN UP ACTIVADO, FINALIZANDO")

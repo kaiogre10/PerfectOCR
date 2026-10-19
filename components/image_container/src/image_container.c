@@ -19,7 +19,7 @@ ImageContainer* create_img_buffer(int width, int height, int channels, size_t dt
     img->width = width;
     img->height = height;
     img->channels = channels;
-    img->total_bytes = (size_t)width * height * channels * dtype;
+    img->total_bytes = (size_t)width * (size_t)height * (size_t)channels * dtype;
     img->data = malloc(img->total_bytes);
 
     if (!img->data) {

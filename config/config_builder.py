@@ -202,7 +202,9 @@ class ConfigBuilder:
 
     @cached_property
     def modules_config(self) -> Dict[str, Any]:
-        return self.config.modules_config
+        _modules_config = self.config.modules_config
+        _modules_config["time_worker_log"] = self.logs_debug.get("time_worker_log")
+        return _modules_config
 
     @cached_property
     def _img_prep_config(self):
@@ -227,7 +229,6 @@ class ConfigBuilder:
             config_module = self._img_prep_config
             enabled_outputs = self.enabled_outputs.get("image_preparation_outputs", {})
             config_module.update(enabled_outputs)
-            config_module["time_worker_log"] = self.logs_debug.get("time_worker_log")
             return config_module, self.config.workers_order[StageKeys.IMGPREP_KEY]
             
     @cached_property
@@ -255,7 +256,6 @@ class ConfigBuilder:
         else:
             config_module = self._ocr_config
             config_module.update(self.logs_debug)
-            config_module["time_worker_log"] = self.logs_debug.get("time_worker_log")
             config_module.update(self.enabled_outputs.get("ocr_outputs", {}))
             return config_module, self.config.workers_order[StageKeys.OCR_KEY]
     
@@ -267,8 +267,9 @@ class ConfigBuilder:
         if not isinstance(placeholder, str) or not _placeholder_pattern.search(placeholder):
             basic_exc_logger(f"NO HAY SEPARADOR VÁLIDO")
             return {}
-
-        _vectorization_config[Workers.MATH_MAX] = {"dec_cols_name": frozenset([DataKeys.cantidad_art.value, DataKeys.precio_unitario.value, DataKeys.costo_tran.value])}
+        
+        sc_matrix_type = collector.get("sc_matrix_type")
+        _vectorization_config[Workers.MATH_MAX] = {"dec_cols_name": frozenset([DataKeys.cantidad_art.value, DataKeys.precio_unitario.value, DataKeys.costo_tran.value]), "sc_matrix_type": sc_matrix_type}
         
         return _vectorization_config
     
@@ -279,7 +280,6 @@ class ConfigBuilder:
             return {}, []
         else:
             config_module = self._vectorization_config
-            config_module["time_worker_log"] = self.logs_debug.get("time_worker_log")
             enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
             config_module.update(enabled_outputs)
             return config_module, self.config.workers_order[StageKeys.VECT_KEY]

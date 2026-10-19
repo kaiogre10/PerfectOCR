@@ -15,6 +15,8 @@ class MainFactory:
     def __init__(self, project_root: str, modules_config: Dict[str, Tuple[Dict[str, Any], List[str]]]):
         self.project_root = project_root
         self.modules_config = modules_config
+        time_worker = modules_config.get("time_worker_log", False)
+        self.min_config = self.modules_config.fromkeys("time_worker_log", time_worker)
         
     def get_all_stagers(self, stagging: List[Tuple[str, Optional[List[str]]]]) -> List[Any]:
         stagers: List[Any] = []
@@ -39,7 +41,8 @@ class MainFactory:
             workers_created = factory.create_components(workers_order)
             factory.registry.clear()
             stager = stagers_dict.pop(stage)
-            stagers.append(stager(workers_created, config, self.project_root))
+
+            stagers.append(stager(workers_created, self.min_config))
             continue
             
         return stagers

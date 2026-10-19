@@ -4,38 +4,33 @@
 #include "file_handler.hpp"
 #include "image_container.hpp"
 
-Image *load_image(const char *filepath)
-{
-    if (!filepath)
-    {
+Image *load_image(const char *filepath) {
+    if (!filepath) {
         return nullptr;
     }
     // 1. Carga multiformato sin alterar canales originales (IMREAD_UNCHANGED)
     cv::Mat image_temp;
     files_handler::load_img(filepath, image_temp);
-    if (image_temp.empty())
-    {
+    if (image_temp.empty()) {
         return nullptr;
     }
     // 2. Normalización según espacio de color de entrada
     image_utils::normalize_image(image_temp);
     const int channels = image_temp.channels();
 
-    if (channels != 1)
-    {
+    if (channels != 1) {
         return nullptr;
     }
     // En este punto la imagen ya está en escala de grises normalizada a uint8
     const int width = image_temp.cols;  // Número de columnas = ancho
     const int height = image_temp.rows; // Número de filas = alto
-    const uint8_t dtype = 1;
+    const uint8_t dtype = sizeof(uint8_t);
 
     Image *image = new Image(width, height, channels, dtype);
 
     const size_t total_bytes = image_temp.total() * image_temp.elemSize();
 
-    if (total_bytes != image->size())
-    {
+    if (total_bytes != image->size()) {
         delete image;
         return nullptr;
     }

@@ -97,6 +97,7 @@ class ModelsBuilder:
                     show_log = paddle_config.get('show_log'),
                     use_gpu = paddle_config.get('use_gpu'),
                     enable_mkldnn = paddle_config.get('enable_mkldnn'),
+                    use_space_char = paddle_config.get('use_space_char'),
                     table = paddle_config.get('table'),
                     lang = paddle_config.get("lang"),
                     rec_batch_num = paddle_config.get('rec_batch_num'),

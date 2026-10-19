@@ -69,7 +69,6 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             final_polygons: Dict[str, Any] = {}
 
             for _, idx in enumerate(valid_bbox_indices):
-                # x1, y1, x2, y2 = all_bboxes[:, 0], all_bboxes[:, 1], all_bboxes[:, 2], all_bboxes[:, 3]
                 crop_x1, crop_y1 = all_bboxes[idx, 0], all_bboxes[idx, 1]
                 crop_x2, crop_y2 = all_bboxes[idx, 2], all_bboxes[idx, 3]
 

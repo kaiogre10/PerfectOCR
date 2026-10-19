@@ -123,6 +123,7 @@ class PaddleConfig(ConfigWithNumpy):
     cpu_threads: int
     max_batch_size: int
     table: bool
+    use_space_char: bool
     det_limit_side_len: int
     det_db_score_mode: str
     use_mp: bool
@@ -272,7 +273,7 @@ class SystemSetUp(ConfigWithNumpy):
     pipeline_secuence: PipelineConfig
     log_config: LogsConfig
     enabled_outputs: OutputFlags
-    env_config: Dict[str, Any]
+    env_config: Dict[str, str]
 
 class ConfigParams(ConfigWithNumpy):
     models_config: ModelsConfig
