@@ -1,6 +1,5 @@
 # core/workers/vectorial_transformation/geometric_table_structurer.py
 import logging
-import time
 import numpy as np
 import pandas as pd # type: ignore
 from typing import List, Dict, Any, Tuple, cast
@@ -23,7 +22,6 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
         Implementa el algoritmo geométrico de estructuración tabular en ℝ²
         basado en el modelo matemático riguroso de distancias horizontales y similitud coseno.
         """
-        start_time = time.perf_counter()
         try:
             if not manager.workflow:
                 logger.warning("No hay workflow disponible")
@@ -63,7 +61,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
             # 5. Validar y loggear estructura generada
             if table_matrix:
                 df, df_copy = self._table_matrix_to_dataframe(table_matrix, H)
-                logger.info(f"DataFrame generado:\n{df.to_string(index=True)}")
+                logger.debug(f"DataFrame generado:\n{df.to_string(index=True)}")
                 if manager.save_final_output(df, {}):
                     rows = df.shape[0]
                     cols = df.shape[1]
@@ -77,8 +75,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                     cols_idx = np.arange(cols, dtype=np.uint8)
                     context[DataMathDict.ROWS_IDX.value] = rows_idx
                     context[DataMathDict.COLS_IDX.value] = cols_idx
-
-                    logger.info(f"Estructuracion de tabla completada en {time.perf_counter() - start_time:.6f}'s")
+                    
                     if self.output:
                         file_name: str = manager.workflow.image_name if manager.workflow else ""
                         save_debug_table(df, file_name, None, None)
@@ -637,7 +634,7 @@ class GeometricTableStructurer(VectorizationAbstractWorker):
                                     h += 1
                             header_line_text.append(poly_text)
                                 
-                    logger.info(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
+                    logger.debug(f"H: {h}, ENCABEZADOS:'{header_line_text}'\n"f"{line_id}: '{line_text}'")
                     return h
 
         except Exception as e:

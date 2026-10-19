@@ -2,9 +2,9 @@
   "user_requests": {
     "input_paths": {
       "input_dirs": [
-        // "input",
+        "input",
         // "input2",
-        "input3"
+        // "input3"
 //          "C:/PerfectOCR/input"
           // "/media/kaiogre05/DATA/data/tickets_nuevo"
       ],
@@ -14,9 +14,9 @@
 //        "C:/PerfectOCR/input2/AAAC0030.png"
 //         "AAAA0040",
       //        "AAAA0061",
-        //  "AAAA0006"
+         "AAAA0006"
 //             "AAAC0030",
-           "AAAC0043",
+          //  "AAAC0043",
 //             "AAAA0038",
         //  "AAAC0037"
           //  "AAAA0059",

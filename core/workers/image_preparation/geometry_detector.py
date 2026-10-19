@@ -101,7 +101,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 raise
 
             else:
-                logger.info(f"{len(polygons_list)} poligonos válidos")
+                logger.debug(f"{len(polygons_list)} poligonos válidos")
                 return True
         
         except Exception as e:

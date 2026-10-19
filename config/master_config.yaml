@@ -37,10 +37,10 @@ pipeline_secuence:
   ocr_stager:
     - "paddle_wrapper"
     - "text_refiner"
-#    - "data_finder"
+    - "data_finder"
     
   vectorization_stager:
-#    - "lineal"
+    - "lineal"
     - "cos_sim"
     - "table_structurer"
     - "math_max"
@@ -71,8 +71,8 @@ log_config:
     text_frag: False
     text_clean: False
     text_correct: False
-    text_refined: True
-    text_class: True
+    text_refined: False
+    text_class: False
     text_keyfields: False
 
     lines: False
@@ -80,8 +80,8 @@ log_config:
     table_geo: False
     table_correct: False
     
-    time_stages_log: False
-    time_worker_log: False
+    time_stages_log: True
+    time_worker_log: True
     
     semantic_types_log: [4]   # Range [0, 5]
     kf_list_log: [-1] # Range [1, 12]

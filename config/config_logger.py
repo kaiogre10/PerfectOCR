@@ -59,7 +59,7 @@ class ConfigLogger:
             _log_params["file_level"] = 'DEBUG'
         return _log_params
 
-    @property
+    @cached_property
     def _logs_debug(self) -> Dict[str, bool | List[int]]:
         _logs_debug: Dict[str, bool | List[int]] = self.log_config.get("logs_debug", {})
         _logs_keys = _logs_debug.keys()
@@ -74,7 +74,7 @@ class ConfigLogger:
             values_true = [key for key in _logs_keys if key.startswith('table_') or key == "lineal"]
 
         else:
-            values_true = [key for key in _logs_debug.values() if key == True]
+            values_true = [key[0] for key in _logs_debug.items() if isinstance(key[1], bool) and key[1] == True]
 
         for key, value in _logs_debug.items():
             if key in values_true:

@@ -25,7 +25,7 @@ class ConfigBuilder:
             self.config = {}
             del self.config
 
-        self.so = next(iter(system_service.SO.keys()))
+        self.so = next(iter(system_service.SO.keys()))            
         set_project_root(self.project_root)
 
     @cached_property
@@ -200,12 +200,13 @@ class ConfigBuilder:
             "update_model": self.config.update_model
         }
 
-    @property
+    @cached_property
     def modules_config(self) -> Dict[str, Any]:
         return self.config.modules_config
 
     @cached_property
     def _img_prep_config(self):
+        _img_prep_config = self.modules_config.get("image_preparation", {})
         image_workers = self.config.workers_order[StageKeys.IMGPREP_KEY]
         if Workers.POLYGON_EXTRACTOR in image_workers:
             if not Workers.GEOMETRY_DETECTOR in image_workers:
@@ -226,6 +227,7 @@ class ConfigBuilder:
             config_module = self._img_prep_config
             enabled_outputs = self.enabled_outputs.get("image_preparation_outputs", {})
             config_module.update(enabled_outputs)
+            config_module["time_worker_log"] = self.logs_debug.get("time_worker_log")
             return config_module, self.config.workers_order[StageKeys.IMGPREP_KEY]
             
     @cached_property
@@ -253,6 +255,7 @@ class ConfigBuilder:
         else:
             config_module = self._ocr_config
             config_module.update(self.logs_debug)
+            config_module["time_worker_log"] = self.logs_debug.get("time_worker_log")
             config_module.update(self.enabled_outputs.get("ocr_outputs", {}))
             return config_module, self.config.workers_order[StageKeys.OCR_KEY]
     
@@ -276,6 +279,7 @@ class ConfigBuilder:
             return {}, []
         else:
             config_module = self._vectorization_config
+            config_module["time_worker_log"] = self.logs_debug.get("time_worker_log")
             enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
             config_module.update(enabled_outputs)
             return config_module, self.config.workers_order[StageKeys.VECT_KEY]

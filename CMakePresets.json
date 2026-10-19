@@ -46,6 +46,7 @@
     {
       "name": "windows-oneapi-debug",
       "inherits": [ "base-windows", "type-debug" ],
+      "generator": "Ninja",
       "displayName": "Windows - OneAPI (Debug)",
       "description": "Ninja con compiladores icx de OneAPI",
       "condition": {
@@ -61,6 +62,7 @@
     {
       "name": "windows-oneapi-release",
       "inherits": [ "base-windows", "type-release" ],
+      "generator": "Ninja",
       "displayName": "Windows - OneAPI (Release)",
       "description": "Ninja con compiladores icx de OneAPI",
       "condition": {

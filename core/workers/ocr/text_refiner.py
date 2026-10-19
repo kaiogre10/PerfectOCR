@@ -23,7 +23,8 @@ class Refiner(OCRAbstractWorker):
         "seman_clas_log",
         "refined_text",
         "semantic_types_log",
-        "num_passes"
+        "num_passes",
+        "time_worker_log"
     )
     def __init__(self, config: Dict[str, Any], project_root: str, cleaner: Optional[TextCleaner] = None, corrector: Optional[TextCorrector] = None, fragmenter: Optional[Fragmenter] = None):
         super().__init__(config, project_root)
@@ -35,6 +36,7 @@ class Refiner(OCRAbstractWorker):
 
         self.seman_clas_log = config.get("text_class")
         self.refined_text = config.get("text_refined")
+        self.time_worker_log = config.get("time_worker_log")
         self.semantic_types_log = config["semantic_types_log"]
         self.num_passes = worker_config.get("num_passes")
 
@@ -49,22 +51,34 @@ class Refiner(OCRAbstractWorker):
             
             for _ in range(self.num_passes):
                 if self.cleaner:
+                    time_cleanner = time.perf_counter()
                     if not self.cleaner.transcribe(context, manager):
                         return False
+                    
+                    if self.time_worker_log:
+                        logger.info(f"'{self.cleaner.__class__.__name__}' completado en: {time.perf_counter() - time_cleanner:.6f}'s")
                     
                     if not self.classify_strings(manager):
                         return False
 
                 if self.corrector:
+                    time_corrector = time.perf_counter()
                     if not self.corrector.transcribe(context, manager):
                         return False
+                    
+                    if self.time_worker_log:
+                        logger.info(f"'{self.corrector.__class__.__name__}' completado en: {time.perf_counter() - time_corrector:.6f}'s")
                     
                     if not self.classify_strings(manager):
                         return False
                     
                 if self.fragmenter:
+                    time_fragmenter = time.perf_counter()
                     if not self.fragmenter.transcribe(context, manager):
                         return False
+                    
+                    if self.time_worker_log:
+                        logger.info(f"'{self.fragmenter.__class__.__name__}' completado en: {time.perf_counter() - time_fragmenter:.6f}'s")
                     
                     if not self.classify_strings(manager):
                         return False

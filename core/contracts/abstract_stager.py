@@ -1,6 +1,6 @@
 # domain/abstract_stager.py
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, TYPE_CHECKING
+from typing import Dict, Any, List, Optional, TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from domain.data_formatter import DataFormatter
@@ -8,9 +8,9 @@ if TYPE_CHECKING:
 class AbstractStager(ABC):
     """Clase base abstracta para todos los stagers del pipeline."""
     __slots__ = ("workers", "modules_config", "project_root")
-    def __init__(self, workers: List[Any], modules_config: Dict[str, Any], project_root: str):
+    def __init__(self, workers: List[Any], modules_config: Tuple[Dict[str, Any], List[Any]], project_root: str):
         self.workers = workers
-        self.modules_config = modules_config
+        self.modules_config = modules_config[0]
         self.project_root = project_root
     
     @abstractmethod

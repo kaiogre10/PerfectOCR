@@ -1,13 +1,15 @@
 # services/logs_service.py
 import os
 import sys
+from contextlib import contextmanager
 from datetime import datetime
 import logging
-from core.assets.patterns import float_time
+from core.assets.patterns import float_time, paddle_silence
 import inspect
 from typing import Tuple, Optional, Dict, Any
 from domain.class_models import TypeModels, StringsModels
 
+_paddle_silence = paddle_silence
 _float_time = float_time
 DATE_FORMAT = ""
 EXTRA_FILE_LOGS = []
@@ -88,8 +90,14 @@ def basic_exc_logger(message: str, exc_info: Optional[bool] = False) -> None:
     else:
         print(f"{message}")
     
-# def intercept_paddle_logs():
-#     sys.stderr.write = lambda text, orig=sys.stderr.write: orig(_paddle_silene.sub("", text))
+@contextmanager
+def intercept_paddle_logs():
+    original_write = sys.stderr.write
+    try:
+        sys.stderr.write = lambda text: original_write(_paddle_silence.sub("", text))
+        yield
+    finally:
+        sys.stderr.write = original_write
 
 def log_simple(msg: str):
     log_info = get_logging_info(get_caller_info())

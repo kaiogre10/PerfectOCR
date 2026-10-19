@@ -1,11 +1,13 @@
 # app/models_builder.py
 import logging
+# from services.log_service import intercept_paddle_logs
 import threading
 import time
 from typing import Dict, Any, Optional
-from utils.word_finder import WordFinder
-from paddleocr import PaddleOCR # type: ignore
 from core.factory.model_factory import MatrixFactory
+from utils.word_finder import WordFinder
+# with intercept_paddle_logs():
+from paddleocr import PaddleOCR # type: ignore
 from domain.class_models import Params
 from utils.paths import validate_files
 

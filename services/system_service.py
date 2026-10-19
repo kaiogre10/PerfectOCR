@@ -9,7 +9,6 @@ from services.log_service import basic_exc_logger
 from core.assets.patterns import extension_suffix
 from core.assets.assets import VALID_IMG_EXT, INVALID_EXTENSIONS, TRASH_EXT, CACHE_DIRS, EXCLUDED_DIRS, NO_DEL, ALL_FILES_TYPES
 from domain.class_models import OSModels
-from utils.paths import build_from_dir
 
 _extension_suffix = extension_suffix
 PROJECT_ROOT: str = ""

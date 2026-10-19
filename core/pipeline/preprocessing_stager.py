@@ -10,17 +10,14 @@ logger = logging.getLogger(__name__)
 class PreprocessingStager(AbstractStager):
     """Coordina la fase de preprocesamiento, delegando todo el trabajo a un único worker autosuficiente."""
     def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Optional[DataFormatter]:
-        exec_context: Dict[str, Any] = context if context else {}
-        time_worker_log = exec_context.get("time_worker_log")
-
+        time_worker_log = self.modules_config.get("time_worker_log")
         for worker_idx, worker in enumerate(self.workers):
             worker_name = worker.__class__.__name__
-            exec_context["worker_name"] = worker_name
 
             logger.debug(f"Worker {worker_idx + 1}/{len(self.workers)}: {worker_name}")
             
             worker_start = time.perf_counter()
-            if not worker.preprocess(exec_context, manager):
+            if not worker.preprocess(context, manager):
                 logger.error(f"'{worker_name}' falló, tiempo: {time.perf_counter() - worker_start:.6f}'s", exc_info=True)
                 return None
 

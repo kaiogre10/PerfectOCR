@@ -1,9 +1,11 @@
 from functools import cached_property
+import os
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from core.assets.assets import ELEMENTAL_WORKER, OCR_WORKERS, MIN_WORKERS
 from services.log_service import log_simple
 from config.config_loader import load_config
 from config.config_logger import ConfigLogger
+from services import system_service
 
 _elemental_workers = ELEMENTAL_WORKER
 _ocr_workers = OCR_WORKERS     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
@@ -16,6 +18,8 @@ class BaseConfig:
         if not self.validate_config():
             self.config = {}
             del self.config
+            
+        self.env_config
 
     @cached_property
     def elemental_params(self) -> bool:
@@ -77,9 +81,26 @@ class BaseConfig:
         """(self.deploy_mode == False) and (self.elemental_params == False)"""
         return (self.deploy_mode == False) and (self.elemental_params == False)
 
+    @cached_property
+    def _env_config(self) -> Dict[str, str]:
+        _env_config = self.config.get("env_config", {})
+        if ".dll" in system_service.SO.keys():
+            _env_config['CXX'] = 'icx'
+            if self.compile_cython:
+                oneapi_root = os.environ.get('ONEAPI_ROOT', "")
+                if os.path.isdir(oneapi_root):
+                    compiler_intel_win = os.path.join(oneapi_root, "compiler", "latest", "bin", "icx-cl")
+                    _env_config['CC'] = compiler_intel_win
+                    _env_config['CXX'] = compiler_intel_win
+                    _env_config['LDSHARED'] = f'{compiler_intel_win} /LD'
+                
+                _env_config['DISTUTILS_USE_SDK'] = '1'
+                
+        return _env_config
+
     @property
-    def env_config(self) -> Dict[str, Any]:
-        return self.config.get("env_config", {})
+    def env_config(self) -> Dict[str, str]:
+        return self._env_config
 
     @property
     def user_requests(self) -> Dict[str, Dict[str, Any]]:

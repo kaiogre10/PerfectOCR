@@ -22,13 +22,12 @@ if config_service.test_config:
     log_service.log_simple("TESTING CONFIG FINALIZANDO")
     sys.exit()
 
+os.environ.update(config_service.env_config)
 system_service.set_system_config(system_paths)
 if config_service.cleanup_project:
     system_service.cleanup_project(execp=config_service.specific_deletes)
     log_service.log_simple("CLEAN UP ACTIVADO, FINALIZANDO")
     sys.exit()
-
-os.environ.update(config_service.env_config)
 
 if config_service.compile_cython:
     from config import setup
