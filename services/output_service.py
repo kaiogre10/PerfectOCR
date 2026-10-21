@@ -76,18 +76,28 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], cont
     except Exception as e:
         logger.error(f"Error guardando contornos: {e}", exc_info=True)
 
-def save_croped_image(image_name: str, img_id: str, image: np.ndarray[Any, Any]): 
+def save_croped_image(image_name: str, image: np.ndarray[Any, Any], img_id: Optional[str] = None) -> bool:
     """Guarda una imagen de depuración si la salida está habilitada."""
     worker_name = get_caller_info()[0]
-    img_id = f"{img_id}_{worker_name}"
-    for path in OUTPUT_PATHS:
-        output_dir = os.path.join(path, image_name)
-        file_name = f"{img_id}.png"
-        
-        save_image(image, output_dir, file_name)
-        output_dir = os.path.join(path, worker_name, image_name)
+    try:
+        if img_id:
+            img_id = f"{img_id}_{worker_name}"
+        else:
+            img_id = f"{worker_name}"
 
+        for path in OUTPUT_PATHS:
+            output_dir = os.path.join(path, image_name)
+            file_name = f"{img_id}.png"
+            
+            save_image(image, output_dir, file_name)
+            output_dir = os.path.join(path, worker_name, image_name)
+
+    except IOError as e:
+        logger.warning(f"NO SE PUDO GUARDAR: {img_id}: {e}", exc_info=True)
+        return False
+    
     logger.debug(f"Imagenes debug de {worker_name} guardadas")
+    return True
         
 def save_text_debug(results: Dict[str, Any], file_name: str) -> bool:
     worker_name = get_caller_info()[0]

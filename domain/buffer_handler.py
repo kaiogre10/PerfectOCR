@@ -17,6 +17,7 @@ class ImageBuffer:
             if not isinstance(self._img_ptr, int):  # type: ignore
                 raise ValueError("Se requiere 'img_ptr' o 'data' para obtener el arreglo.")
             self._data = image.get_image_array(self._img_ptr)
+            self._shape = self._data.shape[:2]
         return self._data
 
     @property
@@ -26,11 +27,11 @@ class ImageBuffer:
         return self._shape
 
     @property
-    def height(self) -> int:
+    def rows(self) -> int:
         return self.shape[0]
 
     @property
-    def width(self) -> int:
+    def cols(self) -> int:
         return self.shape[1]
 
     @property
@@ -61,6 +62,8 @@ class ArrayBuffer:
             self._data = arrays.get_array(self._arr_ptr, self._dtype, self._dims)
             if self._dims == 2 or self._dims == 0:
                 self._shape = self._data.shape[:2]
+            if self._dims ==3:
+                self._shape = self._data.shape
                 
         return self._data
 
@@ -71,11 +74,11 @@ class ArrayBuffer:
         return self._shape
 
     @property
-    def height(self) -> int:
+    def rows(self) -> int:
         return self.shape[0]
 
     @property
-    def width(self) -> int:
+    def cols(self) -> int:
         return self.shape[1]
 
     @property

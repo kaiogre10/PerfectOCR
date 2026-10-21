@@ -40,11 +40,12 @@ def get_image_lines(full_img: np.ndarray[Any, np.dtype[np.uint8]], canny_thresho
 
 def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     if np.all((cropped_img == 0) | (cropped_img == 255)): # VALIDAR SI LA IMAGEN ES BINARIA
+        logger.debug("IMAGEN YA BINARIA")
         return cropped_img
 
-    height = int(cropped_img.shape[0])
+    rows = cropped_img.shape[0]
 
-    block = get_adaptive_block_size(height, _height_thresholds, _block_sizes_map)
+    block = get_adaptive_block_size(rows, _height_thresholds, _block_sizes_map)
     mode: str = measure_polygon_quality(cropped_img)
 
     if mode == StringsModels.OTSU.value:
@@ -58,10 +59,10 @@ def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray
 
     return make_contiguous(cv2.bitwise_not(src=bin_img, dst=bin_img))
    
-def get_adaptive_block_size(height: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
+def get_adaptive_block_size(rows: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
     """Calcula el tamaño de bloque adaptativo basado en la altura del polígono."""
     for i, threshold in enumerate(height_thresholds):
-        if height < threshold:
+        if rows < threshold:
             block_size = block_sizes_map[min(i, len(block_sizes_map) - 1)]
             return max(3, block_size if block_size % 2 != 0 else block_size + 1)
     

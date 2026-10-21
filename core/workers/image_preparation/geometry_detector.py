@@ -6,8 +6,8 @@ from app.models_builder import ModelsBuilder
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import binarice_img, morph_operations
-from services.output_service import save_croped_image
-from domain.buffer_handler import ArrayBuffer
+# from domain.buffer_handler import ArrayBuffer, ImageBuffer
+# from components.compiled.arrays import compute_polygons_geometry
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         self.kernel = worker_config["morph_kernel"]
         self.iterations = worker_config.get("iterations")
         self.bboxes_type = worker_config.get("bboxes_type", "")
+        self.padding = 1
 
         self.output = config.get("opened")
         self._engine = None
@@ -37,11 +38,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
         return self._engine
         
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
-        # start_time = time.perf_counter()
         try:
             engine = self.engine
             if engine is None:
-                logger.error("PaddleOCR no inicializado.")
+                logger.error("Paddle DET no inicializado.")
                 return False
             
             copy_ptr, full_imag = manager.get_img_copy()
@@ -53,15 +53,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
             full_imag = morph_operations(full_imag, self.kernel, self.iterations)
 
-            if self.output:
-                image_name = manager.workflow.image_name if manager.workflow else ""
-                # imag_id = f"opened_{image_name}_{worker_name}"
-                img_id = f"bin_img_{image_name}"
-                save_croped_image(image_name, img_id, full_imag)
-                # save_croped_image(image_name, imag_id, img, output_paths, worker_name)
-                
-            polygons: list[list[list[float]]] = engine.ocr(img=full_imag, det=True, cls=False, rec=False)[0]
-
+            polygons: List[List[List[float]]] = engine.ocr(img=full_imag, det=True, cls=False, rec=False)[0]
             if not manager.free_buffer(copy_ptr):
                 raise RuntimeError("ERROR LIBERANDO COPIA EN MANAGER")
 
@@ -69,32 +61,57 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.critical("No hay polygonos detectados")
                 return False
 
-            bbxes_ptr = manager.get_array_buffer(rows=len(polygons), cols=len(polygons[0]), channels=len(polygons[0][0]), dtype=self.bboxes_type)
-            if not bbxes_ptr:
-                logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
-                return False
+            # image_ptr = manager.get_img_ptr()
 
-            list_bboxes = ArrayBuffer(bbxes_ptr, 3, self.bboxes_type).data
-            np.copyto(dst=list_bboxes, src=polygons, casting='unsafe')
-            # logger.info("\n"f"SHAPE: {list_bboxes.shape} | TYPE: {list_bboxes.dtype} | Size: {list_bboxes.size}\n"f"{list_bboxes}")
+            # if not image_ptr:
+            #     raise AttributeError(f"ERROR EN EL PUNTERO: {image_ptr}")
+            
+            # padding = self.padding
+
+            # time_buff = time.perf_counter()
+            # bbxes_ptr = manager.get_array_buffer(rows=len(polygons), cols=len(polygons[0]), channels=len(polygons[0][0]), dtype=self.bboxes_type)
+            # if not bbxes_ptr:
+            #     logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
+            #     return False
+
+            # list_bbox = ArrayBuffer(bbxes_ptr, 3, self.bboxes_type).data
+            
+            # np.copyto(dst=list_bbox, src=polygons, casting='unsafe')
+            # c_centroids, c_bboxes = compute_polygons_geometry(bbxes_ptr, image_ptr, padding)
+
+            # list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype="float32").data
+            # list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
+
+            # logger.info(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s\n"f": {list_bbox.shape}, BBOXES: {list_reshape_bbox.shape}, CENTER: {list_centroids.shape}")
             # manager.free_buffer(bbxes_ptr)
 
-            # list_bboxes = np.asarray(polygons, dtype=np.int16, order='C')          # (N, 4, 2)
-            # logger.info("\n"f"{list_bboxes}")
+            # time_nmpy = time.perf_counter()
+            list_bboxes = np.array(polygons, dtype=self.bboxes_type, order='C')          # (N, 4, 2)
 
             xs = list_bboxes[:, :, 0]                                     # (N, 4)
             ys = list_bboxes[:, :, 1]                                     # (N, 4)
 
-            bboxes = np.stack([xs.min(axis=1), ys.min(axis=1), xs.max(axis=1), ys.max(axis=1)], axis=1, dtype=self.bboxes_type).tolist()   # (N, 4)
-            centroids = np.stack([xs.mean(axis=1, dtype=np.float32), ys.mean(axis=1, dtype=np.float32)], axis=1, dtype=np.float32).tolist() # (N, 2)
+            all_bboxes = np.stack([xs.min(axis=1), ys.min(axis=1), xs.max(axis=1), ys.max(axis=1)], axis=1, dtype=self.bboxes_type) # (N, 4)
+            centroids = np.stack([xs.mean(axis=1, dtype=np.float32), ys.mean(axis=1, dtype=np.float32)], axis=1, dtype=np.float32) # (N, 2)
 
+            # img_rows, img_cols = ImageBuffer(image_ptr).shape
+            
+            # np.maximum(0, all_bboxes[:, 0] - padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
+            # np.maximum(0, all_bboxes[:, 1] - padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)
+            # np.minimum(img_rows, all_bboxes[:, 2] + padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
+            # np.minimum(img_cols, all_bboxes[:, 3] + padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
+
+            # valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) | (all_bboxes[:, 3] > all_bboxes[:, 1])
+
+            # all_bboxes = np.compress(valid_bbox_mask, all_bboxes, axis=0)
+            # logger.info(f"TIMPO NUMPYARRAY: {time.perf_counter() - time_nmpy:.6f}'s\n"f": {list_bboxes.shape}, BBOXES: SHAPE: {all_bboxes.shape} DTYPE: {all_bboxes.dtype}, CENTER: SHAPE: {centroids.shape} DTYPE: {centroids.dtype}")
+        
             polygons_list: List[Dict[str, Any]] = [{
-                "bounding_box": bboxes[i],
-                "centroid": centroids[i]
+                "bounding_box": all_bboxes[i].tolist(),
+                "centroid": centroids[i].tolist()
             }
             for i in range(list_bboxes.shape[0])
             ]
-            manager.free_buffer(bbxes_ptr)
 
             # ind = np.arange(total_conts)
             # logger.info("POLYS ARRAY:\n"f"{np.array2string(np.column_stack([ind, geometry_array]), suppress_small=True)}")
@@ -103,15 +120,15 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
             if not manager.create_polygon_dicts(polygons_list):
                 logger.critical("GeometryDetector: Fallo al estructurar polígonos.")
-                raise
+                return False
 
             else:
                 logger.debug(f"{len(polygons_list)} poligonos válidos")
                 return True
-        
+
         except Exception as e:
             logger.critical(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
-        return False
+            return False
 
     # def validate_polygons(self, img: np.ndarray[Any, np.dtype[np.uint8]], polygons_list: List[Dict[str, Any]], manager: DataFormatter, context: Dict[str, Any]) -> List[Dict[str, Any]]:
     #     try:

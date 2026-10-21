@@ -16,6 +16,7 @@ class PolygonExtractor(ImagePrepAbstractWorker):
         worker_config = config.get('polygon_extractor', {})
         self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
+        self.bboxes_type = "int32"
         self.filtered_ouputs = config.get("final_polys", False)
         self.disoutput = config.get("discarded_polys", False)
         self.dims = 2
@@ -54,12 +55,12 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 return False
 
             # 2. Calcular Coordenadas de Recorte con Padding
-            img_h, img_w = full_img.shape
+            img_rows, img_cols = full_img.shape
 
-            np.maximum(0, all_bboxes[:, 0] - self.padding, out=all_bboxes[:, 0])
-            np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1])
-            np.minimum(img_w, all_bboxes[:, 2] + self.padding, out=all_bboxes[:, 2])
-            np.minimum(img_h, all_bboxes[:, 3] + self.padding, out=all_bboxes[:, 3])
+            np.maximum(0, all_bboxes[:, 0] - self.padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
+            np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)
+            np.minimum(img_cols, all_bboxes[:, 2] + self.padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
+            np.minimum(img_rows, all_bboxes[:, 3] + self.padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
 
             valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
 
@@ -89,7 +90,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 final_polygons[poly_id] = cropped
 
-            if not manager.free_buffer():
+            img_ptr = manager.get_img_ptr()
+            
+            if not manager.free_buffer(img_ptr):
                 logger.error("NO SE PUDO LIBERAR FULL IMAGE")
                 return False
 

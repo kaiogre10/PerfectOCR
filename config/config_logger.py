@@ -14,6 +14,10 @@ class ConfigLogger:
     @property
     def log_config(self):
         return self.config.get("log_config", {})
+
+    @property
+    def no_del_output(self) -> bool:
+        return self.log_config.get("no_del_output")
     
     @property
     def _auditate_process(self) -> bool:
@@ -40,6 +44,9 @@ class ConfigLogger:
     @cached_property
     def enabled_outputs(self) -> Dict[str, Dict[str, bool]]:
         _enabled_outputs: Dict[str, Dict[str, bool]] = self.config.get("enabled_outputs", {})
+        if not _enabled_outputs:
+            return {}
+        
         if not self._active_auditate_area:
             return _enabled_outputs
         

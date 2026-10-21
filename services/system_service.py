@@ -9,10 +9,12 @@ from services.log_service import basic_exc_logger
 from core.assets.patterns import extension_suffix
 from core.assets.assets import VALID_IMG_EXT, INVALID_EXTENSIONS, TRASH_EXT, CACHE_DIRS, EXCLUDED_DIRS, NO_DEL, ALL_FILES_TYPES
 from domain.class_models import OSModels
+from utils.paths import build_from_dir
 
 _extension_suffix = extension_suffix
 PROJECT_ROOT: str = ""
 output_paths: List[str] = []
+no_del_output: bool = False
 
 valid_img_ext = VALID_IMG_EXT
 invalid_extensions = INVALID_EXTENSIONS
@@ -32,9 +34,11 @@ def init_system(project_root: str):
     SO = get_so() # type: ignore
 
 def set_system_paths(config: Dict[str, List[str]]):
-    global output_paths
+    global output_paths, no_del_output
     if config:
         output_paths = config["output_paths"]
+        no_del_output = config.get("no_del_output", False)
+
         # output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in output_path]
 
 def _can_delete_entry(path: str) -> bool:
@@ -105,8 +109,13 @@ def clear_output_folders():
             logger.warning(f"Sin permisos: '{p}'")
             continue
 
+    if no_del_output:
+        logger.info("NO SE LIMPIARAN LAS CARPETAS OUTPUT/DEBUG PARA COMPARACION")
+        clean_python_cache()
+        return
+
     logger.debug("Limpieza Inicial: Vaciando carpetas de salida")
-    for folder_path in (output_paths or cache_dirs):
+    for folder_path in output_paths:
         if not os.path.isdir(folder_path):
             continue
 
@@ -133,8 +142,9 @@ def clear_output_folders():
 
             except OSError as e:
                 basic_exc_logger(f"Error al eliminar {item_path}: {e}", exc_info=True)
-                
-    logger.info(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
+
+    clean_python_cache()
+    logger.debug(f"Archivos eliminados: {deleted_files}, Carpetas eliminadas: {deleted_folder}")
 
 def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_dirs: Optional[List[str]] = None):
     """Elimina la caché y residuos del proyecto """
@@ -187,10 +197,21 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
             except FileNotFoundError as e:
                 basic_exc_logger(f"Error eliminando '{filenames}': {e}", exc_info=True)
                 raise
-
+        clean_python_cache()
     except FileNotFoundError as e:
         basic_exc_logger(f"Error al eliminar {e}", exc_info=True)
         return
+
+def clean_python_cache():
+    dirs = build_from_dir(objetives=["__pycache__"], parent=[PROJECT_ROOT], skip_names=['third_party', 'models', "include", "src", 'documentation'])
+    try:
+        for dir in dirs:
+            shutil.rmtree(dir)
+            # logger.debug(f"DIRECTORIO CACHE: {dir}, ESCONDIDO ELIMINADO|")
+
+    except FileNotFoundError as e:
+        logger.error(f"ERROR ELIMINANDO CACHE OMITIDO: {e}", exc_info=True)
+        raise
 
 def clean_db(get_local_connection: Any) -> bool:
     """Limpia toda la db en postgre de manera automatizada para facilitar el testeo"""
@@ -326,20 +347,22 @@ def prune_project(target_dirs: List[str], target_files: List[str]):
                     logger.warning(f"DIRECTORIO ELIMINADO: {dir}")
                 except PermissionError as e:
                     raise(f"ERROR DE PERMISO AL PURGAR {dir}: {e}")
+                
                 except OSError as e:
                     raise(f"ERROR EN EL SISTEMA AL PURGAR {dir}: {e}")
+                
+                logger.info("DIRECTORIOS ELIMINADOS CON ÉXITO")
 
             for file in target_files:
                 try:
                     os.remove(file)
                     logger.warning(f"ARCHIVO ELIMINADO. {file}")
+                
                 except PermissionError as e:
                     raise(f"ERROR DE PERMISOS AL PURGAR ARCHIVO: {file}: {e}")
                 except OSError as e:
                     raise(f"ERROR EN EL SISTEMA AL PURGAR ARCHIVO: {file}: {e}")
-        else:
-            logger.warning(f"VALIDE MANUALMENTE QUE TODOS LOS ARCHIVOS Y RUTAS A ELIMINAR SEAN VÁLIDOS")
-            return
-
+                logger.info("ARCHIVOS ELIMINADOS CON ÉXITO")
+        
     except Exception as e:
         logger.error(f"ERROR EN LA LIMPIEZA DE ARCHIVOS: {e}", exc_info=True)

@@ -4,7 +4,7 @@
 #include "file_handler.hpp"
 #include "image_container.hpp"
 
-Image *load_image(const char *filepath) {
+Image* load_image(const char* filepath) {
     if (!filepath) {
         return nullptr;
     }
@@ -22,14 +22,14 @@ Image *load_image(const char *filepath) {
         return nullptr;
     }
     // En este punto la imagen ya está en escala de grises normalizada a uint8
-    const int width = image_temp.cols;  // Número de columnas = ancho
-    const int height = image_temp.rows; // Número de filas = alto
+    const int cols = image_temp.cols;  
+    const int rows = image_temp.rows;
     const uint8_t dtype = sizeof(uint8_t);
 
-    Image *image = new Image(width, height, channels, dtype);
+    Image* image = new Image(rows, cols, channels, dtype);
 
     const size_t total_bytes = image_temp.total() * image_temp.elemSize();
-
+    
     if (total_bytes != image->size()) {
         delete image;
         return nullptr;

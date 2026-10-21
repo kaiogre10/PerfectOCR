@@ -10,7 +10,7 @@ target_include_directories(file_handler PUBLIC
 )
 
 target_link_directories(file_handler PRIVATE
-    "${LIBS_DIR}"
+	"${OPENCV_LIB_PATH}"
 )
 
 target_link_libraries(file_handler PRIVATE

@@ -49,6 +49,7 @@ __pycache__/
 build/
 opencv_dep/build/
 third_party/opencv_dep/src/
+third_party/xtensor_dep/src
 install/
 libs/
 libraries/

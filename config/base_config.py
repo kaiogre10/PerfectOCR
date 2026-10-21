@@ -6,6 +6,7 @@ from services.log_service import log_simple
 from config.config_loader import load_config
 from config.config_logger import ConfigLogger
 from services import system_service
+from domain.class_models import Workers
 
 _elemental_workers = ELEMENTAL_WORKER
 _ocr_workers = OCR_WORKERS     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
@@ -28,6 +29,10 @@ class BaseConfig:
     @cached_property
     def active_full_ocr(self):
         return _ocr_workers.issubset(self.all_workers)
+
+    @property
+    def activate_det(self):
+        return Workers.GEOMETRY_DETECTOR in self.all_workers
 
     @property
     def system_params(self):
@@ -122,8 +127,14 @@ class BaseConfig:
         return self.config.get("log_config", {})
 
     @property
-    def enabled_outputs(self) -> Dict[str, bool]:
-        return self.config.get("enabled_outputs", {})
+    def _enable_outputs(self) -> bool:
+        _system_paths = self.system_params.get("system_paths", {})
+        _output_paths =  _system_paths["output_paths"]
+        return bool(_output_paths and not self.no_activate_modules)
+
+    @cached_property
+    def enable_outputs(self) -> Dict[str, bool]:
+        return {} if not self._enable_outputs else self.config.get("enabled_outputs", {})
 
     @cached_property
     def input_paths(self) -> Dict[str, Any]:

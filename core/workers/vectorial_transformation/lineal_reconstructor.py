@@ -222,5 +222,5 @@ class LinealReconstructor(VectorizationAbstractWorker):
 
             return headers, footer
         except Exception as e:
-            logger.warning(f"Error buscando límites: {e}", exc_info=True)
-        return set(), set()
+            logger.warning(f"Error buscando límites: {e}")
+            return set(), set()

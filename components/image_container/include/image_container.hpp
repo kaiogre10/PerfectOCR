@@ -21,8 +21,8 @@ class Image {
         std::unique_ptr<ImageContainer, Deleter> ptr;
 
     public:
-        explicit Image(int width, int height, int channels, size_t dtype)
-            : ptr(create_img_buffer(width, height, channels, dtype)) {
+        explicit Image(int rows, int cols, int channels, size_t dtype)
+            : ptr(create_img_buffer(rows, cols, channels, dtype)) {
             if (!ptr) {
                 throw std::runtime_error("Error creando Image");
             }
@@ -32,7 +32,7 @@ class Image {
         Image(const Image&) = delete;
         Image& operator=(const Image&) = delete;
 
-        // === MOVE SEMANTICS (TÚ decides ceder el ownership) ===
+        // === MOVE SEMANTICS (Yo decido ceder el ownership) ===
         // Esto permite: Image img2 = std::move(img1);
         Image(Image&& other) noexcept : ptr(std::move(other.ptr)) {}
 
@@ -49,11 +49,11 @@ class Image {
         const void* data() const {
             return image_get_data_const(ptr.get());
         }
-        int width() const {
-            return image_get_width(ptr.get());
+        int rows() const {
+            return image_get_rows(ptr.get());
         }
-        int height() const {
-            return image_get_height(ptr.get());
+        int cols() const {
+            return image_get_cols(ptr.get());
         }
         int channels() const {
             return image_get_channels(ptr.get());

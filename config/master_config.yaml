@@ -44,11 +44,12 @@ pipeline_secuence:
     - "cos_sim"
     - "table_structurer"
     - "math_max"
-    - "collector"
+    # - "collector"
 
 log_config:
   auditate_process: False  # ACTIVA TODOS LOS LOGS Y OUTPUTS PARATRAZADO COMPLETO
   all_logs: False   # Modo Que cambia tosdos los logs a True para trazabilidad
+  no_del_output: False
   
   auditate_areas:   # Audita areas completas
     image_preparation: False
@@ -75,7 +76,7 @@ log_config:
     text_class: False
     text_keyfields: False
 
-    lines: False
+    lines: True
     table_lines: False
     table_geo: False
     table_correct: False

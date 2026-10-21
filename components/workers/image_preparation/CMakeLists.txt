@@ -2,6 +2,7 @@
 add_library(image_preparation
     src/image_loader.cpp
     src/angle_corrector.cpp
+	src/poly_gone.cpp
 )
 
 set_target_properties(image_preparation PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -15,7 +16,7 @@ target_include_directories(image_preparation PUBLIC
 )
 
 target_link_directories(image_preparation PRIVATE
-    "${LIBS_DIR}"
+    "${OPENCV_LIB_PATH}"
 )
 
 target_link_libraries(image_preparation PRIVATE

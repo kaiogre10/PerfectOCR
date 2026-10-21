@@ -1,4 +1,3 @@
-
 # ─── Cython: image.pyx → image.cpp ───
 add_custom_command(
     OUTPUT  "${CMAKE_CURRENT_SOURCE_DIR}/image.cpp"

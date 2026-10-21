@@ -9,12 +9,18 @@ add_custom_command(
             -o "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
             "${CMAKE_CURRENT_SOURCE_DIR}/../image/image.pxd"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../image/image_loader.pxd"
     COMMENT "Cython: arrays.pyx → arrays.cpp"
     VERBATIM
 )
 
 add_library(arrays MODULE
     "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
+    "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/src/poly_gone.cpp"
+)
+
+target_include_directories(arrays PRIVATE
+    "${CMAKE_SOURCE_DIR}/components/workers/image_preparation/include"
 )
 
 target_link_libraries(arrays PRIVATE

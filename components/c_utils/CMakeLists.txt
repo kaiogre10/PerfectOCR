@@ -11,7 +11,7 @@ target_include_directories(c_utils PUBLIC
 )
 
 target_link_directories(c_utils PRIVATE
-    "${LIBS_DIR}"
+    "${OPENCV_LIB_PATH}"
 )
 
 target_link_libraries(c_utils PRIVATE

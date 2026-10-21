@@ -24,6 +24,7 @@ class PreprocessingStager(AbstractStager):
             worker_start = time.perf_counter()
             if not worker.preprocess(context, manager):
                 logger.error(f"'{worker_name}' falló, tiempo: {time.perf_counter() - worker_start:.6f}'s", exc_info=True)
+                manager.reset_data()
                 return None
 
             if self.time_worker_log:

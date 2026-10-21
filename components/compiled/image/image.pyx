@@ -14,10 +14,10 @@ def load(str filepath):
 
 def get_image_array(size_t ptr_addr):
     cdef Image* img = get_image_ptr(ptr_addr)
-    cdef int h = img.height()
-    cdef int w = img.width()
+    cdef int cols = img.cols()
+    cdef int rows = img.rows()
     cdef uint8_t* data = <uint8_t*> img.data()
-    cdef uint8_t[:, ::1] view = <uint8_t[:h, :w]> data
+    cdef uint8_t[:, ::1] view = <uint8_t[:rows, :cols]> data
     return _numpy.asarray(view)
     
 def release_img(size_t ptr_addr):
@@ -39,9 +39,13 @@ def rotate(size_t ptr_addr, double angle, double center_x, double center_y):
 
 def copy_image(size_t ptr_addr):
     cdef Image* image = get_image_ptr(ptr_addr)
-    cdef Image* copy
     cdef size_t dtype = sizeof(uint8_t)
+    cdef int cols = image.cols()
+    cdef int rows = image.rows()
+    cdef int channels = image.channels()
 
-    copy = new_buffer(image.width(), image.height(), image.channels(), dtype)
+    cdef Image* copy
+
+    copy = new_buffer(rows, cols, channels, dtype)
     memcpy(copy.data(), image.data(), image.size())
     return <size_t>copy

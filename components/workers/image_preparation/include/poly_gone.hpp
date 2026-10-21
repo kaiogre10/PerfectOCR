@@ -1,8 +1,9 @@
 #ifndef POLY_GONE_HPP
 #define POLY_GONE_HPP
 #pragma once
-#include <cstdint>
+#include "image_container.hpp"
 
-CroppedImage* crop_polygons(uint8_t* img_data, void* arr_data, int ndim, int width, int height, size_t itemsize);
+Image* get_bboxes(int32_t* bboxes_array, int bbox_count, int img_rows, int img_cols, int padding);
+Image* get_centroids(int32_t* bboxes_array, int bbox_count);
 
-#endif POLY_GONE_HPP;
+#endif

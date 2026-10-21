@@ -22,28 +22,26 @@ class ConfigBuilder:
         self.project_root = project_root
         self._config: Optional[BaseConfig] = None
         if not self.config.validate_config():
-            self.config = {}
-            del self.config
+            self._config = {}
+            del self._config
 
         self.so = next(iter(system_service.SO.keys()))            
         set_project_root(self.project_root)
 
-    @cached_property
+    @property
     def config(self):
         if self._config is not None and not self._config:
-            self.config = {}
-            return None
+            # self.config = {}
+            self._config = None
         
         if self._config is None:
             self._config = BaseConfig(self.project_root)
+
         return self._config
             
     @property
-    def _config_logging(self):
-        log_config = self.config.log_config
-        enabled_outputs = {} if not self._activate_outputs else self.config.enabled_outputs
-        
-        config_dict = {"log_config": log_config, "enabled_outputs": enabled_outputs}
+    def _config_logging(self):        
+        config_dict = {"log_config": self.config.log_config, "enabled_outputs": self.config.enable_outputs}
         _config_logging = ConfigLogger(config_dict)
         return _config_logging
 
@@ -56,8 +54,12 @@ class ConfigBuilder:
         return self._config_logging.enabled_outputs
 
     @property
+    def _no_del_output(self):
+        return self._config_logging.no_del_output
+
+    @property
     def input_paths(self) -> Dict[str, List[str]]:
-        return self.config.input_paths    
+        return self.config.input_paths
         
     @cached_property
     def logs_debug(self) -> Dict[str, Any]:
@@ -68,9 +70,9 @@ class ConfigBuilder:
     @cached_property
     def _system_paths(self) -> Dict[str, Any]:
         _system_paths = self.config.system_params.get("system_paths", {})
-        output_paths = _system_paths["output_paths"]
         temp_path = _system_paths["temp_path"]
-        
+        _system_paths["no_del_output"] = self._no_del_output
+        output_paths = _system_paths["output_paths"]
         _system_paths["output_paths"] = build_from_dir(output_paths)
         _system_paths["temp_path"] = os.path.join(self.project_root, *temp_path)
 
@@ -110,15 +112,15 @@ class ConfigBuilder:
     def specific_deletes(self):
         """Limpia directorios o archivos especificos"""
         components_dir = os.path.join(self.project_root, "components", "compiled")
-
         dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], skip_names=['third_party', 'models', "include", "src", 'documentation'])
         files = build_from_dir(objetives=[".cpp", self.so], parent=[components_dir], with_extensions=True, skip_names=[".py", ".txt", ".h", ".hpp", ".c"])
-        print(f"FILES: {files}, DIRS: {dirs}")
-        return dirs, files
 
-    @property
-    def _activate_outputs(self) -> bool:
-        return bool(self._system_paths["output_paths"] and not self.config.no_activate_modules)
+        build_path = os.path.join(self.project_root, "build")
+        if os.path.isdir(build_path):
+            dirs = dirs + [build_path]
+
+        basic_exc_logger(f"FILES: {files}, DIRS: {dirs}")
+        return dirs, files
 
     @cached_property
     def _models_config(self) -> Dict[str, Any]:
@@ -172,7 +174,7 @@ class ConfigBuilder:
         if not self.config.all_workers:
             return {}
 
-        if Workers.GEOMETRY_DETECTOR not in self.config.all_workers:
+        if not self.config.activate_det:
             # log_simple("Configuración: Sin geometry_detector, no se cargan modelos")
             return {}
 
@@ -206,30 +208,35 @@ class ConfigBuilder:
         _modules_config["time_worker_log"] = self.logs_debug.get("time_worker_log")
         return _modules_config
 
-    @cached_property
-    def _img_prep_config(self):
-        _img_prep_config = self.modules_config.get("image_preparation", {})
-        image_workers = self.config.workers_order[StageKeys.IMGPREP_KEY]
-        if Workers.POLYGON_EXTRACTOR in image_workers:
-            if not Workers.GEOMETRY_DETECTOR in image_workers:
-                self.config.workers_order[StageKeys.IMGPREP_KEY].remove(Workers.POLYGON_EXTRACTOR)
-                
-        _img_prep_config = self.modules_config.get("image_preparation", {})
-        geometry_detect = _img_prep_config.get("geometry_detect", {})
-        
-        morph_kernel = geometry_detect["morph_kernel"]
-        _img_prep_config["geometry_detect"]["morph_kernel"] = configure_kernel(morph_kernel[0], morph_kernel[1])
-        return _img_prep_config
-    
-    @cached_property
-    def img_prep_config(self) -> Tuple[Dict[str, Any], List[str]]:
+    @property
+    def _activate_img_prep(self):
         if self.config.no_activate_modules or not self.config.create_stager[0][1]:
+            return False
+        return True
+
+    @cached_property
+    def _img_prep_config(self) -> Tuple[Dict[str, Any], List[str]]:
+        _img_prep_config = self.modules_config.get("image_preparation", {})
+        if not self._activate_img_prep:
+            del _img_prep_config
             return {}, []
-        else:
-            config_module = self._img_prep_config
-            enabled_outputs = self.enabled_outputs.get("image_preparation_outputs", {})
-            config_module.update(enabled_outputs)
-            return config_module, self.config.workers_order[StageKeys.IMGPREP_KEY]
+        
+        image_workers = self.config.workers_order[StageKeys.IMGPREP_KEY]
+        if self.config.activate_det:
+            geometry_detect = _img_prep_config.get("geometry_detect", {})        
+            morph_kernel = geometry_detect["morph_kernel"]
+            _img_prep_config["geometry_detect"]["morph_kernel"] = configure_kernel(morph_kernel[0], morph_kernel[1])
+        
+        elif Workers.POLYGON_EXTRACTOR in image_workers:
+            self.config.workers_order[StageKeys.IMGPREP_KEY].remove(Workers.POLYGON_EXTRACTOR)
+                        
+        enabled_outputs = self.enabled_outputs.get("image_preparation_outputs", {})
+        _img_prep_config.update(enabled_outputs)
+        return _img_prep_config, image_workers
+    
+    @property
+    def img_prep_config(self) -> Tuple[Dict[str, Any], List[str]]:
+        return self._img_prep_config
             
     @cached_property
     def preprocessing_config(self)-> Tuple[Dict[str, Any], List[str]]:
@@ -239,50 +246,64 @@ class ConfigBuilder:
             config_module = self.modules_config.get("preprocessing", {})
             enabled_outputs = self.enabled_outputs.get("preprocessing_outputs", {})
             config_module.update(enabled_outputs)
-            return config_module, self.config.workers_order[StageKeys.PREPRO_KEY]
-            
+            return config_module, self.config.workers_order[StageKeys.PREPRO_KEY]    
+    
+    @property
+    def _activate_ocr(self):
+        if self.config.no_activate_modules or not self.config.create_stager[2][1] or not self.config.active_full_ocr:
+            return False
+        return True
+    
     @cached_property
-    def _ocr_config(self):
+    def _ocr_config(self) -> Tuple[Dict[str, Any], List[str]]:
         _ocr_config = self.modules_config.get("ocr", {})
+        if not self._activate_ocr:
+            del _ocr_config
+            return {}, []
+        
         text_refine = _ocr_config.get("text_refine", {})
         num_passes = text_refine.get("num_passes", 0)
         _ocr_config["text_refine"]["create_refiners"] = (num_passes > 0)
-        return _ocr_config
+
+        _ocr_config.update(self.logs_debug)
+        _ocr_config.update(self.enabled_outputs.get("ocr_outputs", {}))
+        return _ocr_config, self.config.workers_order[StageKeys.OCR_KEY]
+        
+    @property
+    def ocr_config(self) -> Tuple[Dict[str, Any], List[str]]:
+        return self._ocr_config
+    
+    @property
+    def _activate_vect(self):
+        vect_stage = self.config.create_stager[3][1]
+        if self.config.no_activate_modules or not vect_stage or not Workers.LINEAL in vect_stage or not self.config.active_full_ocr:
+            return False
+        return True
         
     @cached_property
-    def ocr_config(self) -> Tuple[Dict[str, Any], List[str]]:
-        if self.config.no_activate_modules or not self.config.create_stager[2][1] or not self.config.active_full_ocr:
-            return {}, []
-        else:
-            config_module = self._ocr_config
-            config_module.update(self.logs_debug)
-            config_module.update(self.enabled_outputs.get("ocr_outputs", {}))
-            return config_module, self.config.workers_order[StageKeys.OCR_KEY]
-    
-    @cached_property
-    def _vectorization_config(self) -> Dict[str, Any]:
+    def _vectorization_config(self) -> Tuple[Dict[str, Any], List[str]]:
         _vectorization_config: Dict[str, Any] = self.modules_config.get("vectorization", {})
+        if not self._activate_vect:
+            del _vectorization_config
+            return {}, []
+        
         collector = _vectorization_config.get(Workers.COLLECTOR, {})
         placeholder = collector.get("placeholder")
         if not isinstance(placeholder, str) or not _placeholder_pattern.search(placeholder):
             basic_exc_logger(f"NO HAY SEPARADOR VÁLIDO")
-            return {}
+            return {}, []
         
         sc_matrix_type = collector.get("sc_matrix_type")
         _vectorization_config[Workers.MATH_MAX] = {"dec_cols_name": frozenset([DataKeys.cantidad_art.value, DataKeys.precio_unitario.value, DataKeys.costo_tran.value]), "sc_matrix_type": sc_matrix_type}
+        enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
+        _vectorization_config.update(enabled_outputs)
+        _vect_stage = self.config.workers_order[StageKeys.VECT_KEY]    
         
-        return _vectorization_config
+        return _vectorization_config, _vect_stage
     
-    @cached_property
-    def vectorization_config(self) -> Tuple[Dict[str, Any], List[str]]:
-        vect_stage = self.config.create_stager[3][1]
-        if self.config.no_activate_modules or not vect_stage or not Workers.LINEAL in vect_stage or not self.config.active_full_ocr:
-            return {}, []
-        else:
-            config_module = self._vectorization_config
-            enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
-            config_module.update(enabled_outputs)
-            return config_module, self.config.workers_order[StageKeys.VECT_KEY]
+    @property
+    def vectorization_config(self):
+        return self._vectorization_config
         
     @cached_property
     def stagers_config(self) -> Dict[str, Tuple[Dict[str, Any], List[str]]]:

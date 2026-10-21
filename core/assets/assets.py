@@ -283,7 +283,7 @@ VALID_IMG_EXT = frozenset([".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".w
 INVALID_EXTENSIONS: List[str] = [".txt", ".webp"]
 
 TRASH_EXT: Tuple[str, ...] = (".pyc", ".pyo", ".log", ".prof")
-CACHE_DIRS = ["__pycache__", ".pytest_cache"]
+CACHE_DIRS = ["__pycache__", ".pytest_cache"] #'build']
 
 EXCLUDED_DIRS = ["components", ".git", ".vscode", ".idea", "documentation", "models", "safe_temp", "libraries", "libs", "third_party"]
 NO_DEL: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")

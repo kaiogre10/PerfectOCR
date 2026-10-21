@@ -45,7 +45,7 @@ class ProcessingBuilder:
         """Procesa una sola imagen usando el método execute() uniforme de cada stager"""
         total_images = len(query)
         images = 0
-        results: List[Tuple[str, str]] = []
+        results: List[Tuple[str, str, int]] = []
         start_time = time.perf_counter()
         while query:
             images += 1
@@ -61,14 +61,13 @@ class ProcessingBuilder:
                 
                 stager_init = time.perf_counter()
                 manager = stager.execute(manager, context)
-                stager_time = time.perf_counter() - stager_init
-                
+
                 if manager is None:
-                    logger.error(f"'{image_name}' fallo en '{stager_name}', tiempo: {stager_time:.6f}'s", exc_info=True)
+                    logger.error(f"'{image_name}' fallo en '{stager_name}', tiempo: {time.perf_counter() - stager_init:.6f}'s", exc_info=True)
                     continue
             
                 if self.time_stages_log:
-                    logger.warning(f"Fase de '{stager_name[:-6].upper()}' completada en: {stager_time:.6f}'s")
+                    logger.warning(f"Fase de '{stager_name[:-6].upper()}' completada en: {time.perf_counter() - stager_init:.6f}'s")
             
             if manager is None:
                 continue
@@ -77,7 +76,6 @@ class ProcessingBuilder:
             
             if self.memory:
                 plain_text = manager.payload.payload if manager.payload else StringsModels.NO_MANGER.value
-                manager.reset_data()    # type: ignore
     
                 if StringsModels.NO_MANGER.value == plain_text:
                     logger.info("PROCESO COMPLETADO, PRUEBA MOCK SE DEVUELVEN DATOS FALSOS")
@@ -87,11 +85,11 @@ class ProcessingBuilder:
                     logger.error("NO SE PUDO GENERAR ARCHIVO DE SEGURIDAD")
                     continue
                 else:
-                    results.append([image_name, plain_text, buff_size])
+                    results.append((image_name, plain_text, buff_size))
             
             else:
                 manager.reset_data()
-                results.append([image_name, "", buff_size])
+                results.append((image_name, "", buff_size))
                 
             logger.warning(f"Procesadas: {images} de '{total_images}' imagenes")
             

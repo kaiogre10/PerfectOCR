@@ -56,38 +56,48 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         file_name = manager.workflow.image_name if manager.workflow else ""
                         save_text_debug(final_results, file_name)
                     return True
-
+                
+            return False
         except Exception as e:
             logger.error(f"Error en paddle OCR: {e}", exc_info=True)
-        return False
+            return False
         
     def recognize_text_from_batch(self, manager: DataFormatter) -> Dict[str, Dict[str, Any]]:
         """Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead."""
-        if self.engine is None:
-            return {}
         try:
+            if self.engine is None:
+                raise ImportError("PADDLE REC NO DISPONIBLE")
+            
             polygons = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 logger.error("No hay polygons para procesar", exc_info=True)
-                return {}
+                raise
             
             logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img is not None]
             img_list = [p.cropped_img for p in polygons.values() if p.polygon_id in polygon_ids]
-            manager.delete_cropped_images()
             image_list = elevate_dims(img_list)
+            manager.delete_cropped_images()
+            if not image_list:
+                logger.error(f"NO SE ELEVARON CORRECTAMENTE LAS DIMENSIONES")
+                return {}
             
             # time_t = time.perf_counter()
-            batch_result: List[List[Tuple[str, float]]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
-            # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
+            batch_result: List[Tuple[str, float]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
+            image_list = None
             del image_list
+            # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
+            if not batch_result:
+                logger.error(f"PADDLE NO ARROJO RESULTADOS")
+                return {}
+            
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
             for idx, (text, confidence) in enumerate(batch_result):
                 poly_id = polygon_ids[idx]
                 if self.text_ocr_log:
-                    logger.info(f"TEXTO CRUDO: {poly_id} | '{text}' | CONF: {confidence*100}:.6f%")
+                    logger.info(f"TEXTO CRUDO: {poly_id} | '{text}' | CONF: {confidence*100.0}:.6f%")
 
                 if not text:
                     deleted.append([poly_id, text])
@@ -118,10 +128,9 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     raw_map[poly_id] = {"text": norm_text}
                     continue
 
-            # logger.debug(f"PADDLE OCR COMPLETO EN: {time.perf_counter() - time0:.6f}'s")
             return raw_map
             
-        except TypeError as e:
+        except Exception as e:
             logger.error(f"Error en recognize_text_from_batch: {e}", exc_info=True)
         return {}
 

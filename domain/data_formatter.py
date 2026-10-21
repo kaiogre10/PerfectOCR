@@ -43,6 +43,16 @@ class DataFormatter:
                 return False
             
             full_img = ImageBuffer(ptr)
+            
+            # _dtype = full_img.data.dtype
+            # _rows = full_img.rows
+            # itemsize = np.dtype(_dtype).itemsize
+            # bytes_per_row = _rows * itemsize
+            
+            # # Operación de redondeo al siguiente múltiplo de 32 mediante división entera
+            # stride_bytes = ((bytes_per_row + 31) // 32) * 32
+
+            # logger.info(f"DTYPE: {_dtype}, SHAPE: {full_img.shape}, STRIDES: {stride_bytes}")
         except RuntimeError as e:
             logger.error(f"ERROR ASIGNANDO LAS DIMENSIONES DE LA IMAGEN: {e}", exc_info=True)
             return False
@@ -111,7 +121,7 @@ class DataFormatter:
         logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
-    def get_array_buffer(self, rows: int, cols: int, channels: int, dtype: str) -> Optional[int]:
+    def get_array_buffer(self, rows: int, cols: int,  channels: int, dtype: str) -> Optional[int]:
         """Solicita un buffer de memoria a C. Devuelve puntero"""
         if not dtype:
             raise TypeError("NO SE INGRESO TYPO DE ARRAY")
@@ -134,7 +144,7 @@ class DataFormatter:
         return ptr
 
     def get_img_copy(self):
-        """Devuelve imagen copiada y su puntero para futuras liberaciones"""
+        """Devuelve puntero[0] y copia de la imagen principal[1] para futuras liberaciones"""
         ptr = self.get_img_ptr()
         if not ptr or not isinstance(ptr, int): # type: ignore
             return None, None
@@ -144,24 +154,27 @@ class DataFormatter:
         full_img = ImageBuffer(copy_ptr)
         return copy_ptr, full_img.data
 
-    def free_buffer(self, copy_ptr: Optional[int] = None):
-        worker, _ = get_caller_info()
+    def free_buffer(self, copy_ptr: int):
+        worker, line = get_caller_info()
         if copy_ptr:
             try:
                 image.release_img(ptr_addr=copy_ptr)
             except RuntimeError as e:
-                logger.error(f"ERROR DE '{worker}' LIBERANDO COPIA: {e}")
+                logger.error(f"ERROR DE '{worker}' LINE: {line} LIBERANDO COPIA: {e}")
                 
                 try:
                     logger.warning(f"SEGUNDO INTENTO PARA LIBERAR: {copy_ptr}")
                     arrays.release_array(ptr_addr=copy_ptr)
                 except RuntimeError as e:
-                    logger.error(f"ERROR DE '{worker}' LIBERANDO ARRAY: {e}", exc_info=True)
+                    logger.error(f"ERROR DE '{worker}', linea: '{line}' LIBERANDO ARRAY: {e}", exc_info=True)
                     return False
             
             copy_ptr = None
             del copy_ptr
-            logger.info(f"'{worker}' LIBERO COPIA")
+
+            if worker != "data_formatter.py":
+                logger.info(f"'{worker}' LIBERO COPIA en linea: '{line}'")
+
             return True
 
         else:
@@ -170,14 +183,14 @@ class DataFormatter:
             
             ptr = FullImageKey.img_ptr
     
-            if not ptr or ptr is None: # type: ignore
+            if not ptr:
                 logger.info(f"'{worker}' INTENTO LIBERAR: '{ptr}' PERO LIBERADO ANTERIORMENTE")
                 return True
     
             if not isinstance(ptr, int): # type: ignore
                 logger.error(f"ERROR DE TIPOS DE PUNTERO {type(ptr)}")
                 return False
-    
+
             try:
                 FullImageKey.clear()
                 
@@ -185,7 +198,9 @@ class DataFormatter:
                 logger.error(f"ERROR DE '{worker}' ELIMINANDO LA FULL IMG: {e}", exc_info=True)
                 return False
 
-            logger.info(f"'{worker}' LIBERO IMAGEN")
+            if worker != "data_formatter.py":
+                logger.info(f"'{worker}' linea '{line}': LIBERO IMAGEN")
+                
             return True
                     
     def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
@@ -197,13 +212,13 @@ class DataFormatter:
         full_img = ImageBuffer(ptr)
         return full_img.data
 
-    def update_image(self, new_ptr: int, ) -> bool:
+    def update_image(self, new_ptr: int) -> bool:
+        worker, _ = get_caller_info()
         try:
-            if not self.free_buffer():
-                raise RuntimeError(f"ERROR ELIMINANDO LA IMAGEN VIEJA")
+            logger.info(f"'{worker}' LIBERO COPIA")
 
             if not self.create_image(new_ptr):
-                raise ReferenceError("ERROR CREANDO BUFFER ACTUALIZADO")
+                raise ReferenceError(f"ERROR CREANDO BUFFER ACTUALIZADO: {new_ptr}")
             
         except Exception as e:
             logger.error(f"ERROR ACTUALIZANDO LA IMAGEN, {e}", exc_info=True)
@@ -215,11 +230,14 @@ class DataFormatter:
         """Libera todas las imágenes recortadas de los polígonos para ahorrar memoria."""
         if not self.workflow or not self.workflow.polygons:
             raise RuntimeError("No hay workflow inicializado para limpiar imágenes recortadas.")
-            
-        for poly_id, polygon in self.workflow.polygons.items():
-            polygon.cropped_img = None
-            updated_polygon = dataclasses.replace(polygon, cropped_img=None)
-            self.workflow.polygons[poly_id] = updated_polygon
+
+        polygon_to_free: Dict[str, Polygons] = {}            
+        for _, (poly_id, polygon) in enumerate(self.workflow.polygons.items()):
+            cropped_img = polygon.cropped_img
+            del cropped_img
+            polygon_to_free[poly_id] = dataclasses.replace(polygon, cropped_img=None)
+
+        self.workflow.polygons = polygon_to_free
         logger.debug("Todas las imágenes recortadas han sido liberadas de memoria")
                         
     def save_cropped_images(self, cropped_images: Dict[str, Any], reindex: bool) -> bool:
@@ -228,13 +246,13 @@ class DataFormatter:
             if not self.workflow or not self.workflow.polygons:
                 logger.error("No hay workflow inicializado para guardar imágenes recortadas.")
                 return False
+            
             logger.debug(f"'{len(cropped_images)}' imágenes recortadas recibidas para guardar.")
             reindexed_polygons: Dict[str, Polygons] = {}
             for i, (poly_id, crop) in enumerate(cropped_images.items()):
 
                 polygon = self.workflow.polygons[poly_id]
                 if not reindex:
-
                     new_idx = poly_id
                     updated_polygon = dataclasses.replace(polygon, cropped_img=crop)
                 else:
@@ -275,7 +293,7 @@ class DataFormatter:
                     continue
                     
                 cuant_c = polygon.cuant_chars if not res.get("cuant_chars") else 0
-                sc = polygon.semantic_clasification if not res.get("sc") else [0]
+                sc = polygon.semantic_clasification if not res.get("sc") else [SemantiClass.DESCRIPTIVE]
                 
                 new_idx = set_ids(idx)
                 idx += 1

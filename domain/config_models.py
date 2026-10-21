@@ -72,6 +72,7 @@ class AuditateAreas(ConfigWithNumpy):
 class LogsConfig(ConfigWithNumpy):
     logs_debug: LogsDebug
     log_params: LogParams
+    no_del_output: bool
     auditate_areas: AuditateAreas
     all_logs: bool
     auditate_process: bool

@@ -57,7 +57,7 @@ class MatrixSolver(VectorizationAbstractWorker):
 
             manager.free_buffer(arr_ptr)
             if manager.save_final_output(corrected_df, {}):
-                logger.debug(f"DataFrame RECONSTRUIDO en {time.perf_counter() - start_time:.6f}'s:\n{corrected_df.to_string(index=False)}")
+                logger.info(f"DataFrame RECONSTRUIDO en {time.perf_counter() - start_time:.6f}'s:\n{corrected_df.to_string(index=False)}")
                 if self.output:
                     file_name = manager.workflow.image_name if manager.workflow else ""
                     save_debug_table(corrected_df, file_name, None, None)
@@ -133,7 +133,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         arr_full = ArrayBuffer(arr_ptr, dims=3)
         matrix_array = arr_full.data
         matrix_dims = arr_full.shape
-        r = matrix_dims[1]
+        r = matrix_dims[1]  # Ligero reshape debido a la naturaleza de los datos
         c = matrix_dims[2]
 
         if matrix_array is None:

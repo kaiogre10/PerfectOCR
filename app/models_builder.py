@@ -70,7 +70,7 @@ class ModelsBuilder:
                     logger.error("NO SE PUDO INICIAR WORD FINDER")
                     return False
             else:
-                logger.debug("SOLO SE CARGÓ OCR")
+                logger.debug("SOLO SE CARGÓ PADDLE")
                 self._word_finder = None
                 return True
 

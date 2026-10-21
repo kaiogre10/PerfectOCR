@@ -66,12 +66,6 @@ endif()
 
 set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
-if (WIN32)
-    set(OPENCV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencv_dep/install/include")
-else()
-    set(OPENCV_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/opencv_dep/install/include/opencv4")
-endif()
-
 # Desactivar subcarpetas por configuración en generadores multi-configuración
 foreach(OUTPUT_TYPE RUNTIME LIBRARY ARCHIVE)
     set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
