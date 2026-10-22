@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from domain.data_formatter import DataFormatter
 from core.contracts.abstract_worker import OCRAbstractWorker
 from utils.text_utils import remove_special_sequences, punct_strip, separate_punt, is_acronym
-from utils.compiled_utils import validate_text, space_removal
+from utils.compiled_funcs import validate_text, space_removal
 
 logger = logging.getLogger(__name__)
 

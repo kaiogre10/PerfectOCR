@@ -7,7 +7,7 @@ from core.contracts.abstract_worker import OCRAbstractWorker
 from domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
-from utils.compiled_utils import validate_bytes
+from utils.compiled_funcs import validate_bytes
 from core.assets.patterns import cleaner_pattern
 from core.assets.assets import KF_REALOCATABLES, KF_IGNORED
 from domain.class_models import SemantiClass, KeyField, TypeModels, Params

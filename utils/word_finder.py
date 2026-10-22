@@ -4,7 +4,7 @@ from typing import List, Any, Dict, Tuple, Set
 from core.assets.patterns import space_pattern
 from core.assets.assets import KF_LIST, SMALL_NUM
 from core.factory.model_factory import MatrixFactory
-from utils.compiled_utils import ngram_similarity, length_penalty
+from utils.compiled_funcs import ngram_similarity, length_penalty
 from utils.text_utils import set_results
 from domain.class_models import KeyField, Params
 

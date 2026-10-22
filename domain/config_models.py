@@ -173,15 +173,11 @@ class DeskewConfig(ConfigWithNumpy):
     hough_min_line_length_cap_px: float
     hough_max_line_gap_px: float
     hough_angle_filter_range_degrees: List[float]
-
-class CuttingConfig(ConfigWithNumpy):
-    cropping_padding: int
     
 class ImagePreparation(ConfigWithNumpy):
     ink_enhancement: InkConfig
     angle_corrector: DeskewConfig
     geometry_detect: GeometryDetect
-    polygon_extractor: CuttingConfig
 
 class MoireConfig(ConfigWithNumpy):
     min_distance_from_center: int

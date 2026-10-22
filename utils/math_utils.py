@@ -6,7 +6,7 @@ import pandas as pd
 from pandas import Series
 from decimal import Decimal, ROUND_HALF_UP, ConversionSyntax, InvalidOperation
 from typing import List, Any, Optional, Tuple, Dict, Sequence
-from utils.compiled_utils import validate_quant_chars
+from utils.compiled_funcs import validate_quant_chars
 from core.assets.assets import DENSITY_ENCODER, CUANT_CHAR, VECTOR_DUMMIE, VECT_REF, ZERO_DEC, PI_DIV, SMALL_NUM, DUMMY_NORM
 from domain.class_models import SemantiClass, DataKeys
 

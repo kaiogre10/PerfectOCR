@@ -7,7 +7,7 @@ from core.contracts.abstract_worker import OCRAbstractWorker
 from utils.text_utils import find_umd, fast_classfier, correct_subfix
 from core.assets.assets import NUMERIC_CORRECTIONS, UMD_CORRECTIONS
 from core.assets.patterns import bad_title
-from utils.compiled_utils import validate_text
+from utils.compiled_funcs import validate_text
 from string import ascii_lowercase, ascii_uppercase
 from domain.class_models import SemantiClass, NumberStr
 

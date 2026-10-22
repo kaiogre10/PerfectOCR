@@ -1,7 +1,8 @@
 from typing import Tuple, Optional, Any
 import numpy as np
 from numpy import typing
-from components.compiled import image, arrays
+from bidings import arrays
+from bidings import image
 
 class ImageBuffer:
     """Contenedor de direcciones en memoria para imágenes en búfer de C."""

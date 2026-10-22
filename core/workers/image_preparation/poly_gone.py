@@ -6,20 +6,15 @@ from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import validate_image
 from services.output_service import save_croped_image
-# from domain.buffer_handler import ArrayBuffer
 
 logger = logging.getLogger(__name__)
 
 class PolygonExtractor(ImagePrepAbstractWorker):
     def __init__(self, config: Dict[str, Any], project_root: str):
         super().__init__(config, project_root)
-        worker_config = config.get('polygon_extractor', {})
-        self.padding = worker_config.get("cropping_padding")
         self.output = config.get("cropped_img", False)
-        self.bboxes_type = "int32"
         self.filtered_ouputs = config.get("final_polys", False)
         self.disoutput = config.get("discarded_polys", False)
-        self.dims = 2
 
     def process(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         """Extrae, filtra y actualiza polígonos en un solo paso, optimizando el proceso."""
@@ -34,50 +29,22 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             poly_ids_order: List[str] = list(polygons.keys())
             total_polys = len(polygons)
 
-            # bbxes_ptr = manager.get_array_buffer(rows=total_bboxes, cols=4, channels=1, dtype=self.bboxes_type, dims=self.dims)
-            # if not bbxes_ptr:
-            #     logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
-            #     return False
-            
-            all_bboxes = np.array([polygons[pid].bounding_box for pid in poly_ids_order], dtype=np.int32).reshape(-1, 4, order='C')
-            # all_bboxes = ArrayBuffer(bbxes_ptr, self.dims).data
-
-            # np.copyto(dst=all_bboxes, src=bboxes, casting='no')
-            # del bboxes
-
-            if all_bboxes.size < 3 or all_bboxes.size % 4 != 0:
-                logger.warning("PolygonExtractor: No hay bboxes válidos para procesar.")
-                return False
+            list_bbox = [polygons[pid].bounding_box for pid in poly_ids_order]
 
             full_img = manager.get_full_img()
             if full_img is None:
                 logger.error("No se pudo obtener full_img del Formatter.")
                 return False
-
-            # 2. Calcular Coordenadas de Recorte con Padding
-            img_rows, img_cols = full_img.shape
-
-            np.maximum(0, all_bboxes[:, 0] - self.padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
-            np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)
-            np.minimum(img_cols, all_bboxes[:, 2] + self.padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
-            np.minimum(img_rows, all_bboxes[:, 3] + self.padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
-
-            valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
-
-            valid_bbox_indices = np.flatnonzero(valid_bbox_mask)
             
             # 3. Bucle Único de Filtrado, Actualización y Re-indexado
             final_polygons: Dict[str, Any] = {}
 
-            for _, idx in enumerate(valid_bbox_indices):
-                crop_x1, crop_y1 = all_bboxes[idx, 0], all_bboxes[idx, 1]
-                crop_x2, crop_y2 = all_bboxes[idx, 2], all_bboxes[idx, 3]
-
+            for idx, bbox in enumerate(list_bbox):
                 # Recortar la imagen
-                cropped = np.ascontiguousarray(np.asarray(full_img[crop_y1:crop_y2, crop_x1:crop_x2].copy(), order='C'), dtype=np.uint8)
+                cropped = np.ascontiguousarray(np.asarray(full_img[bbox[1]:bbox[3], bbox[0]:bbox[2]].copy(), order='C'), dtype=np.uint8)
 
                 # Filtrar por intervalo de color
-                poly_id = poly_ids_order[idx] # type: ignore
+                poly_id = poly_ids_order[idx]
                 if not validate_image(cropped):
                     logger.debug(f"FILTRADO POR MEDIA DE COLOR: {poly_id}")
                     if self.disoutput:

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
-from components.compiled import image, arrays
+from bidings import image
     
 @dataclass(slots=True)
 class Polygons:

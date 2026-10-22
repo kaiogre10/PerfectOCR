@@ -7,7 +7,7 @@ from itertools import permutations
 from typing import Dict, Any, List, Tuple
 from core.contracts.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
-from utils.compiled_utils import validate_quant_chars, space_removal
+from utils.compiled_funcs import validate_quant_chars, space_removal
 from utils.math_utils import check_full_df, decimalice_df, round_vals, decimalice
 from utils.text_utils import set_ids
 from core.assets.assets import ONE_DEC, ZERO_DEC, ROW_TOL, SC_RANGE

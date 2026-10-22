@@ -6,7 +6,7 @@ system_params:
     output_paths: ["output"]
     temp_path: ["safe_temp", "tmp_file.txt"]
     compile_command: ["setup.py", "build_ext", "--inplace", "--verbose"]
-    comp_funcs_file: ["utils", "compiled_utils", "compiled_funcs.pyx"]
+    comp_funcs_file: ["utils", "compiled_funcs", "compiled_funcs.pyx"]
 
 deploy_settings:
   postgre_local: False     # Habilitar el servicio local de postgre

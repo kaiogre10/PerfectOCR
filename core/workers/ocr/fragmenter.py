@@ -6,7 +6,7 @@ from domain.data_formatter import DataFormatter
 from core.contracts.abstract_worker import OCRAbstractWorker
 from utils.math_utils import fragment_geometry_horizontal
 from utils.text_utils import set_ids
-from utils.compiled_utils.compiled_funcs import space_removal, validate_text
+from utils.compiled_funcs.compiled_funcs import space_removal, validate_text
 from domain.class_models import SemantiClass
 
 logger = logging.getLogger(__name__)

@@ -1,5 +1,6 @@
 # domain/data_formatter.py
 import logging
+from bidings import arrays
 from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey
 import numpy as np
 import dataclasses
@@ -8,7 +9,7 @@ import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass
 from domain.buffer_handler import ImageBuffer
-from components.compiled import image, arrays
+from bidings import image
 from utils.text_utils import set_ids
 
 logger = logging.getLogger(__name__)
@@ -83,14 +84,14 @@ class DataFormatter:
             for idx, poly_data in enumerate(results):
                 poly_id = set_ids(idx)
                 bbox = poly_data["bounding_box"]
-                centroid = poly_data["centroid"]
+                # centroid = poly_data["centroid"]
 
                 # Crear objeto Polygons y agregar al diccionario
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
                     poly_index=idx,
                     bounding_box = bbox,
-                    centroid = centroid,
+                    # centroid = centroid,
                     cropped_img=None,
                     ocr_text=None,
                     key_field=None,

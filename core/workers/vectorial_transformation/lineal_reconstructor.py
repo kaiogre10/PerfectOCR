@@ -6,7 +6,7 @@ from core.contracts.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter
 from services.output_service import save_text_debug
 from domain.class_models import KeyField
-from utils.compiled_utils import space_removal
+from utils.compiled_funcs import space_removal
 from core.assets.assets import SMALL_NUM
 
 _small_num = SMALL_NUM

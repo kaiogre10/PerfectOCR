@@ -7,7 +7,7 @@ from typing import Dict, Any, Tuple, List
 from utils.text_utils import format_cuant, get_rfc, get_ids, noramalize_df_text, its_similar, fast_classfier
 from core.assets.patterns import umd_patterns
 from utils.math_utils import validate_df, check_full_df, decimalice_df
-from utils.compiled_utils import validate_text, space_removal
+from utils.compiled_funcs import validate_text, space_removal
 from services.output_service import save_debug_table
 from core.contracts.abstract_worker import VectorizationAbstractWorker
 from domain.data_formatter import DataFormatter

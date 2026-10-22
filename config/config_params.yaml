@@ -55,10 +55,7 @@ modules:
       morph_kernel: [2, 2]
       iterations: 2
       bboxes_type: "int32"
-
-    polygon_extractor:
-      cropping_padding: 1
-
+            
   preprocessing:
     moire:
       min_distance_from_center: 150

@@ -7,7 +7,7 @@ from app.models_builder import ModelsBuilder
 from utils.text_utils import normalice_text
 from utils.image_utils import elevate_dims
 from services.output_service import save_text_debug
-from utils.compiled_utils import validate_text, space_removal
+from utils.compiled_funcs import validate_text, space_removal
 
 logger = logging.getLogger(__name__)
 

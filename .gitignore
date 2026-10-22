@@ -62,9 +62,11 @@ input3/
 output/
 migrations/
 CMakeFiles/
-utils/compiled_utils/*.c
-components/compiled/arrays/*.cpp
-components/compiled/image/*.cpp
+utils/compiled_funcs/*.c
+bidings/compiled_utils/*.cpp
+bidings/container/*.cpp
+bidings/arrays/*.cpp
+bidings/image/*.cpp
 cmake-*/
 .editorconfig
 

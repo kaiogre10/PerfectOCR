@@ -22,12 +22,12 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 option(BUILD_SHARED_LIBS "Fuerza la compilación de librerías dinámicas" ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
-    message(STATUS "Intel OneAPI detectado. Activando optimización de arquitectura host.")
-    
+    message(STATUS "Intel OneAPI detectado. Activando optimización de arquitectura host.")    
     if (WIN32)
         # Optimizaciones para icx-cl en Windows
         set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O3 /QxHost")
         set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O3 /QxHost")
+        set(OPENCV_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/third_party/opencv_dep/install/include")
         
         # ELIMINACIÓN OBLIGATORIA: Purga de /Qm64 y flags obsoletos de Intel clásico
         foreach(flag_var 
@@ -46,11 +46,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
         # Sintaxis GNU/Clang para Linux
         set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -xHost")
         set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -xHost")
+        set(OPENCV_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/third_party/opencv_dep/install/include/opencv4")
     endif ()
 endif ()
 # Preparamos una variable global con las librerías del kernel que requiere cada OS
 if (UNIX AND NOT APPLE)
-    # Linux exige estas librerías para la memoria compartida (shm_open) y hilos
     set(OS_FRONTIER_LIBS rt pthread)
 else ()
     # Windows maneja la memoria proyectada nativamente sin librerías extra
@@ -66,6 +66,8 @@ endif()
 
 set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 
+set(OPENCV_LIB_PATH "${LIBS_DIR}/opencv_dep")
+
 # Desactivar subcarpetas por configuración en generadores multi-configuración
 foreach(OUTPUT_TYPE RUNTIME LIBRARY ARCHIVE)
     set(CMAKE_${OUTPUT_TYPE}_OUTPUT_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
@@ -80,3 +82,4 @@ set(CMAKE_IMPORT_LIBRARY_PREFIX "")
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 add_subdirectory(components)
+add_subdirectory(bidings)

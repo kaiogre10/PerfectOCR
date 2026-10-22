@@ -25,12 +25,6 @@ python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython
 cd third_party/opencv_dep
 git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git src
 
-# Compilar xtensor
-cd third_party/xtensor_dep
-git clone --depth 1 --branch 0.27.1 https://github.com/xtensor-stack/xtensor.git src
-git clone --depth 1 --branch 0.8.2  https://github.com/xtensor-stack/xtl.git src/xtl
-git clone --depth 1 --branch 13.0.0 https://github.com/xtensor-stack/xsimd.git src/xsimd
-
 rm -rf build install libraries	<-- Linux
 rmdir /s /q build install libraries	<-- Windows
 
