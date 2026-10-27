@@ -21,11 +21,7 @@ class ConfigAPI:
     @property
     def no_activate_modules(self) -> bool:
         return self.validated_config.config.no_activate_modules
-
-    @property
-    def handle_memory(self) -> bool:
-        return self.validated_config.config.handle_memory
-
+    
     @property
     def cleanup_project(self) -> bool:
         return self.validated_config.config.clean_project

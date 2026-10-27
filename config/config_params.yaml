@@ -54,7 +54,6 @@ modules:
     geometry_detect:
       morph_kernel: [2, 2]
       iterations: 2
-      bboxes_type: "int32"
             
   preprocessing:
     moire:
@@ -111,4 +110,8 @@ modules:
     collector:
       placeholder: "_"
       date_id_format: "%Y%m%d"
-      sc_matrix_type: "uint8"
+
+pipeline_dtypes:
+  image_type: "uint8"
+  int32_type: "int32"
+  float32_type: "float32"

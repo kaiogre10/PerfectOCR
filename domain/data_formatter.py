@@ -12,6 +12,8 @@ from domain.buffer_handler import ImageBuffer
 from bidings import image
 from utils.text_utils import set_ids
 
+image_type = b"uint8"
+
 logger = logging.getLogger(__name__)
 
 class DataFormatter:
@@ -43,9 +45,9 @@ class DataFormatter:
             if not isinstance(ptr, int): # type: ignore
                 return False
             
-            full_img = ImageBuffer(ptr)
+            full_img = ImageBuffer(ptr, image_type)
             
-            # _dtype = full_img.data.dtype
+            # _dtype = full_img.dtype
             # _rows = full_img.rows
             # itemsize = np.dtype(_dtype).itemsize
             # bytes_per_row = _rows * itemsize
@@ -70,9 +72,9 @@ class DataFormatter:
             logger.debug(f"WORKFLOWDICT DREADO ÉXITOSAMENTE: '{image_name}'")
             return True
 
-        except Exception as e:
+        except SystemError as e:
             logger.error(f"No se pudo crear el workflowDict: {e}", exc_info=True)
-        return False
+            return False
     
     def create_polygon_dicts(self, results: List[Dict[str, Any]]) -> bool:
         try:
@@ -84,14 +86,14 @@ class DataFormatter:
             for idx, poly_data in enumerate(results):
                 poly_id = set_ids(idx)
                 bbox = poly_data["bounding_box"]
-                # centroid = poly_data["centroid"]
+                centroid = poly_data["centroid"]
 
                 # Crear objeto Polygons y agregar al diccionario
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
                     poly_index=idx,
                     bounding_box = bbox,
-                    # centroid = centroid,
+                    centroid = centroid,
                     cropped_img=None,
                     ocr_text=None,
                     key_field=None,
@@ -122,7 +124,7 @@ class DataFormatter:
         logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
-    def get_array_buffer(self, rows: int, cols: int,  channels: int, dtype: str) -> Optional[int]:
+    def get_array_buffer(self, rows: int, cols: int,  channels: int, dtype: bytes) -> Optional[int]:
         """Solicita un buffer de memoria a C. Devuelve puntero"""
         if not dtype:
             raise TypeError("NO SE INGRESO TYPO DE ARRAY")
@@ -150,9 +152,9 @@ class DataFormatter:
         if not ptr or not isinstance(ptr, int): # type: ignore
             return None, None
 
-        copy_ptr = image.copy_image(ptr)
+        copy_ptr = image.copy_image(ptr, image_type)
         
-        full_img = ImageBuffer(copy_ptr)
+        full_img = ImageBuffer(copy_ptr, image_type)
         return copy_ptr, full_img.data
 
     def free_buffer(self, copy_ptr: int):
@@ -210,7 +212,7 @@ class DataFormatter:
         
         ptr = FullImageKey.img_ptr
         
-        full_img = ImageBuffer(ptr)
+        full_img = ImageBuffer(ptr, image_type)
         return full_img.data
 
     def update_image(self, new_ptr: int) -> bool:

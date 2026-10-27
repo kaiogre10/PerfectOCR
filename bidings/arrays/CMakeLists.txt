@@ -1,10 +1,11 @@
 # ─── Cython: arrays.pyx → arrays.cpp ───
 add_custom_command(
-    OUTPUT  "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
-    COMMAND ${Python3_EXECUTABLE} -m cython
-            --cplus -3
-            -I "${CMAKE_CURRENT_SOURCE_DIR}"
-            -I "${CMAKE_CURRENT_SOURCE_DIR}/../container"
+    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
+    COMMAND ${Python3_EXECUTABLE} -m cython --cplus -3
+            -I "${CMAKE_SOURCE_DIR}"
+            -I "${CMAKE_CURRENT_SOURCE_DIR}"                  
+            -I "${CMAKE_CURRENT_SOURCE_DIR}/../container"     
+            -I "${CMAKE_CURRENT_SOURCE_DIR}/../compiled_utils"
             "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
             -o "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
@@ -21,13 +22,13 @@ add_library(arrays MODULE
 )
 
 target_include_directories(arrays PRIVATE
-    "${CMAKE_SOURCE_DIR}/components/workers/include"
     "${CMAKE_SOURCE_DIR}/components/buffer_container/include"
+    "${CMAKE_SOURCE_DIR}/components/workers/include"
 )
 
 target_link_libraries(arrays PRIVATE
     Python3::Module
-    buffer_container
+    container
 )
 
 configure_compiled_target(arrays)

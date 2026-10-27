@@ -42,16 +42,11 @@ if config_service.test_wf_model:
     
 system_service.clear_output_folders()
 
-from services import storage_service
 from app.main_builder import MainBuilder
 import services.output_service as output_service
 
 def main():
     log_service.setup_logging(config_service.log_params)
-    
-    if config_service.handle_memory:
-        storage_service.storage_config(system_paths) # type: ignore
-
     workflow_report = system_service.count_and_plan(config_service.input_paths) # type: ignore
     if not workflow_report and not config_service.no_activate_modules:
         system_service.cleanup_project_cache()

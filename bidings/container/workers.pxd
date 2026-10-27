@@ -1,5 +1,5 @@
 # bidings/container/workers.pxd
-from .container cimport Buffer
+from container cimport Buffer
 from libc.stdint cimport int32_t
 
 cdef extern from "image_loader.hpp":

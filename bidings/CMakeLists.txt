@@ -34,7 +34,6 @@ set(COMPILED_PYTHON_EXT_SUFFIX "${PYTHON_EXT_SUFFIX}")
 set(COMPILED_NUMPY_INCLUDE_DIR "${NUMPY_INCLUDE_DIR}")
 set(COMPILED_PYTHON_INCLUDE_DIRS "${Python3_INCLUDE_DIRS}")
 set(COMPILED_BUFFER_CONTAINER_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/components/buffer_container/include")
-set(COMPILED_UTILS_DIR "${CMAKE_SOURCE_DIR}/bidings/compiled_utils")
 
 function(configure_compiled_target target)
     set_target_properties(${target} PROPERTIES
@@ -62,7 +61,6 @@ function(configure_compiled_target target)
         "${COMPILED_PYTHON_INCLUDE_DIRS}"
         "${COMPILED_NUMPY_INCLUDE_DIR}"
         "${COMPILED_BUFFER_CONTAINER_INCLUDE_DIR}"
-        "${COMPILED_UTILS_DIR}"
     )
 
     target_link_directories(${target} PRIVATE
@@ -75,17 +73,10 @@ function(configure_compiled_target target)
     else()
         target_compile_options(${target} PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
     endif()
+
 endfunction()
 
 add_subdirectory(compiled_utils)
 add_subdirectory(container)
-
-add_dependencies(compiled_utils container)
-
 add_subdirectory(image)
 add_subdirectory(arrays)
-
-add_dependencies(image arrays)
-
-
-

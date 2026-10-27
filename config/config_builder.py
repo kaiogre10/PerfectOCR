@@ -61,11 +61,9 @@ class ConfigBuilder:
     def input_paths(self) -> Dict[str, List[str]]:
         return self.config.input_paths
         
-    @cached_property
+    @property
     def logs_debug(self) -> Dict[str, Any]:
-        logs_debug = self._config_logging.logs_debug
-        logs_debug["handle_memory"] = self.config.handle_memory
-        return logs_debug
+        return self._config_logging.logs_debug
 
     @cached_property
     def _system_paths(self) -> Dict[str, Any]:
@@ -90,18 +88,6 @@ class ConfigBuilder:
             _system_paths["comp_funcs_name"] = comp_funcs_name
             _system_paths["comp_funcs_file"] = _comp_funcs_file
 
-
-        elif not self.config.handle_memory:
-            return _system_paths
-
-        else:
-            buffer_path = os.path.join(self.project_root, "libraries", ("buffer_handler" + self.so))
-            if not os.path.isfile(buffer_path):
-                basic_exc_logger("NO EXISTEN LOS BINARIOS SE MODIFCA A FALSE EL MANEJO DE MEMORIA")
-                self.config.handle_memory = False
-
-            _system_paths["buffer_handler"] = buffer_path
-
         return _system_paths
 
     @property
@@ -111,7 +97,7 @@ class ConfigBuilder:
     @property
     def specific_deletes(self):
         """Limpia directorios o archivos especificos"""
-        components_dir = os.path.join(self.project_root, "components", "compiled")
+        components_dir = os.path.join(self.project_root, "bidings")
         dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], skip_names=['third_party', 'models', "include", "src", 'documentation'])
         files = build_from_dir(objetives=[".cpp", self.so], parent=[components_dir], with_extensions=True, skip_names=[".py", ".txt", ".h", ".hpp", ".c"])
 
@@ -225,7 +211,9 @@ class ConfigBuilder:
         if self.config.activate_det:
             geometry_detect = _img_prep_config.get("geometry_detect", {})        
             morph_kernel = geometry_detect["morph_kernel"]
-            _img_prep_config["geometry_detect"]["morph_kernel"] = configure_kernel(morph_kernel[0], morph_kernel[1])
+            geometry_detect["morph_kernel"] = configure_kernel(morph_kernel[0], morph_kernel[1])
+            geometry_detect["bboxes_type"] = self.config.pipeline_dtypes.get("int32_type", b"")
+            geometry_detect["centroids_type"] = self.config.pipeline_dtypes.get("float32_type", b"")
         
         elif Workers.POLYGON_EXTRACTOR in image_workers:
             self.config.workers_order[StageKeys.IMGPREP_KEY].remove(Workers.POLYGON_EXTRACTOR)
@@ -233,11 +221,7 @@ class ConfigBuilder:
         enabled_outputs = self.enabled_outputs.get("image_preparation_outputs", {})
         _img_prep_config.update(enabled_outputs)
         return _img_prep_config, image_workers
-    
-    @property
-    def img_prep_config(self) -> Tuple[Dict[str, Any], List[str]]:
-        return self._img_prep_config
-            
+                
     @cached_property
     def preprocessing_config(self)-> Tuple[Dict[str, Any], List[str]]:
         if self.config.no_activate_modules or not self.config.create_stager[1][1] or not self.config.active_full_ocr:
@@ -268,11 +252,7 @@ class ConfigBuilder:
         _ocr_config.update(self.logs_debug)
         _ocr_config.update(self.enabled_outputs.get("ocr_outputs", {}))
         return _ocr_config, self.config.workers_order[StageKeys.OCR_KEY]
-        
-    @property
-    def ocr_config(self) -> Tuple[Dict[str, Any], List[str]]:
-        return self._ocr_config
-    
+            
     @property
     def _activate_vect(self):
         vect_stage = self.config.create_stager[3][1]
@@ -290,20 +270,16 @@ class ConfigBuilder:
         collector = _vectorization_config.get(Workers.COLLECTOR, {})
         placeholder = collector.get("placeholder")
         if not isinstance(placeholder, str) or not _placeholder_pattern.search(placeholder):
-            basic_exc_logger(f"NO HAY SEPARADOR VÁLIDO")
+            basic_exc_logger(f"NO HAY SEPARADOR VALIDO")
             return {}, []
         
-        sc_matrix_type = collector.get("sc_matrix_type")
+        sc_matrix_type = self.config.pipeline_dtypes.get("image_type", b"")
         _vectorization_config[Workers.MATH_MAX] = {"dec_cols_name": frozenset([DataKeys.cantidad_art.value, DataKeys.precio_unitario.value, DataKeys.costo_tran.value]), "sc_matrix_type": sc_matrix_type}
         enabled_outputs = self.enabled_outputs.get("vectorization_outputs", {})
         _vectorization_config.update(enabled_outputs)
         _vect_stage = self.config.workers_order[StageKeys.VECT_KEY]    
         
         return _vectorization_config, _vect_stage
-    
-    @property
-    def vectorization_config(self):
-        return self._vectorization_config
         
     @cached_property
     def stagers_config(self) -> Dict[str, Tuple[Dict[str, Any], List[str]]]:
@@ -313,8 +289,8 @@ class ConfigBuilder:
         de los workers leerán directamente de la memoria RAM sin ejecutar código.
         """
         return {
-            StageKeys.IMGPREP_KEY: self.img_prep_config,
+            StageKeys.IMGPREP_KEY: self._img_prep_config,
             StageKeys.PREPRO_KEY: self.preprocessing_config,
-            StageKeys.OCR_KEY: self.ocr_config,
-            StageKeys.VECT_KEY: self.vectorization_config
+            StageKeys.OCR_KEY: self._ocr_config,
+            StageKeys.VECT_KEY: self._vectorization_config
         }

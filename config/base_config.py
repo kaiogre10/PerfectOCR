@@ -46,10 +46,6 @@ class BaseConfig:
     def clean_project(self) -> bool:
         return bool(self.deploy_settings.get("clean_mode"))
 
-    @cached_property
-    def handle_memory(self) -> bool:
-        return bool(self.deploy_settings.get("handle_memory"))
-
     @property
     def deploy_mode(self) -> bool:
         return bool(self.deploy_settings.get("deploy_mode"))
@@ -145,13 +141,21 @@ class BaseConfig:
         _input_paths["skip_names"] = set(_input_paths["skip_names"])
         return _input_paths
 
-    @cached_property
+    @property
     def models_config(self) -> Dict[str, Any]:
         return self.config.get("models_config", {})
 
-    @cached_property
-    def modules_config(self) -> Dict[str, Any]:
+    @property
+    def modules_config(self) -> Dict[str, Dict[str, Any]]:
         return {} if self.no_activate_modules else self.config.get("modules", {})
+
+    @cached_property
+    def pipeline_dtypes(self) -> Dict[str, bytes]:
+        _pipeline_dtypes = self.config.get("pipeline_dtypes", {})
+        for type_name, dtype in _pipeline_dtypes.items():
+            _pipeline_dtypes[type_name] = dtype.encode('ascii')
+
+        return _pipeline_dtypes
 
     @cached_property
     def create_stager(self) -> List[Tuple[str, List[str]]]:
@@ -193,10 +197,6 @@ class BaseConfig:
         elif self.no_activate_modules:
             ConfigLogger.log_active_areas(msg + " 'SOLO MODULOS DE ALTO NIVEL'")
             return True
-
-        elif not self.deploy_mode and not self.handle_memory:
-            log_simple("ACTIVAR MEMORIA DINÁMICA")
-            return False
 
         elif self.deploy_mode:
             ConfigLogger.log_active_areas((msg + " Modulos:"), self.create_stager)

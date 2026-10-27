@@ -21,12 +21,12 @@ conda install commentjson  # <-- Solo para desarrollo y similación de configura
 
 python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython
 
+rm -rf build install libraries	<-- Linux
+rmdir /s /q build install libraries	<-- Windows
+
 # Compilar opencv
 cd third_party/opencv_dep
 git clone --depth 1 --branch 4.11.0 https://github.com/opencv/opencv.git src
-
-rm -rf build install libraries	<-- Linux
-rmdir /s /q build install libraries	<-- Windows
 
 cd PerfectOCR/third_party
 cmake -S . -B build -G Ninja

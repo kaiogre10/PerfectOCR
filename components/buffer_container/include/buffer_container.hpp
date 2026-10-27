@@ -28,12 +28,12 @@ class Buffer {
             }
         }
         // === DELETE DE COPIA (¡PROHIBIDO!) ===
-        // Esto evita que alguien haga: Buffer img2 = img1;
+        // Esto evita que alguien haga: Buffer buff2 = buff1;
         Buffer(const Buffer&) = delete;
         Buffer& operator=(const Buffer&) = delete;
 
         // === MOVE SEMANTICS (Yo decido ceder el ownership) ===
-        // Esto permite: Buffer img2 = std::move(img1);
+        // Esto permite: Buffer buff2 = std::move(buff1);
         Buffer(Buffer&& other) noexcept : ptr(std::move(other.ptr)) {}
 
         Buffer& operator=(Buffer&& other) noexcept {
@@ -46,7 +46,7 @@ class Buffer {
         void* data() {
             return buffer_get_data(ptr.get());
         }
-        const void* data() const {
+        const void* read_only_data() const {
             return buffer_get_data_const(ptr.get());
         }
         int rows() const {

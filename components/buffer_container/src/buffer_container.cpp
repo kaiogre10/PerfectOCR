@@ -20,8 +20,8 @@ extern "C" {
         return buffer->data();
     }
 
-    const void* buffer_get_data_const_c(const Buffer* buffer) {
-        return buffer->data();
+    const void* buffer_get_read_only_data_const_c(const Buffer* buffer) {
+        return buffer->read_only_data();
     }
 
     int buffer_get_rows_c(const Buffer* buffer) {

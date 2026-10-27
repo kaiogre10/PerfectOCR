@@ -20,7 +20,8 @@ class GeometryDetector(ImagePrepAbstractWorker):
         worker_config = config.get("geometry_detect", {})
         self.kernel = worker_config["morph_kernel"]
         self.iterations = worker_config.get("iterations")
-        self.bboxes_type = worker_config.get("bboxes_type", "")
+        self.bboxes_type = worker_config.get("bboxes_type", b"")
+        self.centroids_type = worker_config.get("centroids_type", b"")
         self.padding = 1
 
         self.output = config.get("opened")
@@ -80,7 +81,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             np.copyto(dst=list_bbox, src=polygons, casting='unsafe')
             c_centroids, c_bboxes = compute_polygons_geometry(bbxes_ptr, image_ptr, padding)
 
-            list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype="float32").data
+            list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
             list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
 
             logger.info(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s\n"f": {list_bbox.shape}, BBOXES: {list_reshape_bbox.shape}, CENTER: {list_centroids.shape}")
@@ -93,7 +94,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             ys = list_bboxes[:, :, 1]                                     # (N, 4)
 
             all_bboxes = np.stack([xs.min(axis=1), ys.min(axis=1), xs.max(axis=1), ys.max(axis=1)], axis=1, dtype=self.bboxes_type) # (N, 4)
-            centroids = np.stack([xs.mean(axis=1, dtype=np.float32), ys.mean(axis=1, dtype=np.float32)], axis=1, dtype=np.float32) # (N, 2)
+            centroids = np.stack([xs.mean(axis=1, dtype=self.centroids_type), ys.mean(axis=1, dtype=self.centroids_type)], axis=1, dtype=self.centroids_type) # (N, 2)
 
             img_rows, img_cols = ImageBuffer(image_ptr).shape
             

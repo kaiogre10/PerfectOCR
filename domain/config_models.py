@@ -1,6 +1,6 @@
 # services/config_models.py
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 
 class ConfigWithNumpy(BaseModel):
     model_config = ConfigDict(extra='forbid', validate_assignment=True, arbitrary_types_allowed=False, strict=True)
@@ -21,7 +21,6 @@ class DeploySettings(ConfigWithNumpy):
     clean_mode: bool
     purge_system: bool
     postgre_local: bool
-    handle_memory: bool
     update_model: bool
     test_wf_model: bool
     compile_cython: bool
@@ -164,7 +163,6 @@ class InkConfig(ConfigWithNumpy):
 class GeometryDetect(ConfigWithNumpy):
     morph_kernel: List[int]
     iterations: int
-    bboxes_type: str
 
 class DeskewConfig(ConfigWithNumpy):
     min_angle_for_correction: float
@@ -242,7 +240,6 @@ class CosineSimilarity(ConfigWithNumpy):
 class DataCollector(ConfigWithNumpy):
     placeholder: str
     date_id_format: str
-    sc_matrix_type: str
 
 class VectorConfig(ConfigWithNumpy):
     lineal: Lineal
@@ -264,6 +261,11 @@ class InputPaths(ConfigWithNumpy):
 class UserRequests(ConfigWithNumpy):
     input_paths: InputPaths
 
+class PipelineDtypes(ConfigWithNumpy):
+    image_type: str
+    int32_type: str
+    float32_type: str
+
 class SystemSetUp(ConfigWithNumpy):
     system_params: SystemParams
     deploy_settings: DeploySettings
@@ -276,6 +278,7 @@ class ConfigParams(ConfigWithNumpy):
     models_config: ModelsConfig
     modules: ModulesConfig
     user_requests: UserRequests
+    pipeline_dtypes: PipelineDtypes
 
 class MasterConfig(ConfigWithNumpy):
     system_params: SystemParams
@@ -285,5 +288,6 @@ class MasterConfig(ConfigWithNumpy):
     enabled_outputs: OutputFlags
     models_config: ModelsConfig
     modules: ModulesConfig
-    env_config: Dict[str, Any]
+    env_config: Dict[str, str]
     user_requests: UserRequests
+    pipeline_dtypes: PipelineDtypes

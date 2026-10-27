@@ -12,7 +12,7 @@ from utils.math_utils import check_full_df, decimalice_df, round_vals, decimalic
 from utils.text_utils import set_ids
 from core.assets.assets import ONE_DEC, ZERO_DEC, ROW_TOL, SC_RANGE
 from services.output_service import save_debug_table
-from domain.class_models import SemantiClass, DataKeys, DataMathDict, Workers
+from domain.class_models import SemantiClass, DataKeys, DataMathDict
 from domain.buffer_handler import ArrayBuffer
 
 _row_tol = ROW_TOL
@@ -31,7 +31,7 @@ class MatrixSolver(VectorizationAbstractWorker):
         super().__init__(config, project_root)
         worker_config = config.get('math_max', {})
         self.dec_cols_name = worker_config["dec_cols_name"]
-        self.sc_matrix_type = worker_config.get("sc_matrix_type")
+        self.sc_matrix_type = worker_config.get("sc_matrix_type", b"")
         self.output = config.get("math_max_corrected")
 
     def vectorize(self, context: Dict[str, Any], manager: DataFormatter):

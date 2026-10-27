@@ -1,5 +1,6 @@
 #include "buffer_container.h"
 #include <stdlib.h>
+#include <stddef.h>
 #include <stdio.h>
 
 // Definición PRIVADA del struct. Nadie más sabe cómo está ordenado en memoria.

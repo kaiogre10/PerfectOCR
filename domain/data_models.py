@@ -10,7 +10,7 @@ class Polygons:
     polygon_id: str
     poly_index: int
     bounding_box: List[int]
-    centroid: List[float]
+    centroid: Optional[List[float]]
     cropped_img: Optional[np.ndarray[Any, np.dtype[np.uint8]]]
     ocr_text: Optional[str]
     key_field: Optional[List[int]]
