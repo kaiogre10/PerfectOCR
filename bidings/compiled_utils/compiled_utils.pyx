@@ -50,10 +50,7 @@ cdef size_t get_arr_dtype_size(const char* dtype) noexcept:
         return 8
         
     return 999
-
-cdef bint validate_arr_vals(int rows, int cols, int channels) noexcept:
-    return rows > 0 and cols > 0 and channels > 0
-
+    
 cdef object array_view(void* data_view, int rows_view, int cols_view, int channels_view, const char* dtype, bint tridimentional_view) noexcept:
     cdef cnp.intp_t shape_dims[3]
     cdef int nd

@@ -6,7 +6,7 @@ from services.log_service import log_simple
 from config.config_loader import load_config
 from config.config_logger import ConfigLogger
 from services import system_service
-from domain.class_models import Workers
+from domain.class_models import Workers, TypeModels
 
 _elemental_workers = ELEMENTAL_WORKER
 _ocr_workers = OCR_WORKERS     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
@@ -22,11 +22,11 @@ class BaseConfig:
             
         self.env_config
 
-    @cached_property
+    @property
     def elemental_params(self) -> bool:
         return _elemental_workers in self.create_stager[0][1]
 
-    @cached_property
+    @property
     def active_full_ocr(self):
         return _ocr_workers.issubset(self.all_workers)
 
@@ -83,7 +83,7 @@ class BaseConfig:
         return (self.deploy_mode == False) and (self.elemental_params == False)
 
     @cached_property
-    def _env_config(self) -> Dict[str, str]:
+    def env_config(self) -> Dict[str, str]:
         _env_config = self.config.get("env_config", {})
         oneapi_root = os.environ.get('ONEAPI_ROOT', "")
 
@@ -107,10 +107,6 @@ class BaseConfig:
         return _env_config
 
     @property
-    def env_config(self) -> Dict[str, str]:
-        return self._env_config
-
-    @property
     def user_requests(self) -> Dict[str, Dict[str, Any]]:
         return self.config.get("user_requests", {})
 
@@ -122,15 +118,12 @@ class BaseConfig:
     def log_config(self) -> Dict[str, Any]:
         return self.config.get("log_config", {})
 
-    @property
-    def _enable_outputs(self) -> bool:
-        _system_paths = self.system_params.get("system_paths", {})
-        _output_paths =  _system_paths["output_paths"]
-        return bool(_output_paths and not self.no_activate_modules)
-
     @cached_property
     def enable_outputs(self) -> Dict[str, bool]:
-        return {} if not self._enable_outputs else self.config.get("enabled_outputs", {})
+        _system_paths = self.system_params.get("system_paths", {})
+        _output_paths =  _system_paths["output_paths"]
+        activate_outputs = (_output_paths and not self.no_activate_modules)
+        return {} if not activate_outputs else self.config.get("enabled_outputs", {})
 
     @cached_property
     def input_paths(self) -> Dict[str, Any]:
@@ -153,7 +146,7 @@ class BaseConfig:
     def pipeline_dtypes(self) -> Dict[str, bytes]:
         _pipeline_dtypes = self.config.get("pipeline_dtypes", {})
         for type_name, dtype in _pipeline_dtypes.items():
-            _pipeline_dtypes[type_name] = dtype.encode('ascii')
+            _pipeline_dtypes[type_name] = dtype.encode(TypeModels.ASCII.value)
 
         return _pipeline_dtypes
 
@@ -180,6 +173,7 @@ class BaseConfig:
         if self.create_stager[3][1]:
             vect = self.create_stager[3][1]
             all_workers.update(vect)
+            
         return frozenset(all_workers)
 
     def validate_config(self) -> bool:

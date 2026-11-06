@@ -24,14 +24,19 @@ Buffer* load_image(const char* filepath) {
         return nullptr;
     }
     // En este punto la imagen ya está en escala de grises normalizada a uint8
-    const int cols = image_temp.cols;  
+    const int cols = image_temp.cols;
     const int rows = image_temp.rows;
+
+    if (rows < 1 || cols < 1) {
+        return nullptr;
+    }
 
     Buffer* image = new Buffer(rows, cols, channels, dtype);
 
     const size_t total_bytes = image_temp.total() * image_temp.elemSize();
     
     if (total_bytes != image->size()) {
+        image_temp.release(); // Liberar en caso de error
         delete image;
         return nullptr;
     }

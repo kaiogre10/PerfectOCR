@@ -42,12 +42,23 @@ class Buffer {
             }
             return *this;
         }
+
         // === EXPOSICIÓN DE DATOS (Acceso directo a los bytes) cualquiera puede escribir en esta memoria.
         void* data() {
             return buffer_get_data(ptr.get());
         }
+        // Se castea a diferentes tipos, al delegar al caller la responsabilidad de la congruencia de sus tipos esto es seguro ya que siempre se reservan con el mismo sizeof
         const void* read_only_data() const {
             return buffer_get_data_const(ptr.get());
+        }
+        uint8_t* get_uint8_buffer() {
+            return static_cast<uint8_t*>(buffer_get_data(ptr.get()));
+        }
+        int32_t* get_int32_buffer() {
+            return static_cast<int32_t*>(buffer_get_data(ptr.get()));
+        }
+        float* get_float32_buffer() {
+            return static_cast<float*>(buffer_get_data(ptr.get()));
         }
         int rows() const {
             return buffer_get_rows(ptr.get());

@@ -8,7 +8,7 @@ from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import binarice_img, morph_operations
 from domain.buffer_handler import ArrayBuffer, ImageBuffer
-from bidings.arrays import compute_polygons_geometry
+from bidings.arrays import compute_polygons_geometry, release_array
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +63,20 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.critical("No hay polygonos detectados")
                 return False
 
+            logger.info(f"POLYGONS:\n"f"{polygons}")
+
             image_ptr = manager.get_img_ptr()
 
             if not image_ptr:
                 raise AttributeError(f"ERROR EN EL PUNTERO: {image_ptr}")
-            
-            padding = self.padding
+
+            total_rows = len(polygons)
+            total_cols = len(polygons[0])
+            centroids_cols = len(polygons[0][0])
 
             time_buff = time.perf_counter()
-            bbxes_ptr = manager.get_array_buffer(rows=len(polygons), cols=len(polygons[0]), channels=len(polygons[0][0]), dtype=self.bboxes_type)
+            bbxes_ptr = manager.get_array_buffer(rows=total_rows, cols=total_cols, channels=centroids_cols, dtype=self.bboxes_type)
+            
             if not bbxes_ptr:
                 logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
                 return False
@@ -79,7 +84,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
             list_bbox = ArrayBuffer(bbxes_ptr, 3, self.bboxes_type).data
             
             np.copyto(dst=list_bbox, src=polygons, casting='unsafe')
-            c_centroids, c_bboxes = compute_polygons_geometry(bbxes_ptr, image_ptr, padding)
+            c_centroids, c_bboxes = compute_polygons_geometry(bbxes_ptr, image_ptr, self.padding)
+            if not c_centroids or not c_bboxes:
+                if not manager.delete_buffers([image_ptr, bbxes_ptr, c_bboxes]):
+                    return False
 
             list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
             list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
@@ -98,10 +106,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
             img_rows, img_cols = ImageBuffer(image_ptr).shape
             
-            np.maximum(0, all_bboxes[:, 0] - padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
-            np.maximum(0, all_bboxes[:, 1] - padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)
-            np.minimum(img_cols, all_bboxes[:, 2] + padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
-            np.minimum(img_rows, all_bboxes[:, 3] + padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
+            np.maximum(0, all_bboxes[:, 0] - self.padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
+            np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)
+            np.minimum(img_cols, all_bboxes[:, 2] + self.padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
+            np.minimum(img_rows, all_bboxes[:, 3] + self.padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
 
             valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
 

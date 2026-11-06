@@ -1,6 +1,6 @@
 # bidings/container/container.pxd
 from libc.stddef cimport size_t
-from bidings.compiled_utils.compiled_utils cimport validate_arr_vals, get_arr_dtype_size, array_view
+from bidings.compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view
 
 cdef extern from "buffer_container.hpp":
     cppclass Buffer:
@@ -13,6 +13,9 @@ cdef extern from "buffer_container.hpp":
         size_t size() const
 
     void destroy_buffer(Buffer* buffer) noexcept
+
+cdef bint validate_arr_vals(int rows, int cols, int channels) noexcept:
+    return rows > 0 and cols > 0 and channels > 0
 
 cdef inline bint check_null_ptr(Buffer* ptr_addr) noexcept:
     return ptr_addr == NULL or <size_t>ptr_addr == 0

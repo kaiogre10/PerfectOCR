@@ -30,7 +30,7 @@ def release_img(ptr_addr: int) -> None:
 def rotate(ptr_addr: int, angle: float, center_x: float, center_y: float) -> Optional[int]:
     """Manda a rotar la imagen y recibe puntero de la imagen actualizada"""
 
-def copy_image(ptr_addr: int) -> int:
+def copy_image(ptr_addr: int, dtype: bytes) -> Optional[int]:
     """Crea una copia independiente de la imagen y devuelve su handle opaco.
 
     La copia conserva sus propios bytes y debe liberarse con release().

@@ -146,16 +146,32 @@ class DataFormatter:
         
         return ptr
 
-    def get_img_copy(self):
+    def get_img_copy(self) -> Tuple[Optional[int], Optional[np.ndarray[Any, np.dtype[np.uint8]]]]:
         """Devuelve puntero[0] y copia de la imagen principal[1] para futuras liberaciones"""
         ptr = self.get_img_ptr()
-        if not ptr or not isinstance(ptr, int): # type: ignore
+        if not ptr or not isinstance(ptr, int):
             return None, None
 
         copy_ptr = image.copy_image(ptr, image_type)
+        if not copy_ptr:
+            return None, None
         
-        full_img = ImageBuffer(copy_ptr, image_type)
-        return copy_ptr, full_img.data
+        full_img = ImageBuffer(copy_ptr, image_type).data
+        return copy_ptr, full_img
+
+    def delete_buffers(self, ptr_list: List[int]) -> bool:
+        """Centraliza la liberación de varios punteros"""
+        worker, _ = get_caller_info()
+        for ptr in ptr_list:
+            if ptr < 1:
+                logger.warning(f"'{worker}' ENTREGO PUNTERO INVALIDO: {ptr}")
+
+            if not self.free_buffer(ptr):
+                raise BufferError(f"'{worker}' ENTREGO PUNTERO CON SEGMENT FAULT: {ptr}")
+            
+            logger.info(f"'{worker}' LIBERO PUNTERO: {ptr}")
+            
+        return True
 
     def free_buffer(self, copy_ptr: int):
         worker, line = get_caller_info()

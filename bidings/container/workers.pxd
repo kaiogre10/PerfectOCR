@@ -10,4 +10,4 @@ cdef extern from "angle_corrector.hpp":
 
 cdef extern from "poly_gone.hpp":
     Buffer* get_centroids(int32_t* bboxes_array, int bbox_count) except +
-    Buffer* get_bboxes(int32_t* bboxes_array, int bbox_count, int img_rows, int img_cols, int padding) except +
+    Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, int padding) except +

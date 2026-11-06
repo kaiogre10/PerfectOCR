@@ -57,7 +57,7 @@ else()
             message(WARNING "No se encontró ${_real}")
         endif()
 
-        set(_link   "${DEPLOY_DIR}/libopencv_${_lib}.so")
+        set(_link "${DEPLOY_DIR}/libopencv_${_lib}.so")
         set(_target "libopencv_${_lib}.so.411")
         file(REMOVE "${_link}")
         execute_process(

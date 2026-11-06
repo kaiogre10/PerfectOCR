@@ -140,7 +140,8 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "icx",
         "CMAKE_CXX_COMPILER": "icpx",
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "IPPROOT": "$env{ONEAPI_ROOT}/ipp/latest/bin"
       }
     }
   ],
