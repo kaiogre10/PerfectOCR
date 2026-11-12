@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import pandas as pd # type: ignore
 import commentjson # type: ignore
+import json
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedSeq
 import pickle
@@ -93,6 +94,16 @@ def load_jsoncomment(file_path: str, mode: str):
         if not commentjson_raw:
             raise ValueError(f"COMMENT JSON INEXISTENTE")
     return commentjson_raw
+
+def load_json(file_path: str, mode: str) -> Dict[str, Any]:
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"JSON NO ENCONTRADO: {file_path}")
+    
+    with open(file_path, mode, encoding=TypeModels.UTF8.value) as f:
+        json_raw = json.load(f) # type: ignore
+        if not json_raw:
+            raise ValueError(f"JSON INEXISTENTE")
+    return json_raw
 
 def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, stack: bool):
     """Guarda una tabla estructurada en formato CSV (compatible con Excel)."""

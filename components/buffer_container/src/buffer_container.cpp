@@ -24,20 +24,29 @@ extern "C" {
         return buffer->read_only_data();
     }
 
-    int buffer_get_rows_c(const Buffer* buffer) {
+    int buffer_get_rows_c(Buffer* buffer) {
         return buffer->rows();
     }
 
-    int buffer_get_cols_c(const Buffer* buffer) {
+    int buffer_get_cols_c(Buffer* buffer) {
         return buffer->cols();
     }
 
-    int buffer_get_channels_c(const Buffer* buffer) {
+    int buffer_get_channels_c(Buffer* buffer) {
         return buffer->channels();
     }
 
-    size_t buffer_get_size_c(const Buffer* buffer) {
+    size_t buffer_get_size_c(Buffer* buffer) {
         return buffer->size();
+    }
+    uint8_t* get_uint8_buffer_c(Buffer* buffer) {
+        return buffer->get_uint8_buffer();
+    }
+    int32_t* get_int32_buffer_c(Buffer* buffer) {
+        return buffer->get_int32_buffer();
+    }
+    float* get_float32_buffer_c(Buffer* buffer) {
+        return buffer->get_float32_buffer();
     }
 
 } /* extern "C" */

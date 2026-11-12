@@ -1,22 +1,19 @@
 import os
 import numpy as np
-import logging
 from typing import Dict, Any, List, Tuple
 from utils.file_handler import load_pickle
 from utils.paths import build_from_dir
 from domain.class_models import Params
-
-logger = logging.getLogger(__name__)
 
 class MappedMatrix:
     """Contenedor inmutable que encapsula la matriz dispersa universal """
     __slots__ = ("matrix", "matrix_ngrams")
     def __init__(self, path_dir: str, file_type: List[str]):
         self.matrix = np.load(os.path.join(path_dir, file_type[0]), mmap_mode='r', allow_pickle=False)
-        self.matrix_ngrams = np.load(os.path.join(path_dir, file_type[1]), mmap_mode='r', allow_pickle=False)
+        self.matrix_ngrams: np.ndarray[Any, np.dtype[np.float32]] = np.load(os.path.join(path_dir, file_type[1]), mmap_mode='r', allow_pickle=False)
 
     @property
-    def matrix_data(self) -> np.ndarray[Any, Any]:
+    def matrix_data(self) -> np.ndarray[Any, np.dtype[np.float32]]:
         return self.matrix["data"]
 
     @property
@@ -36,14 +33,13 @@ class MappedMatrix:
         if row_indices.size == 0 or col_indices.size == 0:
             return 0, 0.0
 
-        indptr = self.matrix_indptr
         indices = self.matrix_indices
-        data = self.matrix_data
         _, total_cols = self.matrix_shape
 
         rows = np.asarray(row_indices, dtype=np.intp)
         cols = np.asarray(col_indices, dtype=np.intp)
 
+        indptr = self.matrix_indptr
         if np.any(rows < 0) or np.any(rows + 1 >= indptr.shape[0]):
             raise IndexError("row_indices fuera de rango para la matriz dispersa.")
         if np.any(cols < 0) or np.any(cols >= total_cols):
@@ -52,6 +48,7 @@ class MappedMatrix:
         col_mask = np.zeros(total_cols, dtype=bool)
         col_mask[cols] = True
 
+        data = self.matrix_data
         sim_count = 0
         sim_sum = 0.0
         for row in rows:
@@ -167,11 +164,11 @@ class MatrixFactory:
         matrix_path = config.get(Params.MATRIX_PATH, "")
 
         numpydicts = build_from_dir([matrix_name, "mtx_shape.npy"], parent=[models_path, matrix_path, "4_" + matrix_path])
-        logger.info(f"{numpydicts}")
-        numpy_file = np.load(numpydicts[0])
-        logger.info(f"{numpy_file.get("data")}")
-        logger.info(f"{np.load(numpydicts[1])}")
-        logger.info(f"{numpy_file.get("shape")}")
+        # logger.info(f"{numpydicts}")
+        # numpy_file = np.load(numpydicts[0])
+        # logger.info(f"{numpy_file.get("data")}")
+        # logger.info(f"{np.load(numpydicts[1])}")
+        # logger.info(f"{numpy_file.get("shape")}")
         # logger.info(f"{np.load(numpydicts[1]).shape}")
         return True
 

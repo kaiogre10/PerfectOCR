@@ -2,29 +2,52 @@
 #define BUFFER_CONTAINER_HPP
 #include "buffer_container.h"
 #include <memory>
+#include <vector>
 #include <stdexcept>
 #include <utility>
 #include <cstdint>
 #include <cstddef>
 
 class Buffer {
-    private:
-        struct Deleter {
-            void operator()(BufferContainer* p) const {
-                if (p) {
-                    delete_buffer(p);
-                }
-            }
-        };
-        // Usamos unique_ptr para garantizar que se llame al destructor.
-        // Pero NUNCA exponemos el unique_ptr directamente.
-        std::unique_ptr<BufferContainer, Deleter> ptr;
+private:
+    struct Deleter {
+        void operator()(BufferContainer* p) const {
+            if (p) delete_buffer(p);
+        }
+    };
+
+    std::unique_ptr<BufferContainer, Deleter> ptr;
+
+    // NUEVO: estructura de llaves, solo para AoS
+    std::vector<std::unique_ptr<Buffer>> elements_;
+    bool is_aos_ = false;
+
+    // envuelve un BufferContainer existente en un Buffer
+    struct WrapTag {};
+        explicit Buffer(BufferContainer* existing, WrapTag)
+            : ptr(existing) {}
+
+        // crea la llave de un índice (llamado por el AoS) 
+        void make_element(size_t i) {
+            BufferContainer* s = array_at(ptr.get(), i);
+            elements_.emplace_back(new Buffer(s, WrapTag{}));
+        }
 
     public:
         explicit Buffer(int rows, int cols, int channels, size_t dtype)
             : ptr(create_buffer(rows, cols, channels, dtype)) {
             if (!ptr) {
                 throw std::runtime_error("Error creando Buffer");
+            }
+        }
+        explicit Buffer(int total_objects)
+            : ptr(create_array_of_structs(total_objects)), is_aos_(true) {
+            if (!ptr) {
+                throw std::runtime_error("Error creando Array of Structs");
+            }
+            elements_.reserve(static_cast<size_t>(total_objects));
+            for (int i = 0; i < total_objects; ++i) {
+                make_element(static_cast<size_t>(i));
             }
         }
         // === DELETE DE COPIA (¡PROHIBIDO!) ===
@@ -51,26 +74,44 @@ class Buffer {
         const void* read_only_data() const {
             return buffer_get_data_const(ptr.get());
         }
-        uint8_t* get_uint8_buffer() {
-            return static_cast<uint8_t*>(buffer_get_data(ptr.get()));
-        }
-        int32_t* get_int32_buffer() {
-            return static_cast<int32_t*>(buffer_get_data(ptr.get()));
-        }
-        float* get_float32_buffer() {
-            return static_cast<float*>(buffer_get_data(ptr.get()));
-        }
-        int rows() const {
+        int rows() {
             return buffer_get_rows(ptr.get());
         }
-        int cols() const {
+        int cols() {
             return buffer_get_cols(ptr.get());
         }
-        int channels() const {
+        int channels() {
             return buffer_get_channels(ptr.get());
         }
-        size_t size() const {
+        size_t size() {
             return buffer_get_size(ptr.get());
+        }
+        uint8_t* get_uint8_buffer() {
+            return get_uint8_data(ptr.get());
+        }
+        int32_t* get_int32_buffer() {
+            return get_int32_data(ptr.get());
+        }
+        float* get_float32_buffer() {
+            return get_float32_data(ptr.get());
+        }
+        void set_struct_at(size_t index, int rows, int cols, int channels, size_t total_bytes, void* data) {
+            ::set_struct_at(ptr.get(), index, rows, cols, channels, total_bytes, data);
+        }
+        void group_structs(size_t index, Buffer* buffer) {
+            ::group_array_structs(ptr.get(), index, buffer->ptr.get(), static_cast<void*>(buffer));
+        }
+        Buffer* recover_struct(size_t index) {
+            return static_cast<Buffer*>(take_struct_data(index));
+        }
+        void* take_struct_data(size_t index) {
+           return ::take_struct_data(ptr.get(), index);
+        }
+        Buffer* at(size_t i) {
+            return elements_[i].get();
+        }
+        size_t buffer_addr(size_t i) {
+            return reinterpret_cast<size_t>(elements_[i].get());
         }
 };
 

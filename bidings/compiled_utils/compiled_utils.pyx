@@ -4,6 +4,7 @@ from libc.stddef cimport size_t
 cimport numpy as cnp
 
 cnp.import_array()
+cdef inline int _max_size = 20000000
 
 cdef int _get_dtype(const char* dtype) noexcept:
     if strcmp(dtype, b"uint8") == 0: return cnp.NPY_UINT8
@@ -49,7 +50,7 @@ cdef size_t get_arr_dtype_size(const char* dtype) noexcept:
     elif last == b'4': # Termina en 64
         return 8
         
-    return 999
+    return 317
     
 cdef object array_view(void* data_view, int rows_view, int cols_view, int channels_view, const char* dtype, bint tridimentional_view) noexcept:
     cdef cnp.intp_t shape_dims[3]
@@ -70,3 +71,6 @@ cdef object array_view(void* data_view, int rows_view, int cols_view, int channe
         
     # 3. Retornamos la vista del ndarray generada directamente desde la API de C
     return cnp.PyArray_SimpleNewFromData(nd, shape_dims, type_num, data_view)
+
+cdef bint validate_arr_vals(int rows, int cols, int channels) noexcept:
+    return rows > 0 and cols > 0 and channels > 0 and (rows * cols * channels < _max_size)

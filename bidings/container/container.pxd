@@ -1,28 +1,29 @@
 # bidings/container/container.pxd
 from libc.stddef cimport size_t
-from bidings.compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view
+from bidings.compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
 
 cdef extern from "buffer_container.hpp":
     cppclass Buffer:
         Buffer(int rows, int cols, int channels, size_t dtype) noexcept
         void* data()
         const void* read_only_data() const
-        int rows() const
-        int cols() const
-        int channels() const
-        size_t size() const
+        int rows() 
+        int cols() 
+        int channels() 
+        size_t size()
+        
+        Buffer* recover_struct(size_t index)
+        Buffer* at(size_t i)
+        size_t buffer_addr(size_t i)
 
     void destroy_buffer(Buffer* buffer) noexcept
 
-cdef bint validate_arr_vals(int rows, int cols, int channels) noexcept:
-    return rows > 0 and cols > 0 and channels > 0
-
 cdef inline bint check_null_ptr(Buffer* ptr_addr) noexcept:
-    return ptr_addr == NULL or <size_t>ptr_addr == 0
+    return ptr_addr == NULL or <size_t>ptr_addr < 1
 
 cdef inline Buffer* get_buffer_ptr(size_t ptr_addr) noexcept:
     if ptr_addr < 1:
-        return <Buffer*>0
+        return NULL
     return <Buffer*>ptr_addr
 
 cdef inline void free_buffer(size_t ptr_addr) noexcept:
@@ -75,3 +76,13 @@ cdef inline object get_array_view(size_t arr_ptr, const char* dtype, int dims) n
 
     cdef void* data = get_data(new_array)
     return array_view(data, rows, cols, channels, dtype, tridimentional_view)
+
+cdef inline Buffer* recover_class(size_t index, Buffer* cropped_polygons) noexcept:
+    if check_null_ptr(cropped_polygons):
+        return NULL
+    return cropped_polygons.recover_struct(index)
+
+cdef inline size_t get_buffer_at(Buffer* buffer, size_t i) noexcept:
+    if check_null_ptr(buffer):
+        return 0
+    return <size_t>buffer.at(i)

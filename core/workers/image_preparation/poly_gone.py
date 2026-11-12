@@ -6,6 +6,7 @@ from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import validate_image
 from services.output_service import save_croped_image
+from domain.buffer_handler import ArrayBuffer
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,12 @@ class PolygonExtractor(ImagePrepAbstractWorker):
             poly_ids_order: List[str] = list(polygons.keys())
             total_polys = len(polygons)
 
-            list_bbox = [polygons[pid].bounding_box for pid in poly_ids_order]
+            # list_bbox = [polygons[pid].bounding_box for pid in poly_ids_order]
+            list_bbox_ptr = manager.get_bboxes_ptr()
+            if list_bbox_ptr < 1:
+                return False
+
+            list_bbox = ArrayBuffer(arr_ptr=list_bbox_ptr, dtype=b"int32").data
 
             full_img = manager.get_full_img()
             if full_img is None:
@@ -45,12 +51,12 @@ class PolygonExtractor(ImagePrepAbstractWorker):
 
                 # Filtrar por intervalo de color
                 poly_id = poly_ids_order[idx]
-                if not validate_image(cropped):
-                    logger.debug(f"FILTRADO POR MEDIA DE COLOR: {poly_id}")
-                    if self.disoutput:
-                        pid = f"{poly_id}_B/N"
-                        self.save_debug(cropped, manager, "bn_discarded", pid)
-                    continue
+                # if not validate_image(cropped):
+                #     logger.debug(f"FILTRADO POR MEDIA DE COLOR: {poly_id}")
+                #     if self.disoutput:
+                #         pid = f"{poly_id}_B/N"
+                #         self.save_debug(cropped, manager, "bn_discarded", pid)
+                #     continue
 
                 if self.output:
                     self.save_debug(cropped, manager, "all_valid", poly_id) # type: ignore
@@ -58,6 +64,9 @@ class PolygonExtractor(ImagePrepAbstractWorker):
                 final_polygons[poly_id] = cropped
 
             img_ptr = manager.get_img_ptr()
+            if not img_ptr:
+                logger.warning(f"NO HAY PUNTERO DE LA IMAGEN COMPLETA, VALIDAR DAGLING POINTER")
+                return False    
             
             if not manager.free_buffer(img_ptr):
                 logger.error("NO SE PUDO LIBERAR FULL IMAGE")

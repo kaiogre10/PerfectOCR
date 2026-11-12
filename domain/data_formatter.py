@@ -1,14 +1,14 @@
 # domain/data_formatter.py
 import logging
 from bidings import arrays
-from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey
+from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey, BoundingBoxesKey, CentroidsKey
 import numpy as np
 import dataclasses
 from typing import Dict, Any, Optional, List, Tuple
 import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass
-from domain.buffer_handler import ImageBuffer
+from domain.buffer_handler import ImageBuffer, ArrayBuffer
 from bidings import image
 from utils.text_utils import set_ids
 
@@ -92,8 +92,8 @@ class DataFormatter:
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
                     poly_index=idx,
-                    bounding_box = bbox,
-                    centroid = centroid,
+                    bounding_box=bbox,
+                    centroid=centroid,
                     cropped_img=None,
                     ocr_text=None,
                     key_field=None,
@@ -111,6 +111,36 @@ class DataFormatter:
         except Exception as e:
             logger.error(f"Error en create_polygon_dicts: {e}", exc_info=True)
         return False
+
+    def create_polygons(self, polygons: List[int]) -> bool:    
+        try:
+            BoundingBoxesKey(bboxes_ptr=polygons[0])
+            bboxes_ptr = BoundingBoxesKey.bboxes_ptr
+            if not bboxes_ptr:
+                raise TypeError("NO SE DEVOLVIO PUNTERO A BBOXES")
+            
+        except TypeError as e:
+            logger.error(f"No se pudo almacenar el puntero de bboxes: {e}", exc_info=True)
+            return False
+        try:
+            CentroidsKey(polygons[1])
+            centroids_ptr = CentroidsKey.centroids_ptr
+            if not centroids_ptr:
+                raise TypeError("NO SE DEVOLVIO PUNTERO A CENTROIDES")
+        
+        except TypeError as e:
+            logger.error(f"No se pudo almacenar el puntero a centroides: {e}", exc_info=True)
+            return False
+
+        total_bboxes = ArrayBuffer(bboxes_ptr).shape[0]
+        total_centroids = ArrayBuffer(centroids_ptr).shape[0]
+        if total_bboxes != total_centroids:
+            logger.error(f"DISPARIDAD EN LLA GEOMETRIA: BBOXES: {total_bboxes} != {total_centroids} CENTROIDS")
+
+            return False
+
+        logger.debug(f"CREADOS {total_bboxes} POLIGONOS, {total_centroids} CENTROIDS")
+        return True
 
     def create_image(self, img_ptr: int) -> bool:
         if not isinstance(img_ptr, int): # type: ignore
@@ -145,6 +175,13 @@ class DataFormatter:
             return None
         
         return ptr
+
+    def get_bboxes_ptr(self) -> int:
+        bboxes_ptr = BoundingBoxesKey.bboxes_ptr
+        if not bboxes_ptr:
+            return -1
+        else:
+            return bboxes_ptr
 
     def get_img_copy(self) -> Tuple[Optional[int], Optional[np.ndarray[Any, np.dtype[np.uint8]]]]:
         """Devuelve puntero[0] y copia de la imagen principal[1] para futuras liberaciones"""
@@ -211,7 +248,7 @@ class DataFormatter:
                 return False
 
             try:
-                FullImageKey.clear()
+                FullImageKey.clear_img()
                 
             except RuntimeError as e:
                 logger.error(f"ERROR DE '{worker}' ELIMINANDO LA FULL IMG: {e}", exc_info=True)

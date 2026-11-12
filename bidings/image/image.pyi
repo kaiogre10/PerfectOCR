@@ -11,7 +11,7 @@ def load(filepath: str) -> Optional[int]:
         RuntimeError: Si la imagen no se puede cargar o no es de 1 canal.
     """
 
-def get_image_array(ptr_addr: int) -> np.ndarray[Any, np.dtype[np.uint8]]:
+def get_image_array(ptr_addr: int, dtype: bytes) -> np.ndarray[Any, np.dtype[np.uint8]]:
     """Devuelve un array NumPy de la imagen.
 
     Warning:

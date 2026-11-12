@@ -41,7 +41,6 @@ def copy_image(size_t ptr_addr, const char* dtype):
     cdef int rows = get_rows(buffer)
     cdef int channels = 1
     
-    
     copy = create_new_buffer(rows, cols, channels, dtype)
 
     cdef Buffer* new_buffer = get_buffer_ptr(copy)

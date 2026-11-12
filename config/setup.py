@@ -8,7 +8,7 @@ from utils.paths import build_from_dir
 def build_extensions(config: Dict[str, Any]):
     utils_file = config.get("comp_funcs_file", "")
     del_files, del_paths, del_build = config["del_files"]
-    del_files_path = build_from_dir(del_files, parent=del_paths, with_extensions=True)
+    del_files_path = build_from_dir(objetives=del_files, parent=del_paths, kind_search='extensions')
     print(f"DEL FILES: {del_files_path}")
     cleanup_project(execp=([], del_files_path))
 

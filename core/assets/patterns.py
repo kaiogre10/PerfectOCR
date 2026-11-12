@@ -76,8 +76,9 @@ _los_typos_regex = (
 los_suffix_pattern = re.compile(_los_typos_regex)
 
 _extension_str = r'\.[A-Za-z]+$'
-file_name_pattern = re.compile(rf"(?<={_diagonal_variants2})[\w.-]+{_extension_str}")
 extension_suffix = re.compile(rf"{_extension_str}")
+
+file_name_pattern = re.compile(rf"(?<={_diagonal_variants2})[\w.-]+{_extension_str}")
 
 has_digit_pattern = re.compile(r"\d", re.IGNORECASE)
 swap_term_cuant = re.compile(r'^[A-Za-z]+\$$')

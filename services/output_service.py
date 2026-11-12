@@ -8,6 +8,7 @@ import pandas as pd # type: ignore
 from typing import Dict, Any, List, Optional
 from services.log_service import get_caller_info
 from utils.file_handler import save_image, save_yaml, save_table
+from utils.paths import build_from_dir
 from domain.class_models import TypeModels
 # from collections.abc import Callable
 # from typing import TypeAlias
@@ -26,7 +27,8 @@ file_path: str
 def set_output_config(project_root: str, config: Dict[str, Any]):
     global PROJECT_ROOT, OUTPUT_PATHS, TEMP_FILE, file_path
     PROJECT_ROOT = project_root # type: ignore
-    OUTPUT_PATHS = config["output_paths"] # type: ignore
+    # OUTPUT_PATHS = config["output_paths"] # type: ignore
+    OUTPUT_PATHS = build_from_dir(objetives=["output"])
     file_path = os.path.join(PROJECT_ROOT, "core", "assets", "data.npy")
     TEMP_FILE = config.get("temp_path", "") # type: ignore
 
@@ -96,7 +98,7 @@ def save_croped_image(image_name: str, image: np.ndarray[Any, Any], img_id: Opti
         logger.warning(f"NO SE PUDO GUARDAR: {img_id}: {e}", exc_info=True)
         return False
     
-    logger.debug(f"Imagenes debug de {worker_name} guardadas")
+    logger.debug(f"Imagenes debug de {worker_name} guardadas en: {OUTPUT_PATHS}")
     return True
         
 def save_text_debug(results: Dict[str, Any], file_name: str) -> bool:

@@ -79,7 +79,7 @@ class LinealReconstructor(VectorizationAbstractWorker):
         line_counter = 0
         headers = boundaries[0]
         footers = boundaries[1] if boundaries[0] else None
-        bboxes: List[Any] = []
+        bboxes: List[float] = []
         lines_bbox: List[List[float]] = []
         header_idx: int = 0
         footer_idx: int = 0

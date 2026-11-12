@@ -31,7 +31,6 @@ class ConfigBuilder:
     @property
     def config(self):
         if self._config is not None and not self._config:
-            # self.config = {}
             self._config = None
         
         if self._config is None:
@@ -71,7 +70,7 @@ class ConfigBuilder:
         temp_path = _system_paths["temp_path"]
         _system_paths["no_del_output"] = self._no_del_output
         output_paths = _system_paths["output_paths"]
-        _system_paths["output_paths"] = build_from_dir(output_paths)
+        _system_paths["output_paths"] = build_from_dir(objetives=output_paths)
         _system_paths["temp_path"] = os.path.join(self.project_root, *temp_path)
 
         if self.config.compile_cython:
@@ -99,7 +98,7 @@ class ConfigBuilder:
         """Limpia directorios o archivos especificos"""
         components_dir = os.path.join(self.project_root, "bidings")
         dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], skip_names=['third_party', 'models', "include", "src", 'documentation'])
-        files = build_from_dir(objetives=[".cpp", self.so], parent=[components_dir], with_extensions=True, skip_names=[".py", ".txt", ".h", ".hpp", ".c"])
+        files = build_from_dir(objetives=[".cpp", self.so], parent=[components_dir], kind_search='extensions', skip_names=[".py", ".txt", ".h", ".hpp", ".c"])
 
         build_path = os.path.join(self.project_root, "build")
         if os.path.isdir(build_path):

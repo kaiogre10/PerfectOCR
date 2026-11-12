@@ -14,7 +14,7 @@ class ImageBuffer:
         self._shape: Optional[Tuple[int, int]] = None
 
     @property
-    def data(self) ->  Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
+    def data(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
         if self._data is None:
             if not self._img_ptr:
                 raise AttributeError("Se requiere 'img_ptr' o 'data' para obtener el arreglo.")
@@ -53,8 +53,8 @@ class ArrayBuffer:
     __slots__ = ('_arr_ptr', '_data', '_shape', "_dims", "_dtype")
     def __init__(self, arr_ptr: int, dims: Optional[int] = None, dtype: Optional[bytes] = None):
         self._arr_ptr: int = arr_ptr
-        self._dims = dims if dims else 0
-        self._dtype = dtype if dtype else b'uint8'
+        self._dims = dims if dims else 2
+        self._dtype = dtype if dtype else b"uint8"
         self._data: Optional[np.ndarray[Any, Any]] = None
         self._shape: Optional[Tuple[int, ...]] = None
 
