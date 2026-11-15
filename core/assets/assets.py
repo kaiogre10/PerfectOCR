@@ -293,3 +293,5 @@ ALL_FILES_TYPES: Set[str] = set(INVALID_EXTENSIONS).union(VALID_IMG_EXT, TRASH_E
 C_VALUE: int = 7
 HEIGHT_THRESHOLDS: List[int] = [100, 800, 1500, 2500]
 BLOCK_SIZES_MAP: List[int] = [15, 21, 25, 35, 41]
+
+KIND_SEARCH_LIST = ["filename", "no_extensions", "extensions", "reference"]

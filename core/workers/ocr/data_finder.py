@@ -8,11 +8,11 @@ from domain.data_formatter import DataFormatter
 from app.models_builder import ModelsBuilder
 from utils.text_utils import contains_quantitative, get_rfc
 from utils.compiled_funcs import validate_bytes
-from core.assets.patterns import cleaner_pattern
+from core.assets.patterns import cleaner_pattern_bytes
 from core.assets.assets import KF_REALOCATABLES, KF_IGNORED
 from domain.class_models import SemantiClass, KeyField, TypeModels, Params
 
-_cleaner_pattern = cleaner_pattern
+_cleaner_pattern_bytes = cleaner_pattern_bytes
 _kf_relocatables = KF_REALOCATABLES
 _kf_ignored = KF_IGNORED
 
@@ -85,7 +85,7 @@ class DataFinder(OCRAbstractWorker):
                 ocr_text = poly.ocr_text.lower().encode(TypeModels.ASCII.value) # type: ignore
 
                 if not ocr_text.isalpha():
-                    ocr_text = _cleaner_pattern.sub(b"", ocr_text).strip()
+                    ocr_text = cleaner_pattern_bytes.sub(b"", ocr_text).strip()
 
                 if not validate_bytes(ocr_text):
                     logger.debug(f"{pid} invalido: {ocr_text}")

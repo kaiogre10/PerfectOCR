@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 def init_system(project_root: str):
     global PROJECT_ROOT, SO
     PROJECT_ROOT = project_root  # type: ignore
-    SO = get_so() # type: ignore
+    so_cap = get_so()
+    SO = get_so_bin_ext(so_cap.capitalize())
 
 def set_system_paths(config: Dict[str, List[str]]):
     global output_paths, no_del_output
@@ -318,13 +319,15 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
     files_in_dir = ["".join(name) for name in split_names if name[0] in files_to_find]
     return files_name_dir if not files_in_dir else files_in_dir
 
-def get_so() -> Dict[str, str]:
+def get_so():
+    return platform.system()
+
+def get_so_bin_ext(so: str) -> Dict[str, str]:
     """[0]Bibliotecas, [1]Librerias"""
-    so = platform.system() # type: ignore
-    if so == OSModels.WINDOWS.name.capitalize():
+    if so == OSModels.WINDOWS.name:
         return OSModels.WINDOWS.value
 
-    elif so == OSModels.LINUX.name.capitalize():
+    elif so == OSModels.LINUX.name:
         return OSModels.LINUX.value
     else:
         return OSModels.MACOS.value

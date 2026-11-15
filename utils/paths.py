@@ -1,15 +1,15 @@
 import os
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Literal
 import logging
 from core.assets.patterns import extension_suffix
 from collections.abc import Iterable
 
-kind_search_list = ["filename", "no_extensions", "extensions", "reference"]
+KindSearch = Literal["filename", "no_extensions", "extensions", "reference"]
 
-filename_search: str = kind_search_list[0]
-no_extensions_search: str = kind_search_list[1]
-extensions_search: str = kind_search_list[2]
-reference_search: str = kind_search_list[3]
+filename_search = "filename"
+no_extensions_search  = "no_extensions"
+extensions_search = "extensions"
+reference_search = "reference"
 
 _extension_suffix = extension_suffix
 project_root: Optional[str] = None
@@ -20,42 +20,41 @@ def set_project_root(PROJECT_ROOT: str):
     global project_root
     project_root = PROJECT_ROOT
 
-def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] = None, kind_search: Optional[str] = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
+def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] = None, kind_search: KindSearch | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
     """
-    Busca recursivamente archivos o carpetas y devuelve sus rutas completas:
-    Objetives: Lista de nombres solicitados para buscar, pueden ser archivos, carpetas, extensiones o referencias
-    Search_root: Path completo de la carpeta padre que sirve como delimitador de búsqueda y simula ser el project_root, ambos tienen exactamente el mismo comportamiento, tiene priotidad sobre project_root y no puede usarse al mismo tiempo que project root
-    Parent_include: Indica si devolver la carpeta con la jerarquía más alta en la cual existe una ruta valida para cada Objetive
-    Parent: Representación de un path completo que parte desde dir_scoope en forma de una lista sepadarada en jerarquia
-    Kind_search: Indicador especial que define el comportamiento y tipo de busqueda para los Objetives:
-        None o 'filename': aplica fullmatch de nombres
-        'extensions': busqueda por extensiones de archivos, pueden ser puras extesiones o archivos con extensiones
-        'reference': Busqueda por referencia de nombre, tipo fuzzy/regex o matcheos internos
-        'prefix': Por inicio del nombre
+    Busca objetivos especificos en el sistema de carpetas del proyecto, dentro de un marco delimitado y arbitrario.
+    NONE ES UN RESULTADO VALIDO Y REPRESENTA UN ESTADO SEPARADO DE FALSE Y TRUE
+    Distringue entre busqueda de directorios, archivos por nombre con/sin extension, nombres prefijos, *subfijos (nombre sin extesion), referencias (nombres incompletos, *fuzzy) y formato.
+    *están en fase Beta.
 
-    Skip_names: Cojunto de excepciones en la búsqueda, su significado semantico depende completamente de Kind_search, es disjunto de Objetives
+    Args:
+        ``objetives`` (Iterable[str]): Lista o Tupla de nombres solicitados para buscar, pueden ser archivos, carpetas, extensiones o referencias.
+        ``search_root`` (str | None, optional): Path completo de la carpeta padre que sirve como delimitador de búsqueda y simula ser el project_root, ambos tienen exactamente el mismo comportamiento, tiene priotidad sobre la raiz no pueden usarase simultaneamente.
+        ``parent_include`` (bool | None, optional): Indica si devolver la carpeta con la jerarquía más alta en la cual existe una ruta valida para cada objetive.
+        ``parent`` (list[str] | None, optional): Representación de un path completo que parte desde dir_scoope en forma de una lista sepadarada en jerarquia.
+        ``kind_search`` (KindSearch | None, optional): Indicador especial que define el comportamiento y tipo de busqueda para los objetives:.
+            ``None`` (None): Tipo de busqueda valida, y general que el motor infiere según el resto de los parametro solicitados.
+            ``filename`` (str, filename): aplica fullmatch de nombres.
+            ``extensions``: busqueda por extensiones de archivos, pueden ser puras extesiones o archivos con extensiones.
+            ``reference``: Busqueda por referencia de nombre, tipo fuzzy/regex o matcheos internos.
+            ``prefix``: Por inicio del nombre.
 
-    La búsqueda parte de un ``dir_scoope`` definido cuando search_root es una dirección valida y ``parent`` es ``None``;
-    de lo contrario, ``parent`` se interpreta como una secuencia de
-    componentes relativos a ``project_root``. Cada elemento de ``objetives``
-    se compara por nombre exacto, excepto cuando ``with_extensions`` es
-    verdadero y todos los objetivos tienen formato de extensión; en ese caso
-    se comparan como sufijos de archivo, por ejemplo ``[".py"]``.
+        ``skip_names``(Iterable[str] | None, optional): Lista o Tupla de excepciones en la búsqueda, su significado semantico depende completamente de kind_search, es disjunto de objetives.
 
-    Los resultados se devuelven en orden inverso al recorrido de
-    ``os.walk``. Si ``parent_include`` es verdadero, la ruta del directorio
-    de búsqueda se agrega al final. Por ello, las llamadas que desempaquetan
-    posiciones concretas deben conservar el orden de ``objetives`` y la
-    estructura esperada del árbol
+        La búsqueda parte de un dir_scoope definido cuando search_root es una dirección valida y parent es None;
+        de lo contrario, parent se interpreta como una secuencia de componentes relativos a project_root. Cada elemento de objetives
+        se compara por nombre exacto, excepto cuando with_extensions es
+        verdadero y todos los objetivos tienen formato de extensión; en ese caso
+        se comparan como sufijos de archivo, por ejemplo [".py"].
 
-    ``skip_names`` cambia el modo de exclusión según su contenido:
+        Los resultados se devuelven en orden inverso al recorrido de os.walk.
+        Si parent_include es verdadero, la ruta del directorio de búsqueda se agrega al final. 
+        Por ello, las llamadas que desempaquetan posiciones concretas deben conservar el orden de objetives y la estructura esperada del árbol.
 
-    * nombres de archivos o directorios: se excluyen durante el recorrido;
-    * extensiones: se excluyen los archivos cuyo nombre termina con alguna
-      de esas extensiones.
+        Si la ruta inicial no existe, los objetivos están vacíos o la combinación de filtros es inválida, registra una advertencia y devuelve una lista vacia.
 
-    Si la ruta inicial no existe, los objetivos están vacíos o la combinación
-    de filtros es inválida, registra una advertencia y devuelve ``[]``.
+    Returns:
+        list: Lista de direcciones absoluta de cada obejtive encontrado
     """
     if not objetives:
         logger.warning("SIN OBJETIVOS")
@@ -67,8 +66,8 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
         if not all(isinstance(x, (list, tuple)) for x in (objetives, skip_names)):
             raise TypeError("Todos los argumentos deben ser list o tuple")
 
-        elif not set(skip_names).isdisjoint(objetives):
-            raise ValueError(f"REPETICIONES ENTRE OMISIONES Y BUSQUEDAS: {set(skip_names).intersection(set(objetives))}")
+        elif all(names not in objetives for names in skip_names):
+            raise ValueError("REPETICIONES ENTRE OMISIONES Y BUSQUEDAS")
 
         elif not isinstance(objetives, tuple):
             objetives: Tuple[str, ...] = tuple(objetives)
@@ -82,7 +81,7 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
         skip_names: Tuple[str, ...] = tuple("")
 
     if project_root is None and search_root is None:
-        raise TypeError(f"AMBOS ROOTS SON NONE")
+        raise TypeError("AMBOS ROOTS SON NONE")
 
     elif search_root is None:
         dir_scoope = project_root
@@ -102,32 +101,23 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
         return []
     
     logger.warning(f"SEARCH DIR: {search_dir}")
-    referencial_search = (kind_search == reference_search)
 
-    if kind_search is None:
-        with_extensions = None     # Mantenemos la misma logica de la implementación anterior, donde None significaba sin extensiones==archivos y directorios
+    search_type = _call_kind_and_data_search(kind_search)
+
+    results = _locate_and_index_targets(search_dir, search_type, objetives, skip_names)
     
-    elif kind_search == extensions_search:
-        with_extensions = True
+    if parent_include is not None and parent_include:
+        results.append(search_dir)
+    return results
 
-    elif kind_search == no_extensions_search:
-        with_extensions = False
-
-    elif kind_search == filename_search:
-        with_extensions = False
-
-    elif referencial_search:
-        with_extensions = False
-
-    else:
-        raise ValueError(f"ERROR EN EL TIPO DE BUSQUEDA, RETORONANDO")
-
-    skip_paf, skip_ext, extensions = _get_exceptions_state(objetives, skip_names, with_extensions)
+def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool], bool], objetives: Tuple[str, ...], skip_names: Tuple[str, ...]) -> List[str]:
+    skip_paf, skip_ext, extensions = _get_exceptions_state(objetives, skip_names, search_type[0])
     if skip_paf and skip_ext:
         logger.warning("MISMO ESTAOD")
         return []
 
     valid_dirs: List[str] = []
+    referencial_search = search_type[1]
     for dirpath, dirnames, filenames in os.walk(search_dir):
         if not extensions:
             for dir in skip_names:
@@ -164,14 +154,14 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
                 continue
 
     valid_dirs.reverse()
-    if parent_include is not None and parent_include:
-        valid_dirs.append(search_dir)
-
     return valid_dirs
 
-def _get_exceptions_state(objetive: Tuple[str, ...], skip_name: Tuple[str, ...], with_extensions: Optional[bool] = None):
-    """Decide si hay que filtrar archivos si hay que hacerlo cuales filtrar. Returns: (skip_paf, skip_ext, extensions)"""
-    extensions = (with_extensions is not None and with_extensions) and all(_extension_suffix.fullmatch(ext) for ext in objetive)  # Asegurar que las extensiones sean validas, objetives pasa a ser formato de documento
+def _get_exceptions_state(objetive: Tuple[str, ...], skip_name: Tuple[str, ...], with_extensions: Optional[bool] = None) -> Tuple[bool, bool, Optional[bool]]:
+    """
+    Decide si hay que filtrar archivos si hay que hacerlo cuales filtrar. Returns: (skip_paf, skip_ext, extensions)
+    extensions: 
+    """
+    extensions: Optional[bool] | None = (with_extensions is not None and with_extensions) and all(_extension_suffix.fullmatch(ext) for ext in objetive)  # Asegurar que las extensiones sean validas, objetives pasa a ser formato de documento
     if skip_name:       # Si hay que hacer excepciones paths and files 'paf'
         skip = all(_extension_suffix.fullmatch(ext) for ext in skip_name)  # Si las excepciones de extensiones son validas, pasa a ser formato de documento.
         if extensions:               # Hay que trabajar con extensiones, esta validación esconde la verdadera validacion 'if extensions is not None'
@@ -207,3 +197,29 @@ def _get_exceptions_state(objetive: Tuple[str, ...], skip_name: Tuple[str, ...],
 
 def validate_files(paths: List[str]):
     return all(os.path.exists(dir) for dir in paths)
+
+def _call_kind_and_data_search(kind_search: Optional[str] | None = None) -> Tuple[Optional[bool], bool]:
+    with_extensions: Optional[bool] | None = None
+    referencial_search = False
+
+    if kind_search is None:         # La orden para extensiones no existe, por lo que hay que inferir, ya que: (None == False) es incorrecto, hay que inferir el tipo de busqueda
+        with_extensions = None
+    
+    elif kind_search == extensions_search:  # Aquí se solicitaron extensiones explicitamente, entonces el tipo de busqueda es por extension de archivo
+        with_extensions = True
+
+    elif kind_search == no_extensions_search:  # Aquí las las no extensions implican la busqueda por nombre completo de carpeta o archivo
+        with_extensions = False
+
+    elif kind_search == filename_search:       # Explicitamente se solicito busqueda de archivos (todavia se analiza la posibilidad con/sin extensiones)
+        with_extensions = False
+
+    elif kind_search == reference_search:       # Se solicitó un tipo de busqueda especial por referencias de nombres incompletas
+        with_extensions = False
+        referencial_search = True
+
+    else:
+        raise ValueError("ERROR EN EL TIPO DE BUSQUEDA, RETORONANDO")  # Tipo de busqueda inválida
+    
+    return with_extensions, referencial_search
+

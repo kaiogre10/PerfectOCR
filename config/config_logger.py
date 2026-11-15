@@ -151,7 +151,7 @@ class ConfigLogger:
     @staticmethod
     def log_active_areas(message: str, manager_config: Optional[List[Tuple[str, List[str]]]] = None) -> str:
         caller_info = get_caller_info()
-        message = f"{get_logging_info(caller_info)} {message}"
+        message = f"{get_logging_info(caller_info, "%H:%M:%S")} {message}"
         if manager_config:
             stages_list = [stager[0].removesuffix("_stage").title() for stager in manager_config if stager and stager[1]]
             msg = f"{', '.join(stages_list) if stages_list else 'SOLO BUILDERS'}"

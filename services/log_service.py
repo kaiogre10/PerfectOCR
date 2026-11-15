@@ -11,7 +11,7 @@ from domain.class_models import TypeModels, StringsModels
 
 _paddle_silence = paddle_silence
 _float_time = float_time
-DATE_FORMAT = ""
+LOG_TRACE_FORMAT = "%H:%M:%S"
 EXTRA_FILE_LOGS = []
 project_root: str
 
@@ -22,19 +22,18 @@ def get_time_stamp(moment: Any, date_format: str):
     return f"{moment.strftime(date_format)}"
 
 def get_caller_info() -> Tuple[str, str]:
-    """[nombre, linea]"""
+    """Nombre[0], Linea_llamadora[1]"""
     frame = inspect.stack()[2]
     return os.path.basename(frame[1]), str(frame[2])
 
-def get_logging_info(get_caller_inf: Tuple[str, str]) -> str:
-    return f"{get_time_stamp(_now(), DATE_FORMAT)} {get_caller_inf[0]}:{get_caller_inf[1]} -"
+def get_logging_info(get_caller_inf: Tuple[str, str], date_format: str) -> str:
+    return f"{get_time_stamp(_now(), date_format)} {get_caller_inf[0]}:{get_caller_inf[1]} -"
 
 def set_project_root(PROJECT_ROOT: str):
     global project_root
     project_root = PROJECT_ROOT
 
 def setup_logging(config: Dict[str, str]) -> None:
-    global DATE_FORMAT
     """
     Inicializa los descriptores de archivo y la salida por consola.
     Debe invocarse antes de cualquier operación de registro en el sistema.
@@ -84,11 +83,44 @@ def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str
 
 def basic_exc_logger(message: str, exc_info: Optional[bool] = False) -> None:
     caller_info = get_caller_info()
-    message = f"{get_logging_info(caller_info)} {message}"
+    message = f"{get_logging_info(caller_info, DATE_FORMAT)} {message}"
     if exc_info:
         print(f"{message}\n{sys.exc_info()}")
     else:
         print(f"{message}")
+
+def log_temp_process(project_base: str) -> logging.Logger:
+    caller_info = get_caller_info()[0]
+
+    logger = logging.getLogger(caller_info)
+
+    for handler in logger.handlers[:]:
+        if getattr(handler, "_temp_process_handler", False):
+            logger.removeHandler(handler)
+            handler.close()
+
+    formatter = logging.Formatter(fmt="%(asctime)s:%(msecs)d %(filename)s:%(lineno)d: %(message)s", datefmt=LOG_TRACE_FORMAT)
+
+    module_name = caller_info.removesuffix(".py")
+    log_path = os.path.join(project_base, f"{module_name}_log.txt")
+
+    file_handler = logging.FileHandler(log_path, mode="w", encoding=TypeModels.UTF8.value)
+    
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    file_handler._temp_process_handler = True  # type: ignore[attr-defined]
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    console_handler._temp_process_handler = True  # type: ignore[attr-defined]
+
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
+    return logger
     
 @contextmanager
 def intercept_paddle_logs():
@@ -100,7 +132,7 @@ def intercept_paddle_logs():
         sys.stderr.write = original_write
 
 def log_simple(msg: str):
-    log_info = get_logging_info(get_caller_info())
+    log_info = get_logging_info(get_caller_info(), DATE_FORMAT)
     print(f"{log_info} {msg}")
 
 class TiempoFilter(logging.Filter):
@@ -124,19 +156,7 @@ def format_elapsed_time(seconds: float) -> str:
     else:
         return f"{int(seconds // 3600):02d}:H {minutes:02d}:M {seconds % 60:06.3f}'s"
 
-# class TimeWorker(logging.Filter):
-#     def filter(self, record: logging.LogRecord):
-#
-#         if (record.levelno == logging.WARNING and record.module == "main_builder"):
-#             msg = record.getMessage()
-#             matches = _float_time.finditer(msg)
-#             if matches:
-#                 text_float = float([(match.group()[7:]) for match in matches if match.group()][0].strip())
-#                 record.msg = f"Total: {format_elapsed_time(text_float)}"
-#                 record.args = ()
-#
-#         return True
-
 def reset_temp_file(TEMP_FILE: str):
     with open(TEMP_FILE, "w", encoding=TypeModels.ASCII.value):
         pass
+

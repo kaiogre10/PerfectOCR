@@ -56,7 +56,6 @@ class WordFinder:
         return kfngrams.kf_matrix.get(id_matrix)
 
     def find_keywords(self, text: List[bytes] | bytes, assigned_fields: Set[int]) -> List[Dict[str, Any]]:
-
         if not text:
             return []
         
@@ -67,14 +66,14 @@ class WordFinder:
             key = self.all_ngrams.get(text) # type: ignore
             if key and key[0] > 0:
                 # logger.info(f"MATCH TEMPRANO: '{text}'")
-                return [set_results(key[0], text, 1.0, text, text, 0, len(text))]
+                return [set_results(key[0], text, 1.0, text, text, 0, len(text))] # type: ignore
         
         single = False
         if isinstance(text, bytes):
-            queue: List[bytes] = [text]
+            queue = [text]
             single = True
         else:
-            queue: List[bytes] = text
+            queue = text
         
         results: List[Dict[str, Any]] = []
         

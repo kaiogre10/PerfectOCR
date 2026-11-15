@@ -29,6 +29,7 @@ _nine_base = r'qg'
 _all_zeros = rf"[0{_zero_base}]"
 _extended_digits = rf"[{_digits_base}{_zero_base}{_one_base}{_two_base}{_four_base}{_five_base}{_six_base}{_seven_base}{_eight_base}{_nine_base}]"   # [0-9OQoD|liI!¡Zz?A$SsG/Bqg]
 
+cleaner_pattern_bytes = re.compile(rb"[^a-zA-Z\s]", re.IGNORECASE)
 cleaner_pattern = re.compile(rb"[^a-zA-Z\s]", re.IGNORECASE)
 space_pattern = re.compile(rb"\s+", re.IGNORECASE)
 

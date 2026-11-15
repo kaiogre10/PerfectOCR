@@ -32,6 +32,7 @@ perfectocr.txt
 verificacion_init.txt
 tmp_file.txt
 tree.txt
+CondaPaths.json
 
 # Ignorar carpetas
 __pycache__/

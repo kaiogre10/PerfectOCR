@@ -62,7 +62,6 @@ log_config:
     console_format: "%(asctime)s - %(filename)s:%(lineno)d - %(message)s"
     file_format: "%(filename)s:%(lineno)d - %(message)s"
     date_format: "%H:%M:%S"
-#    temp_date_format: "%d/%m/%Y-%H:%M:%S"
     temp_path_file: "safe_temp"
 
   logs_debug:           # <-- Activar logs para consola

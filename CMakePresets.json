@@ -5,19 +5,19 @@
     "minor": 23,
     "patch": 0
   },
+  "include": [
+    "CondaPaths.json"
+  ],
   "configurePresets": [
     {
       "name": "default",
+      "inherits": "conda-paths",
       "generator": "Ninja",
       "hidden": true,
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "binaryDir": "${sourceDir}/build",
       "installDir": "${sourceDir}/libraries",
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CONDA_ENV": "$ENV{CONDA_DEFAULT_ENV}",
-        "CONDA_PREFIX": "$ENV{CONDA_PREFIX}",
-        "Python3_ROOT_DIR": "$ENV{CONDA_PREFIX}",
-        "Python3_EXECUTABLE": "$ENV{CONDA_PREFIX}/python"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
@@ -145,6 +145,10 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    },
     {
       "name": "win-oneapi-debug",
       "displayName": "Debug (Windows OneAPI)",

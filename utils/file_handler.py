@@ -98,12 +98,23 @@ def load_jsoncomment(file_path: str, mode: str):
 def load_json(file_path: str, mode: str) -> Dict[str, Any]:
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"JSON NO ENCONTRADO: {file_path}")
-    
+
     with open(file_path, mode, encoding=TypeModels.UTF8.value) as f:
         json_raw = json.load(f) # type: ignore
         if not json_raw:
-            raise ValueError(f"JSON INEXISTENTE")
+            raise ValueError("JSON INEXISTENTE")
     return json_raw
+
+def save_json(file_path: str, results: Dict[str, Any], mode: str, ident: int) -> bool:
+    """Guarda un JSON en disco."""
+    try:
+        with open(file_path, mode, encoding=TypeModels.UTF8.value) as f:
+            json.dump(results, f, indent=ident, ensure_ascii=False)
+            f.write('\n')
+    except IOError as e:
+        basic_exc_logger(f"Error guardando YAML: {e}", exc_info=True)
+        return False
+    return True
 
 def save_table(corrected_df: pd.DataFrame, output_dir: str, file_name: str, stack: bool):
     """Guarda una tabla estructurada en formato CSV (compatible con Excel)."""

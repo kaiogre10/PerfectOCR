@@ -24,8 +24,8 @@ class ConfigBuilder:
         if not self.config.validate_config():
             self._config = {}
             del self._config
-
-        self.so = next(iter(system_service.SO.keys()))            
+                    
+        self.so = next(iter(system_service.SO.keys()))
         set_project_root(self.project_root)
 
     @property
