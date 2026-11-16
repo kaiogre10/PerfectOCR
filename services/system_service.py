@@ -204,14 +204,16 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
         return
 
 def clean_python_cache():
-    dirs = build_from_dir(objetives=["__pycache__"], parent=[PROJECT_ROOT], skip_names=['third_party', 'models', "include", "src", 'documentation'])
+    dirs = build_from_dir(objetives=["__pycache__"], parent=[PROJECT_ROOT], skip_names=['third_party', 'models', "include", "src", 'documentation', "build"])
+    logger.info(f"{dirs}")
+    assert(dirs)
     try:
         for dir in dirs:
             shutil.rmtree(dir)
             # logger.debug(f"DIRECTORIO CACHE: {dir}, ESCONDIDO ELIMINADO|")
 
     except FileNotFoundError as e:
-        logger.error(f"ERROR ELIMINANDO CACHE OMITIDO: {e}", exc_info=True)
+        logger.exception(f"ERROR ELIMINANDO CACHE OMITIDO: {e}", exc_info=True)
         raise
 
 def clean_db(get_local_connection: Any) -> bool:
@@ -354,7 +356,7 @@ def prune_project(target_dirs: List[str], target_files: List[str]):
                 except OSError as e:
                     raise(f"ERROR EN EL SISTEMA AL PURGAR {dir}: {e}")
                 
-                logger.info("DIRECTORIOS ELIMINADOS CON ÉXITO")
+                logger.debug("DIRECTORIOS ELIMINADOS CON ÉXITO")
 
             for file in target_files:
                 try:
@@ -368,4 +370,4 @@ def prune_project(target_dirs: List[str], target_files: List[str]):
                 logger.info("ARCHIVOS ELIMINADOS CON ÉXITO")
         
     except Exception as e:
-        logger.error(f"ERROR EN LA LIMPIEZA DE ARCHIVOS: {e}", exc_info=True)
+        logger.exception(f"ERROR EN LA LIMPIEZA DE ARCHIVOS: {e}", exc_info=True)

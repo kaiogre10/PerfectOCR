@@ -1,7 +1,11 @@
 # assets/env_assets
-from typing import List, Any, Dict
+from typing import List, Dict
 from packaging.version import parse
+import platform
+from domain.class_models import OSModels
 
+so = platform.system().capitalize()
+WIN = "" if so == OSModels.LINUX.name else OSModels.WINDOWS.name
 # Flags de estadp
 greater = "greater"
 smaller = "smaller" # menor que establecido
@@ -14,7 +18,7 @@ minor_versions = "{minor:02d}"
 patch_versions = "{patch:02d}"
 
 python_base = "3.12"
-python_patch_versions = [8, 13, 15]
+python_patch_versions = [5, 8, 13, 15]
 
 conda_base = "2"
 conda_versions: List[int] = [6, 7] # segunda es el limite teorico: 26.7.2
@@ -50,25 +54,37 @@ def version_call(lib_found: str, requirements_idx: int) -> str:
         return between if (parse(lib_found) > parse(requirement) > parse(lib_found)) else ""
     
     else:
-        python_template =f"{python_base}." + patch_versions
-        valid_comparation = False
-        for patch_version in python_patch_versions:
-            n_version = get_libs_versions(python_template, **{"patch": patch_version})
+        python_template =f"{python_base}" + "." + patch_versions
+        valid_comparation = True
+        reformat = False
+        for i, patches in enumerate(python_patch_versions):
+            if patches < 10:
+                reformat = True
+                patches = python_patch_versions[i] * 10
+                
+            versions_dict = {"patch": patches}
+            n_version = get_libs_versions(python_template, **versions_dict)
+            if reformat:
+                n_version = n_version[:-1]
+
             if same_comparation(lib_found, n_version):
                 valid_comparation = True
                 break
+            else:
+                reformat = False
+                valid_comparation = False
 
         return especific_versions if valid_comparation else ""
 
 def _get_requirement_val(idx: int):
-    if not conda_base == some_version_list[idx]:
+    if conda_base != some_version_list[idx]:
         return ""
 
-    versions_dict: Dict[str, Any] = {
+    versions_dict: Dict[str, List[int]] = {
         "minor": conda_versions[1],
         "patch": conda_minor_versions
     }
-    template = f"{conda_base}{7}." + minor_versions + "." + patch_versions
+    template = f"{conda_base}{7}" + "." + minor_versions + "." + patch_versions
     return get_libs_versions(template, **versions_dict)
 
 def same_comparation(lib_found: str, exact_version: str) -> bool:

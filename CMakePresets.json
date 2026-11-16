@@ -23,11 +23,8 @@
     {
       "name": "base-windows",
       "hidden": true,
-      "inherits": "default",
-      "cacheVariables": {
-        "Python3_EXECUTABLE": "$ENV{CONDA_PREFIX}/python.exe",
-        "Python3_FIND_STRATEGY": "LOCATION"
-      }
+      "description": "python FIND STRATEGY = LOCATION",
+      "inherits": "default"
     },
     {
       "name": "type-debug",
@@ -45,7 +42,10 @@
     },
     {
       "name": "windows-oneapi-debug",
-      "inherits": [ "base-windows", "type-debug" ],
+      "inherits": [
+        "base-windows",
+        "type-debug"
+      ],
       "generator": "Ninja",
       "displayName": "Windows - OneAPI (Debug)",
       "description": "Ninja con compiladores icx de OneAPI",
@@ -61,7 +61,10 @@
     },
     {
       "name": "windows-oneapi-release",
-      "inherits": [ "base-windows", "type-release" ],
+      "inherits": [
+        "base-windows",
+        "type-release"
+      ],
       "generator": "Ninja",
       "displayName": "Windows - OneAPI (Release)",
       "description": "Ninja con compiladores icx de OneAPI",
@@ -77,7 +80,10 @@
     },
     {
       "name": "windows-msvc-debug",
-      "inherits": [ "base-windows", "type-debug" ],
+      "inherits": [
+        "base-windows",
+        "type-debug"
+      ],
       "displayName": "Windows - MSVC (Debug)",
       "description": "Ninja con MSVC nativo (fallback)",
       "condition": {
@@ -92,7 +98,10 @@
     },
     {
       "name": "windows-msvc-release",
-      "inherits": [ "base-windows", "type-release" ],
+      "inherits": [
+        "base-windows",
+        "type-release"
+      ],
       "displayName": "Windows - MSVC (Release)",
       "description": "Ninja con MSVC nativo (fallback)",
       "condition": {

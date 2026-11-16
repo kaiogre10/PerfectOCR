@@ -77,9 +77,9 @@ class ConfigBuilder:
             _comp_funcs_file = _system_paths["comp_funcs_file"]
             comp_funcs_name = ".".join(_comp_funcs_file)
 
-            del_buils = os.path.join(self.project_root, "build")
+            del_build = os.path.join(self.project_root, "build")
             del_path = os.path.join(self.project_root, *_comp_funcs_file[:-1])
-            _system_paths["del_files"] = [[self.so, ".c"], [del_path], [del_buils]]
+            _system_paths["del_files"] = [[self.so, ".pyd", ".c"], [del_path], [del_build]]
 
             _comp_funcs_file = os.path.join(self.project_root, *_comp_funcs_file)
             comp_funcs_name = _extension_suffix.sub("", comp_funcs_name)
@@ -97,8 +97,8 @@ class ConfigBuilder:
     def specific_deletes(self):
         """Limpia directorios o archivos especificos"""
         components_dir = os.path.join(self.project_root, "bidings")
-        dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], skip_names=['third_party', 'models', "include", "src", 'documentation'])
-        files = build_from_dir(objetives=[".cpp", self.so], parent=[components_dir], kind_search='extensions', skip_names=[".py", ".txt", ".h", ".hpp", ".c"])
+        dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], kind_search="no_extensions", skip_names=["third_party", "models", "include", "input", "input2", "input3", "documentation", "libs", "libraries"])
+        files = build_from_dir(objetives=[".cpp", ".pyd", self.so], parent=[components_dir], kind_search="extensions", skip_names=[".py", ".pyi", ".txt", ".h", ".hpp", ".c", ".pyx", ".pxd"])
 
         build_path = os.path.join(self.project_root, "build")
         if os.path.isdir(build_path):
@@ -160,7 +160,7 @@ class ConfigBuilder:
             return {}
 
         if not self.config.activate_det:
-            # log_simple("Configuración: Sin geometry_detector, no se cargan modelos")
+            basic_exc_logger("Configuración: Sin geometry_detector, no se cargan modelos")
             return {}
 
         if _full_ocr.issubset(self.config.all_workers):

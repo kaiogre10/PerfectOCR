@@ -129,7 +129,6 @@ class MatrixFactory:
                     # Identificación de la nomenclatura jerárquica 'longitud_{key}'
                     if os.path.isdir(full_path) and item.endswith(f"{self.matrix_path}"):
                         key_len = int(item.replace(f"_{self.matrix_path}", ""))
-                        # key_len = int(item[0])
                         self.matrix_registry[key_len] = MappedMatrix(full_path, self.files_list)
                         continue
         

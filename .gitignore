@@ -26,11 +26,10 @@
 *.pkl
 *.pdmodel
 inference.*
+*-log.txt
 
 # Ignorar archivos especificos
 perfectocr.txt
-verificacion_init.txt
-tmp_file.txt
 tree.txt
 CondaPaths.json
 
@@ -62,7 +61,9 @@ input2/
 input3/
 output/
 migrations/
+safe_temp/
 CMakeFiles/
+utils/compiled_utils/*.c
 utils/compiled_funcs/*.c
 bidings/compiled_utils/*.cpp
 bidings/container/*.cpp

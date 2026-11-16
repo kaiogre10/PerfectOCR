@@ -1,5 +1,6 @@
 # PerfectOCR/core/utils/patterns.py
 import regex as re
+from typing import Pattern
 
 _currency_variants = r"[$Ss]"
 _punt_quant_chars = r'[.,]'
@@ -77,7 +78,7 @@ _los_typos_regex = (
 los_suffix_pattern = re.compile(_los_typos_regex)
 
 _extension_str = r'\.[A-Za-z]+$'
-extension_suffix = re.compile(rf"{_extension_str}")
+extension_suffix: Pattern[str] = re.compile(rf"{_extension_str}", re.IGNORECASE)
 
 file_name_pattern = re.compile(rf"(?<={_diagonal_variants2})[\w.-]+{_extension_str}")
 

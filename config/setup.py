@@ -7,10 +7,11 @@ from utils.paths import build_from_dir
 
 def build_extensions(config: Dict[str, Any]):
     utils_file = config.get("comp_funcs_file", "")
-    del_files, del_paths, del_build = config["del_files"]
-    del_files_path = build_from_dir(objetives=del_files, parent=del_paths, kind_search='extensions')
-    print(f"DEL FILES: {del_files_path}")
+    del_ext, del_paths, del_build = config["del_files"]
+    cleanup_project(execp=(del_build, []))
+    del_files_path = build_from_dir(objetives=del_ext, parent=del_paths, kind_search="extensions")
     cleanup_project(execp=([], del_files_path))
+    print(f"DEL FILES: {del_files_path}")
 
     comp_funcs_name = config.get("comp_funcs_name", "")
 
@@ -33,5 +34,3 @@ def build_extensions(config: Dict[str, Any]):
         )
     finally:
         sys.argv = old_argv
-
-    cleanup_project(execp=(del_build, []))

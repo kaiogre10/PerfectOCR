@@ -42,7 +42,7 @@ class WordFinder:
         self.window_flex: int = config.get("window_flexibility")
         self.all_kf_idx = config["all_kf_idx"]
             
-    def get_sparse_cross_stats(self, n: int, row_indices: np.ndarray[Any, Any], col_indices: np.ndarray[Any, Any]) -> Tuple[int, float]:
+    def get_sparse_cross_stats(self, n: int, row_indices: np.ndarray[Any, np.dtype[np.intp]], col_indices: np.ndarray[Any, np.dtype[np.intp]]) -> Tuple[int, float]:
         matrix = self.motor.matrix_registry[n]
         return matrix.sum_cross_points(row_indices=row_indices, col_indices=col_indices)
     
@@ -357,7 +357,7 @@ class WordFinder:
 
             total_score += section_score
 
-        if total_ngrams_cand == 0.0:
+        if total_ngrams_cand < _small_num:
             return 0.0
 
         return total_score / total_ngrams_cand
@@ -456,7 +456,6 @@ class WordFinder:
                             similarity = 1.0 * length_penalty(w, noise_len)
 
                         else:
-                            # sub_array = np.frombuffer(subc, dtype=np.uint8)
                             grams_sub = self._build_query_grams(subc, len(subc))
                             similarity = self._score_hybrid_greedy(grams_forbidden, grams_sub)
                             # Penalización simétrica

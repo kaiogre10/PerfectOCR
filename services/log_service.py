@@ -4,13 +4,15 @@ import sys
 from contextlib import contextmanager
 from datetime import datetime
 import logging
-from core.assets.patterns import float_time, paddle_silence
+from core.assets.patterns import float_time, paddle_silence, extension_suffix
 import inspect
 from typing import Tuple, Optional, Dict, Any
 from domain.class_models import TypeModels, StringsModels
 
+_extension_suffix = extension_suffix
 _paddle_silence = paddle_silence
 _float_time = float_time
+
 LOG_TRACE_FORMAT = "%H:%M:%S"
 EXTRA_FILE_LOGS = []
 project_root: str
@@ -83,7 +85,7 @@ def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str
 
 def basic_exc_logger(message: str, exc_info: Optional[bool] = False) -> None:
     caller_info = get_caller_info()
-    message = f"{get_logging_info(caller_info, DATE_FORMAT)} {message}"
+    message = f"{get_logging_info(caller_info, LOG_TRACE_FORMAT)} {message}"
     if exc_info:
         print(f"{message}\n{sys.exc_info()}")
     else:
@@ -101,11 +103,10 @@ def log_temp_process(project_base: str) -> logging.Logger:
 
     formatter = logging.Formatter(fmt="%(asctime)s:%(msecs)d %(filename)s:%(lineno)d: %(message)s", datefmt=LOG_TRACE_FORMAT)
 
-    module_name = caller_info.removesuffix(".py")
-    log_path = os.path.join(project_base, f"{module_name}_log.txt")
+    ext_indx = caller_info.rindex(".")
+    log_path = os.path.join(project_base, "safe_temp", f"{caller_info[:ext_indx]}_temp_log.txt")
 
     file_handler = logging.FileHandler(log_path, mode="w", encoding=TypeModels.UTF8.value)
-    
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
     file_handler._temp_process_handler = True  # type: ignore[attr-defined]
@@ -132,7 +133,7 @@ def intercept_paddle_logs():
         sys.stderr.write = original_write
 
 def log_simple(msg: str):
-    log_info = get_logging_info(get_caller_info(), DATE_FORMAT)
+    log_info = get_logging_info(get_caller_info(), LOG_TRACE_FORMAT)
     print(f"{log_info} {msg}")
 
 class TiempoFilter(logging.Filter):

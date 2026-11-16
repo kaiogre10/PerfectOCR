@@ -4,12 +4,13 @@ import logging
 from core.assets.patterns import extension_suffix
 from collections.abc import Iterable
 
-KindSearch = Literal["filename", "no_extensions", "extensions", "reference"]
+KindSearch = Literal["filename", "no_extensions", "extensions", "prefix", "subfix"] | None
 
 filename_search = "filename"
 no_extensions_search  = "no_extensions"
 extensions_search = "extensions"
-reference_search = "reference"
+prefix_search = "prefix"
+subfix_search = "subfix"
 
 _extension_suffix = extension_suffix
 project_root: Optional[str] = None
@@ -23,7 +24,7 @@ def set_project_root(PROJECT_ROOT: str):
 def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] = None, kind_search: KindSearch | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
     """
     Busca objetivos especificos en el sistema de carpetas del proyecto, dentro de un marco delimitado y arbitrario.
-    NONE ES UN RESULTADO VALIDO Y REPRESENTA UN ESTADO SEPARADO DE FALSE Y TRUE
+    ``NONE`` ES UN RESULTADO VALIDO Y REPRESENTA UN ESTADO SEPARADO DE FALSE Y TRUE.
     Distringue entre busqueda de directorios, archivos por nombre con/sin extension, nombres prefijos, *subfijos (nombre sin extesion), referencias (nombres incompletos, *fuzzy) y formato.
     *están en fase Beta.
 
@@ -35,9 +36,10 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
         ``kind_search`` (KindSearch | None, optional): Indicador especial que define el comportamiento y tipo de busqueda para los objetives:.
             ``None`` (None): Tipo de busqueda valida, y general que el motor infiere según el resto de los parametro solicitados.
             ``filename`` (str, filename): aplica fullmatch de nombres.
+            ``no_extensions``:
             ``extensions``: busqueda por extensiones de archivos, pueden ser puras extesiones o archivos con extensiones.
-            ``reference``: Busqueda por referencia de nombre, tipo fuzzy/regex o matcheos internos.
-            ``prefix``: Por inicio del nombre.
+            ``prefix``: Busqieda por referencia del inicio del nombre.
+            ``subfix``: Busqieda por referencia del finel del nombre SIN FORMATO/EXTENSION.
 
         ``skip_names``(Iterable[str] | None, optional): Lista o Tupla de excepciones en la búsqueda, su significado semantico depende completamente de kind_search, es disjunto de objetives.
 
@@ -66,8 +68,8 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
         if not all(isinstance(x, (list, tuple)) for x in (objetives, skip_names)):
             raise TypeError("Todos los argumentos deben ser list o tuple")
 
-        elif all(names not in objetives for names in skip_names):
-            raise ValueError("REPETICIONES ENTRE OMISIONES Y BUSQUEDAS")
+        elif not all(names not in objetives for names in skip_names):
+            raise ValueError(f"REPETICIONES ENTRE OMISIONES Y BUSQUEDAS")
 
         elif not isinstance(objetives, tuple):
             objetives: Tuple[str, ...] = tuple(objetives)
@@ -100,17 +102,15 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
         logger.warning(f"RUTA INVALIDA: {search_dir}")
         return []
     
-    logger.warning(f"SEARCH DIR: {search_dir}")
-
     search_type = _call_kind_and_data_search(kind_search)
-
+    
     results = _locate_and_index_targets(search_dir, search_type, objetives, skip_names)
     
     if parent_include is not None and parent_include:
         results.append(search_dir)
     return results
 
-def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool], bool], objetives: Tuple[str, ...], skip_names: Tuple[str, ...]) -> List[str]:
+def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool], Optional[str]], objetives: Tuple[str, ...], skip_names: Tuple[str, ...]) -> List[str]:
     skip_paf, skip_ext, extensions = _get_exceptions_state(objetives, skip_names, search_type[0])
     if skip_paf and skip_ext:
         logger.warning("MISMO ESTAOD")
@@ -118,6 +118,7 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
 
     valid_dirs: List[str] = []
     referencial_search = search_type[1]
+    
     for dirpath, dirnames, filenames in os.walk(search_dir):
         if not extensions:
             for dir in skip_names:
@@ -131,9 +132,13 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
 
         for filename in filenames:
             if referencial_search:
-                if filename.startswith(objetives):
+                if referencial_search == prefix_search and filename.startswith(objetives):
                     valid_dirs.append(os.path.join(dirpath, filename))
-                continue
+                    continue
+                    
+                # elif referencial_search == subfix_search and filename.endswith(_extension_suffix.sub(objetives, "")):
+                #     valid_dirs.append(os.path.join(dirpath, filename))
+                #     continue
 
             if skip_paf and filename in skip_names:
                 filenames.remove(filename)
@@ -149,7 +154,7 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
 
             elif filename in objetives:
                 valid_dirs.append(os.path.join(dirpath, filename))
-
+                
             else:
                 continue
 
@@ -188,7 +193,6 @@ def _get_exceptions_state(objetive: Tuple[str, ...], skip_name: Tuple[str, ...],
         else:
             skip_paf = True
             skip_ext = False
-
     else:
         skip_paf = False
         skip_ext = False
@@ -198,12 +202,12 @@ def _get_exceptions_state(objetive: Tuple[str, ...], skip_name: Tuple[str, ...],
 def validate_files(paths: List[str]):
     return all(os.path.exists(dir) for dir in paths)
 
-def _call_kind_and_data_search(kind_search: Optional[str] | None = None) -> Tuple[Optional[bool], bool]:
-    with_extensions: Optional[bool] | None = None
-    referencial_search = False
+def _call_kind_and_data_search(kind_search: Optional[str] = None) -> Tuple[Optional[bool], Optional[bool]]:
+    with_extensions: Optional[bool] = None
+    referencial_search: Optional[str] = ""
 
     if kind_search is None:         # La orden para extensiones no existe, por lo que hay que inferir, ya que: (None == False) es incorrecto, hay que inferir el tipo de busqueda
-        with_extensions = None
+        pass
     
     elif kind_search == extensions_search:  # Aquí se solicitaron extensiones explicitamente, entonces el tipo de busqueda es por extension de archivo
         with_extensions = True
@@ -213,13 +217,15 @@ def _call_kind_and_data_search(kind_search: Optional[str] | None = None) -> Tupl
 
     elif kind_search == filename_search:       # Explicitamente se solicito busqueda de archivos (todavia se analiza la posibilidad con/sin extensiones)
         with_extensions = False
-
-    elif kind_search == reference_search:       # Se solicitó un tipo de busqueda especial por referencias de nombres incompletas
+    
+    elif kind_search == prefix_search:  # Se solicitó un tipo de busqueda especial por referencias de nombres incompletas
         with_extensions = False
-        referencial_search = True
+        referencial_search = prefix_search
+    
+    elif kind_search == subfix_search:
+        referencial_search = subfix_search      # Extensions tiene que ser none para no confundir el nombre
 
     else:
         raise ValueError("ERROR EN EL TIPO DE BUSQUEDA, RETORONANDO")  # Tipo de busqueda inválida
     
     return with_extensions, referencial_search
-
