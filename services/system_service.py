@@ -204,9 +204,7 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
         return
 
 def clean_python_cache():
-    dirs = build_from_dir(objetives=["__pycache__"], parent=[PROJECT_ROOT], skip_names=['third_party', 'models', "include", "src", 'documentation', "build"])
-    logger.info(f"{dirs}")
-    assert(dirs)
+    dirs = build_from_dir(objetives=["__pycache__"], parent=[PROJECT_ROOT], skip_names=['third_party', 'models', "include", "src", "documentation", "build"])
     try:
         for dir in dirs:
             shutil.rmtree(dir)

@@ -97,7 +97,7 @@ class ConfigBuilder:
     def specific_deletes(self):
         """Limpia directorios o archivos especificos"""
         components_dir = os.path.join(self.project_root, "bidings")
-        dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], kind_search="no_extensions", skip_names=["third_party", "models", "include", "input", "input2", "input3", "documentation", "libs", "libraries"])
+        dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], kind_search="no_extensions", skip_names=["third_party", "models", "include", "src", "input", "input2", "input3", "documentation", "libs", "libraries"])
         files = build_from_dir(objetives=[".cpp", ".pyd", self.so], parent=[components_dir], kind_search="extensions", skip_names=[".py", ".pyi", ".txt", ".h", ".hpp", ".c", ".pyx", ".pxd"])
 
         build_path = os.path.join(self.project_root, "build")

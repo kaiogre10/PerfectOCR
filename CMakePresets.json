@@ -23,7 +23,6 @@
     {
       "name": "base-windows",
       "hidden": true,
-      "description": "python FIND STRATEGY = LOCATION",
       "inherits": "default"
     },
     {
