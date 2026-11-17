@@ -61,7 +61,7 @@ input2/
 input3/
 output/
 migrations/
-safe_temp/
+safe_temp/*.txt
 CMakeFiles/
 utils/compiled_utils/*.c
 utils/compiled_funcs/*.c

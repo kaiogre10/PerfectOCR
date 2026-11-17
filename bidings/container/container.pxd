@@ -1,6 +1,6 @@
 # bidings/container/container.pxd
 from libc.stddef cimport size_t
-from bidings.compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
+from compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
 
 cdef extern from "buffer_container.hpp":
     cppclass Buffer:
@@ -80,6 +80,7 @@ cdef inline object get_array_view(size_t arr_ptr, const char* dtype, int dims) n
 cdef inline Buffer* recover_class(size_t index, Buffer* cropped_polygons) noexcept:
     if check_null_ptr(cropped_polygons):
         return NULL
+        
     return cropped_polygons.recover_struct(index)
 
 cdef inline size_t get_buffer_at(Buffer* buffer, size_t i) noexcept:

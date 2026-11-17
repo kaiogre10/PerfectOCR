@@ -158,6 +158,10 @@
       "configurePreset": "default"
     },
     {
+      "name": "base-windows",
+      "configurePreset": "default"
+    },
+    {
       "name": "win-oneapi-debug",
       "displayName": "Debug (Windows OneAPI)",
       "configurePreset": "windows-oneapi-debug"

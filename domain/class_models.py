@@ -1,4 +1,5 @@
 from enum import IntEnum, StrEnum, Enum
+from typing import Literal, Optional, Sequence
 
 class SemantiClass(IntEnum):
     NOISE = -1 # Ruido y caracteres especiales en general
@@ -161,3 +162,5 @@ class Workers(StrEnum):
     TABLE_STRUCTURER = "table_structurer"
     MATH_MAX = "math_max"
     COLLECTOR = "collector"
+
+KindSearch: Optional[Sequence[str]] = Literal["filename", "no_extensions", "extensions", "prefix", "subfix"] | None

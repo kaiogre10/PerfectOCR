@@ -22,6 +22,7 @@ if(NOT EXISTS "${LIBRARIES_OUTPUT_DIR}")
 endif()
 
 set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
+
 set(OPENCV_LIB_PATH "${LIBS_DIR}/opencv_dep")
 
 if (WIN32)

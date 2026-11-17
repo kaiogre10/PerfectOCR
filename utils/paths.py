@@ -3,8 +3,7 @@ from typing import List, Optional, Tuple, Literal
 import logging
 from core.assets.patterns import extension_suffix
 from collections.abc import Iterable
-
-KindSearch = Literal["filename", "no_extensions", "extensions", "prefix", "subfix"] | None
+from domain.class_models import KindSearch
 
 filename_search = "filename"
 no_extensions_search  = "no_extensions"
@@ -21,7 +20,7 @@ def set_project_root(PROJECT_ROOT: str):
     global project_root
     project_root = PROJECT_ROOT
 
-def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] = None, kind_search: KindSearch | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
+def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] | None = None, kind_search: KindSearch | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
     """
     Busca objetivos especificos en el sistema de carpetas del proyecto, dentro de un marco delimitado y arbitrario.
     ``NONE`` ES UN RESULTADO VALIDO Y REPRESENTA UN ESTADO SEPARADO DE FALSE Y TRUE.
@@ -42,15 +41,9 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
             ``subfix``: Busqieda por referencia del finel del nombre SIN FORMATO/EXTENSION.
 
         ``skip_names``(Iterable[str] | None, optional): Lista o Tupla de excepciones en la búsqueda, su significado semantico depende completamente de kind_search, es disjunto de objetives.
-
-        La búsqueda parte de un dir_scoope definido cuando search_root es una dirección valida y parent es None;
-        de lo contrario, parent se interpreta como una secuencia de componentes relativos a project_root. Cada elemento de objetives
-        se compara por nombre exacto, excepto cuando with_extensions es
-        verdadero y todos los objetivos tienen formato de extensión; en ese caso
-        se comparan como sufijos de archivo, por ejemplo [".py"].
-
+        
         Los resultados se devuelven en orden inverso al recorrido de os.walk.
-        Si parent_include es verdadero, la ruta del directorio de búsqueda se agrega al final. 
+        Si parent_include es verdadero, la ruta del directorio de búsqueda se agrega al final.
         Por ello, las llamadas que desempaquetan posiciones concretas deben conservar el orden de objetives y la estructura esperada del árbol.
 
         Si la ruta inicial no existe, los objetivos están vacíos o la combinación de filtros es inválida, registra una advertencia y devuelve una lista vacia.
@@ -166,7 +159,7 @@ def _get_exceptions_state(objetive: Tuple[str, ...], skip_name: Tuple[str, ...],
     Decide si hay que filtrar archivos si hay que hacerlo cuales filtrar. Returns: (skip_paf, skip_ext, extensions)
     extensions: 
     """
-    extensions: Optional[bool] | None = (with_extensions is not None and with_extensions) and all(_extension_suffix.fullmatch(ext) for ext in objetive)  # Asegurar que las extensiones sean validas, objetives pasa a ser formato de documento
+    extensions: Optional[bool] = (with_extensions is not None and with_extensions) and all(_extension_suffix.fullmatch(ext) for ext in objetive)  # Asegurar que las extensiones sean validas, objetives pasa a ser formato de documento
     if skip_name:       # Si hay que hacer excepciones paths and files 'paf'
         skip = all(_extension_suffix.fullmatch(ext) for ext in skip_name)  # Si las excepciones de extensiones son validas, pasa a ser formato de documento.
         if extensions:               # Hay que trabajar con extensiones, esta validación esconde la verdadera validacion 'if extensions is not None'

@@ -104,7 +104,6 @@ class ConfigBuilder:
         if os.path.isdir(build_path):
             dirs = dirs + [build_path]
 
-        basic_exc_logger(f"FILES: {files}, DIRS: {dirs}")
         return dirs, files
 
     @cached_property

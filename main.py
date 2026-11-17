@@ -6,7 +6,8 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-# from config import config_env # type: ignore
+import safe_temp.config_env
+del safe_temp
 
 from services import log_service
 log_service.set_project_root(PROJECT_ROOT)

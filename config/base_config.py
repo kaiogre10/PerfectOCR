@@ -2,7 +2,7 @@ from functools import cached_property
 import os
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from core.assets.assets import ELEMENTAL_WORKER, OCR_WORKERS, MIN_WORKERS
-from services.log_service import log_simple
+from services.log_service import log_simple, basic_exc_logger
 from config.config_loader import load_config
 from config.config_logger import ConfigLogger
 from services import system_service
@@ -86,21 +86,17 @@ class BaseConfig:
     def env_config(self) -> Dict[str, str]:
         _env_config = self.config.get("env_config", {})
         oneapi_root = os.environ.get('ONEAPI_ROOT', "")
-
-        _env_config['TBBROOT'] = os.path.join("tbb", "latest", "bin")
-        _env_config['IPPROOT'] = os.path.join("ipp", "latest", "bin")
+        if not os.path.exists(oneapi_root):
+            basic_exc_logger(f"NO SE DETECTÓ ONE API ROOT: '{oneapi_root}'")
+        # _env_config['TBBROOT'] = os.path.join("tbb", "latest", "bin")
+        # _env_config['IPPROOT'] = os.path.join("ipp", "latest", "bin")
 
         if self.compile_cython:
             compiler_path = os.path.join("compiler", "latest", "bin")
             if os.path.isdir(oneapi_root) and os.path.isdir(compiler_path):
                 if ".dll" in system_service.SO.keys():
                     compiler_intel_win = os.path.join(compiler_path, "icx-cl")
-                    _env_config['CC'] = compiler_intel_win
-                    _env_config['CXX'] = compiler_intel_win
                     _env_config['LDSHARED'] = f'{compiler_intel_win} /LD'
-                else:
-                    _env_config['CC'] = os.path.join(compiler_path, "icx")
-                    _env_config['CXX'] = os.path.join(compiler_path, "icpx")
 
                 _env_config['DISTUTILS_USE_SDK'] = '1'
 

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Any, Tuple, List
+from typing import Any, Tuple
 
 def create_new_array(rows: int, cols: int, depth: int, raw_dtype: bytes) -> int: ...
 def get_array(arr_ptr: int, dtype_raw: bytes, dims: int) -> np.ndarray[Any, Any]: ...
