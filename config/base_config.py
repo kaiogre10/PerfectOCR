@@ -1,5 +1,4 @@
 from functools import cached_property
-import os
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
 from core.assets.assets import ELEMENTAL_WORKER, OCR_WORKERS, MIN_WORKERS
 from services.log_service import log_simple, basic_exc_logger
@@ -7,6 +6,7 @@ from config.config_loader import load_config
 from config.config_logger import ConfigLogger
 from services import system_service
 from domain.class_models import Workers, TypeModels
+import os
 
 _elemental_workers = ELEMENTAL_WORKER
 _ocr_workers = OCR_WORKERS     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera

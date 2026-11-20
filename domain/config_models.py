@@ -81,8 +81,6 @@ class ImgLoadOutputs(ConfigWithNumpy):
     bin_full_img: bool
     angle_corrected: bool
     cropped_img: bool
-    final_polys: bool
-    discarded_polys: bool
     opened: bool
 
 class PreprocessingOutputs(ConfigWithNumpy):

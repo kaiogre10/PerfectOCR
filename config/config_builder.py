@@ -96,15 +96,40 @@ class ConfigBuilder:
     @property
     def specific_deletes(self):
         """Limpia directorios o archivos especificos"""
-        components_dir = os.path.join(self.project_root, "bidings")
-        dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], kind_search="no_extensions", skip_names=["third_party", "models", "include", "src", "input", "input2", "input3", "documentation", "libs", "libraries"])
-        files = build_from_dir(objetives=[".cpp", ".pyd", self.so], parent=[components_dir], kind_search="extensions", skip_names=[".py", ".pyi", ".txt", ".h", ".hpp", ".c", ".pyx", ".pxd"])
+        bidings_dir = os.path.join(self.project_root, "bidings")
+        
+        preserve_ext = [".py", ".pyi", ".txt", ".h", ".hpp", ".pyx", ".pxd", ".txt", ".cmake", ".json"]
+        cython_thrash = [".cpp", ".pyd", self.so, ".c"]
 
+        if not os.path.isdir(bidings_dir):
+            raise FileNotFoundError(f"NO ES UNA RUTA VALIDA: '{bidings_dir}'")
+
+        cython_plus_bins = build_from_dir(objetives=cython_thrash, parent=[bidings_dir], kind_search="extensions", skip_names=preserve_ext)
+        if not cython_plus_bins:
+            pass
+
+        files = cython_plus_bins
+
+        if self.config.compile_cython:
+            comp_func_dir = os.path.join(self.project_root, "utils", "compiled_funcs")
+            if not os.path.isdir(comp_func_dir):
+                raise FileNotFoundError(f"NO ES UNA RUTA VALIDA: '{comp_func_dir}'")
+
+            cython_bins = build_from_dir(objetives=cython_thrash, parent=[comp_func_dir], kind_search="extensions", skip_names=preserve_ext)
+            if not cython_bins:
+                pass
+
+            files = files + cython_plus_bins
+
+        dirs = build_from_dir(objetives=["__pycache__"], parent=[self.project_root], kind_search="no_extensions", skip_names=["third_party", "cmake", "models", "include", "src", "install", "input", "input2", "input3", "documentation", "libs"])
         build_path = os.path.join(self.project_root, "build")
         if os.path.isdir(build_path):
             dirs = dirs + [build_path]
 
-        return dirs, files
+        libraries_path = os.path.join(self.project_root, "libraries")
+        if os.path.isdir(libraries_path):
+            dirs = dirs + [libraries_path]
+        return [], []
 
     @cached_property
     def _models_config(self) -> Dict[str, Any]:
@@ -212,9 +237,6 @@ class ConfigBuilder:
             geometry_detect["morph_kernel"] = configure_kernel(morph_kernel[0], morph_kernel[1])
             geometry_detect["bboxes_type"] = self.config.pipeline_dtypes.get("int32_type", b"")
             geometry_detect["centroids_type"] = self.config.pipeline_dtypes.get("float32_type", b"")
-        
-        elif Workers.POLYGON_EXTRACTOR in image_workers:
-            self.config.workers_order[StageKeys.IMGPREP_KEY].remove(Workers.POLYGON_EXTRACTOR)
                         
         enabled_outputs = self.enabled_outputs.get("image_preparation_outputs", {})
         _img_prep_config.update(enabled_outputs)

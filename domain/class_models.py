@@ -1,5 +1,4 @@
 from enum import IntEnum, StrEnum, Enum
-from typing import Literal, Optional, Sequence
 
 class SemantiClass(IntEnum):
     NOISE = -1 # Ruido y caracteres especiales en general
@@ -148,7 +147,6 @@ class Workers(StrEnum):
     ANGLE_CORRECTOR = "angle_corrector"
     INK_ENHANCEMENT = "ink_enhancement"
     GEOMETRY_DETECTOR = "geometry_detector"
-    POLYGON_EXTRACTOR = "polygon_extractor"
     MOIRE = "moire"
     SP = "sp"
     GAUSS = "gauss"
@@ -163,4 +161,96 @@ class Workers(StrEnum):
     MATH_MAX = "math_max"
     COLLECTOR = "collector"
 
-KindSearch: Optional[Sequence[str]] = Literal["filename", "no_extensions", "extensions", "prefix", "subfix"] | None
+# 1. Subclase mínima de str en C (__slots__ = ()): 0 bytes extra por atributo,
+# class _MetaStr(str):
+#     __slots__ = ()
+#     def __bool__(self) -> NoReturn:
+#         raise TypeError("No se permite evaluación booleana; usa 'is None' o 'is not None'.")
+
+#     def __eq__(self, other: object) -> bool:
+#         if isinstance(other, str):
+#             return str.__eq__(self, other)
+#         raise TypeError("KindofSearch solo admite comparaciones de igualdad contra str.")
+
+#     def __ne__(self, other: object) -> bool:
+#         if isinstance(other, str):
+#             return str.__ne__(self, other)
+#         raise TypeError("KindofSearch solo admite comparaciones de desigualdad contra str.")
+
+#     __hash__ = str.__hash__
+
+# class _KindofMeta(type):
+#     def __bool__(cls) -> NoReturn:
+#         raise TypeError("Evaluación booleana prohibida sobre KindofSearch.")
+
+#     def __eq__(cls, other: object) -> bool:
+#         if other is cls:
+#             return True
+#         if isinstance(other, str):
+#             return False
+#         raise TypeError("KindofSearch solo admite comparaciones contra sí mismo o str.")
+
+#     def __ne__(cls, other: object) -> bool:
+#         return not cls.__eq__(other)
+
+#     def __hash__(cls) -> int:
+#         return type.__hash__(cls)
+
+#     def __setattr__(cls, name: str, value: object) -> NoReturn:
+#         raise AttributeError("KindofSearch es inmutable.")
+
+#     def __delattr__(cls, name: str) -> NoReturn:
+#         raise AttributeError("KindofSearch es inmutable.")
+
+#     @property
+#     def OP_1(cls) -> _MetaStr:
+#         return _POOL[0]
+
+#     @property
+#     def OP_2(cls) -> _MetaStr:
+#         return _POOL[1]
+
+#     @property
+#     def OP_3(cls) -> _MetaStr:
+#         return _POOL[2]
+
+#     @property
+#     def OP_4(cls) -> _MetaStr:
+#         return _POOL[3]
+
+#     @property
+#     def OP_5(cls) -> _MetaStr:
+#         return _POOL[4]
+
+# class KindofSearch(metaclass=_KindofMeta):
+#     """Dominio cerrado e inmutable de estados de búsqueda sin instanciación.
+
+#     Expone 5 constantes preasignadas (`OP_1` a `OP_5`) respaldadas por una
+#     subclase mínima de `str` en C, más la propia clase como centinela y `None`
+#     como sexto estado base válido.
+
+#     Reglas del contrato en tiempo de ejecución:
+#         - **Cero alocaciones:** No es instanciable (`KindofSearch()` lanza `TypeError`).
+#           Sus propiedades devuelven referencias preasignadas en memoria.
+#         - **Inmutabilidad estricta:** Cualquier intento de asignación o borrado de
+#           atributos lanza `AttributeError`.
+#         - **Sin evaluación booleana:** Ejecutar `bool(x)` o `if x:` lanza `TypeError`.
+#           La existencia del estado debe comprobarse exclusivamente por identidad
+#           (`is None` o `is not None`).
+#         - **Comparaciones acotadas:** Los operadores `==` y `!=` solo operan contra
+#           cadenas (`str`) o la propia clase; cualquier otro tipo (`int`, `bool`,
+#           `None`, etc.) lanza `TypeError`.
+#     """
+#     __slots__ = ()
+#     def __new__(cls) -> NoReturn:
+#         raise TypeError("KindofSearch no es instanciable; usa sus propiedades o None.")
+
+# Preasignación única al cargar el módulo
+# _POOL: tuple[_MetaStr, ...] = (
+#     _MetaStr("filename"),
+#     _MetaStr("no_extensions"),
+#     _MetaStr("extensions"),
+#     _MetaStr("prefix"),
+#     _MetaStr("subfix"),
+# )
+# type SearchKind = Literal["filename", "no_extensions", "extensions", "prefix", "subfix"]

@@ -1,12 +1,10 @@
 # app/models_builder.py
 import logging
-# from services.log_service import intercept_paddle_logs
 import threading
 import time
 from typing import Dict, Any, Optional
 from core.factory.model_factory import MatrixFactory
 from utils.word_finder import WordFinder
-# with intercept_paddle_logs():
 from paddleocr import PaddleOCR # type: ignore
 from domain.class_models import Params
 from utils.paths import validate_files
@@ -20,13 +18,13 @@ class ModelsBuilder:
     def __init__(self):
         try:
             if ModelsBuilder._instance is not None:
-                raise Exception(f"{self.__class__.__name__} es un singleton. Usa get_instance()")
+                raise AttributeError(f"{self.__class__.__name__} es un singleton. Usa get_instance()")
             self._detection_engine = None
             self._recognition_engine = None
             self._shared_engine = None
             self._word_finder = None
         except Exception as e:
-            logger.error(f"Error Manager: '{e}'", exc_info=True)
+            logger.exception(f"Error Manager: '{e}'", exc_info=True)
     
     @classmethod
     def get_instance(cls):
@@ -47,7 +45,7 @@ class ModelsBuilder:
             test_wf_model = wf_config.get("test_wf_model")
                         
             if test_wf_model:
-                logger.warning(f"TESTEANDO WORD FINDER")
+                logger.warning("TESTEANDO WORD FINDER")
                 if self._activate_wf(wf_config):
                     return True
             
@@ -140,13 +138,13 @@ class ModelsBuilder:
                 self._word_finder = WordFinder(config=config, motor=factory)
                 return True
         except ModuleNotFoundError as e:
-            logger.error(f"NO SE PUDO INCIAR WORD FINDER: {e}", exc_info=True)
+            logger.exception(f"NO SE PUDO INCIAR WORD FINDER: {e}", exc_info=True)
         self._word_finder = None
         return False
         
     def edit_model_params(self, config: Dict[str, Any]):
         if MatrixFactory.edit_pickle_vals(config):
-            logger.info(f"PICLKLE EDITADO CON ÉXITO")
+            logger.info("PICLKLE EDITADO CON ÉXITO")
             
         if config.get("test_wf_model"):
             self._activate_wf(config)
@@ -167,5 +165,5 @@ class ModelsBuilder:
         try:
             return MatrixFactory(config)
         except Exception as e:
-            logger.error(f"NO SE PUDO INICIAR LA FACTORY DE MODELOS: {e}", exc_info=True)
+            logger.exception(f"NO SE PUDO INICIAR LA FACTORY DE MODELOS: {e}", exc_info=True)
         return None

@@ -1,7 +1,7 @@
 source /opt/intel/oneapi/setvars.sh <-- OneAPI Linux
 &"C:/Program Files (x86)/Intel/oneAPI/setvars.bat"   <-- OneAPI Windows
 
-conda create -n intel --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python=3.12.5 numpy=1.26.4 pip conda scipy intel-opencl-rt ipp dpcpp-cpp-rt cython mkl icc_rt mkl-dpcpp tbb4py scikit-image numexpr ocl-icd-system
+conda create -n intel --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python=3.12 numpy=1.26.4 cython=3.3.0 pip conda scipy intel-opencl-rt ipp dpcpp-cpp-rt mkl icc_rt mkl-dpcpp tbb4py scikit-image numexpr ocl-icd-system
 
 conda install python-lmdb fire fonttools beautifulsoup4 soupsieve lmdb matplotlib contourpy cycler kiwisolver pyparsing pyclipper python-docx lxml rapidfuzz shapely termcolor pythran pydantic<-- ganarle a paddleocr las librerias y reducir las variaciones
 
@@ -31,5 +31,8 @@ cmake -S . -B build -G Ninja
 cmake --build build --parallel
 
 cd ../
+cmake -S . --preset linux-oneapi
+cmake --build --preset linux-oneapi-release
+
 cmake -S . --preset windows-oneapi-release
 cmake --build --preset linux-oneapi-release

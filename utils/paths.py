@@ -1,9 +1,8 @@
 import os
-from typing import List, Optional, Tuple, Literal
+from typing import List, Optional, Tuple
 import logging
 from core.assets.patterns import extension_suffix
 from collections.abc import Iterable
-from domain.class_models import KindSearch
 
 filename_search = "filename"
 no_extensions_search  = "no_extensions"
@@ -20,7 +19,7 @@ def set_project_root(PROJECT_ROOT: str):
     global project_root
     project_root = PROJECT_ROOT
 
-def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] | None = None, kind_search: KindSearch | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
+def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] | None = None, kind_search: Optional[str] | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
     """
     Busca objetivos especificos en el sistema de carpetas del proyecto, dentro de un marco delimitado y arbitrario.
     ``NONE`` ES UN RESULTADO VALIDO Y REPRESENTA UN ESTADO SEPARADO DE FALSE Y TRUE.
@@ -92,9 +91,8 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
         search_dir = os.path.join(dir_scoope, *parent)
 
     if not os.path.isdir(search_dir):
-        logger.warning(f"RUTA INVALIDA: {search_dir}")
-        return []
-    
+        raise ValueError(f"RUTA INVALIDA: {search_dir}")
+        
     search_type = _call_kind_and_data_search(kind_search)
     
     results = _locate_and_index_targets(search_dir, search_type, objetives, skip_names)
@@ -114,6 +112,8 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
     
     for dirpath, dirnames, filenames in os.walk(search_dir):
         if not extensions:
+            # if skip_paf:
+            #     dirnames[:] = [d for d in dirnames if d not in skip_names]
             for dir in skip_names:
                 if skip_paf and dir in dirnames:
                     dirnames.remove(dir)
@@ -137,7 +137,7 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
                 filenames.remove(filename)
                 continue
 
-            if skip_ext and filename.endswith(skip_names):
+            if skip_ext and filename.endswith(skip_names):  # extensiones, diferentes de los subfijos
                 filenames.remove(filename)
                 continue
 
@@ -195,7 +195,7 @@ def _get_exceptions_state(objetive: Tuple[str, ...], skip_name: Tuple[str, ...],
 def validate_files(paths: List[str]):
     return all(os.path.exists(dir) for dir in paths)
 
-def _call_kind_and_data_search(kind_search: Optional[str] = None) -> Tuple[Optional[bool], Optional[bool]]:
+def _call_kind_and_data_search(kind_search: Optional[str] = None) -> Tuple[Optional[bool], Optional[str]]:
     with_extensions: Optional[bool] = None
     referencial_search: Optional[str] = ""
 
@@ -219,6 +219,6 @@ def _call_kind_and_data_search(kind_search: Optional[str] = None) -> Tuple[Optio
         referencial_search = subfix_search      # Extensions tiene que ser none para no confundir el nombre
 
     else:
-        raise ValueError("ERROR EN EL TIPO DE BUSQUEDA, RETORONANDO")  # Tipo de busqueda inválida
+        raise ValueError(f"ERROR EN EL TIPO DE BUSQUEDA: '{kind_search}', RETORONANDO")  # Tipo de busqueda inválida
     
     return with_extensions, referencial_search

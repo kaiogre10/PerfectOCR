@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 def init_system(project_root: str):
     global PROJECT_ROOT, SO
     PROJECT_ROOT = project_root  # type: ignore
-    so_cap = get_so()
-    SO = get_so_bin_ext(so_cap.capitalize())
+    so_ext = get_so()
+    SO = get_so_bin_ext(so_ext.upper())
 
 def set_system_paths(config: Dict[str, List[str]]):
     global output_paths, no_del_output
@@ -320,6 +320,7 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
     return files_name_dir if not files_in_dir else files_in_dir
 
 def get_so():
+    """Devuelve el nombre de SO: Linux/Windows"""
     return platform.system()
 
 def get_so_bin_ext(so: str) -> Dict[str, str]:
@@ -347,25 +348,31 @@ def prune_project(target_dirs: List[str], target_files: List[str]):
             for dir in target_dirs:
                 try:
                     shutil.rmtree(dir)
-                    logger.warning(f"DIRECTORIO ELIMINADO: {dir}")
-                except PermissionError as e:
-                    raise(f"ERROR DE PERMISO AL PURGAR {dir}: {e}")
+                except PermissionError:
+                    logger.exception(f"ERROR DE PERMISO AL PURGAR {dir}")
+                    raise PermissionError(f"{dir}")
                 
-                except OSError as e:
-                    raise(f"ERROR EN EL SISTEMA AL PURGAR {dir}: {e}")
+                except OSError as o:
+                    logger.exception(f"ERROR EN EL SISTEMA AL PURGAR {dir}: {o}", exc_info=True)
+                    raise OSError(f"{dir}")
                 
-                logger.debug("DIRECTORIOS ELIMINADOS CON ÉXITO")
+                logger.warning(f"DIRECTORIO ELIMINADO: {dir}")
 
             for file in target_files:
                 try:
                     os.remove(file)
-                    logger.warning(f"ARCHIVO ELIMINADO. {file}")
-                
                 except PermissionError as e:
-                    raise(f"ERROR DE PERMISOS AL PURGAR ARCHIVO: {file}: {e}")
+                    logger.exception(f"ERROR DE PERMISOS AL PURGAR ARCHIVO: {file}: {e}")
+                    raise PermissionError(f"{file}")
+                
                 except OSError as e:
-                    raise(f"ERROR EN EL SISTEMA AL PURGAR ARCHIVO: {file}: {e}")
-                logger.info("ARCHIVOS ELIMINADOS CON ÉXITO")
+                    logger.exception(f"ERROR EN EL SISTEMA AL PURGAR ARCHIVO: {file}: {e}")
+                    raise OSError(f"{file}")
+                
+                logger.warning(f"ARCHIVO ELIMINADO. {file}")
+                
+            logger.info("ARCHIVOS ELIMINADOS CON ÉXITO")
         
     except Exception as e:
         logger.exception(f"ERROR EN LA LIMPIEZA DE ARCHIVOS: {e}", exc_info=True)
+        raise

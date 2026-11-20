@@ -1,5 +1,5 @@
 # PerfectOCR/third_party/opencv_dep/CMakeLists.txt
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.25)
 project(opencv_dep CXX)
 
 if(NOT DEFINED DEP_DEPLOY_DIR)

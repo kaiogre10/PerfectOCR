@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.23)
+# components/workers/CMakeLists.txt
+cmake_minimum_required(VERSION 3.25)
 
 add_library(workers
     src/image_loader.cpp

@@ -8,8 +8,10 @@ if PROJECT_ROOT not in sys.path:
 
 import safe_temp.config_env
 del safe_temp
+if
 
 from services import log_service
+logger = log_service.log_temp_process(PROJECT_ROOT)
 log_service.set_project_root(PROJECT_ROOT)
 
 from config.config_api import ConfigAPI
@@ -21,16 +23,16 @@ config_service = ConfigAPI(PROJECT_ROOT)
 system_paths = config_service.system_paths
 
 if config_service.test_config:
-    log_service.log_simple("TESTING CONFIG FINALIZANDO")
+    sys.exit("TESTING CONFIG FINALIZANDO")
+
+system_service.set_system_paths(system_paths)
+if config_service.cleanup_project:
+    logger.debug("inicio de limpieaza profunda")
+    system_service.cleanup_project(execp=config_service.specific_deletes)
+    logger.debug("PROYECTO LIMPIO DE BINARIOS")
     sys.exit()
 
 os.environ.update(config_service.env_config)
-system_service.set_system_paths(system_paths)
-if config_service.cleanup_project:
-    system_service.cleanup_project(execp=config_service.specific_deletes)
-    log_service.log_simple("CLEAN UP ACTIVADO, FINALIZANDO")
-    sys.exit()
-
 if config_service.compile_cython:
     from config import setup
     setup.build_extensions(system_paths)
@@ -49,7 +51,6 @@ from app.main_builder import MainBuilder
 import services.output_service as output_service
 
 def main():
-    log_service.setup_logging(config_service.log_params)
     workflow_report = system_service.count_and_plan(config_service.input_paths) # type: ignore
     if not workflow_report and not config_service.no_activate_modules:
         system_service.cleanup_project_cache()

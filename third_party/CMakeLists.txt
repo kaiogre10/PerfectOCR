@@ -1,31 +1,22 @@
-# PerfectOCR/third_party/CMakeLists.txt
-cmake_minimum_required(VERSION 3.23)
-project(third_party CXX)
+cmake_minimum_required(VERSION 3.25)
+project(third_party C CXX)
+
+# 1. Cargar políticas/versiones/flags ANTES de project()
+set(_PROJECT_RULES_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/GlobalCompiler.cmake")
+set(_SHARED_CACHE_CMAKE  "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/CacheParser.cmake")
+
+if(EXISTS "${_PROJECT_RULES_CMAKE}")
+    include("${_PROJECT_RULES_CMAKE}")
+endif()
 
 if(NOT DEFINED ENV{CONDA_PREFIX})
     message(FATAL_ERROR "No hay entorno Conda activo. Actívelo antes de continuar.")
 endif()
 
-if(WIN32 OR CMAKE_HOST_WIN32)
-    if(NOT CMAKE_GENERATOR MATCHES "Visual Studio")
-        set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
-        set(CMAKE_CXX_COMPILER "icx" CACHE STRING "" FORCE)
-    endif()
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /arch:AVX2" CACHE STRING "" FORCE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /arch:AVX2" CACHE STRING "" FORCE)
-else()
-    set(CMAKE_C_COMPILER "icx" CACHE STRING "" FORCE)
-    set(CMAKE_CXX_COMPILER "icpx" CACHE STRING "" FORCE)
-    set(CMAKE_C_FLAGS "-mavx2 -mf16c -mfma" CACHE STRING "" FORCE)
-    set(CMAKE_CXX_FLAGS "-mavx2 -mf16c -mfma" CACHE STRING "" FORCE)
-    set(CMAKE_EXE_LINKER_FLAGS "-L${CONDA_ENV}/lib -Wl,-rpath,${CONDA_ENV}/lib" CACHE STRING "" FORCE)
-    set(CMAKE_SHARED_LINKER_FLAGS "-L${CONDA_ENV}/lib -Wl,-rpath,${CONDA_ENV}/lib" CACHE STRING "" FORCE)
-endif()
-
 get_filename_component(LIBS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../libs" ABSOLUTE)
 file(MAKE_DIRECTORY "${LIBS_ROOT}")
 
-# Autodetección o lista explícita vía -DTHIRD_PARTY_DEPS="opencv_dep;xtensor_dep"
+# Autodetección o lista explícita vía -DTHIRD_PARTY_DEPS="opencv_dep"
 set(THIRD_PARTY_DEPS "" CACHE STRING
     "Dependencias a compilar (vacío = autodetectar subcarpetas con CMakeLists.txt)")
 
@@ -57,11 +48,6 @@ foreach(_dep ${THIRD_PARTY_DEPS})
     set(DEP_INSTALL_DIR "${DEP_SRC_DIR}/install")
     set(DEP_DEPLOY_DIR "${LIBS_ROOT}/${_dep}")
 
-    if(NOT EXISTS "${DEP_SRC_DIR}/CMakeLists.txt")
-        message(WARNING "Saltando ${_dep}: sin CMakeLists.txt")
-        continue()
-    endif()
-
     message(STATUS "PerfectOCR: ── ${_dep} ──")
 
     set(_sentinel "${DEP_INSTALL_DIR}/.done")
@@ -74,7 +60,6 @@ foreach(_dep ${THIRD_PARTY_DEPS})
             COMMAND ${CMAKE_COMMAND}
                     -S "${DEP_SRC_DIR}"
                     -B "${DEP_BUILD_DIR}"
-                    -G Ninja
                     -DDEP_NAME=${DEP_NAME}
                     -DDEP_SRC_DIR=${DEP_SRC_DIR}
                     -DDEP_BUILD_DIR=${DEP_BUILD_DIR}
@@ -111,7 +96,7 @@ foreach(_dep ${THIRD_PARTY_DEPS})
         file(WRITE "${_sentinel}" "ok\n")
     endif()
 
-    # Redeploy siempre (barato: copia de archivos ya compilados)
+    # Redeploy siempre
     message(STATUS "${_dep}: deploy -> ${DEP_DEPLOY_DIR}")
     execute_process(
         COMMAND ${CMAKE_COMMAND}

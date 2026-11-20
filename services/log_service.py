@@ -1,21 +1,24 @@
 # services/logs_service.py
 import os
 import sys
-from contextlib import contextmanager
+# from contextlib import contextmanager
 from datetime import datetime
 import logging
-from core.assets.patterns import float_time, paddle_silence, extension_suffix
+from core.assets.patterns import float_time
 import inspect
 from typing import Tuple, Optional, Dict, Any
 from domain.class_models import TypeModels, StringsModels
 
-_extension_suffix = extension_suffix
-_paddle_silence = paddle_silence
+# _paddle_silence = paddle_silence
 _float_time = float_time
 
 LOG_TRACE_FORMAT = "%H:%M:%S"
 EXTRA_FILE_LOGS = []
 project_root: str
+
+def set_project_root(PROJECT_ROOT: str):
+    global project_root
+    project_root = PROJECT_ROOT
 
 def _now():
     return datetime.now()
@@ -30,10 +33,6 @@ def get_caller_info() -> Tuple[str, str]:
 
 def get_logging_info(get_caller_inf: Tuple[str, str], date_format: str) -> str:
     return f"{get_time_stamp(_now(), date_format)} {get_caller_inf[0]}:{get_caller_inf[1]} -"
-
-def set_project_root(PROJECT_ROOT: str):
-    global project_root
-    project_root = PROJECT_ROOT
 
 def setup_logging(config: Dict[str, str]) -> None:
     """
@@ -91,9 +90,14 @@ def basic_exc_logger(message: str, exc_info: Optional[bool] = False) -> None:
     else:
         print(f"{message}")
 
-def log_temp_process(project_base: str) -> logging.Logger:
+def log_temp_process(project_base: Optional[str] = None) -> logging.Logger:
     caller_info = get_caller_info()[0]
-
+    if project_base is None or not os.path.isdir(project_base):
+        if not project_root:
+            raise TypeError(f"NO SE INICIALIZARON NI PROJECT ROOT: '{project_root}, NI PROJECT_BASE: '{project_base}'")
+        
+        project_base = project_root
+        
     logger = logging.getLogger(caller_info)
 
     for handler in logger.handlers[:]:
@@ -112,25 +116,25 @@ def log_temp_process(project_base: str) -> logging.Logger:
     file_handler._temp_process_handler = True  # type: ignore[attr-defined]
 
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.WARNING)
     console_handler.setFormatter(formatter)
     console_handler._temp_process_handler = True  # type: ignore[attr-defined]
 
     logger.setLevel(logging.DEBUG)
-    logger.propagate = False
+    logger.propagate = True
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
     return logger
     
-@contextmanager
-def intercept_paddle_logs():
-    original_write = sys.stderr.write
-    try:
-        sys.stderr.write = lambda text: original_write(_paddle_silence.sub("", text))
-        yield
-    finally:
-        sys.stderr.write = original_write
+# @contextmanager
+# def intercept_paddle_logs():
+#     original_write = sys.stderr.write
+#     try:
+#         sys.stderr.write = lambda text: original_write(_paddle_silence.sub("", text))
+#         yield
+#     finally:
+#         sys.stderr.write = original_write
 
 def log_simple(msg: str):
     log_info = get_logging_info(get_caller_info(), LOG_TRACE_FORMAT)

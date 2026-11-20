@@ -1,6 +1,6 @@
 # domain/data_formatter.py
 import logging
-from bidings import arrays
+from bidings import arrays, image
 from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey, BoundingBoxesKey, CentroidsKey
 import numpy as np
 import dataclasses
@@ -9,7 +9,6 @@ import pandas as pd # type: ignore
 from services.log_service import get_caller_info
 from domain.class_models import SemantiClass
 from domain.buffer_handler import ImageBuffer, ArrayBuffer
-from bidings import image
 from utils.text_utils import set_ids
 
 image_type = b"uint8"

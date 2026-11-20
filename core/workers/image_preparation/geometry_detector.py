@@ -7,10 +7,8 @@ from app.models_builder import ModelsBuilder
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import binarice_img, morph_operations
-from utils.text_utils import set_ids
-from domain.buffer_handler import ArrayBuffer, ImageBuffer
+from domain.buffer_handler import ArrayBuffer
 from bidings.arrays import compute_polygons_geometry
-from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -92,54 +90,32 @@ class GeometryDetector(ImagePrepAbstractWorker):
             np.copyto(dst=list_bbox, src=polygons, casting='unsafe')
             
             c_centroids, c_bboxes, crop_ptr = compute_polygons_geometry(arr_ptr, image_ptr, self.padding)
+            manager.free_buffer(arr_ptr)    # Liberar imagen completa inmediatamente
 
-            manager.free_buffer(arr_ptr)
-            if not c_bboxes or not c_centroids:
+            if not c_bboxes or not c_centroids or not crop_ptr:
                 if not manager.delete_buffers([image_ptr, c_bboxes]):
                     return False
 
             logger.info(f"PUNTEROS A LAS CROPPED: {crop_ptr}")
-            # if self.output:
-            #     for i, ptr in enumerate(crop_ptr):
-            #         cropped_img = ImageBuffer(ptr).data
-            #         name = set_ids(i)
-            #         save_croped_image(name, cropped_img)
-                
-            list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
-            list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
+                            
+            # list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
+            # list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
 
-            logger.warning(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}, BBOXES: {list_reshape_bbox.shape}, CENTROIDES: SHAPE: {list_centroids.shape}")
-
-            # time_nmpy = time.perf_counter()
-            # list_bboxes = np.array(polygons, dtype=self.bboxes_type, order='C')          # (N, 4, 2)
-
-            # xs = list_bboxes[:, :, 0]                                     # (N, 4)
-            # ys = list_bboxes[:, :, 1]                                     # (N, 4)
-
-            # all_bboxes = np.stack([xs.min(axis=1), ys.min(axis=1), xs.max(axis=1), ys.max(axis=1)], axis=1, dtype=self.bboxes_type) # (N, 4)
-            # centroids = np.stack([xs.mean(axis=1, dtype=self.centroids_type), ys.mean(axis=1, dtype=self.centroids_type)], axis=1, dtype=self.centroids_type) # (N, 2)
-
-            # img_rows, img_cols = ImageBuffer(image_ptr).shape
+            logger.warning(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}")
             
             # np.maximum(0, all_bboxes[:, 0] - self.padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
-            # np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)
+            # np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)      ESto se queda por ser el layout original
             # np.minimum(img_cols, all_bboxes[:, 2] + self.padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
             # np.minimum(img_rows, all_bboxes[:, 3] + self.padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
 
             # valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
-
-            # all_bboxes = np.compress(valid_bbox_mask, all_bboxes, axis=0)
-            # logger.info(f"TIMPO NUMPYARRAY: {time.perf_counter() - time_nmpy:.6f}'s\n"f": {list_bboxes.shape}, BBOXES: SHAPE: {all_bboxes.shape} DTYPE: {all_bboxes.dtype}")
-        
-            polygons_list: List[Dict[str, Any]] = [{
-                "bounding_box": list_reshape_bbox[i].tolist(),
-                "centroid": list_centroids[i].tolist()
-            }
-            for i in range(list_reshape_bbox.shape[0])
-            ]
-
-            # ind = np.arange(total_conts)
-            # logger.info("POLYS ARRAY:\n"f"{np.array2string(np.column_stack([ind, geometry_array]), suppress_small=True)}")
+            #        
+            # polygons_list: List[Dict[str, Any]] = [{
+            #     "bounding_box": list_reshape_bbox[i].tolist(),
+            #     "centroid": list_centroids[i].tolist()
+            # }
+            # for i in range(list_reshape_bbox.shape[0])
+            # ]
 
             # final_polygons_list = self.validate_polygons(img, polygons_list, manager, context)
 

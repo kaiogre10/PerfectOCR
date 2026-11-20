@@ -70,7 +70,8 @@ bidings/container/*.cpp
 bidings/arrays/*.cpp
 bidings/image/*.cpp
 cmake-*/
-.editorconfig
+cmake/CacheParser.cmake
+# .editorconfig
 
 # secrets
 .env

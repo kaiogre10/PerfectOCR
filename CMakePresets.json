@@ -1,12 +1,12 @@
 {
-  "version": 4,
+  "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 23,
+    "minor": 25,
     "patch": 0
   },
   "include": [
-    "CondaPaths.json"
+    "cmake/CondaPaths.json"
   ],
   "configurePresets": [
     {

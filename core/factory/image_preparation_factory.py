@@ -6,7 +6,6 @@ from core.workers.image_preparation.image_loader import ImageLoader
 # from core.workers.image_preparation.ink_enhancer import InkCorrector
 from core.workers.image_preparation.angle_corrector import AngleCorrector
 from core.workers.image_preparation.geometry_detector import GeometryDetector
-from core.workers.image_preparation.poly_gone import PolygonExtractor
 
 class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
     def create_registry(self) -> Dict[str, Callable[[Dict[str, Any]], ImagePrepAbstractWorker]]:
@@ -16,7 +15,7 @@ class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
             "angle_corrector": self._create_angle_corrector,
             # "ink_enhancement": self._create_inker,
             "geometry_detector": self._create_geometry_detector,
-            "polygon_extractor": self._create_polygon_extractor
+            # "polygon_extractor": self._create_polygon_extractor
         }
     
     def _create_loader(self, context: Dict[str, Any]) -> ImageLoader:
@@ -30,6 +29,3 @@ class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
     
     def _create_geometry_detector(self, context: Dict[str, Any]) -> GeometryDetector:
         return GeometryDetector(config=self.module_config, project_root=self.project_root)
-    
-    def _create_polygon_extractor(self, context: Dict[str, Any]) -> PolygonExtractor:
-        return PolygonExtractor(config=self.module_config, project_root=self.project_root)

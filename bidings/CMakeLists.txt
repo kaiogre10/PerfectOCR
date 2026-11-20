@@ -68,11 +68,11 @@ function(configure_compiled_target target)
         "${CMAKE_SOURCE_DIR}/libs"
     )
 
-    if(WIN32)
-        target_compile_options(${target} PRIVATE /std:c++20 /arch:AVX2 /O2)
-    else()
-        target_compile_options(${target} PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
-    endif()
+#    if(WIN32)
+ #       target_compile_options(${target} PRIVATE /std:c++20 /arch:AVX2 /O2)
+  #  else()
+   #     target_compile_options(${target} PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
+    #endif()
 
 endfunction()
 

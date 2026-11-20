@@ -261,7 +261,7 @@ MORPH_RANGE = (-0.297, 0.337)
 
 ELEMENTAL_WORKER = Workers.IMAGE_LOADER
 
-OCR_WORKERS: Set[str] = set([Workers.POLYGON_EXTRACTOR, Workers.PADDLE_WRAPPER, Workers.GEOMETRY_DETECTOR])
+OCR_WORKERS: Set[str] = set([Workers.PADDLE_WRAPPER, Workers.GEOMETRY_DETECTOR])
 FULL_OCR = OCR_WORKERS.union([Workers.DATA_FINDER])
 MIN_WORKERS: FrozenSet[str] = frozenset(FULL_OCR.union([Workers.IMAGE_LOADER])) # ["text_refiner", "lineal", "vectorizer", "cos_sim", "table_structurer", "math_max", "data_collector"]
 
@@ -286,7 +286,7 @@ TRASH_EXT: Tuple[str, ...] = (".pyc", ".pyo", ".log", ".prof")
 CACHE_DIRS = ["__pycache__", ".pytest_cache"] #'build']
 
 EXCLUDED_DIRS = ["components", ".git", ".vscode", ".idea", "documentation", "models", "safe_temp", "libraries", "libs", "third_party"]
-NO_DEL: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", "pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")
+NO_DEL: Tuple[str, ...] = (".py", ".c", ".hpp", ".cpp", ".h", ".env", ".gitignore", ".md", ".pyi", ".pyx", ".json", ".yaml", ".npz", ".npy", ".cmake")
 
 ALL_FILES_TYPES: Set[str] = set(INVALID_EXTENSIONS).union(VALID_IMG_EXT, TRASH_EXT, NO_DEL)
 

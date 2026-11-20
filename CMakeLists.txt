@@ -1,8 +1,9 @@
 # PerfectOCR/CMakeLists.txt
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.25)
 project(PerfectOCR LANGUAGES C CXX)
+include(cmake/GlobalCompiler.cmake)
 
-if (POLICY CMP0141)
+if(POLICY CMP0141)
     cmake_policy(SET CMP0141 NEW)
     set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
@@ -13,7 +14,6 @@ if(NOT ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}" AND "${_roo
     message(FATAL_ERROR "ERROR: SOURCE DIR, CURRENT SOURCE DIR Y PROJECT_NAME NO SON IGUALES ENTRE SI, REVISAR CACHE Y/O ESTABLECER EL ROOT DEL PROYECTO A LA CARPETA DE ESTE SCRIPT")
 endif()
 
-include(cmake/GlobalCompiler.cmake)
 # 1. Definición de la ruta de destino para los componentes
 get_filename_component(LIBRARIES_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries" ABSOLUTE)
 

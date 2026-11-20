@@ -1,7 +1,7 @@
 from typing import Tuple, Optional, Any
 import numpy as np
 from numpy import typing
-from bidings.image.image import get_image_array
+from bidings.image import get_image_array
 from bidings.arrays import get_array
 
 class ImageBuffer:

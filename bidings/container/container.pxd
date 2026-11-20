@@ -1,6 +1,6 @@
 # bidings/container/container.pxd
 from libc.stddef cimport size_t
-from compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
+from compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
 
 cdef extern from "buffer_container.hpp":
     cppclass Buffer:

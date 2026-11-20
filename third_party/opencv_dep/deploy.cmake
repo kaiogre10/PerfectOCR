@@ -1,5 +1,5 @@
 # third_party/opencv_dep/deploy.cmake
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.25)
 
 if(NOT DEFINED INSTALL_DIR OR NOT DEFINED DEPLOY_DIR)
     message(FATAL_ERROR "deploy.cmake requiere -DINSTALL_DIR= y -DDEPLOY_DIR=")

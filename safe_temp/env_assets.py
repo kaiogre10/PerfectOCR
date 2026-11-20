@@ -1,11 +1,10 @@
-# assets/env_assets
+# safe_temp/env_assets.py
 from typing import List, Dict
-from packaging.version import parse
+from packaging.version import parse, Version
 import platform
-from domain.class_models import OSModels
 
-so = platform.system().capitalize()
-WIN = "" if so == OSModels.LINUX.name else OSModels.WINDOWS.name
+so = platform.system().upper()
+WIN = "" if so == "LINUX" else "WINDOWS"
 # Flags de estadp
 greater = "greater"
 smaller = "smaller" # menor que establecido
@@ -21,12 +20,12 @@ python_base = "3.12"
 python_patch_versions = [5, 8, 13, 15]
 
 conda_base = "2"
-conda_versions: List[int] = [6, 7] # segunda es el limite teorico: 26.7.2
+conda_versions: List[int] = [6, 7] # 26.7.2; la version a la fecha de desarrollo '17-11-2026' que conda permite antes de sus implementaciones de seguridad. ver + 27: 
 conda_minor_versions = 2
 
-libs_list: List[str] =         ["cmake", "conda",     "ninja", "numpy", "opencv",   "python"]
-some_version_list: List[str] = ["3.23",   conda_base, "1.13",  "1.26.4", "4.11.0",  python_base]
-requeriments_list =             [greater, smaller,    greater,  same,     same,     especific_versions]
+libs_list: List[str] =         ["cmake", "conda",     "ninja", "numpy",  "opencv",  "cython", "python"]
+some_version_list: List[str] = ["3.25",   conda_base, "1.13",  "1.26.4", "4.11.0",  "3.3.0",  python_base]
+requeriments_list: List[str] = [greater,  smaller,     greater, same,      same,      same,   especific_versions]
 
 libs_ver = [f"{libs_list[i]}-" if i in (0, 2) else f"{val}-{some_version_list[i]}" for i, val in enumerate(libs_list)]
 
@@ -42,13 +41,13 @@ def version_call(lib_found: str, requirements_idx: int) -> str:
     comparation = requeriments_list[requirements_idx]
 
     if same == comparation:
-        return same if same_comparation(lib_found, some_version_list[requirements_idx]) else ""
+        return same if same_comparation(parse(lib_found), parse(requirement)) else ""
 
     elif greater == comparation:
-        return greater if (parse(requirement) < parse(lib_found)) else ""
+        return greater if (parse(requirement) <= parse(lib_found)) else ""
 
     elif smaller == comparation:
-        return smaller if (parse(lib_found) < parse(requirement)) else ""
+        return smaller if (parse(lib_found) <= parse(requirement)) else ""
 
     elif between == comparation:
         return between if (parse(lib_found) > parse(requirement) > parse(lib_found)) else ""
@@ -80,12 +79,12 @@ def _get_requirement_val(idx: int):
     if conda_base != some_version_list[idx]:
         return ""
 
-    versions_dict: Dict[str, List[int]] = {
+    versions_dict: Dict[str, int] = {
         "minor": conda_versions[1],
         "patch": conda_minor_versions
     }
     template = f"{conda_base}{7}" + "." + minor_versions + "." + patch_versions
     return get_libs_versions(template, **versions_dict)
 
-def same_comparation(lib_found: str, exact_version: str) -> bool:
+def same_comparation(lib_found: str | Version, exact_version: str | Version) -> bool:
     return exact_version == lib_found

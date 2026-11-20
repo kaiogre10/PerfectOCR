@@ -4,7 +4,8 @@ from libc.stddef cimport size_t
 cimport numpy as cnp
 
 cnp.import_array()
-cdef inline int _max_size = 20000000
+
+cdef int _max_size = 20000000
 
 cdef int _get_dtype(const char* dtype) noexcept:
     if strcmp(dtype, b"uint8") == 0: return cnp.NPY_UINT8
@@ -17,7 +18,8 @@ cdef int _get_dtype(const char* dtype) noexcept:
     elif strcmp(dtype, b"int64") == 0: return cnp.NPY_INT64
     elif strcmp(dtype, b"float32") == 0: return cnp.NPY_FLOAT32
     elif strcmp(dtype, b"float64") == 0: return cnp.NPY_FLOAT64
-    return -1
+    else:
+        return -1
 
 cdef object get_arr_dtype(const char* dtype_raw) noexcept:
     """

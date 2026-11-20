@@ -5,7 +5,7 @@ from typing import Pattern
 _currency_variants = r"[$Ss]"
 _punt_quant_chars = r'[.,]'
 _diagonal_variants = r'[7\/]'
-_diagonal_variants2 = r'[\\/]'
+_diagonal_variants_os = r'[\\/]'
 _digit_pattern = r"[0-9OQo]"
 _base_date_num_str = r'[012OQo][0-9OQo]'
 _month_name_str = r'(?:ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:s(?:to)?)?|sep(?:t(?:iembre)?)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)'
@@ -80,8 +80,7 @@ los_suffix_pattern = re.compile(_los_typos_regex)
 _extension_str = r'\.[A-Za-z]+$'
 extension_suffix: Pattern[str] = re.compile(rf"{_extension_str}", re.IGNORECASE)
 
-file_name_pattern = re.compile(rf"(?<={_diagonal_variants2})[\w.-]+{_extension_str}")
-
+file_name_pattern = re.compile(rf"(?<={_diagonal_variants_os})[\w.-]+{_extension_str}")
 has_digit_pattern = re.compile(r"\d", re.IGNORECASE)
 swap_term_cuant = re.compile(r'^[A-Za-z]+\$$')
 # Patrón super estricto para identificar "BIC" y variantes OCR ("B1C", "BlC", "B|C", "B¡C", "B!C", "BIC", pero SOLO esas, sin prefijos ni sufijos)

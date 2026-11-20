@@ -129,26 +129,18 @@ Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, const int32_t padding, size_
         centroid_data[k * 2] = static_cast<float>(sum_x) / 4.0f;
         centroid_data[k * 2 + 1] = static_cast<float>(sum_y) / 4.0f;
 
-        const int rows = x2 - x1; // width
-        const int cols = y2 - y1; // height
+        const int rows =  y2 - y1; // height
+        const int cols = x2 - x1; // width
 
-        size_t size_rows = static_cast<size_t>(rows);
-
-        size_t size_crop = size_rows * static_cast<size_t>(cols);
+        size_t size_rows = static_cast<size_t>(cols);
+        size_t size_crop = size_rows * static_cast<size_t>(rows);
 
         cropped_polygons->set_struct_at(k, rows, cols, 1, size_crop, &cropped_img[current_offset]);
 
         for (int row = y1; row < y2; ++row) {
-            const uint8_t* source_offset =
-                img_data_const +
-                static_cast<size_t>(row) * img_cols_sized +
-                static_cast<size_t>(x1);
-
-            const size_t destination_offset =
-                current_offset +
-                static_cast<size_t>(row - y1) * size_rows;
-
-            memcpy(cropped_img + destination_offset, source_offset, size_rows);
+            const uint8_t* source_offset = img_data_const + static_cast<size_t>(row) * img_cols_sized + static_cast<size_t>(x1);
+            const size_t destination_offset = current_offset + static_cast<size_t>(row - y1) * size_rows;
+            std::memcpy(cropped_img + destination_offset, source_offset, size_rows);
         }
         current_offset += size_crop;
     }

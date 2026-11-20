@@ -1,7 +1,8 @@
 # bidings/arrays/arrays.pyx
+from container cimport Buffer, get_buffer_ptr, get_array_view, create_new_buffer, check_null_ptr, free_buffer, recover_class # type: ignore
 from libc.stddef cimport size_t # type: ignore
-from container cimport Buffer, get_buffer_ptr, get_array_view, create_new_buffer, check_null_ptr, free_buffer, recover_class, get_buffer_at # type: ignore
 from workers cimport get_bboxes # type: ignore
+from libc.stdint cimport int32_t
 
 cdef enum:
     INVALID_PTR = 0
@@ -26,8 +27,9 @@ def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padd):
 
     cdef size_t total_buffers = 0
     cdef size_t* total_buffers_ref = &total_buffers
+    cdef int32_t padding = <int32_t>padd
     # calculate_geometry
-    cdef Buffer* geometry = get_bboxes(bboxes_ptr, img, padd, total_buffers_ref)
+    cdef Buffer* geometry = get_bboxes(bboxes_ptr, img, padding, total_buffers_ref)
     if check_null_ptr(geometry):
         raise TypeError(f"PUNTERO PACK GEOMETRIA NULL")
 
