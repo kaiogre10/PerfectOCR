@@ -1,13 +1,13 @@
-# bidings/image/image.pyx
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True, nonecheck=False, initializedcheck=False, embedsignature=True
 from libc.stddef cimport size_t
 from libc.string cimport memcpy
-from container cimport Buffer, get_buffer_ptr, create_new_buffer, get_array_view, check_null_ptr, get_rows, get_cols, get_size, get_data, free_buffer
-from workers cimport load_image, rotate_image
+from ..container.container cimport Buffer, get_buffer_ptr, create_new_buffer, get_array_view, check_null_ptr, get_rows, get_cols, get_size, get_data, free_buffer
+from ..container.workers cimport load_image, rotate_image
 
 cdef inline size_t NULL_PYTHON_PTR = 0
 
-def load(str filepath):
-    cdef Buffer* buffer = load_image(filepath.encode('utf-8')) # type: ignore
+def load(const char* filepath):
+    cdef Buffer* buffer = load_image(filepath)
     if check_null_ptr(buffer):
         return NULL_PYTHON_PTR
     
@@ -15,15 +15,19 @@ def load(str filepath):
 
 def get_image_array(size_t ptr_addr, const char* dtype_raw):
     return get_array_view(ptr_addr, dtype_raw, 0)
-        
-def release_img(size_t ptr_addr):
+
+cdef inline void _release_img(size_t ptr_addr):
     free_buffer(ptr_addr)
+
+def release_img(size_t ptr_addr):
+    _release_img(ptr_addr)
+    return None
 
 def rotate(size_t ptr_addr, double angle, double center_x, double center_y):
     cdef Buffer* source = get_buffer_ptr(ptr_addr)
     if check_null_ptr(source):
         return NULL_PYTHON_PTR
-        
+
     cdef Buffer* rotated
 
     rotated = rotate_image(source, angle, center_x, center_y)
@@ -40,9 +44,8 @@ def copy_image(size_t ptr_addr, const char* dtype):
     cdef int cols = get_cols(buffer)
     cdef int rows = get_rows(buffer)
     cdef int channels = 1
-    
-    copy = create_new_buffer(rows, cols, channels, dtype)
 
+    cdef size_t copy = create_new_buffer(rows, cols, channels, dtype)
     cdef Buffer* new_buffer = get_buffer_ptr(copy)
 
     if check_null_ptr(new_buffer):

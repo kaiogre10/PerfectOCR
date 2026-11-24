@@ -1,13 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
-project(third_party C CXX)
+project(third_party LANGUAGES C CXX)
 
-# 1. Cargar políticas/versiones/flags ANTES de project()
-set(_PROJECT_RULES_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/GlobalCompiler.cmake")
-set(_SHARED_CACHE_CMAKE  "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/CacheParser.cmake")
-
-if(EXISTS "${_PROJECT_RULES_CMAKE}")
-    include("${_PROJECT_RULES_CMAKE}")
-endif()
+include(../cmake/CompilerFlags.cmake)
 
 if(NOT DEFINED ENV{CONDA_PREFIX})
     message(FATAL_ERROR "No hay entorno Conda activo. Actívelo antes de continuar.")
@@ -55,9 +49,17 @@ foreach(_dep ${THIRD_PARTY_DEPS})
     if(EXISTS "${_sentinel}")
         message(STATUS "${_dep}: ya instalado (${_sentinel}), saltando build")
     else()
-        message(STATUS "${_dep}: configure")
+        message(STATUS "THIRD PARTY INFO ESTADO DE: ${_dep} = configure")
         execute_process(
             COMMAND ${CMAKE_COMMAND}
+                    -G "${CMAKE_GENERATOR}"
+                    -DCMAKE_BUILD_TYPE=Release
+                    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                    -DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+                    -DCMAKE_PREFIX_PATH=$ENV{CONDA_PREFIX}
+                    -DCMAKE_PROJECT_INCLUDE=${_PROJECT_RULES_CMAKE}
+                    -D_PROJECT_RULES_CMAKE=${_PROJECT_RULES_CMAKE}
                     -S "${DEP_SRC_DIR}"
                     -B "${DEP_BUILD_DIR}"
                     -DDEP_NAME=${DEP_NAME}
@@ -72,8 +74,9 @@ foreach(_dep ${THIRD_PARTY_DEPS})
         if(NOT _rc EQUAL 0)
             message(FATAL_ERROR "${_dep}: fallo configure (código ${_rc})")
         endif()
-
-        message(STATUS "${_dep}: build")
+        
+        message(STATUS "THIRD PARTY INFO: ${_dep} CULMINO")
+        message(STATUS "THIRD PARTY INFO ESTADO DE: ${_dep} = BUILD")
         execute_process(
             COMMAND ${CMAKE_COMMAND} --build "${DEP_BUILD_DIR}" --config Release --parallel
             COMMAND_ECHO STDOUT
@@ -83,7 +86,7 @@ foreach(_dep ${THIRD_PARTY_DEPS})
             message(FATAL_ERROR "${_dep}: fallo build (código ${_rc})")
         endif()
 
-        message(STATUS "${_dep}: install")
+        message(STATUS "THIRD PARTY INFO ESTADO DE: ${_dep} = INSTALL")
         execute_process(
             COMMAND ${CMAKE_COMMAND} --install "${DEP_BUILD_DIR}" --config Release
             COMMAND_ECHO STDOUT
@@ -113,4 +116,5 @@ foreach(_dep ${THIRD_PARTY_DEPS})
     message(STATUS "PerfectOCR: ── ${_dep} OK ──")
 endforeach()
 
+set(CMAKE_PLATFORM_NO_VERSIONED_SONAME ON CACHE BOOL "" FORCE)
 message(STATUS "PerfectOCR: listo. libs/: ${LIBS_ROOT}")

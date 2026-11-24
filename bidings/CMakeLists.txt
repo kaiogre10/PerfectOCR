@@ -1,5 +1,5 @@
 # PerfectOCR/bidings/CMakeLists.txt
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.25)
 project(bidings LANGUAGES C CXX)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module)
@@ -8,7 +8,6 @@ execute_process(
     COMMAND ${Python3_EXECUTABLE} -c "import cython; print(cython.__version__)"
     OUTPUT_VARIABLE CYTHON_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
 )
 
 if(NOT CYTHON_VERSION)
@@ -68,11 +67,9 @@ function(configure_compiled_target target)
         "${CMAKE_SOURCE_DIR}/libs"
     )
 
-#    if(WIN32)
- #       target_compile_options(${target} PRIVATE /std:c++20 /arch:AVX2 /O2)
-  #  else()
-   #     target_compile_options(${target} PRIVATE -std=c++20 -mavx2 -mf16c -mfma)
-    #endif()
+    target_compile_definitions(${target} PRIVATE
+        NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION
+    )
 
 endfunction()
 

@@ -12,7 +12,6 @@
     {
       "name": "default",
       "inherits": "conda-paths",
-      "generator": "Ninja",
       "hidden": true,
       "binaryDir": "${sourceDir}/build",
       "installDir": "${sourceDir}/libraries",

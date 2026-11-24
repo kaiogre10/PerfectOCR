@@ -8,7 +8,7 @@ from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import binarice_img, morph_operations
 from domain.buffer_handler import ArrayBuffer
-from bidings.arrays import compute_polygons_geometry
+from bidings import arrays
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             
             np.copyto(dst=list_bbox, src=polygons, casting='unsafe')
             
-            c_centroids, c_bboxes, crop_ptr = compute_polygons_geometry(arr_ptr, image_ptr, self.padding)
+            c_centroids, c_bboxes, crop_ptr = arrays.compute_polygons_geometry(arr_ptr, image_ptr, self.padding)
             manager.free_buffer(arr_ptr)    # Liberar imagen completa inmediatamente
 
             if not c_bboxes or not c_centroids or not crop_ptr:
@@ -97,9 +97,9 @@ class GeometryDetector(ImagePrepAbstractWorker):
                     return False
 
             logger.info(f"PUNTEROS A LAS CROPPED: {crop_ptr}")
-                            
-            # list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
-            # list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
+
+            list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
+            list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
 
             logger.warning(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}")
             
@@ -110,12 +110,12 @@ class GeometryDetector(ImagePrepAbstractWorker):
 
             # valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
             #        
-            # polygons_list: List[Dict[str, Any]] = [{
-            #     "bounding_box": list_reshape_bbox[i].tolist(),
-            #     "centroid": list_centroids[i].tolist()
-            # }
-            # for i in range(list_reshape_bbox.shape[0])
-            # ]
+            polygons_list: List[Dict[str, Any]] = [{
+                "bounding_box": list_reshape_bbox[i].tolist(),
+                "centroid": list_centroids[i].tolist()
+            }
+            for i in range(list_reshape_bbox.shape[0])
+            ]
 
             # final_polygons_list = self.validate_polygons(img, polygons_list, manager, context)
 

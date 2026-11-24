@@ -1,4 +1,4 @@
-# components/compiled/image.pyi
+# bidings/image/image.pyi
 import numpy as np
 from typing import Any, Optional
 

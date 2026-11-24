@@ -14,7 +14,7 @@ static int centroid_cols = 2;
 static int bboxes_cols = 4;
 static int32_t zero = 0;
 
-inline static void compute_bbox(size_t first_index, const int32_t* bboxes_array, const int img_rows, const int img_cols, const int32_t padding, int32_t& x1, int32_t& y1, int32_t& x2, int32_t& y2) {
+inline static void compute_bbox(size_t first_index, const int32_t* bboxes_array, const int img_rows, const int img_cols, const int32_t padding_const, int32_t& x1, int32_t& y1, int32_t& x2, int32_t& y2) {
 
     int32_t min_x = bboxes_array[first_index];
     int32_t max_x = min_x;
@@ -29,13 +29,13 @@ inline static void compute_bbox(size_t first_index, const int32_t* bboxes_array,
         max_y = std::max(max_y, bboxes_array[index + 1]);
     }
 
-    x1 = std::max(zero, min_x - padding);
-    y1 = std::max(zero, min_y - padding);
-    x2 = std::min(img_cols, max_x + padding);
-    y2 = std::min(img_rows, max_y + padding);
+    x1 = std::max(zero, min_x - padding_const);
+    y1 = std::max(zero, min_y - padding_const);
+    x2 = std::min(img_cols, max_x + padding_const);
+    y2 = std::min(img_rows, max_y + padding_const);
 }
 
-Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, const int32_t padding, size_t* total_buffers_ref) {
+Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, int padding, size_t* total_buffers_ref) {
     const int img_rows = img->rows();
     const int img_cols = img->cols();
     const size_t img_rows_sized =  static_cast<size_t>(img_rows);
@@ -49,13 +49,15 @@ Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, const int32_t padding, size_
     int32_t* bboxes_array = bboxes_ptr->get_int32_buffer();
     const uint8_t* img_data_const = static_cast<uint8_t*>(img->get_uint8_buffer());
 
+    const int32_t padding_const = static_cast<int32_t>(padding);
+
     int32_t x1, y1, x2, y2;
     int valid = 0;
     size_t total_crops_size = 0;
 
     for (int bbox = 0; bbox < bbox_count; ++bbox) {
         const size_t first_index = static_cast<size_t>(bbox) * 8;
-        compute_bbox(first_index, bboxes_array, img_rows, img_cols, padding, x1, y1, x2, y2);
+        compute_bbox(first_index, bboxes_array, img_rows, img_cols, padding_const, x1, y1, x2, y2);
 
         if (x2 <= x1 || y2 <= y1) {
             continue;
@@ -110,7 +112,7 @@ Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, const int32_t padding, size_
     for (int k = 0; k < valid; ++k) {
         const int bbox = idx_data[k];
         const size_t first_index = static_cast<size_t>(bbox) * 8;
-        compute_bbox(first_index, bboxes_array, img_rows, img_cols, padding, x1, y1, x2, y2);
+        compute_bbox(first_index, bboxes_array, img_rows, img_cols, padding_const, x1, y1, x2, y2);
         
         output[k * 4 + 0] = x1;
         output[k * 4 + 1] = y1;

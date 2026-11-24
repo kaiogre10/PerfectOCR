@@ -1,4 +1,5 @@
 # components/c_utils/CMakeLists
+cmake_minimum_required(VERSION 3.25)
 add_library(c_utils STATIC
 	src/c_utils.cpp
 )

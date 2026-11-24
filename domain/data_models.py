@@ -3,7 +3,10 @@ import numpy as np
 import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
-from bidings import image, arrays
+try:
+    import bidings
+except EnvironmentError as e:
+    raise EnvironmentError(f"ERROR NO SE HALLO MODULO: {e}")
     
 @dataclass(slots=True)
 class Polygons:
@@ -69,7 +72,7 @@ class FullImageKey:
     @classmethod
     def clear_img(cls) -> None:
         """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
-        image.release_img(ptr_addr=cls.img_ptr) # type: ignore
+        bidings.image.release_img(ptr_addr=cls.img_ptr) # type: ignore
         cls.img_ptr = None
 
 class BoundingBoxesKey:
@@ -93,7 +96,7 @@ class BoundingBoxesKey:
     @classmethod
     def clear_bboxes(cls) -> None:
         """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
-        arrays.release_array(ptr_addr=cls.bboxes_ptr) # type: ignore
+        release_array(ptr_addr=cls.bboxes_ptr) # type: ignore
         cls.bboxes_ptr = None
 
 class CentroidsKey:
@@ -117,6 +120,6 @@ class CentroidsKey:
     @classmethod
     def clear_centroids(cls) -> None:
         """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
-        arrays.release_array(ptr_addr=cls.centroids_ptr) # type: ignore
+        bidings.arrays.release_array(ptr_addr=cls.centroids_ptr) # type: ignore
         cls.centroids_ptr = None
 

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Dict, List, Any, FrozenSet, Set, Tuple
+from typing import Dict, List, Any, FrozenSet, Set, Tuple, Literal
 from decimal import Decimal
 from domain.class_models import NumberStr, Workers
 
@@ -294,4 +294,5 @@ C_VALUE: int = 7
 HEIGHT_THRESHOLDS: List[int] = [100, 800, 1500, 2500]
 BLOCK_SIZES_MAP: List[int] = [15, 21, 25, 35, 41]
 
-KIND_SEARCH_LIST = ["filename", "no_extensions", "extensions", "reference"]
+KIND_SEARCH_LIST =    ["filename", "no_extensions", "extensions", "prefix", "subfix"]
+KindofSearch = Literal["filename", "no_extensions", "extensions", "prefix", "subfix"]

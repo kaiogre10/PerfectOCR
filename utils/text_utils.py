@@ -78,7 +78,7 @@ def normalice_text(s: str) -> str:
         return ""
     
     if b"?" in hard_bytes:
-        hard_bytes.replace(b"?", b" ")
+        hard_bytes = hard_bytes.replace(b"?", b" ")
 
     return space_removal_bytes(hard_bytes).decode(TypeModels.ASCII.value)
     

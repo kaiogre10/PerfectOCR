@@ -15,7 +15,6 @@ private:
             if (p) delete_buffer(p);
         }
     };
-
     std::unique_ptr<BufferContainer, Deleter> ptr;
 
     // NUEVO: estructura de llaves, solo para AoS
@@ -107,10 +106,10 @@ private:
         void* take_struct_data(size_t index) {
            return ::take_struct_data(ptr.get(), index);
         }
-        Buffer* at(size_t i) {
+        Buffer* buffer_addr(size_t i) {
             return elements_[i].get();
         }
-        size_t buffer_addr(size_t i) {
+        size_t buffer_addr_sized(size_t i) {
             return reinterpret_cast<size_t>(elements_[i].get());
         }
 };

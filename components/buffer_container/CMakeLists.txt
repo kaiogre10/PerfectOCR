@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.25)
 add_library(buffer_container STATIC
 	src/buffer_container.c
 	src/buffer_container.cpp

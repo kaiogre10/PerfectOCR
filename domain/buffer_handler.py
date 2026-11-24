@@ -1,8 +1,8 @@
 from typing import Tuple, Optional, Any
 import numpy as np
 from numpy import typing
-from bidings.image import get_image_array
-from bidings.arrays import get_array
+from bidings import image
+from bidings import arrays
 
 class ImageBuffer:
     """Contenedor de direcciones en memoria para imágenes en búfer de C."""
@@ -22,7 +22,7 @@ class ImageBuffer:
             if not isinstance(self._img_ptr, int):  # type: ignore
                 raise ValueError("TYṔO DE PUNTERO INVÁLIDO")
             
-            self._data = get_image_array(self._img_ptr, self._dtype)
+            self._data = image.get_image_array(self._img_ptr, self._dtype)
         return self._data
 
     @property
@@ -64,7 +64,7 @@ class ArrayBuffer:
             if not isinstance(self._arr_ptr, int):  # type: ignore
                 raise ValueError("Se requiere 'arr_ptr' o 'data' para obtener el arreglo.")
             
-            self._data = get_array(self._arr_ptr, self._dtype, self._dims)
+            self._data = arrays.get_array(self._arr_ptr, self._dtype, self._dims)
             if self._dims == 2 or self._dims == 0:
                 self._shape = self._data.shape[:2]
             if self._dims ==3:

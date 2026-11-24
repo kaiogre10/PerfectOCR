@@ -121,7 +121,7 @@ def log_temp_process(project_base: Optional[str] = None) -> logging.Logger:
     console_handler._temp_process_handler = True  # type: ignore[attr-defined]
 
     logger.setLevel(logging.DEBUG)
-    logger.propagate = True
+    logger.propagate = False
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 

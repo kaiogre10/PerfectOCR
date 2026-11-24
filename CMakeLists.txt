@@ -1,7 +1,7 @@
 # PerfectOCR/CMakeLists.txt
 cmake_minimum_required(VERSION 3.25)
 project(PerfectOCR LANGUAGES C CXX)
-include(cmake/GlobalCompiler.cmake)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/CompilerFlags.cmake")
 
 if(POLICY CMP0141)
     cmake_policy(SET CMP0141 NEW)
@@ -14,6 +14,7 @@ if(NOT ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}" AND "${_roo
     message(FATAL_ERROR "ERROR: SOURCE DIR, CURRENT SOURCE DIR Y PROJECT_NAME NO SON IGUALES ENTRE SI, REVISAR CACHE Y/O ESTABLECER EL ROOT DEL PROYECTO A LA CARPETA DE ESTE SCRIPT")
 endif()
 
+set(CMAKE_PLATFORM_NO_VERSIONED_SONAME OFF CACHE BOOL "" FORCE)
 # 1. Definición de la ruta de destino para los componentes
 get_filename_component(LIBRARIES_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libraries" ABSOLUTE)
 
@@ -21,14 +22,18 @@ if(NOT EXISTS "${LIBRARIES_OUTPUT_DIR}")
     file(MAKE_DIRECTORY "${LIBRARIES_OUTPUT_DIR}")
 endif()
 
-set(LIBS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libs")
+set(OPENCV_LIB_PATH "${CMAKE_SOURCE_DIR}/libs/opencv_dep" CACHE PATH "" FORCE)
 
-set(OPENCV_LIB_PATH "${LIBS_DIR}/opencv_dep")
+set(OPENCV_INCLUDE_DIR "")
 
 if (WIN32)
     set(OPENCV_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/third_party/opencv_dep/install/include")
 else ()
     set(OPENCV_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/third_party/opencv_dep/install/include/opencv4")
+endif()
+
+if(NOT EXISTS "${OPENCV_INCLUDE_DIR}")
+    message(FATAL_ERROR "NO EXISTE OPENCV")
 endif()
 
 # Desactivar subcarpetas por configuración en generadores multi-configuración

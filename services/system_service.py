@@ -1,8 +1,8 @@
-# service/cache_manager.py
+# service/system_service.py
 import shutil
 import os
 import logging
-import platform
+from platform import system
 from typing import Set, Tuple, Optional, List, Dict, Any
 #from psycopg2 import sql
 from services.log_service import basic_exc_logger
@@ -321,7 +321,7 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
 
 def get_so():
     """Devuelve el nombre de SO: Linux/Windows"""
-    return platform.system()
+    return system()
 
 def get_so_bin_ext(so: str) -> Dict[str, str]:
     """[0]Bibliotecas, [1]Librerias"""

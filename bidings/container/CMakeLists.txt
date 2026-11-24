@@ -1,4 +1,4 @@
-# ─── Cython: container.pyx → container.cpp ───
+cmake_minimum_required(VERSION 3.25)
 add_library(container INTERFACE)
 
 target_include_directories(container INTERFACE

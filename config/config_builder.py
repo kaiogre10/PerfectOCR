@@ -129,7 +129,8 @@ class ConfigBuilder:
         libraries_path = os.path.join(self.project_root, "libraries")
         if os.path.isdir(libraries_path):
             dirs = dirs + [libraries_path]
-        return [], []
+
+        return dirs, files
 
     @cached_property
     def _models_config(self) -> Dict[str, Any]:

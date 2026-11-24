@@ -1,17 +1,18 @@
 # ─── Cython: arrays.pyx → arrays.cpp ───
+cmake_minimum_required(VERSION 3.25)
 add_custom_command(
     OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
     COMMAND ${Python3_EXECUTABLE} -m cython --cplus -3
             -I "${CMAKE_SOURCE_DIR}"
-            -I "${CMAKE_CURRENT_SOURCE_DIR}"                  
-            -I "${CMAKE_CURRENT_SOURCE_DIR}/../container"     
-            -I "${CMAKE_CURRENT_SOURCE_DIR}/../compiled_utils"
+            -I "${CMAKE_CURRENT_SOURCE_DIR}"
+            -I "${CMAKE_SOURCE_DIR}/bidings/container"
+            -I "${CMAKE_SOURCE_DIR}/bidings/compiled_utils"
             "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
             -o "${CMAKE_CURRENT_SOURCE_DIR}/arrays.cpp"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/arrays.pyx"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../container/container.pxd"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../container/workers.pxd"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../compiled_utils/compiled_utils.pxd"
+            "${CMAKE_SOURCE_DIR}/bidings/container/container.pxd"
+            "${CMAKE_SOURCE_DIR}/bidings/container/workers.pxd"
+            "${CMAKE_SOURCE_DIR}/bidings/compiled_utils/compiled_utils.pxd"
     COMMENT "Cython: arrays.pyx → arrays.cpp"
     VERBATIM
 )

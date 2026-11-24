@@ -1,4 +1,4 @@
-# bidings/image_utils/image_utils.pyx
+# cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True, nonecheck=False, initializedcheck=False, embedsignature=True
 from libc.string cimport strcmp, strlen
 from libc.stddef cimport size_t
 cimport numpy as cnp
@@ -7,7 +7,7 @@ cnp.import_array()
 
 cdef int _max_size = 20000000
 
-cdef int _get_dtype(const char* dtype) noexcept:
+cdef inline int _get_dtype(const char* dtype) noexcept nogil:
     if strcmp(dtype, b"uint8") == 0: return cnp.NPY_UINT8
     elif strcmp(dtype, b"uint16") == 0: return cnp.NPY_UINT16
     elif strcmp(dtype, b"uint32") == 0: return cnp.NPY_UINT32
@@ -18,45 +18,32 @@ cdef int _get_dtype(const char* dtype) noexcept:
     elif strcmp(dtype, b"int64") == 0: return cnp.NPY_INT64
     elif strcmp(dtype, b"float32") == 0: return cnp.NPY_FLOAT32
     elif strcmp(dtype, b"float64") == 0: return cnp.NPY_FLOAT64
-    else:
-        return -1
+    return -1
 
-cdef object get_arr_dtype(const char* dtype_raw) noexcept:
-    """
-    Obtiene y devuelve el objeto descriptor de NumPy de forma segura.
-    Devuelve None si el tipo no es válido.
-    """
-    cdef int intype = _get_dtype(dtype_raw)
-    # En NumPy, NPY_BOOL es 0, por lo que validar 'intype < 0' es lo correcto
-    if intype < 0:
-        return -1
-        
-    return cnp.PyArray_DescrFromType(intype)
+cdef inline size_t  _get_dtype_size(char last) noexcept nogil:
+    if last == b"8": # Termina en 8, ascci = 56
+        return 1
+    elif last == b"6": # Termina en 16, ascii=54
+        return 2
+    elif last == b"2": # Termina en 32, ascii=50
+        return 4
+    elif last == b"4": # Termina en 64, ascii=52
+        return 8    
+    return 0
 
 cdef size_t get_arr_dtype_size(const char* dtype) noexcept:
     cdef size_t len_type = strlen(dtype)
-    
+
     # Validación mínima de seguridad para dtypes estándar (ej: "int8", "float32")
-    if len_type < 4:
-        return 999
-        
+    if 3 >= len_type:
+        return 0
     # Evaluamos el último carácter
     cdef char last = dtype[len_type - 1]
-    
-    if last == b'8':
-        return 1
-    elif last == b'6': # Termina en 16
-        return 2
-    elif last == b'2': # Termina en 32
-        return 4
-    elif last == b'4': # Termina en 64
-        return 8
-        
-    return 317
+    return _get_dtype_size(last)
     
 cdef object array_view(void* data_view, int rows_view, int cols_view, int channels_view, const char* dtype, bint tridimentional_view) noexcept:
-    cdef cnp.intp_t shape_dims[3]
-    cdef int nd
+    cdef cnp.intp_t[3] shape_dims
+    cdef cnp.intp_t nd
 
     cdef int type_num = _get_dtype(dtype)
     if type_num < 0:

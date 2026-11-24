@@ -6,12 +6,7 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-import safe_temp.config_env
-del safe_temp
-if
-
 from services import log_service
-logger = log_service.log_temp_process(PROJECT_ROOT)
 log_service.set_project_root(PROJECT_ROOT)
 
 from config.config_api import ConfigAPI
@@ -27,10 +22,14 @@ if config_service.test_config:
 
 system_service.set_system_paths(system_paths)
 if config_service.cleanup_project:
-    logger.debug("inicio de limpieaza profunda")
+    log_service.log_simple("inicio de limpieaza profunda")
     system_service.cleanup_project(execp=config_service.specific_deletes)
-    logger.debug("PROYECTO LIMPIO DE BINARIOS")
+    log_service.basic_exc_logger("PROYECTO LIMPIO DE BINARIOS")
     sys.exit()
+
+import safe_temp.config_env
+# del safe_temp
+# sys.exit()
 
 os.environ.update(config_service.env_config)
 if config_service.compile_cython:

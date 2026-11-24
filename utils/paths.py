@@ -3,12 +3,13 @@ from typing import List, Optional, Tuple
 import logging
 from core.assets.patterns import extension_suffix
 from collections.abc import Iterable
+from core.assets.assets import KIND_SEARCH_LIST, KindofSearch
 
-filename_search = "filename"
-no_extensions_search  = "no_extensions"
-extensions_search = "extensions"
-prefix_search = "prefix"
-subfix_search = "subfix"
+filename_search = KIND_SEARCH_LIST[0]
+no_extensions_search  = KIND_SEARCH_LIST[1]
+extensions_search = KIND_SEARCH_LIST[2]
+prefix_search = KIND_SEARCH_LIST[3]
+subfix_search = KIND_SEARCH_LIST[4]
 
 _extension_suffix = extension_suffix
 project_root: Optional[str] = None
@@ -19,7 +20,29 @@ def set_project_root(PROJECT_ROOT: str):
     global project_root
     project_root = PROJECT_ROOT
 
-def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] | None = None, kind_search: Optional[str] | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
+def get_all(search_root: str, skip_names: Optional[Iterable[str]] = None) -> Tuple[List[str], List[str]]:
+    """"Devuele una Tupla de listas (carpetas[0], archivos[1]) con las rutas relativas a search_root de todos los archivos contenidos, sirve solo como exploración local, no entrega rutas absolutas, temporalmente solo omite directorios"""
+    if not os.path.isdir(search_root):
+        raise NotADirectoryError(f"SEARCH ROOT TIENE QUE SER UN CARPETA O DIRECTORIO, NO UN ARCHIVO: '{search_root}'")
+    
+    all_dirs: List[str] = []
+    all_files: List[str] = []
+    for dirpath, dirnames, filenames in os.walk(search_root):
+        if skip_names is not None and skip_names:
+            dirnames[:] = [d for d in dirnames if d not in skip_names]
+
+        for d in dirnames:
+            folders = os.path.join(dirpath, d)
+            all_dirs.append(folders)
+
+        for filename in filenames:
+            
+            files = os.path.join(dirpath, filename)
+            all_files.append(files)
+
+    return all_dirs, all_files
+
+def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] | None = None, kind_search: KindofSearch | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
     """
     Busca objetivos especificos en el sistema de carpetas del proyecto, dentro de un marco delimitado y arbitrario.
     ``NONE`` ES UN RESULTADO VALIDO Y REPRESENTA UN ESTADO SEPARADO DE FALSE Y TRUE.

@@ -1,6 +1,6 @@
-# bidings/container/container.pxd
+# container.pxd
 from libc.stddef cimport size_t
-from compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
+from ..compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
 
 cdef extern from "buffer_container.hpp":
     cppclass Buffer:
@@ -13,13 +13,14 @@ cdef extern from "buffer_container.hpp":
         size_t size()
         
         Buffer* recover_struct(size_t index)
-        Buffer* at(size_t i)
-        size_t buffer_addr(size_t i)
+
+        Buffer* buffer_addr(size_t i)
+        size_t buffer_addr_sized(size_t i)
 
     void destroy_buffer(Buffer* buffer) noexcept
 
 cdef inline bint check_null_ptr(Buffer* ptr_addr) noexcept:
-    return ptr_addr == NULL or <size_t>ptr_addr < 1
+    return ptr_addr == NULL or <size_t>ptr_addr < 1 # Devuelve True si es invalido
 
 cdef inline Buffer* get_buffer_ptr(size_t ptr_addr) noexcept:
     if ptr_addr < 1:
@@ -80,10 +81,4 @@ cdef inline object get_array_view(size_t arr_ptr, const char* dtype, int dims) n
 cdef inline Buffer* recover_class(size_t index, Buffer* cropped_polygons) noexcept:
     if check_null_ptr(cropped_polygons):
         return NULL
-        
     return cropped_polygons.recover_struct(index)
-
-cdef inline size_t get_buffer_at(Buffer* buffer, size_t i) noexcept:
-    if check_null_ptr(buffer):
-        return 0
-    return <size_t>buffer.at(i)

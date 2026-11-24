@@ -11,11 +11,11 @@ system_params:
 deploy_settings:
   postgre_local: False     # Habilitar el servicio local de postgre
   test_config: False   # Modo evalua las configuraciones según modo deploy haciendo early exit el sistema
-  clean_mode: True     # Modo de limpieza que solo ejecuta el módulo de limpieza de cache, binarios y datos basura
+  clean_mode: False    # Modo de limpieza que solo ejecuta el módulo de limpieza de cache, binarios y datos basura
   update_model: False   # Modo de actualización de los valores de las matrices de Word Finder sin correr todo el sistema
   deploy_mode: True     # Modo que permite inicializar el sistema completo sin validar la configuración de manera estricta
   test_wf_model: False
-  compile_cython: True
+  compile_cython: False
   purge_system: False   # MODO DE LIMPIEZA TOTAL, TODOS LOS ARCHIVOS QUE SEAN CACHE, DEBUG, BUILD, BINARIOS COMPILADOS VAN A SER ELIMINADOS. POR SEGURIDAD SIEMPRE SE ESTABLECERÁ A FALSE EN CADA INICIO, AVISANDO SI SE ACTIVO POR ERROR PARA DESACTIVACIÓN MANUAL FORZADA
 
 pipeline_secuence:
@@ -126,6 +126,4 @@ env_config:
   'NUMEXPR_NUM_THREADS': '1'
   'MKL_DISABLE_FAST_MM': '0'
   'PYTHONUNBUFFERED': '1'
-  'MKL_CBWR': 'AVX2'
-  'MKL_ENABLE_INSTRUCTIONS': 'AVX2'
   "TBB_NUM_THREADS": "2"

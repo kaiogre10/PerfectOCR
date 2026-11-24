@@ -5,7 +5,7 @@ from typing import Dict, Any, Tuple, Optional
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import get_image_lines
-from bidings.image.image import rotate
+from bidings import image
 from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ class AngleCorrector(ImagePrepAbstractWorker):
             if np.abs(angle) > self.min_angle_for_correction:
                 center = (cols / 2.0, rows / 2.0)
                 
-                new_ptr = rotate(img_ptr, angle, center[0], center[1]) # type: ignore
+                new_ptr = image.rotate(img_ptr, angle, center[0], center[1]) # type: ignore
                 if not new_ptr:
                     logger.error(f"PUNTERO ROTADO CON ERROR: {img_ptr}")
                     return None, corrected

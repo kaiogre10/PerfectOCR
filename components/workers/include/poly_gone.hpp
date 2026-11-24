@@ -3,6 +3,6 @@
 #pragma once
 #include "buffer_container.hpp"
 
-Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, const int32_t padding, size_t* total_buffers_ref);
+Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, int padding, size_t* total_buffers_ref);
 
 #endif
