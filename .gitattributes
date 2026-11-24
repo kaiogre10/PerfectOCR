@@ -1,19 +1,1 @@
-*.py eol=crlf
-*.pyi eol=crlf
-*.c eol=crlf
-*.h eol=crlf
-*.cpp eol=crlf
-*.hpp eol=crlf
-*.pxd eol=crlf
-*.pyx eol=crlf
-*.cc eol=crlf
-*.cxx eol=crlf
-*.hxx eol=crlf
-*.cmake eol=crlf
-*.json eol=crlf
-*.jsoncomment eol=crlf
-*.yaml eol=crlf
 * text eol=crlf
-
-CMakeLists.txt eol=crlf
-
