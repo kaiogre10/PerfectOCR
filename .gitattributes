@@ -13,6 +13,7 @@
 *.json eol=crlf
 *.jsoncomment eol=crlf
 *.yaml eol=crlf
+* text eol=crlf
 
 CMakeLists.txt eol=crlf
 
