@@ -75,7 +75,11 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             
             logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
             polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img is not None]
-            img_list = [p.cropped_img for p in polygons.values() if p.polygon_id in polygon_ids]
+            img_list = [p.cropped_img for p in polygons.values() if p.polygon_id in polygon_ids and p.cropped_img is not None]
+            if not img_list:
+                logger.error("NO HAY IMAGE LIST:")
+                return {}
+            
             image_list = elevate_dims(img_list)
             manager.delete_cropped_images()
             if not image_list:

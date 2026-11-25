@@ -1,6 +1,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True, nonecheck=False, initializedcheck=False, embedsignature=True
 from libc.string cimport strcmp, strlen
 from libc.stddef cimport size_t
+from libcpp cimport bool
 cimport numpy as cnp
 
 cnp.import_array()
@@ -21,14 +22,16 @@ cdef inline int _get_dtype(const char* dtype) noexcept nogil:
     return -1
 
 cdef inline size_t  _get_dtype_size(char last) noexcept nogil:
-    if last == b"8": # Termina en 8, ascci = 56
+    if last == b"8": # Termina en 8 (uint8, int8), ascci = 56
         return 1
-    elif last == b"6": # Termina en 16, ascii=54
+    elif last == b"6": # Termina en 16 (uint16, int16), ascii=54
         return 2
     elif last == b"2": # Termina en 32, ascii=50
         return 4
     elif last == b"4": # Termina en 64, ascii=52
-        return 8    
+        return 8
+    elif last == b"e":
+        return sizeof(size_t)
     return 0
 
 cdef size_t get_arr_dtype_size(const char* dtype) noexcept:
@@ -47,7 +50,7 @@ cdef object array_view(void* data_view, int rows_view, int cols_view, int channe
 
     cdef int type_num = _get_dtype(dtype)
     if type_num < 0:
-        return 0
+        return cnp.PyArray_SimpleNewFromData(1, &nd, cnp.NPY_UINT8, NULL)
 
     # Asignar la geometría del arreglo usando el flag'tridimentional_view'
     shape_dims[0] = rows_view
@@ -61,5 +64,5 @@ cdef object array_view(void* data_view, int rows_view, int cols_view, int channe
     # 3. Retornamos la vista del ndarray generada directamente desde la API de C
     return cnp.PyArray_SimpleNewFromData(nd, shape_dims, type_num, data_view)
 
-cdef bint validate_arr_vals(int rows, int cols, int channels) noexcept:
-    return rows > 0 and cols > 0 and channels > 0 and (rows * cols * channels < _max_size)
+cdef bool validate_arr_vals(int rows, int cols, int channels) noexcept:
+    return (rows > 0 and cols > 0 and channels > 0) and (rows * cols * channels < _max_size)

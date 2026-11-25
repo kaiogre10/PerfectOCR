@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT: str 
 OUTPUT_PATHS: List[str]
 TEMP_FILE: str
-file_path: str
+# file_path: str
 
 # SerializerFn: TypeAlias = Callable[[Any, str, str], None]
 
@@ -28,8 +28,8 @@ def set_output_config(project_root: str, config: Dict[str, Any]):
     global PROJECT_ROOT, OUTPUT_PATHS, TEMP_FILE, file_path
     PROJECT_ROOT = project_root # type: ignore
     # OUTPUT_PATHS = config["output_paths"] # type: ignore
-    OUTPUT_PATHS = build_from_dir(objetives=["output"])
-    file_path = os.path.join(PROJECT_ROOT, "core", "assets", "data.npy")
+    OUTPUT_PATHS = build_from_dir(objetives=["output"], search_root=project_root, kind_search="no_extensions")
+    # file_path = os.path.join(PROJECT_ROOT, "core", "assets", "data.npy")
     TEMP_FILE = config.get("temp_path", "") # type: ignore
 
 # def serilizable(file_name: str) -> Callable[[SerializerFn],SerializerFn]:
@@ -80,7 +80,7 @@ def save_shapes(image_name: str, poly_id: str, image: np.ndarray[Any, Any], cont
 
 def save_croped_image(image_name: str, image: np.ndarray[Any, Any], img_id: Optional[str] = None) -> bool:
     """Guarda una imagen de depuración si la salida está habilitada."""
-    worker_name = get_caller_info()[0]
+    worker_name = get_caller_info()[0][:-3]
     try:
         if img_id:
             img_id = f"{img_id}_{worker_name}"

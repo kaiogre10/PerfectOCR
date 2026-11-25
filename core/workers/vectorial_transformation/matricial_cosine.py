@@ -107,12 +107,7 @@ class MatricialCusine(VectorizationAbstractWorker):
         if self.min_cluster >= line_idx.size:
             return True
 
-        features_all = analysis[line_idx]
-        # Ordenamos las filas según el índice original para estar alineados con tabular_indices
-        # features_all = features_all[features_all[:, 0].argsort(order='C')]
-                
-        # features = np.ascontiguousarray(np.asarray(features_all[:, 1:], dtype=np.float32, order='C'))
-                
+        features_all = analysis[line_idx]                
         # timecos1 = time.perf_counter()
         sims_mat_dense = cosine_similarity_matrix(features_all)
         # logger.info(f"Matriz NUMPY obtenida en: {time.perf_counter()-timecos1:.10f}'s")

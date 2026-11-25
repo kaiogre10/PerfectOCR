@@ -95,7 +95,7 @@ class DataMathDict(StrEnum):
 class TypeModels(StrEnum):
     ASCII = "ascii"
     UTF8 = "utf-8"
-    UTF16_CSHARP = "utf16le"
+    UTF16_CSHARP = "utf16-le"
 
 class OSModels(Enum):
     """[0]Bibliotecas, [1] Librerias"""

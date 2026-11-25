@@ -15,19 +15,17 @@ from services import system_service
 system_service.init_system(PROJECT_ROOT)
 
 config_service = ConfigAPI(PROJECT_ROOT)
-system_paths = config_service.system_paths
-
 if config_service.test_config:
     sys.exit("TESTING CONFIG FINALIZANDO")
 
+system_paths = config_service.system_paths
 system_service.set_system_paths(system_paths)
 if config_service.cleanup_project:
-    log_service.log_simple("inicio de limpieaza profunda")
     system_service.cleanup_project(execp=config_service.specific_deletes)
-    log_service.basic_exc_logger("PROYECTO LIMPIO DE BINARIOS")
+    log_service.log_simple("PROYECTO LIMPIO DE BINARIOS")
     sys.exit()
 
-import safe_temp.config_env
+# import safe_temp.config_env
 # del safe_temp
 # sys.exit()
 
@@ -50,7 +48,7 @@ from app.main_builder import MainBuilder
 import services.output_service as output_service
 
 def main():
-    workflow_report = system_service.count_and_plan(config_service.input_paths) # type: ignore
+    workflow_report = system_service.count_and_plan(config_service.input_paths)
     if not workflow_report and not config_service.no_activate_modules:
         system_service.cleanup_project_cache()
         log_service.log_simple("NO HAY INPUT PATHS")

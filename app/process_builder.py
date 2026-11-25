@@ -59,16 +59,13 @@ class ProcessingBuilder:
 
                 if manager is None:
                     logger.error(f"'{image_name}' fallo en '{stager_name}', tiempo: {time.perf_counter() - stager_init:.6f}'s", exc_info=True)
-                    if i != 1:
-                        break
-                    else:
-                        continue
+                    break
             
                 if self.time_stages_log:
                     logger.warning(f"Fase de '{stager_name[:-6].upper()}' completada en: {time.perf_counter() - stager_init:.6f}'s")
             
             if manager is None:
-                continue
+                break
             
             buff_size = manager.payload.buff_size if manager.payload else 0
             

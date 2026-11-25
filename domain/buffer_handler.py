@@ -23,6 +23,9 @@ class ImageBuffer:
                 raise ValueError("TYṔO DE PUNTERO INVÁLIDO")
             
             self._data = image.get_image_array(self._img_ptr, self._dtype)
+            if self._data.size < 1:
+                return None
+            
         return self._data
 
     @property

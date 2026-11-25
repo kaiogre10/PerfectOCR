@@ -16,6 +16,11 @@ def release_array(size_t ptr_addr):
     free_buffer(ptr_addr)
     return None
 
+cdef inline void free_buffer_class(Buffer* buffer_ptr):
+    """Libera el buffer en memoria sin que el caller tenga que castear a size_t"""
+    cdef size_t ptr = <size_t>buffer_ptr
+    free_buffer(ptr)
+
 def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
     cdef Buffer* bboxes_ptr = get_buffer_ptr(arr_ptr)
     if check_null_ptr(bboxes_ptr):
@@ -32,25 +37,34 @@ def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
     # calculate_geometry
     cdef Buffer* geometry = get_bboxes(bboxes_ptr, img, padding, total_buffers_ref)
     if check_null_ptr(geometry):
+        free_buffer(arr_ptr)
         free_buffer(image_ptr)
         raise TypeError(f"PUNTERO PACK GEOMETRIA NULL")
 
     if total_buffers < 3:
+        free_buffer_class(geometry)
+        free_buffer(arr_ptr)
         free_buffer(image_ptr)
         raise TypeError(f"CONTEO POR REFERENCIA ERRONEO")
 
     cdef Buffer* bboxs = recover_class(total_buffers-2, geometry)
-    cdef Buffer* centroids = recover_class(total_buffers-1, geometry)
 
-    if check_null_ptr(bboxs) or check_null_ptr(centroids):
+    if check_null_ptr(bboxs):
         free_buffer(image_ptr)
-        raise TypeError("PUNTEROS NULOS DE BBOXES O CENTROIDES")
+        free_buffer_class(geometry)
+        raise TypeError("PUNTEROS NULOS DE BBOXES")
+    
+    cdef Buffer* centroids = recover_class(total_buffers-1, geometry)
+    if check_null_ptr(centroids):
+        free_buffer(image_ptr)
+        free_buffer_class(geometry)
+        free_buffer_class(bboxs)
+        raise TypeError("PUNTEROS NULOS DE CENTROIDES")
 
-    cdef size_t total_buffs = total_buffers-3
-    crop_ptr = get_all_buffer_addrs(geometry, total_buffs)
+    crop_ptr = get_all_buffer_addrs(geometry, total_buffers-3)
     return <size_t>centroids, <size_t>bboxs, crop_ptr
 
-cdef get_all_buffer_addrs(Buffer* aos, size_t total_buffs):
+cdef list get_all_buffer_addrs(Buffer* aos, size_t total_buffs) except +:
     cdef size_t n = total_buffs
     cdef list result = [0] * n
     cdef size_t i = 0

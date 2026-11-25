@@ -1,9 +1,9 @@
 # safe_temp/env_assets.py
 from typing import List, Dict
 from packaging.version import parse
-from platform import system
+import platform
 
-so = system().upper()
+so = platform.system().upper()
 WIN = "" if so == "LINUX" else "WINDOWS"
 # Flags de estadp
 greater = "greater"

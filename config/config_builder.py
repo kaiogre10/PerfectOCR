@@ -2,7 +2,7 @@
 import os 
 from typing import Dict, Any, List, Tuple, Optional
 from functools import cached_property
-from services.log_service import basic_exc_logger
+from services.log_service import basic_exc_logger, log_simple
 from utils.image_utils import configure_kernel
 from utils.paths import set_project_root, build_from_dir
 from services import system_service
@@ -69,8 +69,21 @@ class ConfigBuilder:
         _system_paths = self.config.system_params.get("system_paths", {})
         temp_path = _system_paths["temp_path"]
         _system_paths["no_del_output"] = self._no_del_output
-        output_paths = _system_paths["output_paths"]
-        _system_paths["output_paths"] = build_from_dir(objetives=output_paths)
+        _output_paths_config = _system_paths["output_paths"]
+        output_list = build_from_dir(objetives=_output_paths_config, search_root=self.project_root, kind_search="no_extensions")
+        if not all(os.path.isdir(paht) for paht in output_list):
+            log_simple("CRUZA DE NOMBRES EN DIRECTORIOS DE SALIDA DEBUG")
+
+        new_output_paths: List[str] = []
+        if not output_list and _output_paths_config:
+            _output_paths_config.clear()
+            for path in output_list:
+                output_path = os.path.join(self.project_root, path)
+                os.mkdir(output_path)
+                print(f"DIRECTORIO OUTPUT CREADO: {output_path}")
+                new_output_paths.append(output_path)
+
+        _system_paths["output_paths"] = new_output_paths
         _system_paths["temp_path"] = os.path.join(self.project_root, *temp_path)
 
         if self.config.compile_cython:

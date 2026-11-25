@@ -29,9 +29,10 @@ class OCRStager(AbstractStager):
 
                 if self.time_worker_log:
                     logger.info(f"'{worker_name}' completado en: {time.perf_counter() - worker_start:.6f}s")
-                    continue
-
-            return manager
+                    
+            if manager:
+                return manager
+            
         except Exception as e:
             logger.error(f"ERROR EN EL PROCESAMIENTO DE TEXTO: {e}", exc_info=True)
             return None

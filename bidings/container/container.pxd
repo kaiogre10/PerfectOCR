@@ -2,7 +2,7 @@
 from libc.stddef cimport size_t
 from ..compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
 
-cdef extern from "buffer_container.hpp":
+cdef extern from "buffer_container.hpp" nogil:
     cppclass Buffer:
         Buffer(int rows, int cols, int channels, size_t dtype) noexcept
         void* data()
@@ -81,4 +81,5 @@ cdef inline object get_array_view(size_t arr_ptr, const char* dtype, int dims) n
 cdef inline Buffer* recover_class(size_t index, Buffer* cropped_polygons) noexcept:
     if check_null_ptr(cropped_polygons):
         return NULL
+
     return cropped_polygons.recover_struct(index)

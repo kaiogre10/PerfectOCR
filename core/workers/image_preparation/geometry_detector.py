@@ -7,8 +7,10 @@ from app.models_builder import ModelsBuilder
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import binarice_img, morph_operations
-from domain.buffer_handler import ArrayBuffer
+from domain.buffer_handler import ArrayBuffer, ImageBuffer
 from bidings import arrays
+from utils.text_utils import set_ids
+from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +25,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
         self.bboxes_type = worker_config.get("bboxes_type", b"")
         self.centroids_type = worker_config.get("centroids_type", b"")
         self.padding = 1
-
+        self.cropped_output = config.get("cropped_img")
         self.output = config.get("opened")
         self._engine = None
             
@@ -63,23 +65,17 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 logger.critical("No hay polygonos detectados")
                 return False
 
-            logger.info(f"POLYGONS:\n"f"{polygons}")
-
             image_ptr = manager.get_img_ptr()
 
             if not image_ptr:
                 raise AttributeError(f"ERROR EN EL PUNTERO: {image_ptr}")
 
-            # logger.debug(f"PUNTERO: {image_ptr}")
-
-            total_rows = len(polygons)
-            total_cols = len(polygons[0])
-            centroids_cols = len(polygons[0][0])
+            logger.debug(f"PUNTERO: {image_ptr}")
 
             time_buff = time.perf_counter()
-            arr_ptr = manager.get_array_buffer(rows=total_rows, cols=total_cols, channels=centroids_cols, dtype=self.bboxes_type)
+            arr_ptr = manager.get_array_buffer(rows=len(polygons), cols=len(polygons[0]), channels=len(polygons[0][0]), dtype=self.bboxes_type)
             
-            # logger.debug(f"PUNTERO LIST PADDLE: {arr_ptr}")
+            logger.debug(f"PUNTERO LIST PADDLE: {arr_ptr}")
             
             if not arr_ptr:
                 logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
@@ -88,8 +84,8 @@ class GeometryDetector(ImagePrepAbstractWorker):
             list_bbox = ArrayBuffer(arr_ptr, 3, self.bboxes_type).data
             
             np.copyto(dst=list_bbox, src=polygons, casting='unsafe')
-            
-            c_centroids, c_bboxes, crop_ptr = arrays.compute_polygons_geometry(arr_ptr, image_ptr, self.padding)
+            padding = self.padding
+            c_centroids, c_bboxes, crop_ptr = arrays.compute_polygons_geometry(arr_ptr, image_ptr, padding)
             manager.free_buffer(arr_ptr)    # Liberar imagen completa inmediatamente
 
             if not c_bboxes or not c_centroids or not crop_ptr:
@@ -101,13 +97,19 @@ class GeometryDetector(ImagePrepAbstractWorker):
             list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
             list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
 
-            logger.warning(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}")
+            logger.info(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}")
+
+            if self.cropped_output:
+                image_name = manager.workflow.image_name
+                for i, ptr in enumerate(crop_ptr):
+                    poly_id = set_ids(i)
+                    crop = ImageBuffer(ptr).data
+                    save_croped_image(image_name, crop, poly_id)
             
             # np.maximum(0, all_bboxes[:, 0] - self.padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
             # np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)      ESto se queda por ser el layout original
             # np.minimum(img_cols, all_bboxes[:, 2] + self.padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
             # np.minimum(img_rows, all_bboxes[:, 3] + self.padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
-
             # valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
             #        
             polygons_list: List[Dict[str, Any]] = [{

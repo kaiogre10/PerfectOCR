@@ -2,7 +2,7 @@
 import shutil
 import os
 import logging
-from platform import system
+import platform
 from typing import Set, Tuple, Optional, List, Dict, Any
 #from psycopg2 import sql
 from services.log_service import basic_exc_logger
@@ -34,13 +34,12 @@ def init_system(project_root: str):
     so_ext = get_so()
     SO = get_so_bin_ext(so_ext.upper())
 
-def set_system_paths(config: Dict[str, List[str]]):
+def set_system_paths(config: Dict[str, Any]):
     global output_paths, no_del_output
     if config:
-        output_paths = config["output_paths"]
         no_del_output = config.get("no_del_output", False)
-
-        # output_paths = [os.path.join(PROJECT_ROOT, folder) for folder in output_path]
+        output_paths = config["output_paths"]
+        
 
 def _can_delete_entry(path: str) -> bool:
     """
@@ -321,7 +320,7 @@ def get_images_in_dir(input_path: str, files_to_find: List[str]) -> List[str]:
 
 def get_so():
     """Devuelve el nombre de SO: Linux/Windows"""
-    return system()
+    return platform.system()
 
 def get_so_bin_ext(so: str) -> Dict[str, str]:
     """[0]Bibliotecas, [1]Librerias"""
