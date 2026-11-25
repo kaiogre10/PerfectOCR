@@ -1,6 +1,6 @@
 # bidings/image/image.pyi
 import numpy as np
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 def load(filepath: str) -> Optional[int]:
     """Carga una imagen desde disco.
@@ -35,3 +35,5 @@ def copy_image(ptr_addr: int, dtype: bytes) -> Optional[int]:
 
     La copia conserva sus propios bytes y debe liberarse con release().
     """
+def get_crops_ptr(grouped_crops: int, total_buffers: int) -> List[int]:
+    """Devuelve la lista de punteros de los crops"""

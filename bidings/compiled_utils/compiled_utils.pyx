@@ -21,7 +21,7 @@ cdef inline int _get_dtype(const char* dtype) noexcept nogil:
     elif strcmp(dtype, b"float64") == 0: return cnp.NPY_FLOAT64
     return -1
 
-cdef inline size_t  _get_dtype_size(char last) noexcept nogil:
+cdef inline size_t _get_dtype_size(char last) noexcept nogil:
     if last == b"8": # Termina en 8 (uint8, int8), ascci = 56
         return 1
     elif last == b"6": # Termina en 16 (uint16, int16), ascii=54

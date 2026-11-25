@@ -29,6 +29,7 @@ extern "C" {
     uint8_t* get_uint8_data(BufferContainer* buffer);
     int32_t* get_int32_data(BufferContainer* buffer);
     float* get_float32_data(BufferContainer* buffer);
+    size_t* get_sizet_data(BufferContainer* buffer);
     void set_struct_at(BufferContainer* array, size_t index, int rows, int cols, int channels, size_t total_bytes, void* data);
     void group_array_structs(BufferContainer* array, size_t index, const BufferContainer* buffer, void* grouped_object);
     void* take_struct_data(BufferContainer* array, size_t index);

@@ -18,8 +18,8 @@ def release_array(size_t ptr_addr):
 
 cdef inline void free_buffer_class(Buffer* buffer_ptr):
     """Libera el buffer en memoria sin que el caller tenga que castear a size_t"""
-    cdef size_t ptr = <size_t>buffer_ptr
-    free_buffer(ptr)
+    cdef size_t buff_ptr = <size_t>(buffer_ptr)
+    free_buffer(buff_ptr)
 
 def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
     cdef Buffer* bboxes_ptr = get_buffer_ptr(arr_ptr)
@@ -34,6 +34,7 @@ def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
 
     cdef size_t total_buffers = 0
     cdef size_t* total_buffers_ref = &total_buffers
+
     # calculate_geometry
     cdef Buffer* geometry = get_bboxes(bboxes_ptr, img, padding, total_buffers_ref)
     if check_null_ptr(geometry):
@@ -41,7 +42,7 @@ def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
         free_buffer(image_ptr)
         raise TypeError(f"PUNTERO PACK GEOMETRIA NULL")
 
-    if total_buffers < 3:
+    if total_buffers < 4:
         free_buffer_class(geometry)
         free_buffer(arr_ptr)
         free_buffer(image_ptr)
@@ -61,16 +62,6 @@ def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
         free_buffer_class(bboxs)
         raise TypeError("PUNTEROS NULOS DE CENTROIDES")
 
-    crop_ptr = get_all_buffer_addrs(geometry, total_buffers-3)
-    return <size_t>centroids, <size_t>bboxs, crop_ptr
+    cdef Buffer* all_images = recover_class(total_buffers, geometry)
 
-cdef list get_all_buffer_addrs(Buffer* aos, size_t total_buffs) except +:
-    cdef size_t n = total_buffs
-    cdef list result = [0] * n
-    cdef size_t i = 0
-
-    while i < n:
-        size_buffer = aos.buffer_addr_sized(i)
-        result[i]= size_buffer
-        i += 1
-    return result
+    return <size_t>centroids, <size_t>bboxs, <size_t>all_images, <size_t>geometry

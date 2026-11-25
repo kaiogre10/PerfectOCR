@@ -82,6 +82,9 @@ int32_t* get_int32_data(BufferContainer* buffer) {
 float* get_float32_data(BufferContainer* buffer) {
     return (float*)buffer->data;
 }
+size_t* get_sizet_data(BufferContainer* buffer) {
+    return (size_t*)buffer->data;
+}
 void set_struct_at(BufferContainer* array, size_t index, int rows, int cols, int channels, size_t total_bytes, void* data) {
     set_struct(&array[index], rows, cols, channels, total_bytes, data);
 }

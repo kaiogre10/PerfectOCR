@@ -1,7 +1,8 @@
 # domain/data_formatter.py
 import logging
 from bidings import arrays, image
-from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload, FullImageKey, BoundingBoxesKey, CentroidsKey
+from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload
+from domain.buffer_models import FullImageKey, BoundingBoxesKey, CentroidsKey, CroppedBufferKey, CroppedImagesKey
 import numpy as np
 import dataclasses
 from typing import Dict, Any, Optional, List, Tuple
@@ -93,7 +94,6 @@ class DataFormatter:
                     poly_index=idx,
                     bounding_box=bbox,
                     centroid=centroid,
-                    cropped_img=None,
                     ocr_text=None,
                     key_field=None,
                     semantic_clasification=[SemantiClass.DESCRIPTIVE],
@@ -119,7 +119,7 @@ class DataFormatter:
                 raise TypeError("NO SE DEVOLVIO PUNTERO A BBOXES")
             
         except TypeError as e:
-            logger.error(f"No se pudo almacenar el puntero de bboxes: {e}", exc_info=True)
+            logger.exception(f"No se pudo almacenar el puntero de bboxes: {e}", exc_info=True)
             return False
         try:
             CentroidsKey(polygons[1])
@@ -128,17 +128,46 @@ class DataFormatter:
                 raise TypeError("NO SE DEVOLVIO PUNTERO A CENTROIDES")
         
         except TypeError as e:
-            logger.error(f"No se pudo almacenar el puntero a centroides: {e}", exc_info=True)
+            logger.exception(f"No se pudo almacenar el puntero a centroides: {e}", exc_info=True)
+            return False
+        try:
+            CroppedBufferKey(polygons[2])
+            cropped_buffer_ptr = CroppedBufferKey.cropped_buffer_ptr
+            if not cropped_buffer_ptr:
+                raise TypeError("NO SE DEVOLVIO PUNTERO A BUFFER DE CROPS")
+
+        except TypeError as e:
+            logger.exception(f"No se pudo almacenar el puntero a BUFFER DE CROPS: {e}", exc_info=True)
+            return False
+
+        try:
+            CroppedImagesKey(polygons[3])
+            cropped_img_ptr = CroppedImagesKey.cropped_img_ptr
+            if not cropped_img_ptr:
+                raise TypeError("NO SE DEVOLVIO PUNTERO A AoS")
+
+        except TypeError as e:
+            logger.exception(f"No se pudo almacenar el puntero a AoS: {e}", exc_info=True)
             return False
 
         total_bboxes = ArrayBuffer(bboxes_ptr).shape[0]
         total_centroids = ArrayBuffer(centroids_ptr).shape[0]
         if total_bboxes != total_centroids:
-            logger.error(f"DISPARIDAD EN LLA GEOMETRIA: BBOXES: {total_bboxes} != {total_centroids} CENTROIDS")
-
+            logger.error(f"DISPARIDAD EN LA GEOMETRIA: BBOXES: {total_bboxes} != {total_centroids} CENTROIDS")
             return False
 
-        logger.debug(f"CREADOS {total_bboxes} POLIGONOS, {total_centroids} CENTROIDS")
+        list_ptr = image.get_crops_ptr(cropped_buffer_ptr, total_bboxes)
+        total_crops = len(list_ptr)
+
+        if not list_ptr or total_crops < 1:
+            logger.error(f"ERRIR VALIDANDO CROPS: {total_crops}")
+            return False
+
+        if total_crops != total_centroids:
+            logger.error(f"DISPARIDAD EN LOS CROPS: {total_crops}")
+            return False
+
+        logger.warning(f"RECORTADOS: {total_crops} POLIGONOS, {total_bboxes} BBOXES, {total_centroids} CENTROIDS")
         return True
 
     def create_image(self, img_ptr: int) -> bool:
@@ -153,7 +182,7 @@ class DataFormatter:
         logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
-    def get_array_buffer(self, rows: int, cols: int,  channels: int, dtype: bytes) -> Optional[int]:
+    def get_array_buffer(self, rows: int, cols: int, channels: int, dtype: bytes) -> Optional[int]:
         """Solicita un buffer de memoria a C. Devuelve puntero"""
         if not dtype:
             raise TypeError("NO SE INGRESO TYPO DE ARRAY")
@@ -170,7 +199,7 @@ class DataFormatter:
             return None
         
         ptr = FullImageKey.img_ptr
-        if not isinstance(ptr, int): # type: ignore
+        if not isinstance(ptr, int):
             return None
         
         return ptr
@@ -181,6 +210,22 @@ class DataFormatter:
             return -1
         else:
             return bboxes_ptr
+
+    def get_cropped_img_ptr(self) -> Tuple[int, ...]:
+        centroids_ptr = CentroidsKey.centroids_ptr
+        if not centroids_ptr:
+            return ()
+
+        polys = ArrayBuffer(arr_ptr=centroids_ptr, dims=2, dtype=b"float32").shape[0]
+        cropped_img_ptr = CroppedImagesKey.cropped_img_ptr
+        if not cropped_img_ptr:
+            return ()
+
+        cropped_buffer_ptr = CroppedBufferKey.cropped_buffer_ptr
+        if not cropped_buffer_ptr:
+            return ()
+
+        return cropped_buffer_ptr, cropped_img_ptr, polys
 
     def get_img_copy(self) -> Tuple[Optional[int], Optional[np.ndarray[Any, np.dtype[np.uint8]]]]:
         """Devuelve puntero[0] y copia de la imagen principal[1] para futuras liberaciones"""

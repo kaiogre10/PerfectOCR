@@ -1,7 +1,9 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True, nonecheck=False, initializedcheck=False, embedsignature=True
 from libc.stddef cimport size_t
 from libc.string cimport memcpy
-from ..container.container cimport Buffer, get_buffer_ptr, create_new_buffer, get_array_view, check_null_ptr, get_rows, get_cols, get_size, get_data, free_buffer
+from libc.stdint cimport uint8_t
+from libcpp cimport bool
+from ..container.container cimport Buffer, get_buffer_ptr, create_new_buffer, get_array_view, check_null_ptr, get_rows, get_cols, get_size, get_data, free_buffer, get_channels, get_all_buffer_addrs_size
 from ..container.workers cimport load_image, rotate_image
 
 cdef inline size_t NULL_PYTHON_PTR = 0
@@ -57,3 +59,30 @@ def copy_image(size_t ptr_addr, const char* dtype):
 
     memcpy(new_data, old_data, total_bytes)
     return <size_t>new_buffer
+
+def get_crops_ptr(size_t grouped_crops, size_t total_buffers):
+    """No acepta individuales"""
+    cdef Buffer* grouped_buffers = get_buffer_ptr(grouped_crops)  # Crops
+    cdef size_t* buffer_list_size = get_all_buffer_addrs_size(grouped_buffers, total_buffers)   # Indice de punteros
+    buffer_list = [buffer_list_size[i] for i in range(total_buffers)]   # LIsta de punteros para python
+
+    if len(buffer_list) != total_buffers:
+        release_img(grouped_crops)
+        raise RuntimeError("DIFERENTE CANTIDAD DE CROPS")
+
+    cdef Buffer* last_array = get_buffer_ptr(buffer_list[total_buffers - 1])
+    if check_null_ptr(last_array):
+        release_img(grouped_crops)
+        raise RuntimeError("ULTIMO CROP NULO")
+
+    if not _validate_image(last_array):
+        return NULL_PYTHON_PTR
+
+    return buffer_list
+
+cdef inline bool _validate_image(Buffer* last_array):
+    cdef int rows = get_rows(last_array)
+    cdef int cols = get_cols(last_array)
+    cdef int channels = get_channels(last_array)
+    cdef size_t size = get_size(last_array)
+    return (<size_t>(rows * cols * channels) == (size / sizeof(uint8_t)))

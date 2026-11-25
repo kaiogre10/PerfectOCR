@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(np.asarray(img_arr, dtype=np.uint8, order='C'), dtype=np.uint8)
 
-def elevate_dims(image_list: List[np.ndarray[Any, Any]]) -> List[np.ndarray[Any, Any]]:
+def elevate_dims(image_list: List[np.ndarray[Any, np.dtype[np.uint8]]]) -> List[np.ndarray[Any, Any]]:
     try:
-        return [make_contiguous(cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR, dst=img)) for img in image_list]
+        return [make_contiguous(cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR)) for img in image_list]
     except cv2.error as e:
         logger.critical(f"Error añadiendo dimensiones a la imagen: {e}", exc_info=True)
     return []

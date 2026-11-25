@@ -1,4 +1,4 @@
-# PerfectOCR/core/workflow/ocr/paddle_wrapper.py
+# PerfectOCR/core/workers/ocr/paddle_wrapper.py
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from domain.data_formatter import DataFormatter
@@ -8,6 +8,8 @@ from utils.text_utils import normalice_text
 from utils.image_utils import elevate_dims
 from services.output_service import save_text_debug
 from utils.compiled_funcs import validate_text, space_removal
+from domain.buffer_handler import ImageBuffer
+from bidings import image
 
 logger = logging.getLogger(__name__)
 
@@ -74,22 +76,33 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 raise
             
             logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
-            polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img is not None]
-            img_list = [p.cropped_img for p in polygons.values() if p.polygon_id in polygon_ids and p.cropped_img is not None]
+            polygon_ids = [pdx.polygon_id for pdx in polygons.values()]
+
+            cropped_buffer_ptr, ptr_img_crop, polys = manager.get_cropped_img_ptr()       # PUntero a lista de punteros
+            if cropped_buffer_ptr < 1 or ptr_img_crop < 1 or polys < 1:
+                return {}
+
+            if len(polygon_ids) != polys:
+                logger.error(F"DISCREAPANCIA ENTRE C Y PYTHON")
+                return {}
+
+            ptr_list: List[int] = image.get_crops_ptr(ptr_img_crop, polys)  # Lista de punteros
+            img_list = [ImageBuffer(img).data for img in ptr_list]  # Lista de arrays
             if not img_list:
                 logger.error("NO HAY IMAGE LIST:")
                 return {}
             
             image_list = elevate_dims(img_list)
-            manager.delete_cropped_images()
+            manager.free_buffer(cropped_buffer_ptr)
+
             if not image_list:
                 logger.error(f"NO SE ELEVARON CORRECTAMENTE LAS DIMENSIONES")
                 return {}
-            
-            # time_t = time.perf_counter()
+
+            logger.warning(f"IMANEGEGS CON DIMENSION EXTRA EXITOSAS: {len(image_list)}")
+
             batch_result: List[Tuple[str, float]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
-            image_list = None
-            del image_list
+            # manager.free_buffer(ptr_img_crop)
             # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
             if not batch_result:
                 logger.error(f"PADDLE NO ARROJO RESULTADOS")

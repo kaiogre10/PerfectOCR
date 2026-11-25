@@ -94,6 +94,9 @@ private:
         float* get_float32_buffer() {
             return get_float32_data(ptr.get());
         }
+        size_t* get_sizet_buffer() {
+            return get_sizet_data(ptr.get());
+        }
         void set_struct_at(size_t index, int rows, int cols, int channels, size_t total_bytes, void* data) {
             ::set_struct_at(ptr.get(), index, rows, cols, channels, total_bytes, data);
         }

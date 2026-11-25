@@ -1,5 +1,6 @@
 # container.pxd
 from libc.stddef cimport size_t
+from libcpp cimport bool
 from ..compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
 
 cdef extern from "buffer_container.hpp" nogil:
@@ -11,7 +12,8 @@ cdef extern from "buffer_container.hpp" nogil:
         int cols() 
         int channels() 
         size_t size()
-        
+        size_t* get_sizet_buffer()
+
         Buffer* recover_struct(size_t index)
 
         Buffer* buffer_addr(size_t i)
@@ -19,7 +21,7 @@ cdef extern from "buffer_container.hpp" nogil:
 
     void destroy_buffer(Buffer* buffer) noexcept
 
-cdef inline bint check_null_ptr(Buffer* ptr_addr) noexcept:
+cdef inline bool check_null_ptr(Buffer* ptr_addr) noexcept:
     return ptr_addr == NULL or <size_t>ptr_addr < 1 # Devuelve True si es invalido
 
 cdef inline Buffer* get_buffer_ptr(size_t ptr_addr) noexcept:
@@ -47,16 +49,25 @@ cdef inline size_t get_size(Buffer* buff_ptr) noexcept:
 cdef inline void* get_data(Buffer* buff_ptr) noexcept:
     return buff_ptr.data()
 
-cdef inline size_t create_new_buffer(int rows, int cols, int channels, const char* dtype_raw) noexcept:
-    if not validate_arr_vals(rows, cols, channels):
-        return 0
+cdef inline size_t* get_data_sizet(Buffer* buff_ptr) noexcept:
+    return buff_ptr.get_sizet_buffer()
 
+cdef inline size_t create_new_buffer(int rows, int cols, int channels, const char* dtype_raw) noexcept:
     cdef size_t bad_dtype = get_arr_dtype_size(dtype_raw)
     if bad_dtype < 1:
         return 0
 
+    cdef Buffer* buff = _create_memmory_buffer(rows, cols, channels, bad_dtype)
+    if check_null_ptr(buff):
+        return 0
+    return <size_t>buff
+
+cdef inline Buffer* _create_memmory_buffer(int rows, int cols, int channels, size_t bad_dtype) noexcept:
+    if not validate_arr_vals(rows, cols, channels):
+        return NULL
+
     cdef Buffer* b = new Buffer(rows, cols, channels, bad_dtype)
-    return <size_t>b
+    return b
 
 cdef inline object get_array_view(size_t arr_ptr, const char* dtype, int dims) noexcept:
     cdef Buffer* new_array = get_buffer_ptr(arr_ptr)
@@ -83,3 +94,17 @@ cdef inline Buffer* recover_class(size_t index, Buffer* cropped_polygons) noexce
         return NULL
 
     return cropped_polygons.recover_struct(index)
+
+cdef inline size_t* get_all_buffer_addrs_size(Buffer* aos, size_t n) noexcept:
+    cdef Buffer* index = _create_memmory_buffer(n, 1, 1, sizeof(size_t))  # Buffer para punteros
+
+    if check_null_ptr(index):
+        return NULL
+
+    cdef size_t i
+    cdef size_t* result = get_data_sizet(index)
+
+    for i in range(n):
+        result[i] = aos.buffer_addr_sized(i)
+
+    return result

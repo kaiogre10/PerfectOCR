@@ -85,19 +85,30 @@ class GeometryDetector(ImagePrepAbstractWorker):
             
             np.copyto(dst=list_bbox, src=polygons, casting='unsafe')
             padding = self.padding
-            c_centroids, c_bboxes, crop_ptr = arrays.compute_polygons_geometry(arr_ptr, image_ptr, padding)
-            manager.free_buffer(arr_ptr)    # Liberar imagen completa inmediatamente
+            c_centroids, c_bboxes, all_crops, crop_ptr = arrays.compute_polygons_geometry(arr_ptr, image_ptr, padding)
+            if c_bboxes and c_centroids and crop_ptr:
+                manager.delete_buffers([image_ptr, arr_ptr])    # Liberar imagen completa inmediatamente
+            else:
+                ptr_todel: List[int] = []
+                if not c_bboxes:
+                    ptr_todel.append(c_bboxes)
+                if not c_centroids:
+                    ptr_todel.append(c_centroids)
+                if not all_crops:
+                    ptr_todel.append(all_crops)
+                if not crop_ptr:
+                    ptr_todel.append(crop_ptr)
 
-            if not c_bboxes or not c_centroids or not crop_ptr:
-                if not manager.delete_buffers([image_ptr, c_bboxes]):
-                    return False
+                if not manager.delete_buffers(ptr_todel + [image_ptr, arr_ptr]):
+                    raise RuntimeError("NO SE PUDIERON LIBERAR LOS PUNTEROS DE GEOMETRIA")
 
             logger.info(f"PUNTEROS A LAS CROPPED: {crop_ptr}")
 
             list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
+
             list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
 
-            logger.info(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}")
+            logger.warning(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}")
 
             if self.cropped_output:
                 image_name = manager.workflow.image_name
@@ -118,11 +129,8 @@ class GeometryDetector(ImagePrepAbstractWorker):
             }
             for i in range(list_reshape_bbox.shape[0])
             ]
-
-            # final_polygons_list = self.validate_polygons(img, polygons_list, manager, context)
-
             manager.create_polygon_dicts(polygons_list)
-            if not manager.create_polygons([c_bboxes, c_centroids]):
+            if not manager.create_polygons([c_bboxes, c_centroids, all_crops, crop_ptr]):
                 logger.critical("GeometryDetector: Fallo al estructurar polígonos.")
                 return False
 

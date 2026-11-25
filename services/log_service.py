@@ -71,7 +71,6 @@ def setup_logging(config: Dict[str, str]) -> None:
 
     # 4. Establecer el nivel global definitivo
     _log_root.setLevel(file_level)
-
     _log_root.propagate = True
 
 def _add_file_handler(log_root: logging.Logger, project_root: str, filename: str, level: str, formatter: logging.Formatter) -> None:

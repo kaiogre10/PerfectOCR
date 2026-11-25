@@ -3,7 +3,6 @@ from typing import Dict, Callable, Any
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from core.factory.abstract_factory import AbstractBaseFactory
 from core.workers.image_preparation.image_loader import ImageLoader
-# from core.workers.image_preparation.ink_enhancer import InkCorrector
 from core.workers.image_preparation.angle_corrector import AngleCorrector
 from core.workers.image_preparation.geometry_detector import GeometryDetector
 
@@ -14,8 +13,7 @@ class ImagePreparationFactory(AbstractBaseFactory[ImagePrepAbstractWorker]):
             'image_loader': self._create_loader,
             "angle_corrector": self._create_angle_corrector,
             # "ink_enhancement": self._create_inker,
-            "geometry_detector": self._create_geometry_detector,
-            # "polygon_extractor": self._create_polygon_extractor
+            "geometry_detector": self._create_geometry_detector
         }
     
     def _create_loader(self, context: Dict[str, Any]) -> ImageLoader:
