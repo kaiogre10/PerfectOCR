@@ -56,7 +56,7 @@ class ArrayBuffer:
     __slots__ = ('_arr_ptr', '_data', '_shape', "_dims", "_dtype")
     def __init__(self, arr_ptr: int, dims: Optional[int] = None, dtype: Optional[bytes] = None):
         self._arr_ptr: int = arr_ptr
-        self._dims = dims if dims else 2
+        self._dims = dims if dims is not None else 2
         self._dtype = dtype if dtype else b"uint8"
         self._data: Optional[np.ndarray[Any, Any]] = None
         self._shape: Optional[Tuple[int, ...]] = None

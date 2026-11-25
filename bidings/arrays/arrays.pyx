@@ -1,5 +1,5 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True, nonecheck=False, initializedcheck=False, embedsignature=True
-from ..container.container cimport Buffer, get_buffer_ptr, get_array_view, create_new_buffer, check_null_ptr, free_buffer, recover_class
+from ..container.container cimport Buffer, get_buffer_ptr, get_array_view, create_new_buffer, check_null_ptr, free_buffer, recover_class, get_size
 from libc.stddef cimport size_t
 from ..container.workers cimport get_bboxes
 
@@ -18,7 +18,7 @@ def release_array(size_t ptr_addr):
 
 cdef inline void free_buffer_class(Buffer* buffer_ptr):
     """Libera el buffer en memoria sin que el caller tenga que castear a size_t"""
-    cdef size_t buff_ptr = <size_t>(buffer_ptr)
+    cdef size_t buff_ptr = <size_t>buffer_ptr
     free_buffer(buff_ptr)
 
 def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
@@ -42,26 +42,28 @@ def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
         free_buffer(image_ptr)
         raise TypeError(f"PUNTERO PACK GEOMETRIA NULL")
 
-    if total_buffers < 4:
+    if total_buffers < 3:
         free_buffer_class(geometry)
         free_buffer(arr_ptr)
         free_buffer(image_ptr)
         raise TypeError(f"CONTEO POR REFERENCIA ERRONEO")
 
-    cdef Buffer* bboxs = recover_class(total_buffers-2, geometry)
+    cdef size_t buffer_cropp = total_buffers-3
+    cdef size_t bboxes_idx = total_buffers-2
+    cdef size_t centroids_idx = total_buffers-1
 
+    cdef Buffer* centroids = recover_class(centroids_idx, geometry)
+    if check_null_ptr(centroids):
+        free_buffer(image_ptr)
+        free_buffer_class(geometry)
+        raise TypeError("PUNTEROS NULOS DE CENTROIDES")
+
+    cdef Buffer* bboxs = recover_class(bboxes_idx, geometry)
     if check_null_ptr(bboxs):
         free_buffer(image_ptr)
         free_buffer_class(geometry)
         raise TypeError("PUNTEROS NULOS DE BBOXES")
-    
-    cdef Buffer* centroids = recover_class(total_buffers-1, geometry)
-    if check_null_ptr(centroids):
-        free_buffer(image_ptr)
-        free_buffer_class(geometry)
-        free_buffer_class(bboxs)
-        raise TypeError("PUNTEROS NULOS DE CENTROIDES")
-
-    cdef Buffer* all_images = recover_class(total_buffers, geometry)
+            
+    cdef Buffer* all_images = recover_class(buffer_cropp, geometry)
 
     return <size_t>centroids, <size_t>bboxs, <size_t>all_images, <size_t>geometry

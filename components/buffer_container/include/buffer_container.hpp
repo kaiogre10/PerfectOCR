@@ -120,4 +120,7 @@ private:
 inline void destroy_buffer(Buffer* buffer) noexcept {
     delete buffer;
 }
+inline size_t buffer_container_size() noexcept {
+    return get_container_size();
+}
 #endif

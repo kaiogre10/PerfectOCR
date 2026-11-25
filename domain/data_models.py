@@ -1,5 +1,4 @@
 # domain/data_models.py
-import numpy as np
 import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
@@ -8,8 +7,9 @@ from dataclasses import dataclass
 class Polygons:
     polygon_id: str
     poly_index: int
-    bounding_box: List[int]
-    centroid: Optional[List[float]]
+    # bounding_box: List[int]
+    # centroid: Optional[List[float]]
+    cropped_img: int
     ocr_text: Optional[str]
     key_field: Optional[List[int]]
     semantic_clasification: List[int]

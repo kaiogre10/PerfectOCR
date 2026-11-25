@@ -54,7 +54,6 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 return False
             
             full_imag = binarice_img(full_imag)
-
             full_imag = morph_operations(full_imag, self.kernel, self.iterations)
 
             polygons: List[List[List[float]]] = engine.ocr(img=full_imag, det=True, cls=False, rec=False)[0]
@@ -85,8 +84,10 @@ class GeometryDetector(ImagePrepAbstractWorker):
             
             np.copyto(dst=list_bbox, src=polygons, casting='unsafe')
             padding = self.padding
+            
             c_centroids, c_bboxes, all_crops, crop_ptr = arrays.compute_polygons_geometry(arr_ptr, image_ptr, padding)
-            if c_bboxes and c_centroids and crop_ptr:
+            
+            if c_bboxes and c_centroids and all_crops and crop_ptr:
                 manager.delete_buffers([image_ptr, arr_ptr])    # Liberar imagen completa inmediatamente
             else:
                 ptr_todel: List[int] = []
@@ -96,40 +97,31 @@ class GeometryDetector(ImagePrepAbstractWorker):
                     ptr_todel.append(c_centroids)
                 if not all_crops:
                     ptr_todel.append(all_crops)
-                if not crop_ptr:
-                    ptr_todel.append(crop_ptr)
 
                 if not manager.delete_buffers(ptr_todel + [image_ptr, arr_ptr]):
                     raise RuntimeError("NO SE PUDIERON LIBERAR LOS PUNTEROS DE GEOMETRIA")
 
             logger.info(f"PUNTEROS A LAS CROPPED: {crop_ptr}")
 
-            list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
+            # list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
 
-            list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
+            # list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
 
             logger.warning(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}")
 
-            if self.cropped_output:
-                image_name = manager.workflow.image_name
-                for i, ptr in enumerate(crop_ptr):
-                    poly_id = set_ids(i)
-                    crop = ImageBuffer(ptr).data
-                    save_croped_image(image_name, crop, poly_id)
-            
             # np.maximum(0, all_bboxes[:, 0] - self.padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
             # np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)      ESto se queda por ser el layout original
             # np.minimum(img_cols, all_bboxes[:, 2] + self.padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
             # np.minimum(img_rows, all_bboxes[:, 3] + self.padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
             # valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
             #        
-            polygons_list: List[Dict[str, Any]] = [{
-                "bounding_box": list_reshape_bbox[i].tolist(),
-                "centroid": list_centroids[i].tolist()
-            }
-            for i in range(list_reshape_bbox.shape[0])
-            ]
-            manager.create_polygon_dicts(polygons_list)
+            # polygons_list: List[Dict[str, Any]] = [{
+            #     "bounding_box": list_reshape_bbox[i].tolist(),
+            #     "centroid": list_centroids[i].tolist()
+            # }
+            # for i in range(list_reshape_bbox.shape[0])
+            # ]
+            # manager.create_polygon_dicts(polygons_list)
             if not manager.create_polygons([c_bboxes, c_centroids, all_crops, crop_ptr]):
                 logger.critical("GeometryDetector: Fallo al estructurar polígonos.")
                 return False

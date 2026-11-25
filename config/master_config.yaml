@@ -50,7 +50,7 @@ log_config:
   no_del_output: False
   
   auditate_areas:   # Audita areas completas
-    image_preparation: False
+    image_preparation: True
     preprocessing: False
     ocr: False
     vectorization: False

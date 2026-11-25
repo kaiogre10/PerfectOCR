@@ -4,13 +4,13 @@ from libcpp cimport bool
 from ..compiled_utils.compiled_utils cimport get_arr_dtype_size, array_view, validate_arr_vals
 
 cdef extern from "buffer_container.hpp" nogil:
-    cppclass Buffer:
+    cppclass Buffer:        
         Buffer(int rows, int cols, int channels, size_t dtype) noexcept
         void* data()
         const void* read_only_data() const
-        int rows() 
-        int cols() 
-        int channels() 
+        int rows()
+        int cols()
+        int channels()
         size_t size()
         size_t* get_sizet_buffer()
 
@@ -20,6 +20,7 @@ cdef extern from "buffer_container.hpp" nogil:
         size_t buffer_addr_sized(size_t i)
 
     void destroy_buffer(Buffer* buffer) noexcept
+    size_t buffer_container_size() noexcept
 
 cdef inline bool check_null_ptr(Buffer* ptr_addr) noexcept:
     return ptr_addr == NULL or <size_t>ptr_addr < 1 # Devuelve True si es invalido
@@ -81,10 +82,10 @@ cdef inline object get_array_view(size_t arr_ptr, const char* dtype, int dims) n
     if not validate_arr_vals(rows, cols, channels):
         return 0
 
-    cdef bint tridimentional_view = 1
+    cdef bool tridimentional_view = True
 
     if dims == 0 or dims == 2:
-        tridimentional_view = 0
+        tridimentional_view = False
 
     cdef void* data = get_data(new_array)
     return array_view(data, rows, cols, channels, dtype, tridimentional_view)
@@ -96,7 +97,8 @@ cdef inline Buffer* recover_class(size_t index, Buffer* cropped_polygons) noexce
     return cropped_polygons.recover_struct(index)
 
 cdef inline size_t* get_all_buffer_addrs_size(Buffer* aos, size_t n) noexcept:
-    cdef Buffer* index = _create_memmory_buffer(n, 1, 1, sizeof(size_t))  # Buffer para punteros
+    cdef size_t buffer_size = buffer_container_size()
+    cdef Buffer* index = _create_memmory_buffer(n, 1, 1, buffer_size)  # Buffer para punteros
 
     if check_null_ptr(index):
         return NULL

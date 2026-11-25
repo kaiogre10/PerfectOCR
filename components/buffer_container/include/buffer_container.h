@@ -1,5 +1,6 @@
 #ifndef BUFFER_CONTAINER_H
 #define BUFFER_CONTAINER_H
+#include <stddef.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -7,6 +8,7 @@
 extern "C" {
     #endif
     // 1. Estructura OPACA. El usuario solo ve un puntero incompleto.
+    size_t get_container_size();
     typedef struct BufferContainer BufferContainer;
 
     // 2. FUNCIONES DE CICLO DE VIDA

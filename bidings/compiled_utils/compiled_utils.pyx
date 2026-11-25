@@ -8,7 +8,7 @@ cnp.import_array()
 
 cdef int _max_size = 20000000
 
-cdef inline int _get_dtype(const char* dtype) noexcept nogil:
+cdef inline int _get_dtype(const char* dtype) noexcept:
     if strcmp(dtype, b"uint8") == 0: return cnp.NPY_UINT8
     elif strcmp(dtype, b"uint16") == 0: return cnp.NPY_UINT16
     elif strcmp(dtype, b"uint32") == 0: return cnp.NPY_UINT32
@@ -21,7 +21,7 @@ cdef inline int _get_dtype(const char* dtype) noexcept nogil:
     elif strcmp(dtype, b"float64") == 0: return cnp.NPY_FLOAT64
     return -1
 
-cdef inline size_t _get_dtype_size(char last) noexcept nogil:
+cdef inline size_t _get_dtype_size(char last) noexcept:
     if last == b"8": # Termina en 8 (uint8, int8), ascci = 56
         return 1
     elif last == b"6": # Termina en 16 (uint16, int16), ascii=54
@@ -44,7 +44,7 @@ cdef size_t get_arr_dtype_size(const char* dtype) noexcept:
     cdef char last = dtype[len_type - 1]
     return _get_dtype_size(last)
     
-cdef object array_view(void* data_view, int rows_view, int cols_view, int channels_view, const char* dtype, bint tridimentional_view) noexcept:
+cdef object array_view(void* data_view, int rows_view, int cols_view, int channels_view, const char* dtype, bool tridimentional_view) noexcept:
     cdef cnp.intp_t[3] shape_dims
     cdef cnp.intp_t nd
 

@@ -76,24 +76,25 @@ class DataFormatter:
             logger.error(f"No se pudo crear el workflowDict: {e}", exc_info=True)
             return False
     
-    def create_polygon_dicts(self, results: List[Dict[str, Any]]) -> bool:
+    def create_polygon_dicts(self, results: List[int]) -> bool:
         try:
             if self.workflow is None:
                 return False
             
             polygons_dataclass: Dict[str, Polygons] = {}
             
-            for idx, poly_data in enumerate(results):
+            for idx, croped_ptr in enumerate(results):
                 poly_id = set_ids(idx)
-                bbox = poly_data["bounding_box"]
-                centroid = poly_data["centroid"]
+                # bbox = poly_data["bounding_box"]
+                # centroid = poly_data["centroid"]
 
                 # Crear objeto Polygons y agregar al diccionario
                 polygon_obj = Polygons(
                     polygon_id=poly_id,
                     poly_index=idx,
-                    bounding_box=bbox,
-                    centroid=centroid,
+                    cropped_img=croped_ptr,
+                    # bounding_box=bbox,
+                    # centroid=centroid,
                     ocr_text=None,
                     key_field=None,
                     semantic_clasification=[SemantiClass.DESCRIPTIVE],
@@ -152,11 +153,12 @@ class DataFormatter:
 
         total_bboxes = ArrayBuffer(bboxes_ptr).shape[0]
         total_centroids = ArrayBuffer(centroids_ptr).shape[0]
+
         if total_bboxes != total_centroids:
             logger.error(f"DISPARIDAD EN LA GEOMETRIA: BBOXES: {total_bboxes} != {total_centroids} CENTROIDS")
             return False
 
-        list_ptr = image.get_crops_ptr(cropped_buffer_ptr, total_bboxes)
+        list_ptr = image.get_crops_ptr(cropped_img_ptr, total_bboxes)
         total_crops = len(list_ptr)
 
         if not list_ptr or total_crops < 1:
@@ -165,6 +167,20 @@ class DataFormatter:
 
         if total_crops != total_centroids:
             logger.error(f"DISPARIDAD EN LOS CROPS: {total_crops}")
+            return False
+
+        if not self.create_polygon_dicts(list_ptr):
+            logger.error("NO SE PUDIERON CREAR LOS POLÍGONOS")
+            return False
+        
+        polygon = self.workflow.polygons if self.workflow else {}
+        if not polygon:
+            logger.error(f"NO SE GUARDARON LOS POLÍGONONS")
+            return False
+        
+        total_polygons = len(polygon)
+        if total_bboxes != total_polygons:
+            logger.error(f"INCONGRUENCIA EN CANTIDAD DE POLIGONOS Y BBOXES GENERADOS")
             return False
 
         logger.warning(f"RECORTADOS: {total_crops} POLIGONOS, {total_bboxes} BBOXES, {total_centroids} CENTROIDS")

@@ -13,6 +13,10 @@ struct BufferContainer {
 
 static const size_t container_size = sizeof(BufferContainer);
 
+inline size_t get_container_size() {
+    return container_size;
+}
+
 BufferContainer* create_array_of_structs(int total_objects) {
     if (total_objects == 0) {
         return NULL;

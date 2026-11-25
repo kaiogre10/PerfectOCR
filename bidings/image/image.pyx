@@ -67,13 +67,11 @@ def get_crops_ptr(size_t grouped_crops, size_t total_buffers):
     buffer_list = [buffer_list_size[i] for i in range(total_buffers)]   # LIsta de punteros para python
 
     if len(buffer_list) != total_buffers:
-        release_img(grouped_crops)
-        raise RuntimeError("DIFERENTE CANTIDAD DE CROPS")
+        return NULL_PYTHON_PTR
 
     cdef Buffer* last_array = get_buffer_ptr(buffer_list[total_buffers - 1])
     if check_null_ptr(last_array):
-        release_img(grouped_crops)
-        raise RuntimeError("ULTIMO CROP NULO")
+        return NULL_PYTHON_PTR
 
     if not _validate_image(last_array):
         return NULL_PYTHON_PTR
@@ -85,4 +83,5 @@ cdef inline bool _validate_image(Buffer* last_array):
     cdef int cols = get_cols(last_array)
     cdef int channels = get_channels(last_array)
     cdef size_t size = get_size(last_array)
-    return (<size_t>(rows * cols * channels) == (size / sizeof(uint8_t)))
+    cdef size_t vol = <size_t>rows * <size_t>cols * <size_t>channels
+    return vol == (size // sizeof(uint8_t))

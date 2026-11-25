@@ -86,15 +86,14 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                 logger.error(F"DISCREAPANCIA ENTRE C Y PYTHON")
                 return {}
 
-            ptr_list: List[int] = image.get_crops_ptr(ptr_img_crop, polys)  # Lista de punteros
-            img_list = [ImageBuffer(img).data for img in ptr_list]  # Lista de arrays
+            img_list = [ImageBuffer(poly.cropped_img).data for poly in polygons.values()]
             if not img_list:
                 logger.error("NO HAY IMAGE LIST:")
                 return {}
             
             image_list = elevate_dims(img_list)
             manager.free_buffer(cropped_buffer_ptr)
-
+            
             if not image_list:
                 logger.error(f"NO SE ELEVARON CORRECTAMENTE LAS DIMENSIONES")
                 return {}
@@ -102,7 +101,6 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             logger.warning(f"IMANEGEGS CON DIMENSION EXTRA EXITOSAS: {len(image_list)}")
 
             batch_result: List[Tuple[str, float]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
-            # manager.free_buffer(ptr_img_crop)
             # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
             if not batch_result:
                 logger.error(f"PADDLE NO ARROJO RESULTADOS")
