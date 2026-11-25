@@ -27,7 +27,6 @@
 *.pdmodel
 inference.*
 *-log.txt
-
 # Ignorar archivos especificos
 perfectocr.txt
 tree.txt
@@ -71,6 +70,7 @@ bidings/arrays/*.cpp
 bidings/image/*.cpp
 cmake-*/
 cmake/CacheParser.cmake
+
 # .editorconfig
 
 # secrets
