@@ -26,7 +26,7 @@ private:
         explicit Buffer(BufferContainer* existing, WrapTag)
             : ptr(existing) {}
 
-        // crea la llave de un índice (llamado por el AoS) 
+        // crea la llave de un índice (llamado por el AoS)
         void make_element(size_t i) {
             BufferContainer* s = array_at(ptr.get(), i);
             elements_.emplace_back(new Buffer(s, WrapTag{}));
@@ -55,7 +55,7 @@ private:
         Buffer& operator=(const Buffer&) = delete;
 
         // === MOVE SEMANTICS (Yo decido ceder el ownership) ===
-        // Esto permite: Buffer buff2 = std::move(buff1);
+        //*/ Esto permite: Buffer buff2 = std::move(buff1);
         Buffer(Buffer&& other) noexcept : ptr(std::move(other.ptr)) {}
         Buffer& operator=(Buffer&& other) noexcept {
             if (this != &other) {

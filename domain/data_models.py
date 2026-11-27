@@ -2,11 +2,11 @@
 import pandas as pd # type: ignore
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
-    
+
 @dataclass(slots=True)
 class Polygons:
-    polygon_id: str
     poly_index: int
+    polygon_id: str
     cropped_img: Optional[int]
     ocr_text: Optional[str]
     key_field: Optional[List[int]]
@@ -35,7 +35,7 @@ class StructuredData:
 class WorkflowData:
     image_name: str
     img_dims: Tuple[int, ...]
-    polygons: Optional[Dict[str, Polygons]]
+    polygons: Optional[Dict[int, Polygons]]
     all_lines: Optional[Dict[str, AllLines]]
     table_data: Optional[StructuredData]
 

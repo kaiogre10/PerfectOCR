@@ -51,3 +51,12 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 add_subdirectory(components)
 add_subdirectory(bidings)
+
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    add_custom_target(export_compile_commands ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/compile_commands.json"
+            "${CMAKE_SOURCE_DIR}/cmake/compile_commands.json"
+        BYPRODUCTS "${CMAKE_SOURCE_DIR}/cmake/compile_commands.json"
+    )
+endif()

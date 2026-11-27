@@ -2,7 +2,10 @@
 import numpy as np
 from typing import Any, Optional, List
 
-def load(filepath: str) -> Optional[int]:
+def elemental_params(val: bool) -> bool:
+    """Valida que el loader este activo"""
+
+def load(filepath: bytes) -> int:
     """Carga una imagen desde disco.
     Returns:
         Un handle opaco (dirección de memoria) que debe liberarse con release().

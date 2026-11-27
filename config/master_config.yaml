@@ -20,7 +20,6 @@ deploy_settings:
 
 pipeline_secuence:
   image_preparation_stager:
-    - "image_loader"
     - "angle_corrector"
     # - "ink_enhancement"
     - "geometry_detector"
@@ -36,7 +35,7 @@ pipeline_secuence:
     - "paddle_wrapper"
     - "text_refiner"
     - "data_finder"
-    
+
   vectorization_stager:
     - "lineal"
     - "cos_sim"
@@ -48,7 +47,7 @@ log_config:
   auditate_process: False  # ACTIVA TODOS LOS LOGS Y OUTPUTS PARATRAZADO COMPLETO
   all_logs: False   # Modo Que cambia tosdos los logs a True para trazabilidad
   no_del_output: False
-  
+
   auditate_areas:   # Audita areas completas
     image_preparation: False
     preprocessing: False
@@ -77,10 +76,10 @@ log_config:
     table_lines: False
     table_geo: False
     table_correct: False
-    
+
     time_stages_log: True
     time_worker_log: True
-    
+
     semantic_types_log: [4]   # Range [0, 5]
     kf_list_log: [-1] # Range [1, 12]
 
@@ -92,7 +91,7 @@ enabled_outputs:
     angle_corrected: False
     cropped_img: False
     opened: False
-  
+
   preprocessing_outputs:
     sp_poly: False
     gauss_poly: False
@@ -104,7 +103,7 @@ enabled_outputs:
     fragmented_polys: False
     semantic_field: False
     cleanned_text: False
-  
+
   vectorization_outputs:
     reconstructed_lines: False
     table_lines: False

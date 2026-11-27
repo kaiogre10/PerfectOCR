@@ -67,26 +67,26 @@ def normalice_text(s: str) -> str:
     """"Normaliza texto ascii eliminando apóstrofes, tildes, diéresis. NO ELIMINA LETRAS"""
     if not s:
         return ""
-    
+
     norm_text = "".join(ch for ch in unicodedata.normalize("NFD", s) if category(ch) != "Mn")
-        
+
     if not norm_text:
         return ""
-    
+
     hard_bytes = unicodedata.normalize('NFKD', norm_text).encode(TypeModels.ASCII.value, 'replace')
     if not hard_bytes:
         return ""
-    
+
     if b"?" in hard_bytes:
         hard_bytes = hard_bytes.replace(b"?", b" ")
 
     return space_removal_bytes(hard_bytes).decode(TypeModels.ASCII.value)
-    
+
 def get_rfc(s: str) -> str:
     s = s.strip()
     if not s:
         return ""
-    
+
     match = _rfc_key_pattern.search(s)
     return match.group(0) if match else ""
 
@@ -113,7 +113,7 @@ def correct_subfix(text: str) -> str:
 
     elif len(text) < 3 or text.isnumeric():
         return text
-    
+
     elif not bool(_cion_search_patt.search(text)) and bool(_suffix_pattern.search(text)):
         return _suffix_pattern.sub(_cion_str, text)
 
@@ -235,17 +235,17 @@ def find_key_data(s: str, activate_func: List[bool]) -> Optional[int]:
     if not activate_func[5] and bool(_acromin_currency_pattern.search(s)):
         activate_func[5] = True
         return SemantiClass.UNIQUE
-    
+
     if not activate_func[6] and bool(_cp_pattern.search(s)):
         activate_func[6] = True
         return KeyField.direccionp.value
-    
+
     return None
 
 def validate_quant_pattern(text: str) -> bool:
     """Verifica si hay match completo de un patrón"""
     return bool(_quant_runs_patterns.fullmatch(text) or _universal_money_regex.fullmatch(text))
-    
+
 def is_quantitative(text: str) -> bool:
     """Válida rapidamente si un string es cuantitativo"""
     return False if len(text) < 3 else bool(validate_quant_pattern(text) or validate_quant_chars(text))
@@ -259,7 +259,7 @@ def get_cuants(text: str) -> str:
     """Aísla cuantitativos SÓLO si están pegados a otros caracteres (ruido o texto). Si ya están separados por espacios, no modifica el texto."""
     if len(text) < 3 or text.isdecimal() or text.isalpha():
         return text
-    
+
     words = text.strip().split(" ")
     result_parts: List[str] = []
     for _, word in enumerate(words):
@@ -323,19 +323,19 @@ def get_cuants(text: str) -> str:
     clean_quants = space_removal(" ".join(result_parts))
     cuant_cheks = clean_quants.split(" ")
     cheks = len(cuant_cheks)
-    
+
     if cheks == 1:
         return clean_quants
-    
+
     elif cheks > 1:
         potencial_noise = cuant_cheks[-1]
-        
+
         if len(potencial_noise) < 3 and not is_quantitative(potencial_noise):
             cuant_cheks.pop(-1)
             clean_quants =  " ".join(cuant_cheks).strip()
 
         return space_removal(clean_quants)
-    
+
     else:
         return ""
 
@@ -345,33 +345,33 @@ def format_cuant(text: str) -> str:
     if text.isalpha():
         logger.debug(f"TEXTO ALFABÉTICO NO SE FORMATEA: '{text}'")
         return text
-    
+
     elif text.isdecimal():
         return (text + NumberStr.ZEROS_CUANT)
-        
+
     text_0 = _clean_currency.sub("", text).strip()
     cuant_txt = _correct_numbers(text_0)
     if not cuant_txt.replace(".", "").isdecimal() or len(cuant_txt) > len(text):
-        
+
         logger.warning(f"CARACTER INTRUSO EN '{text_0}' NO SE PUDO FORMATEAR")
         return text
     else:
         return cuant_txt
-            
+
 def punct_strip(text: str) -> str:
     """Elimina los caracteres de puntuación que se encuentran al inicio y al final de cada token en el texto."""
     if not text:
         return ""
     if validate_quant_chars(text) or is_acronym(text):
         return text.strip()
-    
+
     return space_removal(_edge_punt_pattern.sub("", text))
 
 def separate_punt(text: str) -> str:
     text = text.strip()
     if not text:
         return ""
-    
+
     if is_acronym(text):
         return text
 
@@ -397,7 +397,7 @@ def remove_special_sequences(text: str) -> str:
     cleaned = _sequence_middle_pattern.sub(" ", text).strip()
     cleaned = _secuence_pattern.sub("", cleaned)
     return space_removal(cleaned) if cleaned else text
-    
+
 def get_brands(text: str) -> bool:
     """Experimental: LOCALIZA SI UN STRING ES UNA MARCA COMERCIAL"""
     return False if len(text) < 3 else bool(_labels_pattern.fullmatch(text))
@@ -423,7 +423,7 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
             t_class, t_cuant = classify_token(tokens[0])
             final_results[pid] = ([t_class], t_cuant)
             continue
-    
+
         else:
             token_classes: List[int] = []
             poly_total_cuant = 0
@@ -432,7 +432,7 @@ def clasify_words(polygons: Dict[str, Any]) -> Dict[str, Tuple[List[int], int]]:
                 t_class, t_cuant = classify_token(t)
                 token_classes.append(t_class)
                 poly_total_cuant += t_cuant
-                
+
             final_results[pid] = (token_classes, poly_total_cuant)
             continue
 
@@ -444,18 +444,18 @@ def classify_token(s: str) -> Tuple[int, int]:
     if not s:
         #  logger.info(f"VACIO 3RO: {s}")
         return (SemantiClass.NOISE, 0)
-        
+
     elif not any(c.isalnum() for c in s):
         #  logger.info(f"INVÁLIDO 1: '{s}'")
         return (SemantiClass.NOISE, 0)
-        
+
     elif s.isalpha():
         if bool(_size_pattern.search(s)):
             return (SemantiClass.UMD, 0)
         #  logger.info(f"ALPHA 1ro: '{s}'")
         else:
             return (SemantiClass.DESCRIPTIVE, 0)
-    
+
     elif s.isdecimal():
         if bool(_numeric_code.fullmatch(s)):
             return (SemantiClass.CODE, count_cuants(s))
@@ -463,11 +463,11 @@ def classify_token(s: str) -> Tuple[int, int]:
             return (SemantiClass.NUMERIC, count_cuants(s))
 
     total_cuant = count_cuants(s)
-    
+
     if total_cuant == 0:
         if not any(c.isalpha() for c in s):
             return (SemantiClass.NOISE, total_cuant)
-        
+
         elif bool(_fraction_pattern.search(s)):
             # logger.info(f"UMD por regex: '{s}'")
             return (SemantiClass.UMD, total_cuant)
@@ -485,7 +485,7 @@ def classify_token(s: str) -> Tuple[int, int]:
 
             elif 2 < total_text:
                 return (SemantiClass.CODE, total_cuant)
-            
+
         # logger.info(f"DESC por sobrante: '{s}'")
         return (SemantiClass.DESCRIPTIVE, total_cuant)
 
@@ -502,21 +502,21 @@ def classify_token(s: str) -> Tuple[int, int]:
             if s.isalnum():
                 # logger.info(f"CODE por inicio 0: '{s}'")
                 return (SemantiClass.CODE, total_cuant)
-                
+
             elif validate_quant_pattern(s):
                 # logger.info(f"CUANT por inicio 0: '{s}'")
                 return (SemantiClass.QUANTITATIVE, total_cuant)
             else:
                 # logger.info(f"UMD por inicio 0: '{s}'")
                 return (SemantiClass.UMD, total_cuant)
-            
+
         if is_quantitative(s):
             #  logger.info(f"CUANT por validacion: '{s}'")
             return (SemantiClass.QUANTITATIVE, total_cuant)
 
         #  logger.info(f"NUM por descarte en conteo: '{s}'")
         return (SemantiClass.NUMERIC, total_cuant)
-    
+
     if contains_quantitative(s):
         #  logger.info(f"CUANT CONTENIDO: '{s}'")
         return (SemantiClass.QUANTITATIVE, total_cuant)
@@ -531,13 +531,13 @@ def classify_token(s: str) -> Tuple[int, int]:
     elif is_code(s):
         # logger.info(f"CODE mixto: '{s}'")
         return (SemantiClass.CODE, total_cuant)
-    
+
     # logger.info(fr"REBELDES: '{s}'")
     dense_mean, morphology_mean = text_encode(s if s.islower() else s.lower(), total_text)
     if dense_mean < _density_range[1] and morphology_mean > _morph_range[0]:
         # logger.info(f"CODE por codificacion: '{s}'")
         return (SemantiClass.CODE, total_cuant)
-    
+
     elif dense_mean > _density_range[1]:
         return (SemantiClass.DESCRIPTIVE, 0)
 
@@ -551,7 +551,7 @@ def classify_token(s: str) -> Tuple[int, int]:
             return (SemantiClass.NUMERIC, total_cuant)
         # logger.info(f"CODE por descarte de codificacion NUM: '{s}'")
         return (SemantiClass.CODE, total_cuant)
-        
+
     elif bool(_labels_pattern.fullmatch(s)):
         # logger.info(f"DESCR MARCA: '{s}")
         return (SemantiClass.DESCRIPTIVE, 0)
@@ -559,11 +559,11 @@ def classify_token(s: str) -> Tuple[int, int]:
     if not any(c in vowels for c in s) and total_text > 2:
         # logger.info(f"CODE por FALLBACK: '{s}'")
         return (SemantiClass.CODE, total_cuant)
-        
+
     # logger.info(f"Poligono sin clasificación, será descriptiva: '{s}'")
     return (SemantiClass.DESCRIPTIVE, 0)
 
-def get_ids(id_registro: str, id_need: str):
+def get_ids(id_registro: str | bytes, id_need: str):
     """
     Extrae datos relevantes en el ID Registro o en algun path
     prov: id proveedor
@@ -573,13 +573,13 @@ def get_ids(id_registro: str, id_need: str):
         if id_need == DataKeys.id_proveedor.value:
             matches = list(_id_prov_pattern.finditer(id_registro))
             return [match.group() for match in matches if _id_prov_pattern.fullmatch(match.group())][0]
-        
+
         elif id_need == "file_name":
             match = _file_name_pattern.search(id_registro)
             if match:
                 basename = match.group(0)
                 return _extension_suffix.sub("", basename)
-            
+
             else:
                 return ""
         else:
@@ -592,7 +592,7 @@ def fast_classfier(text: str) -> Tuple[List[int], int]:
     """Clasifica un string rapidamente, no seleccionar los strings antes de llamar a la función impactará de manera negativa el output del pipeline"""
     if not text:
         return ([SemantiClass.NOISE], 0)
-    
+
     total_cuants = 0
     semantic_classes: List[int] = []
     tokens = text.split(" ")
@@ -600,7 +600,7 @@ def fast_classfier(text: str) -> Tuple[List[int], int]:
         t_class, t_cuant = classify_token(t)
         semantic_classes.append(t_class)
         total_cuants += t_cuant
-    
+
     return (semantic_classes, total_cuants)
 
 def _correct_numbers(text: str) -> str:

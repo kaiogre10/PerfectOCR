@@ -1,4 +1,4 @@
-# Ignorar tipos de archivo 
+# Ignorar tipos de archivo
 *.log
 *.pyc
 *.idea
@@ -70,6 +70,7 @@ bidings/arrays/*.cpp
 bidings/image/*.cpp
 cmake-*/
 cmake/CacheParser.cmake
+compile_commands.json
 
 # .editorconfig
 

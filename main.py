@@ -6,6 +6,10 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+# import safe_temp.config_env
+# del safe_temp
+# sys.exit()
+
 from services import log_service
 log_service.set_project_root(PROJECT_ROOT)
 
@@ -13,7 +17,6 @@ from config.config_api import ConfigAPI
 from services import system_service
 
 system_service.init_system(PROJECT_ROOT)
-
 config_service = ConfigAPI(PROJECT_ROOT)
 if config_service.test_config:
     sys.exit("TESTING CONFIG FINALIZANDO")
@@ -25,23 +28,19 @@ if config_service.cleanup_project:
     log_service.log_simple("PROYECTO LIMPIO DE BINARIOS")
     sys.exit()
 
-# import safe_temp.config_env
-# del safe_temp
-# sys.exit()
-
 os.environ.update(config_service.env_config)
 if config_service.compile_cython:
     from config import setup
     setup.build_extensions(system_paths)
     sys.exit()
-    
+
 if config_service.test_wf_model:
     from testing.test_wf import TestingManger
     tester = TestingManger(PROJECT_ROOT, config_service.models_config)
     tester.run_queries()
     system_service.cleanup_project()
     sys.exit()
-    
+
 system_service.clear_output_folders()
 
 from app.main_builder import MainBuilder
@@ -53,7 +52,7 @@ def main():
         system_service.cleanup_project_cache()
         log_service.log_simple("NO HAY INPUT PATHS")
         sys.exit()
-    
+
     output_service.set_output_config(PROJECT_ROOT, system_paths) # type: ignore
     main_builder = MainBuilder(config_service, PROJECT_ROOT)
     main_builder.activate_main(workflow_report)
@@ -70,7 +69,7 @@ if __name__ == "__main__":
 #     es_intel = "intel" in psutil.cpu_names()[0].lower() if hasattr(psutil, 'cpu_names') else False
 #     nucleos_fisicos = psutil.cpu_count(logical=False) or 2  # Respaldo mínimo seguro de 2
 #     ram_total_gb = psutil.virtual_memory().total / (1024 ** 3)
-    
+
 #     # 2. Configuración base (Para cualquier CPU/RAM)
 #     config = {
 #         'OPENBLAS_NUM_THREADS': '1',     # NumPy ligero siempre corre mejor en 1 hilo en producción
@@ -78,14 +77,14 @@ if __name__ == "__main__":
 #         'FLAGS_use_mkldnn': '1',         # Activa oneDNN para PaddleOCR si hay soporte
 #         'MKL_DYNAMIC': 'TRUE'            # Que el backend decida según el tamaño de la matriz
 #     }
-    
-#     # 3. Estrategia adaptativa para la CPU 
+
+#     # 3. Estrategia adaptativa para la CPU
 #     # Dejamos un núcleo libre si el usuario tiene más de 2 núcleos, para que su PC no se trabe
 #     hilos_calculados = max(1, nucleos_fisicos - 1) if nucleos_fisicos > 2 else nucleos_fisicos
-    
+
 #     config['OMP_NUM_THREADS'] = str(hilos_calculated)
 #     config['MKL_NUM_THREADS'] = str(hilos_calculated)
-    
+
 #     # 4. Estrategia adaptativa para la Memoria RAM del usuario
 #     if ram_total_gb < 7.5:
 #         # Modo de bajo consumo de RAM: Forzamos a Intel MKL a liberar memoria de inmediato
@@ -93,7 +92,7 @@ if __name__ == "__main__":
 #     else:
 #         # El usuario tiene suficiente RAM (>= 8GB): Activamos la retención rápida
 #         config['MKL_DISABLE_FAST_MM'] = '0'  # Aceleración por reutilización de buffers en RAM
-        
+
 #     # 5. Parches exclusivos solo si el usuario tiene procesador Intel
 #     if es_intel:
 #         config['KMP_AFFINITY'] = 'granularity=fine,compact,1,0'  # Anclaje físico eficiente
@@ -101,7 +100,7 @@ if __name__ == "__main__":
 #     else:
 #         # En CPUs que no son Intel (como AMD Ryzen), estas variables no aplican
 #         config['KMP_BLOCKTIME'] = '0'   # GNU OpenMP a veces la lee como respaldo
-        
+
 #     return config
 # # Correr esto en las primeras 8 líneas antes de cualquier importación pesada
 # os.environ.update(obtener_configuracion_entorno_dinamico())

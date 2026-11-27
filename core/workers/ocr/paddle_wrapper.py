@@ -31,20 +31,20 @@ class PaddleOCRWrapper(OCRAbstractWorker):
         self.del_output_log = config.get("text_del")
         self.text_ocr_log = config.get("text_ocr")
         self._engine = None
-        
+
     @property
     def engine(self) -> Optional[Any]:
         if self._engine is None:
             paddle_manager = ModelsBuilder.get_instance()
             self._engine = paddle_manager.recognition_engine
-            
+
             if self._engine is None:
                 raise ModuleNotFoundError("Motor de reconocimiento no disponible en PaddleManager")
             else:
                 logger.debug("Motor de reconocimiento obtenido del PaddleManager")
-        
+
         return self._engine
-        
+
     def transcribe(self, context: Dict[str, Any], manager: DataFormatter) -> bool:
         try:
             final_results = self.recognize_text_from_batch(manager)
@@ -56,39 +56,38 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         file_name = manager.workflow.image_name if manager.workflow else ""
                         save_text_debug(final_results, file_name)
                     return True
-                
+
             return False
         except Exception as e:
             logger.error(f"Error en paddle OCR: {e}", exc_info=True)
             return False
-        
+
     def recognize_text_from_batch(self, manager: DataFormatter) -> Dict[str, Dict[str, Any]]:
         """Ejecuta OCR y filtra inmediatamente por confianza para reducir overhead."""
         try:
             if self.engine is None:
                 raise ImportError("PADDLE REC NO DISPONIBLE")
-            
+
             polygons = manager.workflow.polygons if manager.workflow else {}
             if not polygons:
                 logger.error("No hay polygons para procesar", exc_info=True)
                 raise
 
-            polygon_ids = [pdx.polygon_id for pdx in polygons.values()]
+            polygon_ids = [pdx.polygon_id for pdx in polygons.values() if pdx.cropped_img]
 
             image_list = elevate_dims(polygons)
-            
+            manager.delete_cropped_images()
             if not image_list:
                 logger.error(f"NO SE ELEVARON CORRECTAMENTE LAS DIMENSIONES")
                 return {}
 
             logger.warning(f"IMANEGEGS CON DIMENSION EXTRA EXITOSAS: {len(image_list)}")
 
-            batch_result: List[Tuple[str, float]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]            
+            batch_result: List[Tuple[str, float]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
             if not batch_result:
                 logger.error(f"PADDLE NO ARROJO RESULTADOS")
                 raise TypeError("image_list INVALIDA")
-            
-            manager.delete_cropped_images()
+
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
@@ -102,13 +101,13 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     if self.del_output_log:
                         logger.warning(f"INVÁLIDO: {poly_id}: '{text}'")
                     continue
-                
+
                 elif confidence < self.min_confidence:
                     deleted.append([poly_id, text])
                     if self.del_output_log:
                         logger.warning(f"BAJA CONFIANZA: {poly_id} | '{text}' | '{(confidence*100.0):.6f}'")
                     continue
-                
+
                 else:
                     if text.isascii():
                         if " " not in text:
@@ -117,7 +116,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                             norm_text = space_removal(text) # type: ignore
                     else:
                         norm_text = normalice_text(text)
-                        
+
                     if not norm_text or not validate_text(norm_text):
                         if self.del_output_log:
                             logger.warning(f"TEXTO INVALIDO: {poly_id}: '{text}' -> '{norm_text}', CONF: {(confidence*100.0):.6f}")
@@ -127,7 +126,7 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                     continue
 
             return raw_map
-            
+
         except Exception as e:
             logger.error(f"Error en recognize_text_from_batch: {e}", exc_info=True)
         return {}

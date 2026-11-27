@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(np.asarray(img_arr, dtype=np.uint8, order='C'), dtype=np.uint8)
 
-def elevate_dims(polygons: Dict[str, Any]) -> List[np.ndarray[Any, np.dtype[np.uint8]]]:
+def elevate_dims(polygons: Dict[int, Any]) -> List[np.ndarray[Any, np.dtype[np.uint8]]]:
     extra_dimed: List[np.ndarray[Any, np.dtype[np.uint8]]] = []
     try:
         for _, poly in enumerate(polygons.values()):
@@ -64,14 +64,14 @@ def binarice_img(cropped_img: np.ndarray[Any, np.dtype[np.uint8]]) -> np.ndarray
         bin_img = adaptive_mean_fallback(cropped_img, block, _c_value)
 
     return make_contiguous(cv2.bitwise_not(src=bin_img, dst=bin_img))
-   
+
 def get_adaptive_block_size(rows: float, height_thresholds: List[int], block_sizes_map: List[int]) -> int:
     """Calcula el tamaño de bloque adaptativo basado en la altura del polígono."""
     for i, threshold in enumerate(height_thresholds):
         if rows < threshold:
             block_size = block_sizes_map[min(i, len(block_sizes_map) - 1)]
             return max(3, block_size if block_size % 2 != 0 else block_size + 1)
-    
+
     final_block_size = block_sizes_map[-1]
     return max(3, final_block_size if final_block_size % 2 != 0 else final_block_size + 1)
 
@@ -150,7 +150,7 @@ def apply_sharpening_correction(cropped_img_np: np.ndarray[Any, np.dtype[np.uint
 #         cv2.rectangle(vis, (x, y), (x + bw, y + bh), (255, 255, 255), 1)
 #         cv2.circle(vis, (int(cx), int(cy)), 2, (0, 255, 255), -1)
 
-#     screen_w, screen_h = 1366, 768 
+#     screen_w, screen_h = 1366, 768
 #     h, w = vis.shape[:2]
 #     scale = min(screen_w / w, screen_h / h, 1.0)
 #     show_w, show_h = int(w * scale), int(h * scale)
@@ -168,7 +168,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     contours = contours_hierarchy[0]
     if not contours:
         return [], np.empty(0)
-    
+
     total_conts = len(contours)
     contours = [np.asarray(cont.reshape(-1, 2), np.int32) for cont in contours]
     # logger.info(f"{total_conts} Contornos encontrados")
@@ -183,7 +183,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         # for c in range(cols):
         if len(cont_coords) < 3:
             continue
-        
+
         area = cv2.contourArea(cont_coords)
         if area < 2:
             continue
@@ -193,7 +193,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         metrics_array_new[i, [1, 2]] = centroids
         metrics_array_new[i, [3, 4]] = dims
         metrics_array_new[i, 5] = angle
-        
+
         conv_hull = cv2.convexHull(cont_coords)
         metrics_array_new[i, 6] = cv2.arcLength(cont_coords, True)  # Perimetro contorno
         metrics_array_new[i, 7] = cv2.contourArea(conv_hull)        # Area de convexo
@@ -211,10 +211,10 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
         black_pixels = cv2.countNonZero(cv2.bitwise_and(roi_img, roi_mask))     # Total píxeles negros dentro contorno
         inside = roi_img[roi_mask == 255]                                       # pixeles dentro del contorno
         total_inside = inside.size                                              # total píxeles del contorno
-        
+
         metrics_array_new[i, -2] = black_pixels
         metrics_array_new[i, -1] = total_inside
-        
+
         # logger.info(f"{internal_pixels}, {density}")
 
         cont_coords_list.append((i, cont_coords))
@@ -233,7 +233,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
 
     contours_features_array = np.column_stack([idx, metrics_array_new, is_outer[idx], is_hollow_outer[idx], is_solid_outer[idx]])
     contours_features_array = contours_features_array[[c[0] for c in cont_coords_list]]
-    
+
     # logger.info(f"contours_features_array SHAPE: {contours_features_array.shape} ARRAY:\n"f"{np.array2string(contours_features_array, suppress_small=True)}")
     valid_coords = cont_coords_list
     valid_contours = len(valid_coords)
@@ -241,7 +241,7 @@ def get_contours_values(img: np.ndarray[Any, np.dtype[np.uint8]]) -> Tuple[List[
     if valid_contours != matrix_size:
         logger.warning(f"Contornos dispares: {valid_contours} != {matrix_size}")
         return [], np.empty((0, 5))
-    
+
     return cont_coords_list, contours_features_array
 
 # def calculate_complementary_feats(metrics_array_new: np.ndarray[Any, Any]):

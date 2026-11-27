@@ -1,6 +1,7 @@
 from functools import cached_property
+from bidings import image
 from typing import Dict, Any, List, Set, Tuple, FrozenSet
-from core.assets.assets import ELEMENTAL_WORKER, OCR_WORKERS, MIN_WORKERS
+from core.assets.assets import OCR_WORKERS, FULL_OCR
 from services.log_service import log_simple
 from config.config_loader import load_config
 from config.config_logger import ConfigLogger
@@ -8,9 +9,8 @@ from services import system_service
 from domain.class_models import Workers, TypeModels
 import os
 
-_elemental_workers = ELEMENTAL_WORKER
 _ocr_workers = OCR_WORKERS     # Es parte de los min_workers pero por motivos de deploy lo mantendremos fuera
-_min_workers = MIN_WORKERS
+_min_workers = FULL_OCR
 
 class BaseConfig:
     def __init__(self, project_root: str):
@@ -19,12 +19,12 @@ class BaseConfig:
         if not self.validate_config():
             self.config = {}
             del self.config
-            
+
         self.env_config
 
     @property
     def elemental_params(self) -> bool:
-        return _elemental_workers in self.create_stager[0][1]
+        return image.elemental_params(True) # Type: ignore
 
     @property
     def active_full_ocr(self):
@@ -169,7 +169,7 @@ class BaseConfig:
         if self.create_stager[3][1]:
             vect = self.create_stager[3][1]
             all_workers.update(vect)
-            
+
         return frozenset(all_workers)
 
     def validate_config(self) -> bool:

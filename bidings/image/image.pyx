@@ -2,15 +2,18 @@
 from libc.stddef cimport size_t
 from libc.string cimport memcpy
 from ..container.container cimport Buffer, get_buffer_ptr, create_new_buffer, get_array_view, check_null_ptr, get_rows, get_cols, get_size, get_data, free_buffer, get_all_buffer_addrs_size, free_crops
-from ..container.workers cimport load_image, rotate_image
+from ..container.workers cimport load_image, rotate_image, check_loader
 
 cdef inline size_t NULL_PYTHON_PTR = 0
+
+def elemental_params(bool val):
+    return check_loader(val)
 
 def load(const char* filepath):
     cdef Buffer* buffer = load_image(filepath)
     if check_null_ptr(buffer):
         return NULL_PYTHON_PTR
-    
+
     return <size_t>buffer
 
 def get_image_array(size_t ptr_addr, const char* dtype_raw):

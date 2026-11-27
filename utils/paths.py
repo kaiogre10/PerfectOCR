@@ -24,7 +24,7 @@ def get_all(search_root: str, skip_names: Optional[Iterable[str]] = None) -> Tup
     """"Devuele una Tupla de listas (carpetas[0], archivos[1]) con las rutas relativas a search_root de todos los archivos contenidos, sirve solo como exploración local, no entrega rutas absolutas, temporalmente solo omite directorios"""
     if not os.path.isdir(search_root):
         raise NotADirectoryError(f"SEARCH ROOT TIENE QUE SER UN CARPETA O DIRECTORIO, NO UN ARCHIVO: '{search_root}'")
-    
+
     all_dirs: List[str] = []
     all_files: List[str] = []
     for dirpath, dirnames, filenames in os.walk(search_root):
@@ -36,13 +36,13 @@ def get_all(search_root: str, skip_names: Optional[Iterable[str]] = None) -> Tup
             all_dirs.append(folders)
 
         for filename in filenames:
-            
+
             files = os.path.join(dirpath, filename)
             all_files.append(files)
 
     return all_dirs, all_files
 
-def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] | None = None, kind_search: KindofSearch | None = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
+def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, parent_include: Optional[bool] = None, parent: Optional[List[str]] | None = None, kind_search: Optional[KindofSearch] = None, skip_names: Optional[Iterable[str]] = None) -> List[str]:
     """
     Busca objetivos especificos en el sistema de carpetas del proyecto, dentro de un marco delimitado y arbitrario.
     ``NONE`` ES UN RESULTADO VALIDO Y REPRESENTA UN ESTADO SEPARADO DE FALSE Y TRUE.
@@ -63,7 +63,7 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
             ``subfix``: Busqieda por referencia del finel del nombre SIN FORMATO/EXTENSION.
 
         ``skip_names``(Iterable[str] | None, optional): Lista o Tupla de excepciones en la búsqueda, su significado semantico depende completamente de kind_search, es disjunto de objetives.
-        
+
         Los resultados se devuelven en orden inverso al recorrido de os.walk.
         Si parent_include es verdadero, la ruta del directorio de búsqueda se agrega al final.
         Por ello, las llamadas que desempaquetan posiciones concretas deben conservar el orden de objetives y la estructura esperada del árbol.
@@ -76,7 +76,7 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
     if not objetives:
         logger.warning("SIN OBJETIVOS")
         return []
-    
+
     elif skip_names is not None and skip_names:
         skip_names: Tuple[str, ...] = tuple(skip_names)
 
@@ -115,11 +115,11 @@ def build_from_dir(objetives: Iterable[str], search_root: Optional[str] = None, 
 
     if not os.path.isdir(search_dir):
         raise ValueError(f"RUTA INVALIDA: {search_dir}")
-        
+
     search_type = _call_kind_and_data_search(kind_search)
-    
+
     results = _locate_and_index_targets(search_dir, search_type, objetives, skip_names)
-    
+
     if parent_include is not None and parent_include:
         results.append(search_dir)
     return results
@@ -132,7 +132,7 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
 
     valid_dirs: List[str] = []
     referencial_search = search_type[1]
-    
+
     for dirpath, dirnames, filenames in os.walk(search_dir):
         if not extensions:
             # if skip_paf:
@@ -151,7 +151,7 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
                 if referencial_search == prefix_search and filename.startswith(objetives):
                     valid_dirs.append(os.path.join(dirpath, filename))
                     continue
-                    
+
                 # elif referencial_search == subfix_search and filename.endswith(_extension_suffix.sub(objetives, "")):
                 #     valid_dirs.append(os.path.join(dirpath, filename))
                 #     continue
@@ -170,7 +170,7 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
 
             elif filename in objetives:
                 valid_dirs.append(os.path.join(dirpath, filename))
-                
+
             else:
                 continue
 
@@ -180,7 +180,7 @@ def _locate_and_index_targets(search_dir: str, search_type: Tuple[Optional[bool]
 def _get_exceptions_state(objetive: Tuple[str, ...], skip_name: Tuple[str, ...], with_extensions: Optional[bool] = None) -> Tuple[bool, bool, Optional[bool]]:
     """
     Decide si hay que filtrar archivos si hay que hacerlo cuales filtrar. Returns: (skip_paf, skip_ext, extensions)
-    extensions: 
+    extensions:
     """
     extensions: Optional[bool] = (with_extensions is not None and with_extensions) and all(_extension_suffix.fullmatch(ext) for ext in objetive)  # Asegurar que las extensiones sean validas, objetives pasa a ser formato de documento
     if skip_name:       # Si hay que hacer excepciones paths and files 'paf'
@@ -224,7 +224,7 @@ def _call_kind_and_data_search(kind_search: Optional[str] = None) -> Tuple[Optio
 
     if kind_search is None:         # La orden para extensiones no existe, por lo que hay que inferir, ya que: (None == False) es incorrecto, hay que inferir el tipo de busqueda
         pass
-    
+
     elif kind_search == extensions_search:  # Aquí se solicitaron extensiones explicitamente, entonces el tipo de busqueda es por extension de archivo
         with_extensions = True
 
@@ -233,15 +233,15 @@ def _call_kind_and_data_search(kind_search: Optional[str] = None) -> Tuple[Optio
 
     elif kind_search == filename_search:       # Explicitamente se solicito busqueda de archivos (todavia se analiza la posibilidad con/sin extensiones)
         with_extensions = False
-    
+
     elif kind_search == prefix_search:  # Se solicitó un tipo de busqueda especial por referencias de nombres incompletas
         with_extensions = False
         referencial_search = prefix_search
-    
+
     elif kind_search == subfix_search:
         referencial_search = subfix_search      # Extensions tiene que ser none para no confundir el nombre
 
     else:
         raise ValueError(f"ERROR EN EL TIPO DE BUSQUEDA: '{kind_search}', RETORONANDO")  # Tipo de busqueda inválida
-    
+
     return with_extensions, referencial_search

@@ -110,6 +110,6 @@ void set_struct(BufferContainer* buffer, int rows, int cols, int channels, size_
 BufferContainer* array_at(BufferContainer* array, size_t index) {
     if (!array) {
         return nullptr;
-    } 
+    }
     return &array[index];
 }

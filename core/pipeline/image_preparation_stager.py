@@ -18,6 +18,9 @@ class ImagePreparationStager(AbstractStager):
     def execute(self, manager: DataFormatter, context: Optional[Dict[str, Any]] = None) -> Optional[DataFormatter]:
         # Usar contexto base si existe, sino crear uno nuevo
         try:
+            image_data = context.pop("image_data", b"")
+            image_name = context.pop("image_name", b"")
+            manager.create_workflow(image_data, image_name)
             for worker_idx, worker in enumerate(self.workers):
                 worker_name = worker.__class__.__name__
                 logger.debug(f"Ejecutando {worker_idx + 1}/{len(self.workers)}: '{worker_name}'")

@@ -17,15 +17,17 @@ def load_config(PROJECT_ROOT: str):
     config_json = load_jsoncomment(user_config_file, 'r')
     if not isinstance(config_json, dict):
         raise TypeError(f"JSON CONFIG debe ser Dict[str, params], recibido: {type(config_json).__name__}")
-    
+
     pams_yaml = load_yaml(config_params_file, 'r')
     setup_yaml = load_yaml(system_config_file, 'r')
 
     if not isinstance(setup_yaml, dict) or not isinstance(pams_yaml, dict):
         raise TypeError(f"YAML CONFIG debe ser Dict[str, params], recibido: {type(setup_yaml).__name__}") # type: ignore
-    
+
     pams_yaml.update(config_json) # type: ignore
     config_params = ConfigParams.model_validate(obj=pams_yaml, strict=True, extra='forbid', from_attributes=True, by_name=True).model_dump()
     master_config = SystemSetUp.model_validate(obj=setup_yaml, strict=True, extra='forbid', from_attributes=True, by_name=True).model_dump()
     master_config.update(config_params)
-    return master_config
+    config = {"project_root": PROJECT_ROOT}
+    config.update(master_config)
+    return config

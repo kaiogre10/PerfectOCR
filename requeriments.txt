@@ -3,7 +3,7 @@ source /opt/intel/oneapi/setvars.sh <-- OneAPI Linux
 
 conda create -n intel --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python=3.12 numpy=1.26.4 cython=3.3.0 ninja=1.6.0 pip conda scipy intel-opencl-rt ipp dpcpp-cpp-rt mkl icc_rt mkl-dpcpp tbb4py scikit-image numexpr ocl-icd-system
 
-conda install python-lmdb fire fonttools beautifulsoup4 soupsieve lmdb matplotlib contourpy cycler kiwisolver pyparsing pyclipper python-docx lxml rapidfuzz shapely termcolor pythran pydantic<-- ganarle a paddleocr las librerias y reducir las variaciones
+conda install --override-channels -c https://software.repos.intel.com/python/conda/ -c conda-forge -c defaults python-lmdb fire fonttools beautifulsoup4 soupsieve lmdb matplotlib contourpy cycler kiwisolver pyparsing pyclipper python-docx lxml rapidfuzz shapely termcolor pythran pydantic <-- ganarle a paddleocr las librerias anulando pip y reducir las variaciones
 
 conda install -c conda-forge opencv=4.11.0 -y
 
@@ -13,9 +13,9 @@ conda install -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ pad
 
 pip install paddleocr==2.8.1 --no-deps
 
-conda install pandas python-dotenv psycopg2 regex cmake -y
+conda install cmake pandas python-dotenv psycopg2 regex commentjson -y # <-- COMMENTJSON Solo para desarrollo y similación de configuración externa
 
-conda install commentjson  # <-- Solo para desarrollo y similación de configuración externa
+pip install bitmath <-- Para facilidad de desarrollo
 
 python config/setup.py build_ext --inplace   <-- Compilar los utils en Cython
 

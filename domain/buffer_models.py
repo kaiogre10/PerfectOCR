@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import Optional, Any
 from bidings import arrays, image
 
-def PointerError():
-    return ValueError("Validación fallida: El puntero no puede ser un entero negativo.")
+def PointerError(ptr: Any):
+    return ValueError(f"Validación fallida: El puntero no puede diferente de entero mayor a 0: '{ptr}': type: {type(ptr)}")
 
 class FullImageKey:
     img_ptr: Optional[int] = None
@@ -13,8 +13,8 @@ class FullImageKey:
             raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(img_ptr).__name__}'.")
 
         # 2. VALIDACIÓN DE NEGATIVOS: Un puntero de memoria real no puede ser menor a cero.
-        if img_ptr < 0:
-            raise PointerError()
+        if img_ptr < 1:
+            raise PointerError(img_ptr)
 
         # Guarda el entero en el namespace de la clase
         cls.img_ptr = img_ptr
@@ -37,8 +37,8 @@ class BoundingBoxesKey:
             raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(bboxes_ptr).__name__}'.")
 
         # 2. VALIDACIÓN DE NEGATIVOS: Un puntero de memoria real no puede ser menor a cero.
-        if bboxes_ptr < 0:
-            raise PointerError()
+        if bboxes_ptr < 1:
+            raise PointerError(bboxes_ptr)
 
         # Guarda el entero en el namespace de la clase
         cls.bboxes_ptr = bboxes_ptr
@@ -61,8 +61,8 @@ class CentroidsKey:
             raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(centroids_ptr).__name__}'.")
 
         # 2. VALIDACIÓN DE NEGATIVOS: Un puntero de memoria real no puede ser menor a cero.
-        if centroids_ptr < 0:
-            raise PointerError()
+        if centroids_ptr < 1:
+            raise PointerError(centroids_ptr)
 
         # Guarda el entero en el namespace de la clase
         cls.centroids_ptr = centroids_ptr
@@ -85,8 +85,8 @@ class CroppedBufferKey:
             raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(cropped_buffer_ptr).__name__}'.")
 
         # 2. VALIDACIÓN DE NEGATIVOS: Un puntero de memoria real no puede ser menor a cero.
-        if cropped_buffer_ptr < 0:
-            raise PointerError()
+        if cropped_buffer_ptr < 1:
+            raise PointerError(cropped_buffer_ptr)
 
         # Guarda el entero en el namespace de la clase
         cls.cropped_buffer_ptr = cropped_buffer_ptr
@@ -108,8 +108,8 @@ class AoSCroppedImageKey:
             raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(cropped_aos_ptr).__name__}'.")
 
         # 2. VALIDACIÓN DE NEGATIVOS: Un puntero de memoria real no puede ser menor a cero.
-        if cropped_aos_ptr < 0:
-            raise PointerError()
+        if cropped_aos_ptr < 1:
+            raise PointerError(cropped_aos_ptr)
 
         # Guarda el entero en el namespace de la clase
         cls.cropped_aos_ptr = cropped_aos_ptr

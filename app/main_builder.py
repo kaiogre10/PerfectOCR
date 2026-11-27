@@ -1,6 +1,6 @@
 # PerfectOCR/main_builder.py
 import time
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 from app.process_builder import ProcessingBuilder
 from app.models_builder import ModelsBuilder
 from core.factory.main_factory import MainFactory
@@ -18,7 +18,7 @@ class MainBuilder:
         self.project_root = project_root
         self.config_service = config_service
 
-    def activate_main(self, workflow_report: List[str]) -> List[str]:
+    def activate_main(self, workflow_report: Dict[str, bytes]) -> List[str]:
         t0 = time.perf_counter()
         try:
             if not workflow_report or not self.config_service:
@@ -35,11 +35,11 @@ class MainBuilder:
                 if not models_builder.initialize_models(models_config):
                     logger.error("MODELOS NO SE PUDIERON INICIAR: ABORTANDO")
                     return []
-                
+
                 elif models_config.get("update_model"):
                     logger.info("ACTUALIZAICIÓN PARA WORD FINDER, SALIENDO")
                     return []
-                
+
             if not self.config_service.no_activate_modules:
                 self.transform_image_to_df(processing_builder, workflow_report)
 
@@ -71,14 +71,14 @@ class MainBuilder:
            logger.error(f"Error fatal en create_single_builder: {e}", exc_info=True)
         return None
 
-    def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[str]):
+    def transform_image_to_df(self, builder: ProcessingBuilder, workflow_report: List[bytes]):
         """Ejecuta el procesamiento secuencial reutilizando el builder."""
         total_images = len(workflow_report)
         start_time = time.perf_counter()
         payloads_list = builder.process_query(workflow_report)
         total_processing_time = time.perf_counter() - start_time
         del builder
-        
+
         if payloads_list is None:
             return []
         else:
@@ -87,17 +87,17 @@ class MainBuilder:
             mean_process = f"{(total_processing_time / total_images):.6f}"
             failed_images = {get_ids(names, "file_name") for names in workflow_report}.difference(set(success_images))
             total_fails = len(failed_images)
-            
+
             if total_fails == 0:
                 logger.warning(f"TODAS LAS IMÁGENES FUERON PROCESADAS CORRECTAMENTE EN {StringsModels.TIME_MASK.value}{total_processing_time}, promedio: {mean_process}'s")
-    
+
             elif total_fails == total_images:
                 logger.warning(f"TODAS LAS IMÁGENES PRESENTARON FALLAS REVISAR CONFIGURACIÓN E IMÁGENES, {StringsModels.TIME_MASK.value}{total_processing_time}, promedio: {mean_process}")
-    
+
             else:
                 logger.debug(f"IMAGENES EXITOSAS:\n"f"{success_images}\n"f"----------------------------")
                 logger.debug(f"IMAGENES FALLIDAS:\n"f"{failed_images}\n"f"----------------------------")
-        
+
             logger.info(f"SIZE/SENDED: {sum(payload_sizes)} / {len(success_images)}")
             return payloads_list
 

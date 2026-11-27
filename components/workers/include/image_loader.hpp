@@ -4,5 +4,10 @@
 #include "buffer_container.hpp"
 
 Buffer* load_image(const char* filepath);
-
+inline bool check_loader(bool val) {
+    if (!val) {
+        return false;
+    }
+    return true;
+};
 #endif

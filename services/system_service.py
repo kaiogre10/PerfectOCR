@@ -3,12 +3,12 @@ import shutil
 import os
 import logging
 import platform
-from typing import Set, Tuple, Optional, List, Dict, Any
+from typing import Set, Tuple, Optional, List, Dict, Any, NamedTuple
 #from psycopg2 import sql
 from services.log_service import basic_exc_logger
 from core.assets.patterns import extension_suffix
 from core.assets.assets import VALID_IMG_EXT, INVALID_EXTENSIONS, TRASH_EXT, CACHE_DIRS, EXCLUDED_DIRS, NO_DEL, ALL_FILES_TYPES
-from domain.class_models import OSModels
+from domain.class_models import OSModels, TypeModels
 from utils.paths import build_from_dir
 
 _extension_suffix = extension_suffix
@@ -39,7 +39,7 @@ def set_system_paths(config: Dict[str, Any]):
     if config:
         no_del_output = config.get("no_del_output", False)
         output_paths = config["output_paths"]
-        
+
 
 def _can_delete_entry(path: str) -> bool:
     """
@@ -99,7 +99,7 @@ def clear_output_folders():
     if not output_paths:
         logger.info(f"NO HAY ARCHIVOS OUTPUT, NO SE LIMPIARÁ NADA")
         return
-        
+
     deleted_files = 0
     deleted_folder = 0
     ok, blocked = _preflight_delete_plan(output_paths, all_files_types)
@@ -123,7 +123,7 @@ def clear_output_folders():
             item_path = os.path.join(folder_path, item_name)
             try:
                 if os.path.isdir(item_path):
-                    
+
                     for _, dirs, files in os.walk(item_path):
                         deleted_folder += len(dirs)
                         deleted_files += len(files)
@@ -151,7 +151,7 @@ def cleanup_project_cache(specific_files: Optional[List[str]] = None, aditional_
     if aditional_dirs is not None and aditional_dirs:
         aditional_dirs = [path for path in aditional_dirs if os.path.isdir(path)]
         cache_dirs.extend(aditional_dirs)
-    
+
     if specific_files is not None and specific_files:
         specific_set: Set[str] = set(file for file in specific_files if os.path.isfile(file))
         if specific_set:
@@ -245,7 +245,7 @@ def clean_db(get_local_connection: Any) -> bool:
         logger.error("Error limpiando la DB: %s", e, exc_info=True)
         return False
 
-def count_and_plan(config: Dict[str, Any]) -> List[str]:
+def count_and_plan(config: Dict[str, Any]) -> Dict[str, bytes]:
     """
     PLANIFICA el procesamiento: cuenta imágenes y decide estrategia según las reglas:
     1. Si se especifican `images_names`, se buscan prioritariamente.
@@ -259,17 +259,18 @@ def count_and_plan(config: Dict[str, Any]) -> List[str]:
         if not input_paths:
             logger.error("No se proporcionaron rutas de entrada (input_dirs)")
             return []
-    
+
     if skip_names:
         names_to_find.difference_update(skip_names)
-        
-    image_info: List[str] = []
+
+    image_info: Dict[str, bytes] = {}
+
     total_paths = len(input_paths)
-    
+
     for i, path in enumerate(input_paths):
         if names_to_find:
             files_in_dir = get_images_in_dir(path, list(names_to_find))
-            
+
             if files_in_dir:
                 files_to_remove: Set[str] = set(files_in_dir)
                 if not names_to_find.isdisjoint(files_to_remove):
@@ -277,8 +278,12 @@ def count_and_plan(config: Dict[str, Any]) -> List[str]:
 
                 for file in files_in_dir:
                     full_path = os.path.join(PROJECT_ROOT, path, file)
-                    image_info.append(full_path)
-                    continue
+                    if full_path.isascii():
+                        image_info[file] = full_path.encode(TypeModels.ASCII.value)
+                        continue
+                    else:
+                        ValueError(f"NOMBRE DE ARCHIVO CON CARACTERES NO VALIDOS: {full_path}")
+                        continue
 
             elif names_to_find:
                 continue
@@ -287,16 +292,19 @@ def count_and_plan(config: Dict[str, Any]) -> List[str]:
             all_files_dir = get_images_in_dir(path, [])
             if not all_files_dir:
                 continue
-            
+
             if skip_names:
                 all_files_dir = [file for file in all_files_dir if _extension_suffix.sub("", file) not in skip_names]
                 if not all_files_dir:
                     continue
-                
+
             for file in all_files_dir:
                 full_path = os.path.join(PROJECT_ROOT, path, file)
-                image_info.append(full_path)
-                continue
+                if full_path.isascii():
+                    image_info[file] = full_path.encode(TypeModels.ASCII.value)
+                else:
+                    ValueError(f"NOMBRE DE ARCHIVO CON CARACTERES NO VALIDOS: {full_path}")
+                    continue
         else:
             break
 
@@ -331,7 +339,7 @@ def get_so_bin_ext(so: str) -> Dict[str, str]:
         return OSModels.LINUX.value
     else:
         return OSModels.MACOS.value
-    
+
 def cleanup_project(specific_files: Optional[List[str]] = None, aditional_dirs: Optional[List[str]] = None, execp: Optional[Tuple[List[str], List[str]]] = None):
     try:
         if execp:
@@ -350,11 +358,11 @@ def prune_project(target_dirs: List[str], target_files: List[str]):
                 except PermissionError:
                     logger.exception(f"ERROR DE PERMISO AL PURGAR {dir}")
                     raise PermissionError(f"{dir}")
-                
+
                 except OSError as o:
                     logger.exception(f"ERROR EN EL SISTEMA AL PURGAR {dir}: {o}", exc_info=True)
                     raise OSError(f"{dir}")
-                
+
                 logger.warning(f"DIRECTORIO ELIMINADO: {dir}")
 
             for file in target_files:
@@ -363,15 +371,15 @@ def prune_project(target_dirs: List[str], target_files: List[str]):
                 except PermissionError as e:
                     logger.exception(f"ERROR DE PERMISOS AL PURGAR ARCHIVO: {file}: {e}")
                     raise PermissionError(f"{file}")
-                
+
                 except OSError as e:
                     logger.exception(f"ERROR EN EL SISTEMA AL PURGAR ARCHIVO: {file}: {e}")
                     raise OSError(f"{file}")
-                
+
                 logger.warning(f"ARCHIVO ELIMINADO. {file}")
-                
+
             logger.info("ARCHIVOS ELIMINADOS CON ÉXITO")
-        
+
     except Exception as e:
         logger.exception(f"ERROR EN LA LIMPIEZA DE ARCHIVOS: {e}", exc_info=True)
         raise
