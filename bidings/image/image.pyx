@@ -1,9 +1,7 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True, nonecheck=False, initializedcheck=False, embedsignature=True
 from libc.stddef cimport size_t
 from libc.string cimport memcpy
-from libc.stdint cimport uint8_t
-from libcpp cimport bool
-from ..container.container cimport Buffer, get_buffer_ptr, create_new_buffer, get_array_view, check_null_ptr, get_rows, get_cols, get_size, get_data, free_buffer, get_channels, get_all_buffer_addrs_size
+from ..container.container cimport Buffer, get_buffer_ptr, create_new_buffer, get_array_view, check_null_ptr, get_rows, get_cols, get_size, get_data, free_buffer, get_all_buffer_addrs_size, free_crops
 from ..container.workers cimport load_image, rotate_image
 
 cdef inline size_t NULL_PYTHON_PTR = 0
@@ -18,11 +16,12 @@ def load(const char* filepath):
 def get_image_array(size_t ptr_addr, const char* dtype_raw):
     return get_array_view(ptr_addr, dtype_raw, 0)
 
-cdef inline void _release_img(size_t ptr_addr):
-    free_buffer(ptr_addr)
-
 def release_img(size_t ptr_addr):
-    _release_img(ptr_addr)
+    free_buffer(ptr_addr)
+    return None
+
+def release_crops(size_t cropped_buffer_ptr, size_t addr_aos, size_t total_crops):
+    free_crops(cropped_buffer_ptr, addr_aos, total_crops)
     return None
 
 def rotate(size_t ptr_addr, double angle, double center_x, double center_y):
@@ -73,15 +72,4 @@ def get_crops_ptr(size_t grouped_crops, size_t total_buffers):
     if check_null_ptr(last_array):
         return NULL_PYTHON_PTR
 
-    if not _validate_image(last_array):
-        return NULL_PYTHON_PTR
-
     return buffer_list
-
-cdef inline bool _validate_image(Buffer* last_array):
-    cdef int rows = get_rows(last_array)
-    cdef int cols = get_cols(last_array)
-    cdef int channels = get_channels(last_array)
-    cdef size_t size = get_size(last_array)
-    cdef size_t vol = <size_t>rows * <size_t>cols * <size_t>channels
-    return vol == (size // sizeof(uint8_t))

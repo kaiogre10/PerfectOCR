@@ -91,51 +91,51 @@ def basic_exc_logger(message: str, exc_info: Optional[bool] = False) -> None:
     else:
         print(f"{message}")
 
-# def log_temp_process(project_base: Optional[str] = None) -> logging.Logger:
-#     caller_info = get_caller_info()[0]
-#     if project_base is None or not os.path.isdir(project_base):
-#         if not project_root:
-#             raise TypeError(f"NO SE INICIALIZARON NI PROJECT ROOT: '{project_root}, NI PROJECT_BASE: '{project_base}'")
+def log_temp_process(project_base: Optional[str] = None) -> logging.Logger:
+    caller_info = get_caller_info()[0]
+    if project_base is None or not os.path.isdir(project_base):
+        if not project_root:
+            raise TypeError(f"NO SE INICIALIZARON NI PROJECT ROOT: '{project_root}, NI PROJECT_BASE: '{project_base}'")
         
-#         project_base = project_root
+        project_base = project_root
         
-#     logger = logging.getLogger(caller_info)
+    logger = logging.getLogger(caller_info)
 
-#     for handler in logger.handlers[:]:
-#         if getattr(handler, "_temp_process_handler", False):
-#             logger.removeHandler(handler)
-#             handler.close()
+    for handler in logger.handlers[:]:
+        if getattr(handler, "_temp_process_handler", False):
+            logger.removeHandler(handler)
+            handler.close()
 
-#     formatter = logging.Formatter(fmt="%(asctime)s:%(msecs)d %(filename)s:%(lineno)d: %(message)s", datefmt=LOG_TRACE_FORMAT)
+    formatter = logging.Formatter(fmt="%(asctime)s:%(msecs)d %(filename)s:%(lineno)d: %(message)s", datefmt=LOG_TRACE_FORMAT)
 
-#     ext_indx = caller_info.rindex(".")
-#     log_path = os.path.join(project_base, "safe_temp", f"{caller_info[:ext_indx]}_temp_log.txt")
+    ext_indx = caller_info.rindex(".")
+    log_path = os.path.join(project_base, "safe_temp", f"{caller_info[:ext_indx]}_temp_log.txt")
 
-#     file_handler = logging.FileHandler(log_path, mode="w", encoding=TypeModels.UTF8.value)
-#     file_handler.setLevel(logging.DEBUG)
-#     file_handler.setFormatter(formatter)
-#     file_handler._temp_process_handler = False  # type: ignore[attr-defined]
+    file_handler = logging.FileHandler(log_path, mode="w", encoding=TypeModels.UTF8.value)
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    file_handler._temp_process_handler = False  # type: ignore[attr-defined]
 
-#     console_handler = logging.StreamHandler(sys.stdout)
-#     console_handler.setLevel(logging.WARNING)
-#     console_handler.setFormatter(formatter)
-#     console_handler._temp_process_handler = False  # type: ignore[attr-defined]
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.WARNING)
+    console_handler.setFormatter(formatter)
+    console_handler._temp_process_handler = False  # type: ignore[attr-defined]
 
-#     logger.setLevel(logging.DEBUG)
-#     logger.propagate = False
-#     logger.addHandler(file_handler)
-#     logger.addHandler(console_handler)
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
 
-#     return logger
+    return logger
     
-@contextmanager
-def intercept_paddle_logs():
-    original_write = sys.stderr.write
-    try:
-        sys.stderr.write = lambda text: original_write(_paddle_silence.sub("", text))
-        yield
-    finally:
-        sys.stderr.write = original_write
+# @contextmanager
+# def intercept_paddle_logs():
+#     original_write = sys.stderr.write
+#     try:
+#         sys.stderr.write = lambda text: original_write(_paddle_silence.sub("", text))
+#         yield
+#     finally:
+#         sys.stderr.write = original_write
 
 def log_simple(msg: str):
     log_info = get_logging_info(get_caller_info(), LOG_TRACE_FORMAT)

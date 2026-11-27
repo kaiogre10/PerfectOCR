@@ -5,14 +5,14 @@
 #include <stdio.h>
 #include <cstring>
 
-static size_t bboxes_type = sizeof(int32_t);
-static size_t centroids_type = sizeof(float);
-static size_t crops_type = sizeof(uint8_t);
+static constexpr size_t bboxes_type = sizeof(int32_t);
+static constexpr size_t centroids_type = sizeof(float);
+static constexpr size_t crops_type = sizeof(uint8_t);
 
-static int geometry_channels = 1;
-static int centroid_cols = 2;
-static int bboxes_cols = 4;
-static int32_t zero = 0;
+static constexpr int geometry_channels = 1;
+static constexpr int centroid_cols = 2;
+static constexpr int bboxes_cols = 4;
+static constexpr int32_t zero = 0;
 
 inline static void compute_bbox(size_t first_index, const int32_t* bboxes_array, const int img_rows, const int img_cols, const int32_t padding_const, int32_t& x1, int32_t& y1, int32_t& x2, int32_t& y2) {
 
@@ -47,8 +47,8 @@ Buffer* get_bboxes(Buffer* bboxes_ptr, Buffer* img, int padding, size_t* total_b
     int32_t* idx_data = valid_idx.get_int32_buffer();
     
     int32_t* bboxes_array = bboxes_ptr->get_int32_buffer();
-    const uint8_t* img_data_const = static_cast<uint8_t*>(img->get_uint8_buffer());
 
+    const uint8_t* img_data_const = static_cast<uint8_t*>(img->get_uint8_buffer());
     const int32_t padding_const = static_cast<int32_t>(padding);
 
     int32_t x1, y1, x2, y2;

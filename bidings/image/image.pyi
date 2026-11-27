@@ -37,3 +37,6 @@ def copy_image(ptr_addr: int, dtype: bytes) -> Optional[int]:
     """
 def get_crops_ptr(grouped_crops: int, total_buffers: int) -> List[int]:
     """Devuelve la lista de punteros de los crops"""
+
+def release_crops(cropped_buffer_ptr: int, addr_aos: int, total_crops: int) -> None:
+    """Libera las imagenes en memoria, usese co precacunion"""

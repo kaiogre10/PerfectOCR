@@ -1,11 +1,12 @@
 # PerfectOCR/core/utils/image_utils.py
 import cv2
 import numpy as np
-from typing import Any, Optional, List, Tuple
+from typing import Any, Optional, List, Tuple, Dict
 import logging
 from skimage.filters import threshold_sauvola, unsharp_mask #type: ignore
 from core.assets.assets import SMALL_NUM, PI_DIV_INV, C_VALUE, HEIGHT_THRESHOLDS, BLOCK_SIZES_MAP
 from domain.class_models import StringsModels
+from domain.buffer_handler import ImageBuffer
 
 _c_value = C_VALUE
 _height_thresholds = HEIGHT_THRESHOLDS
@@ -18,12 +19,17 @@ logger = logging.getLogger(__name__)
 def make_contiguous(img_arr: np.ndarray[Any, Any]) -> np.ndarray[Any, np.dtype[np.uint8]]:
     return img_arr if img_arr.flags.c_contiguous else np.ascontiguousarray(np.asarray(img_arr, dtype=np.uint8, order='C'), dtype=np.uint8)
 
-def elevate_dims(image_list: List[np.ndarray[Any, np.dtype[np.uint8]]]) -> List[np.ndarray[Any, Any]]:
+def elevate_dims(polygons: Dict[str, Any]) -> List[np.ndarray[Any, np.dtype[np.uint8]]]:
+    extra_dimed: List[np.ndarray[Any, np.dtype[np.uint8]]] = []
     try:
-        return [make_contiguous(cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR)) for img in image_list]
-    except cv2.error as e:
-        logger.critical(f"Error añadiendo dimensiones a la imagen: {e}", exc_info=True)
-    return []
+        for _, poly in enumerate(polygons.values()):
+            img = ImageBuffer(poly.cropped_img).data
+            if img is not None:
+                extra_dimed.append(np.asarray(cv2.cvtColor(src=img, code=cv2.COLOR_GRAY2BGR), dtype=np.uint8, order="C"))
+
+    except RuntimeError as e:
+        raise e
+    return extra_dimed
 
 def validate_image(img: Optional[np.ndarray[Any, Any]]):
     return False if img is None else (7.0 < np.mean(img) < 251.0)

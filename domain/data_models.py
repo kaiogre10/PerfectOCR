@@ -7,9 +7,7 @@ from dataclasses import dataclass
 class Polygons:
     polygon_id: str
     poly_index: int
-    # bounding_box: List[int]
-    # centroid: Optional[List[float]]
-    cropped_img: int
+    cropped_img: Optional[int]
     ocr_text: Optional[str]
     key_field: Optional[List[int]]
     semantic_clasification: List[int]

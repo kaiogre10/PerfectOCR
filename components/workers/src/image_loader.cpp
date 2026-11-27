@@ -4,7 +4,7 @@
 #include "file_handler.hpp"
 #include "buffer_container.hpp"
 
-static const uint8_t dtype = sizeof(uint8_t);
+static constexpr uint8_t dtype = sizeof(uint8_t);
 
 Buffer* load_image(const char* filepath) {
     if (!filepath) {

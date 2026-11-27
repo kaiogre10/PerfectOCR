@@ -5,7 +5,7 @@
 #include <cmath>
 
 static const cv::Scalar WHITE_COLOR = cv::Scalar(255);
-static const uint8_t dtype = sizeof(uint8_t);
+static constexpr uint8_t dtype = sizeof(uint8_t);
 
 Buffer* rotate_image(Buffer* source, double angle, double center_x, double center_y) {
     const int rows = source->rows();

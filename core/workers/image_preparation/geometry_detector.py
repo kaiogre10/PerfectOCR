@@ -7,10 +7,8 @@ from app.models_builder import ModelsBuilder
 from core.contracts.abstract_worker import ImagePrepAbstractWorker
 from domain.data_formatter import DataFormatter
 from utils.image_utils import binarice_img, morph_operations
-from domain.buffer_handler import ArrayBuffer, ImageBuffer
+from domain.buffer_handler import ArrayBuffer
 from bidings import arrays
-from utils.text_utils import set_ids
-from services.output_service import save_croped_image
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +72,7 @@ class GeometryDetector(ImagePrepAbstractWorker):
             time_buff = time.perf_counter()
             arr_ptr = manager.get_array_buffer(rows=len(polygons), cols=len(polygons[0]), channels=len(polygons[0][0]), dtype=self.bboxes_type)
             
-            logger.debug(f"PUNTERO LIST PADDLE: {arr_ptr}")
+            logger.warning(f"PUNTERO LIST PADDLE: {arr_ptr}")
             
             if not arr_ptr:
                 logger.error(f"NO SE PUDO CREAR BUFFER PARA LOS BBOXES)")
@@ -88,7 +86,12 @@ class GeometryDetector(ImagePrepAbstractWorker):
             c_centroids, c_bboxes, all_crops, crop_ptr = arrays.compute_polygons_geometry(arr_ptr, image_ptr, padding)
             
             if c_bboxes and c_centroids and all_crops and crop_ptr:
-                manager.delete_buffers([image_ptr, arr_ptr])    # Liberar imagen completa inmediatamente
+                try:
+                    manager.delete_buffers([image_ptr, arr_ptr])    # Liberar imagen completa inmediatamente
+                except AssertionError as e:
+                    logger.exception(f"ERROR ELIMINANDO IMAGEN Y BBOXES, {e}", exc_info=True)
+                logger.warning("IMAGEN Y BBOXES ELIMINADOS")
+
             else:
                 ptr_todel: List[int] = []
                 if not c_bboxes:
@@ -98,37 +101,28 @@ class GeometryDetector(ImagePrepAbstractWorker):
                 if not all_crops:
                     ptr_todel.append(all_crops)
 
-                if not manager.delete_buffers(ptr_todel + [image_ptr, arr_ptr]):
-                    raise RuntimeError("NO SE PUDIERON LIBERAR LOS PUNTEROS DE GEOMETRIA")
+                if not manager.delete_buffers(ptr_todel):
+                    raise AssertionError("NO SE PUDIERON LIBERAR LOS PUNTEROS DE GEOMETRIA")
+                
+                return False
 
-            logger.info(f"PUNTEROS A LAS CROPPED: {crop_ptr}")
+            logger.warning(f"PUNTEROS A LAS CROPPED: {crop_ptr}")
 
             # list_centroids = ArrayBuffer(arr_ptr=c_centroids, dtype=self.centroids_type).data
-
             # list_reshape_bbox = ArrayBuffer(arr_ptr=c_bboxes, dtype=self.bboxes_type).data
 
-            logger.warning(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s:\n"f" {list_bbox.shape}")
+            logger.warning(f"TIEMPO BUFF_ARRAY: {time.perf_counter() - time_buff:.6f}'s")
 
             # np.maximum(0, all_bboxes[:, 0] - self.padding, out=all_bboxes[:, 0], dtype=self.bboxes_type)
             # np.maximum(0, all_bboxes[:, 1] - self.padding, out=all_bboxes[:, 1], dtype=self.bboxes_type)      ESto se queda por ser el layout original
             # np.minimum(img_cols, all_bboxes[:, 2] + self.padding, out=all_bboxes[:, 2], dtype=self.bboxes_type)
             # np.minimum(img_rows, all_bboxes[:, 3] + self.padding, out=all_bboxes[:, 3], dtype=self.bboxes_type)
             # valid_bbox_mask = (all_bboxes[:, 2] > all_bboxes[:, 0]) & (all_bboxes[:, 3] > all_bboxes[:, 1])
-            #        
-            # polygons_list: List[Dict[str, Any]] = [{
-            #     "bounding_box": list_reshape_bbox[i].tolist(),
-            #     "centroid": list_centroids[i].tolist()
-            # }
-            # for i in range(list_reshape_bbox.shape[0])
-            # ]
-            # manager.create_polygon_dicts(polygons_list)
-            if not manager.create_polygons([c_bboxes, c_centroids, all_crops, crop_ptr]):
-                logger.critical("GeometryDetector: Fallo al estructurar polígonos.")
-                return False
 
-            else:
+            if manager.create_polygons([c_bboxes, c_centroids, all_crops, crop_ptr]):
+                logger.warning("CROPS Y GEOMETRIA GENERADOS CON EXITO")
                 return True
-
+            logger.critical("GeometryDetector: Fallo al estructurar polígonos.")
         except Exception as e:
             logger.critical(f"Error en procesamiento vectorizado de geometría: {e}", exc_info=True)
             return False

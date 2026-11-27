@@ -1,4 +1,4 @@
-from .image import load, get_image_array, release_img, rotate, copy_image, get_crops_ptr
+from .image import load, get_image_array, release_img, rotate, copy_image, get_crops_ptr, release_crops
 
 __all__ = [
     "load",
@@ -6,5 +6,6 @@ __all__ = [
     "release_img",
     "rotate",
     "copy_image",
-    "get_crops_ptr"
+    "get_crops_ptr",
+    "release_crops"
 ]

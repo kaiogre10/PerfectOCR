@@ -31,9 +31,9 @@ class ImageLoader(ImagePrepAbstractWorker):
             if not image_name:
                 logger.error("No se encontró ninguna coincidencia.")
                 return False
-
+            
             if manager.create_workflow(ptr, image_name):
-                logger.debug(f"IMAGEN: '{image_name}' cargada exitosamente, Direccion en memoria: '{ptr}'")
+                logger.debug(f"IMAGEN: '{image_name}' cargada exitosamente")
                 return True
         
         except Exception as e:

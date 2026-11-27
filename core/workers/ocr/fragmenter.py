@@ -160,9 +160,9 @@ class Fragmenter(OCRAbstractWorker):
         if total_chars == 0:
             return [polygon]
         
-        new_polys = []
+        new_polys: List[Any] = []
         proportions = [float(frag_len) / float(total_chars) for frag_len in frag_char_lengths]
-        geom_parts = fragment_geometry_horizontal(polygon, num_fragments = total_fragments, proportions=proportions)
+        geom_parts = fragment_geometry_horizontal(polygon, num_fragments=total_fragments, proportions=proportions)
         if not geom_parts:
             return [polygon]
             

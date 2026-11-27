@@ -148,12 +148,12 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
     - Si `proportions` es None, divide uniforme.
     - Si se provee `proportions`, debe tener longitud `num_fragments` y su suma debe ser > 0.
     """
-    if num_fragments <= 1:
-        bbox = getattr(geometry, "bounding_box", [])
-        centroid = getattr(geometry, "centroid", [])
-        if not bbox or not centroid:
-            return []
-        return [{"bounding_box": bbox, "centroid": centroid}]
+    # if num_fragments <= 1:
+    #     bbox = getattr(geometry, "bounding_box", [])
+    #     centroid = getattr(geometry, "centroid", [])
+    #     if not bbox or not centroid:
+    #         return []
+    #     return [{"bounding_box": bbox, "centroid": centroid}]
 
     bbox = geometry.bounding_box
     if bbox is None or len(bbox) != 4:
@@ -167,11 +167,11 @@ def fragment_geometry_horizontal(geometry: Any, num_fragments: int, proportions:
         return []
 
     if proportions is None:
-        props = np.full((num_fragments,), 1.0 / float(num_fragments), dtype=np.float32)
+        props = np.full((num_fragments,), 1.0 / float(num_fragments), dtype=np.float32, order="C")
     else:
         if len(proportions) != num_fragments:
             return []
-        props = np.asarray(list(proportions), dtype=np.float32)
+        props = np.asarray(list(proportions), dtype=np.float32, order="C")
         total = np.sum(props, dtype=np.float32)
         if total <= 0:
             return []

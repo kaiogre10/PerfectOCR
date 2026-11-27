@@ -97,28 +97,27 @@ class CroppedBufferKey:
     @classmethod
     def free_cropped_buffer_images(cls) -> None:
         """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
-        image.release_img(ptr_addr=cls.cropped_buffer_ptr) # type: ignore
         cls.cropped_buffer_ptr = None
 
-class CroppedImagesKey:
-    cropped_img_ptr: Optional[int] = None
+class AoSCroppedImageKey:
+    cropped_aos_ptr: Optional[int] = None
 
-    def __new__(cls, cropped_img_ptr: int):
+    def __new__(cls, cropped_aos_ptr: int):
         # Bloquea floats (1.0), strings ("1"), y explícitamente booleanos (True/False).
-        if type(cropped_img_ptr) is not int:
-            raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(cropped_img_ptr).__name__}'.")
+        if type(cropped_aos_ptr) is not int:
+            raise TypeError(f"Tipo inválido: se esperaba 'int', se recibió '{type(cropped_aos_ptr).__name__}'.")
 
         # 2. VALIDACIÓN DE NEGATIVOS: Un puntero de memoria real no puede ser menor a cero.
-        if cropped_img_ptr < 0:
+        if cropped_aos_ptr < 0:
             raise PointerError()
 
         # Guarda el entero en el namespace de la clase
-        cls.cropped_img_ptr = cropped_img_ptr
+        cls.cropped_aos_ptr = cropped_aos_ptr
 
         # Evita crear instancias en memoria
         return None
 
     @classmethod
-    def free_cropped_images(cls) -> None:
+    def free_cropped_asos(cls) -> None:
         """Resetea el puntero a None. Cero residuos entre tareas de la cola."""
-        cls.cropped_img_ptr = None
+        cls.cropped_aos_ptr = None

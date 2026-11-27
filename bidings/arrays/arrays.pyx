@@ -1,5 +1,5 @@
 # cython: language_level=3, boundscheck=False, wraparound=False, cdivision=True, nonecheck=False, initializedcheck=False, embedsignature=True
-from ..container.container cimport Buffer, get_buffer_ptr, get_array_view, create_new_buffer, check_null_ptr, free_buffer, recover_class, get_size
+from ..container.container cimport Buffer, get_buffer_ptr, get_array_view, create_new_buffer, check_null_ptr, free_buffer, recover_class, free_buffer_class
 from libc.stddef cimport size_t
 from ..container.workers cimport get_bboxes
 
@@ -15,11 +15,6 @@ def get_array(size_t arr_ptr, const char* dtype, int dims):
 def release_array(size_t ptr_addr):
     free_buffer(ptr_addr)
     return None
-
-cdef inline void free_buffer_class(Buffer* buffer_ptr):
-    """Libera el buffer en memoria sin que el caller tenga que castear a size_t"""
-    cdef size_t buff_ptr = <size_t>buffer_ptr
-    free_buffer(buff_ptr)
 
 def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
     cdef Buffer* bboxes_ptr = get_buffer_ptr(arr_ptr)
@@ -40,7 +35,7 @@ def compute_polygons_geometry(size_t arr_ptr, size_t image_ptr, int padding):
     if check_null_ptr(geometry):
         free_buffer(arr_ptr)
         free_buffer(image_ptr)
-        raise TypeError(f"PUNTERO PACK GEOMETRIA NULL")
+        raise TypeError(f"PUNTERO PACK GEOMETRIA NULO")
 
     if total_buffers < 3:
         free_buffer_class(geometry)

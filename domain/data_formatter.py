@@ -1,8 +1,9 @@
 # domain/data_formatter.py
 import logging
+import sys
 from bidings import arrays, image
 from domain.data_models import WorkflowData, StructuredData, Polygons, AllLines, Payload
-from domain.buffer_models import FullImageKey, BoundingBoxesKey, CentroidsKey, CroppedBufferKey, CroppedImagesKey
+from domain.buffer_models import FullImageKey, BoundingBoxesKey, CentroidsKey, CroppedBufferKey, AoSCroppedImageKey
 import numpy as np
 import dataclasses
 from typing import Dict, Any, Optional, List, Tuple
@@ -112,9 +113,9 @@ class DataFormatter:
             logger.error(f"Error en create_polygon_dicts: {e}", exc_info=True)
         return False
 
-    def create_polygons(self, polygons: List[int]) -> bool:    
+    def create_polygons(self, polygons_detected: List[int]) -> bool:    
         try:
-            BoundingBoxesKey(bboxes_ptr=polygons[0])
+            BoundingBoxesKey(bboxes_ptr=polygons_detected[0])
             bboxes_ptr = BoundingBoxesKey.bboxes_ptr
             if not bboxes_ptr:
                 raise TypeError("NO SE DEVOLVIO PUNTERO A BBOXES")
@@ -123,7 +124,7 @@ class DataFormatter:
             logger.exception(f"No se pudo almacenar el puntero de bboxes: {e}", exc_info=True)
             return False
         try:
-            CentroidsKey(polygons[1])
+            CentroidsKey(polygons_detected[1])
             centroids_ptr = CentroidsKey.centroids_ptr
             if not centroids_ptr:
                 raise TypeError("NO SE DEVOLVIO PUNTERO A CENTROIDES")
@@ -132,7 +133,7 @@ class DataFormatter:
             logger.exception(f"No se pudo almacenar el puntero a centroides: {e}", exc_info=True)
             return False
         try:
-            CroppedBufferKey(polygons[2])
+            CroppedBufferKey(polygons_detected[2])
             cropped_buffer_ptr = CroppedBufferKey.cropped_buffer_ptr
             if not cropped_buffer_ptr:
                 raise TypeError("NO SE DEVOLVIO PUNTERO A BUFFER DE CROPS")
@@ -142,9 +143,9 @@ class DataFormatter:
             return False
 
         try:
-            CroppedImagesKey(polygons[3])
-            cropped_img_ptr = CroppedImagesKey.cropped_img_ptr
-            if not cropped_img_ptr:
+            AoSCroppedImageKey(polygons_detected[3])
+            cropped_aos_ptr = AoSCroppedImageKey.cropped_aos_ptr
+            if not cropped_aos_ptr:
                 raise TypeError("NO SE DEVOLVIO PUNTERO A AoS")
 
         except TypeError as e:
@@ -158,7 +159,7 @@ class DataFormatter:
             logger.error(f"DISPARIDAD EN LA GEOMETRIA: BBOXES: {total_bboxes} != {total_centroids} CENTROIDS")
             return False
 
-        list_ptr = image.get_crops_ptr(cropped_img_ptr, total_bboxes)
+        list_ptr = image.get_crops_ptr(cropped_aos_ptr, total_bboxes)
         total_crops = len(list_ptr)
 
         if not list_ptr or total_crops < 1:
@@ -186,39 +187,35 @@ class DataFormatter:
         logger.warning(f"RECORTADOS: {total_crops} POLIGONOS, {total_bboxes} BBOXES, {total_centroids} CENTROIDS")
         return True
 
-    def create_image(self, img_ptr: int) -> bool:
-        if not isinstance(img_ptr, int): # type: ignore
-            raise TypeError("TYPO INCORRECTO")
+    def create_image(self, img_ptr: Any) -> bool:
         try:
             FullImageKey(img_ptr=img_ptr)
         except TypeError as e:
             logger.error(f"No se pudo almacenar el puntero: {e}", exc_info=True)
             return False
         
-        logger.debug(f"PUNTERO ALMACENADO: '{img_ptr}'")
+        logger.warning(f"PUNTERO ALMACENADO: '{img_ptr}'")
         return True
 
     def get_array_buffer(self, rows: int, cols: int, channels: int, dtype: bytes) -> Optional[int]:
         """Solicita un buffer de memoria a C. Devuelve puntero"""
+        worker, line = get_caller_info()
         if not dtype:
             raise TypeError("NO SE INGRESO TYPO DE ARRAY")
         
         arr_ptr = arrays.create_new_array(rows, cols, channels, dtype)
-
+        logger.warning(f"'{worker}'-{line}  SOLICITO: '{arr_ptr}'")
         if not arr_ptr or not isinstance(arr_ptr, int): # type: ignore
             raise RuntimeError("POSIBLE MEMMORY LEAK")
             
         return arr_ptr
 
-    def get_img_ptr(self) -> Optional[int]:
-        if not FullImageKey.img_ptr:
-            return None
-        
-        ptr = FullImageKey.img_ptr
-        if not isinstance(ptr, int):
-            return None
-        
-        return ptr
+    def get_img_ptr(self) -> int:
+        img_ptr = FullImageKey.img_ptr
+        if not img_ptr:
+            return -1
+        else:
+            return img_ptr
 
     def get_bboxes_ptr(self) -> int:
         bboxes_ptr = BoundingBoxesKey.bboxes_ptr
@@ -227,32 +224,22 @@ class DataFormatter:
         else:
             return bboxes_ptr
 
-    def get_cropped_img_ptr(self) -> Tuple[int, ...]:
-        centroids_ptr = CentroidsKey.centroids_ptr
-        if not centroids_ptr:
-            return ()
-
-        polys = ArrayBuffer(arr_ptr=centroids_ptr, dims=2, dtype=b"float32").shape[0]
-        cropped_img_ptr = CroppedImagesKey.cropped_img_ptr
-        if not cropped_img_ptr:
-            return ()
-
+    def get_all_cropped_img_ptr(self) -> int:
         cropped_buffer_ptr = CroppedBufferKey.cropped_buffer_ptr
         if not cropped_buffer_ptr:
-            return ()
-
-        return cropped_buffer_ptr, cropped_img_ptr, polys
+            return -1
+        else:
+            return cropped_buffer_ptr
 
     def get_img_copy(self) -> Tuple[Optional[int], Optional[np.ndarray[Any, np.dtype[np.uint8]]]]:
         """Devuelve puntero[0] y copia de la imagen principal[1] para futuras liberaciones"""
+        worker, line = get_caller_info()
         ptr = self.get_img_ptr()
-        if not ptr or not isinstance(ptr, int):
-            return None, None
-
         copy_ptr = image.copy_image(ptr, image_type)
         if not copy_ptr:
             return None, None
         
+        logger.warning(f"'{worker}'-{line}  SOLICITO: '{copy_ptr}'")
         full_img = ImageBuffer(copy_ptr, image_type).data
         return copy_ptr, full_img
 
@@ -276,36 +263,21 @@ class DataFormatter:
             try:
                 image.release_img(ptr_addr=copy_ptr)
             except RuntimeError as e:
-                logger.error(f"ERROR DE '{worker}' LINE: {line} LIBERANDO COPIA: {e}")
-                
-                try:
-                    logger.warning(f"SEGUNDO INTENTO PARA LIBERAR: {copy_ptr}")
-                    arrays.release_array(ptr_addr=copy_ptr)
-                except RuntimeError as e:
-                    logger.error(f"ERROR DE '{worker}', linea: '{line}' LIBERANDO ARRAY: {e}", exc_info=True)
-                    return False
-            
-            copy_ptr = None
-            del copy_ptr
-
-            if worker != "data_formatter.py":
-                logger.info(f"'{worker}' LIBERO COPIA en linea: '{line}'")
-
-            return True
-
-        else:
-            if not FullImageKey.img_ptr:
+                logger.exception(f"ERROR DE '{worker}' LINE: {line} LIBERANDO COPIA: {e}", exc_info=True)
                 return False
             
+            if worker != "data_formatter.py":
+                logger.warning(f"'{worker}' LIBERO COPIA {copy_ptr} en linea: '{line}'")
+            copy_ptr = None
+            del copy_ptr
+            return True
+
+        else:            
             ptr = FullImageKey.img_ptr
     
             if not ptr:
-                logger.info(f"'{worker}' INTENTO LIBERAR: '{ptr}' PERO LIBERADO ANTERIORMENTE")
+                logger.warning(f"'{worker}' INTENTO LIBERAR: '{ptr}' PERO LIBERADO ANTERIORMENTE")
                 return True
-    
-            if not isinstance(ptr, int): # type: ignore
-                logger.error(f"ERROR DE TIPOS DE PUNTERO {type(ptr)}")
-                return False
 
             try:
                 FullImageKey.clear_img()
@@ -315,23 +287,19 @@ class DataFormatter:
                 return False
 
             if worker != "data_formatter.py":
-                logger.info(f"'{worker}' linea '{line}': LIBERO IMAGEN")
+                logger.warning(f"'{worker}' linea '{line}': LIBERO IMAGEN")
                 
             return True
                     
-    def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:
-        if not FullImageKey.img_ptr:
-            return None
-        
+    def get_full_img(self) -> Optional[np.ndarray[Any, np.dtype[np.uint8]]]:        
         ptr = FullImageKey.img_ptr
-        
         full_img = ImageBuffer(ptr, image_type)
         return full_img.data
 
     def update_image(self, new_ptr: int) -> bool:
         worker, _ = get_caller_info()
         try:
-            logger.info(f"'{worker}' LIBERO COPIA")
+            logger.warning(f"'{worker}' LIBERO COPIA")
 
             if not self.create_image(new_ptr):
                 raise ReferenceError(f"ERROR CREANDO BUFFER ACTUALIZADO: {new_ptr}")
@@ -346,7 +314,22 @@ class DataFormatter:
         """Libera todas las imágenes recortadas de los polígonos para ahorrar memoria."""
         if not self.workflow or not self.workflow.polygons:
             raise RuntimeError("No hay workflow inicializado para limpiar imágenes recortadas.")
+        polygons = self.workflow.polygons
+        totak_polys = len(polygons)
+        cropped_buffer_ptr = CroppedBufferKey.cropped_buffer_ptr
+        cropped_aos_ptr = AoSCroppedImageKey.cropped_aos_ptr
+        try:
 
+            image.release_crops(cropped_buffer_ptr, cropped_aos_ptr, totak_polys)
+
+            # CroppedBufferKey.free_cropped_buffer_images()
+            # AoSCroppedImageKey.free_cropped_asos()
+        except RuntimeError as e:
+            logger.exception(f"ERROR LIBERANDO PUNTEROS AOS: {e}", exc_info=True)
+            sys.exit()
+
+        logger.warning("EXITO LIBERANDO CROPPED_IMG")
+        
         polygon_to_free: Dict[str, Polygons] = {}            
         for _, (poly_id, polygon) in enumerate(self.workflow.polygons.items()):
             cropped_img = polygon.cropped_img

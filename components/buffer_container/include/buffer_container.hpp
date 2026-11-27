@@ -57,14 +57,12 @@ private:
         // === MOVE SEMANTICS (Yo decido ceder el ownership) ===
         // Esto permite: Buffer buff2 = std::move(buff1);
         Buffer(Buffer&& other) noexcept : ptr(std::move(other.ptr)) {}
-
         Buffer& operator=(Buffer&& other) noexcept {
             if (this != &other) {
                 ptr = std::move(other.ptr);
             }
             return *this;
         }
-
         // === EXPOSICIÓN DE DATOS (Acceso directo a los bytes) cualquiera puede escribir en esta memoria.
         void* data() {
             return buffer_get_data(ptr.get());

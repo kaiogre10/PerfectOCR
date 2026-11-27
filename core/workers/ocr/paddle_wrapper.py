@@ -8,8 +8,6 @@ from utils.text_utils import normalice_text
 from utils.image_utils import elevate_dims
 from services.output_service import save_text_debug
 from utils.compiled_funcs import validate_text, space_removal
-from domain.buffer_handler import ImageBuffer
-from bidings import image
 
 logger = logging.getLogger(__name__)
 
@@ -74,25 +72,10 @@ class PaddleOCRWrapper(OCRAbstractWorker):
             if not polygons:
                 logger.error("No hay polygons para procesar", exc_info=True)
                 raise
-            
-            logger.debug(f"[PaddleWrapper] Polígonos obtenidos: {len(polygons)}")
+
             polygon_ids = [pdx.polygon_id for pdx in polygons.values()]
 
-            cropped_buffer_ptr, ptr_img_crop, polys = manager.get_cropped_img_ptr()       # PUntero a lista de punteros
-            if cropped_buffer_ptr < 1 or ptr_img_crop < 1 or polys < 1:
-                return {}
-
-            if len(polygon_ids) != polys:
-                logger.error(F"DISCREAPANCIA ENTRE C Y PYTHON")
-                return {}
-
-            img_list = [ImageBuffer(poly.cropped_img).data for poly in polygons.values()]
-            if not img_list:
-                logger.error("NO HAY IMAGE LIST:")
-                return {}
-            
-            image_list = elevate_dims(img_list)
-            manager.free_buffer(cropped_buffer_ptr)
+            image_list = elevate_dims(polygons)
             
             if not image_list:
                 logger.error(f"NO SE ELEVARON CORRECTAMENTE LAS DIMENSIONES")
@@ -100,30 +83,30 @@ class PaddleOCRWrapper(OCRAbstractWorker):
 
             logger.warning(f"IMANEGEGS CON DIMENSION EXTRA EXITOSAS: {len(image_list)}")
 
-            batch_result: List[Tuple[str, float]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]
-            # logger.info(f"Transcripción completa en: '{time.perf_counter() - time_t}'s'")
+            batch_result: List[Tuple[str, float]] = self.engine.ocr(image_list, cls=False, det=False, rec=True)[0]            
             if not batch_result:
                 logger.error(f"PADDLE NO ARROJO RESULTADOS")
-                return {}
+                raise TypeError("image_list INVALIDA")
             
+            manager.delete_cropped_images()
             deleted: List[List[str]] = []
             raw_map: Dict[str, Dict[str, Any]] = {}
 
             for idx, (text, confidence) in enumerate(batch_result):
                 poly_id = polygon_ids[idx]
                 if self.text_ocr_log:
-                    logger.info(f"TEXTO CRUDO: {poly_id} | '{text}' | CONF: {confidence*100.0}:.6f%")
+                    logger.warning(f"TEXTO CRUDO: {poly_id} | '{text}' | CONF: {(confidence*100.0):.6f}")
 
                 if not text:
                     deleted.append([poly_id, text])
                     if self.del_output_log:
-                        logger.info(f"INVÁLIDO: {poly_id} '{text}'")
+                        logger.warning(f"INVÁLIDO: {poly_id}: '{text}'")
                     continue
                 
                 elif confidence < self.min_confidence:
                     deleted.append([poly_id, text])
                     if self.del_output_log:
-                        logger.info(f"BAJA CONFIANZA: {poly_id} | '{text}' | '{(confidence*100.0)}:.6f%' ")
+                        logger.warning(f"BAJA CONFIANZA: {poly_id} | '{text}' | '{(confidence*100.0):.6f}'")
                     continue
                 
                 else:
@@ -131,13 +114,13 @@ class PaddleOCRWrapper(OCRAbstractWorker):
                         if " " not in text:
                             norm_text = text
                         else:
-                            norm_text = space_removal(text)
+                            norm_text = space_removal(text) # type: ignore
                     else:
                         norm_text = normalice_text(text)
                         
                     if not norm_text or not validate_text(norm_text):
                         if self.del_output_log:
-                            logger.info(f"TEXTO INVALIDO: {poly_id}: '{text}' -> '{norm_text}', CONF: {confidence*100.0}:.6f%")
+                            logger.warning(f"TEXTO INVALIDO: {poly_id}: '{text}' -> '{norm_text}', CONF: {(confidence*100.0):.6f}")
                         continue
 
                     raw_map[poly_id] = {"text": norm_text}

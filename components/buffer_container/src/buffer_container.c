@@ -11,15 +11,15 @@ struct BufferContainer {
     void* data;
 };
 
-static const size_t container_size = sizeof(BufferContainer);
+constexpr size_t container_size = sizeof(BufferContainer);
 
 inline size_t get_container_size() {
     return container_size;
 }
 
 BufferContainer* create_array_of_structs(int total_objects) {
-    if (total_objects == 0) {
-        return NULL;
+    if (total_objects < 2) {
+        return nullptr;
     }
     return calloc((size_t)total_objects, container_size);
 }
@@ -31,7 +31,7 @@ BufferContainer* create_struct() {
 BufferContainer* create_buffer(int rows, int cols, int channels, size_t dtype) {
     BufferContainer* buffer = create_struct();
     if (!buffer) {
-        return NULL;
+        return nullptr;
     }
 
     buffer->rows = rows;
@@ -42,7 +42,7 @@ BufferContainer* create_buffer(int rows, int cols, int channels, size_t dtype) {
 
     if (!buffer->data) {
         free(buffer);
-        return NULL;
+        return nullptr;
     }
     return buffer;
 }
@@ -52,7 +52,7 @@ void delete_buffer(BufferContainer* buffer) {
         // El orden de liberación es CRÍTICO.
         if (buffer->data) {
             free(buffer->data);   // 1. Liberar los bytes
-            buffer->data = NULL;  // 2. (Opcional) Marcar como nulo para evitar doble free
+            buffer->data = nullptr;  // 2. (Opcional) Marcar como nulo para evitar doble free
         }
         free(buffer);             // 3. Liberar el contenedor
     }
@@ -97,7 +97,7 @@ void group_array_structs(BufferContainer* array, size_t index, const BufferConta
 }
 void* take_struct_data(BufferContainer* array, size_t index) {
     void* data = array[index].data;
-    array[index].data = NULL;
+    array[index].data = nullptr;
     return data;
 }
 void set_struct(BufferContainer* buffer, int rows, int cols, int channels, size_t total_bytes, void* data) {
@@ -109,7 +109,7 @@ void set_struct(BufferContainer* buffer, int rows, int cols, int channels, size_
 }
 BufferContainer* array_at(BufferContainer* array, size_t index) {
     if (!array) {
-        return NULL;
+        return nullptr;
     } 
     return &array[index];
 }
