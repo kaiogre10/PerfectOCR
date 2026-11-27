@@ -1,4 +1,15 @@
 [*]
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{c,cpp,h,hpp,py}]
+indent_style = space
+indent_size = 4
 charset = utf-8
 end_of_line = crlf
 indent_size = 4
@@ -8,10 +19,10 @@ max_line_length = 120
 tab_width = 4
 ij_continuation_indent_size = 4
 ij_formatter_off_tag = @formatter:off
-ij_formatter_on_tag = @formatter:on
+ij_formatter_on_tag = @formatter:off
 ij_formatter_tags_enabled = true
 ij_smart_tabs = false
-ij_visual_guides = 
+ij_visual_guides =
 ij_wrap_on_typing = false
 
 [.editorconfig]
